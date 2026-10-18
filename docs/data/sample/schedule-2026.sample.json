@@ -1,0 +1,5007 @@
+{
+ "meta": {
+  "generated": "2026-10-18",
+  "status": "PROTOTYPE sample — manual transcription, unverified; do not publish",
+  "flags": [
+   "miasto S2 and S3 JPG tables are pixel-identical (image diff = 0); confirm with MZGKiM/UM or eGmina BOM",
+   "gmina column 1 = \"zmieszane i BIO\" combined; semantics to confirm"
+  ]
+ },
+ "events": [
+  {
+   "sector": "miasto-s1",
+   "date": "2026-01-12",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-01-26",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-02-09",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-02-23",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-03-09",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-03-23",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-04-08",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "śr"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-04-20",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-05-04",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-05-18",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-06-01",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-06-15",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-06-29",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-07-13",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-07-27",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-08-10",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-08-24",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-09-07",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-09-21",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-10-05",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-10-19",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-11-02",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-11-16",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-11-30",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-12-14",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-12-28",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-01-05",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-02-02",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-03-02",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-04-01",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "śr"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-05-04",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-06-01",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-06-15",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-07-06",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-07-20",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-08-03",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-08-17",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-09-01",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-10-05",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-11-02",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-12-07",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-01-05",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-02-02",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-03-02",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-04-01",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "śr"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-04-13",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-04-27",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-05-11",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-05-25",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-06-08",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-06-22",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-07-06",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-07-20",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-08-03",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-08-17",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-09-02",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "śr"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-09-14",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-09-28",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-10-12",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-10-26",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-11-09",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-12-07",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-03-05",
+   "fractions": [
+    "wielkogabarytowe",
+    "elektro",
+    "opony",
+    "tekstylia"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s1",
+   "date": "2026-09-03",
+   "fractions": [
+    "wielkogabarytowe",
+    "elektro",
+    "opony",
+    "tekstylia"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-01-13",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-01-27",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-02-10",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-02-24",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-03-10",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-03-24",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-04-07",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-04-21",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-05-05",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-05-19",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-06-02",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-06-16",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-06-30",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-07-14",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-07-28",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-08-11",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-08-25",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-09-08",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-09-22",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-10-06",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-10-20",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-11-03",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-11-17",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-12-01",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-12-15",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-12-29",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-01-13",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-02-10",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-03-10",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-04-07",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-05-12",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-06-02",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-06-16",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-07-07",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-07-21",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-08-04",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-08-18",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-09-08",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-10-13",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-11-10",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-12-15",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-01-07",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "śr"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-02-03",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-03-03",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-04-02",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-04-14",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-04-28",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-05-12",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-05-26",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-06-09",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-06-23",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-07-07",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-07-21",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-08-04",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-08-18",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-09-01",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-09-15",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-09-29",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-10-13",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-10-27",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-11-10",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-12-08",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-03-16",
+   "fractions": [
+    "wielkogabarytowe",
+    "elektro",
+    "opony",
+    "tekstylia"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s2",
+   "date": "2026-09-16",
+   "fractions": [
+    "wielkogabarytowe",
+    "elektro",
+    "opony",
+    "tekstylia"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg",
+   "weekday": "śr"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-01-02",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-01-15",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-01-29",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-02-12",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-02-26",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-03-12",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-03-26",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-04-09",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-04-23",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-05-07",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-05-21",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-06-03",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "śr"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-06-18",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-07-02",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-07-16",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-07-30",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-08-13",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-08-27",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-09-10",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-09-24",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-10-08",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-10-22",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-11-05",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-11-19",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-12-03",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-12-17",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-12-31",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-01-22",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-02-19",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-03-19",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-04-16",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-05-21",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-06-11",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-06-25",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-07-16",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-07-30",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-08-13",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-08-27",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-09-17",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-10-22",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-11-19",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-12-23",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "śr"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-01-08",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-02-05",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-03-05",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-04-02",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-04-16",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-04-30",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-05-14",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-05-28",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-06-11",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-06-25",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-07-09",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-07-23",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-08-06",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-08-20",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-09-03",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-09-17",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-10-01",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-10-15",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-10-29",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-11-12",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-12-10",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-03-20",
+   "fractions": [
+    "wielkogabarytowe",
+    "elektro",
+    "opony",
+    "tekstylia"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s4",
+   "date": "2026-09-21",
+   "fractions": [
+    "wielkogabarytowe",
+    "elektro",
+    "opony",
+    "tekstylia"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-01-02",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-01-16",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-01-30",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-02-13",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-02-27",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-03-13",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-03-27",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-04-10",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-04-24",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-05-08",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-05-22",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-06-05",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-06-19",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-07-03",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-07-17",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-07-31",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-08-14",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-08-28",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-09-11",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-09-25",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-10-09",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-10-23",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-11-06",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-11-20",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-12-04",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-12-18",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-01-30",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-02-27",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-03-27",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-04-24",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-05-29",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-06-12",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-06-26",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-07-17",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-07-31",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-08-14",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-08-28",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-09-25",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-10-30",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-11-27",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-12-30",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "śr"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-01-09",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-02-06",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-03-06",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-04-03",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-04-17",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-04-29",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "śr"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-05-15",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-05-29",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-06-12",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-06-26",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-07-10",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-07-24",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-08-07",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-08-21",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-09-04",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-09-18",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-10-02",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-10-16",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-10-30",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-11-13",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-12-11",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pt"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-03-30",
+   "fractions": [
+    "wielkogabarytowe",
+    "elektro",
+    "opony",
+    "tekstylia"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s5",
+   "date": "2026-09-30",
+   "fractions": [
+    "wielkogabarytowe",
+    "elektro",
+    "opony",
+    "tekstylia"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg",
+   "weekday": "śr"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-01-13",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-01-27",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-02-10",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-02-24",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-03-10",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-03-24",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-04-07",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-04-21",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-05-05",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-05-19",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-06-02",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-06-16",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-06-30",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-07-14",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-07-28",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-08-11",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-08-25",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-09-08",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-09-22",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-10-06",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-10-20",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-11-03",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-11-17",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-12-01",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-12-15",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-12-29",
+   "fractions": [
+    "zmieszane",
+    "popiol"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-01-13",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-02-10",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-03-10",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-04-07",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-05-12",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-06-02",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-06-16",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-07-07",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-07-21",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-08-04",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-08-18",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-09-08",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-10-13",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-11-10",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-12-15",
+   "fractions": [
+    "papier",
+    "tworzywa_metale",
+    "szklo"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-01-07",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "śr"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-02-03",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-03-03",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-04-02",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "czw"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-04-14",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-04-28",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-05-12",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-05-26",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-06-09",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-06-23",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-07-07",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-07-21",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-08-04",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-08-18",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-09-01",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-09-15",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-09-29",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-10-13",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-10-27",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-11-10",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-12-08",
+   "fractions": [
+    "bio"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "wt"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-03-16",
+   "fractions": [
+    "wielkogabarytowe",
+    "elektro",
+    "opony",
+    "tekstylia"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "pon"
+  },
+  {
+   "sector": "miasto-s3",
+   "date": "2026-09-16",
+   "fractions": [
+    "wielkogabarytowe",
+    "elektro",
+    "opony",
+    "tekstylia"
+   ],
+   "source": "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-01-19",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-02-16",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-03-16",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-04-02",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-04-20",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-05-04",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-05-18",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-06-01",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-06-15",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-07-06",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-07-20",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-08-03",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-08-14",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-09-01",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-09-14",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-10-05",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-10-19",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-11-16",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-12-14",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-01-19",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-02-16",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-03-16",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-04-20",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-05-18",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-06-15",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-07-20",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-08-14",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-09-14",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-10-19",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-11-16",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-12-14",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-03-24",
+   "fractions": [
+    "wielkogabarytowe"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s1",
+   "date": "2026-09-22",
+   "fractions": [
+    "wielkogabarytowe"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-01-20",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-02-17",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-03-17",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-04-07",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-04-21",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-05-05",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-05-19",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-06-02",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-06-16",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-07-07",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-07-21",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-08-04",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-08-18",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-09-02",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-09-15",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-10-06",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-10-20",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-11-17",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-12-15",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-01-20",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-02-17",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-03-17",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-04-21",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-05-19",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-06-16",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-07-21",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-08-18",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-09-15",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-10-20",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-11-17",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-12-15",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-03-25",
+   "fractions": [
+    "wielkogabarytowe"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s2",
+   "date": "2026-09-23",
+   "fractions": [
+    "wielkogabarytowe"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-01-21",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-02-18",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-03-18",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-04-08",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-04-22",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-05-06",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-05-20",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-06-03",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-06-17",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-07-08",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-07-22",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-08-05",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-08-19",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-09-03",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-09-16",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-10-07",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-10-21",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-11-18",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-12-16",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-01-21",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-02-18",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-03-18",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-04-22",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-05-20",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-06-17",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-07-22",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-08-19",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-09-16",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-10-21",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-11-18",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-12-16",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "weekday": "śr"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-03-26",
+   "fractions": [
+    "wielkogabarytowe"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s3",
+   "date": "2026-09-24",
+   "fractions": [
+    "wielkogabarytowe"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-01-22",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-02-19",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-03-19",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-04-09",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-04-23",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-05-07",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-05-21",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-06-08",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-06-18",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-07-09",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-07-23",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-08-06",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-08-20",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-09-04",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-09-17",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-10-08",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-10-22",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-11-19",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-12-17",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-01-22",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-02-19",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-03-19",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-04-23",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-05-21",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-06-18",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-07-23",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-08-20",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-09-17",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-10-22",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-11-19",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-12-17",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "weekday": "czw"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-03-27",
+   "fractions": [
+    "wielkogabarytowe"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s4",
+   "date": "2026-09-25",
+   "fractions": [
+    "wielkogabarytowe"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-01-23",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-02-20",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-03-20",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-04-10",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-04-24",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-05-08",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-05-22",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-06-09",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-06-19",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-07-10",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-07-24",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-08-07",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-08-21",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-09-07",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pon"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-09-18",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-10-09",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-10-23",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-11-20",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-12-18",
+   "fractions": [
+    "zmieszane",
+    "bio"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "note": "column header \"ODPADY KOMUNALNE ZMIESZANE I BIO\" — whether both fractions go on every date needs confirmation",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-01-23",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-02-20",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-03-20",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-04-24",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-05-22",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-06-19",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-07-24",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-08-21",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-09-18",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-10-23",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-11-20",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-12-18",
+   "fractions": [
+    "tworzywa_metale",
+    "papier",
+    "szklo"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "weekday": "pt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-03-31",
+   "fractions": [
+    "wielkogabarytowe"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "weekday": "wt"
+  },
+  {
+   "sector": "gmina-s5",
+   "date": "2026-09-29",
+   "fractions": [
+    "wielkogabarytowe"
+   ],
+   "source": "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf",
+   "weekday": "wt"
+  }
+ ]
+}
