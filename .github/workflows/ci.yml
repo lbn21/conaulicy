@@ -73,3 +73,6 @@ jobs:
 
       - name: Accessibility (axe, WCAG 2.2 AA)
         run: node scripts/check-a11y.mjs
+
+      - name: Search popup (no layout shift, combobox keys)
+        run: node scripts/check-search.mjs
