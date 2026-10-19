@@ -11,14 +11,19 @@ export const TOKEN: Record<string, string> = {
   tworzywa_metale: "plastik-metale",
   szklo: "szklo",
   wielkogabarytowe: "gabaryty",
-  elektro: "gabaryty",
-  opony: "gabaryty",
-  tekstylia: "gabaryty",
+  elektro: "elektro",
+  opony: "opony",
+  tekstylia: "tekstylia",
 };
 
 // Fills that fade into a background in some theme; their outline token carries
 // the 3:1 non-text contrast (see design/tokens.md).
-export const OUTLINED = new Set(["zmieszane", "plastik-metale"]);
+export const OUTLINED = new Set([
+  "zmieszane",
+  "plastik-metale",
+  "elektro",
+  "opony",
+]);
 
 /** Fractions a subtype stands for; one bin is drawn per fraction. */
 export function tones(subtype: string): string[] {
