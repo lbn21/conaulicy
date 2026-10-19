@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   localitySearchLabel,
   pickZone,
+  scheduleName,
   streetLabel,
   streetName,
   villageLabel,
@@ -69,4 +70,16 @@ test("pickZone: street entry, then own locality, then the parent village", () =>
     pickZone([street], { localityId: "L", parentId: null, streetId: "L-2" }),
     null,
   );
+});
+
+test("a schedule link names who publishes it", () => {
+  assert.equal(
+    scheduleName("Lubaczów (miasto)"),
+    "harmonogram Urzędu Miejskiego w Lubaczowie",
+  );
+  assert.equal(
+    scheduleName("Lubaczów (gmina)"),
+    "harmonogram Urzędu Gminy Lubaczów",
+  );
+  assert.equal(scheduleName("Oleszyce (gmina)"), "harmonogram gminy Oleszyce");
 });

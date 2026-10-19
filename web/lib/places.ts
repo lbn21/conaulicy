@@ -33,6 +33,20 @@ export function localitySearchLabel(locality: {
   return locality.kind === "miasto" ? locality.name : villageLabel(locality);
 }
 
+// Who publishes each gmina's schedule, in the genitive for "harmonogram …".
+const SCHEDULE_OWNERS: Record<string, string> = {
+  "Lubaczów (miasto)": "Urzędu Miejskiego w Lubaczowie",
+  "Lubaczów (gmina)": "Urzędu Gminy Lubaczów",
+};
+
+/** "harmonogram Urzędu Gminy Lubaczów": a source link names its publisher. */
+export function scheduleName(gmina: string): string {
+  const owner = SCHEDULE_OWNERS[gmina];
+  return owner
+    ? `harmonogram ${owner}`
+    : `harmonogram gminy ${gminaShortName(gmina)}`;
+}
+
 // TERYT names some streets in full, e.g. "os." + "Osiedle Mickiewicza".
 const PREFIX_WORDS: Record<string, string> = {
   "ul.": "ulica",
