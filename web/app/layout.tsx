@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { preload } from "react-dom";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { isTestData } from "@/lib/schedule";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -24,7 +23,7 @@ export const viewport: Viewport = {
 
 const themeScript = `(function(){var t="dark";try{var s=localStorage.getItem("theme");if(s==="dark"||s==="light"||s==="system")t=s}catch(e){}document.documentElement.setAttribute("data-theme",t)})()`;
 
-export default async function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: LayoutProps<"/">) {
   // All four files are used on every page (the h1 is bold) and total about 40 KB.
   for (const subset of ["latin", "latin-ext"]) {
     for (const weight of [400, 700]) {
@@ -44,7 +43,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         />
       </head>
       <body className="flex min-h-dvh flex-col antialiased">
-        <SiteHeader testData={await isTestData()} />
+        <SiteHeader />
         <div className="flex-1">{children}</div>
         <SiteFooter />
       </body>

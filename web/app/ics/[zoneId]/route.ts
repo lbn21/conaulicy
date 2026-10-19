@@ -1,7 +1,7 @@
 import { longDate } from "@/lib/date-labels";
 import { addDays } from "@/lib/dates";
 import { cacheControl } from "@/lib/gate";
-import { getZone, isTestData } from "@/lib/schedule";
+import { getZone } from "@/lib/schedule";
 
 const encoder = new TextEncoder();
 
@@ -41,10 +41,7 @@ export async function GET(
   ctx: RouteContext<"/ics/[zoneId]">,
 ) {
   const { zoneId } = await ctx.params;
-  const [zone, testData] = await Promise.all([
-    getZone(decodeURIComponent(zoneId)),
-    isTestData(),
-  ]);
+  const zone = await getZone(decodeURIComponent(zoneId));
   if (!zone) {
     return new Response("Nie znamy takiego harmonogramu.", {
       status: 404,
@@ -66,7 +63,6 @@ export async function GET(
   for (const event of zone.events) {
     const putOutBy = event.payload?.putOutBy;
     const description = [
-      testData ? "Dane testowe – terminy nie są prawdziwe." : null,
       typeof putOutBy === "string"
         ? `Wystaw przed posesję do ${putOutBy.replace(/^0/, "")}.`
         : null,
