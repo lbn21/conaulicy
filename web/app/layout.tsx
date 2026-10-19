@@ -24,12 +24,14 @@ export const viewport: Viewport = {
 const themeScript = `(function(){var t="dark";try{var s=localStorage.getItem("theme");if(s==="dark"||s==="light"||s==="system")t=s}catch(e){}document.documentElement.setAttribute("data-theme",t)})()`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  // All four files are used on every page (the h1 is bold) and total about 40 KB.
   for (const subset of ["latin", "latin-ext"]) {
-    preload(`/fonts/atkinson-hyperlegible-next-${subset}-400-normal.woff2`, {
-      as: "font",
-      type: "font/woff2",
-      crossOrigin: "anonymous",
-    });
+    for (const weight of [400, 700]) {
+      preload(
+        `/fonts/atkinson-hyperlegible-next-${subset}-${weight}-normal.woff2`,
+        { as: "font", type: "font/woff2", crossOrigin: "anonymous" },
+      );
+    }
   }
 
   return (
