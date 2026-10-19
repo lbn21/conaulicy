@@ -78,9 +78,13 @@ export function ThemeSwitch() {
       type="button"
       onClick={() => setTheme(next)}
       aria-label={`Wygląd strony: ${label}`}
-      className="inline-flex size-12 shrink-0 items-center justify-center rounded-sm"
+      className="inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center gap-2 rounded-sm sm:px-3"
     >
       <Icon aria-hidden="true" size={24} />
+      {/* Matches the accessible name, so voice control users can say what they see. */}
+      <span aria-hidden="true" className="hidden sm:inline">
+        Wygląd strony: {label}
+      </span>
       <span aria-live="polite" className="sr-only">
         {label}
       </span>
