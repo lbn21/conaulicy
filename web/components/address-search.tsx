@@ -123,7 +123,7 @@ export function AddressSearch() {
   if (status === "loading") {
     message = "Szukam…";
   } else if (status === "error") {
-    message = "Coś nie zadziałało po naszej stronie. Spróbuj za chwilę.";
+    message = "Błąd: coś nie zadziałało po naszej stronie. Spróbuj za chwilę.";
   } else if (status === "done" && hits.length === 0) {
     message =
       "Nie mamy jeszcze tej ulicy ani wsi. Na razie znamy tylko kilka adresów – są niżej.";
@@ -217,7 +217,14 @@ export function AddressSearch() {
             </div>
           ))}
         </div>
-        <p role="status" className="min-h-[1.55em] text-text-muted">
+        <p
+          role="status"
+          className={
+            status === "error"
+              ? "min-h-[1.55em] font-bold text-danger"
+              : "min-h-[1.55em] text-text-muted"
+          }
+        >
           {message}
         </p>
       </form>
