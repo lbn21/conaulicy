@@ -114,7 +114,7 @@ function DayBlock({
     <li
       className={
         prominent
-          ? "pickup-hero border-l-4 border-accent py-4 pl-4"
+          ? "border-l-4 border-accent py-4 pl-4"
           : "border-t border-border py-4"
       }
     >

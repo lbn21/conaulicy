@@ -220,9 +220,7 @@
   --color-waste-gabaryty: var(--waste-gabaryty);
   --color-waste-gabaryty-fg: var(--waste-gabaryty-fg);
 
-  --font-sans:
-    var(--font-atkinson-latin), var(--font-atkinson-latin-ext),
-    "Atkinson Fallback", system-ui, sans-serif;
+  --font-sans: var(--font-atkinson), "Atkinson Fallback", system-ui, sans-serif;
   --font-weight-normal: 400;
   --font-weight-bold: 700;
 

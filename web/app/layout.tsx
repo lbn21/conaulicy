@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { atkinsonLatin, atkinsonLatinExt } from "./fonts";
+import { atkinson } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -28,7 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="pl"
       data-theme="dark"
-      className={`${atkinsonLatin.variable} ${atkinsonLatinExt.variable}`}
+      className={atkinson.variable}
       suppressHydrationWarning
     >
       <head>
