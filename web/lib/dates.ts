@@ -38,6 +38,28 @@ export function absoluteDay(iso: string): string {
   return `${get("weekday")}, ${get("day")} ${get("month")}`;
 }
 
+export type DayFace = {
+  day: string;
+  monthShort: string;
+  weekday: string;
+};
+
+/** Visual pieces for the nearest date. Example: "20" and "paź, wtorek". */
+export function dayFace(iso: string): DayFace {
+  const parts = new Intl.DateTimeFormat("pl-PL", {
+    timeZone: WARSAW,
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+  }).formatToParts(warsawNoon(iso));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return {
+    day: get("day"),
+    monthShort: get("month").replace(".", ""),
+    weekday: get("weekday"),
+  };
+}
+
 export function relativeWord(
   iso: string,
   today: string,
