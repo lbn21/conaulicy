@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "budget": "node scripts/check-bundle.mjs",
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write"
