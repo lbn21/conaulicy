@@ -1,12 +1,16 @@
 // Performance budgets (docs/perf.md). Lighthouse with its mobile defaults
-// (Moto G Power, simulated Slow 4G: 150 ms RTT, 1.6 Mbps, 4× CPU), PERF_RUNS (5)
+// (Moto G Power, simulated Slow 4G: 150 ms RTT, 1.6 Mbps), PERF_RUNS (5)
 // runs per page, the median against the budget, except LCP: best run.
+// The CPU slowdown is calibrated to this machine (Lighthouse's documented
+// approach): its benchmarkIndex picks the multiplier that makes it a
+// mid-tier phone, where the default 4× assumes a high-end desktop.
 // Lantern counts the JS in LCP only if it finished before the first paint
 // on this fast local server, so runs land near 1.6 s or 2.2 s at random;
 // the best run is the paint without that artifact. Fonts, CSS and HTML push
 // every run up, and JS has its own budget (check-bundle). Also: gzipped
-// HTML size, preloaded fonts, and how long a keystroke takes to update the search list
-// once the index is loaded (CPU slowed 4×). Run after `next build`; needs
+// HTML size, preloaded fonts, and how long a keystroke takes to update the
+// search list once the index is loaded (same CPU slowdown). Run after
+// `next build`; needs
 // Playwright's Chromium. Writes the medians to PERF_OUT if set.
 import { writeFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
@@ -42,7 +46,46 @@ const median = (values) =>
   [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
 const results = {};
 
+/**
+ * cpuSlowdownMultiplier for a mid-tier phone from the host's benchmarkIndex,
+ * as the Lighthouse CPU throttling calculator computes it
+ * (https://lighthouse-cpu-throttling-calculator.vercel.app/, linked from
+ * Lighthouse's docs/throttling.md). null: too slow to emulate one.
+ */
+function cpuMultiplier(benchmarkIndex) {
+  if (benchmarkIndex >= 1300) return 3 + (benchmarkIndex - 1300) / 233;
+  if (benchmarkIndex >= 800) return 2 + (benchmarkIndex - 800) / 500;
+  if (benchmarkIndex >= 150) return 1 + (benchmarkIndex - 150) / 650;
+  return null;
+}
+
+const CALIBRATION_RUNS = 3;
+
 try {
+  // Calibrate: Lighthouse measures benchmarkIndex in every run; the median
+  // of a few warm-up runs (which also warm the server) sets the multiplier.
+  const indexes = [];
+  for (let i = 0; i < CALIBRATION_RUNS; i++) {
+    const { lhr } = await lighthouse(`${server.origin}/`, {
+      port: PORT,
+      output: "json",
+      logLevel: "error",
+      onlyCategories: ["performance"],
+    });
+    indexes.push(lhr.environment.benchmarkIndex);
+  }
+  const benchmarkIndex = median(indexes);
+  const multiplier = cpuMultiplier(benchmarkIndex);
+  if (multiplier === null) {
+    throw new Error(
+      `benchmarkIndex ${benchmarkIndex}: this machine is too slow to emulate a mid-tier phone`,
+    );
+  }
+  results.cpu = { benchmarkIndexes: indexes, benchmarkIndex, multiplier };
+  console.log(
+    `CPU: benchmarkIndex ${Math.round(benchmarkIndex)} (runs ${indexes.map(Math.round).join(", ")}), slowdown ${multiplier.toFixed(2)}× (Lighthouse default 4×)`,
+  );
+
   for (const { path, name } of PAGES) {
     const url = `${server.origin}${path}`;
     const runs = [];
@@ -52,7 +95,11 @@ try {
         output: "json",
         logLevel: "error",
         onlyCategories: ["performance"],
+        throttling: { cpuSlowdownMultiplier: multiplier },
       });
+      if (lhr.configSettings.throttling.cpuSlowdownMultiplier !== multiplier) {
+        throw new Error("Lighthouse ignored the calibrated CPU slowdown");
+      }
       const audit = (id) => lhr.audits[id].numericValue;
       runs.push({
         score: lhr.categories.performance.score,
@@ -95,7 +142,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 360, height: 800 } });
   await page.goto(`${server.origin}/`, { waitUntil: "networkidle" });
   const cdp = await page.context().newCDPSession(page);
-  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: multiplier });
   const input = page.getByRole("combobox");
   await input.pressSequentially("a");
   await page.getByRole("option").first().waitFor();
@@ -134,7 +181,7 @@ try {
     `search: keystroke to list ${Math.round(keystroke)} ms`,
   );
   console.log(
-    `search: keystroke to list ${Math.round(keystroke)} ms (median of ${times.map(Math.round).join(", ")}; CPU 4× slower)`,
+    `search: keystroke to list ${Math.round(keystroke)} ms (median of ${times.map(Math.round).join(", ")}; CPU ${multiplier.toFixed(2)}× slower)`,
   );
 } finally {
   await browser.close();
