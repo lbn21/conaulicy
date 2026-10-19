@@ -4,6 +4,7 @@ import { PickupSchedule } from "@/components/pickup-schedule";
 import { longDate } from "@/lib/date-labels";
 import { scheduleName } from "@/lib/places";
 import { getPlace } from "@/lib/schedule";
+import { SEARCH_ID } from "@/lib/search";
 
 // Rendered on first visit, then served from the cache like a static page.
 // Regenerate every 10 minutes, so the static HTML drops past pickups and its
@@ -35,10 +36,10 @@ export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
       <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">
         {place.name}
       </h1>
-      {/* Like GOV.UK's "Change": back to search, with this name filled in. */}
+      {/* Like GOV.UK's "Change": back to an empty, focused search. */}
       <p className="mt-2">
         <a
-          href={`/?q=${encodeURIComponent(place.name)}`}
+          href={`/#${SEARCH_ID}`}
           className="inline-flex min-h-12 items-center underline decoration-2 underline-offset-4"
         >
           Zmień adres<span className="sr-only"> {place.name}</span>

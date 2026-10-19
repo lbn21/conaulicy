@@ -11,6 +11,7 @@ import {
 import {
   type Matcher,
   matcher,
+  SEARCH_ID,
   type SearchHit,
   type SearchIndex,
   searchTerms,
@@ -61,14 +62,10 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
   const [active, setActive] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // "Zmień adres" on a street page links to /?q=<its name>: start from that
-  // name, in the field, with the list open. Read on the client, so the home
-  // page stays static.
+  // "Zmień adres" on a street page links to /#szukaj: an empty field, ready
+  // to type in, with the list closed. Without JS the link still lands here.
   useEffect(() => {
-    const given = new URLSearchParams(window.location.search).get("q");
-    if (!given) return;
-    setQuery(given.slice(0, 100));
-    inputRef.current?.focus();
+    if (window.location.hash === `#${SEARCH_ID}`) inputRef.current?.focus();
   }, []);
 
   function startLoading() {
@@ -217,7 +214,7 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
   }
 
   return (
-    <search>
+    <search id={SEARCH_ID} className="scroll-mt-4">
       <form onSubmit={onSubmit} className="flex flex-col gap-2">
         <label htmlFor={inputId} className="text-lg font-bold">
           Twoja ulica albo wieś

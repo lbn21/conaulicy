@@ -3,8 +3,8 @@
 // lists results, says "Brak wyników" or closes) and follows the APG combobox
 // keyboard model. Matching runs on the device: the index loads once, on
 // focus, and typing makes no request. Also: "ul" alone asks for a name,
-// /?q= fills and focuses the field, and /api/search answers when the index
-// cannot load. Run after `next build`; needs Playwright's Chromium.
+// "Zmień adres" on a street page lands on an empty, focused field with the
+// list closed, and /api/search answers when the index cannot load. Run after `next build`; needs Playwright's Chromium.
 import { chromium } from "playwright";
 import { startServer } from "./lib/server.mjs";
 
@@ -177,21 +177,40 @@ try {
     await page.close();
   }
 
-  // "Zmień adres" on a street page: /?q=<name> fills and focuses the field.
+  // "Zmień adres" on a street page: an empty, focused field, list closed,
+  // and nothing moves.
   const page = await browser.newPage({ viewport: { width: 360, height: 800 } });
-  await page.goto(
-    `${server.origin}/?q=${encodeURIComponent("ul. Adama Asnyka")}`,
-    {
-      waitUntil: "networkidle",
-    },
-  );
+  await page.addInitScript(() => {
+    window.__shift = 0;
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) window.__shift += entry.value;
+    }).observe({ type: "layout-shift", buffered: true });
+  });
+  await page.goto(`${server.origin}/adres/0972447-00470`, {
+    waitUntil: "networkidle",
+  });
+  await page.getByRole("link", { name: /^Zmień adres/ }).click();
+  await page.waitForURL(`${server.origin}/#szukaj`);
   const input = page.getByRole("combobox");
-  await page.getByRole("option").first().waitFor();
-  check(
-    (await input.inputValue()) === "ul. Adama Asnyka" &&
-      (await input.evaluate((el) => el === document.activeElement)),
-    "/?q=: field not filled and focused",
+  await page.waitForFunction(
+    () => document.activeElement?.getAttribute("role") === "combobox",
   );
+  await page.waitForTimeout(500);
+  const state = await input.evaluate((el) => ({
+    value: el.value,
+    expanded: el.getAttribute("aria-expanded"),
+    fontSize: Number.parseFloat(getComputedStyle(el).fontSize),
+    shift: window.__shift,
+  }));
+  check(
+    state.value === "" && state.expanded === "false",
+    `Zmień adres: field not empty or list open (${JSON.stringify(state)})`,
+  );
+  check(
+    state.fontSize >= 16,
+    `Zmień adres: field text ${state.fontSize}px, phones zoom in below 16px`,
+  );
+  check(state.shift === 0, `Zmień adres: layout shift ${state.shift}`);
   await page.close();
 
   // No index (blocked or broken): the server answers instead.
