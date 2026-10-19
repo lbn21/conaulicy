@@ -1,0 +1,32 @@
+# Scaffold only. Jakub or the Tech Lead sets reviewed_by. Nobody has approved a sector.
+sectors:
+  - zone_id: waste:miasto-s1
+    reviewed_by: null
+    reviewed_at: null
+  - zone_id: waste:miasto-s2
+    reviewed_by: null
+    reviewed_at: null
+  - zone_id: waste:miasto-s3
+    reviewed_by: null
+    reviewed_at: null
+  - zone_id: waste:miasto-s4
+    reviewed_by: null
+    reviewed_at: null
+  - zone_id: waste:miasto-s5
+    reviewed_by: null
+    reviewed_at: null
+  - zone_id: waste:gmina-s1
+    reviewed_by: null
+    reviewed_at: null
+  - zone_id: waste:gmina-s2
+    reviewed_by: null
+    reviewed_at: null
+  - zone_id: waste:gmina-s3
+    reviewed_by: null
+    reviewed_at: null
+  - zone_id: waste:gmina-s4
+    reviewed_by: null
+    reviewed_at: null
+  - zone_id: waste:gmina-s5
+    reviewed_by: null
+    reviewed_at: null
