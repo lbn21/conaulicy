@@ -65,7 +65,7 @@ export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
                 href={place.schedulePage}
                 className="inline-flex min-h-12 items-center font-bold underline decoration-2 underline-offset-4"
               >
-                Otwórz {scheduleName(place.gmina)}
+                {`Otwórz ${scheduleName(place.gmina)}`}
               </a>
             </p>
           )}

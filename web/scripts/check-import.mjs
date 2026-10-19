@@ -117,8 +117,10 @@ try {
   const unzoned = await page(`/adres/${FIXTURE_IDS.unzonedStreet}`);
   check(
     unzoned.text.includes("Tej ulicy jeszcze nie mamy") &&
-      unzoned.text.includes("Otwórz harmonogram gminy"),
-    "street without a zone: no gmina schedule link",
+      unzoned.text.includes(
+        "Otwórz harmonogram Urzędu Miejskiego w Lubaczowie",
+      ),
+    "street without a zone: no link to the town's schedule",
   );
   const rondo = await page(`/adres/${FIXTURE_IDS.rondo}`);
   check(rondo.status === 200, "rondo: direct link does not work");
@@ -133,6 +135,18 @@ try {
         "Dąbrowa (gm. Lubaczów)",
       ]),
     `search "dabrowa": ${JSON.stringify(dabrowa)}`,
+  );
+  // The search field's index holds the same places as /api/search.
+  const home = await page("/");
+  const indexUrl = home.text.match(/\/api\/search-index\/[0-9a-f]+/)?.[0];
+  const index = indexUrl
+    ? await (await fetch(`${server.origin}${indexUrl}`)).json()
+    : [];
+  const labels = index.map(([, label]) => label);
+  check(
+    labels.includes("Dąbrowa (Basznia Górna, gm. Lubaczów)") &&
+      !labels.some((label) => label.startsWith("rondo")),
+    `search index: ${indexUrl ?? "no URL on /"}, ${index.length} places`,
   );
   const pdf = await fetch(
     `${server.origin}/adres/${FIXTURE_IDS.villagePart}/harmonogram.pdf`,
