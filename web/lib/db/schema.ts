@@ -120,7 +120,7 @@ export const events = pgTable(
     sourceDoc: text().notNull(),
     /** The original as published. No source, no display (CLAUDE.md). */
     sourceUrl: text().notNull(),
-    /** Page, row or cell in the source document. */
+    /** Shown next to the source link: "Harmonogram 2026, Miasto Lubaczów, sektor 1". */
     sourceRef: text(),
     sourceSha256: text(),
     /** Day the source was last compared with the original. */
@@ -130,7 +130,7 @@ export const events = pgTable(
     reviewedAt: timestamp({ withTimezone: true, mode: "string" }),
     /** Originally scheduled ISO date when the event was moved (a holiday). */
     shiftedFrom: date({ mode: "string" }),
-    /** Type-specific extras. Waste: putOutBy ("06:00"). */
+    /** Type-specific extras. Waste: putOutBy ("06:00"); sourceCell, the cell in the source. */
     payload: jsonb().$type<Record<string, unknown>>(),
   },
   (t) => [
@@ -144,7 +144,8 @@ export const events = pgTable(
 
 /**
  * Dataset-wide flags, e.g. testData = true while the seed is loaded, so a
- * real import knows it may replace everything. Not shown to visitors.
+ * real import knows it may replace everything; after an import, dataset
+ * (year, sources, importedAt, etlCommit). Not shown to visitors.
  */
 export const meta = pgTable("meta", {
   key: text().primaryKey(),
