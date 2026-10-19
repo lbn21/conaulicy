@@ -1,5 +1,18 @@
 "use client";
 
+import type { LucideIcon } from "lucide-react";
+import {
+  Car,
+  Flame,
+  Leaf,
+  Milk,
+  Newspaper,
+  Plug,
+  Shirt,
+  Sofa,
+  Trash2,
+  Wine,
+} from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { absoluteDay, dayFace, relativeWord, todayInWarsaw } from "@/lib/dates";
 
@@ -14,18 +27,20 @@ export type PickupDay = { date: string; pickups: Pickup[] };
 
 const HERO_COUNT = 3;
 
-const FILL: Record<string, string> = {
-  zmieszane: "var(--waste-zmieszane)",
-  popiol: "var(--waste-popiol)",
-  bio: "var(--waste-bio)",
-  papier: "var(--waste-papier)",
-  tworzywa: "var(--waste-plastik-metale)",
-  tworzywa_metale: "var(--waste-plastik-metale)",
-  szklo: "var(--waste-szklo)",
-  wielkogabarytowe: "var(--waste-gabaryty)",
-  elektro: "var(--waste-gabaryty)",
-  opony: "var(--waste-gabaryty)",
-  tekstylia: "var(--waste-gabaryty)",
+type Fraction = { icon: LucideIcon; token: string };
+
+const FRACTION: Record<string, Fraction> = {
+  zmieszane: { icon: Trash2, token: "zmieszane" },
+  popiol: { icon: Flame, token: "popiol" },
+  bio: { icon: Leaf, token: "bio" },
+  papier: { icon: Newspaper, token: "papier" },
+  tworzywa: { icon: Milk, token: "plastik-metale" },
+  tworzywa_metale: { icon: Milk, token: "plastik-metale" },
+  szklo: { icon: Wine, token: "szklo" },
+  wielkogabarytowe: { icon: Sofa, token: "gabaryty" },
+  elektro: { icon: Plug, token: "gabaryty" },
+  opony: { icon: Car, token: "gabaryty" },
+  tekstylia: { icon: Shirt, token: "gabaryty" },
 };
 
 function subscribe(): () => void {
@@ -47,29 +62,24 @@ function spokenDay(iso: string, today: string | null): string {
   return relative ? `${relative}, ${absolute}` : absolute;
 }
 
-function WasteMark({ tone }: { tone: string }) {
-  const fill = FILL[tone] ?? "var(--secondary)";
-  if (tone === "zmieszane") {
-    return (
-      <svg aria-hidden="true" width="32" height="36" viewBox="0 0 32 36">
-        <path fill="var(--waste-zmieszane-border)" d="M13 5h6v3h-6z" />
-        <path fill="var(--waste-zmieszane-border)" d="M7 8h18v3H7z" />
-        <path
-          fill={fill}
-          stroke="var(--waste-zmieszane-border)"
-          strokeWidth="1"
-          d="M9 12h14l-1.1 17.4a2 2 0 0 1-2 1.6h-7.8a2 2 0 0 1-2-1.6L9 12z"
-        />
-      </svg>
-    );
-  }
+function WasteMark({ tone, large }: { tone: string; large: boolean }) {
+  const fraction = FRACTION[tone] ?? { icon: Trash2, token: "zmieszane" };
+  const Icon = fraction.icon;
+  const fill = `var(--waste-${fraction.token})`;
+  const border =
+    fraction.token === "zmieszane" ? "var(--waste-zmieszane-border)" : fill;
   return (
-    <svg aria-hidden="true" width="32" height="36" viewBox="0 0 32 36">
-      <path
-        fill={fill}
-        d="M12 12c.3-3.2 1.7-5.5 4-5.5s3.7 2.3 4 5.5c2.6.4 4.2 1.3 4.2 2.6 0 .9-1.1 1.6-2.8 1.9L20.2 31c-.2 1.3-1.5 2.5-4.2 2.5s-4-1.2-4.2-2.5l-1.2-14.5C8.9 16.2 7.8 15.5 7.8 14.6c0-1.3 1.6-2.2 4.2-2.6z"
-      />
-    </svg>
+    <span
+      aria-hidden="true"
+      className={`inline-flex shrink-0 items-center justify-center rounded-sm border ${large ? "size-12" : "size-10"}`}
+      style={{
+        backgroundColor: fill,
+        borderColor: border,
+        color: `var(--waste-${fraction.token}-fg)`,
+      }}
+    >
+      <Icon aria-hidden="true" size={large ? 32 : 24} />
+    </span>
   );
 }
 
@@ -128,7 +138,7 @@ function DayBlock({
           <li key={pickup.id} className="flex items-center gap-3">
             <span aria-hidden="true" className="flex gap-1">
               {tones(pickup.subtype).map((tone) => (
-                <WasteMark key={tone} tone={tone} />
+                <WasteMark key={tone} tone={tone} large={prominent} />
               ))}
             </span>
             <span>{pickup.label}</span>
