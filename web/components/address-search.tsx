@@ -8,9 +8,16 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  type Matcher,
+  matcher,
+  type SearchHit,
+  type SearchIndex,
+  searchTerms,
+} from "@/lib/search";
 
-type Hit = { id: string; label: string };
-type Status = "idle" | "loading" | "done" | "error";
+type Status = "idle" | "hint" | "loading" | "done" | "error";
+type Remote = { for: string; hits: SearchHit[]; failed: boolean };
 
 function addresses(n: number): string {
   if (n === 1) return "1 adres";
@@ -20,57 +27,104 @@ function addresses(n: number): string {
   return `${n} adresów`;
 }
 
-export function AddressSearch() {
+// One download per page, shared by every field on it.
+const indexes = new Map<string, Promise<Matcher>>();
+
+function loadIndex(url: string): Promise<Matcher> {
+  let index = indexes.get(url);
+  if (!index) {
+    index = fetch(url).then(async (res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return matcher((await res.json()) as SearchIndex);
+    });
+    indexes.set(url, index);
+  }
+  return index;
+}
+
+/**
+ * The address search. The index of every place (indexUrl) loads on first
+ * focus or input, not with the page; then each keystroke is matched on the
+ * device. If the index cannot load, each settled query goes to /api/search.
+ */
+export function AddressSearch({ indexUrl }: { indexUrl: string }) {
   const baseId = useId();
   const inputId = `${baseId}-input`;
   const listId = `${baseId}-list`;
   const hintId = `${baseId}-hint`;
 
   const [query, setQuery] = useState("");
-  const [hits, setHits] = useState<Hit[]>([]);
-  const [hitsFor, setHitsFor] = useState("");
-  const [status, setStatus] = useState<Status>("idle");
+  const [match, setMatch] = useState<Matcher | null>(null);
+  const [indexFailed, setIndexFailed] = useState(false);
+  const [remote, setRemote] = useState<Remote | null>(null);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // "Zmień adres" on a street page links to /?q=<its name>: start from that
+  // name, in the field, with the list open. Read on the client, so the home
+  // page stays static.
   useEffect(() => {
-    const q = query.trim();
-    if (!q) {
-      setHits([]);
-      setStatus("idle");
-      setActive(-1);
-      return;
-    }
+    const given = new URLSearchParams(window.location.search).get("q");
+    if (!given) return;
+    setQuery(given.slice(0, 100));
+    inputRef.current?.focus();
+  }, []);
+
+  function startLoading() {
+    if (match || indexFailed) return;
+    loadIndex(indexUrl).then(
+      (m) => setMatch(() => m),
+      () => setIndexFailed(true),
+    );
+  }
+
+  const q = query.trim();
+  const terms = searchTerms(q);
+  const termsKey = terms.join(" ");
+
+  // Fallback only: without the index, ask the server once typing settles.
+  useEffect(() => {
+    if (!indexFailed || !termsKey) return;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
-      setStatus("loading");
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
-          signal: controller.signal,
-        });
+        const res = await fetch(
+          `/api/search?q=${encodeURIComponent(termsKey)}`,
+          { signal: controller.signal },
+        );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: Hit[] = await res.json();
-        setHits(data);
-        setHitsFor(q);
-        setActive(-1);
-        setStatus("done");
+        setRemote({ for: termsKey, hits: await res.json(), failed: false });
       } catch {
         if (controller.signal.aborted) return;
-        setHits([]);
-        setStatus("error");
+        setRemote({ for: termsKey, hits: [], failed: true });
       }
     }, 250);
     return () => {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query]);
+  }, [indexFailed, termsKey]);
+
+  let hits: SearchHit[] = [];
+  let status: Status;
+  if (!q) {
+    status = "idle";
+  } else if (terms.length === 0) {
+    status = "hint";
+  } else if (match) {
+    hits = match(terms);
+    status = "done";
+  } else if (indexFailed && remote?.for === termsKey) {
+    hits = remote.hits;
+    status = remote.failed ? "error" : "done";
+  } else {
+    status = "loading";
+  }
 
   // The popup floats over the page (absolute), so nothing below the field
   // moves when it opens, updates or closes.
-  const popup =
-    open && query.trim() !== "" && (hits.length > 0 || status !== "idle");
+  const popup = open && status !== "idle";
   const expanded = popup && hits.length > 0;
 
   // Keep the active option visible when the list scrolls.
@@ -93,7 +147,7 @@ export function AddressSearch() {
     });
   }
 
-  function go(hit: Hit) {
+  function go(hit: SearchHit) {
     setOpen(false);
     window.location.assign(`/adres/${encodeURIComponent(hit.id)}`);
   }
@@ -138,16 +192,16 @@ export function AddressSearch() {
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const fresh = hitsFor === query.trim();
-    const hit =
-      hits[active] ?? (fresh && hits.length === 1 ? hits[0] : undefined);
+    const hit = hits[active] ?? (hits.length === 1 ? hits[0] : undefined);
     if (hit) go(hit);
     else setOpen(true);
   }
 
   // Shown in the popup when there are no options to list.
   let note = "";
-  if (status === "loading") {
+  if (status === "hint") {
+    note = "Wpisz nazwę ulicy.";
+  } else if (status === "loading") {
     note = "Szukam…";
   } else if (status === "error") {
     note = "Błąd: coś nie zadziałało po naszej stronie. Spróbuj za chwilę.";
@@ -214,12 +268,14 @@ export function AddressSearch() {
             placeholder="np. Słowackiego"
             value={query}
             onChange={(event) => {
+              startLoading();
               setQuery(event.target.value);
               setActive(-1);
               setOpen(true);
             }}
             ref={inputRef}
             onFocus={() => {
+              startLoading();
               setOpen(true);
               makeRoom();
             }}
@@ -239,9 +295,12 @@ export function AddressSearch() {
               className="max-h-[24.5rem] overflow-y-auto overscroll-contain py-1"
             >
               {hits.map((hit, i) => (
+                // Keyed by position: when a keystroke narrows the list, rows
+                // keep their place and change text, so nothing slides.
                 // biome-ignore lint/a11y/useKeyWithClickEvents: the combobox input owns keyboard selection
                 <div
-                  key={hit.id}
+                  // biome-ignore lint/suspicious/noArrayIndexKey: see above
+                  key={i}
                   id={`${listId}-${i}`}
                   role="option"
                   tabIndex={-1}
@@ -264,7 +323,9 @@ export function AddressSearch() {
                 className={
                   status === "error"
                     ? "px-4 py-3 font-bold text-danger"
-                    : "px-4 py-3 text-text-muted"
+                    : status === "hint"
+                      ? "px-4 py-3"
+                      : "px-4 py-3 text-text-muted"
                 }
               >
                 {note}

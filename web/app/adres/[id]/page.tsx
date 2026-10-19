@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PickupSchedule } from "@/components/pickup-schedule";
 import { longDate } from "@/lib/date-labels";
+import { scheduleName } from "@/lib/places";
 import { getPlace } from "@/lib/schedule";
 
 // Rendered on first visit, then served from the cache like a static page.
@@ -34,6 +35,15 @@ export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
       <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">
         {place.name}
       </h1>
+      {/* Like GOV.UK's "Change": back to search, with this name filled in. */}
+      <p className="mt-2">
+        <a
+          href={`/?q=${encodeURIComponent(place.name)}`}
+          className="inline-flex min-h-12 items-center underline decoration-2 underline-offset-4"
+        >
+          Zmień adres<span className="sr-only"> {place.name}</span>
+        </a>
+      </p>
 
       {place.zoneId === null ? (
         <section
@@ -53,10 +63,9 @@ export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
             <p className="mt-3">
               <a
                 href={place.schedulePage}
-                rel="noopener"
                 className="inline-flex min-h-12 items-center font-bold underline decoration-2 underline-offset-4"
               >
-                Otwórz harmonogram gminy
+                {`Otwórz ${scheduleName(place.gmina)}`}
               </a>
             </p>
           )}
@@ -65,7 +74,7 @@ export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
         <>
           <a
             href={`/ics/${encodeURIComponent(place.zoneId)}`}
-            className="mt-8 inline-flex min-h-14 items-center rounded-sm bg-accent px-5 text-lg font-bold text-accent-contrast no-underline"
+            className="mt-6 inline-flex min-h-14 items-center rounded-sm bg-accent px-5 text-lg font-bold text-accent-contrast no-underline"
           >
             Dodaj do kalendarza
           </a>
@@ -75,10 +84,9 @@ export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
           <p className="mt-2">
             <a
               href={`/adres/${encodeURIComponent(place.id)}/harmonogram.pdf`}
-              download
               className="inline-flex min-h-12 items-center font-bold underline decoration-2 underline-offset-4"
             >
-              Pobierz PDF do druku
+              Harmonogram do druku (PDF)
             </a>
           </p>
 
@@ -87,9 +95,9 @@ export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
           <div className="mt-2 border-t border-border pt-6 text-text-muted">
             {!place.verified && (
               <p className="mb-3 max-w-prose">
-                Te daty przepisaliśmy ręcznie i nikt ich jeszcze nie sprawdził
-                drugi raz. Gdyby coś się nie zgadzało, rację ma harmonogram
-                gminy.
+                Te daty odczytaliśmy automatycznie z harmonogramu gminy i nikt
+                ich jeszcze nie sprawdził drugi raz. Gdyby coś się nie zgadzało,
+                rację ma harmonogram gminy.
               </p>
             )}
             {place.sources.map((source) => (
@@ -98,13 +106,12 @@ export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
                 {source.url ? (
                   <a
                     href={source.url}
-                    rel="noopener"
                     className="underline decoration-2 underline-offset-4"
                   >
-                    harmonogram gminy
+                    {scheduleName(place.gmina)}
                   </a>
                 ) : (
-                  "harmonogram gminy"
+                  scheduleName(place.gmina)
                 )}
                 , {source.label}
                 {source.checkedAt && (
@@ -115,15 +122,6 @@ export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
           </div>
         </>
       )}
-
-      <p className="mt-12">
-        <a
-          href="/"
-          className="inline-flex min-h-12 items-center underline decoration-2 underline-offset-4"
-        >
-          Sprawdź inny adres
-        </a>
-      </p>
     </main>
   );
 }

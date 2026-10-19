@@ -1,11 +1,14 @@
 import { AddressSearch } from "@/components/address-search";
-import { examplePlaces } from "@/lib/schedule";
+import { examplePlaces, searchIndexUrl } from "@/lib/schedule";
 
 const EXAMPLE_COUNT = 5;
 
 export default async function Home() {
   // A few examples only: the full address list never ships to the client.
-  const places = await examplePlaces(EXAMPLE_COUNT);
+  const [places, indexUrl] = await Promise.all([
+    examplePlaces(EXAMPLE_COUNT),
+    searchIndexUrl(),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 md:px-8">
@@ -18,7 +21,7 @@ export default async function Home() {
       </p>
 
       <div className="mt-8">
-        <AddressSearch />
+        <AddressSearch indexUrl={indexUrl} />
       </div>
 
       <section aria-labelledby="sample-heading" className="mt-12">

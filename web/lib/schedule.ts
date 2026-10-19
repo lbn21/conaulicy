@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import {
   and,
   asc,
@@ -24,7 +25,6 @@ import {
   zoneMembers,
   zones,
 } from "@/lib/db";
-import { normalize } from "@/lib/normalize";
 import {
   gminaShortName,
   pickZone,
@@ -33,6 +33,13 @@ import {
   UNLISTED_PREFIXES,
   villageLabel,
 } from "@/lib/places";
+import {
+  byLabel,
+  SEARCH_LIMIT,
+  type SearchHit,
+  type SearchIndex,
+  searchTerms,
+} from "@/lib/search";
 
 // Every read goes through Next's data cache, tagged DATASET: a traffic spike
 // hits the cache, not Neon. After an import, POST /api/revalidate purges the
@@ -41,8 +48,6 @@ export const DATASET = "dataset";
 const CACHE = { tags: [DATASET], revalidate: 3600 };
 
 export type ZoneEvent = typeof events.$inferSelect;
-
-export type SearchHit = { id: string; label: string };
 
 type Place = {
   id: string;
@@ -107,14 +112,6 @@ const SUBTYPE_ORDER = [
   "opony",
   "tekstylia",
 ];
-
-// "ul. Asnyka" and "ulica Asnyka" find the same street.
-const IGNORED_TERMS = new Set(["ul", "ulica"]);
-
-const searchTerms = (q: string) =>
-  normalize(q)
-    .split(" ")
-    .filter((term) => term && !IGNORED_TERMS.has(term));
 
 const matchAll = (column: AnyPgColumn, terms: string[]) =>
   and(...terms.map((term) => like(column, `%${term}%`)));
@@ -205,29 +202,64 @@ function villagePlace(row: VillageRow): Place {
 
 const hits = (places: Place[], limit: number): SearchHit[] =>
   places
-    .sort((a, b) => a.label.localeCompare(b.label, "pl"))
-    .slice(0, limit)
-    .map(({ id, label }) => ({ id, label }));
+    .map(({ id, label }) => ({ id, label }))
+    .sort(byLabel)
+    .slice(0, limit);
 
 const searchCached = unstable_cache(
   async (terms: string[]): Promise<SearchHit[]> => {
     const [streetRows, villageRows] = await Promise.all([
-      streetPlaces(and(listed, matchAll(streets.search, terms)), 8),
-      villagePlaces(matchAll(localities.search, terms), 8),
+      streetPlaces(and(listed, matchAll(streets.search, terms)), SEARCH_LIMIT),
+      villagePlaces(matchAll(localities.search, terms), SEARCH_LIMIT),
     ]);
     return hits(
       [...streetRows.map(streetPlace), ...villageRows.map(villagePlace)],
-      8,
+      SEARCH_LIMIT,
     );
   },
   ["search"],
   CACHE,
 );
 
-/** At most 8 places matching every word of q; never the whole index. */
+/**
+ * At most 8 places matching every word of q. The fallback when the search
+ * field cannot load the index.
+ */
 export async function search(q: string): Promise<SearchHit[]> {
   const terms = searchTerms(q);
   return terms.length === 0 ? [] : searchCached(terms);
+}
+
+/**
+ * Every place search can find, as [id, label] (~4 KB gzip), so the search
+ * field matches on the device with no request per keystroke. The version is
+ * a hash of the content: its URL changes with the data, so the CDN may keep
+ * each version for good.
+ */
+export const searchIndex = unstable_cache(
+  async (): Promise<{ version: string; places: SearchIndex }> => {
+    const [streetRows, villageRows] = await Promise.all([
+      streetPlaces(listed, 100_000),
+      villagePlaces(undefined, 100_000),
+    ]);
+    const places: SearchIndex = hits(
+      [...streetRows.map(streetPlace), ...villageRows.map(villagePlace)],
+      Number.POSITIVE_INFINITY,
+    ).map(({ id, label }) => [id, label]);
+    const version = createHash("sha256")
+      .update(JSON.stringify(places))
+      .digest("hex")
+      .slice(0, 16);
+    return { version, places };
+  },
+  ["search-index"],
+  CACHE,
+);
+
+/** Where the search field loads the current index from. */
+export async function searchIndexUrl(): Promise<string> {
+  const { version } = await searchIndex();
+  return `/api/search-index/${version}`;
 }
 
 /** A few addresses for the home page. */
