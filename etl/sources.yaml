@@ -1,0 +1,90 @@
+# Public URLs for the seed files already in docs/data/. Nothing is downloaded.
+sources:
+  - id: miasto-s1
+    kind: miasto
+    sector: miasto-s1
+    url: https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg
+    sha256: cd2dabc9053dc72111495a8ac4bcf1af36f0a7366af452b40806368fafaad624
+    path: docs/data/miasto/harmonogram-2026-s1.jpg
+    published_at: "2025-12-15"
+  - id: miasto-s2
+    kind: miasto
+    sector: miasto-s2
+    url: https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg
+    sha256: fb408b9ca0c3e3e109fcf2b692cef5b6c09e3a2d79745ee21fcd2094ef1e2761
+    path: docs/data/miasto/harmonogram-2026-s2.jpg
+    published_at: "2025-12-15"
+  - id: miasto-s3
+    kind: miasto
+    sector: miasto-s3
+    url: https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg
+    sha256: af55af4e1b8f16e093d9ce13dcace64b201be708857fa00837a0a1a43f1d5bce
+    path: docs/data/miasto/harmonogram-2026-s3.jpg
+    published_at: "2025-12-15"
+  - id: miasto-s4
+    kind: miasto
+    sector: miasto-s4
+    url: https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg
+    sha256: 91171038fbab823badd430d0249f0ed20596ccb973c26b5e817ea57901aba1dc
+    path: docs/data/miasto/harmonogram-2026-s4.jpg
+    published_at: "2025-12-15"
+  - id: miasto-s5
+    kind: miasto
+    sector: miasto-s5
+    url: https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg
+    sha256: c17185d966dac2a7edb300487768f78ec3488134650e7f93a6820e54928c5705
+    path: docs/data/miasto/harmonogram-2026-s5.jpg
+    published_at: "2025-12-15"
+  - id: gmina-s1
+    kind: gmina
+    sector: gmina-s1
+    url: https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf
+    sha256: 139159406cbc20a5227225a428d65ee94962f55383ea0f3e235ef2d2ca760fcc
+    path: docs/data/gmina/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf
+    published_at: "2026-01-02"
+  - id: gmina-s2
+    kind: gmina
+    sector: gmina-s2
+    url: https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf
+    sha256: 9ede01e712ca718ae57cfb737bca9672fb4afde13c2ee231eacd901364417ee2
+    path: docs/data/gmina/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf
+    published_at: "2026-01-02"
+  - id: gmina-s3
+    kind: gmina
+    sector: gmina-s3
+    url: https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf
+    sha256: 2472148475fe77cfce5261197cb5f126beaaff8eeabe71665961ee1f53a10054
+    path: docs/data/gmina/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf
+    published_at: "2026-01-02"
+  - id: gmina-s4
+    kind: gmina
+    sector: gmina-s4
+    url: https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf
+    sha256: efbad93c131426210ec7b2c68c1ebc406664d40168a9d9c24c83d3f4dcde863a
+    path: docs/data/gmina/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf
+    published_at: "2026-01-02"
+  - id: gmina-s5
+    kind: gmina
+    sector: gmina-s5
+    url: https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf
+    sha256: 755893808bae353e2e5ea0ca371b8f81b2f2cb8d6187c9f4d1f58738aa2e9e8d
+    path: docs/data/gmina/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf
+    published_at: "2026-01-02"
+  - id: teryt-ulic-miasto
+    kind: teryt
+    url: https://eteryt.stat.gov.pl/eTeryt/rejestr_teryt/udostepnianie_danych/baza_teryt/uzytkownicy_indywidualni/pobieranie/pliki_pelne.aspx
+    sha256: 58fa1651aa1b697a79fa7c14f0383f8b9cb911bb2f7045b7f6fdf0e4dcd077a2
+    path: docs/data/teryt/ULIC_1809011_miasto_lubaczow.csv
+    published_at: "2026-10-16"
+  - id: teryt-ulic-gmina
+    kind: teryt
+    url: https://eteryt.stat.gov.pl/eTeryt/rejestr_teryt/udostepnianie_danych/baza_teryt/uzytkownicy_indywidualni/pobieranie/pliki_pelne.aspx
+    sha256: 8515ea542c8e0b698ece7d5c81eb0e2160545a34b039c160945946eeb68fee7e
+    path: docs/data/teryt/ULIC_1809042_gmina_lubaczow.csv
+    published_at: "2026-10-16"
+  - id: teryt-simc
+    kind: teryt
+    url: https://eteryt.stat.gov.pl/eTeryt/rejestr_teryt/udostepnianie_danych/baza_teryt/uzytkownicy_indywidualni/pobieranie/pliki_pelne.aspx
+    sha256: 4c67881735127667b2cd926c4c50a4886e274448d8f01c487500826726b1aeec
+    path: docs/data/teryt/SIMC_1809011_1809042.csv
+    published_at: "2026-01-01"

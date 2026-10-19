@@ -1,0 +1,8 @@
+# Schedule spelling -> the TERYT name used by the matcher (NAZWA_2 + NAZWA_1, or NAZWA_1).
+aliases:
+  - schedule: Monte Casino
+    teryt: Monte Cassino
+  - schedule: Józefa Conrada-Korzeniowskiego
+    teryt: Józefa Conrad-Korzeniowskiego
+  - schedule: Jagiellonów
+    teryt: Osiedle Jagiellonów
