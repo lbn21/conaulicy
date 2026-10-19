@@ -4,13 +4,15 @@ import {
   asc,
   eq,
   gte,
+  inArray,
   isNull,
   like,
   notExists,
+  notInArray,
   or,
   type SQL,
 } from "drizzle-orm";
-import type { AnyPgColumn } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, alias } from "drizzle-orm/pg-core";
 import { unstable_cache } from "next/cache";
 import { todayInWarsaw } from "@/lib/dates";
 import {
@@ -23,6 +25,14 @@ import {
   zones,
 } from "@/lib/db";
 import { normalize } from "@/lib/normalize";
+import {
+  gminaShortName,
+  pickZone,
+  streetLabel,
+  streetName,
+  UNLISTED_PREFIXES,
+  villageLabel,
+} from "@/lib/places";
 
 // Every read goes through Next's data cache, tagged DATASET: a traffic spike
 // hits the cache, not Neon. After an import, POST /api/revalidate purges the
@@ -43,6 +53,8 @@ type Place = {
   gmina: string;
   schedulePage: string | null;
   localityId: string;
+  /** The village of a village part. */
+  parentId: string | null;
   streetId?: string;
 };
 
@@ -96,10 +108,6 @@ const SUBTYPE_ORDER = [
   "tekstylia",
 ];
 
-function gminaShortName(name: string): string {
-  return name.replace(/\s*\(.*\)$/, "");
-}
-
 // "ul. Asnyka" and "ulica Asnyka" find the same street.
 const IGNORED_TERMS = new Set(["ul", "ulica"]);
 
@@ -121,6 +129,11 @@ const withoutStreets = () =>
       .where(eq(streets.localityId, localities.id)),
   );
 
+// Roundabouts and squares stay out of search and the examples.
+const listed = notInArray(streets.prefix, UNLISTED_PREFIXES);
+
+const parent = alias(localities, "parent");
+
 const streetPlaces = (where: SQL | undefined, limit: number) =>
   db()
     .select({
@@ -128,6 +141,7 @@ const streetPlaces = (where: SQL | undefined, limit: number) =>
       prefix: streets.prefix,
       name: streets.name,
       localityId: streets.localityId,
+      parentId: localities.parentId,
       locality: localities.name,
       gmina: gminy.name,
       scheduleUrl: gminy.scheduleUrl,
@@ -144,11 +158,14 @@ const villagePlaces = (where: SQL | undefined, limit: number) =>
     .select({
       id: localities.id,
       name: localities.name,
+      parentId: localities.parentId,
+      parent: parent.name,
       gmina: gminy.name,
       scheduleUrl: gminy.scheduleUrl,
     })
     .from(localities)
     .innerJoin(gminy, eq(gminy.id, localities.gminaId))
+    .leftJoin(parent, eq(parent.id, localities.parentId))
     .where(and(withoutStreets(), where))
     .orderBy(asc(localities.search))
     .limit(limit);
@@ -157,16 +174,16 @@ type StreetRow = Awaited<ReturnType<typeof streetPlaces>>[number];
 type VillageRow = Awaited<ReturnType<typeof villagePlaces>>[number];
 
 function streetPlace(row: StreetRow): Place {
-  const name = `${row.prefix} ${row.name}`;
   return {
     id: row.id,
     kind: "ulica",
-    name,
-    label: `${name}, ${row.locality}`,
+    name: streetName(row.prefix, row.name),
+    label: streetLabel(row),
     area: row.locality,
     gmina: row.gmina,
     schedulePage: row.scheduleUrl,
     localityId: row.localityId,
+    parentId: row.parentId,
     streetId: row.id,
   };
 }
@@ -177,11 +194,12 @@ function villagePlace(row: VillageRow): Place {
     id: row.id,
     kind: "wies",
     name: row.name,
-    label: `${row.name} (gm. ${gmina})`,
-    area: `gmina ${gmina}`,
+    label: villageLabel(row),
+    area: row.parent ? `${row.parent}, gmina ${gmina}` : `gmina ${gmina}`,
     gmina: row.gmina,
     schedulePage: row.scheduleUrl,
     localityId: row.id,
+    parentId: row.parentId,
   };
 }
 
@@ -194,7 +212,7 @@ const hits = (places: Place[], limit: number): SearchHit[] =>
 const searchCached = unstable_cache(
   async (terms: string[]): Promise<SearchHit[]> => {
     const [streetRows, villageRows] = await Promise.all([
-      streetPlaces(matchAll(streets.search, terms), 8),
+      streetPlaces(and(listed, matchAll(streets.search, terms)), 8),
       villagePlaces(matchAll(localities.search, terms), 8),
     ]);
     return hits(
@@ -216,7 +234,7 @@ export async function search(q: string): Promise<SearchHit[]> {
 export const examplePlaces = unstable_cache(
   async (limit: number): Promise<SearchHit[]> => {
     const [streetRows, villageRows] = await Promise.all([
-      streetPlaces(undefined, limit),
+      streetPlaces(listed, limit),
       villagePlaces(undefined, limit),
     ]);
     return hits(
@@ -236,26 +254,30 @@ async function findPlace(id: string): Promise<Place | null> {
 }
 
 async function wasteZoneFor(place: Place) {
-  const sameLocality = and(
+  const localityIds = [place.localityId];
+  if (place.parentId) localityIds.push(place.parentId);
+  const wholeLocality = and(
     isNull(zoneMembers.streetId),
-    eq(zoneMembers.localityId, place.localityId),
+    inArray(zoneMembers.localityId, localityIds),
   );
-  const [zone] = await db()
-    .select({ id: zones.id })
+  const candidates = await db()
+    .select({
+      zoneId: zoneMembers.zoneId,
+      localityId: zoneMembers.localityId,
+      streetId: zoneMembers.streetId,
+    })
     .from(zoneMembers)
     .innerJoin(zones, eq(zones.id, zoneMembers.zoneId))
     .where(
       and(
         eq(zones.type, "waste"),
         place.streetId
-          ? or(eq(zoneMembers.streetId, place.streetId), sameLocality)
-          : sameLocality,
+          ? or(eq(zoneMembers.streetId, place.streetId), wholeLocality)
+          : wholeLocality,
       ),
-    )
-    // A street's own entry wins over its whole locality's.
-    .orderBy(asc(isNull(zoneMembers.streetId)))
-    .limit(1);
-  return zone ?? null;
+    );
+  const id = pickZone(candidates, place);
+  return id ? { id } : null;
 }
 
 function bySubtype(a: ZoneEvent, b: ZoneEvent): number {
