@@ -56,7 +56,7 @@ type Shape =
   | "triangle"
   | "diamond"
   | "star"
-  | "hexagon"
+  | "cross"
   | "plus";
 
 type Mark = { shape: Shape; fill: string; stroke: string };
@@ -76,7 +76,7 @@ const MARKS: Record<string, Mark> = {
   tworzywa_metale: PLASTICS,
   szklo: { shape: "diamond", fill: "#1e7f4f", stroke: TEXT },
   bio: { shape: "star", fill: "#7a4b2a", stroke: TEXT },
-  popiol: { shape: "hexagon", fill: "#5c6370", stroke: TEXT },
+  popiol: { shape: "cross", fill: "#5c6370", stroke: TEXT },
   wielkogabarytowe: BULKY,
   elektro: BULKY,
   opony: BULKY,
@@ -105,6 +105,37 @@ function regularPolygon(
   });
 }
 
+// A plus sign centred on (cx, cy): arms reach `half` from the centre and are
+// 2 * `t` thick. `angle` 0 gives +, Math.PI / 4 gives ×.
+function plusSign(
+  cx: number,
+  cy: number,
+  half: number,
+  t: number,
+  angle: number,
+): Array<[number, number]> {
+  const outline: Array<[number, number]> = [
+    [-t, -half],
+    [t, -half],
+    [t, -t],
+    [half, -t],
+    [half, t],
+    [t, t],
+    [t, half],
+    [-t, half],
+    [-t, t],
+    [-half, t],
+    [-half, -t],
+    [-t, -t],
+  ];
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return outline.map(([px, py]) => [
+    cx + px * cos - py * sin,
+    cy + px * sin + py * cos,
+  ]);
+}
+
 function drawMark(doc: PDFKit.PDFDocument, mark: Mark, x: number, y: number) {
   const s = SHAPE;
   const cx = x + s / 2;
@@ -127,27 +158,13 @@ function drawMark(doc: PDFKit.PDFDocument, mark: Mark, x: number, y: number) {
     case "star":
       doc.polygon(...regularPolygon(cx, cy + 0.5, 5, s / 2 + 0.5, s / 4.4, up));
       break;
-    case "hexagon":
-      doc.polygon(...regularPolygon(cx, cy, 6, s / 2, 0, up));
+    case "cross":
+      // Bold ×: the diagonal arms reach the corners of the box.
+      doc.polygon(...plusSign(cx, cy, (s / 2) * 1.3, s / 7, Math.PI / 4));
       break;
-    case "plus": {
-      const a = s / 3;
-      doc.polygon(
-        [x + a, y],
-        [x + 2 * a, y],
-        [x + 2 * a, y + a],
-        [x + s, y + a],
-        [x + s, y + 2 * a],
-        [x + 2 * a, y + 2 * a],
-        [x + 2 * a, y + s],
-        [x + a, y + s],
-        [x + a, y + 2 * a],
-        [x, y + 2 * a],
-        [x, y + a],
-        [x + a, y + a],
-      );
+    case "plus":
+      doc.polygon(...plusSign(cx, cy, s / 2, s / 6, 0));
       break;
-    }
   }
   doc
     .lineWidth(0.75)
