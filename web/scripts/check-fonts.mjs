@@ -62,7 +62,9 @@ try {
         const shifts = await page.evaluate(() => window.__shifts);
         const total = shifts.reduce((sum, s) => sum + s.value, 0);
         const label = `${path} ${width}px ${theme}`;
-        results.push(`${label}: layout shift ${total.toFixed(4)} (${fonts} font files held back)`);
+        results.push(
+          `${label}: layout shift ${total.toFixed(4)} (${fonts} font files held back)`,
+        );
         if (fonts === 0) failures.push(`${label}: no font request seen`);
         if (total >= LIMIT) {
           failures.push(
