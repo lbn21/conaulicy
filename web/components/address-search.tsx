@@ -5,6 +5,7 @@ import {
   type KeyboardEvent,
   useEffect,
   useId,
+  useRef,
   useState,
 } from "react";
 
@@ -31,6 +32,7 @@ export function AddressSearch() {
   const [status, setStatus] = useState<Status>("idle");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const q = query.trim();
@@ -65,7 +67,31 @@ export function AddressSearch() {
     };
   }, [query]);
 
-  const expanded = open && hits.length > 0;
+  // The popup floats over the page (absolute), so nothing below the field
+  // moves when it opens, updates or closes.
+  const popup =
+    open && query.trim() !== "" && (hits.length > 0 || status !== "idle");
+  const expanded = popup && hits.length > 0;
+
+  // Keep the active option visible when the list scrolls.
+  useEffect(() => {
+    if (!expanded || active < 0) return;
+    document
+      .getElementById(`${listId}-${active}`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [expanded, active, listId]);
+
+  // On a phone, move the field near the top so the list has room below it
+  // (and above the keyboard). Scrolling only; the layout stays the same.
+  function makeRoom() {
+    const input = inputRef.current;
+    if (!input || !window.matchMedia("(max-width: 47.99rem)").matches) return;
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    input.scrollIntoView({
+      block: "start",
+      behavior: still ? "auto" : "smooth",
+    });
+  }
 
   function go(hit: Hit) {
     setOpen(false);
@@ -100,7 +126,7 @@ export function AddressSearch() {
         break;
       case "Escape":
         event.preventDefault();
-        if (expanded) {
+        if (popup) {
           setOpen(false);
           setActive(-1);
         } else {
@@ -119,15 +145,20 @@ export function AddressSearch() {
     else setOpen(true);
   }
 
-  let message = "";
+  // Shown in the popup when there are no options to list.
+  let note = "";
   if (status === "loading") {
-    message = "Szukam…";
+    note = "Szukam…";
   } else if (status === "error") {
-    message = "Błąd: coś nie zadziałało po naszej stronie. Spróbuj za chwilę.";
+    note = "Błąd: coś nie zadziałało po naszej stronie. Spróbuj za chwilę.";
   } else if (status === "done" && hits.length === 0) {
-    message =
-      "Nie mamy jeszcze tej ulicy ani wsi. Sprawdź przykładowe adresy poniżej.";
-  } else if (status === "done" && expanded) {
+    note =
+      "Brak wyników. Nie mamy jeszcze tej ulicy ani wsi – sprawdź przykładowe adresy poniżej.";
+  }
+
+  // For screen readers only, in a live region that takes no space.
+  let message = hits.length === 0 ? note : "";
+  if (status === "done" && expanded) {
     message = `${addresses(hits.length)}. Wybierz strzałkami i Enterem albo dotknij.`;
   }
 
@@ -187,44 +218,61 @@ export function AddressSearch() {
               setActive(-1);
               setOpen(true);
             }}
-            onFocus={() => setOpen(true)}
+            ref={inputRef}
+            onFocus={() => {
+              setOpen(true);
+              makeRoom();
+            }}
             onBlur={() => setOpen(false)}
             onKeyDown={onKeyDown}
-            className="min-h-14 w-full rounded-sm border-2 border-border bg-surface pr-4 pl-12 text-lg text-text placeholder:text-text-muted focus-visible:border-focus"
+            className="min-h-14 w-full scroll-mt-4 rounded-sm border-2 border-border bg-surface pr-4 pl-12 text-lg text-text placeholder:text-text-muted focus-visible:border-focus"
           />
-        </div>
-        <div
-          id={listId}
-          role="listbox"
-          aria-label="Pasujące adresy"
-          hidden={!expanded}
-          className="rounded-sm border-2 border-border bg-surface py-1"
-        >
-          {hits.map((hit, i) => (
-            // biome-ignore lint/a11y/useKeyWithClickEvents: the combobox input owns keyboard selection
+          <div
+            hidden={!popup}
+            className="absolute inset-x-0 top-full z-20 mt-1 rounded-sm border-2 border-border bg-surface shadow-[var(--elevation)]"
+          >
             <div
-              key={hit.id}
-              id={`${listId}-${i}`}
-              role="option"
-              tabIndex={-1}
-              aria-selected={i === active}
-              onMouseDown={(event) => event.preventDefault()}
-              onMouseEnter={() => setActive(i)}
-              onClick={() => go(hit)}
-              className="flex min-h-12 cursor-pointer items-center px-4 py-2 aria-selected:bg-surface-2 aria-selected:shadow-[inset_4px_0_0_var(--accent)]"
+              id={listId}
+              role="listbox"
+              aria-label="Pasujące adresy"
+              hidden={hits.length === 0}
+              className="max-h-[24.5rem] overflow-y-auto overscroll-contain py-1"
             >
-              {hit.label}
+              {hits.map((hit, i) => (
+                // biome-ignore lint/a11y/useKeyWithClickEvents: the combobox input owns keyboard selection
+                <div
+                  key={hit.id}
+                  id={`${listId}-${i}`}
+                  role="option"
+                  tabIndex={-1}
+                  aria-selected={i === active}
+                  onMouseDown={(event) => event.preventDefault()}
+                  // Move, not enter: the focus scroll slides options under a resting
+                  // pointer, which must not pick one.
+                  onMouseMove={() => setActive(i)}
+                  onClick={() => go(hit)}
+                  className="flex min-h-12 cursor-pointer items-center px-4 py-2 aria-selected:bg-surface-2 aria-selected:shadow-[inset_4px_0_0_var(--accent)]"
+                >
+                  {hit.label}
+                </div>
+              ))}
             </div>
-          ))}
+            {hits.length === 0 && note && (
+              // Announced by the live region below; hidden here to avoid twice.
+              <p
+                aria-hidden="true"
+                className={
+                  status === "error"
+                    ? "px-4 py-3 font-bold text-danger"
+                    : "px-4 py-3 text-text-muted"
+                }
+              >
+                {note}
+              </p>
+            )}
+          </div>
         </div>
-        <p
-          role="status"
-          className={
-            status === "error"
-              ? "min-h-[1.55em] font-bold text-danger"
-              : "min-h-[1.55em] text-text-muted"
-          }
-        >
+        <p role="status" className="sr-only">
           {message}
         </p>
       </form>
