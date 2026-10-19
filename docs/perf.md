@@ -8,7 +8,7 @@ Lighthouse (npm `lighthouse`, free, no Lighthouse CI server) with its mobile def
 
 - Moto G Power screen, mobile user agent.
 - Simulated Slow 4G: 150 ms RTT, 1.6 Mbps down (Lantern simulation, not real throttling).
-- CPU slowdown calibrated to the machine running the check (below), so the simulated device is a mid-tier phone on a laptop and in CI alike.
+- CPU slowed 4× (Lighthouse's default, meant to turn a high-end desktop into a mid-tier phone). Fixed, so numbers stay comparable with the baseline.
 - Pages: `/`, `/adres/0972447-00470` (seed street, Asnyka), `/dostepnosc`.
 - 5 runs per page (`PERF_RUNS`).
 
@@ -21,25 +21,32 @@ Lighthouse (npm `lighthouse`, free, no Lighthouse CI server) with its mobile def
 | CLS | < 0.01 (in practice 0) | median |
 | Street page HTML | ≤ 30 KB gzip | one fetch (all pages are checked) |
 | Preloaded fonts | ≤ 4 files | the page's `<link rel="preload" as="font">` |
-| Search keystroke → list updated | ≤ 50 ms | median of 5 keys, index loaded, same CPU slowdown |
+| Search keystroke → list updated | ≤ 50 ms | median of 5 keys, index loaded, CPU 4× slower |
 | First-load JS | ≤ 150 KB gzip | `npm run budget` (separate step) |
 
 ## Why LCP takes the best run
 
 Lantern estimates LCP from the trace of a real, unthrottled load. A network request counts towards LCP only if it finished before the LCP paint in that trace. On a local server everything happens within ~50 ms, so whether the 140 KB of JS finished before the first paint is a coin toss. The runs land in two modes, near 1.6 s (JS not counted, which matches a real phone, where the text paints long before the JS arrives) and near 2.2 s (JS counted). The median flipped between them from run to run. The best run is the estimate without that artifact. Heavier fonts, CSS or HTML still push every run up, and JS size has its own budget.
 
-## CPU calibration
+## Known flake
 
-Lighthouse's default 4× CPU slowdown assumes a high-end desktop. A GitHub runner is slower, which made TBT and LCP worse in CI than on a laptop for the same build. Following [Lighthouse's throttling docs](https://github.com/GoogleChrome/lighthouse/blob/main/docs/throttling.md#cpu-throttling), the check first runs Lighthouse 3 times on `/`, takes the median `benchmarkIndex`, and sets `cpuSlowdownMultiplier` with the formula of the [Lighthouse CPU throttling calculator](https://lighthouse-cpu-throttling-calculator.vercel.app/) (target: mid-tier mobile):
+Best-of-5 for LCP still fails now and then in CI, on any of the three pages, when all five runs land in the slow mode (seen on PRs #16 and #17).
 
-| benchmarkIndex | Multiplier |
-|---|---|
-| ≥ 1300 | 3 + (index − 1300) / 233 |
-| 800–1299 | 2 + (index − 800) / 500 |
-| 150–799 | 1 + (index − 150) / 650 |
-| < 150 | too slow; the check fails |
+The two modes come from request timing in the unthrottled trace that Lantern simulates from: in a given load the JS either finished before the first paint (slow mode, ~2.2 s) or not (fast mode, ~1.6 s). Nothing in the page decides it; the local server is just too fast for the order to be stable.
 
-It prints the index (each calibration run) and the multiplier, and uses the multiplier for every Lighthouse run and for the keystroke test. An M-series Mac measures ~4300 (≈ 16×).
+Calibrating the CPU slowdown does not help (tried 2026-10-19 in PR #18, then dropped). Following Lighthouse's throttling docs, the check set `cpuSlowdownMultiplier` from the machine's `benchmarkIndex` with the Lighthouse CPU throttling calculator's formula:
+
+- CI runner: benchmarkIndex 2385 → 7.66×. LCP stayed bimodal (per page, runs near 1.6 s and near 2.4 s; e.g. `/`: 1602, 2406, 2405, 2391, 1623), and TBT rose to 246–315 ms (over budget; ~90 ms at 4×).
+- M-series Mac: benchmarkIndex 4354 → 16.11×, TBT 77–89 ms.
+
+The multiplier does not touch which requests finished before the paint, and benchmarkIndex (a single-thread JS benchmark) did not predict TBT across the two machines.
+
+Options, not implemented (Jakub decides):
+
+- Lighthouse DevTools throttling: measure a really throttled load instead of simulating from a fast one. The numbers differ from the baseline, so the budgets need new values.
+- A realistic delay on the local server's responses, so the trace's request order looks like a phone on 4G.
+
+Until then, rerun the failed job when only LCP lands in the slow mode.
 
 ## Results
 
