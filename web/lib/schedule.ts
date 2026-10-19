@@ -40,6 +40,8 @@ export type PlaceView = {
   /** Gmina name as in TERYT, e.g. "Lubaczów (miasto)". */
   gmina: string;
   zoneId: string | null;
+  /** Warsaw day this view was computed for; the page renders "dziś"/"jutro" from it. */
+  today: string;
   schedulePage: string | null;
   days: PickupDay[];
   sources: SourceView[];
@@ -199,7 +201,8 @@ export function getPlace(id: string): PlaceView | null {
 
   const zone = wasteZoneFor(place);
   // Event dates are ISO days in Europe/Warsaw, so compare against the Warsaw day, not UTC.
-  const upcoming = zone ? zoneEvents(zone.id, todayInWarsaw()) : [];
+  const today = todayInWarsaw();
+  const upcoming = zone ? zoneEvents(zone.id, today) : [];
 
   const days: PickupDay[] = [];
   for (const event of upcoming) {
@@ -225,6 +228,7 @@ export function getPlace(id: string): PlaceView | null {
     area: place.area,
     gmina: gminy.find((g) => g.id === gminaIdOf(place))?.name ?? "",
     zoneId: zone?.id ?? null,
+    today,
     schedulePage: schedulePageFor(place),
     days,
     sources: sourcesOf(upcoming),

@@ -5,8 +5,10 @@ import { longDate } from "@/lib/date-labels";
 import { getPlace, listPlaces } from "@/lib/schedule";
 
 export const dynamicParams = false;
-// Regenerate hourly so the static HTML never lists pickups that are already past.
-export const revalidate = 3600;
+// Regenerate every 10 minutes, so the static HTML drops past pickups and its
+// server-rendered "dziś"/"jutro" is at most minutes stale after midnight in
+// Warsaw. The client corrects the rare stale copy (see PickupSchedule).
+export const revalidate = 600;
 
 export function generateStaticParams() {
   return listPlaces().map(({ id }) => ({ id }));
@@ -79,7 +81,7 @@ export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
             </a>
           </p>
 
-          <PickupSchedule days={place.days} />
+          <PickupSchedule days={place.days} renderedOn={place.today} />
 
           <div className="mt-2 border-t border-border pt-6 text-text-muted">
             {!place.verified && (
