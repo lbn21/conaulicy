@@ -80,8 +80,9 @@
   --success: #6fd49a;
   --warning: #f2a65a;
   --danger: #ff8f85;
-  --waste-zmieszane: #aab3c0;
-  --waste-zmieszane-fg: #10141d;
+  --waste-zmieszane: #111111;
+  --waste-zmieszane-fg: #f5f7fa;
+  --waste-zmieszane-border: #9aa3b2;
   --waste-papier: #6eb4ff;
   --waste-papier-fg: #10141d;
   --waste-plastik-metale: #f4d35e;
@@ -90,7 +91,7 @@
   --waste-szklo-fg: #10141d;
   --waste-bio: #c4936a;
   --waste-bio-fg: #10141d;
-  --waste-popiol: #d6c7b6;
+  --waste-popiol: #c4c8ce;
   --waste-popiol-fg: #10141d;
   --waste-gabaryty: #f293b8;
   --waste-gabaryty-fg: #10141d;
@@ -113,8 +114,9 @@
     --success: #1e7a46;
     --warning: #a0420a;
     --danger: #b42318;
-    --waste-zmieszane: #5b6575;
+    --waste-zmieszane: #111111;
     --waste-zmieszane-fg: #ffffff;
+    --waste-zmieszane-border: #111111;
     --waste-papier: #1f63c7;
     --waste-papier-fg: #ffffff;
     --waste-plastik-metale: #7d6200;
@@ -123,7 +125,7 @@
     --waste-szklo-fg: #ffffff;
     --waste-bio: #7a4b2a;
     --waste-bio-fg: #ffffff;
-    --waste-popiol: #736659;
+    --waste-popiol: #5c6370;
     --waste-popiol-fg: #ffffff;
     --waste-gabaryty: #a8336a;
     --waste-gabaryty-fg: #ffffff;
@@ -146,8 +148,9 @@
   --success: #6fd49a;
   --warning: #f2a65a;
   --danger: #ff8f85;
-  --waste-zmieszane: #aab3c0;
-  --waste-zmieszane-fg: #10141d;
+  --waste-zmieszane: #111111;
+  --waste-zmieszane-fg: #f5f7fa;
+  --waste-zmieszane-border: #9aa3b2;
   --waste-papier: #6eb4ff;
   --waste-papier-fg: #10141d;
   --waste-plastik-metale: #f4d35e;
@@ -156,7 +159,7 @@
   --waste-szklo-fg: #10141d;
   --waste-bio: #c4936a;
   --waste-bio-fg: #10141d;
-  --waste-popiol: #d6c7b6;
+  --waste-popiol: #c4c8ce;
   --waste-popiol-fg: #10141d;
   --waste-gabaryty: #f293b8;
   --waste-gabaryty-fg: #10141d;
@@ -178,8 +181,9 @@
   --success: #1e7a46;
   --warning: #a0420a;
   --danger: #b42318;
-  --waste-zmieszane: #5b6575;
+  --waste-zmieszane: #111111;
   --waste-zmieszane-fg: #ffffff;
+  --waste-zmieszane-border: #111111;
   --waste-papier: #1f63c7;
   --waste-papier-fg: #ffffff;
   --waste-plastik-metale: #7d6200;
@@ -188,7 +192,7 @@
   --waste-szklo-fg: #ffffff;
   --waste-bio: #7a4b2a;
   --waste-bio-fg: #ffffff;
-  --waste-popiol: #736659;
+  --waste-popiol: #5c6370;
   --waste-popiol-fg: #ffffff;
   --waste-gabaryty: #a8336a;
   --waste-gabaryty-fg: #ffffff;
@@ -212,6 +216,7 @@
   --color-danger: var(--danger);
   --color-waste-zmieszane: var(--waste-zmieszane);
   --color-waste-zmieszane-fg: var(--waste-zmieszane-fg);
+  --color-waste-zmieszane-border: var(--waste-zmieszane-border);
   --color-waste-papier: var(--waste-papier);
   --color-waste-papier-fg: var(--waste-papier-fg);
   --color-waste-plastik-metale: var(--waste-plastik-metale);

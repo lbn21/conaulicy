@@ -27,8 +27,9 @@ const palettes = {
     success: "#6fd49a",
     warning: "#f2a65a",
     danger: "#ff8f85",
-    "waste-zmieszane": "#aab3c0",
-    "waste-zmieszane-fg": "#10141d",
+    "waste-zmieszane": "#111111",
+    "waste-zmieszane-fg": "#f5f7fa",
+    "waste-zmieszane-border": "#9aa3b2",
     "waste-papier": "#6eb4ff",
     "waste-papier-fg": "#10141d",
     "waste-plastik-metale": "#f4d35e",
@@ -37,7 +38,7 @@ const palettes = {
     "waste-szklo-fg": "#10141d",
     "waste-bio": "#c4936a",
     "waste-bio-fg": "#10141d",
-    "waste-popiol": "#d6c7b6",
+    "waste-popiol": "#c4c8ce",
     "waste-popiol-fg": "#10141d",
     "waste-gabaryty": "#f293b8",
     "waste-gabaryty-fg": "#10141d",
@@ -56,8 +57,9 @@ const palettes = {
     success: "#1e7a46",
     warning: "#a0420a",
     danger: "#b42318",
-    "waste-zmieszane": "#5b6575",
+    "waste-zmieszane": "#111111",
     "waste-zmieszane-fg": "#ffffff",
+    "waste-zmieszane-border": "#111111",
     "waste-papier": "#1f63c7",
     "waste-papier-fg": "#ffffff",
     "waste-plastik-metale": "#7d6200",
@@ -66,7 +68,7 @@ const palettes = {
     "waste-szklo-fg": "#ffffff",
     "waste-bio": "#7a4b2a",
     "waste-bio-fg": "#ffffff",
-    "waste-popiol": "#736659",
+    "waste-popiol": "#5c6370",
     "waste-popiol-fg": "#ffffff",
     "waste-gabaryty": "#a8336a",
     "waste-gabaryty-fg": "#ffffff",
@@ -118,7 +120,13 @@ function requiredPairs() {
     pairs.push([`waste-${w}-fg`, `waste-${w}`, "text"]);
   }
   for (const w of WASTE) {
-    pairs.push([`waste-${w}`, "background", "ui"]);
+    if (w === "zmieszane") {
+      // Near-black fill disappears on the night background; the 1px border is the 3:1 edge.
+      pairs.push([`waste-${w}-border`, "background", "ui"]);
+      pairs.push([`waste-${w}`, "background", "info"]);
+    } else {
+      pairs.push([`waste-${w}`, "background", "ui"]);
+    }
   }
   return pairs;
 }
@@ -133,12 +141,12 @@ for (const [theme, p] of Object.entries(palettes)) {
     const ratio = contrast(p[fg], p[bg]);
     const min = kind === "text" ? 4.5 : 3;
     const aa = ratio >= min;
-    if (!aa) failures++;
+    if (kind !== "info" && !aa) failures++;
     const aaa = kind === "text" ? (ratio >= 7 ? "pass" : "fail") : "N/A";
     const label = `${fg} ${kind === "text" ? "on" : "vs"} ${bg}`;
-    lines.push(
-      `| ${label} | ${ratio.toFixed(2)} | ${aa ? "pass" : "FAIL"} | ${aaa} |`,
-    );
+    const aaLabel =
+      kind === "info" ? "n/a (see border)" : aa ? "pass" : "FAIL";
+    lines.push(`| ${label} | ${ratio.toFixed(2)} | ${aaLabel} | ${aaa} |`);
   }
   lines.push("");
 }
