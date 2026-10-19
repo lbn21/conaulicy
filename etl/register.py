@@ -6,7 +6,7 @@ import csv
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from common import fold, strip_prefixes, zone_id
+from common import fold, normalise_name, zone_id
 from extract_gmina import GminaTable
 
 
@@ -40,27 +40,28 @@ def _street_id(sym: str, sym_ul: str) -> str:
     return f"ulic-{sym}-{sym_ul}"
 
 
-def _index(rows: list[dict[str, str]]) -> dict[str, list[dict[str, str]]]:
-    index: dict[str, list[dict[str, str]]] = {}
-    for row in rows:
-        keys = {
-            strip_prefixes(f"{row['NAZWA_2']} {row['NAZWA_1']}"),
-            strip_prefixes(row["NAZWA_1"]),
-        }
-        for key in keys:
-            if key:
-                index.setdefault(key, []).append(row)
-    return index
+def _row_keys(row: dict[str, str]) -> tuple[str, str]:
+    full = normalise_name(f"{row['NAZWA_2']} {row['NAZWA_1']}")
+    nazwa_1 = normalise_name(row["NAZWA_1"])
+    return full, nazwa_1
 
 
 def _lookup(
-    name: str, index: dict[str, list[dict[str, str]]], aliases: dict[str, str]
+    name: str, rows: list[dict[str, str]], aliases: dict[str, str]
 ) -> tuple[dict[str, str] | None, int]:
-    key = strip_prefixes(aliases.get(name, name))
-    hits = {_row["SYM_UL"]: _row for _row in index.get(key, [])}
-    if len(hits) == 1:
-        return next(iter(hits.values())), 1
-    return None, len(hits)
+    key = normalise_name(aliases.get(name, name))
+    exact: dict[str, dict[str, str]] = {}
+    suffix: dict[str, dict[str, str]] = {}
+    for row in rows:
+        full, nazwa_1 = _row_keys(row)
+        if key and (key == full or key == nazwa_1):
+            exact[row["SYM_UL"]] = row
+        elif nazwa_1 and key.endswith(" " + nazwa_1):
+            suffix[row["SYM_UL"]] = row
+    chosen = exact if exact else suffix
+    if len(chosen) == 1:
+        return next(iter(chosen.values())), 1
+    return None, len(chosen)
 
 
 def _match_village(raw: str, simc: list[dict[str, str]]) -> dict[str, str]:
@@ -142,13 +143,12 @@ def build_register(
     for sym, sector in part_sector.items():
         members.setdefault(zone_id(sector), []).append({"localityId": _locality_id(sym)})
 
-    index = _index(city_rows)
     schedule_unmatched: list[dict[str, str]] = []
     assigned: dict[str, tuple[str, str, dict[str, str]]] = {}
     streets_in_two_sectors: list[dict[str, str]] = []
     for sector, names in sorted(schedule_streets.items()):
         for name in names:
-            hit, count = _lookup(name, index, aliases)
+            hit, count = _lookup(name, city_rows, aliases)
             if hit is None:
                 schedule_unmatched.append(
                     {"hits": str(count), "sector": sector, "source_name": name}

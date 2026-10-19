@@ -174,6 +174,10 @@ def render(dataset: dict[str, object]) -> str:
     lines += ["## Pass A vs Pass B", ""]
     if not mismatches and not street_mismatches:
         lines.append("- No date-cell or street-list mismatches.")
+    lines.append(
+        "- Pass A was read after the seed transcription was visible in context, "
+        "so A vs B agreement is not fully independent; manual spot check still required."
+    )
     for item in mismatches:
         assert isinstance(item, CellMismatch)
         src = file_source(f"harmonogram-2026-{item.sector.split('-')[1]}.jpg")
@@ -198,9 +202,7 @@ def render(dataset: dict[str, object]) -> str:
     )
     lines += ["## City streets in no sector", ""]
     lines.append(
-        "TERYT city objects that are not members of any waste zone. "
-        "No sector was guessed. Schedule spellings with no TERYT hit are listed "
-        "below and are not linked to these rows."
+        "TERYT city objects that are not members of any waste zone. No sector was guessed."
     )
     lines.append("")
     for item in real:

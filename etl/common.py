@@ -131,11 +131,28 @@ def fold(value: str) -> str:
     return " ".join("".join(cleaned).split())
 
 
+# Task-10 rank abbreviations, wherever they sit, plus the TERYT spellings of the
+# same titles (abp → arcybiskupa, płk → ppłk).
+_RANK_TOKENS = frozenset(PREFIXES + ("pplk", "arcybiskupa"))
+
+
+def normalise_name(value: str) -> str:
+    """Lowercase, strip diacritics and punctuation, drop rank prefixes and initials.
+
+    ``3-ego`` and ``3-go`` both become ``3``, so the ordinal spelling matches TERYT.
+    """
+    kept: list[str] = []
+    for part in fold(value).split():
+        if part in _RANK_TOKENS or (len(part) == 1 and part.isalpha()):
+            continue
+        if part in {"go", "ego"} and kept and kept[-1].isdigit():
+            continue
+        kept.append(part)
+    return " ".join(kept)
+
+
 def strip_prefixes(value: str) -> str:
-    parts = fold(value).split()
-    while parts and parts[0] in PREFIXES:
-        parts = parts[1:]
-    return " ".join(parts)
+    return normalise_name(value)
 
 
 def zone_id(sector: str) -> str:

@@ -100,21 +100,30 @@ def test_miasto_s1_passes() -> None:
 def test_alias_matches_one_street() -> None:
     root = repo_root()
     rows = _read_csv(root / "docs/data/teryt/ULIC_1809011_miasto_lubaczow.csv")
-    from register import _index
-
-    index = _index(rows)
     aliases = {
         "Jagiellonów": "Osiedle Jagiellonów",
         "Monte Casino": "Monte Cassino",
     }
-    hit, count = _lookup("Jagiellonów", index, aliases)
+    hit, count = _lookup("Jagiellonów", rows, aliases)
     assert count == 1
     assert hit is not None
     assert hit["SYM_UL"] == "45843"
-    hit, count = _lookup("Monte Casino", index, aliases)
+    hit, count = _lookup("Monte Casino", rows, aliases)
     assert count == 1
     assert hit is not None
     assert hit["NAZWA_1"] == "Monte Cassino"
+    for schedule_name, sym_ul in (
+        ("Mjr. Henryka Hubala", "48371"),
+        ("Abp. Eugeniusza Baziaka", "48369"),
+        ("3-ego Maja", "29830"),
+        ("Płk. Franciszka Herzoga", "38687"),
+        ("Dr. Henryka Szymańskiego", "48943"),
+        ("Gen. Józefa Hallera", "06480"),
+    ):
+        hit, count = _lookup(schedule_name, rows, aliases)
+        assert count == 1, schedule_name
+        assert hit is not None
+        assert hit["SYM_UL"] == sym_ul
     empty = build_register(
         city_csv=root / "docs/data/teryt/ULIC_1809011_miasto_lubaczow.csv",
         gmina_csv=root / "docs/data/teryt/ULIC_1809042_gmina_lubaczow.csv",

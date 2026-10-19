@@ -6,8 +6,8 @@ Each item cites the source file and sha256. No fix is suggested.
 ## Coverage
 
 - Events (one per fraction per date): 1012
-- City streets in a zone: 186
-- City TERYT objects in no zone: 20
+- City streets in a zone: 192
+- City TERYT objects in no zone: 14
 - Parent settlements in a zone: 24 (localities kind wies: 24)
 - Village parts in the locality list: 39
 - Zones: 10
@@ -33,15 +33,13 @@ Pickup dates (cells, before splitting fractions):
 ## Pass A vs Pass B
 
 - No date-cell or street-list mismatches.
+- Pass A was read after the seed transcription was visible in context, so A vs B agreement is not fully independent; manual spot check still required.
 
 ## City streets in no sector
 
-TERYT city objects that are not members of any waste zone. No sector was guessed. Schedule spellings with no TERYT hit are listed below and are not linked to these rows.
+TERYT city objects that are not members of any waste zone. No sector was guessed.
 
-- ul. Ppłk Franciszka Herzoga (SYM_UL 38687). `docs/data/teryt/ULIC_1809011_miasto_lubaczow.csv` sha256 `58fa1651aa1b697a79fa7c14f0383f8b9cb911bb2f7045b7f6fdf0e4dcd077a2` ULIC row.
-- ul. Dr Henryka M. Szymańskiego (SYM_UL 48943). `docs/data/teryt/ULIC_1809011_miasto_lubaczow.csv` sha256 `58fa1651aa1b697a79fa7c14f0383f8b9cb911bb2f7045b7f6fdf0e4dcd077a2` ULIC row.
 - al. aleja kardynała Mariana Jaworskiego (SYM_UL 57638). `docs/data/teryt/ULIC_1809011_miasto_lubaczow.csv` sha256 `58fa1651aa1b697a79fa7c14f0383f8b9cb911bb2f7045b7f6fdf0e4dcd077a2` ULIC row.
-- ul. gen. Hallera (SYM_UL 06480). `docs/data/teryt/ULIC_1809011_miasto_lubaczow.csv` sha256 `58fa1651aa1b697a79fa7c14f0383f8b9cb911bb2f7045b7f6fdf0e4dcd077a2` ULIC row.
 - ul. Aleksandra Gierymskiego (SYM_UL 05510). `docs/data/teryt/ULIC_1809011_miasto_lubaczow.csv` sha256 `58fa1651aa1b697a79fa7c14f0383f8b9cb911bb2f7045b7f6fdf0e4dcd077a2` ULIC row.
 - ul. Ustronna (SYM_UL 23434). `docs/data/teryt/ULIC_1809011_miasto_lubaczow.csv` sha256 `58fa1651aa1b697a79fa7c14f0383f8b9cb911bb2f7045b7f6fdf0e4dcd077a2` ULIC row.
 - ul. Działkowa (SYM_UL 04572). `docs/data/teryt/ULIC_1809011_miasto_lubaczow.csv` sha256 `58fa1651aa1b697a79fa7c14f0383f8b9cb911bb2f7045b7f6fdf0e4dcd077a2` ULIC row.
@@ -51,10 +49,7 @@ TERYT city objects that are not members of any waste zone. No sector was guessed
 - ul. Artura Grottgera (SYM_UL 06206). `docs/data/teryt/ULIC_1809011_miasto_lubaczow.csv` sha256 `58fa1651aa1b697a79fa7c14f0383f8b9cb911bb2f7045b7f6fdf0e4dcd077a2` ULIC row.
 - ul. Podleśna (SYM_UL 16799). `docs/data/teryt/ULIC_1809011_miasto_lubaczow.csv` sha256 `58fa1651aa1b697a79fa7c14f0383f8b9cb911bb2f7045b7f6fdf0e4dcd077a2` ULIC row.
 - os. Osiedle Mickiewicza (SYM_UL 48372). `docs/data/teryt/ULIC_1809011_miasto_lubaczow.csv` sha256 `58fa1651aa1b697a79fa7c14f0383f8b9cb911bb2f7045b7f6fdf0e4dcd077a2` ULIC row.
-- ul. Mjr. Hubala (SYM_UL 48371). `docs/data/teryt/ULIC_1809011_miasto_lubaczow.csv` sha256 `58fa1651aa1b697a79fa7c14f0383f8b9cb911bb2f7045b7f6fdf0e4dcd077a2` ULIC row.
 - os. Osiedle Unii Lubelskiej (SYM_UL 48373). `docs/data/teryt/ULIC_1809011_miasto_lubaczow.csv` sha256 `58fa1651aa1b697a79fa7c14f0383f8b9cb911bb2f7045b7f6fdf0e4dcd077a2` ULIC row.
-- ul. 3-go Maja (SYM_UL 29830). `docs/data/teryt/ULIC_1809011_miasto_lubaczow.csv` sha256 `58fa1651aa1b697a79fa7c14f0383f8b9cb911bb2f7045b7f6fdf0e4dcd077a2` ULIC row.
-- ul. Arcybiskupa Eugeniusza Baziaka (SYM_UL 48369). `docs/data/teryt/ULIC_1809011_miasto_lubaczow.csv` sha256 `58fa1651aa1b697a79fa7c14f0383f8b9cb911bb2f7045b7f6fdf0e4dcd077a2` ULIC row.
 
 ## Roundabouts and the square
 
@@ -66,12 +61,7 @@ Listed separately. They are not missing residential streets.
 
 ## Schedule names with no single TERYT match
 
-- `Mjr. Henryka Hubala` in `miasto-s1` matched 0 TERYT rows after normalisation and aliases. Not assigned. `docs/data/miasto/harmonogram-2026-s1.jpg` sha256 `cd2dabc9053dc72111495a8ac4bcf1af36f0a7366af452b40806368fafaad624` street list.
-- `Abp. Eugeniusza Baziaka` in `miasto-s3` matched 0 TERYT rows after normalisation and aliases. Not assigned. `docs/data/miasto/harmonogram-2026-s3.jpg` sha256 `af55af4e1b8f16e093d9ce13dcace64b201be708857fa00837a0a1a43f1d5bce` street list.
-- `3-ego Maja` in `miasto-s4` matched 0 TERYT rows after normalisation and aliases. Not assigned. `docs/data/miasto/harmonogram-2026-s4.jpg` sha256 `91171038fbab823badd430d0249f0ed20596ccb973c26b5e817ea57901aba1dc` street list.
-- `Płk. Franciszka Herzoga` in `miasto-s4` matched 0 TERYT rows after normalisation and aliases. Not assigned. `docs/data/miasto/harmonogram-2026-s4.jpg` sha256 `91171038fbab823badd430d0249f0ed20596ccb973c26b5e817ea57901aba1dc` street list.
-- `Dr. Henryka Szymańskiego` in `miasto-s5` matched 0 TERYT rows after normalisation and aliases. Not assigned. `docs/data/miasto/harmonogram-2026-s5.jpg` sha256 `c17185d966dac2a7edb300487768f78ec3488134650e7f93a6820e54928c5705` street list.
-- `Gen. Józefa Hallera` in `miasto-s5` matched 0 TERYT rows after normalisation and aliases. Not assigned. `docs/data/miasto/harmonogram-2026-s5.jpg` sha256 `c17185d966dac2a7edb300487768f78ec3488134650e7f93a6820e54928c5705` street list.
+- Every agreed schedule street name matched one TERYT row.
 
 ## TERYT streets in two sectors
 
