@@ -1,31 +1,8 @@
-const WEEKDAYS = [
-  "niedziela",
-  "poniedziałek",
-  "wtorek",
-  "środa",
-  "czwartek",
-  "piątek",
-  "sobota",
-];
-
-const MONTHS_GENITIVE = [
-  "stycznia",
-  "lutego",
-  "marca",
-  "kwietnia",
-  "maja",
-  "czerwca",
-  "lipca",
-  "sierpnia",
-  "września",
-  "października",
-  "listopada",
-  "grudnia",
-];
+const WARSAW = "Europe/Warsaw";
 
 export function todayInWarsaw(now: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Warsaw",
+    timeZone: WARSAW,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -45,15 +22,27 @@ export function addDays(iso: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-export type DayLabel = {
-  relative: "dziś" | "jutro" | null;
-  text: string;
-};
+function warsawNoon(iso: string): Date {
+  return new Date(`${iso}T12:00:00Z`);
+}
 
-export function polishDay(iso: string, today: string): DayLabel {
-  const date = toUtc(iso);
-  const text = `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS_GENITIVE[date.getUTCMonth()]}`;
-  const relative =
-    iso === today ? "dziś" : iso === addDays(today, 1) ? "jutro" : null;
-  return { relative, text };
+/** Absolute label, safe to render on a static page. Example: "poniedziałek, 26 października". */
+export function absoluteDay(iso: string): string {
+  const parts = new Intl.DateTimeFormat("pl-PL", {
+    timeZone: WARSAW,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).formatToParts(warsawNoon(iso));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("weekday")}, ${get("day")} ${get("month")}`;
+}
+
+export function relativeWord(
+  iso: string,
+  today: string,
+): "dziś" | "jutro" | null {
+  if (iso === today) return "dziś";
+  if (iso === addDays(today, 1)) return "jutro";
+  return null;
 }

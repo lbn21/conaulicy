@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { polishDay, todayInWarsaw } from "@/lib/dates";
+import { PickupSchedule } from "@/components/pickup-schedule";
 import { getPlace, listPlaces } from "@/lib/schedule";
 
 export const dynamicParams = false;
-export const revalidate = 3600;
 
 export function generateStaticParams() {
   return listPlaces().map(({ id }) => ({ id }));
@@ -18,35 +17,10 @@ export async function generateMetadata({
   return { title: place ? place.label : "Adres" };
 }
 
-const TONE: Record<string, string> = {
-  zmieszane: "bg-waste-zmieszane",
-  popiol: "bg-waste-popiol",
-  bio: "bg-waste-bio",
-  papier: "bg-waste-papier",
-  tworzywa: "bg-waste-plastik-metale",
-  tworzywa_metale: "bg-waste-plastik-metale",
-  szklo: "bg-waste-szklo",
-  wielkogabarytowe: "bg-waste-gabaryty",
-  elektro: "bg-waste-gabaryty",
-  opony: "bg-waste-gabaryty",
-  tekstylia: "bg-waste-gabaryty",
-};
-
-function tones(subtype: string): string[] {
-  if (subtype === "zmieszane_i_bio") return ["zmieszane", "bio"];
-  return [subtype];
-}
-
-function hour(time: string): string {
-  return time.replace(/^0/, "");
-}
-
 export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
   const { id } = await params;
   const place = getPlace(id);
   if (!place) notFound();
-
-  const today = todayInWarsaw();
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 md:px-8">
@@ -82,61 +56,7 @@ export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
             Plik z datami. Telefon zapyta, czy wpisać je do kalendarza.
           </p>
 
-          {place.days.length === 0 ? (
-            <p className="mt-10 max-w-prose">
-              Nie mamy jeszcze kolejnych terminów. Dopiszemy je, gdy pojawi się
-              nowy harmonogram.
-            </p>
-          ) : (
-            <ol aria-label="Najbliższe odbiory" className="mt-10">
-              {place.days.map((day, index) => {
-                const label = polishDay(day.date, today);
-                const putOutBy = day.pickups.find((p) => p.putOutBy)?.putOutBy;
-                const next = index === 0;
-                return (
-                  <li
-                    key={day.date}
-                    className={
-                      next
-                        ? "border-l-4 border-accent py-6 pl-4"
-                        : "border-t border-border py-6"
-                    }
-                  >
-                    <h2 className="text-xl font-bold">
-                      <time dateTime={day.date}>
-                        {label.relative && (
-                          <span className="text-accent">
-                            {label.relative},{" "}
-                          </span>
-                        )}
-                        {label.text}
-                      </time>
-                    </h2>
-                    {putOutBy && (
-                      <p className="mt-2 text-text-muted">
-                        Wystaw przed posesję do godziny {hour(putOutBy)}.
-                      </p>
-                    )}
-                    <ul className="mt-4 flex flex-col gap-3">
-                      {day.pickups.map((pickup) => (
-                        <li key={pickup.id} className="flex items-center gap-3">
-                          <span aria-hidden="true" className="flex gap-1">
-                            {tones(pickup.subtype).map((tone) => (
-                              <span
-                                key={tone}
-                                className={`size-6 shrink-0 rounded-sm ${TONE[tone] ?? "border-2 border-border bg-secondary"}`}
-                              />
-                            ))}
-                          </span>
-                          <span>{pickup.label}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </li>
-                );
-              })}
-            </ol>
-          )}
+          <PickupSchedule days={place.days} />
 
           {!place.verified && (
             <div className="mt-2 border-t border-border pt-6 text-text-muted">

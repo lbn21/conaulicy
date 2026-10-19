@@ -141,10 +141,16 @@ function bySubtype(a: Event, b: Event): number {
   return SUBTYPE_ORDER.indexOf(a.subtype) - SUBTYPE_ORDER.indexOf(b.subtype);
 }
 
-export function upcomingForZone(zoneId: string, today = todayInWarsaw()) {
+function zoneEvents(zoneId: string, from?: string) {
   return events
-    .filter((e) => e.zoneId === zoneId && e.start >= today)
+    .filter(
+      (e) => e.zoneId === zoneId && (from === undefined || e.start >= from),
+    )
     .sort((a, b) => a.start.localeCompare(b.start) || bySubtype(a, b));
+}
+
+export function upcomingForZone(zoneId: string, today = todayInWarsaw()) {
+  return zoneEvents(zoneId, today);
 }
 
 export function getPlace(id: string): PlaceView | null {
@@ -152,7 +158,7 @@ export function getPlace(id: string): PlaceView | null {
   if (!place) return null;
 
   const zone = wasteZoneFor(place);
-  const upcoming = zone ? upcomingForZone(zone.id) : [];
+  const upcoming = zone ? zoneEvents(zone.id) : [];
 
   const days: PickupDay[] = [];
   for (const event of upcoming) {
