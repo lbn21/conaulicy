@@ -70,7 +70,10 @@ const WASTE: Record<string, Colours> = {
   szklo: { fill: "#1e7f4f", border: "#1e7f4f" },
   bio: { fill: "#7a4b2a", border: "#7a4b2a" },
   popiol: { fill: "#5c6370", border: "#5c6370" },
-  gabaryty: { fill: "#a8336a", border: "#a8336a" },
+  gabaryty: { fill: "#c2410c", border: "#c2410c" },
+  elektro: { fill: "#1e3a8a", border: "#1e3a8a" },
+  opony: { fill: "#a3aab5", border: "#4a5160" },
+  tekstylia: { fill: "#a8336a", border: "#a8336a" },
 };
 
 function shade(hex: string, percent: number): string {

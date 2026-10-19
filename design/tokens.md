@@ -8,7 +8,7 @@ Source of truth: `design/tokens.css` (Tailwind v4, not yet imported by the app).
 - **Accent is fixed**: dark `#ffb547`, light `#9a5700`. `primary` is an alias of `accent`. Text on the accent uses `accent-contrast`.
 - **Typography**: Atkinson Hyperlegible Next, self-hosted (latin + latin-ext woff2), weights 400 and 700 only. Body text is 18px (`1.125rem`), and the type scale is mobile-first.
 - **Rhythm**: 4px spacing (`--spacing: 0.25rem`), one small radius (`--radius-sm: 4px`), one subtle elevation (`--shadow-raised`). No gradients.
-- **Waste colours** are fills. Each has a `-fg` for the label text on that fill. Papier is blue, szkło green, metale i tworzywa yellow, bio brown. Zmieszane is black, with a 1px `--waste-zmieszane-border` so the swatch stays visible on the night background. Metale i tworzywa has a `--waste-plastik-metale-border` too, for the light theme. Popiół is a neutral grey. Gabaryty is a rose, distinct from the amber accent.
+- **Waste colours** are fills. Each has a `-fg` for the label text on that fill. Papier is blue, szkło green, metale i tworzywa yellow, bio brown. Zmieszane is black, with a 1px `--waste-zmieszane-border` so the swatch stays visible on the night background. Metale i tworzywa has a `--waste-plastik-metale-border` too, for the light theme. Popiół is a neutral grey. The rare fractions each have their own colour, as in the Miasto Lubaczów schedule table: gabaryty orange, elektro navy, opony mid grey, tekstylia rose. The label next to every bin names the fraction, so colour is never the only cue.
 - Starting from the Latarnia sample, these changed: added `surface-2`; renamed `muted` to `text-muted` and `on-accent` to `accent-contrast`; light `border` darkened to `#6f7a8d` so it clears 3:1 on `surface-2`; light `secondary` is now `#e8ecf2`; gabaryty moved from lavender to rose; bio moved away from the amber accent (dark `#c4936a`, light `#7a4b2a`); light plastik-metale was `#7d6200`, which read as olive; it is now a clear yellow `#f2c200` with a `#7d6200` outline (see below).
 
 ## Dark (default)
@@ -34,7 +34,10 @@ Source of truth: `design/tokens.css` (Tailwind v4, not yet imported by the app).
 | `waste-szklo` / `-fg` | `#58d39a` / `#10141d` | glass |
 | `waste-bio` / `-fg` | `#c4936a` / `#10141d` | bio |
 | `waste-popiol` / `-fg` | `#c4c8ce` / `#10141d` | ash, grey bag |
-| `waste-gabaryty` / `-fg` | `#f293b8` / `#10141d` | bulky waste |
+| `waste-gabaryty` / `-fg` | `#ff9147` / `#10141d` | bulky waste (wielkogabarytowe) |
+| `waste-elektro` / `-fg` / `-border` | `#2747b0` / `#ffffff` / `#8fa8ff` | electrical and electronic |
+| `waste-opony` / `-fg` / `-border` | `#8a919d` / `#10141d` / `transparent` | used tyres |
+| `waste-tekstylia` / `-fg` | `#f293b8` / `#10141d` | clothes and textiles |
 
 ## Light
 
@@ -59,7 +62,10 @@ Source of truth: `design/tokens.css` (Tailwind v4, not yet imported by the app).
 | `waste-szklo` / `-fg` | `#1e7f4f` / `#ffffff` | glass |
 | `waste-bio` / `-fg` | `#7a4b2a` / `#ffffff` | bio |
 | `waste-popiol` / `-fg` | `#5c6370` / `#ffffff` | ash, grey bag |
-| `waste-gabaryty` / `-fg` | `#a8336a` / `#ffffff` | bulky waste |
+| `waste-gabaryty` / `-fg` | `#c2410c` / `#ffffff` | bulky waste (wielkogabarytowe) |
+| `waste-elektro` / `-fg` / `-border` | `#1e3a8a` / `#ffffff` / `transparent` | electrical and electronic |
+| `waste-opony` / `-fg` / `-border` | `#a3aab5` / `#161b24` / `#4a5160` | used tyres |
+| `waste-tekstylia` / `-fg` | `#a8336a` / `#ffffff` | clothes and textiles |
 
 ## Kolory pojemników
 
@@ -69,7 +75,9 @@ The swatches follow the bins and bags people already have at the gate.
 - Zmieszane, black containers and bags: Regulamin utrzymania czystości i porządku Gminy Miejskiej Lubaczów, uchwała nr 101/X/2024, § 3.
 - Popiół, grey bags (szare worki): UM Lubaczów, od lipca, as reported by [Business Insider](https://businessinsider.com.pl/wiadomosci/nowy-szary-worek-na-smieci-ruszaja-tez-kontrole/fgzpxpc). The article does not give a year.
 
-Zmieszane is `#111111` in both themes. On the dark background that fill is only 1.02:1, so the swatch draws a 1px `#9aa3b2` border (7.24:1 against the background). In the light theme, metale i tworzywa is a clear yellow `#f2c200` (1.57:1 against the background), so the bin draws a dark `#7d6200` outline and shading (5.41:1). In the dark theme the yellow is bright enough (12.57:1), so its border is `transparent` and the bin is fill only. Labels next to the bins stay in the normal text colour. Text on every swatch is at least 4.5:1. Gabaryty stays rose; the regulation does not assign it a bin colour.
+Zmieszane is `#111111` in both themes. On the dark background that fill is only 1.02:1, so the swatch draws a 1px `#9aa3b2` border (7.24:1 against the background). In the light theme, metale i tworzywa is a clear yellow `#f2c200` (1.57:1 against the background), so the bin draws a dark `#7d6200` outline and shading (5.41:1). In the dark theme the yellow is bright enough (12.57:1), so its border is `transparent` and the bin is fill only. Labels next to the bins stay in the normal text colour. Text on every swatch is at least 4.5:1.
+
+The rare fractions follow the colours of the Miasto Lubaczów schedule table; the regulation does not assign them bins. Elektro is navy, which on the dark background is only 2.29:1, so it draws a `#8fa8ff` outline (8.08:1). Opony in the light theme is a light grey `#a3aab5` (2.18:1) with a `#4a5160` outline (7.42:1). Tekstylia keeps the rose that gabaryty had before; gabaryty is now orange, distinct from the amber accent and the bio brown.
 
 ## Contrast
 
@@ -105,7 +113,10 @@ Computed by `node design/contrast.mjs` (WCAG 2.x, sRGB relative luminance). Text
 | waste-szklo-fg on waste-szklo | 9.83 | pass | pass |
 | waste-bio-fg on waste-bio | 6.78 | pass | fail |
 | waste-popiol-fg on waste-popiol | 10.97 | pass | pass |
-| waste-gabaryty-fg on waste-gabaryty | 8.46 | pass | pass |
+| waste-gabaryty-fg on waste-gabaryty | 8.24 | pass | pass |
+| waste-elektro-fg on waste-elektro | 8.03 | pass | pass |
+| waste-opony-fg on waste-opony | 5.81 | pass | fail |
+| waste-tekstylia-fg on waste-tekstylia | 8.46 | pass | pass |
 | waste-zmieszane-border vs background | 7.24 | pass | N/A |
 | waste-zmieszane vs background | 1.02 | n/a (see border) | N/A |
 | waste-papier vs background | 8.45 | pass | N/A |
@@ -113,7 +124,11 @@ Computed by `node design/contrast.mjs` (WCAG 2.x, sRGB relative luminance). Text
 | waste-szklo vs background | 9.83 | pass | N/A |
 | waste-bio vs background | 6.78 | pass | N/A |
 | waste-popiol vs background | 10.97 | pass | N/A |
-| waste-gabaryty vs background | 8.46 | pass | N/A |
+| waste-gabaryty vs background | 8.24 | pass | N/A |
+| waste-elektro-border vs background | 8.08 | pass | N/A |
+| waste-elektro vs background | 2.29 | n/a (see border) | N/A |
+| waste-opony vs background | 5.81 | pass | N/A |
+| waste-tekstylia vs background | 8.46 | pass | N/A |
 
 ### light
 
@@ -145,7 +160,10 @@ Computed by `node design/contrast.mjs` (WCAG 2.x, sRGB relative luminance). Text
 | waste-szklo-fg on waste-szklo | 5.00 | pass | fail |
 | waste-bio-fg on waste-bio | 7.32 | pass | pass |
 | waste-popiol-fg on waste-popiol | 6.05 | pass | fail |
-| waste-gabaryty-fg on waste-gabaryty | 6.27 | pass | fail |
+| waste-gabaryty-fg on waste-gabaryty | 5.18 | pass | fail |
+| waste-elektro-fg on waste-elektro | 10.36 | pass | pass |
+| waste-opony-fg on waste-opony | 7.38 | pass | pass |
+| waste-tekstylia-fg on waste-tekstylia | 6.27 | pass | fail |
 | waste-zmieszane-border vs background | 17.59 | pass | N/A |
 | waste-zmieszane vs background | 17.59 | n/a (see border) | N/A |
 | waste-papier vs background | 5.34 | pass | N/A |
@@ -154,7 +172,11 @@ Computed by `node design/contrast.mjs` (WCAG 2.x, sRGB relative luminance). Text
 | waste-szklo vs background | 4.65 | pass | N/A |
 | waste-bio vs background | 6.82 | pass | N/A |
 | waste-popiol vs background | 5.63 | pass | N/A |
-| waste-gabaryty vs background | 5.85 | pass | N/A |
+| waste-gabaryty vs background | 4.83 | pass | N/A |
+| waste-elektro vs background | 9.65 | pass | N/A |
+| waste-opony-border vs background | 7.42 | pass | N/A |
+| waste-opony vs background | 2.18 | n/a (see border) | N/A |
+| waste-tekstylia vs background | 5.85 | pass | N/A |
 
 ## Design principles: avoid the AI look
 

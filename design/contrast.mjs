@@ -10,14 +10,17 @@ const WASTE = [
   "bio",
   "popiol",
   "gabaryty",
+  "elektro",
+  "opony",
+  "tekstylia",
 ];
 
 // Fractions drawn with an outline token, per theme. The outline carries the
 // non-text contrast. Dark yellow is bright enough on its own, so its border
 // token is transparent there.
 const OUTLINED = {
-  dark: ["zmieszane"],
-  light: ["zmieszane", "plastik-metale"],
+  dark: ["zmieszane", "elektro"],
+  light: ["zmieszane", "plastik-metale", "opony"],
 };
 
 const palettes = {
@@ -48,8 +51,15 @@ const palettes = {
     "waste-bio-fg": "#10141d",
     "waste-popiol": "#c4c8ce",
     "waste-popiol-fg": "#10141d",
-    "waste-gabaryty": "#f293b8",
+    "waste-gabaryty": "#ff9147",
     "waste-gabaryty-fg": "#10141d",
+    "waste-elektro": "#2747b0",
+    "waste-elektro-fg": "#ffffff",
+    "waste-elektro-border": "#8fa8ff",
+    "waste-opony": "#8a919d",
+    "waste-opony-fg": "#10141d",
+    "waste-tekstylia": "#f293b8",
+    "waste-tekstylia-fg": "#10141d",
   },
   light: {
     background: "#f5f7fa",
@@ -79,8 +89,15 @@ const palettes = {
     "waste-bio-fg": "#ffffff",
     "waste-popiol": "#5c6370",
     "waste-popiol-fg": "#ffffff",
-    "waste-gabaryty": "#a8336a",
+    "waste-gabaryty": "#c2410c",
     "waste-gabaryty-fg": "#ffffff",
+    "waste-elektro": "#1e3a8a",
+    "waste-elektro-fg": "#ffffff",
+    "waste-opony": "#a3aab5",
+    "waste-opony-fg": "#161b24",
+    "waste-opony-border": "#4a5160",
+    "waste-tekstylia": "#a8336a",
+    "waste-tekstylia-fg": "#ffffff",
   },
 };
 
@@ -130,8 +147,8 @@ function requiredPairs(theme) {
   }
   for (const w of WASTE) {
     if (OUTLINED[theme].includes(w)) {
-      // Near-black (dark theme) and bright yellow (light theme) fills fade into
-      // the background; the outline is the 3:1 edge.
+      // Near-black and navy (dark theme), bright yellow and light grey (light
+      // theme) fills fade into the background; the outline is the 3:1 edge.
       pairs.push([`waste-${w}-border`, "background", "ui"]);
       pairs.push([`waste-${w}`, "background", "info"]);
     } else {

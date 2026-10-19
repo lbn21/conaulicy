@@ -94,8 +94,16 @@
   --waste-bio-fg: #10141d;
   --waste-popiol: #c4c8ce;
   --waste-popiol-fg: #10141d;
-  --waste-gabaryty: #f293b8;
+  --waste-gabaryty: #ff9147;
   --waste-gabaryty-fg: #10141d;
+  --waste-elektro: #2747b0;
+  --waste-elektro-fg: #ffffff;
+  --waste-elektro-border: #8fa8ff;
+  --waste-opony: #8a919d;
+  --waste-opony-fg: #10141d;
+  --waste-opony-border: transparent;
+  --waste-tekstylia: #f293b8;
+  --waste-tekstylia-fg: #10141d;
   --elevation: 0 1px 2px rgb(0 0 0 / 0.4);
 }
 
@@ -129,8 +137,16 @@
     --waste-bio-fg: #ffffff;
     --waste-popiol: #5c6370;
     --waste-popiol-fg: #ffffff;
-    --waste-gabaryty: #a8336a;
+    --waste-gabaryty: #c2410c;
     --waste-gabaryty-fg: #ffffff;
+    --waste-elektro: #1e3a8a;
+    --waste-elektro-fg: #ffffff;
+    --waste-elektro-border: transparent;
+    --waste-opony: #a3aab5;
+    --waste-opony-fg: #161b24;
+    --waste-opony-border: #4a5160;
+    --waste-tekstylia: #a8336a;
+    --waste-tekstylia-fg: #ffffff;
     --elevation: 0 1px 2px rgb(22 27 36 / 0.12);
   }
 }
@@ -164,8 +180,16 @@
   --waste-bio-fg: #10141d;
   --waste-popiol: #c4c8ce;
   --waste-popiol-fg: #10141d;
-  --waste-gabaryty: #f293b8;
+  --waste-gabaryty: #ff9147;
   --waste-gabaryty-fg: #10141d;
+  --waste-elektro: #2747b0;
+  --waste-elektro-fg: #ffffff;
+  --waste-elektro-border: #8fa8ff;
+  --waste-opony: #8a919d;
+  --waste-opony-fg: #10141d;
+  --waste-opony-border: transparent;
+  --waste-tekstylia: #f293b8;
+  --waste-tekstylia-fg: #10141d;
   --elevation: 0 1px 2px rgb(0 0 0 / 0.4);
 }
 
@@ -198,8 +222,16 @@
   --waste-bio-fg: #ffffff;
   --waste-popiol: #5c6370;
   --waste-popiol-fg: #ffffff;
-  --waste-gabaryty: #a8336a;
+  --waste-gabaryty: #c2410c;
   --waste-gabaryty-fg: #ffffff;
+  --waste-elektro: #1e3a8a;
+  --waste-elektro-fg: #ffffff;
+  --waste-elektro-border: transparent;
+  --waste-opony: #a3aab5;
+  --waste-opony-fg: #161b24;
+  --waste-opony-border: #4a5160;
+  --waste-tekstylia: #a8336a;
+  --waste-tekstylia-fg: #ffffff;
   --elevation: 0 1px 2px rgb(22 27 36 / 0.12);
 }
 
@@ -234,6 +266,12 @@
   --color-waste-popiol-fg: var(--waste-popiol-fg);
   --color-waste-gabaryty: var(--waste-gabaryty);
   --color-waste-gabaryty-fg: var(--waste-gabaryty-fg);
+  --color-waste-elektro: var(--waste-elektro);
+  --color-waste-elektro-fg: var(--waste-elektro-fg);
+  --color-waste-opony: var(--waste-opony);
+  --color-waste-opony-fg: var(--waste-opony-fg);
+  --color-waste-tekstylia: var(--waste-tekstylia);
+  --color-waste-tekstylia-fg: var(--waste-tekstylia-fg);
 
   --font-sans: "Atkinson Hyperlegible Next", system-ui, sans-serif;
   --font-weight-normal: 400;
