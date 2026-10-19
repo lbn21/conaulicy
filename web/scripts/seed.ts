@@ -19,6 +19,8 @@ import {
   zones,
 } from "../lib/db/schema.ts";
 import { normalize } from "../lib/normalize.ts";
+import { localitySearchLabel, streetLabel } from "../lib/places.ts";
+import { GMINA_SCHEDULE_PAGES } from "./lib/gmina-pages.ts";
 
 const SOURCE_URL = "https://conaulicy.pl/dane-testowe";
 
@@ -27,15 +29,13 @@ const GMINY = [
     id: "1809011",
     teryt: "1809011",
     name: "Lubaczów (miasto)",
-    scheduleUrl:
-      "https://czystylubaczow.info/odbior-odpadow/harmonogram-odbioru-odpadow/",
+    scheduleUrl: GMINA_SCHEDULE_PAGES["1809011"],
   },
   {
     id: "1809042",
     teryt: "1809042",
     name: "Lubaczów (gmina)",
-    scheduleUrl:
-      "https://www.gminalubaczow.pl/2026/01/02/harmonogram-odbioru-odpadow-komunalnych-na-rok-2026/",
+    scheduleUrl: GMINA_SCHEDULE_PAGES["1809042"],
   },
 ];
 
@@ -272,14 +272,16 @@ async function main() {
   const db = drizzle(url, { casing: "snake_case" });
   const today = todayInWarsaw();
 
-  const gminaShort = (id: string) =>
-    (GMINY.find((g) => g.id === id)?.name ?? "").replace(/\s*\(.*\)$/, "");
   const localityRows = LOCALITIES.map((l) => ({
     ...l,
     teryt: l.id,
     // Villages without streets are places: "Dąbrowa (gm. Lubaczów)".
     search: normalize(
-      l.kind === "miasto" ? l.name : `${l.name} (gm. ${gminaShort(l.gminaId)})`,
+      localitySearchLabel({
+        ...l,
+        parent: null,
+        gmina: GMINY.find((g) => g.id === l.gminaId)?.name ?? "",
+      }),
     ),
   }));
   const streetRows = STREETS.map(([localityId, sym, name]) => {
@@ -290,7 +292,9 @@ async function main() {
       teryt: sym,
       prefix: "ul.",
       name,
-      search: normalize(`ul. ${name}, ${locality?.name}`),
+      search: normalize(
+        streetLabel({ prefix: "ul.", name, locality: locality?.name ?? "" }),
+      ),
     };
   });
 
@@ -314,7 +318,7 @@ async function main() {
         label: LABELS[subtype],
         sourceDoc: "dane-testowe",
         sourceUrl: SOURCE_URL,
-        sourceRef: `Dane testowe, ${zone.name.replace("", "")}`,
+        sourceRef: `Dane testowe, ${zone.name}`,
         checkedAt: today,
         verified: false,
         payload: zone.rule.putOutBy ? { putOutBy: zone.rule.putOutBy } : null,

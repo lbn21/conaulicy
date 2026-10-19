@@ -56,6 +56,9 @@ jobs:
       - name: Biome
         run: npx biome ci
 
+      - name: Unit tests
+        run: npm test
+
       - name: Database (migrate + seed)
         run: npm run db:migrate && npm run db:seed
 
@@ -79,3 +82,8 @@ jobs:
 
       - name: "Fonts (no layout shift when they arrive late)"
         run: node scripts/check-fonts.mjs
+
+      # Last: it replaces the seed with a made-up import. Its schedules come
+      # from a local server, so the source check needs no internet.
+      - name: "Importer (synthetic dataset: dry run, apply, guards)"
+        run: node scripts/check-import.mjs
