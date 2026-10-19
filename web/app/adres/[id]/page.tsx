@@ -45,6 +45,17 @@ export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
             Harmonogramu tu nie zgadujemy. Do tego czasu sprawdź odbiory w
             harmonogramie gminy.
           </p>
+          {place.schedulePage && (
+            <p className="mt-3">
+              <a
+                href={place.schedulePage}
+                rel="noopener"
+                className="inline-flex min-h-12 items-center font-bold underline decoration-2 underline-offset-4"
+              >
+                Otwórz harmonogram gminy
+              </a>
+            </p>
+          )}
         </section>
       ) : (
         <>

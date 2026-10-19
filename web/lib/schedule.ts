@@ -31,6 +31,7 @@ export type PlaceView = {
   label: string;
   area: string;
   zoneId: string | null;
+  schedulePage: string | null;
   days: PickupDay[];
   sources: string[];
   verified: boolean;
@@ -50,6 +51,14 @@ const SUBTYPE_ORDER = [
   "opony",
   "tekstylia",
 ];
+
+/** Official schedule page per gmina, from docs/data/DATA-INVENTORY.md. */
+const SCHEDULE_PAGE: Record<string, string> = {
+  "1809011":
+    "https://czystylubaczow.info/odbior-odpadow/harmonogram-odbioru-odpadow/",
+  "1809042":
+    "https://www.gminalubaczow.pl/2026/01/02/harmonogram-odbioru-odpadow-komunalnych-na-rok-2026/",
+};
 
 const DIACRITICS: Record<string, string> = {
   ą: "a",
@@ -137,6 +146,11 @@ function wasteZoneFor(place: Place): Zone | undefined {
   );
 }
 
+function schedulePageFor(place: Place): string | null {
+  const gminaId = localities.find((l) => l.id === place.localityId)?.gminaId;
+  return (gminaId && SCHEDULE_PAGE[gminaId]) || null;
+}
+
 function bySubtype(a: Event, b: Event): number {
   return SUBTYPE_ORDER.indexOf(a.subtype) - SUBTYPE_ORDER.indexOf(b.subtype);
 }
@@ -183,6 +197,7 @@ export function getPlace(id: string): PlaceView | null {
     label: place.label,
     area: place.area,
     zoneId: zone?.id ?? null,
+    schedulePage: schedulePageFor(place),
     days,
     sources: [...new Set(upcoming.map((e) => e.source.doc))],
     verified: upcoming.every((e) => e.verified),
