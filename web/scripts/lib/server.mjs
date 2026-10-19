@@ -2,14 +2,16 @@
 // routes they cover. Run `next build` first.
 import { spawn } from "node:child_process";
 
-// One of each kind of page. Keep in sync with the fixture ids.
+// One of each kind of page. Keep in sync with the seed (scripts/seed.ts).
 export const ROUTES = [
   { path: "/", name: "home" },
   { path: "/adres/0972447-00470", name: "city-street" },
-  { path: "/adres/0606234", name: "village" },
+  { path: "/adres/0606010", name: "village" },
+  { path: "/adres/0606234-90008", name: "village-street" },
   { path: "/adres/0972447-23434", name: "street-without-schedule" },
   { path: "/prywatnosc", name: "privacy" },
   { path: "/dostepnosc", name: "accessibility" },
+  { path: "/dane-testowe", name: "test-data" },
   { path: "/nie-ma-takiej-strony", name: "not-found", status: 404 },
 ];
 
