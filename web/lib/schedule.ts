@@ -172,6 +172,7 @@ export function getPlace(id: string): PlaceView | null {
   if (!place) return null;
 
   const zone = wasteZoneFor(place);
+  // Event dates are ISO days in Europe/Warsaw, so compare against the Warsaw day, not UTC.
   const upcoming = zone ? zoneEvents(zone.id, todayInWarsaw()) : [];
 
   const days: PickupDay[] = [];
