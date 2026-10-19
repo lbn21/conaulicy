@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { preload } from "react-dom";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { atkinsonLatin, atkinsonLatinExt } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -24,18 +24,13 @@ export const viewport: Viewport = {
 const themeScript = `(function(){var t="dark";try{var s=localStorage.getItem("theme");if(s==="dark"||s==="light"||s==="system")t=s}catch(e){}document.documentElement.setAttribute("data-theme",t)})()`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  // All four files are used on every page (the h1 is bold) and total about 40 KB.
-  for (const subset of ["latin", "latin-ext"]) {
-    for (const weight of [400, 700]) {
-      preload(
-        `/fonts/atkinson-hyperlegible-next-${subset}-${weight}-normal.woff2`,
-        { as: "font", type: "font/woff2", crossOrigin: "anonymous" },
-      );
-    }
-  }
-
   return (
-    <html lang="pl" data-theme="dark" suppressHydrationWarning>
+    <html
+      lang="pl"
+      data-theme="dark"
+      className={`${atkinsonLatin.variable} ${atkinsonLatinExt.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <script
           // biome-ignore lint/security/noDangerouslySetInnerHtml: static theme script must run before first paint
