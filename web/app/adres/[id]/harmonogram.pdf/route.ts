@@ -459,8 +459,10 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const gridTop = drawStrip(doc, root, notes, url, bandBottom + 12) + 12;
 
   // Two calendar pages of six months (2 rows × 3 tables), then the text
-  // version on page 3. Bins get the largest size at which both pages fit,
-  // the same on both; extra bins wrap to a second line instead of shrinking.
+  // version. The second calendar page is left out when none of its months
+  // has published dates. Bins get the largest size at which the calendar
+  // pages fit, the same on both; extra bins wrap to a second line instead of
+  // shrinking, and only a rare 6–7 date month pushes them below the target.
   const gridBottom = legendTop - 8;
   const compactBand: Band = {
     kicker: `Harmonogram odbioru odpadów · ${period}`,
@@ -469,9 +471,13 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     dayLine: null,
   };
   const page2Top = bandHeight(doc, compactBand) + 16;
+  const secondPage = months
+    .slice(ROWS_PER_PAGE * COLUMNS)
+    .some((key) => byMonth.has(key));
+  const pageTops = secondPage ? [gridTop, page2Top] : [gridTop];
   const fits = (candidate: Grid) => {
     const rows = gridRows(months, byMonth, candidate);
-    return [gridTop, page2Top].every(
+    return pageTops.every(
       (top, page) =>
         top +
           rowsHeight(
@@ -489,8 +495,10 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     }
   }
   const rows = gridRows(months, byMonth, g);
-  const pages = [rows.slice(0, ROWS_PER_PAGE), rows.slice(ROWS_PER_PAGE)];
-  const textPage = 3;
+  const pages = pageTops.map((_, page) =>
+    rows.slice(page * ROWS_PER_PAGE, (page + 1) * ROWS_PER_PAGE),
+  );
+  const textPage = pages.length + 1;
 
   const drawKey = (parent: PDFKit.PDFStructureElement | null) => {
     // Marked content cannot nest: when the whole key is already an artifact
@@ -564,8 +572,8 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   };
 
   // Calendar pages. A year heading sits above the first month of each year
-  // in reading order (tagged H2) and is repeated, as decoration, above the
-  // first column when a row continues a year.
+  // in reading order (tagged H2). At the top of page 2, a year carried over
+  // from page 1 is repeated, as decoration, above the first column.
   pages.forEach((pageRows, index) => {
     let y = gridTop;
     if (index > 0) {
@@ -573,13 +581,13 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       artifact(doc, () => drawBand(doc, null, compactBand));
       y = page2Top;
     }
-    for (const row of pageRows) {
+    pageRows.forEach((row, rowIndex) => {
       const top = y;
       row.months.forEach((key, column) => {
         const x = MARGIN + column * (TABLE_W + COLUMN_GAP);
         const year = key.slice(0, 4);
         const opens = key === months[0] || key.endsWith("-01");
-        if (opens || column === 0) {
+        if (opens || (index > 0 && rowIndex === 0 && column === 0)) {
           const heading = () => {
             doc
               .font("bold")
@@ -600,7 +608,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         });
       });
       y += row.height + ROW_GAP;
-    }
+    });
     // The key is tagged once, on page 1; the footer once, on the last page.
     if (index === 0) drawKey(root);
     else artifact(doc, () => drawKey(null));
