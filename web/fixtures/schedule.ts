@@ -104,12 +104,18 @@ type Source = Event["source"];
 
 const CITY_SOURCE: Source = {
   doc: "docs/data/miasto/harmonogram-2026-s1.jpg",
+  url: "https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg",
+  // docs/data/DATA-INVENTORY.md, "Checked: 18.10.2026".
+  checkedAt: "2026-10-18",
   sha256: "cd2dabc9053dc72111495a8ac4bcf1af36f0a7366af452b40806368fafaad624",
   ref: "Sektor 1, październik–grudzień 2026 oraz wielkogabarytowe",
 };
 
 const GMINA_SOURCE: Source = {
   doc: "docs/data/gmina/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+  url: "https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf",
+  // docs/data/DATA-INVENTORY.md, "Checked: 18.10.2026".
+  checkedAt: "2026-10-18",
   sha256: "139159406cbc20a5227225a428d65ee94962f55383ea0f3e235ef2d2ca760fcc",
   ref: "Lisie Jamy, Dąbrowa, Szczutków",
 };

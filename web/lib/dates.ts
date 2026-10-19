@@ -38,6 +38,18 @@ export function absoluteDay(iso: string): string {
   return `${get("weekday")}, ${get("day")} ${get("month")}`;
 }
 
+/** Full date with year, safe to render on a static page. Example: "18 października 2026". */
+export function longDate(iso: string): string {
+  return new Intl.DateTimeFormat("pl-PL", {
+    timeZone: WARSAW,
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })
+    .format(warsawNoon(iso))
+    .replace(/ r\.$/, "");
+}
+
 export type DayFace = {
   day: string;
   month: string;

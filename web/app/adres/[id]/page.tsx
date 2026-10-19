@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PickupSchedule } from "@/components/pickup-schedule";
+import { longDate } from "@/lib/dates";
 import { getPlace, listPlaces } from "@/lib/schedule";
 
 export const dynamicParams = false;
@@ -71,32 +72,35 @@ export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
 
           <PickupSchedule days={place.days} />
 
-          {!place.verified && (
-            <div className="mt-2 border-t border-border pt-6 text-text-muted">
-              <p className="max-w-prose">
+          <div className="mt-2 border-t border-border pt-6 text-text-muted">
+            {!place.verified && (
+              <p className="mb-3 max-w-prose">
                 Te daty przepisaliśmy ręcznie i nikt ich jeszcze nie sprawdził
                 drugi raz. Gdyby coś się nie zgadzało, rację ma harmonogram
                 gminy.
               </p>
-              {place.sources.map((source) => (
-                <p key={source} className="mt-3 max-w-prose">
-                  Źródło:{" "}
-                  {place.schedulePage ? (
-                    <a
-                      href={place.schedulePage}
-                      rel="noopener"
-                      className="underline decoration-2 underline-offset-4"
-                    >
-                      harmonogram gminy
-                    </a>
-                  ) : (
-                    "harmonogram gminy"
-                  )}
-                  , {source}
-                </p>
-              ))}
-            </div>
-          )}
+            )}
+            {place.sources.map((source) => (
+              <p key={source.label} className="max-w-prose">
+                Źródło:{" "}
+                {source.url ? (
+                  <a
+                    href={source.url}
+                    rel="noopener"
+                    className="underline decoration-2 underline-offset-4"
+                  >
+                    harmonogram gminy
+                  </a>
+                ) : (
+                  "harmonogram gminy"
+                )}
+                , {source.label}
+                {source.checkedAt && (
+                  <>. Stan na {longDate(source.checkedAt)}.</>
+                )}
+              </p>
+            ))}
+          </div>
         </>
       )}
 

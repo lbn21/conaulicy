@@ -24,6 +24,13 @@ export type Pickup = {
 
 export type PickupDay = { date: string; pickups: Pickup[] };
 
+export type SourceView = {
+  /** Human label, e.g. "Sektor 1, październik–grudzień 2026". */
+  label: string;
+  url: string | null;
+  checkedAt: string | null;
+};
+
 export type PlaceView = {
   id: string;
   kind: Place["kind"];
@@ -33,8 +40,7 @@ export type PlaceView = {
   zoneId: string | null;
   schedulePage: string | null;
   days: PickupDay[];
-  /** Human labels of the source documents, e.g. "Sektor 1, październik–grudzień 2026". */
-  sources: string[];
+  sources: SourceView[];
   verified: boolean;
 };
 
@@ -152,6 +158,19 @@ function schedulePageFor(place: Place): string | null {
   return (gminaId && SCHEDULE_PAGE[gminaId]) || null;
 }
 
+function sourcesOf(events: Event[]): SourceView[] {
+  const byDoc = new Map<string, SourceView>();
+  for (const { source } of events) {
+    if (byDoc.has(source.doc)) continue;
+    byDoc.set(source.doc, {
+      label: source.ref ?? source.doc.split("/").at(-1) ?? "",
+      url: source.url ?? null,
+      checkedAt: source.checkedAt ?? null,
+    });
+  }
+  return [...byDoc.values()];
+}
+
 function bySubtype(a: Event, b: Event): number {
   return SUBTYPE_ORDER.indexOf(a.subtype) - SUBTYPE_ORDER.indexOf(b.subtype);
 }
@@ -201,13 +220,7 @@ export function getPlace(id: string): PlaceView | null {
     zoneId: zone?.id ?? null,
     schedulePage: schedulePageFor(place),
     days,
-    sources: [
-      ...new Set(
-        upcoming.map(
-          (e) => e.source.ref ?? e.source.doc.split("/").at(-1) ?? "",
-        ),
-      ),
-    ],
+    sources: sourcesOf(upcoming),
     verified: upcoming.every((e) => e.verified),
   };
 }
