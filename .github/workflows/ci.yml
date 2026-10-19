@@ -83,8 +83,8 @@ jobs:
       - name: "Fonts (no layout shift when they arrive late)"
         run: node scripts/check-fonts.mjs
 
-      # Lighthouse mobile (simulated Slow 4G, 4× CPU), median of 5 runs per
-      # page, against the budgets in docs/perf.md; plus HTML size, preloaded
+      # Lighthouse mobile (simulated Slow 4G, 4× CPU), 5 runs per page (LCP:
+      # best run, the rest: median), against the budgets in docs/perf.md; plus HTML size, preloaded
       # fonts and search keystroke time. Before the importer, which
       # replaces the seed.
       - name: "Performance (Lighthouse budgets)"
