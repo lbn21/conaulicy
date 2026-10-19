@@ -1,18 +1,5 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
-import {
-  Car,
-  Flame,
-  Leaf,
-  Milk,
-  Newspaper,
-  Plug,
-  Shirt,
-  Sofa,
-  Trash2,
-  Wine,
-} from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { absoluteDay, dayFace, relativeWord, todayInWarsaw } from "@/lib/dates";
 
@@ -27,20 +14,18 @@ export type PickupDay = { date: string; pickups: Pickup[] };
 
 const HERO_COUNT = 3;
 
-type Fraction = { icon: LucideIcon; token: string };
-
-const FRACTION: Record<string, Fraction> = {
-  zmieszane: { icon: Trash2, token: "zmieszane" },
-  popiol: { icon: Flame, token: "popiol" },
-  bio: { icon: Leaf, token: "bio" },
-  papier: { icon: Newspaper, token: "papier" },
-  tworzywa: { icon: Milk, token: "plastik-metale" },
-  tworzywa_metale: { icon: Milk, token: "plastik-metale" },
-  szklo: { icon: Wine, token: "szklo" },
-  wielkogabarytowe: { icon: Sofa, token: "gabaryty" },
-  elektro: { icon: Plug, token: "gabaryty" },
-  opony: { icon: Car, token: "gabaryty" },
-  tekstylia: { icon: Shirt, token: "gabaryty" },
+const TOKEN: Record<string, string> = {
+  zmieszane: "zmieszane",
+  popiol: "popiol",
+  bio: "bio",
+  papier: "papier",
+  tworzywa: "plastik-metale",
+  tworzywa_metale: "plastik-metale",
+  szklo: "szklo",
+  wielkogabarytowe: "gabaryty",
+  elektro: "gabaryty",
+  opony: "gabaryty",
+  tekstylia: "gabaryty",
 };
 
 function subscribe(): () => void {
@@ -62,24 +47,59 @@ function spokenDay(iso: string, today: string | null): string {
   return relative ? `${relative}, ${absolute}` : absolute;
 }
 
+function shade(color: string, percent: number): string {
+  return `color-mix(in srgb, ${color} ${percent}%, black)`;
+}
+
 function WasteMark({ tone, large }: { tone: string; large: boolean }) {
-  const fraction = FRACTION[tone] ?? { icon: Trash2, token: "zmieszane" };
-  const Icon = fraction.icon;
-  const fill = `var(--waste-${fraction.token})`;
-  const border =
-    fraction.token === "zmieszane" ? "var(--waste-zmieszane-border)" : fill;
+  const token = TOKEN[tone];
+  const fill = token ? `var(--waste-${token})` : "var(--secondary)";
+  const outline =
+    token === "zmieszane" ? "var(--waste-zmieszane-border)" : "none";
+  const [width, height] = large ? [28, 40] : [20, 28];
   return (
-    <span
+    <svg
       aria-hidden="true"
-      className={`inline-flex shrink-0 items-center justify-center rounded-sm border ${large ? "size-12" : "size-10"}`}
-      style={{
-        backgroundColor: fill,
-        borderColor: border,
-        color: `var(--waste-${fraction.token}-fg)`,
-      }}
+      width={width}
+      height={height}
+      viewBox="0 0 28 40"
+      className="shrink-0"
+      stroke={outline}
+      strokeWidth="1.2"
+      strokeLinejoin="round"
     >
-      <Icon aria-hidden="true" size={large ? 32 : 24} />
-    </span>
+      <rect
+        x="1.5"
+        y="6"
+        width="7"
+        height="3"
+        rx="1.5"
+        fill={shade(fill, 60)}
+      />
+      <path
+        fill={fill}
+        d="M5.5 12h19l-2.3 22.3a2 2 0 0 1-2 1.7H8.6a2 2 0 0 1-2-1.7z"
+      />
+      <path
+        fill={shade(fill, 78)}
+        stroke="none"
+        d="M5.7 13.5h18.6l.2-1.5h-19z"
+      />
+      <path
+        fill={shade(fill, 82)}
+        d="M4 9.5A2.5 2.5 0 0 1 6.5 7h17A2.5 2.5 0 0 1 26 9.5V12H4z"
+      />
+      <rect
+        x="17"
+        y="35"
+        width="4"
+        height="3.5"
+        rx="1"
+        fill={shade(fill, 60)}
+      />
+      <circle cx="9" cy="34.5" r="4.5" fill={shade(fill, 45)} />
+      <circle cx="9" cy="34.5" r="1.6" fill={fill} stroke="none" />
+    </svg>
   );
 }
 
