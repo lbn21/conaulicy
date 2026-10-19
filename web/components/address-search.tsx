@@ -126,7 +126,7 @@ export function AddressSearch() {
     message = "Błąd: coś nie zadziałało po naszej stronie. Spróbuj za chwilę.";
   } else if (status === "done" && hits.length === 0) {
     message =
-      "Nie mamy jeszcze tej ulicy ani wsi. Na razie znamy tylko kilka adresów – są niżej.";
+      "Nie mamy jeszcze tej ulicy ani wsi. Sprawdź przykładowe adresy poniżej.";
   } else if (status === "done" && expanded) {
     message = `${addresses(hits.length)}. Wybierz strzałkami i Enterem albo dotknij.`;
   }
