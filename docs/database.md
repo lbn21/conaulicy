@@ -1,37 +1,37 @@
-# Database branches
+# Database
 
-One Neon project (Vercel Marketplace, free plan, fra1), two branches:
+One Neon project (Vercel Marketplace, free plan, fra1) and, for now, **one shared database: the Neon branch `main`** (endpoint `ep-snowy-cherry-b9v656vm`). The separate `preview` branch from docs/import-plan.md section 1 was abandoned; Jakub deletes it.
 
-| Environment | Neon branch | Env vars |
+| Environment | Database | Env vars |
 |---|---|---|
-| Production | `main` | from the Vercel–Neon integration (scoped to Production + Development) |
-| Development (`vercel env pull`, `vercel env run -e development`) | `main` | same integration vars |
-| Preview (every non-`main` git branch) | `preview`, child of `main` | manual, sensitive `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED` (direct), Preview only |
-| CI (GitHub Actions) | none: throwaway `postgres:17` service, migrated and seeded per run | in `.github/workflows/ci.yml`, no secrets |
+| Production | Neon `main` | from the Vercel–Neon integration |
+| Preview (every non-`main` git branch) | Neon `main`, the same data as production | same integration vars |
+| Development (`vercel env pull`, `web/.env.local`) | Neon `main` | same integration vars |
+| CI (GitHub Actions) | throwaway `postgres:17` service, migrated and seeded per run | in `.github/workflows/ci.yml`, no secrets |
 
 Vercel "Preview Branching" (one Neon branch per deployment) stays off: the free plan allows 10 branches.
 
-Development points at `main`, the production data, so run writes (`db:migrate`, `db:seed`, imports) with `vercel env run -e preview` first and only then with `-e production`.
+So every environment reads and writes production data. Previews only read; anything that writes (`db:migrate`, `db:seed`, `db:import --apply`) changes the live site:
+
+- Never run `npm run db:seed` against Neon: it replaces everything with the fake test data.
+- `db:import` refuses `--apply` on this endpoint unless `--yes-production` is passed (it compares the target with the integration's `PGHOST`).
+- Before a write, back up with `pg_dump -Fc` (Docker `postgres:17`; the Mac has no local `pg_dump`) to `~/.conaulicy-secret/backups/`. Neon's free plan also keeps 6 hours of restore history.
+
+Don't use `vercel env run` (Vercel CLI 64.5): it hands the command back to its own parser, so `vercel env run -e production -- node -e …` started a `vercel deploy` of the working tree (rejected only by luck). Use `web/.env.local` instead.
 
 ## Schema changes
 
-```sh
-cd web
-vercel env run -e preview --scope gdzie-zamieszkac -- npm run db:migrate      # check a preview deployment
-vercel env run -e production --scope gdzie-zamieszkac -- npm run db:migrate
-```
-
-## Reset preview from its parent
-
-This makes `preview` an exact copy of `main` again (schema and data). Whatever was only on `preview` is lost. Connection strings stay the same, so the Vercel env vars need no change.
-
-Neon Console (Vercel → Storage → conaulicy → Open in Neon) → Branches → `preview` → **Reset from parent** → confirm. See [Reset from parent](https://neon.com/docs/guides/reset-from-parent).
-
-Then, to show test data again instead of production data:
+Migrations only add what the code about to be deployed needs, and run before that deploy:
 
 ```sh
 cd web
-vercel env run -e preview --scope gdzie-zamieszkac -- npm run db:seed
+npm run db:migrate      # reads web/.env.local (Neon main)
 ```
 
-Cached pages on preview deployments refresh within an hour, or redeploy the preview.
+## Testing data changes without touching production
+
+Use a throwaway local Postgres (Docker `postgres:17`) with `DATABASE_URL` pointing at it, then `db:migrate`, `db:seed` and `db:import`, exactly as CI does (`scripts/check-import.mjs`).
+
+## If a separate preview database is wanted later
+
+Create a child branch of `main` in the Neon Console (Vercel → Storage → conaulicy → Open in Neon → Branches), give Preview its own sensitive `DATABASE_URL` / `DATABASE_URL_UNPOOLED`, and scope the integration to Production + Development. "Reset from parent" in the Neon Console then refreshes it from `main`.

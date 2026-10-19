@@ -10,6 +10,8 @@ Hard rule (CLAUDE.md): every item shown has a source link and a last-checked dat
 - Both `gminy.scheduleUrl` pages used in seed.ts return HTTP 200.
 
 ## 1. Neon: split preview and production (FREE plan)
+> **Abandoned 2026-10-19.** All environments share Neon `main`; see `docs/database.md`. Also, `vercel env run` in Vercel CLI 64.5 is unsafe (it re-parses the command as a Vercel command), so the commands below that use it are replaced by `web/.env.local` plus `--yes-production`.
+
 Free-plan limits ([Neon plans](https://neon.com/docs/introduction/plans)): **10 branches/project, no extra branches on Free** ("Branch creation fails once you reach 10"), 100 CU-h/project/month (all computes in the project count), 1 GB storage/project, scale-to-zero after 5 min (cannot be disabled), 6 h restore history, 1 manual snapshot.
 
 **Do NOT enable Vercel "Preview Branching"** ([Vercel-managed integration](https://neon.com/docs/guides/vercel-managed-integration)): it creates one `preview/<git-branch>` Neon branch per preview deployment and deletes it only when the deployment is removed (Vercel keeps previews 6 months by default). On Free we would hit 10 branches quickly; with "Resource must be active before deployment" on, previews then fail. It also needs migrate+seed in every build.
