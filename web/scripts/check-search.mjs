@@ -1,7 +1,10 @@
 // Checks the address search on the home page at 360px and 1280px: the result
 // popup overlays the page (nothing below the field moves while it loads,
 // lists results, says "Brak wyników" or closes) and follows the APG combobox
-// keyboard model. Run after `next build`; needs Playwright's Chromium.
+// keyboard model. Matching runs on the device: the index loads once, on
+// focus, and typing makes no request. Also: "ul" alone asks for a name,
+// /?q= fills and focuses the field, and /api/search answers when the index
+// cannot load. Run after `next build`; needs Playwright's Chromium.
 import { chromium } from "playwright";
 import { startServer } from "./lib/server.mjs";
 
@@ -20,10 +23,16 @@ try {
       viewport: { width, height: 800 },
       reducedMotion: "reduce",
     });
-    // Slow the API down a little so the loading state is visible.
-    await page.route("**/api/search**", async (route) => {
+    // Slow the index down a little so the loading state is visible.
+    const requests = { index: 0, search: 0 };
+    await page.route("**/api/search-index/**", async (route) => {
+      requests.index += 1;
       await new Promise((resolve) => setTimeout(resolve, 1500));
       await route.continue();
+    });
+    await page.route("**/api/search?**", (route) => {
+      requests.search += 1;
+      return route.continue();
     });
     // Typing before hydration would be lost, so wait for the scripts.
     await page.goto(`${server.origin}/`, { waitUntil: "networkidle" });
@@ -141,6 +150,17 @@ try {
 
     await input.focus();
     await page.getByRole("option").first().waitFor();
+
+    await input.fill("ul.");
+    await note("Wpisz nazwę ulicy").waitFor();
+    await same("only ul.");
+    await input.fill("");
+    await input.pressSequentially("slowac", { delay: 50 });
+    await page.getByRole("option").first().waitFor();
+    check(
+      requests.index === 1 && requests.search === 0,
+      `${label}: expected 1 index request and no /api/search, got ${requests.index} and ${requests.search}`,
+    );
     await input.press("Tab");
     check(
       !(await input.evaluate((el) => el === document.activeElement)) &&
@@ -156,6 +176,36 @@ try {
     console.log(`${label}: layout shift ${shift}`);
     await page.close();
   }
+
+  // "Zmień adres" on a street page: /?q=<name> fills and focuses the field.
+  const page = await browser.newPage({ viewport: { width: 360, height: 800 } });
+  await page.goto(
+    `${server.origin}/?q=${encodeURIComponent("ul. Adama Asnyka")}`,
+    {
+      waitUntil: "networkidle",
+    },
+  );
+  const input = page.getByRole("combobox");
+  await page.getByRole("option").first().waitFor();
+  check(
+    (await input.inputValue()) === "ul. Adama Asnyka" &&
+      (await input.evaluate((el) => el === document.activeElement)),
+    "/?q=: field not filled and focused",
+  );
+  await page.close();
+
+  // No index (blocked or broken): the server answers instead.
+  const fallback = await browser.newPage();
+  await fallback.route("**/api/search-index/**", (route) =>
+    route.fulfill({ status: 500, body: "" }),
+  );
+  await fallback.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+  await fallback.getByRole("combobox").pressSequentially("asnyka");
+  await fallback
+    .getByRole("option", { name: /Asnyka/ })
+    .waitFor({ timeout: 5000 })
+    .catch(() => check(false, "fallback: /api/search did not answer"));
+  await fallback.close();
 } finally {
   await browser.close();
   server.stop();
