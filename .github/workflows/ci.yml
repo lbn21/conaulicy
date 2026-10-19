@@ -80,6 +80,9 @@ jobs:
       - name: Search popup (no layout shift, combobox keys)
         run: node scripts/check-search.mjs
 
+      - name: "Fonts (no layout shift when they arrive late)"
+        run: node scripts/check-fonts.mjs
+
       # Last: it replaces the seed with a made-up import. Its schedules come
       # from a local server, so the source check needs no internet.
       - name: "Importer (synthetic dataset: dry run, apply, guards)"

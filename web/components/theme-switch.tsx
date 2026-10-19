@@ -81,9 +81,18 @@ export function ThemeSwitch() {
       className="inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center gap-2 rounded-sm sm:px-3"
     >
       <Icon aria-hidden="true" size={24} />
-      {/* Matches the accessible name, so voice control users can say what they see. */}
-      <span aria-hidden="true" className="hidden sm:inline">
-        Wygląd strony: {label}
+      {/* Matches the accessible name, so voice control users can say what they see.
+          All labels share one grid cell, so the button keeps the widest one's
+          width when the stored theme replaces the server's "Ciemny". */}
+      <span aria-hidden="true" className="hidden sm:inline-grid">
+        {ORDER.map((option) => (
+          <span
+            key={option}
+            className={`col-start-1 row-start-1 ${option === theme ? "" : "invisible"}`}
+          >
+            Wygląd strony: {LABEL[option]}
+          </span>
+        ))}
       </span>
       <span aria-live="polite" className="sr-only">
         {label}
