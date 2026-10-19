@@ -115,7 +115,6 @@ function DayBlock({
   const relative = today ? relativeWord(day.date, today) : null;
   const face = dayFace(day.date);
   const putOutBy = day.pickups.find((p) => p.putOutBy)?.putOutBy;
-  const Heading = prominent || today === null ? "h2" : "h3";
   return (
     <li
       className={
@@ -124,7 +123,7 @@ function DayBlock({
           : "border-t border-border py-4"
       }
     >
-      <Heading className={prominent ? "font-bold" : "text-xl font-bold"}>
+      <h3 className={prominent ? "font-bold" : "text-xl font-bold"}>
         <time dateTime={day.date}>
           {prominent ? (
             <>
@@ -151,7 +150,7 @@ function DayBlock({
             spokenDay(day.date, today)
           )}
         </time>
-      </Heading>
+      </h3>
       {putOutBy && (
         <p className="mt-2 text-text-muted">
           Wystaw przed posesję do godziny {hour(putOutBy)}.
@@ -195,7 +194,10 @@ export function PickupSchedule({ days }: { days: PickupDay[] }) {
 
   return (
     <div className="mt-8">
-      <ol aria-label="Najbliższe odbiory" className="flex flex-col gap-4">
+      <h2 id="pickups-heading" className="sr-only">
+        Najbliższe odbiory
+      </h2>
+      <ol aria-labelledby="pickups-heading" className="flex flex-col gap-4">
         {hero.map((day, index) => (
           <DayBlock
             key={day.date}
