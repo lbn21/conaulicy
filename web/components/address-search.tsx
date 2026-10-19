@@ -8,9 +8,12 @@ import {
   useRef,
   useState,
 } from "react";
+import { withHouseNumber } from "@/lib/house";
 import {
+  findPlaces,
   type Matcher,
   matcher,
+  placeHref,
   SEARCH_ID,
   type SearchHit,
   type SearchIndex,
@@ -78,30 +81,31 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
 
   const q = query.trim();
   const terms = searchTerms(q);
-  const termsKey = terms.join(" ");
+  // Fallback key: the query with the words that matter (and any number).
+  const remoteKey = terms.length > 0 ? q.replace(/\s+/g, " ") : "";
 
   // Fallback only: without the index, ask the server once typing settles.
   useEffect(() => {
-    if (!indexFailed || !termsKey) return;
+    if (!indexFailed || !remoteKey) return;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(
-          `/api/search?q=${encodeURIComponent(termsKey)}`,
+          `/api/search?q=${encodeURIComponent(remoteKey)}`,
           { signal: controller.signal },
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setRemote({ for: termsKey, hits: await res.json(), failed: false });
+        setRemote({ for: remoteKey, hits: await res.json(), failed: false });
       } catch {
         if (controller.signal.aborted) return;
-        setRemote({ for: termsKey, hits: [], failed: true });
+        setRemote({ for: remoteKey, hits: [], failed: true });
       }
     }, 250);
     return () => {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [indexFailed, termsKey]);
+  }, [indexFailed, remoteKey]);
 
   let hits: SearchHit[] = [];
   let status: Status;
@@ -110,9 +114,9 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
   } else if (terms.length === 0) {
     status = "hint";
   } else if (match) {
-    hits = match(terms);
+    hits = findPlaces(match, q);
     status = "done";
-  } else if (indexFailed && remote?.for === termsKey) {
+  } else if (indexFailed && remote?.for === remoteKey) {
     hits = remote.hits;
     status = remote.failed ? "error" : "done";
   } else {
@@ -146,7 +150,7 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
 
   function go(hit: SearchHit) {
     setOpen(false);
-    window.location.assign(`/adres/${encodeURIComponent(hit.id)}`);
+    window.location.assign(placeHref(hit));
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -220,8 +224,8 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
           Twoja ulica albo wieś
         </label>
         <p id={hintId} className="text-text-muted">
-          Ulica w Lubaczowie albo wieś, np. Lisie Jamy. Polskie znaki nie są
-          potrzebne.
+          Ulica w Lubaczowie albo wieś, np. Lisie Jamy. Numer domu możesz
+          dopisać: Asnyka 12. Polskie znaki nie są potrzebne.
         </p>
         <div className="relative mt-1">
           <svg
@@ -309,7 +313,7 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
                   onClick={() => go(hit)}
                   className="flex min-h-12 cursor-pointer items-center px-4 py-2 aria-selected:bg-surface-2 aria-selected:shadow-[inset_4px_0_0_var(--accent)]"
                 >
-                  {hit.label}
+                  {withHouseNumber(hit.label, hit.nr ?? null)}
                 </div>
               ))}
             </div>

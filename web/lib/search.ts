@@ -2,9 +2,15 @@
 // (client, over the index from /api/search-index). Every place's search text
 // is normalize(label), as the importer stores it in the database.
 
+import { readings } from "./house.ts";
 import { normalize } from "./normalize.ts";
 
-export type SearchHit = { id: string; label: string };
+export type SearchHit = {
+  id: string;
+  label: string;
+  /** House number read from the query ("Asnyka 12"), for ?nr=. */
+  nr?: string | null;
+};
 
 /** What /api/search-index serves: [id, label] per searchable place. */
 export type SearchIndex = Array<[id: string, label: string]>;
@@ -45,4 +51,23 @@ export function matcher(index: SearchIndex): Matcher {
           .map(({ hit }) => hit)
           .sort(byLabel)
           .slice(0, SEARCH_LIMIT);
+}
+
+/**
+ * Places for q, with the house number if it has one: the first reading of q
+ * (lib/house.ts) that finds anything.
+ */
+export function findPlaces(match: Matcher, q: string): SearchHit[] {
+  for (const { text, nr } of readings(q)) {
+    const hits = match(searchTerms(text));
+    if (hits.length > 0) return nr ? hits.map((hit) => ({ ...hit, nr })) : hits;
+  }
+  return [];
+}
+
+/** Where a hit links to: the place, and its house number if given. */
+export function placeHref(hit: SearchHit): string {
+  const path = `/adres/${encodeURIComponent(hit.id)}`;
+  // A valid number is only digits, a-z and "/", all fine in a query.
+  return hit.nr ? `${path}?nr=${hit.nr}` : path;
 }

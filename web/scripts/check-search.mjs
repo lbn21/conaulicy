@@ -4,7 +4,10 @@
 // keyboard model. Matching runs on the device: the index loads once, on
 // focus, and typing makes no request. Also: "ul" alone asks for a name,
 // "Zmień adres" on a street page lands on an empty, focused field with the
-// list closed, and /api/search answers when the index cannot load. Run after `next build`; needs Playwright's Chromium.
+// list closed, /api/search answers when the index cannot load, and a house
+// number ("kosciuszki 7a") reaches the street page, which picks the part of
+// a split street by it, or asks for it (also without JS). Run after
+// `next build`; needs Playwright's Chromium.
 import { chromium } from "playwright";
 import { startServer } from "./lib/server.mjs";
 
@@ -212,6 +215,68 @@ try {
   );
   check(state.shift === 0, `Zmień adres: layout shift ${state.shift}`);
   await page.close();
+
+  // A house number: typed after the street, carried to the page.
+  const house = await browser.newPage({
+    viewport: { width: 360, height: 800 },
+  });
+  await house.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+  await house.getByRole("combobox").pressSequentially("kosciuszki 7A");
+  const option = house.getByRole("option").first();
+  await option.waitFor();
+  check(
+    (await option.textContent()) === "ul. Tadeusza Kościuszki 7a, Lubaczów",
+    `house number: option reads "${await option.textContent()}"`,
+  );
+  await house.getByRole("combobox").press("Enter");
+  await house.waitForURL(`${server.origin}/adres/0972447-90004?nr=7a`);
+  const heading = await house.locator("h1").textContent();
+  const sector = await house.locator('a[href^="/ics/"]').getAttribute("href");
+  check(
+    heading === "ul. Tadeusza Kościuszki 7a" &&
+      sector === "/ics/waste%3Amiasto-s2",
+    `house number: heading "${heading}", calendar ${sector} (odd: sektor 2)`,
+  );
+  check(
+    (await house.getByRole("link", { name: /PDF/ }).getAttribute("href")) ===
+      "/adres/0972447-90004/harmonogram.pdf?nr=7a",
+    "house number: PDF link without ?nr=",
+  );
+  await house.close();
+
+  // A split street without a number asks for it, with no JS at all.
+  const plain = await browser.newContext({ javaScriptEnabled: false });
+  const ask = await plain.newPage();
+  await ask.goto(`${server.origin}/adres/0972447-90004`);
+  check(
+    (await ask.locator('a[href^="/ics/"]').count()) === 0,
+    "split street: a calendar link before the number is known",
+  );
+  await ask.getByLabel("Jaki jest numer domu?").fill("12");
+  await ask.getByRole("button", { name: "Pokaż odbiory" }).click();
+  await ask.waitForURL(`${server.origin}/adres/0972447-90004?nr=12`);
+  check(
+    (await ask.locator('a[href^="/ics/"]').getAttribute("href")) ===
+      "/ics/waste%3Amiasto-s1",
+    "split street: 12 (even) not in sektor 1",
+  );
+  await ask.goto(`${server.origin}/adres/0972447-90004?nr=42`);
+  check(
+    (await ask.getByText("Numeru 42 nie ma").count()) === 1,
+    "split street: no note for a number outside every range",
+  );
+  await ask.goto(`${server.origin}/adres/0972447-00470?nr=bzdura`);
+  check(
+    (await ask.locator("h1").textContent()) === "ul. Adama Asnyka",
+    "invalid nr: not ignored",
+  );
+  await plain.close();
+
+  // A page with a number is cached like the plain one (ISR, not dynamic).
+  const url = `${server.origin}/adres/0972447-00470?nr=12`;
+  await fetch(url);
+  const cached = (await fetch(url)).headers.get("x-nextjs-cache");
+  check(cached === "HIT", `?nr= page not cached (x-nextjs-cache: ${cached})`);
 
   // No index (blocked or broken): the server answers instead.
   const fallback = await browser.newPage();

@@ -18,6 +18,26 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  // A house number in the query (?nr=12a, ?nr=7/22) keeps the street page
+  // cached: it becomes a path. Anything else in nr is left out, and the
+  // plain page shows the street as it is.
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source: "/adres/:id",
+          has: [
+            {
+              type: "query",
+              key: "nr",
+              value: "(?<nr>\\d{1,4}[a-zA-Z]?(?:/\\d{1,4}[a-zA-Z]?)?)",
+            },
+          ],
+          destination: "/adres/:id/nr/:nr",
+        },
+      ],
+    };
+  },
   async headers() {
     return [
       {

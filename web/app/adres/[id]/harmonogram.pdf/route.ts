@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { longDate, monthTitle, weekdayShort } from "@/lib/date-labels";
 import { absoluteDay } from "@/lib/dates";
 import { cacheControl } from "@/lib/gate";
+import { withHouseNumber } from "@/lib/house";
 import { normalize } from "@/lib/normalize";
 import {
   getPlace,
@@ -1127,11 +1128,16 @@ function slug(text: string): string {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
   const { id } = await ctx.params;
-  const place = await getPlace(id);
+  const found = await getPlace(id, new URL(request.url).searchParams.get("nr"));
+  // With a house number: in the title, the file name and the printed link.
+  const place = found && {
+    ...found,
+    label: withHouseNumber(found.label, found.nr),
+  };
   if (!place || place.days.length === 0) {
     return new Response("Nie mamy harmonogramu dla tego adresu.", {
       status: 404,
@@ -1142,7 +1148,10 @@ export async function GET(
     });
   }
 
-  const pdf = await render(place, `${SITE_URL}/adres/${place.id}`);
+  const pdf = await render(
+    place,
+    `${SITE_URL}/adres/${place.id}${place.nr ? `?nr=${place.nr}` : ""}`,
+  );
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",

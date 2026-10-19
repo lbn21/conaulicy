@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { matcher, type SearchIndex, searchTerms } from "./search.ts";
+import {
+  findPlaces,
+  matcher,
+  placeHref,
+  type SearchIndex,
+  searchTerms,
+} from "./search.ts";
 
 const INDEX: SearchIndex = [
   ["s1", "ul. Adama Asnyka, Lubaczów"],
@@ -37,4 +43,28 @@ test("at most 8 places, in Polish alphabetical order", () => {
   assert.equal(hits.length, 8);
   assert.equal(hits[0].label, "Lasek");
   assert.equal(hits[1].label, "Łąka 01");
+});
+
+test("a house number rides along with the place", () => {
+  const match = matcher(INDEX);
+  assert.deepEqual(findPlaces(match, "Asnyka 12"), [
+    { id: "s1", label: "ul. Adama Asnyka, Lubaczów", nr: "12" },
+  ]);
+  assert.deepEqual(
+    findPlaces(match, "12A asnyka").map((hit) => hit.nr),
+    ["12a"],
+  );
+  assert.deepEqual(
+    findPlaces(match, "ul. Słowackiego 7/22").map((hit) => hit.nr),
+    ["7/22"],
+  );
+  assert.deepEqual(findPlaces(match, "Asnyka"), [
+    { id: "s1", label: "ul. Adama Asnyka, Lubaczów" },
+  ]);
+  assert.deepEqual(findPlaces(match, "ul 12"), []);
+  assert.equal(
+    placeHref({ id: "s1", label: "", nr: "7/22" }),
+    "/adres/s1?nr=7/22",
+  );
+  assert.equal(placeHref({ id: "s1", label: "" }), "/adres/s1");
 });

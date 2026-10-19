@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  isSplitStreet,
   localitySearchLabel,
   pickZone,
   scheduleName,
@@ -82,4 +83,36 @@ test("a schedule link names who publishes it", () => {
     "harmonogram Urzędu Gminy Lubaczów",
   );
   assert.equal(scheduleName("Oleszyce (gmina)"), "harmonogram gminy Oleszyce");
+});
+
+test("pickZone: a split street needs the house number", () => {
+  const even = {
+    zoneId: "z-even",
+    localityId: "L",
+    streetId: "L-1",
+    houseFrom: null,
+    houseTo: null,
+    parity: "even" as const,
+  };
+  const odd = { ...even, zoneId: "z-odd", parity: "odd" as const };
+  const lowOdd = { ...odd, zoneId: "z-low", houseTo: "9" };
+  const town = { zoneId: "z-town", localityId: "L", streetId: null };
+  const street = { localityId: "L", parentId: null, streetId: "L-1" };
+
+  assert.equal(isSplitStreet([even, odd], street), true);
+  assert.equal(isSplitStreet([town], street), false);
+  // No number: no guess, not even the town's zone.
+  assert.equal(pickZone([even, odd, town], street), null);
+  assert.equal(pickZone([even, odd], { ...street, nr: "12a" }), "z-even");
+  assert.equal(pickZone([even, odd], { ...street, nr: "7/22" }), "z-odd");
+  // A range with a bound: odd numbers up to 9.
+  assert.equal(pickZone([lowOdd, even], { ...street, nr: "7" }), "z-low");
+  // Not covered by any range: the town's zone, if there is one.
+  assert.equal(
+    pickZone([lowOdd, even, town], { ...street, nr: "11" }),
+    "z-town",
+  );
+  assert.equal(pickZone([lowOdd, even], { ...street, nr: "11" }), null);
+  // A number on a street that is not split changes nothing.
+  assert.equal(pickZone([town], { ...street, nr: "12" }), "z-town");
 });
