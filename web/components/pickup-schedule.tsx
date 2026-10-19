@@ -69,7 +69,7 @@ function WasteMark({ tone, large }: { tone: string; large: boolean }) {
   const fill = token ? `var(--waste-${token})` : "var(--secondary)";
   const outline =
     token && OUTLINED.has(token) ? `var(--waste-${token}-border)` : "none";
-  const [width, height] = large ? [34, 48] : [23, 32];
+  const [width, height] = large ? [34, 48] : [28, 40];
   return (
     <svg
       aria-hidden="true"
