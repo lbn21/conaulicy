@@ -1,7 +1,37 @@
 import "server-only";
-import { events, gminy, localities, streets, zones } from "@/fixtures/schedule";
-import type { Event, Zone } from "@/lib/data-model";
+import {
+  and,
+  asc,
+  eq,
+  gte,
+  isNull,
+  like,
+  notExists,
+  or,
+  type SQL,
+} from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
+import { unstable_cache } from "next/cache";
 import { todayInWarsaw } from "@/lib/dates";
+import {
+  db,
+  events,
+  gminy,
+  localities,
+  meta,
+  streets,
+  zoneMembers,
+  zones,
+} from "@/lib/db";
+import { normalize } from "@/lib/normalize";
+
+// Every read goes through Next's data cache, tagged DATASET: a traffic spike
+// hits the cache, not Neon. After an import, POST /api/revalidate purges the
+// tag. The hourly revalidate is only a safety net.
+export const DATASET = "dataset";
+const CACHE = { tags: [DATASET], revalidate: 3600 };
+
+export type ZoneEvent = typeof events.$inferSelect;
 
 export type SearchHit = { id: string; label: string };
 
@@ -11,6 +41,8 @@ type Place = {
   name: string;
   label: string;
   area: string;
+  gmina: string;
+  schedulePage: string | null;
   localityId: string;
   streetId?: string;
 };
@@ -65,185 +97,266 @@ const SUBTYPE_ORDER = [
   "tekstylia",
 ];
 
-/** Official schedule page per gmina, from docs/data/DATA-INVENTORY.md. */
-const SCHEDULE_PAGE: Record<string, string> = {
-  "1809011":
-    "https://czystylubaczow.info/odbior-odpadow/harmonogram-odbioru-odpadow/",
-  "1809042":
-    "https://www.gminalubaczow.pl/2026/01/02/harmonogram-odbioru-odpadow-komunalnych-na-rok-2026/",
-};
-
-const DIACRITICS: Record<string, string> = {
-  ą: "a",
-  ć: "c",
-  ę: "e",
-  ł: "l",
-  ń: "n",
-  ó: "o",
-  ś: "s",
-  ź: "z",
-  ż: "z",
-};
-
-export function normalize(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[ąćęłńóśźż]/g, (ch) => DIACRITICS[ch])
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-function gminaShortName(gminaId: string): string {
-  const name = gminy.find((g) => g.id === gminaId)?.name ?? "";
+function gminaShortName(name: string): string {
   return name.replace(/\s*\(.*\)$/, "");
 }
 
-const places: Place[] = [
-  ...streets.map((street): Place => {
-    const city = localities.find((l) => l.id === street.localityId);
-    const name = `${street.prefix} ${street.name}`;
-    return {
-      id: street.id,
-      kind: "ulica",
-      name,
-      label: `${name}, ${city?.name ?? ""}`,
-      area: city?.name ?? "",
-      localityId: street.localityId,
-      streetId: street.id,
-    };
-  }),
-  ...localities
-    .filter((l) => l.kind !== "miasto")
-    .map((village): Place => {
-      const gmina = gminaShortName(village.gminaId);
-      return {
-        id: village.id,
-        kind: "wies",
-        name: village.name,
-        label: `${village.name} (gm. ${gmina})`,
-        area: `gmina ${gmina}`,
-        localityId: village.id,
-      };
-    }),
-];
+// "ul. Asnyka" and "ulica Asnyka" find the same street.
+const IGNORED_TERMS = new Set(["ul", "ulica"]);
 
-const searchIndex = places.map((place) => ({
-  place,
-  haystack: normalize(place.label),
-}));
+const searchTerms = (q: string) =>
+  normalize(q)
+    .split(" ")
+    .filter((term) => term && !IGNORED_TERMS.has(term));
 
-export function listPlaces(): SearchHit[] {
-  return places.map(({ id, label }) => ({ id, label }));
-}
+const matchAll = (column: AnyPgColumn, terms: string[]) =>
+  and(...terms.map((term) => like(column, `%${term}%`)));
 
-export function search(q: string): SearchHit[] {
-  const terms = normalize(q).split(" ").filter(Boolean);
-  if (terms.length === 0) return [];
-  return searchIndex
-    .filter(({ haystack }) => terms.every((term) => haystack.includes(term)))
-    .slice(0, 8)
-    .map(({ place }) => ({ id: place.id, label: place.label }));
-}
-
-function wasteZoneFor(place: Place): Zone | undefined {
-  return zones.find(
-    (zone) =>
-      zone.type === "waste" &&
-      zone.members.some((m) =>
-        m.streetId
-          ? m.streetId === place.streetId
-          : m.localityId === place.localityId,
-      ),
+// A locality is a place of its own only when it has no streets (a village);
+// otherwise its streets are the places.
+const withoutStreets = () =>
+  notExists(
+    db()
+      .select({ id: streets.id })
+      .from(streets)
+      .where(eq(streets.localityId, localities.id)),
   );
+
+const streetPlaces = (where: SQL | undefined, limit: number) =>
+  db()
+    .select({
+      id: streets.id,
+      prefix: streets.prefix,
+      name: streets.name,
+      localityId: streets.localityId,
+      locality: localities.name,
+      gmina: gminy.name,
+      scheduleUrl: gminy.scheduleUrl,
+    })
+    .from(streets)
+    .innerJoin(localities, eq(localities.id, streets.localityId))
+    .innerJoin(gminy, eq(gminy.id, localities.gminaId))
+    .where(where)
+    .orderBy(asc(streets.search))
+    .limit(limit);
+
+const villagePlaces = (where: SQL | undefined, limit: number) =>
+  db()
+    .select({
+      id: localities.id,
+      name: localities.name,
+      gmina: gminy.name,
+      scheduleUrl: gminy.scheduleUrl,
+    })
+    .from(localities)
+    .innerJoin(gminy, eq(gminy.id, localities.gminaId))
+    .where(and(withoutStreets(), where))
+    .orderBy(asc(localities.search))
+    .limit(limit);
+
+type StreetRow = Awaited<ReturnType<typeof streetPlaces>>[number];
+type VillageRow = Awaited<ReturnType<typeof villagePlaces>>[number];
+
+function streetPlace(row: StreetRow): Place {
+  const name = `${row.prefix} ${row.name}`;
+  return {
+    id: row.id,
+    kind: "ulica",
+    name,
+    label: `${name}, ${row.locality}`,
+    area: row.locality,
+    gmina: row.gmina,
+    schedulePage: row.scheduleUrl,
+    localityId: row.localityId,
+    streetId: row.id,
+  };
 }
 
-function gminaIdOf(place: Place): string | undefined {
-  return localities.find((l) => l.id === place.localityId)?.gminaId;
+function villagePlace(row: VillageRow): Place {
+  const gmina = gminaShortName(row.gmina);
+  return {
+    id: row.id,
+    kind: "wies",
+    name: row.name,
+    label: `${row.name} (gm. ${gmina})`,
+    area: `gmina ${gmina}`,
+    gmina: row.gmina,
+    schedulePage: row.scheduleUrl,
+    localityId: row.id,
+  };
 }
 
-function schedulePageFor(place: Place): string | null {
-  const gminaId = gminaIdOf(place);
-  return (gminaId && SCHEDULE_PAGE[gminaId]) || null;
+const hits = (places: Place[], limit: number): SearchHit[] =>
+  places
+    .sort((a, b) => a.label.localeCompare(b.label, "pl"))
+    .slice(0, limit)
+    .map(({ id, label }) => ({ id, label }));
+
+const searchCached = unstable_cache(
+  async (terms: string[]): Promise<SearchHit[]> => {
+    const [streetRows, villageRows] = await Promise.all([
+      streetPlaces(matchAll(streets.search, terms), 8),
+      villagePlaces(matchAll(localities.search, terms), 8),
+    ]);
+    return hits(
+      [...streetRows.map(streetPlace), ...villageRows.map(villagePlace)],
+      8,
+    );
+  },
+  ["search"],
+  CACHE,
+);
+
+/** At most 8 places matching every word of q; never the whole index. */
+export async function search(q: string): Promise<SearchHit[]> {
+  const terms = searchTerms(q);
+  return terms.length === 0 ? [] : searchCached(terms);
 }
 
-function sourcesOf(events: Event[]): SourceView[] {
+/** A few addresses for the home page. */
+export const examplePlaces = unstable_cache(
+  async (limit: number): Promise<SearchHit[]> => {
+    const [streetRows, villageRows] = await Promise.all([
+      streetPlaces(undefined, limit),
+      villagePlaces(undefined, limit),
+    ]);
+    return hits(
+      [...streetRows.map(streetPlace), ...villageRows.map(villagePlace)],
+      limit,
+    );
+  },
+  ["example-places"],
+  CACHE,
+);
+
+export const isTestData = unstable_cache(
+  async (): Promise<boolean> => {
+    const [row] = await db()
+      .select({ value: meta.value })
+      .from(meta)
+      .where(eq(meta.key, "testData"));
+    return row?.value === true;
+  },
+  ["test-data"],
+  CACHE,
+);
+
+async function findPlace(id: string): Promise<Place | null> {
+  const [street] = await streetPlaces(eq(streets.id, id), 1);
+  if (street) return streetPlace(street);
+  const [village] = await villagePlaces(eq(localities.id, id), 1);
+  return village ? villagePlace(village) : null;
+}
+
+async function wasteZoneFor(place: Place) {
+  const sameLocality = and(
+    isNull(zoneMembers.streetId),
+    eq(zoneMembers.localityId, place.localityId),
+  );
+  const [zone] = await db()
+    .select({ id: zones.id })
+    .from(zoneMembers)
+    .innerJoin(zones, eq(zones.id, zoneMembers.zoneId))
+    .where(
+      and(
+        eq(zones.type, "waste"),
+        place.streetId
+          ? or(eq(zoneMembers.streetId, place.streetId), sameLocality)
+          : sameLocality,
+      ),
+    )
+    // A street's own entry wins over its whole locality's.
+    .orderBy(asc(isNull(zoneMembers.streetId)))
+    .limit(1);
+  return zone ?? null;
+}
+
+function bySubtype(a: ZoneEvent, b: ZoneEvent): number {
+  return SUBTYPE_ORDER.indexOf(a.subtype) - SUBTYPE_ORDER.indexOf(b.subtype);
+}
+
+async function zoneEvents(zoneId: string, from: string) {
+  const rows = await db()
+    .select()
+    .from(events)
+    .where(and(eq(events.zoneId, zoneId), gte(events.start, from)))
+    .orderBy(asc(events.start));
+  return rows.sort((a, b) => a.start.localeCompare(b.start) || bySubtype(a, b));
+}
+
+function sourcesOf(rows: ZoneEvent[]): SourceView[] {
   const byDoc = new Map<string, SourceView>();
-  for (const { source } of events) {
-    if (byDoc.has(source.doc)) continue;
-    byDoc.set(source.doc, {
-      label: source.ref ?? source.doc.split("/").at(-1) ?? "",
-      url: source.url ?? null,
-      checkedAt: source.checkedAt ?? null,
+  for (const row of rows) {
+    if (byDoc.has(row.sourceDoc)) continue;
+    byDoc.set(row.sourceDoc, {
+      label: row.sourceRef ?? row.sourceDoc,
+      url: row.sourceUrl,
+      checkedAt: row.checkedAt,
     });
   }
   return [...byDoc.values()];
 }
 
-function bySubtype(a: Event, b: Event): number {
-  return SUBTYPE_ORDER.indexOf(a.subtype) - SUBTYPE_ORDER.indexOf(b.subtype);
-}
+// Keyed by the Warsaw day, so past pickups drop out at midnight.
+const placeCached = unstable_cache(
+  async (id: string, today: string): Promise<PlaceView | null> => {
+    const place = await findPlace(id);
+    if (!place) return null;
 
-function zoneEvents(zoneId: string, from?: string) {
-  return events
-    .filter(
-      (e) => e.zoneId === zoneId && (from === undefined || e.start >= from),
-    )
-    .sort((a, b) => a.start.localeCompare(b.start) || bySubtype(a, b));
-}
+    const zone = await wasteZoneFor(place);
+    const upcoming = zone ? await zoneEvents(zone.id, today) : [];
 
-export function upcomingForZone(zoneId: string, today = todayInWarsaw()) {
-  return zoneEvents(zoneId, today);
-}
+    const days: PickupDay[] = [];
+    for (const event of upcoming) {
+      const pickup: Pickup = {
+        id: event.id,
+        subtype: event.subtype,
+        label: event.label,
+        putOutBy:
+          typeof event.payload?.putOutBy === "string"
+            ? event.payload.putOutBy
+            : null,
+        shiftedFrom: event.shiftedFrom,
+      };
+      const last = days.at(-1);
+      if (last?.date === event.start) last.pickups.push(pickup);
+      else days.push({ date: event.start, pickups: [pickup] });
+    }
 
-export function getPlace(id: string): PlaceView | null {
-  const place = places.find((p) => p.id === id);
-  if (!place) return null;
-
-  const zone = wasteZoneFor(place);
-  // Event dates are ISO days in Europe/Warsaw, so compare against the Warsaw day, not UTC.
-  const today = todayInWarsaw();
-  const upcoming = zone ? zoneEvents(zone.id, today) : [];
-
-  const days: PickupDay[] = [];
-  for (const event of upcoming) {
-    const pickup: Pickup = {
-      id: event.id,
-      subtype: event.subtype,
-      label: event.label,
-      putOutBy:
-        typeof event.payload?.putOutBy === "string"
-          ? event.payload.putOutBy
-          : null,
-      shiftedFrom:
-        typeof event.payload?.shiftedFrom === "string"
-          ? event.payload.shiftedFrom
-          : null,
+    return {
+      id: place.id,
+      kind: place.kind,
+      name: place.name,
+      label: place.label,
+      area: place.area,
+      gmina: place.gmina,
+      zoneId: zone?.id ?? null,
+      today,
+      schedulePage: place.schedulePage,
+      days,
+      sources: sourcesOf(upcoming),
+      verified: upcoming.every((e) => e.verified),
     };
-    const last = days.at(-1);
-    if (last?.date === event.start) last.pickups.push(pickup);
-    else days.push({ date: event.start, pickups: [pickup] });
-  }
+  },
+  ["place"],
+  CACHE,
+);
 
-  return {
-    id: place.id,
-    kind: place.kind,
-    name: place.name,
-    label: place.label,
-    area: place.area,
-    gmina: gminy.find((g) => g.id === gminaIdOf(place))?.name ?? "",
-    zoneId: zone?.id ?? null,
-    today,
-    schedulePage: schedulePageFor(place),
-    days,
-    sources: sourcesOf(upcoming),
-    verified: upcoming.every((e) => e.verified),
-  };
+export function getPlace(id: string): Promise<PlaceView | null> {
+  // Event dates are ISO days in Europe/Warsaw, so compare against the Warsaw day, not UTC.
+  return placeCached(id, todayInWarsaw());
 }
+
+const zoneCached = unstable_cache(
+  async (zoneId: string, today: string) => {
+    const [zone] = await db().select().from(zones).where(eq(zones.id, zoneId));
+    if (!zone) return null;
+    return { ...zone, events: await zoneEvents(zone.id, today) };
+  },
+  ["zone"],
+  CACHE,
+);
 
 export function getZone(zoneId: string) {
-  const zone = zones.find((z) => z.id === zoneId);
-  if (!zone) return null;
-  return { id: zone.id, name: zone.name, events: upcomingForZone(zone.id) };
+  return zoneCached(zoneId, todayInWarsaw());
 }

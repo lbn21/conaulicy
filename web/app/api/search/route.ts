@@ -3,13 +3,15 @@ import { cacheControl } from "@/lib/gate";
 import { search } from "@/lib/schedule";
 
 // Rate limiting lives in the Vercel WAF rule on /api/* (see
-// docs/tasks/task-00-kickoff.md); the CDN cache absorbs repeated queries.
-export function GET(request: NextRequest) {
+// docs/tasks/task-00-kickoff.md); the CDN cache absorbs repeated queries,
+// and the data cache in lib/schedule.ts the rest. One hour at the CDN, so a
+// new import shows up in search within the hour.
+export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q") ?? "";
-  return Response.json(search(q.slice(0, 100)), {
+  return Response.json(await search(q.slice(0, 100)), {
     headers: {
       "Cache-Control": cacheControl(
-        "public, s-maxage=86400, stale-while-revalidate=604800",
+        "public, s-maxage=3600, stale-while-revalidate=86400",
       ),
     },
   });

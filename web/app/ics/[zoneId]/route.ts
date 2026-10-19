@@ -1,5 +1,7 @@
+import { longDate } from "@/lib/date-labels";
 import { addDays } from "@/lib/dates";
-import { getZone } from "@/lib/schedule";
+import { cacheControl } from "@/lib/gate";
+import { getZone, isTestData } from "@/lib/schedule";
 
 const encoder = new TextEncoder();
 
@@ -39,7 +41,10 @@ export async function GET(
   ctx: RouteContext<"/ics/[zoneId]">,
 ) {
   const { zoneId } = await ctx.params;
-  const zone = getZone(decodeURIComponent(zoneId));
+  const [zone, testData] = await Promise.all([
+    getZone(decodeURIComponent(zoneId)),
+    isTestData(),
+  ]);
   if (!zone) {
     return new Response("Nie znamy takiego harmonogramu.", {
       status: 404,
@@ -61,10 +66,11 @@ export async function GET(
   for (const event of zone.events) {
     const putOutBy = event.payload?.putOutBy;
     const description = [
+      testData ? "Dane testowe – terminy nie są prawdziwe." : null,
       typeof putOutBy === "string"
         ? `Wystaw przed posesję do ${putOutBy.replace(/^0/, "")}.`
         : null,
-      `Na podstawie: ${event.source.doc}`,
+      `Źródło: ${event.sourceUrl} (stan na ${longDate(event.checkedAt)})`,
       "Nie jesteśmy urzędem – obowiązuje harmonogram gminy.",
     ]
       .filter(Boolean)
@@ -90,6 +96,9 @@ export async function GET(
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
       "Content-Disposition": `inline; filename="${filename}"`,
+      "Cache-Control": cacheControl(
+        "public, s-maxage=3600, stale-while-revalidate=86400",
+      ),
     },
   });
 }
