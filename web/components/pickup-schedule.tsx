@@ -3,6 +3,14 @@
 import { ChevronDown } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { absoluteDay, dayFace, relativeWord, todayInWarsaw } from "@/lib/dates";
+import {
+  BIN,
+  BIN_HEIGHT,
+  BIN_WIDTH,
+  OUTLINED,
+  TOKEN,
+  tones,
+} from "@/lib/waste-bin";
 
 type Pickup = {
   id: string;
@@ -15,27 +23,9 @@ export type PickupDay = { date: string; pickups: Pickup[] };
 
 const HERO_COUNT = 3;
 
-const TOKEN: Record<string, string> = {
-  zmieszane: "zmieszane",
-  popiol: "popiol",
-  bio: "bio",
-  papier: "papier",
-  tworzywa: "plastik-metale",
-  tworzywa_metale: "plastik-metale",
-  szklo: "szklo",
-  wielkogabarytowe: "gabaryty",
-  elektro: "gabaryty",
-  opony: "gabaryty",
-  tekstylia: "gabaryty",
-};
-
 // Re-check the Warsaw day every minute and when the tab comes back, so a tab
 // left open overnight moves "jutro" to "dziś". React only re-renders when the
 // date string changes.
-// Fills that fade into a background in some theme; their outline token carries
-// the 3:1 non-text contrast (see design/tokens.md).
-const OUTLINED = new Set(["zmieszane", "plastik-metale"]);
-
 function subscribe(onChange: () => void): () => void {
   const timer = setInterval(onChange, 60_000);
   document.addEventListener("visibilitychange", onChange);
@@ -43,11 +33,6 @@ function subscribe(onChange: () => void): () => void {
     clearInterval(timer);
     document.removeEventListener("visibilitychange", onChange);
   };
-}
-
-function tones(subtype: string): string[] {
-  if (subtype === "zmieszane_i_bio") return ["zmieszane", "bio"];
-  return [subtype];
 }
 
 function hour(time: string): string {
@@ -64,6 +49,16 @@ function shade(color: string, percent: number): string {
   return `color-mix(in srgb, ${color} ${percent}%, black)`;
 }
 
+function rectOf(r: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rx: number;
+}) {
+  return { x: r.x, y: r.y, width: r.width, height: r.height, rx: r.rx };
+}
+
 function WasteMark({ tone, large }: { tone: string; large: boolean }) {
   const token = TOKEN[tone];
   const fill = token ? `var(--waste-${token})` : "var(--secondary)";
@@ -75,43 +70,30 @@ function WasteMark({ tone, large }: { tone: string; large: boolean }) {
       aria-hidden="true"
       width={width}
       height={height}
-      viewBox="0 0 28 40"
+      viewBox={`0 0 ${BIN_WIDTH} ${BIN_HEIGHT}`}
       className="shrink-0"
       stroke={outline}
       strokeWidth="1.2"
       strokeLinejoin="round"
     >
-      <rect
-        x="1.5"
-        y="6"
-        width="7"
-        height="3"
-        rx="1.5"
-        fill={shade(fill, 60)}
+      <rect {...rectOf(BIN.handle)} fill={shade(fill, BIN.handle.shade)} />
+      <path fill={fill} d={BIN.body} />
+      <path fill={shade(fill, BIN.rim.shade)} stroke="none" d={BIN.rim.d} />
+      <path fill={shade(fill, BIN.lid.shade)} d={BIN.lid.d} />
+      <rect {...rectOf(BIN.foot)} fill={shade(fill, BIN.foot.shade)} />
+      <circle
+        cx={BIN.wheel.cx}
+        cy={BIN.wheel.cy}
+        r={BIN.wheel.r}
+        fill={shade(fill, BIN.wheel.shade)}
       />
-      <path
+      <circle
+        cx={BIN.hub.cx}
+        cy={BIN.hub.cy}
+        r={BIN.hub.r}
         fill={fill}
-        d="M5.5 12h19l-2.3 22.3a2 2 0 0 1-2 1.7H8.6a2 2 0 0 1-2-1.7z"
-      />
-      <path
-        fill={shade(fill, 78)}
         stroke="none"
-        d="M5.7 13.5h18.6l.2-1.5h-19z"
       />
-      <path
-        fill={shade(fill, 82)}
-        d="M4 9.5A2.5 2.5 0 0 1 6.5 7h17A2.5 2.5 0 0 1 26 9.5V12H4z"
-      />
-      <rect
-        x="17"
-        y="35"
-        width="4"
-        height="3.5"
-        rx="1"
-        fill={shade(fill, 60)}
-      />
-      <circle cx="9" cy="34.5" r="4.5" fill={shade(fill, 45)} />
-      <circle cx="9" cy="34.5" r="1.6" fill={fill} stroke="none" />
     </svg>
   );
 }
