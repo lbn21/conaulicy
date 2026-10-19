@@ -69,6 +69,15 @@ export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
           <p className="mt-3 max-w-prose text-text-muted">
             Plik z datami. Telefon zapyta, czy wpisać je do kalendarza.
           </p>
+          <p className="mt-2">
+            <a
+              href={`/adres/${encodeURIComponent(place.id)}/harmonogram.pdf`}
+              download
+              className="inline-flex min-h-12 items-center font-bold underline decoration-2 underline-offset-4"
+            >
+              Pobierz PDF do druku
+            </a>
+          </p>
 
           <PickupSchedule days={place.days} />
 
