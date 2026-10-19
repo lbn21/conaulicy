@@ -40,7 +40,8 @@ export default function PrivacyPage() {
           <p className="mt-2">
             Stronę udostępnia firma hostingowa. Jak każdy serwer, zapisuje ona
             techniczne logi: adres IP, godzinę i otwierany adres strony, w tym
-            to, co wpiszesz w wyszukiwarkę. Te logi prowadzi hosting, nie my.
+            to, co wpiszesz w wyszukiwarkę. Hosting zapisuje je w naszym
+            imieniu.
           </p>
         </section>
 
