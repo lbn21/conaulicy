@@ -166,3 +166,5 @@ if (failures.length > 0) {
   process.exit(1);
 }
 console.log("Search popup: no layout shift, combobox keyboard ok.");
+// The server's output pipes would otherwise keep Node alive (as in check-a11y).
+process.exit(0);
