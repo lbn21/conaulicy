@@ -54,9 +54,9 @@ function hour(time: string): string {
   return time.replace(/^0/, "");
 }
 
-function spokenDay(iso: string, today: string | null): string {
+function spokenDay(iso: string, today: string): string {
   const absolute = absoluteDay(iso);
-  const relative = today ? relativeWord(iso, today) : null;
+  const relative = relativeWord(iso, today);
   return relative ? `${relative}, ${absolute}` : absolute;
 }
 
@@ -69,7 +69,7 @@ function WasteMark({ tone, large }: { tone: string; large: boolean }) {
   const fill = token ? `var(--waste-${token})` : "var(--secondary)";
   const outline =
     token && OUTLINED.has(token) ? `var(--waste-${token}-border)` : "none";
-  const [width, height] = large ? [34, 48] : [23, 32];
+  const [width, height] = large ? [34, 48] : [28, 40];
   return (
     <svg
       aria-hidden="true"
@@ -122,10 +122,10 @@ function DayBlock({
   prominent,
 }: {
   day: PickupDay;
-  today: string | null;
+  today: string;
   prominent: boolean;
 }) {
-  const relative = today ? relativeWord(day.date, today) : null;
+  const relative = relativeWord(day.date, today);
   const face = dayFace(day.date);
   const putOutBy = day.pickups.find((p) => p.putOutBy)?.putOutBy;
   return (
@@ -185,13 +185,23 @@ function DayBlock({
   );
 }
 
-export function PickupSchedule({ days }: { days: PickupDay[] }) {
-  const today = useSyncExternalStore<string | null>(
+export function PickupSchedule({
+  days,
+  renderedOn,
+}: {
+  days: PickupDay[];
+  /** Warsaw day the server rendered for. */
+  renderedOn: string;
+}) {
+  // Hydrates with the server's day, so "dziś"/"jutro" is in the HTML with no
+  // pop-in. Re-renders only if the Warsaw day has moved on since the render
+  // (a cached page across midnight).
+  const today = useSyncExternalStore(
     subscribe,
     todayInWarsaw,
-    () => null,
+    () => renderedOn,
   );
-  const visible = today ? days.filter((day) => day.date >= today) : days;
+  const visible = days.filter((day) => day.date >= today);
 
   if (visible.length === 0) {
     return (

@@ -30,6 +30,7 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 - Never ship the full street/schedule index to the client. Search goes through a per-query API route, rate-limited (Vercel WAF on `/api/*`).
 - ICS feeds are cacheable (`s-maxage=3600, stale-while-revalidate=86400`, `text/calendar; charset=utf-8`).
 - The data model is a generic "event at a location" so other event types can be added later. See `docs/data-model.md`.
+- **Hard rule:** every data item shown on the site or in the PDF keeps a visible link to its original source and the date it was last checked (`source.url`, `source.checkedAt`). No source, no display.
 
 ## Forbidden
 

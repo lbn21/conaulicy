@@ -1,4 +1,4 @@
-const WARSAW = "Europe/Warsaw";
+export const WARSAW = "Europe/Warsaw";
 
 export function todayInWarsaw(now: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -22,7 +22,7 @@ export function addDays(iso: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-function warsawNoon(iso: string): Date {
+export function warsawNoon(iso: string): Date {
   return new Date(`${iso}T12:00:00Z`);
 }
 

@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { cacheControl } from "@/lib/gate";
 import { search } from "@/lib/schedule";
 
 // Rate limiting lives in the Vercel WAF rule on /api/* (see
@@ -7,7 +8,9 @@ export function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q") ?? "";
   return Response.json(search(q.slice(0, 100)), {
     headers: {
-      "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800",
+      "Cache-Control": cacheControl(
+        "public, s-maxage=86400, stale-while-revalidate=604800",
+      ),
     },
   });
 }

@@ -68,7 +68,10 @@ export type Event = {
   label: string;
   source: {
     doc: string;
+    /** The original document as published (file or page). */
     url?: string;
+    /** ISO date the source was last compared with the original. */
+    checkedAt?: string;
     sha256?: string;
     /** Page, row, or cell in the source document. */
     ref?: string;

@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PickupSchedule } from "@/components/pickup-schedule";
+import { longDate } from "@/lib/date-labels";
 import { getPlace, listPlaces } from "@/lib/schedule";
 
 export const dynamicParams = false;
-// Regenerate hourly so the static HTML never lists pickups that are already past.
-export const revalidate = 3600;
+// Regenerate every 10 minutes, so the static HTML drops past pickups and its
+// server-rendered "dziś"/"jutro" is at most minutes stale after midnight in
+// Warsaw. The client corrects the rare stale copy (see PickupSchedule).
+export const revalidate = 600;
 
 export function generateStaticParams() {
   return listPlaces().map(({ id }) => ({ id }));
@@ -68,35 +71,47 @@ export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
           <p className="mt-3 max-w-prose text-text-muted">
             Plik z datami. Telefon zapyta, czy wpisać je do kalendarza.
           </p>
+          <p className="mt-2">
+            <a
+              href={`/adres/${encodeURIComponent(place.id)}/harmonogram.pdf`}
+              download
+              className="inline-flex min-h-12 items-center font-bold underline decoration-2 underline-offset-4"
+            >
+              Pobierz PDF do druku
+            </a>
+          </p>
 
-          <PickupSchedule days={place.days} />
+          <PickupSchedule days={place.days} renderedOn={place.today} />
 
-          {!place.verified && (
-            <div className="mt-2 border-t border-border pt-6 text-text-muted">
-              <p className="max-w-prose">
+          <div className="mt-2 border-t border-border pt-6 text-text-muted">
+            {!place.verified && (
+              <p className="mb-3 max-w-prose">
                 Te daty przepisaliśmy ręcznie i nikt ich jeszcze nie sprawdził
                 drugi raz. Gdyby coś się nie zgadzało, rację ma harmonogram
                 gminy.
               </p>
-              {place.sources.map((source) => (
-                <p key={source} className="mt-3 max-w-prose">
-                  Źródło:{" "}
-                  {place.schedulePage ? (
-                    <a
-                      href={place.schedulePage}
-                      rel="noopener"
-                      className="underline decoration-2 underline-offset-4"
-                    >
-                      harmonogram gminy
-                    </a>
-                  ) : (
-                    "harmonogram gminy"
-                  )}
-                  , {source}
-                </p>
-              ))}
-            </div>
-          )}
+            )}
+            {place.sources.map((source) => (
+              <p key={source.label} className="max-w-prose">
+                Źródło:{" "}
+                {source.url ? (
+                  <a
+                    href={source.url}
+                    rel="noopener"
+                    className="underline decoration-2 underline-offset-4"
+                  >
+                    harmonogram gminy
+                  </a>
+                ) : (
+                  "harmonogram gminy"
+                )}
+                , {source.label}
+                {source.checkedAt && (
+                  <>. Stan na {longDate(source.checkedAt)}.</>
+                )}
+              </p>
+            ))}
+          </div>
         </>
       )}
 

@@ -24,17 +24,27 @@ export type Pickup = {
 
 export type PickupDay = { date: string; pickups: Pickup[] };
 
+export type SourceView = {
+  /** Human label, e.g. "Sektor 1, październik–grudzień 2026". */
+  label: string;
+  url: string | null;
+  checkedAt: string | null;
+};
+
 export type PlaceView = {
   id: string;
   kind: Place["kind"];
   name: string;
   label: string;
   area: string;
+  /** Gmina name as in TERYT, e.g. "Lubaczów (miasto)". */
+  gmina: string;
   zoneId: string | null;
+  /** Warsaw day this view was computed for; the page renders "dziś"/"jutro" from it. */
+  today: string;
   schedulePage: string | null;
   days: PickupDay[];
-  /** Human labels of the source documents, e.g. "Sektor 1, październik–grudzień 2026". */
-  sources: string[];
+  sources: SourceView[];
   verified: boolean;
 };
 
@@ -147,9 +157,26 @@ function wasteZoneFor(place: Place): Zone | undefined {
   );
 }
 
+function gminaIdOf(place: Place): string | undefined {
+  return localities.find((l) => l.id === place.localityId)?.gminaId;
+}
+
 function schedulePageFor(place: Place): string | null {
-  const gminaId = localities.find((l) => l.id === place.localityId)?.gminaId;
+  const gminaId = gminaIdOf(place);
   return (gminaId && SCHEDULE_PAGE[gminaId]) || null;
+}
+
+function sourcesOf(events: Event[]): SourceView[] {
+  const byDoc = new Map<string, SourceView>();
+  for (const { source } of events) {
+    if (byDoc.has(source.doc)) continue;
+    byDoc.set(source.doc, {
+      label: source.ref ?? source.doc.split("/").at(-1) ?? "",
+      url: source.url ?? null,
+      checkedAt: source.checkedAt ?? null,
+    });
+  }
+  return [...byDoc.values()];
 }
 
 function bySubtype(a: Event, b: Event): number {
@@ -174,7 +201,8 @@ export function getPlace(id: string): PlaceView | null {
 
   const zone = wasteZoneFor(place);
   // Event dates are ISO days in Europe/Warsaw, so compare against the Warsaw day, not UTC.
-  const upcoming = zone ? zoneEvents(zone.id, todayInWarsaw()) : [];
+  const today = todayInWarsaw();
+  const upcoming = zone ? zoneEvents(zone.id, today) : [];
 
   const days: PickupDay[] = [];
   for (const event of upcoming) {
@@ -198,16 +226,12 @@ export function getPlace(id: string): PlaceView | null {
     name: place.name,
     label: place.label,
     area: place.area,
+    gmina: gminy.find((g) => g.id === gminaIdOf(place))?.name ?? "",
     zoneId: zone?.id ?? null,
+    today,
     schedulePage: schedulePageFor(place),
     days,
-    sources: [
-      ...new Set(
-        upcoming.map(
-          (e) => e.source.ref ?? e.source.doc.split("/").at(-1) ?? "",
-        ),
-      ),
-    ],
+    sources: sourcesOf(upcoming),
     verified: upcoming.every((e) => e.verified),
   };
 }
