@@ -9,6 +9,7 @@ export const ROUTES = [
   { path: "/adres/0606234", name: "village" },
   { path: "/adres/0972447-23434", name: "street-without-schedule" },
   { path: "/prywatnosc", name: "privacy" },
+  { path: "/dostepnosc", name: "accessibility" },
   { path: "/nie-ma-takiej-strony", name: "not-found", status: 404 },
 ];
 
