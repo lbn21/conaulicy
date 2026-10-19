@@ -70,7 +70,14 @@
       "Shell(brew:info*)",
       "WebFetch(docs.astral.sh)",
       "WebFetch(json-schema.org)",
-      "WebFetch(eteryt.stat.gov.pl)"
+      "WebFetch(eteryt.stat.gov.pl)",
+      "Shell(cmp)",
+      "Shell(true)",
+      "Shell(./web/node_modules/.bin/biome)",
+      "Shell(./node_modules/.bin/biome)",
+      "Shell(make:*)",
+      "Shell(uv:*)",
+      "Shell(uv:run*)"
     ],
     "deny": [
       "Read(.env*)",
