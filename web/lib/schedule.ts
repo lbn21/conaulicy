@@ -37,6 +37,8 @@ export type PlaceView = {
   name: string;
   label: string;
   area: string;
+  /** Gmina name as in TERYT, e.g. "Lubaczów (miasto)". */
+  gmina: string;
   zoneId: string | null;
   schedulePage: string | null;
   days: PickupDay[];
@@ -153,8 +155,12 @@ function wasteZoneFor(place: Place): Zone | undefined {
   );
 }
 
+function gminaIdOf(place: Place): string | undefined {
+  return localities.find((l) => l.id === place.localityId)?.gminaId;
+}
+
 function schedulePageFor(place: Place): string | null {
-  const gminaId = localities.find((l) => l.id === place.localityId)?.gminaId;
+  const gminaId = gminaIdOf(place);
   return (gminaId && SCHEDULE_PAGE[gminaId]) || null;
 }
 
@@ -217,6 +223,7 @@ export function getPlace(id: string): PlaceView | null {
     name: place.name,
     label: place.label,
     area: place.area,
+    gmina: gminy.find((g) => g.id === gminaIdOf(place))?.name ?? "",
     zoneId: zone?.id ?? null,
     schedulePage: schedulePageFor(place),
     days,
