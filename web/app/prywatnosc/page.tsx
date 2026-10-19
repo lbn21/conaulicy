@@ -11,8 +11,8 @@ export default function PrivacyPage() {
         Prywatność
       </h1>
       <p className="mt-4 max-w-prose">
-        Krótko: nic o Tobie nie zbieramy. Strona ma tylko powiedzieć, kiedy
-        wystawić śmieci.
+        Krótko: nie wiemy, kim jesteś, i nie chcemy wiedzieć. Strona ma tylko
+        powiedzieć, kiedy wystawić śmieci.
       </p>
 
       <div className="mt-8 flex max-w-prose flex-col gap-6">
@@ -20,7 +20,7 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-bold">Bez ciasteczek i bez kont</h2>
           <p className="mt-2">
             Nie używamy ciasteczek, nie ma logowania ani zakładania konta. Nie
-            ma też reklam, statystyk ani czcionek ściąganych z innych serwisów.
+            ma też reklam ani czcionek ściąganych z innych serwisów.
           </p>
         </section>
 
@@ -32,6 +32,27 @@ export default function PrivacyPage() {
             Zapamiętujemy tylko, czy wolisz wygląd ciemny, jasny czy systemowy.
             Ta informacja leży w pamięci przeglądarki (localStorage) na Twoim
             urządzeniu i nie trafia do nas.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-bold">Anonimowe statystyki</h2>
+          <p className="mt-2">
+            Liczymy odwiedziny, żeby wiedzieć, czy strona się przydaje: ile osób
+            ją otwiera, które strony i jak często ktoś dodaje odbiory do
+            kalendarza albo otwiera PDF. Robi to Vercel Web Analytics, bez
+            ciasteczek. Adres IP nie jest zapisywany, a skrót, który odróżnia
+            jedną wizytę od drugiej, znika po 24 godzinach. Widzimy tylko
+            zbiorcze liczby, nigdy pojedynczą osobę. Wpisanego adresu ani numeru
+            domu do statystyk nie wysyłamy.
+          </p>
+          <p className="mt-2">
+            <a
+              href="https://vercel.com/docs/analytics/privacy-policy"
+              className="inline-flex min-h-12 items-center underline decoration-2 underline-offset-4"
+            >
+              Jak Vercel chroni te dane (po angielsku)
+            </a>
           </p>
         </section>
 
