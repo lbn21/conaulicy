@@ -150,7 +150,7 @@ function DayBlock({
                   {face.day}
                 </span>
                 <span className="text-lg font-bold">
-                  {face.monthShort}, {face.weekday}
+                  {face.month}, {face.weekday}
                 </span>
               </span>
             </>

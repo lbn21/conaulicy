@@ -40,22 +40,22 @@ export function absoluteDay(iso: string): string {
 
 export type DayFace = {
   day: string;
-  monthShort: string;
+  month: string;
   weekday: string;
 };
 
-/** Visual pieces for the nearest date. Example: "20" and "paź, wtorek". */
+/** Visual pieces for the nearest date. Example: "20" and "października, wtorek". */
 export function dayFace(iso: string): DayFace {
   const parts = new Intl.DateTimeFormat("pl-PL", {
     timeZone: WARSAW,
     weekday: "long",
     day: "numeric",
-    month: "short",
+    month: "long",
   }).formatToParts(warsawNoon(iso));
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
   return {
     day: get("day"),
-    monthShort: get("month").replace(".", ""),
+    month: get("month"),
     weekday: get("weekday"),
   };
 }
