@@ -45,11 +45,33 @@
 
 @layer components {
   .more-dates > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     min-height: 3rem;
     padding-top: 0.75rem;
     padding-bottom: 0.75rem;
     cursor: pointer;
     font-weight: 700;
+    list-style: none;
+  }
+
+  .more-dates > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .more-chevron {
+    flex-shrink: 0;
+    transition: transform 150ms ease-out;
+  }
+
+  .more-dates[open] .more-chevron {
+    transform: rotate(180deg);
+  }
+
+  .more-dates[open] .more-closed,
+  .more-dates:not([open]) .more-open {
+    display: none;
   }
 }
 

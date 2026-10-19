@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { absoluteDay, dayFace, relativeWord, todayInWarsaw } from "@/lib/dates";
 
@@ -217,7 +218,15 @@ export function PickupSchedule({ days }: { days: PickupDay[] }) {
       </ol>
       {rest.length > 0 && (
         <details className="more-dates mt-4 border-t border-border">
-          <summary>Pokaż więcej terminów</summary>
+          <summary>
+            <ChevronDown
+              aria-hidden="true"
+              size={24}
+              className="more-chevron"
+            />
+            <span className="more-closed">Pokaż więcej terminów</span>
+            <span className="more-open">Zwiń terminy</span>
+          </summary>
           <ol>
             {rest.map((day) => (
               <DayBlock
