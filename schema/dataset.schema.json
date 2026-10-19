@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dataset.schema.json",
+  "title": "Provisional location and event records",
+  "$defs": {
+    "EventType": {
+      "enum": ["waste", "water", "power", "weather"],
+      "type": "string"
+    },
+    "HouseNumbers": {
+      "additionalProperties": false,
+      "properties": {
+        "from": { "type": "string" },
+        "parity": { "enum": ["even", "odd"], "type": "string" },
+        "to": { "type": "string" }
+      },
+      "type": "object"
+    },
+    "Gmina": {
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "teryt": { "type": "string" }
+      },
+      "required": ["id", "teryt", "name"],
+      "type": "object"
+    },
+    "Locality": {
+      "additionalProperties": false,
+      "properties": {
+        "gminaId": { "type": "string" },
+        "id": { "type": "string" },
+        "kind": { "enum": ["miasto", "wies", "czesc_wsi"], "type": "string" },
+        "name": { "type": "string" },
+        "parentId": { "type": "string" },
+        "teryt": { "type": "string" }
+      },
+      "required": ["id", "gminaId", "teryt", "name", "kind"],
+      "type": "object"
+    },
+    "Street": {
+      "additionalProperties": false,
+      "properties": {
+        "houseNumbers": { "$ref": "#/$defs/HouseNumbers" },
+        "id": { "type": "string" },
+        "localityId": { "type": "string" },
+        "name": { "type": "string" },
+        "prefix": { "type": "string" },
+        "teryt": { "type": "string" }
+      },
+      "required": ["id", "localityId", "prefix", "name"],
+      "type": "object"
+    },
+    "ZoneMember": {
+      "additionalProperties": false,
+      "properties": {
+        "houseNumbers": { "$ref": "#/$defs/HouseNumbers" },
+        "localityId": { "type": "string" },
+        "streetId": { "type": "string" }
+      },
+      "required": ["localityId"],
+      "type": "object"
+    },
+    "Zone": {
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "members": {
+          "items": { "$ref": "#/$defs/ZoneMember" },
+          "type": "array"
+        },
+        "name": { "type": "string" },
+        "type": { "$ref": "#/$defs/EventType" }
+      },
+      "required": ["id", "type", "name", "members"],
+      "type": "object"
+    },
+    "Event": {
+      "additionalProperties": false,
+      "properties": {
+        "allDay": { "type": "boolean" },
+        "end": { "type": "string" },
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "payload": { "type": "object" },
+        "reviewedAt": { "type": ["string", "null"] },
+        "reviewedBy": { "type": ["string", "null"] },
+        "source": {
+          "additionalProperties": false,
+          "properties": {
+            "doc": { "type": "string" },
+            "ref": { "type": "string" },
+            "sha256": { "type": "string" },
+            "url": { "type": "string" }
+          },
+          "required": ["doc"],
+          "type": "object"
+        },
+        "start": { "type": "string" },
+        "subtype": { "type": "string" },
+        "type": { "$ref": "#/$defs/EventType" },
+        "verified": { "type": "boolean" },
+        "zoneId": { "type": "string" }
+      },
+      "required": [
+        "id",
+        "type",
+        "subtype",
+        "zoneId",
+        "start",
+        "allDay",
+        "label",
+        "source",
+        "verified"
+      ],
+      "type": "object"
+    },
+    "Meta": {
+      "additionalProperties": false,
+      "properties": {
+        "flags": { "items": { "type": "string" }, "type": "array" },
+        "provisional": { "type": "boolean" },
+        "sources": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "doc": { "type": "string" },
+              "kind": { "type": "string" },
+              "published_at": { "type": "string" },
+              "sha256": { "type": "string" },
+              "url": { "type": "string" }
+            },
+            "required": ["doc", "url", "sha256"],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "storage": { "type": "string" },
+        "year": { "type": "integer" }
+      },
+      "required": ["provisional", "sources", "year"],
+      "type": "object"
+    }
+  }
+}
