@@ -42,6 +42,8 @@ const median = (values) =>
   [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
 const results = {};
 
+let profile = null;
+
 try {
   for (const { path, name } of PAGES) {
     const url = `${server.origin}${path}`;
@@ -52,7 +54,14 @@ try {
         output: "json",
         logLevel: "error",
         onlyCategories: ["performance"],
+        // Real throttling: Lighthouse's Slow 4G preset applied by Chrome
+        // (request latency 150 ms × 3.75, 1.6 Mbps × 0.9) and 4× CPU.
+        throttlingMethod: "devtools",
       });
+      if (lhr.configSettings.throttlingMethod !== "devtools") {
+        throw new Error("Lighthouse did not use real (devtools) throttling");
+      }
+      profile ??= lhr.configSettings.throttling;
       const audit = (id) => lhr.audits[id].numericValue;
       runs.push({
         score: lhr.categories.performance.score,
@@ -87,7 +96,7 @@ try {
       `${label}: ${m.preloadedFonts} preloaded fonts`,
     );
     console.log(
-      `${label.padEnd(22)} score ${m.score.toFixed(2)}  LCP ${Math.round(m.lcp)} ms  FCP ${Math.round(m.fcp)} ms  TBT ${Math.round(m.tbt)} ms  CLS ${m.cls.toFixed(3)}  ${(m.bytes / 1000).toFixed(1)} KB in ${m.requests} requests  HTML ${(m.htmlGzip / 1000).toFixed(1)} KB gz  ${m.preloadedFonts} fonts preloaded\n${"".padEnd(22)} LCP per run: ${runs.map((r) => Math.round(r.lcp)).join(", ")} (best ${Math.round(bestLcp)}, median ${Math.round(m.lcp)})`,
+      `${label.padEnd(22)} score ${m.score.toFixed(2)}  LCP ${Math.round(m.lcp)} ms  FCP ${Math.round(m.fcp)} ms  TBT ${Math.round(m.tbt)} ms  CLS ${m.cls.toFixed(3)}  ${(m.bytes / 1000).toFixed(1)} KB in ${m.requests} requests  HTML ${(m.htmlGzip / 1000).toFixed(1)} KB gz  ${m.preloadedFonts} fonts preloaded\n${"".padEnd(22)} LCP per run: ${runs.map((r) => Math.round(r.lcp)).join(", ")}; TBT ${runs.map((r) => Math.round(r.tbt)).join(", ")}; FCP ${runs.map((r) => Math.round(r.fcp)).join(", ")} (best ${Math.round(bestLcp)}, median ${Math.round(m.lcp)})`,
     );
   }
 
@@ -135,6 +144,9 @@ try {
   );
   console.log(
     `search: keystroke to list ${Math.round(keystroke)} ms (median of ${times.map(Math.round).join(", ")}; CPU 4× slower)`,
+  );
+  console.log(
+    `Throttling (devtools): request latency ${profile.requestLatencyMs} ms, ${Math.round(profile.downloadThroughputKbps)} kbps down, ${Math.round(profile.uploadThroughputKbps)} kbps up, CPU ${profile.cpuSlowdownMultiplier}×`,
   );
 } finally {
   await browser.close();
