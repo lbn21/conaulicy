@@ -25,8 +25,10 @@ import {
   zoneMembers,
   zones,
 } from "@/lib/db";
+import { houseNumber, readings } from "@/lib/house";
 import {
   gminaShortName,
+  isSplitStreet,
   pickZone,
   streetLabel,
   streetName,
@@ -90,6 +92,12 @@ export type PlaceView = {
   /** Gmina name as in TERYT, e.g. "Lubaczów (miasto)". */
   gmina: string;
   zoneId: string | null;
+  /** The house number this view is for, shown after the name. */
+  nr: string | null;
+  /** A street split by house numbers, and no number that picks its zone. */
+  askNumber: boolean;
+  /** The number given on a split street when no part of it has that number. */
+  unknownNr: string | null;
   /** Warsaw day this view was computed for; the page renders "dziś"/"jutro" from it. */
   today: string;
   schedulePage: string | null;
@@ -226,8 +234,16 @@ const searchCached = unstable_cache(
  * field cannot load the index.
  */
 export async function search(q: string): Promise<SearchHit[]> {
-  const terms = searchTerms(q);
-  return terms.length === 0 ? [] : searchCached(terms);
+  // As findPlaces in lib/search.ts: the first reading that finds anything.
+  for (const { text, nr } of readings(q)) {
+    const terms = searchTerms(text);
+    if (terms.length === 0) continue;
+    const found = await searchCached(terms);
+    if (found.length > 0) {
+      return nr ? found.map((hit) => ({ ...hit, nr })) : found;
+    }
+  }
+  return [];
 }
 
 /**
@@ -285,7 +301,7 @@ async function findPlace(id: string): Promise<Place | null> {
   return village ? villagePlace(village) : null;
 }
 
-async function wasteZoneFor(place: Place) {
+async function wasteZoneFor(place: Place, nr: string | null) {
   const localityIds = [place.localityId];
   if (place.parentId) localityIds.push(place.parentId);
   const wholeLocality = and(
@@ -297,6 +313,9 @@ async function wasteZoneFor(place: Place) {
       zoneId: zoneMembers.zoneId,
       localityId: zoneMembers.localityId,
       streetId: zoneMembers.streetId,
+      houseFrom: zoneMembers.houseFrom,
+      houseTo: zoneMembers.houseTo,
+      parity: zoneMembers.parity,
     })
     .from(zoneMembers)
     .innerJoin(zones, eq(zones.id, zoneMembers.zoneId))
@@ -308,8 +327,10 @@ async function wasteZoneFor(place: Place) {
           : wholeLocality,
       ),
     );
-  const id = pickZone(candidates, place);
-  return id ? { id } : null;
+  return {
+    id: pickZone(candidates, { ...place, nr }),
+    split: isSplitStreet(candidates, place),
+  };
 }
 
 function bySubtype(a: ZoneEvent, b: ZoneEvent): number {
@@ -340,12 +361,19 @@ function sourcesOf(rows: ZoneEvent[]): SourceView[] {
 
 // Keyed by the Warsaw day, so past pickups drop out at midnight.
 const placeCached = unstable_cache(
-  async (id: string, today: string): Promise<PlaceView | null> => {
+  async (
+    id: string,
+    today: string,
+    nr: string | null,
+  ): Promise<PlaceView | null> => {
     const place = await findPlace(id);
     if (!place) return null;
 
-    const zone = await wasteZoneFor(place);
-    const upcoming = zone ? await zoneEvents(zone.id, today) : [];
+    const zone = await wasteZoneFor(place, nr);
+    const upcoming = zone.id ? await zoneEvents(zone.id, today) : [];
+    // On a split street the number picks the zone; one that picks none is
+    // set aside, and the page asks again.
+    const askNumber = zone.split && !zone.id;
 
     const days: PickupDay[] = [];
     for (const event of upcoming) {
@@ -371,7 +399,10 @@ const placeCached = unstable_cache(
       label: place.label,
       area: place.area,
       gmina: place.gmina,
-      zoneId: zone?.id ?? null,
+      zoneId: zone.id,
+      nr: askNumber ? null : nr,
+      askNumber,
+      unknownNr: askNumber ? nr : null,
       today,
       schedulePage: place.schedulePage,
       days,
@@ -383,9 +414,13 @@ const placeCached = unstable_cache(
   CACHE,
 );
 
-export function getPlace(id: string): Promise<PlaceView | null> {
+/** nr: a house number as given (?nr=); anything invalid is ignored. */
+export function getPlace(
+  id: string,
+  nr?: string | null,
+): Promise<PlaceView | null> {
   // Event dates are ISO days in Europe/Warsaw, so compare against the Warsaw day, not UTC.
-  return placeCached(id, todayInWarsaw());
+  return placeCached(id, todayInWarsaw(), houseNumber(nr));
 }
 
 const zoneCached = unstable_cache(

@@ -3,6 +3,7 @@
 // what search matches is what the page shows.
 
 import type { Locality } from "./data-model.ts";
+import { type HouseRange, inRange, isPartial } from "./house.ts";
 
 export function gminaShortName(name: string): string {
   return name.replace(/\s*\(.*\)$/, "");
@@ -79,21 +80,55 @@ export type ZoneCandidate = {
   zoneId: string;
   localityId: string;
   streetId: string | null;
+} & Partial<HouseRange>;
+
+type ZonePlace = {
+  localityId: string;
+  parentId: string | null;
+  streetId?: string;
+  /** A valid house number (lib/house.ts), if the visitor gave one. */
+  nr?: string | null;
 };
 
+const range = (c: ZoneCandidate): HouseRange => ({
+  houseFrom: c.houseFrom ?? null,
+  houseTo: c.houseTo ?? null,
+  parity: c.parity ?? null,
+});
+
+/** A street whose house numbers are in different zones. */
+export function isSplitStreet(
+  candidates: ZoneCandidate[],
+  place: ZonePlace,
+): boolean {
+  return candidates.some(
+    (c) =>
+      place.streetId !== undefined &&
+      c.streetId === place.streetId &&
+      isPartial(range(c)),
+  );
+}
+
 /**
- * The zone of a street or village: its own street entry first, then its
- * locality's, then the parent village's (a village part without an entry of
- * its own takes its village's zone, docs/data-model.md).
+ * The zone of a street or village: the street entry covering the house
+ * number, then the whole street's entry, then its locality's, then the
+ * parent village's (a village part without an entry of its own takes its
+ * village's zone, docs/data-model.md). On a split street without a number:
+ * none, never a guess.
  */
 export function pickZone(
   candidates: ZoneCandidate[],
-  place: { localityId: string; parentId: string | null; streetId?: string },
+  place: ZonePlace,
 ): string | null {
+  if (!place.nr && isSplitStreet(candidates, place)) return null;
   const rank = (c: ZoneCandidate) => {
-    if (c.streetId !== null) return c.streetId === place.streetId ? 0 : -1;
-    if (c.localityId === place.localityId) return 1;
-    if (c.localityId === place.parentId) return 2;
+    if (c.streetId !== null) {
+      if (c.streetId !== place.streetId) return -1;
+      if (!isPartial(range(c))) return 1;
+      return place.nr && inRange(place.nr, range(c)) ? 0 : -1;
+    }
+    if (c.localityId === place.localityId) return 2;
+    if (c.localityId === place.parentId) return 3;
     return -1;
   };
   const best = candidates

@@ -75,16 +75,33 @@ const CITY_RECYCLING = ["papier", "tworzywa", "szklo"];
 const ZONES: Array<{
   id: string;
   name: string;
-  members: Array<{ localityId: string; streetId?: string }>;
+  members: Array<{
+    localityId: string;
+    streetId?: string;
+    houseFrom?: string;
+    houseTo?: string;
+    parity?: "even" | "odd";
+  }>;
   rule: Rule;
 }> = [
   {
     id: "waste:miasto-s1",
     name: "Lubaczów, sektor 1",
-    members: ["00470", "20291", "90003"].map((sym) => ({
-      localityId: "0972447",
-      streetId: `0972447-${sym}`,
-    })),
+    members: [
+      ...["00470", "20291", "90003"].map((sym) => ({
+        localityId: "0972447",
+        streetId: `0972447-${sym}`,
+      })),
+      // A made-up split street: even 2–40 here, odd ones in sektor 2, and
+      // no zone for even numbers above 40.
+      {
+        localityId: "0972447",
+        streetId: "0972447-90004",
+        houseFrom: "2",
+        houseTo: "40",
+        parity: "even",
+      },
+    ],
     rule: {
       weekday: 1,
       mixed: ["zmieszane", "bio"],
@@ -97,10 +114,10 @@ const ZONES: Array<{
   {
     id: "waste:miasto-s2",
     name: "Lubaczów, sektor 2",
-    members: ["90004", "90005"].map((sym) => ({
-      localityId: "0972447",
-      streetId: `0972447-${sym}`,
-    })),
+    members: [
+      { localityId: "0972447", streetId: "0972447-90004", parity: "odd" },
+      { localityId: "0972447", streetId: "0972447-90005" },
+    ],
     rule: {
       weekday: 2,
       mixed: ["zmieszane", "bio"],
