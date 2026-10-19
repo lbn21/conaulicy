@@ -1,6 +1,6 @@
 // npm run db:seed: replaces EVERYTHING in the database with a small, clearly
-// fake dataset and sets meta.testData, which shows the "Dane testowe" banner
-// on every page and in the PDF. Dates are made up from simple rules, for the
+// fake dataset and sets meta.testData (not shown to visitors; it tells a real
+// import that the data may be replaced). Dates are made up from simple rules, for the
 // 12 months starting with the current one; nothing here is a real schedule.
 //
 // Covers: a city street from the old fixture URL (ul. Adama Asnyka), streets
@@ -80,7 +80,7 @@ const ZONES: Array<{
 }> = [
   {
     id: "waste:miasto-s1",
-    name: "Lubaczów, sektor 1 (dane testowe)",
+    name: "Lubaczów, sektor 1",
     members: ["00470", "20291", "90003"].map((sym) => ({
       localityId: "0972447",
       streetId: `0972447-${sym}`,
@@ -96,7 +96,7 @@ const ZONES: Array<{
   },
   {
     id: "waste:miasto-s2",
-    name: "Lubaczów, sektor 2 (dane testowe)",
+    name: "Lubaczów, sektor 2",
     members: ["90004", "90005"].map((sym) => ({
       localityId: "0972447",
       streetId: `0972447-${sym}`,
@@ -112,7 +112,7 @@ const ZONES: Array<{
   },
   {
     id: "waste:gmina-s1",
-    name: "Lisie Jamy i Dąbrowa (dane testowe)",
+    name: "Lisie Jamy i Dąbrowa",
     members: [{ localityId: "0606234" }, { localityId: "0606010" }],
     rule: {
       weekday: 4,
@@ -314,7 +314,7 @@ async function main() {
         label: LABELS[subtype],
         sourceDoc: "dane-testowe",
         sourceUrl: SOURCE_URL,
-        sourceRef: `Dane testowe, ${zone.name.replace(" (dane testowe)", "")}`,
+        sourceRef: `Dane testowe, ${zone.name.replace("", "")}`,
         checkedAt: today,
         verified: false,
         payload: zone.rule.putOutBy ? { putOutBy: zone.rule.putOutBy } : null,

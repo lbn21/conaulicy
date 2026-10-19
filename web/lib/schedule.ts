@@ -18,7 +18,6 @@ import {
   events,
   gminy,
   localities,
-  meta,
   streets,
   zoneMembers,
   zones,
@@ -226,18 +225,6 @@ export const examplePlaces = unstable_cache(
     );
   },
   ["example-places"],
-  CACHE,
-);
-
-export const isTestData = unstable_cache(
-  async (): Promise<boolean> => {
-    const [row] = await db()
-      .select({ value: meta.value })
-      .from(meta)
-      .where(eq(meta.key, "testData"));
-    return row?.value === true;
-  },
-  ["test-data"],
   CACHE,
 );
 
