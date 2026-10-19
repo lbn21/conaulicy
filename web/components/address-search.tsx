@@ -134,34 +134,59 @@ export function AddressSearch() {
           Twoja ulica albo wieś
         </label>
         <p id={hintId} className="text-text-muted">
-          Na przykład Słowackiego albo Lisie Jamy. Polskie znaki nie są
-          potrzebne.
+          Polskie znaki nie są potrzebne.
         </p>
-        <input
-          id={inputId}
-          type="text"
-          role="combobox"
-          aria-autocomplete="list"
-          aria-expanded={expanded}
-          aria-controls={listId}
-          aria-activedescendant={
-            expanded && active >= 0 ? `${listId}-${active}` : undefined
-          }
-          aria-describedby={hintId}
-          autoComplete="off"
-          autoCapitalize="off"
-          spellCheck={false}
-          enterKeyHint="go"
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setOpen(false)}
-          onKeyDown={onKeyDown}
-          className="mt-1 min-h-14 w-full rounded-sm border-2 border-border bg-surface px-4 text-lg text-text placeholder:text-text-muted focus-visible:border-accent"
-        />
+        <div className="relative mt-1">
+          <svg
+            aria-hidden="true"
+            width="22"
+            height="22"
+            viewBox="0 0 22 22"
+            className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-text-muted"
+          >
+            <circle
+              cx="9.5"
+              cy="9.5"
+              r="5.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            />
+            <path
+              d="M14 14.5 19 19.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+          <input
+            id={inputId}
+            type="text"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={expanded}
+            aria-controls={listId}
+            aria-activedescendant={
+              expanded && active >= 0 ? `${listId}-${active}` : undefined
+            }
+            aria-describedby={hintId}
+            autoComplete="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            enterKeyHint="go"
+            placeholder="np. Słowackiego albo Lisie Jamy"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            onBlur={() => setOpen(false)}
+            onKeyDown={onKeyDown}
+            className="min-h-14 w-full rounded-sm border-2 border-border bg-surface pr-4 pl-12 text-lg text-text placeholder:text-text-muted focus-visible:border-focus"
+          />
+        </div>
         <div
           id={listId}
           role="listbox"

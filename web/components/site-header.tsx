@@ -1,7 +1,9 @@
+import { ThemeSwitch } from "@/components/theme-switch";
+
 export function SiteHeader() {
   return (
     <header className="border-b border-border">
-      <div className="mx-auto flex w-full max-w-2xl flex-wrap items-center px-4 md:px-8">
+      <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-4 px-4 py-2 md:px-8">
         <a
           href="/"
           className="inline-flex min-h-12 flex-wrap items-center gap-x-3 gap-y-1 py-2 no-underline"
@@ -23,6 +25,7 @@ export function SiteHeader() {
           <span className="text-lg font-bold tracking-tight">conaulicy</span>
           <span className="text-text-muted">Lubaczów</span>
         </a>
+        <ThemeSwitch />
       </div>
     </header>
   );

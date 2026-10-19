@@ -44,9 +44,27 @@
 }
 
 @layer components {
-  .segment:has(input:focus-visible) {
-    outline: 3px solid var(--focus);
-    outline-offset: 2px;
+  .more-dates > summary {
+    min-height: 3rem;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    cursor: pointer;
+    font-weight: 700;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pickup-hero {
+    animation: pickup-in 200ms ease-out;
+  }
+}
+
+@keyframes pickup-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 
