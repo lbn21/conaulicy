@@ -59,6 +59,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except hashed build assets and the public font files.
-  matcher: ["/((?!_next/static/|fonts/).*)"],
+  // Everything except hashed build assets, the public font files and the
+  // revalidate hook (it checks its own secret).
+  matcher: ["/((?!_next/static/|fonts/|api/revalidate).*)"],
 };
