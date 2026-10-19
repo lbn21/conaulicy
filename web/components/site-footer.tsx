@@ -5,12 +5,24 @@ export function SiteFooter() {
         <p className="max-w-prose">
           Nie jesteśmy urzędem – obowiązuje harmonogram gminy
         </p>
-        <a
-          href="/prywatnosc"
-          className="inline-flex min-h-12 items-center self-start underline decoration-2 underline-offset-4"
-        >
-          Prywatność
-        </a>
+        <ul className="flex flex-wrap gap-x-6">
+          <li>
+            <a
+              href="/prywatnosc"
+              className="inline-flex min-h-12 items-center underline decoration-2 underline-offset-4"
+            >
+              Prywatność
+            </a>
+          </li>
+          <li>
+            <a
+              href="/dostepnosc"
+              className="inline-flex min-h-12 items-center underline decoration-2 underline-offset-4"
+            >
+              Dostępność
+            </a>
+          </li>
+        </ul>
       </div>
     </footer>
   );

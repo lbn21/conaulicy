@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+
+      # Before npm ci: with Java on PATH, vnu-jar's postinstall does not
+      # download its own runtime.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+
+      - name: Biome
+        run: npx biome ci
+
+      - name: Build
+        run: npm run build
+
+      - name: First-load JS budget
+        run: npm run budget
+
+      - name: HTML (Nu Html Checker)
+        run: node scripts/check-html.mjs
+
+      - name: Install Chromium for axe
+        run: npx playwright install --with-deps chromium
+
+      - name: Accessibility (axe, WCAG 2.2 AA)
+        run: node scripts/check-a11y.mjs

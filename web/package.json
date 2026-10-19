@@ -9,6 +9,8 @@
     "dev": "next dev",
     "build": "next build",
     "budget": "node scripts/check-bundle.mjs",
+    "check:html": "next build && node scripts/check-html.mjs",
+    "check:a11y": "next build && node scripts/check-a11y.mjs",
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write"
@@ -22,6 +24,7 @@
     "react-dom": "19.3.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@biomejs/biome": "2.5.15",
     "@tailwindcss/turbopack": "4.3.3",
     "@types/node": "24.19.2",
@@ -29,7 +32,9 @@
     "@types/qrcode": "1.5.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "playwright": "1.64.1",
     "tailwindcss": "4.3.3",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "vnu-jar": "26.10.12"
   }
 }
