@@ -20,7 +20,6 @@ import {
   TOKEN,
   tones,
 } from "@/lib/waste-bin";
-import { GLYPH, GLYPH_BOX, type Glyph } from "@/lib/waste-glyph";
 
 export const runtime = "nodejs";
 
@@ -61,16 +60,16 @@ const SECONDARY = "#e8ecf2";
 const RULE = "#b4bcc8";
 const DANGER = "#b42318";
 
-type Colours = { fill: string; fg: string; border: string };
+type Colours = { fill: string; border: string };
 
 const WASTE: Record<string, Colours> = {
-  zmieszane: { fill: "#111111", fg: "#ffffff", border: "#111111" },
-  papier: { fill: "#1f63c7", fg: "#ffffff", border: "#1f63c7" },
-  "plastik-metale": { fill: "#f2c200", fg: "#161b24", border: "#7d6200" },
-  szklo: { fill: "#1e7f4f", fg: "#ffffff", border: "#1e7f4f" },
-  bio: { fill: "#7a4b2a", fg: "#ffffff", border: "#7a4b2a" },
-  popiol: { fill: "#5c6370", fg: "#ffffff", border: "#5c6370" },
-  gabaryty: { fill: "#a8336a", fg: "#ffffff", border: "#a8336a" },
+  zmieszane: { fill: "#111111", border: "#111111" },
+  papier: { fill: "#1f63c7", border: "#1f63c7" },
+  "plastik-metale": { fill: "#f2c200", border: "#7d6200" },
+  szklo: { fill: "#1e7f4f", border: "#1e7f4f" },
+  bio: { fill: "#7a4b2a", border: "#7a4b2a" },
+  popiol: { fill: "#5c6370", border: "#5c6370" },
+  gabaryty: { fill: "#a8336a", border: "#a8336a" },
 };
 
 function shade(hex: string, percent: number): string {
@@ -82,89 +81,7 @@ function shade(hex: string, percent: number): string {
   return `#${mix((n >> 16) & 0xff)}${mix((n >> 8) & 0xff)}${mix(n & 0xff)}`;
 }
 
-function polygonPoints(
-  cx: number,
-  cy: number,
-  corners: number,
-  outer: number,
-  inner: number,
-): Array<[number, number]> {
-  const count = inner > 0 ? corners * 2 : corners;
-  return Array.from({ length: count }, (_, i) => {
-    const r = inner > 0 && i % 2 === 1 ? inner : outer;
-    const angle = -Math.PI / 2 + (i * 2 * Math.PI) / count;
-    return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
-  });
-}
-
-// A plus sign centred on (cx, cy), rotated by `angle` (Math.PI / 4 gives ×).
-function plusPoints(
-  cx: number,
-  cy: number,
-  half: number,
-  t: number,
-  angle: number,
-): Array<[number, number]> {
-  const outline: Array<[number, number]> = [
-    [-t, -half],
-    [t, -half],
-    [t, -t],
-    [half, -t],
-    [half, t],
-    [t, t],
-    [t, half],
-    [-t, half],
-    [-t, t],
-    [-half, t],
-    [-half, -t],
-    [-t, -t],
-  ];
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
-  return outline.map(([x, y]) => [
-    cx + x * cos - y * sin,
-    cy + x * sin + y * cos,
-  ]);
-}
-
-function drawGlyph(doc: PDFKit.PDFDocument, glyph: Glyph, colour: string) {
-  const { cx, cy, half } = GLYPH_BOX;
-  switch (glyph) {
-    case "circle":
-      doc.circle(cx, cy, half * 0.85);
-      break;
-    case "square":
-      doc.rect(cx - half * 0.8, cy - half * 0.8, half * 1.6, half * 1.6);
-      break;
-    case "triangle":
-      doc.polygon(
-        [cx, cy - half],
-        [cx + half, cy + half * 0.75],
-        [cx - half, cy + half * 0.75],
-      );
-      break;
-    case "diamond":
-      doc.polygon(
-        [cx, cy - half],
-        [cx + half * 0.8, cy],
-        [cx, cy + half],
-        [cx - half * 0.8, cy],
-      );
-      break;
-    case "star":
-      doc.polygon(...polygonPoints(cx, cy + 0.4, 5, half, half * 0.45));
-      break;
-    case "cross":
-      doc.polygon(...plusPoints(cx, cy, half * 1.15, half * 0.28, Math.PI / 4));
-      break;
-    case "plus":
-      doc.polygon(...plusPoints(cx, cy, half, half * 0.3, 0));
-      break;
-  }
-  doc.fillColor(colour).fill();
-}
-
-/** The website's wheelie bin (lib/waste-bin.ts) plus a print glyph. */
+/** The website's wheelie bin (lib/waste-bin.ts), in light-theme colours. */
 function drawBin(
   doc: PDFKit.PDFDocument,
   tone: string,
@@ -201,7 +118,6 @@ function drawBin(
   paint(shade(c.fill, wheel.shade));
   doc.circle(hub.cx, hub.cy, hub.r);
   paint(c.fill, false);
-  drawGlyph(doc, GLYPH[token] ?? "circle", c.fg);
   doc.restore();
 }
 
