@@ -3,7 +3,7 @@
 /**
  * Canonical location/event types.
  * Schema is public. The processed dataset is not stored in git.
- * Storage is undecided (Vercel Blob, Edge Config, or Marketplace Postgres or Redis).
+ * Stored in Neon Postgres: see lib/db/schema.ts.
  */
 
 export type EventType = "waste" | "water" | "power" | "weather";
@@ -79,9 +79,8 @@ export type Event = {
   verified: boolean;
   reviewedBy?: string | null;
   reviewedAt?: string | null;
-  /**
-   * Type-specific extras. Waste: putOutBy ("06:00"), shiftedFrom (ISO date
-   * the pickup was moved from, e.g. because of a holiday).
-   */
+  /** ISO date the event was moved from, e.g. because of a holiday. */
+  shiftedFrom?: string | null;
+  /** Type-specific extras. Waste: putOutBy ("06:00"). */
   payload?: Record<string, unknown>;
 };

@@ -17,6 +17,24 @@ jobs:
     defaults:
       run:
         working-directory: web
+    # A throwaway Postgres with the seed, so the build and the checks read
+    # the same kind of data as production without any secret.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: conaulicy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d conaulicy"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://ci:ci@localhost:5432/conaulicy
     steps:
       - uses: actions/checkout@v7
 
@@ -37,6 +55,9 @@ jobs:
 
       - name: Biome
         run: npx biome ci
+
+      - name: Database (migrate + seed)
+        run: npm run db:migrate && npm run db:seed
 
       - name: Build
         run: npm run build

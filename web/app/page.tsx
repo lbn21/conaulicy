@@ -1,11 +1,11 @@
 import { AddressSearch } from "@/components/address-search";
-import { listPlaces } from "@/lib/schedule";
+import { examplePlaces } from "@/lib/schedule";
 
 const EXAMPLE_COUNT = 5;
 
-export default function Home() {
+export default async function Home() {
   // A few examples only: the full address list never ships to the client.
-  const places = listPlaces().slice(0, EXAMPLE_COUNT);
+  const places = await examplePlaces(EXAMPLE_COUNT);
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 md:px-8">

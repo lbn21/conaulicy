@@ -2,29 +2,30 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PickupSchedule } from "@/components/pickup-schedule";
 import { longDate } from "@/lib/date-labels";
-import { getPlace, listPlaces } from "@/lib/schedule";
+import { getPlace } from "@/lib/schedule";
 
-export const dynamicParams = false;
+// Rendered on first visit, then served from the cache like a static page.
 // Regenerate every 10 minutes, so the static HTML drops past pickups and its
 // server-rendered "dziś"/"jutro" is at most minutes stale after midnight in
 // Warsaw. The client corrects the rare stale copy (see PickupSchedule).
 export const revalidate = 600;
 
-export function generateStaticParams() {
-  return listPlaces().map(({ id }) => ({ id }));
+// No paths at build time; an empty list still makes the route ISR, not dynamic.
+export function generateStaticParams(): Array<{ id: string }> {
+  return [];
 }
 
 export async function generateMetadata({
   params,
 }: PageProps<"/adres/[id]">): Promise<Metadata> {
   const { id } = await params;
-  const place = getPlace(id);
+  const place = await getPlace(id);
   return { title: place ? place.label : "Adres" };
 }
 
 export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
   const { id } = await params;
-  const place = getPlace(id);
+  const place = await getPlace(id);
   if (!place) notFound();
 
   return (

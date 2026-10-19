@@ -5,9 +5,10 @@ import QRCode from "qrcode";
 import { longDate, monthTitle, weekdayShort } from "@/lib/date-labels";
 import { absoluteDay } from "@/lib/dates";
 import { cacheControl } from "@/lib/gate";
+import { normalize } from "@/lib/normalize";
 import {
   getPlace,
-  normalize,
+  isTestData,
   type Pickup,
   type PickupDay,
   type PlaceView,
@@ -282,7 +283,11 @@ function emptyRange(keys: string[]): string {
   return `${name(first)} ${first.slice(0, 4)} – ${name(last)} ${last.slice(0, 4)}`;
 }
 
-function render(place: PlaceView, url: string): Promise<Buffer> {
+function render(
+  place: PlaceView,
+  url: string,
+  testData: boolean,
+): Promise<Buffer> {
   const months = windowMonths(place.today);
   const inWindow = place.days.filter((day) =>
     months.includes(day.date.slice(0, 7)),
@@ -439,6 +444,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     title: place.label,
     titleSize: 26,
     dayLine: weekday ? `Twój dzień odbioru: ${weekday}` : null,
+    testData,
   });
 
   // Info strip: only facts we have.
@@ -469,6 +475,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     title: place.label,
     titleSize: 18,
     dayLine: null,
+    testData,
   };
   const page2Top = bandHeight(doc, compactBand) + 16;
   const secondPage = months
@@ -622,6 +629,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     title: place.label,
     titleSize: 18,
     dayLine: weekday ? `Twój dzień odbioru: ${weekday}` : null,
+    testData,
   });
   y += 14;
   const textBottom = footerTop - 14;
@@ -648,7 +656,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     footerArtifact();
     doc.addPage();
     artifact(doc, () =>
-      continuedHeader(doc, `${place.label} – wersja tekstowa`),
+      continuedHeader(doc, `${place.label} – wersja tekstowa`, testData),
     );
     y = CONTINUED_TOP;
   };
@@ -723,7 +731,20 @@ type Band = {
   title: string;
   titleSize: number;
   dayLine: string | null;
+  /** Seed data in the database: the band opens with TEST_NOTICE. */
+  testData: boolean;
 };
+
+const TEST_NOTICE = "Dane testowe – terminy nie są prawdziwe";
+const NOTICE_H = 20;
+
+/** White on red, for every page while the database holds the seed. */
+function drawNotice(doc: PDFKit.PDFDocument, x: number, y: number) {
+  doc.font("bold").fontSize(11);
+  const w = doc.widthOfString(TEST_NOTICE) + 16;
+  doc.rect(x, y, w, NOTICE_H).fillColor(DANGER).fill();
+  doc.fillColor(WHITE).text(TEST_NOTICE, x + 8, y + 4.5, { lineBreak: false });
+}
 
 function bandLayout(band: Band) {
   const compact = band.titleSize < 22;
@@ -739,7 +760,8 @@ function bandLayout(band: Band) {
 function bandHeight(doc: PDFKit.PDFDocument, band: Band): number {
   const { compact, textW, daySize } = bandLayout(band);
   doc.font("regular").fontSize(11);
-  let height = 22 + doc.heightOfString(band.kicker, { width: textW }) + 4;
+  let height = 22 + (band.testData ? NOTICE_H + 8 : 0);
+  height += doc.heightOfString(band.kicker, { width: textW }) + 4;
   doc.font("bold").fontSize(band.titleSize);
   height += doc.heightOfString(band.title, { width: textW });
   if (band.dayLine) {
@@ -775,12 +797,20 @@ function drawBand(
       .fillColor(AMBER)
       .fill();
   });
+  let kickerTop = 22;
+  if (band.testData) {
+    // The rectangle is part of the text's look, so with root it is tagged
+    // along with the words (one P), not as a separate artifact.
+    tagged("P", () => drawNotice(doc, MARGIN, kickerTop));
+    kickerTop += NOTICE_H + 8;
+  }
+  const top = kickerTop;
   tagged("P", () => {
     doc
       .font("regular")
       .fontSize(11)
       .fillColor(WHITE)
-      .text(band.kicker, MARGIN, 22, { width: textW });
+      .text(band.kicker, MARGIN, top, { width: textW });
   });
   tagged("H1", () => {
     doc
@@ -939,7 +969,12 @@ function drawStrip(
   return stripTop + stripH;
 }
 
-function continuedHeader(doc: PDFKit.PDFDocument, title: string) {
+function continuedHeader(
+  doc: PDFKit.PDFDocument,
+  title: string,
+  testData: boolean,
+) {
+  if (testData) drawNotice(doc, MARGIN, 4);
   doc
     .font("bold")
     .fontSize(13)
@@ -1131,7 +1166,7 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const { id } = await ctx.params;
-  const place = getPlace(id);
+  const [place, testData] = await Promise.all([getPlace(id), isTestData()]);
   if (!place || place.days.length === 0) {
     return new Response("Nie mamy harmonogramu dla tego adresu.", {
       status: 404,
@@ -1142,13 +1177,14 @@ export async function GET(
     });
   }
 
-  const pdf = await render(place, `${SITE_URL}/adres/${place.id}`);
+  const pdf = await render(place, `${SITE_URL}/adres/${place.id}`, testData);
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `inline; filename="harmonogram-${slug(place.label)}.pdf"`,
+      // Short CDN life: an import purges our data cache, not the CDN copy.
       "Cache-Control": cacheControl(
-        "public, s-maxage=86400, stale-while-revalidate=86400",
+        "public, s-maxage=3600, stale-while-revalidate=86400",
       ),
     },
   });
