@@ -4,7 +4,7 @@
 - **18.10.2026, task-00 (binding).** App is `web/` (Next.js App Router, TypeScript), not Astro and not `moj-adres/web/`. Repo `lbn21/conaulicy`. Step 1 output is `design/proposals/`.
 - Opus decides **every** UI element and writes the HTML and the whole UI. Grok does not make UI decisions. Every Opus prompt must say: design for **360 px phones first**, then larger screens.
 - Styling is **Tailwind CSS** (latest stable). Opus decides how it is used. Format and lint with **Biome** only (no ESLint, no Prettier).
-- First release is waste pickups only. Do not build the IMGW warnings banner now. Body text ≥ 18 px, tap targets ≥ 48 px, contrast AA minimum and AAA for body text. Main-page JS ≤ 70 KB gzip.
+- First release is waste pickups only. Do not build the IMGW warnings banner now. Body text ≥ 18 px, tap targets ≥ 48 px, contrast AA minimum and AAA for body text. Main-page JS ≤ 150 KB gzip (raised by Jakub 2026-10-19).
 
 Repo: `lbn21/conaulicy`, branch `feat/ui` (Step 1, when it runs: `design/step1-proposals`). Directory `web/`.
 Data contract: static files from task-10 (`places.json`, `search-index.json`, `sector/{sector}.json`, `ics/{sector}.ics`, `meta.json`), pre-rendered with `generateStaticParams`. Search is client-side over the static index (fuzzy, Polish diacritics stripped). No search API. Until task-10 lands, use `docs/data/sample/*.sample.json` as fixtures (unverified — never ship them as real data).
@@ -42,7 +42,7 @@ Screens/components (single page `/`):
 9. **/zrodla**: every source URL with publication + download date, licences, IMGW sentences.
 
 ## Non-functional
-- Next.js SSG. Search and theme are client-side; street pages are real HTML without the search script. Main-page JS ≤ 70 KB gzip. LCP < 1.5 s on simulated 4G. `search-index.json` loaded on first focus.
+- Next.js SSG. Search and theme are client-side; street pages are real HTML without the search script. Main-page JS ≤ 150 KB gzip (raised by Jakub 2026-10-19). LCP < 1.5 s on simulated 4G. `search-index.json` loaded on first focus.
 - Lighthouse mobile ≥ 95 Performance, 100 Accessibility, 100 Best Practices, ≥ 95 SEO (SEO measured with noindex removed locally).
 - Works without JS: static street/village pages, plus a plain list of sectors with links to each sector's ICS and month list.
 - `prefers-reduced-motion` respected; tap targets ≥ 48×48 px; body text ≥ 18 px; focus visible in both themes; zoom to 200% without loss. Test at 360 px with large text.

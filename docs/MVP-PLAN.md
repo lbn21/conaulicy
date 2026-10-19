@@ -80,7 +80,7 @@ Resident: client-side search → static page → webcal:// (the calendar fetches
 - **IMGW warnings (next release, design only):** one route handler `GET /api/warnings`. It fetches IMGW server-side with `revalidate = 600` and `Cache-Control: s-maxage=600, stale-while-revalidate=3600`, so at most about one upstream call per 10 minutes regardless of traffic. On upstream failure, serve the last good payload with `stale: true`. This replaces the old GitHub Actions warnings cron. Keep the IMGW attribution sentence from `docs/data/DATA-INVENTORY.md`. Do not build the route in the first release.
 - **Assets:** hashed static files are `immutable`. CSP `default-src 'self'`. Fonts are self-hosted. No third-party requests.
 - **Abuse:** rely on Vercel's built-in DDoS mitigation. When `/api/*` exists, add a WAF rate-limit of **60 requests/minute per IP** on `/api/*` — only if that rule is included in the current plan. If it needs a paid add-on, stop and ask. Document how to turn on **Attack Challenge Mode** in an emergency; do not turn it on now. Read Vercel Spend Management for the team (read-only) and recommend a cap; changing billing is Jakub's call.
-- **Budget:** Lighthouse mobile performance ≥ 95, LCP < 1.5 s on simulated 4G, JS for the main page ≤ 70 KB gzip.
+- **Budget:** Lighthouse mobile performance ≥ 95, LCP < 1.5 s on simulated 4G, JS for the main page ≤ 150 KB gzip (raised by Jakub 2026-10-19).
 - **Manual review:** every AI-extracted date (JPG) and every new PDF version → `review/{sector}-{year}.md` (crop of the source + table + diff) → `approvals.yaml` (who/when). `build.py` will not publish without approval.
 - **Accuracy test plan:**
   1. Golden files `gmina-s1-2026` and `miasto-s1-2026`, transcribed cell by cell by a human from the source. Test = **100% agreement** on every date and fraction (release gate).
@@ -93,7 +93,7 @@ Resident: client-side search → static page → webcal:// (the calendar fetches
 
 ## 5. UI (task-11, Opus 5.5 medium)
 - **Step 1:** 2–3 palette + font proposals in `design/proposals/` (dark and light, AA contrast tables, AAA aimed at for body text, one static preview page per direction, 360 px and 1280 px screenshots in both themes). **Jakub chooses.** Grok does not design colours or fonts. Opus stops after Step 1.
-- Step 2 (after Jakub's choice, not now): street search → "Najbliższe odbiory" card → "Dodaj do kalendarza" → year (collapsed) → footer. No warnings banner in this release. Theme switcher Dark/Light/System, **Dark by default**, localStorage, no flash. Mobile-first at 360 px with large text. Body ≥ 18 px, tap targets ≥ 48 px, one accent colour. Lighthouse mobile performance ≥ 95, LCP < 1.5 s on simulated 4G, main-page JS ≤ 70 KB gzip. Street pages work as static HTML without the search script.
+- Step 2 (after Jakub's choice, not now): street search → "Najbliższe odbiory" card → "Dodaj do kalendarza" → year (collapsed) → footer. No warnings banner in this release. Theme switcher Dark/Light/System, **Dark by default**, localStorage, no flash. Mobile-first at 360 px with large text. Body ≥ 18 px, tap targets ≥ 48 px, one accent colour. Lighthouse mobile performance ≥ 95, LCP < 1.5 s on simulated 4G, main-page JS ≤ 150 KB gzip (raised by Jakub 2026-10-19). Street pages work as static HTML without the search script.
 
 ## 6. Privacy page (/prywatnosc) – content
 - We don't use cookies. No account, no login, no forms in v1.
