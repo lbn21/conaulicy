@@ -1,0 +1,252 @@
+/*
+  Latarnia — design tokens for Tailwind CSS v4.
+  Copy of design/tokens.css with font URLs pointing at web/public/fonts.
+  Dark is the default theme.
+  Contrast is verified by `node design/contrast.mjs`; keep the palettes in sync.
+
+  Theme resolution:
+  1. :root holds dark tokens.
+  2. prefers-color-scheme: light swaps to light tokens.
+  3. [data-theme="dark"] and [data-theme="light"] override both.
+     [data-theme="system"] is intentionally unset, so the media query
+     keeps following the device live.
+
+  Spacing rhythm: 4px. Tailwind derives p-1 = 4px, p-2 = 8px, p-4 = 16px … from --spacing.
+  Weights: 400 (text) and 700 (emphasis) only.
+*/
+
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/atkinson-hyperlegible-next-latin-400-normal.woff2")
+    format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/atkinson-hyperlegible-next-latin-ext-400-normal.woff2")
+    format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/atkinson-hyperlegible-next-latin-700-normal.woff2")
+    format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/atkinson-hyperlegible-next-latin-ext-700-normal.woff2")
+    format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Dark (default) */
+:root {
+  color-scheme: dark;
+  --background: #10141d;
+  --surface: #19202b;
+  --surface-2: #212937;
+  --text: #e9edf2;
+  --text-muted: #b4bcc8;
+  --border: #6f7a8d;
+  --accent: #ffb547;
+  --accent-contrast: #10141d;
+  --secondary: #262e3b;
+  --focus: #ffdda0;
+  --success: #6fd49a;
+  --warning: #f2a65a;
+  --danger: #ff8f85;
+  --waste-zmieszane: #aab3c0;
+  --waste-zmieszane-fg: #10141d;
+  --waste-papier: #6eb4ff;
+  --waste-papier-fg: #10141d;
+  --waste-plastik-metale: #f4d35e;
+  --waste-plastik-metale-fg: #10141d;
+  --waste-szklo: #58d39a;
+  --waste-szklo-fg: #10141d;
+  --waste-bio: #c4936a;
+  --waste-bio-fg: #10141d;
+  --waste-popiol: #d6c7b6;
+  --waste-popiol-fg: #10141d;
+  --waste-gabaryty: #f293b8;
+  --waste-gabaryty-fg: #10141d;
+  --elevation: 0 1px 2px rgb(0 0 0 / 0.4);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --background: #f5f7fa;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --text: #161b24;
+    --text-muted: #4a5568;
+    --border: #6f7a8d;
+    --accent: #9a5700;
+    --accent-contrast: #ffffff;
+    --secondary: #e8ecf2;
+    --focus: #6b3d00;
+    --success: #1e7a46;
+    --warning: #a0420a;
+    --danger: #b42318;
+    --waste-zmieszane: #5b6575;
+    --waste-zmieszane-fg: #ffffff;
+    --waste-papier: #1f63c7;
+    --waste-papier-fg: #ffffff;
+    --waste-plastik-metale: #7d6200;
+    --waste-plastik-metale-fg: #ffffff;
+    --waste-szklo: #1e7f4f;
+    --waste-szklo-fg: #ffffff;
+    --waste-bio: #7a4b2a;
+    --waste-bio-fg: #ffffff;
+    --waste-popiol: #736659;
+    --waste-popiol-fg: #ffffff;
+    --waste-gabaryty: #a8336a;
+    --waste-gabaryty-fg: #ffffff;
+    --elevation: 0 1px 2px rgb(22 27 36 / 0.12);
+  }
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #10141d;
+  --surface: #19202b;
+  --surface-2: #212937;
+  --text: #e9edf2;
+  --text-muted: #b4bcc8;
+  --border: #6f7a8d;
+  --accent: #ffb547;
+  --accent-contrast: #10141d;
+  --secondary: #262e3b;
+  --focus: #ffdda0;
+  --success: #6fd49a;
+  --warning: #f2a65a;
+  --danger: #ff8f85;
+  --waste-zmieszane: #aab3c0;
+  --waste-zmieszane-fg: #10141d;
+  --waste-papier: #6eb4ff;
+  --waste-papier-fg: #10141d;
+  --waste-plastik-metale: #f4d35e;
+  --waste-plastik-metale-fg: #10141d;
+  --waste-szklo: #58d39a;
+  --waste-szklo-fg: #10141d;
+  --waste-bio: #c4936a;
+  --waste-bio-fg: #10141d;
+  --waste-popiol: #d6c7b6;
+  --waste-popiol-fg: #10141d;
+  --waste-gabaryty: #f293b8;
+  --waste-gabaryty-fg: #10141d;
+  --elevation: 0 1px 2px rgb(0 0 0 / 0.4);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --background: #f5f7fa;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --text: #161b24;
+  --text-muted: #4a5568;
+  --border: #6f7a8d;
+  --accent: #9a5700;
+  --accent-contrast: #ffffff;
+  --secondary: #e8ecf2;
+  --focus: #6b3d00;
+  --success: #1e7a46;
+  --warning: #a0420a;
+  --danger: #b42318;
+  --waste-zmieszane: #5b6575;
+  --waste-zmieszane-fg: #ffffff;
+  --waste-papier: #1f63c7;
+  --waste-papier-fg: #ffffff;
+  --waste-plastik-metale: #7d6200;
+  --waste-plastik-metale-fg: #ffffff;
+  --waste-szklo: #1e7f4f;
+  --waste-szklo-fg: #ffffff;
+  --waste-bio: #7a4b2a;
+  --waste-bio-fg: #ffffff;
+  --waste-popiol: #736659;
+  --waste-popiol-fg: #ffffff;
+  --waste-gabaryty: #a8336a;
+  --waste-gabaryty-fg: #ffffff;
+  --elevation: 0 1px 2px rgb(22 27 36 / 0.12);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-primary: var(--accent);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-secondary: var(--secondary);
+  --color-focus: var(--focus);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-waste-zmieszane: var(--waste-zmieszane);
+  --color-waste-zmieszane-fg: var(--waste-zmieszane-fg);
+  --color-waste-papier: var(--waste-papier);
+  --color-waste-papier-fg: var(--waste-papier-fg);
+  --color-waste-plastik-metale: var(--waste-plastik-metale);
+  --color-waste-plastik-metale-fg: var(--waste-plastik-metale-fg);
+  --color-waste-szklo: var(--waste-szklo);
+  --color-waste-szklo-fg: var(--waste-szklo-fg);
+  --color-waste-bio: var(--waste-bio);
+  --color-waste-bio-fg: var(--waste-bio-fg);
+  --color-waste-popiol: var(--waste-popiol);
+  --color-waste-popiol-fg: var(--waste-popiol-fg);
+  --color-waste-gabaryty: var(--waste-gabaryty);
+  --color-waste-gabaryty-fg: var(--waste-gabaryty-fg);
+
+  --font-sans: "Atkinson Hyperlegible Next", system-ui, sans-serif;
+  --font-weight-normal: 400;
+  --font-weight-bold: 700;
+
+  --spacing: 0.25rem;
+  --radius-sm: 4px;
+  --shadow-raised: var(--elevation);
+
+  /* Mobile-first type scale; step headings up with md:/lg: variants. */
+  --text-sm: 1.125rem;
+  --text-sm--line-height: 1.55;
+  --text-base: 1.125rem;
+  --text-base--line-height: 1.55;
+  --text-lg: 1.375rem;
+  --text-lg--line-height: 1.3;
+  --text-xl: 1.75rem;
+  --text-xl--line-height: 1.2;
+  --text-2xl: 2.25rem;
+  --text-2xl--line-height: 1.15;
+  --text-3xl: 3rem;
+  --text-3xl--line-height: 1.1;
+}
