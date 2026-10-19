@@ -52,6 +52,21 @@ export default function PrivacyPage() {
             nim zrobisz, zostaje między Tobą a Twoim telefonem.
           </p>
         </section>
+
+        <section>
+          <h2 className="text-lg font-bold">Kto prowadzi stronę</h2>
+          <p className="mt-2">
+            Stronę prowadzi prywatnie Jakub Marciniszyn. Jest administratorem
+            danych z logów serwera. Pytania o prywatność albo o stronę wyślij na
+            adres:
+          </p>
+          <a
+            href="mailto:kontakt@conaulicy.pl"
+            className="inline-flex min-h-12 items-center font-bold underline decoration-2 underline-offset-4"
+          >
+            kontakt@conaulicy.pl
+          </a>
+        </section>
       </div>
     </main>
   );
