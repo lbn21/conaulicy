@@ -11,6 +11,7 @@
     "budget": "node scripts/check-bundle.mjs",
     "check:html": "next build && node scripts/check-html.mjs",
     "check:a11y": "next build && node scripts/check-a11y.mjs",
+    "check:search": "next build && node scripts/check-search.mjs",
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write",
