@@ -65,7 +65,7 @@ function WasteMark({ tone, large }: { tone: string; large: boolean }) {
   const fill = token ? `var(--waste-${token})` : "var(--secondary)";
   const outline =
     token === "zmieszane" ? "var(--waste-zmieszane-border)" : "none";
-  const [width, height] = large ? [28, 40] : [20, 28];
+  const [width, height] = large ? [34, 48] : [23, 32];
   return (
     <svg
       aria-hidden="true"
@@ -167,7 +167,7 @@ function DayBlock({
       )}
       <ul className="mt-4 flex flex-col gap-3">
         {day.pickups.map((pickup) => (
-          <li key={pickup.id} className="flex items-center gap-3">
+          <li key={pickup.id} className="flex min-h-12 items-center gap-3">
             <span aria-hidden="true" className="flex gap-1">
               {tones(pickup.subtype).map((tone) => (
                 <WasteMark key={tone} tone={tone} large={prominent} />
