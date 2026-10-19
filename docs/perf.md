@@ -4,11 +4,11 @@
 
 ## Profile
 
-Lighthouse (npm `lighthouse`, free, no Lighthouse CI server) with its mobile defaults:
+Lighthouse (npm `lighthouse`, free, no Lighthouse CI server) with its mobile settings and **real throttling** (`throttlingMethod: "devtools"`):
 
 - Moto G Power screen, mobile user agent.
-- Simulated Slow 4G: 150 ms RTT, 1.6 Mbps down (Lantern simulation, not real throttling).
-- CPU slowed 4× (Lighthouse's default, meant to turn a high-end desktop into a mid-tier phone). Fixed, so numbers stay comparable with the baseline.
+- Slow 4G (150 ms RTT, 1.6 Mbps down), applied by Chrome with Lighthouse's devtools adjustment: 562.5 ms request latency (150 × 3.75), 1475 kbps down (× 0.9), 675 kbps up. The check prints the profile it used.
+- CPU slowed 4× (Lighthouse's default). Fixed, not calibrated (see "Flake fixed" below).
 - Pages: `/`, `/adres/0972447-00470` (seed street, Asnyka), `/dostepnosc`.
 - 5 runs per page (`PERF_RUNS`).
 
@@ -16,7 +16,7 @@ Lighthouse (npm `lighthouse`, free, no Lighthouse CI server) with its mobile def
 
 | Metric | Budget | Judged on |
 |---|---|---|
-| LCP | ≤ 1800 ms | best of 5 runs |
+| LCP | ≤ 1800 ms | median |
 | TBT | ≤ 150 ms | median |
 | CLS | < 0.01 (in practice 0) | median |
 | Street page HTML | ≤ 30 KB gzip | one fetch (all pages are checked) |
@@ -24,35 +24,29 @@ Lighthouse (npm `lighthouse`, free, no Lighthouse CI server) with its mobile def
 | Search keystroke → list updated | ≤ 50 ms | median of 5 keys, index loaded, CPU 4× slower |
 | First-load JS | ≤ 150 KB gzip | `npm run budget` (separate step) |
 
-## Why LCP takes the best run
+## Flake fixed: real throttling (2026-10-19)
 
-Lantern estimates LCP from the trace of a real, unthrottled load. A network request counts towards LCP only if it finished before the LCP paint in that trace. On a local server everything happens within ~50 ms, so whether the 140 KB of JS finished before the first paint is a coin toss. The runs land in two modes, near 1.6 s (JS not counted, which matches a real phone, where the text paints long before the JS arrives) and near 2.2 s (JS counted). The median flipped between them from run to run. The best run is the estimate without that artifact. Heavier fonts, CSS or HTML still push every run up, and JS size has its own budget.
+Until PR #20 the check used Lantern, Lighthouse's default simulated throttling. Lantern estimates a slow load from the trace of an unthrottled one, and counts a request towards LCP only if it finished before the LCP paint in that trace. On the local server everything finishes within ~50 ms, so whether the 140 KB of JS counted was a coin toss: runs landed near 1.6 s or near 2.2 s, and even the best of 5 runs failed now and then (PRs #16, #17, #19). Calibrating the CPU slowdown from `benchmarkIndex` did not help (CI runner 2385 → 7.66×: still bimodal, TBT 246–315 ms; dropped).
 
-## Known flake
+With real throttling the page really loads over the slowed network and CPU, so the order of requests is the same as on a phone. Five CI runs of the check (5 Lighthouse runs per page each, 75 runs):
 
-Best-of-5 for LCP still fails now and then in CI, on any of the three pages, when all five runs land in the slow mode (seen on PRs #16 and #17).
+| Page | LCP, all runs | LCP medians of the 5 CI runs | TBT medians of the 5 CI runs |
+|---|---|---|---|
+| `/` | 1360–1438 ms | 1397, 1394, 1409, 1383, 1417 | 76, 132, 124, 45, 115 |
+| Street | 1373–1477 ms | 1417, 1416, 1405, 1390, 1408 | 77, 139, 120, 43, 117 |
+| `/dostepnosc` | 1378–1437 ms | 1389, 1397, 1391, 1385, 1401 | 78, 129, 134, 43, 115 |
 
-The two modes come from request timing in the unthrottled trace that Lantern simulates from: in a given load the JS either finished before the first paint (slow mode, ~2.2 s) or not (fast mode, ~1.6 s). Nothing in the page decides it; the local server is just too fast for the order to be stable.
-
-Calibrating the CPU slowdown does not help (tried 2026-10-19 in PR #18, then dropped). Following Lighthouse's throttling docs, the check set `cpuSlowdownMultiplier` from the machine's `benchmarkIndex` with the Lighthouse CPU throttling calculator's formula:
-
-- CI runner: benchmarkIndex 2385 → 7.66×. LCP stayed bimodal (per page, runs near 1.6 s and near 2.4 s; e.g. `/`: 1602, 2406, 2405, 2391, 1623), and TBT rose to 246–315 ms (over budget; ~90 ms at 4×).
-- M-series Mac: benchmarkIndex 4354 → 16.11×, TBT 77–89 ms.
-
-The multiplier does not touch which requests finished before the paint, and benchmarkIndex (a single-thread JS benchmark) did not predict TBT across the two machines.
-
-Options, not implemented (Jakub decides):
-
-- Lighthouse DevTools throttling: measure a really throttled load instead of simulating from a fast one. The numbers differ from the baseline, so the budgets need new values.
-- A realistic delay on the local server's responses, so the trace's request order looks like a phone on 4G.
-
-Until then, rerun the failed job when only LCP lands in the slow mode.
+- LCP has one mode, equal to FCP (the text paints with the fallback font as soon as the HTML and CSS arrive). The 1.8 s budget stays, ~320 ms above the worst run.
+- LCP is judged on the **median** again. Within one CI run the five values lie within ~80 ms, so there is no artifact for the best run to hide, and the median also catches a regression that only some runs would show.
+- TBT is steady within a CI run but differs between runners (medians 43–139 ms): real CPU throttling slows the runner's own CPU 4×, and runners differ. The 150 ms budget is unchanged; the worst median so far is 139 ms, so a slow runner could still fail it. If that happens, look at the TBT per run before rerunning.
+- Locally (M-series Mac) the same check gives LCP ~1340 ms and TBT 0–13 ms.
+- A run takes about 4 minutes in CI instead of 2.
 
 ## Results
 
 Baseline on production (2026-10-19, gated, before the font and LCP fixes; 3 runs, median, default 4×): `/` LCP 1886 ms, street 1807 ms, `/dostepnosc` 1805 ms; TBT 5–23 ms; CLS 0; 4 fonts (~40 KB).
 
-CI, task 17 (default 4×, median of 5):
+CI, task 17 (simulated throttling, default 4×, median of 5):
 
 | Page | LCP before | LCP after | TBT after |
 |---|---|---|---|
