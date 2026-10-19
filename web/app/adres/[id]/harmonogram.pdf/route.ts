@@ -36,17 +36,17 @@ const BOLD = readFileSync(
   path.join(FONT_DIR, "AtkinsonHyperlegibleNext-Bold.ttf"),
 );
 
-// A4 portrait in points, 10 mm margins. One page, laid out like the Wigan
-// council calendar (docs/inspiration/wigan-calendar.png).
+// A4 portrait in points, 10 mm margins. Page 1 is laid out like the Wigan
+// council calendar (docs/inspiration/wigan-calendar.png); the last page is a
+// text-only version, like Wigan's, for black-and-white and colour-blind use.
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
 const MARGIN = 28;
 const CONTENT_W = PAGE_W - 2 * MARGIN;
 const MONTHS = 12;
-const COLUMNS = 4;
+const COLUMNS = 3;
 const COLUMN_GAP = 12;
 const TABLE_W = (CONTENT_W - COLUMN_GAP * (COLUMNS - 1)) / COLUMNS;
-const BIN_GAP = 1.5;
 
 // Latarnia tokens (design/tokens.css): dark theme for the header band, light
 // theme for everything printed on white.
@@ -171,81 +171,115 @@ function commonWeekday(days: PickupDay[]): string | null {
   return names.size === 1 ? [...names][0] : null;
 }
 
-type Metrics = {
-  rowH: number;
-  binH: number;
-  date: number;
-  dayCol: number;
-};
-
-// The date column fits the widest day label (`labelEm`: its width at 1pt);
-// bins grow with the scale but never past the width the busiest day needs.
-function metrics(k: number, maxBins: number, labelEm: number): Metrics {
-  const date = Math.max(11, 12.5 * k);
-  const dayCol = Math.max(labelEm * date, 26) + 12;
-  const fit =
-    ((TABLE_W - dayCol - 8) / maxBins - BIN_GAP) * (BIN_HEIGHT / BIN_WIDTH);
-  return {
-    rowH: 21 * k,
-    binH: Math.min(17 * k, 21 * k - 3, fit),
-    date,
-    dayCol,
-  };
-}
-
 /** Day number alone when every pickup shares a weekday, else "19 pon". */
 function dayText(iso: string, sameWeekday: boolean): string {
   const day = String(Number(iso.slice(8)));
   return sameWeekday ? day : `${day} ${weekdayShort(iso)}`;
 }
 
-const MONTH_HEAD = 19;
-const COLUMN_HEAD = 15;
-const YEAR_HEAD = 22;
-const ROW_GAP = 10;
-const EMPTY_ROWS = 2;
-
-function tableHeight(days: PickupDay[] | undefined, m: Metrics): number {
-  const rows = days ? days.length : EMPTY_ROWS;
-  return MONTH_HEAD + COLUMN_HEAD + rows * m.rowH;
-}
-
-type GridRow = { year: string | null; months: string[] };
-
-function gridRows(months: string[]): GridRow[] {
-  const rows: GridRow[] = [];
-  let year = "";
-  for (const month of months) {
-    const last = rows.at(-1);
-    if (month.slice(0, 4) !== year) {
-      year = month.slice(0, 4);
-      rows.push({ year, months: [month] });
-    } else if (last && last.months.length < COLUMNS) {
-      last.months.push(month);
-    } else {
-      rows.push({ year: null, months: [month] });
-    }
-  }
-  return rows;
-}
-
-function gridHeight(
-  rows: GridRow[],
-  byMonth: Map<string, PickupDay[]>,
-  m: Metrics,
-): number {
-  return rows.reduce(
-    (sum, row) =>
-      sum +
-      (row.year ? YEAR_HEAD : 0) +
-      Math.max(...row.months.map((key) => tableHeight(byMonth.get(key), m))) +
-      ROW_GAP,
-    0,
-  );
+function monthName(key: string): string {
+  return monthTitle(`${key}-01`).replace(/ \d{4}$/, "");
 }
 
 function label(pickups: Pickup[]): string {
   return pickups.map((p) => p.label).join(", ");
+}
+
+function spoken(day: PickupDay): string {
+  const moved = day.pickups.find((p) => p.shiftedFrom)?.shiftedFrom;
+  const when = absoluteDay(day.date);
+  return moved ? `${when} (termin przesunięty z ${absoluteDay(moved)})` : when;
+}
+
+// Month tables, like Wigan's: every table has the same number of row slots
+// (at least ROWS, empty slots stay blank), and every table in a grid row has
+// the same height. A day whose bins do not fit one line takes more slots.
+const ROWS = 5;
+const BIN_GAP = 2;
+const MAX_BIN = 34;
+const MIN_BIN = 18;
+const MONTH_HEAD = 22;
+const COLUMN_HEAD = 16;
+const YEAR_HEAD = 22;
+const ROW_GAP = 10;
+
+type Grid = {
+  dayCol: number;
+  sameWeekday: boolean;
+  binH: number;
+  /** Height of one row slot. */
+  lineH: number;
+  perLine: number;
+};
+
+function grid(binH: number, dayCol: number, sameWeekday: boolean): Grid {
+  return {
+    dayCol,
+    sameWeekday,
+    binH,
+    lineH: binH + 5,
+    perLine: Math.max(
+      1,
+      Math.floor((TABLE_W - dayCol - 8 + BIN_GAP) / (binWidth(binH) + BIN_GAP)),
+    ),
+  };
+}
+
+function binLines(day: PickupDay, g: Grid): number {
+  const bins = day.pickups.reduce((n, p) => n + tones(p.subtype).length, 0);
+  return Math.max(1, Math.ceil(bins / g.perLine));
+}
+
+/** Row slots a month needs: one per day (more for wrapped bins), at least ROWS. */
+function monthSlots(days: PickupDay[] | undefined, g: Grid): number {
+  if (!days) return ROWS;
+  const used = days.reduce((n, day) => n + binLines(day, g), 0);
+  return Math.max(ROWS, used);
+}
+
+type GridRow = { months: string[]; slots: number; height: number };
+
+const ROWS_PER_PAGE = 2;
+
+/** Three months per row; every table in a row shares the row's slot count. */
+function gridRows(
+  months: string[],
+  byMonth: Map<string, PickupDay[]>,
+  g: Grid,
+): GridRow[] {
+  const rows: GridRow[] = [];
+  for (let i = 0; i < months.length; i += COLUMNS) {
+    const row = months.slice(i, i + COLUMNS);
+    const slots = Math.max(
+      ...row.map((key) => monthSlots(byMonth.get(key), g)),
+    );
+    rows.push({
+      months: row,
+      slots,
+      height: YEAR_HEAD + MONTH_HEAD + COLUMN_HEAD + slots * g.lineH,
+    });
+  }
+  return rows;
+}
+
+function rowsHeight(rows: GridRow[]): number {
+  return (
+    rows.reduce((h, row) => h + row.height, 0) + ROW_GAP * (rows.length - 1)
+  );
+}
+
+const CONTINUED_TOP = MARGIN + 40;
+
+/** Consecutive months without data, as "styczeń–wrzesień 2027". */
+function emptyRange(keys: string[]): string {
+  const first = keys[0];
+  const last = keys[keys.length - 1];
+  const name = (key: string) => monthName(key).toLowerCase();
+  if (first === last) return `${name(first)} ${first.slice(0, 4)}`;
+  if (first.slice(0, 4) === last.slice(0, 4)) {
+    return `${name(first)}–${name(last)} ${last.slice(0, 4)}`;
+  }
+  return `${name(first)} ${first.slice(0, 4)} – ${name(last)} ${last.slice(0, 4)}`;
 }
 
 function render(place: PlaceView, url: string): Promise<Buffer> {
@@ -263,6 +297,12 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const shifted = inWindow.some((day) =>
     day.pickups.some((p) => p.shiftedFrom),
   );
+  const putOutBy = inWindow
+    .flatMap((day) => day.pickups)
+    .find((p) => p.putOutBy)?.putOutBy;
+  const putOut = putOutBy
+    ? `Wystaw pojemniki do ${putOutBy.replace(/^0/, "")} w dniu odbioru.`
+    : null;
 
   const doc = new PDFDocument({
     size: "A4",
@@ -292,97 +332,116 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
 
   const root = doc.struct("Document");
   doc.addStructure(root);
+  // Content repeated on later pages (footer, key, continued headers) is
+  // tagged once and drawn as an artifact elsewhere.
   const tag = (
-    parent: PDFKit.PDFStructureElement,
+    parent: PDFKit.PDFStructureElement | null,
     type: string,
     draw: () => void,
-  ) => parent.add(doc.struct(type, {}, draw));
+    options: { actual?: string } = {},
+  ) => {
+    if (parent) parent.add(doc.struct(type, options, draw));
+    else draw();
+  };
 
-  // Header band, full width, Latarnia navy with an amber edge.
-  const logoW = 150;
-  const bandTextW = CONTENT_W - logoW - 16;
-  const kicker = `Harmonogram odbioru odpadów · ${period}`;
-  const dayLine = weekday ? `Twój dzień odbioru: ${weekday}` : null;
-  doc.font("regular").fontSize(11);
-  let bandH = 22 + doc.heightOfString(kicker, { width: bandTextW }) + 4;
-  doc.font("bold").fontSize(26);
-  bandH += doc.heightOfString(place.label, { width: bandTextW });
-  if (dayLine) {
-    doc.fontSize(19);
-    bandH += 6 + doc.heightOfString(dayLine, { width: bandTextW });
+  // Footer: every source with its link and last-checked date, on every page.
+  const footerLines = place.sources.map((source) => {
+    const checked = source.checkedAt
+      ? ` · Stan na ${longDate(source.checkedAt)}`
+      : "";
+    return { text: `Źródło: ${source.label}${checked}`, url: source.url };
+  });
+  const closing = "Serwis nieoficjalny – obowiązuje harmonogram gminy.";
+  doc.font("regular").fontSize(9);
+  let footerH = 0;
+  for (const line of footerLines) {
+    footerH += doc.heightOfString(line.text, { width: CONTENT_W });
+    if (line.url) footerH += doc.heightOfString(line.url, { width: CONTENT_W });
   }
-  bandH = Math.max(bandH + 18, 104);
-  artifact(doc, () => {
-    doc.rect(0, 0, PAGE_W, bandH).fillColor(NAVY).fill();
-    doc
-      .rect(0, bandH - 4, PAGE_W, 4)
-      .fillColor(AMBER)
-      .fill();
-  });
-  tag(root, "P", () => {
-    doc
-      .font("regular")
-      .fontSize(11)
-      .fillColor(WHITE)
-      .text(kicker, MARGIN, 22, { width: bandTextW });
-  });
-  tag(root, "H1", () => {
-    doc
-      .font("bold")
-      .fontSize(26)
-      .fillColor(WHITE)
-      .text(place.label, MARGIN, doc.y + 4, { width: bandTextW });
-  });
-  if (dayLine) {
-    tag(root, "P", () => {
+  doc.font("bold").fontSize(9.5);
+  footerH += doc.heightOfString(closing, { width: CONTENT_W }) + 4;
+  const footerTop = PAGE_H - MARGIN - footerH;
+
+  const drawFooter = (parent: PDFKit.PDFStructureElement | null) => {
+    let fy = footerTop;
+    for (const line of footerLines) {
+      const top = fy;
+      tag(parent, "P", () => {
+        doc
+          .font("regular")
+          .fontSize(9)
+          .fillColor(MUTED)
+          .text(line.text, MARGIN, top, { width: CONTENT_W });
+        if (line.url) doc.text(line.url, { width: CONTENT_W, link: line.url });
+      });
+      fy = doc.y;
+    }
+    const closingTop = fy + 4;
+    tag(parent, "P", () => {
       doc
         .font("bold")
-        .fontSize(19)
-        .fillColor(AMBER)
-        .text(dayLine, MARGIN, doc.y + 6, { width: bandTextW });
+        .fontSize(9.5)
+        .fillColor(TEXT)
+        .text(closing, MARGIN, closingTop, { width: CONTENT_W });
     });
+  };
+  const footerArtifact = () => artifact(doc, () => drawFooter(null));
+
+  // Key entries, wrapped onto more lines when they do not fit one.
+  const keyBin = 22;
+  const keyLine = 28;
+  const legend = new Map<string, Pickup>();
+  for (const pickup of inWindow.flatMap((day) => day.pickups)) {
+    if (!legend.has(pickup.subtype)) legend.set(pickup.subtype, pickup);
   }
-
-  // Our wordmark where Wigan has its crest: the lantern from the site header.
-  const lx = PAGE_W - MARGIN - logoW;
-  artifact(doc, () => {
-    doc
-      .save()
-      .translate(lx + 6, 24)
-      .scale(1.6);
-    doc.roundedRect(0, 0, 14, 20, 1).fillColor(AMBER).fill();
-    doc
-      .moveTo(7, 0)
-      .lineTo(7, 20)
-      .moveTo(0, 9)
-      .lineTo(14, 9)
-      .lineWidth(1.5)
-      .strokeColor(NAVY)
-      .stroke();
-    doc.restore();
-    doc
-      .font("bold")
-      .fontSize(22)
-      .fillColor(WHITE)
-      .text("conaulicy", lx + 38, 24, { width: logoW - 38, lineBreak: false });
+  const keyItems: Array<{ bins: string[]; label: string }> = [
+    ...[...legend.entries()].map(([subtype, pickup]) => ({
+      bins: tones(subtype),
+      label: pickup.label,
+    })),
+    ...(shifted ? [{ bins: [], label: "Termin przesunięty" }] : []),
+  ];
+  doc.font("regular").fontSize(11);
+  const keyStart = MARGIN + 82;
+  let kx = keyStart;
+  let keyRow = 0;
+  const keyPlaced = keyItems.map((item) => {
+    const markW = item.bins.length
+      ? item.bins.length * (binWidth(keyBin) + 2) + 3
+      : 22;
+    const w = markW + doc.widthOfString(item.label);
+    if (kx > keyStart && kx + w > PAGE_W - MARGIN) {
+      kx = keyStart;
+      keyRow++;
+    }
+    const placed = { ...item, x: kx, row: keyRow, markW };
+    kx += w + 14;
+    return placed;
   });
-  tag(root, "P", () => {
-    doc
-      .font("regular")
-      .fontSize(11)
-      .fillColor(AMBER)
-      .text("conaulicy.pl", lx + 38, 52, {
-        width: logoW - 38,
-        link: SITE_URL,
-        lineBreak: false,
-      });
+  const NOTE_H = 18;
+  const legendH = 32 + keyRow * keyLine + NOTE_H;
+  const legendTop = footerTop - 10 - legendH;
+
+  // Month grid layout.
+  doc.font("bold").fontSize(13);
+  const sameWeekday = weekday !== null;
+  const dayCol =
+    Math.max(
+      26,
+      ...inWindow.map((day) =>
+        doc.widthOfString(dayText(day.date, sameWeekday)),
+      ),
+    ) + 14;
+
+  // Page 1 header band, Latarnia navy with an amber edge.
+  const bandBottom = drawBand(doc, root, {
+    kicker: `Harmonogram odbioru odpadów · ${period}`,
+    title: place.label,
+    titleSize: 26,
+    dayLine: weekday ? `Twój dzień odbioru: ${weekday}` : null,
   });
 
-  // Info strip: only facts we have. The background is drawn first, with a
-  // height measured up front.
-  const putOutBy = inWindow
-    .flatMap((day) => day.pickups)
-    .find((p) => p.putOutBy)?.putOutBy;
+  // Info strip: only facts we have.
   const notes: Array<{ icon: "warn" | "clock"; bold: string; text: string }> = [
     {
       icon: "warn",
@@ -397,18 +456,400 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       text: " w dniu odbioru.",
     });
   }
+  const gridTop = drawStrip(doc, root, notes, url, bandBottom + 12) + 12;
+
+  // Two calendar pages of six months (2 rows × 3 tables), then the text
+  // version on page 3. Bins get the largest size at which both pages fit,
+  // the same on both; extra bins wrap to a second line instead of shrinking.
+  const gridBottom = legendTop - 8;
+  const compactBand: Band = {
+    kicker: `Harmonogram odbioru odpadów · ${period}`,
+    title: place.label,
+    titleSize: 18,
+    dayLine: null,
+  };
+  const page2Top = bandHeight(doc, compactBand) + 16;
+  const fits = (candidate: Grid) => {
+    const rows = gridRows(months, byMonth, candidate);
+    return [gridTop, page2Top].every(
+      (top, page) =>
+        top +
+          rowsHeight(
+            rows.slice(page * ROWS_PER_PAGE, (page + 1) * ROWS_PER_PAGE),
+          ) <=
+        gridBottom,
+    );
+  };
+  let g = grid(MIN_BIN, dayCol, sameWeekday);
+  for (let binH = MAX_BIN; binH >= MIN_BIN; binH--) {
+    const candidate = grid(binH, dayCol, sameWeekday);
+    if (fits(candidate)) {
+      g = candidate;
+      break;
+    }
+  }
+  const rows = gridRows(months, byMonth, g);
+  const pages = [rows.slice(0, ROWS_PER_PAGE), rows.slice(ROWS_PER_PAGE)];
+  const textPage = 3;
+
+  const drawKey = (parent: PDFKit.PDFStructureElement | null) => {
+    // Marked content cannot nest: when the whole key is already an artifact
+    // (parent null), draw decoration directly.
+    const decoration = (draw: () => void) => {
+      if (parent) artifact(doc, draw);
+      else draw();
+    };
+    decoration(() => {
+      doc
+        .moveTo(MARGIN, legendTop - 4)
+        .lineTo(PAGE_W - MARGIN, legendTop - 4)
+        .lineWidth(0.5)
+        .strokeColor(RULE)
+        .stroke();
+    });
+    tag(parent, "H2", () => {
+      doc
+        .font("bold")
+        .fontSize(12)
+        .fillColor(TEXT)
+        .text("Oznaczenia", MARGIN, legendTop + 9, { lineBreak: false });
+    });
+    const keyList = parent ? doc.struct("L") : null;
+    if (parent && keyList) parent.add(keyList);
+    for (const item of keyPlaced) {
+      const top = legendTop + item.row * keyLine;
+      const marks = () => {
+        if (item.bins.length === 0) {
+          doc
+            .rect(item.x, top + 8, 18, 14)
+            .fillColor(DANGER)
+            .fill();
+        }
+        item.bins.forEach((tone, i) => {
+          drawBin(
+            doc,
+            tone,
+            item.x + i * (binWidth(keyBin) + 2),
+            top + 4,
+            keyBin,
+          );
+        });
+      };
+      if (parent) artifact(doc, marks);
+      else marks();
+      tag(keyList, "LI", () => {
+        doc
+          .font("regular")
+          .fontSize(11)
+          .fillColor(TEXT)
+          .text(item.label, item.x + item.markW, top + 10, {
+            lineBreak: false,
+          });
+      });
+    }
+    keyList?.end();
+    const noteTop = legendTop + legendH - NOTE_H + 2;
+    tag(parent, "P", () => {
+      doc
+        .font("bold")
+        .fontSize(10)
+        .fillColor(TEXT)
+        .text(
+          `Wersja tekstowa (bez kolorów i ikon) na stronie ${textPage}.`,
+          MARGIN,
+          noteTop,
+          { width: CONTENT_W },
+        );
+    });
+  };
+
+  // Calendar pages. A year heading sits above the first month of each year
+  // in reading order (tagged H2) and is repeated, as decoration, above the
+  // first column when a row continues a year.
+  pages.forEach((pageRows, index) => {
+    let y = gridTop;
+    if (index > 0) {
+      doc.addPage();
+      artifact(doc, () => drawBand(doc, null, compactBand));
+      y = page2Top;
+    }
+    for (const row of pageRows) {
+      const top = y;
+      row.months.forEach((key, column) => {
+        const x = MARGIN + column * (TABLE_W + COLUMN_GAP);
+        const year = key.slice(0, 4);
+        const opens = key === months[0] || key.endsWith("-01");
+        if (opens || column === 0) {
+          const heading = () => {
+            doc
+              .font("bold")
+              .fontSize(15)
+              .fillColor(TEXT)
+              .text(year, x, top, { lineBreak: false });
+          };
+          if (opens) tag(root, "H2", heading);
+          else artifact(doc, heading);
+        }
+        drawMonth(doc, root, {
+          key,
+          days: byMonth.get(key),
+          x,
+          y: top + YEAR_HEAD,
+          g,
+          slots: row.slots,
+        });
+      });
+      y += row.height + ROW_GAP;
+    }
+    // The key is tagged once, on page 1; the footer once, on the last page.
+    if (index === 0) drawKey(root);
+    else artifact(doc, () => drawKey(null));
+    footerArtifact();
+  });
+
+  // Text-only version, like Wigan's: no colours, no icons.
+  doc.addPage();
+  let y = drawBand(doc, root, {
+    kicker: `Wersja tekstowa · ${period}`,
+    title: place.label,
+    titleSize: 18,
+    dayLine: weekday ? `Twój dzień odbioru: ${weekday}` : null,
+  });
+  y += 14;
+  const textBottom = footerTop - 14;
+  const intro = [
+    "Te same terminy co w kalendarzu, w formie listy.",
+    ...(putOut ? [putOut] : []),
+    `Terminy mogą się zmienić. Aktualne: ${url.replace("https://", "")}`,
+  ];
+  for (const line of intro) {
+    const top = y;
+    tag(root, "P", () => {
+      doc
+        .font("regular")
+        .fontSize(11)
+        .fillColor(TEXT)
+        .text(line, MARGIN, top, { width: CONTENT_W });
+    });
+    y = doc.y + 2;
+  }
+  y += 8;
+
+  const ensure = (height: number) => {
+    if (y + height <= textBottom) return;
+    footerArtifact();
+    doc.addPage();
+    artifact(doc, () =>
+      continuedHeader(doc, `${place.label} – wersja tekstowa`),
+    );
+    y = CONTINUED_TOP;
+  };
+
+  // Chronological: months with data in full, gaps collapsed into one line.
+  let gap: string[] = [];
+  const flushGap = () => {
+    if (gap.length === 0) return;
+    const text = `${emptyRange(gap)}: terminy jeszcze nieogłoszone`;
+    gap = [];
+    ensure(22);
+    const top = y;
+    tag(root, "P", () => {
+      doc
+        .font("bold")
+        .fontSize(11.5)
+        .fillColor(TEXT)
+        .text(text, MARGIN, top, { width: CONTENT_W });
+    });
+    y = doc.y + 10;
+  };
+  for (const key of months) {
+    const days = byMonth.get(key);
+    if (!days) {
+      gap.push(key);
+      continue;
+    }
+    flushGap();
+    ensure(22 + 17);
+    const section = doc.struct("Sect");
+    root.add(section);
+    const headTop = y;
+    tag(section, "H2", () => {
+      doc
+        .font("bold")
+        .fontSize(13)
+        .fillColor(TEXT)
+        .text(monthTitle(`${key}-01`), MARGIN, headTop, { width: CONTENT_W });
+    });
+    y = doc.y + 3;
+    const list = doc.struct("L");
+    section.add(list);
+    for (const day of days) {
+      const text = `${spoken(day)} – ${label(day.pickups)}`;
+      doc.font("regular").fontSize(11.5);
+      const h = doc.heightOfString(text, { width: CONTENT_W - 12 });
+      ensure(h + 3);
+      const top = y;
+      tag(list, "LI", () => {
+        doc
+          .font("regular")
+          .fontSize(11.5)
+          .fillColor(TEXT)
+          .text(text, MARGIN + 12, top, { width: CONTENT_W - 12 });
+      });
+      y = doc.y + 3;
+    }
+    list.end();
+    section.end();
+    y += 8;
+  }
+  flushGap();
+  drawFooter(root);
+
+  root.end();
+  doc.end();
+  return done;
+}
+
+type Band = {
+  kicker: string;
+  title: string;
+  titleSize: number;
+  dayLine: string | null;
+};
+
+function bandLayout(band: Band) {
+  const compact = band.titleSize < 22;
+  const logoW = compact ? 120 : 150;
+  return {
+    compact,
+    logoW,
+    textW: CONTENT_W - logoW - 16,
+    daySize: compact ? 13 : 19,
+  };
+}
+
+function bandHeight(doc: PDFKit.PDFDocument, band: Band): number {
+  const { compact, textW, daySize } = bandLayout(band);
+  doc.font("regular").fontSize(11);
+  let height = 22 + doc.heightOfString(band.kicker, { width: textW }) + 4;
+  doc.font("bold").fontSize(band.titleSize);
+  height += doc.heightOfString(band.title, { width: textW });
+  if (band.dayLine) {
+    doc.fontSize(daySize);
+    height += 6 + doc.heightOfString(band.dayLine, { width: textW });
+  }
+  return Math.max(height + 18, compact ? 80 : 104);
+}
+
+/**
+ * Full-width navy band with the wordmark top right. Returns its bottom.
+ * With root null (a repeated band) the caller wraps it all in one artifact.
+ */
+function drawBand(
+  doc: PDFKit.PDFDocument,
+  root: PDFKit.PDFStructureElement | null,
+  band: Band,
+): number {
+  const { compact, logoW, textW, daySize } = bandLayout(band);
+  const height = bandHeight(doc, band);
+  const tagged = (type: string, draw: () => void) => {
+    if (root) root.add(doc.struct(type, {}, draw));
+    else draw();
+  };
+  const decoration = (draw: () => void) => {
+    if (root) artifact(doc, draw);
+    else draw();
+  };
+  decoration(() => {
+    doc.rect(0, 0, PAGE_W, height).fillColor(NAVY).fill();
+    doc
+      .rect(0, height - 4, PAGE_W, 4)
+      .fillColor(AMBER)
+      .fill();
+  });
+  tagged("P", () => {
+    doc
+      .font("regular")
+      .fontSize(11)
+      .fillColor(WHITE)
+      .text(band.kicker, MARGIN, 22, { width: textW });
+  });
+  tagged("H1", () => {
+    doc
+      .font("bold")
+      .fontSize(band.titleSize)
+      .fillColor(WHITE)
+      .text(band.title, MARGIN, doc.y + 4, { width: textW });
+  });
+  const dayLine = band.dayLine;
+  if (dayLine) {
+    tagged("P", () => {
+      doc
+        .font("bold")
+        .fontSize(daySize)
+        .fillColor(AMBER)
+        .text(dayLine, MARGIN, doc.y + 6, { width: textW });
+    });
+  }
+
+  // Our wordmark where Wigan has its crest: the lantern from the site header.
+  const s = compact ? 1.2 : 1.6;
+  const lx = PAGE_W - MARGIN - logoW;
+  const wordX = lx + 6 + 14 * s + 10;
+  decoration(() => {
+    doc
+      .save()
+      .translate(lx + 6, 24)
+      .scale(s);
+    doc.roundedRect(0, 0, 14, 20, 1).fillColor(AMBER).fill();
+    doc
+      .moveTo(7, 0)
+      .lineTo(7, 20)
+      .moveTo(0, 9)
+      .lineTo(14, 9)
+      .lineWidth(1.5)
+      .strokeColor(NAVY)
+      .stroke();
+    doc.restore();
+    doc
+      .font("bold")
+      .fontSize(compact ? 17 : 22)
+      .fillColor(WHITE)
+      .text("conaulicy", wordX, 24, {
+        width: PAGE_W - MARGIN - wordX,
+        lineBreak: false,
+      });
+  });
+  tagged("P", () => {
+    doc
+      .font("regular")
+      .fontSize(compact ? 10 : 11)
+      .fillColor(AMBER)
+      .text("conaulicy.pl", wordX, compact ? 45 : 52, {
+        width: PAGE_W - MARGIN - wordX,
+        link: SITE_URL,
+        lineBreak: false,
+      });
+  });
+  return height;
+}
+
+/** The info strip with icons and the QR code. Returns its bottom. */
+function drawStrip(
+  doc: PDFKit.PDFDocument,
+  root: PDFKit.PDFStructureElement,
+  notes: Array<{ icon: "warn" | "clock"; bold: string; text: string }>,
+  url: string,
+  stripTop: number,
+): number {
   const qrSize = 58;
   const qrTextW = 120;
   const noteX = MARGIN + 50;
   const noteW = CONTENT_W - 50 - qrSize - qrTextW - 30;
-  const noteH = notes.map((note) => {
-    doc.font("regular").fontSize(11);
-    return Math.max(
-      doc.heightOfString(note.bold + note.text, { width: noteW }),
-      28,
-    );
-  });
-  const stripTop = bandH + 12;
+  doc.font("regular").fontSize(11);
+  const noteH = notes.map((note) =>
+    Math.max(doc.heightOfString(note.bold + note.text, { width: noteW }), 28),
+  );
   const stripH = Math.max(
     20 + noteH.reduce((sum, h) => sum + h + 8, -8),
     qrSize + 20,
@@ -450,228 +891,58 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
           .stroke();
       }
     });
-    tag(root, "P", () => {
-      doc
-        .font("bold")
-        .fontSize(11)
-        .fillColor(TEXT)
-        .text(note.bold, noteX, top + 2, { width: noteW, continued: true })
-        .font("regular")
-        .text(note.text);
-    });
+    root.add(
+      doc.struct("P", {}, () => {
+        doc
+          .font("bold")
+          .fontSize(11)
+          .fillColor(TEXT)
+          .text(note.bold, noteX, top + 2, { width: noteW, continued: true })
+          .font("regular")
+          .text(note.text);
+      }),
+    );
     y = top + noteH[i] + 8;
   });
   const qrX = PAGE_W - MARGIN - 10 - qrSize;
   const qrTop = stripTop + (stripH - qrSize) / 2;
   artifact(doc, () => drawQr(doc, url, qrX, qrTop, qrSize));
-  tag(root, "P", () => {
-    doc
-      .font("bold")
-      .fontSize(11)
-      .fillColor(TEXT)
-      .text("Zeskanuj –", qrX - qrTextW - 8, qrTop + 6, {
-        width: qrTextW,
-        align: "right",
-      })
-      .text("aktualne terminy", { width: qrTextW, align: "right" })
-      .font("regular")
-      .fontSize(9)
-      .fillColor(MUTED)
-      .text(url.replace("https://", ""), {
-        width: qrTextW,
-        align: "right",
-        link: url,
-      });
-  });
-  y = stripTop + stripH + 12;
-
-  // Legend and footer heights, so the grid can be fitted above them.
-  const legend = new Map<string, Pickup>();
-  for (const pickup of inWindow.flatMap((day) => day.pickups)) {
-    if (!legend.has(pickup.subtype)) legend.set(pickup.subtype, pickup);
-  }
-  const footerLines = place.sources.map((source) => {
-    const checked = source.checkedAt
-      ? ` · Stan na ${longDate(source.checkedAt)}`
-      : "";
-    return { text: `Źródło: ${source.label}${checked}`, url: source.url };
-  });
-  doc.font("regular").fontSize(9);
-  let footerH = 0;
-  for (const line of footerLines) {
-    footerH += doc.heightOfString(line.text, { width: CONTENT_W });
-    if (line.url) footerH += doc.heightOfString(line.url, { width: CONTENT_W });
-  }
-  doc.font("bold").fontSize(9.5);
-  const closing = "Serwis nieoficjalny – obowiązuje harmonogram gminy.";
-  footerH += doc.heightOfString(closing, { width: CONTENT_W }) + 4;
-  // Key entries wrap onto more lines when they do not fit one.
-  const keyBin = 20;
-  const keyLine = 26;
-  const keyItems: Array<{ bins: string[]; label: string }> = [
-    ...[...legend.entries()].map(([subtype, pickup]) => ({
-      bins: tones(subtype),
-      label: pickup.label,
-    })),
-    ...(shifted ? [{ bins: [], label: "Termin przesunięty" }] : []),
-  ];
-  doc.font("regular").fontSize(11);
-  const keyStart = MARGIN + 82;
-  let kx = keyStart;
-  let keyRow = 0;
-  const keyPlaced = keyItems.map((item) => {
-    const markW = item.bins.length
-      ? item.bins.length * (binWidth(keyBin) + 2) + 3
-      : 22;
-    const w = markW + doc.widthOfString(item.label);
-    if (kx > keyStart && kx + w > PAGE_W - MARGIN) {
-      kx = keyStart;
-      keyRow++;
-    }
-    const placed = { ...item, x: kx, row: keyRow, markW };
-    kx += w + 14;
-    return placed;
-  });
-  const legendH = 30 + keyRow * keyLine;
-  const footerTop = PAGE_H - MARGIN - footerH;
-  const legendTop = footerTop - 10 - legendH;
-
-  // Month grid: the roomiest scale that still fits the page.
-  const rows = gridRows(months);
-  const maxBins = Math.max(
-    1,
-    ...inWindow.map((day) =>
-      day.pickups.reduce((n, p) => n + tones(p.subtype).length, 0),
-    ),
-  );
-  doc.font("bold").fontSize(1);
-  const labelEm = Math.max(
-    ...inWindow.map((day) =>
-      doc.widthOfString(dayText(day.date, weekday !== null)),
-    ),
-  );
-  const available = legendTop - 8 - y;
-  const scale =
-    [
-      1.5, 1.45, 1.4, 1.35, 1.3, 1.25, 1.2, 1.15, 1.1, 1.05, 1, 0.95, 0.9, 0.85,
-      0.8,
-    ].find(
-      (k) =>
-        gridHeight(rows, byMonth, metrics(k, maxBins, labelEm)) <= available,
-    ) ?? 0.8;
-  const m = metrics(scale, maxBins, labelEm);
-
-  let yearSect: PDFKit.PDFStructureElement | null = null;
-  for (const row of rows) {
-    if (row.year) {
-      yearSect?.end();
-      const section = doc.struct("Sect");
-      root.add(section);
-      yearSect = section;
-      const yearText = row.year;
-      const top = y;
-      tag(section, "H2", () => {
-        doc
-          .font("bold")
-          .fontSize(15)
-          .fillColor(TEXT)
-          .text(yearText, MARGIN, top, { lineBreak: false });
-      });
-      y += YEAR_HEAD;
-    }
-    const rowH = Math.max(
-      ...row.months.map((key) => tableHeight(byMonth.get(key), m)),
-    );
-    const parent = yearSect ?? root;
-    row.months.forEach((key, column) => {
-      drawMonth(doc, parent, {
-        key,
-        days: byMonth.get(key),
-        x: MARGIN + column * (TABLE_W + COLUMN_GAP),
-        y,
-        m,
-        sameWeekday: weekday !== null,
-      });
-    });
-    y += rowH + ROW_GAP;
-  }
-  yearSect?.end();
-
-  // Key, like Wigan's: one bin per entry, names at 11pt.
-  artifact(doc, () => {
-    doc
-      .moveTo(MARGIN, legendTop - 4)
-      .lineTo(PAGE_W - MARGIN, legendTop - 4)
-      .lineWidth(0.5)
-      .strokeColor(RULE)
-      .stroke();
-  });
-  tag(root, "H2", () => {
-    doc
-      .font("bold")
-      .fontSize(12)
-      .fillColor(TEXT)
-      .text("Oznaczenia", MARGIN, legendTop + 8, { lineBreak: false });
-  });
-  const keyList = doc.struct("L");
-  root.add(keyList);
-  for (const item of keyPlaced) {
-    const top = legendTop + item.row * keyLine;
-    artifact(doc, () => {
-      if (item.bins.length === 0) {
-        doc
-          .rect(item.x, top + 7, 18, 14)
-          .fillColor(DANGER)
-          .fill();
-      }
-      item.bins.forEach((tone, i) => {
-        drawBin(
-          doc,
-          tone,
-          item.x + i * (binWidth(keyBin) + 2),
-          top + 4,
-          keyBin,
-        );
-      });
-    });
-    tag(keyList, "LI", () => {
+  root.add(
+    doc.struct("P", {}, () => {
       doc
-        .font("regular")
+        .font("bold")
         .fontSize(11)
         .fillColor(TEXT)
-        .text(item.label, item.x + item.markW, top + 9, { lineBreak: false });
-    });
-  }
-  keyList.end();
-
-  // Footer: every source with its link and last-checked date.
-  let fy = footerTop;
-  for (const line of footerLines) {
-    const top = fy;
-    tag(root, "P", () => {
-      doc
+        .text("Zeskanuj –", qrX - qrTextW - 8, qrTop + 6, {
+          width: qrTextW,
+          align: "right",
+        })
+        .text("aktualne terminy", { width: qrTextW, align: "right" })
         .font("regular")
         .fontSize(9)
         .fillColor(MUTED)
-        .text(line.text, MARGIN, top, { width: CONTENT_W });
-      if (line.url) {
-        doc.text(line.url, { width: CONTENT_W, link: line.url });
-      }
-    });
-    fy = doc.y;
-  }
-  const closingTop = fy + 4;
-  tag(root, "P", () => {
-    doc
-      .font("bold")
-      .fontSize(9.5)
-      .fillColor(TEXT)
-      .text(closing, MARGIN, closingTop, { width: CONTENT_W });
-  });
+        .text(url.replace("https://", ""), {
+          width: qrTextW,
+          align: "right",
+          link: url,
+        });
+    }),
+  );
+  return stripTop + stripH;
+}
 
-  root.end();
-  doc.end();
-  return done;
+function continuedHeader(doc: PDFKit.PDFDocument, title: string) {
+  doc
+    .font("bold")
+    .fontSize(13)
+    .fillColor(TEXT)
+    .text(`${title} – ciąg dalszy`, MARGIN, MARGIN, { width: CONTENT_W });
+  doc
+    .moveTo(MARGIN, MARGIN + 24)
+    .lineTo(PAGE_W - MARGIN, MARGIN + 24)
+    .lineWidth(1.5)
+    .strokeColor(AMBER)
+    .stroke();
 }
 
 type MonthTable = {
@@ -679,48 +950,66 @@ type MonthTable = {
   days: PickupDay[] | undefined;
   x: number;
   y: number;
-  m: Metrics;
-  sameWeekday: boolean;
+  g: Grid;
+  /** Row slots of every table in this grid row, so they share one height. */
+  slots: number;
 };
 
 function drawMonth(
   doc: PDFKit.PDFDocument,
   parent: PDFKit.PDFStructureElement,
-  { key, days, x, y, m, sameWeekday }: MonthTable,
+  { key, days, x, y, g, slots }: MonthTable,
 ) {
-  const height = tableHeight(days, m);
-  const name = monthTitle(`${key}-01`).replace(/ \d{4}$/, "");
+  const name = monthName(key);
+  const height = MONTH_HEAD + COLUMN_HEAD + slots * g.lineH;
+  const bodyTop = y + MONTH_HEAD + COLUMN_HEAD;
 
-  // Frame, header shading and rules.
+  // Slot boundaries: each day takes as many slots as its bin lines; the rest
+  // stay blank.
+  const tops: number[] = [];
+  let used = 0;
+  for (const day of days ?? []) {
+    tops.push(bodyTop + used * g.lineH);
+    used += binLines(day, g);
+  }
+  const dayStarts = new Set(
+    tops.map((t) => Math.round((t - bodyTop) / g.lineH)),
+  );
+
   artifact(doc, () => {
-    doc.rect(x, y, TABLE_W, MONTH_HEAD).fillColor(SECONDARY).fill();
-    if (!days) {
-      doc
-        .rect(x, y + MONTH_HEAD, TABLE_W, height - MONTH_HEAD)
-        .fillColor(SURFACE_2)
-        .fill();
-    }
-    doc.rect(x, y, TABLE_W, height).lineWidth(0.75).strokeColor(RULE).stroke();
+    const rule = days ? RULE : "#d5dae1";
+    if (days) doc.rect(x, y, TABLE_W, MONTH_HEAD).fillColor(SECONDARY).fill();
+    doc
+      .rect(x, y, TABLE_W, height)
+      .lineWidth(days ? 0.75 : 0.5)
+      .strokeColor(rule)
+      .stroke();
     doc
       .moveTo(x, y + MONTH_HEAD)
       .lineTo(x + TABLE_W, y + MONTH_HEAD)
-      .moveTo(x, y + MONTH_HEAD + COLUMN_HEAD)
-      .lineTo(x + TABLE_W, y + MONTH_HEAD + COLUMN_HEAD)
-      .lineWidth(0.5)
+      .moveTo(x, bodyTop)
+      .lineTo(x + TABLE_W, bodyTop)
+      .lineWidth(days ? 0.5 : 0.4)
+      .strokeColor(rule)
       .stroke();
+    // Empty tables carry one note across the row, so no day column.
     if (days) {
       doc
-        .moveTo(x + m.dayCol, y + MONTH_HEAD)
-        .lineTo(x + m.dayCol, y + height)
+        .moveTo(x + g.dayCol, y + MONTH_HEAD)
+        .lineTo(x + g.dayCol, y + height)
+        .lineWidth(0.5)
         .stroke();
-      for (let i = 1; i < days.length; i++) {
-        const ry = y + MONTH_HEAD + COLUMN_HEAD + i * m.rowH;
-        doc
-          .moveTo(x, ry)
-          .lineTo(x + TABLE_W, ry)
-          .lineWidth(0.4)
-          .stroke();
-      }
+    }
+    for (let i = 1; i < slots; i++) {
+      // Wrapped bin lines inside one day get no rule.
+      if (i < used && !dayStarts.has(i)) continue;
+      const ry = bodyTop + i * g.lineH;
+      doc
+        .moveTo(x, ry)
+        .lineTo(x + TABLE_W, ry)
+        .lineWidth(0.4)
+        .strokeColor(rule)
+        .stroke();
     }
   });
 
@@ -728,9 +1017,9 @@ function drawMonth(
     doc.struct("H3", {}, () => {
       doc
         .font("bold")
-        .fontSize(12)
+        .fontSize(13)
         .fillColor(days ? TEXT : MUTED)
-        .text(name, x + 6, y + 3.5, { width: TABLE_W - 12, lineBreak: false });
+        .text(name, x + 6, y + 4.5, { width: TABLE_W - 12, lineBreak: false });
     }),
   );
 
@@ -738,7 +1027,7 @@ function drawMonth(
   parent.add(table);
   const head = doc.struct("TR");
   table.add(head);
-  const headY = y + MONTH_HEAD + 2.5;
+  const headY = y + MONTH_HEAD + 3;
   head.add(
     doc.struct("TH", {}, () => {
       doc
@@ -750,11 +1039,11 @@ function drawMonth(
   );
   head.add(
     doc.struct("TH", {}, () => {
-      doc.text("Odbiór", x + m.dayCol + 6, headY, { lineBreak: false });
+      doc.text("Odbiór", x + g.dayCol + 6, headY, { lineBreak: false });
     }),
   );
 
-  const bodyTop = y + MONTH_HEAD + COLUMN_HEAD;
+  // No published dates: the same table, light, with a note in the first row.
   if (!days) {
     const tr = doc.struct("TR");
     table.add(tr);
@@ -762,11 +1051,14 @@ function drawMonth(
       doc.struct("TD", {}, () => {
         doc
           .font("regular")
-          .fontSize(11)
+          .fontSize(10)
           .fillColor(MUTED)
-          .text("Terminy jeszcze nieogłoszone", x + 6, bodyTop + 5, {
-            width: TABLE_W - 12,
-          });
+          .text(
+            "Terminy jeszcze nieogłoszone",
+            x + 6,
+            bodyTop + (g.lineH - 12) / 2,
+            { width: TABLE_W - 12, lineBreak: false },
+          );
       }),
     );
     table.end();
@@ -774,35 +1066,31 @@ function drawMonth(
   }
 
   days.forEach((day, i) => {
-    const top = bodyTop + i * m.rowH;
-    const moved = day.pickups.find((p) => p.shiftedFrom)?.shiftedFrom;
+    const rowTop = tops[i];
+    const rowH = binLines(day, g) * g.lineH;
+    const moved = day.pickups.some((p) => p.shiftedFrom);
     if (moved) {
       artifact(doc, () => {
         doc
-          .rect(x + 0.4, top + 0.4, m.dayCol - 0.8, m.rowH - 0.8)
+          .rect(x + 0.4, rowTop + 0.4, g.dayCol - 0.8, rowH - 0.8)
           .fillColor(DANGER)
           .fill();
       });
     }
     const tr = doc.struct("TR");
     table.add(tr);
-    const spoken = moved
-      ? `${absoluteDay(day.date)} (termin przesunięty z ${absoluteDay(moved)})`
-      : absoluteDay(day.date);
+    const dateSize = Math.min(15, Math.max(11, g.lineH * 0.45));
     tr.add(
-      doc.struct("TD", { actual: spoken }, () => {
+      doc.struct("TD", { actual: spoken(day) }, () => {
         doc
           .font("bold")
-          .fontSize(m.date)
+          .fontSize(dateSize)
           .fillColor(moved ? WHITE : TEXT)
           .text(
-            dayText(day.date, sameWeekday),
+            dayText(day.date, g.sameWeekday),
             x + 6,
-            top + (m.rowH - m.date * 1.2) / 2,
-            {
-              width: m.dayCol - 8,
-              lineBreak: false,
-            },
+            rowTop + (g.lineH - dateSize * 1.2) / 2,
+            { width: g.dayCol - 8, lineBreak: false },
           );
       }),
     );
@@ -810,12 +1098,14 @@ function drawMonth(
     tr.add(
       doc.struct("TD", { actual: label(day.pickups) }, () => {
         bins.forEach((tone, j) => {
+          const line = Math.floor(j / g.perLine);
+          const col = j % g.perLine;
           drawBin(
             doc,
             tone,
-            x + m.dayCol + 5 + j * (binWidth(m.binH) + BIN_GAP),
-            top + (m.rowH - m.binH) / 2,
-            m.binH,
+            x + g.dayCol + 5 + col * (binWidth(g.binH) + BIN_GAP),
+            rowTop + line * g.lineH + (g.lineH - g.binH) / 2,
+            g.binH,
           );
         });
       }),
