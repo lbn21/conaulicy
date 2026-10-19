@@ -82,5 +82,5 @@ jobs:
 
       # Last: it replaces the seed with a made-up import. Its schedules come
       # from a local server, so the source check needs no internet.
-      - name: Importer (synthetic dataset: dry run, apply, guards)
+      - name: "Importer (synthetic dataset: dry run, apply, guards)"
         run: node scripts/check-import.mjs
