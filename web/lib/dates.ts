@@ -1,4 +1,4 @@
-const WARSAW = "Europe/Warsaw";
+export const WARSAW = "Europe/Warsaw";
 
 export function todayInWarsaw(now: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -22,7 +22,7 @@ export function addDays(iso: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-function warsawNoon(iso: string): Date {
+export function warsawNoon(iso: string): Date {
   return new Date(`${iso}T12:00:00Z`);
 }
 
@@ -36,18 +36,6 @@ export function absoluteDay(iso: string): string {
   }).formatToParts(warsawNoon(iso));
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
   return `${get("weekday")}, ${get("day")} ${get("month")}`;
-}
-
-/** Full date with year, safe to render on a static page. Example: "18 października 2026". */
-export function longDate(iso: string): string {
-  return new Intl.DateTimeFormat("pl-PL", {
-    timeZone: WARSAW,
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  })
-    .format(warsawNoon(iso))
-    .replace(/ r\.$/, "");
 }
 
 export type DayFace = {

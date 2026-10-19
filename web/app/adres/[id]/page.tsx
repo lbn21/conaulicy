@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PickupSchedule } from "@/components/pickup-schedule";
-import { longDate } from "@/lib/dates";
+import { longDate } from "@/lib/date-labels";
 import { getPlace, listPlaces } from "@/lib/schedule";
 
 export const dynamicParams = false;
