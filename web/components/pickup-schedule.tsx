@@ -130,11 +130,15 @@ function DayBlock({
             <>
               <span className="sr-only">{spokenDay(day.date, today)}</span>
               <span aria-hidden="true" className="flex flex-col gap-1">
-                {relative && (
-                  <span className="text-xl font-bold text-accent">
-                    {relative}
-                  </span>
-                )}
+                <span
+                  className={
+                    relative
+                      ? "text-xl font-bold text-accent"
+                      : "text-xl font-bold text-text-muted"
+                  }
+                >
+                  {relative ?? "Najbliższy odbiór"}
+                </span>
                 <span className="text-[4.5rem] leading-none tracking-tight">
                   {face.day}
                 </span>
@@ -186,30 +190,25 @@ export function PickupSchedule({ days }: { days: PickupDay[] }) {
     );
   }
 
-  const hero = today ? visible.slice(0, HERO_COUNT) : [];
-  const rest = today ? visible.slice(HERO_COUNT) : visible;
+  const hero = visible.slice(0, HERO_COUNT);
+  const rest = visible.slice(HERO_COUNT);
 
   return (
     <div className="mt-8">
-      {hero.length > 0 && (
-        <ol aria-label="Najbliższe odbiory" className="flex flex-col gap-4">
-          {hero.map((day, index) => (
-            <DayBlock
-              key={day.date}
-              day={day}
-              today={today}
-              prominent={index === 0}
-            />
-          ))}
-        </ol>
-      )}
+      <ol aria-label="Najbliższe odbiory" className="flex flex-col gap-4">
+        {hero.map((day, index) => (
+          <DayBlock
+            key={day.date}
+            day={day}
+            today={today}
+            prominent={index === 0}
+          />
+        ))}
+      </ol>
       {rest.length > 0 && (
-        <details
-          className="more-dates mt-4 border-t border-border"
-          open={!today}
-        >
+        <details className="more-dates mt-4 border-t border-border">
           <summary>Pokaż więcej terminów</summary>
-          <ol className={hero.length > 0 ? undefined : "list-none"}>
+          <ol>
             {rest.map((day) => (
               <DayBlock
                 key={day.date}

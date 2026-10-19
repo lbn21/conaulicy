@@ -158,7 +158,7 @@ export function getPlace(id: string): PlaceView | null {
   if (!place) return null;
 
   const zone = wasteZoneFor(place);
-  const upcoming = zone ? zoneEvents(zone.id) : [];
+  const upcoming = zone ? zoneEvents(zone.id, todayInWarsaw()) : [];
 
   const days: PickupDay[] = [];
   for (const event of upcoming) {

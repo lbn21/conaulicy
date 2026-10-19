@@ -4,6 +4,8 @@ import { PickupSchedule } from "@/components/pickup-schedule";
 import { getPlace, listPlaces } from "@/lib/schedule";
 
 export const dynamicParams = false;
+// Regenerate hourly so the static HTML never lists pickups that are already past.
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return listPlaces().map(({ id }) => ({ id }));
