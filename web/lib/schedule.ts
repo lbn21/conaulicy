@@ -20,6 +20,8 @@ export type Pickup = {
   subtype: string;
   label: string;
   putOutBy: string | null;
+  /** Originally scheduled ISO date when the pickup was moved (e.g. a holiday). */
+  shiftedFrom: string | null;
 };
 
 export type PickupDay = { date: string; pickups: Pickup[] };
@@ -213,6 +215,10 @@ export function getPlace(id: string): PlaceView | null {
       putOutBy:
         typeof event.payload?.putOutBy === "string"
           ? event.payload.putOutBy
+          : null,
+      shiftedFrom:
+        typeof event.payload?.shiftedFrom === "string"
+          ? event.payload.shiftedFrom
           : null,
     };
     const last = days.at(-1);

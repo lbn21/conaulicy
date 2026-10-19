@@ -79,5 +79,9 @@ export type Event = {
   verified: boolean;
   reviewedBy?: string | null;
   reviewedAt?: string | null;
+  /**
+   * Type-specific extras. Waste: putOutBy ("06:00"), shiftedFrom (ISO date
+   * the pickup was moved from, e.g. because of a holiday).
+   */
   payload?: Record<string, unknown>;
 };
