@@ -27,6 +27,7 @@ export function AddressSearch() {
 
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<Hit[]>([]);
+  const [hitsFor, setHitsFor] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
@@ -49,6 +50,7 @@ export function AddressSearch() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data: Hit[] = await res.json();
         setHits(data);
+        setHitsFor(q);
         setActive(-1);
         setStatus("done");
       } catch {
@@ -110,7 +112,9 @@ export function AddressSearch() {
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const hit = hits[active] ?? (hits.length === 1 ? hits[0] : undefined);
+    const fresh = hitsFor === query.trim();
+    const hit =
+      hits[active] ?? (fresh && hits.length === 1 ? hits[0] : undefined);
     if (hit) go(hit);
     else setOpen(true);
   }
@@ -180,6 +184,7 @@ export function AddressSearch() {
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
+              setActive(-1);
               setOpen(true);
             }}
             onFocus={() => setOpen(true)}
