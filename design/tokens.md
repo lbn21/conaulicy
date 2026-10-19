@@ -67,7 +67,7 @@ The swatches follow the bins and bags people already have at the gate.
 
 - Papier blue, szkło green, metale i tworzywa sztuczne yellow, bio brown: Rozporządzenie Ministra Klimatu i Środowiska z 10 maja 2021 r. (Dz.U. 2021 poz. 906).
 - Zmieszane, black containers and bags: Regulamin utrzymania czystości i porządku Gminy Miejskiej Lubaczów, uchwała nr 101/X/2024, § 3.
-- Popiół, grey bags: UM Lubaczów, from July 2025.
+- Popiół, grey bags (szare worki): UM Lubaczów, od lipca, as reported by [Business Insider](https://businessinsider.com.pl/wiadomosci/nowy-szary-worek-na-smieci-ruszaja-tez-kontrole/fgzpxpc). The article does not give a year.
 
 Zmieszane is `#111111` in both themes. On the dark background that fill is only 1.02:1, so the swatch draws a 1px `#9aa3b2` border (7.24:1 against the background). Text on every swatch is at least 4.5:1. Gabaryty stays rose; the regulation does not assign it a bin colour.
 

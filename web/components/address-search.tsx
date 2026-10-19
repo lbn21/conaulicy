@@ -134,7 +134,8 @@ export function AddressSearch() {
           Twoja ulica albo wieś
         </label>
         <p id={hintId} className="text-text-muted">
-          Polskie znaki nie są potrzebne.
+          Ulica w Lubaczowie albo wieś, np. Lisie Jamy. Polskie znaki nie są
+          potrzebne.
         </p>
         <div className="relative mt-1">
           <svg
@@ -175,7 +176,7 @@ export function AddressSearch() {
             autoCapitalize="off"
             spellCheck={false}
             enterKeyHint="go"
-            placeholder="np. Słowackiego albo Lisie Jamy"
+            placeholder="np. Słowackiego"
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
