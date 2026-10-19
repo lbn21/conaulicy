@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { WebAnalytics } from "@/components/web-analytics";
 import { atkinson } from "./fonts";
 import "./globals.css";
 
@@ -41,6 +42,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SiteHeader />
         <div className="flex-1">{children}</div>
         <SiteFooter />
+        {/* Production deployments only, never previews or local builds. */}
+        <WebAnalytics enabled={process.env.VERCEL_ENV === "production"} />
       </body>
     </html>
   );

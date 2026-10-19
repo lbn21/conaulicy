@@ -122,6 +122,9 @@ export async function PlaceMain({ id, nr }: { id: string; nr: string | null }) {
         <>
           <a
             href={`/ics/${encodeURIComponent(place.zoneId)}`}
+            data-event="calendar_add"
+            data-zone={place.zoneId}
+            data-source="street"
             className="mt-6 inline-flex min-h-14 items-center rounded-sm bg-accent px-5 text-lg font-bold text-accent-contrast no-underline"
           >
             Dodaj do kalendarza
@@ -132,6 +135,8 @@ export async function PlaceMain({ id, nr }: { id: string; nr: string | null }) {
           <p className="mt-2">
             <a
               href={`/adres/${encodeURIComponent(place.id)}/harmonogram.pdf${place.nr ? `?nr=${place.nr}` : ""}`}
+              data-event="pdf_open"
+              data-zone={place.zoneId}
               className="inline-flex min-h-12 items-center font-bold underline decoration-2 underline-offset-4"
             >
               Harmonogram do druku (PDF)
