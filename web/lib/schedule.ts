@@ -33,6 +33,7 @@ export type PlaceView = {
   zoneId: string | null;
   schedulePage: string | null;
   days: PickupDay[];
+  /** Human labels of the source documents, e.g. "Sektor 1, październik–grudzień 2026". */
   sources: string[];
   verified: boolean;
 };
@@ -200,7 +201,13 @@ export function getPlace(id: string): PlaceView | null {
     zoneId: zone?.id ?? null,
     schedulePage: schedulePageFor(place),
     days,
-    sources: [...new Set(upcoming.map((e) => e.source.doc))],
+    sources: [
+      ...new Set(
+        upcoming.map(
+          (e) => e.source.ref ?? e.source.doc.split("/").at(-1) ?? "",
+        ),
+      ),
+    ],
     verified: upcoming.every((e) => e.verified),
   };
 }

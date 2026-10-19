@@ -78,9 +78,21 @@ export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
                 drugi raz. Gdyby coś się nie zgadzało, rację ma harmonogram
                 gminy.
               </p>
-              {place.sources.map((doc) => (
-                <p key={doc} className="mt-3 break-all">
-                  Źródło: {doc.split("/").at(-1)}
+              {place.sources.map((source) => (
+                <p key={source} className="mt-3 max-w-prose">
+                  Źródło:{" "}
+                  {place.schedulePage ? (
+                    <a
+                      href={place.schedulePage}
+                      rel="noopener"
+                      className="underline decoration-2 underline-offset-4"
+                    >
+                      harmonogram gminy
+                    </a>
+                  ) : (
+                    "harmonogram gminy"
+                  )}
+                  , {source}
                 </p>
               ))}
             </div>
