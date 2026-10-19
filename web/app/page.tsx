@@ -23,10 +23,10 @@ export default function Home() {
 
       <section aria-labelledby="sample-heading" className="mt-12">
         <h2 id="sample-heading" className="text-lg font-bold">
-          Adresy w tej próbce
+          Przykładowe adresy
         </h2>
         <p className="mt-2 max-w-prose text-text-muted">
-          Kilka prawdziwych miejsc, nie cały Lubaczów. Resztę dopisujemy.
+          Na razie znamy tylko część ulic i wsi. Kolejne dopisujemy.
         </p>
         <ul className="mt-4 border-t border-border">
           {places.map((place) => (
