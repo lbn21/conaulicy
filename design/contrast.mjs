@@ -12,6 +12,9 @@ const WASTE = [
   "gabaryty",
 ];
 
+// Fractions drawn with an outline token, which carries the non-text contrast.
+const OUTLINED = ["zmieszane", "plastik-metale"];
+
 const palettes = {
   dark: {
     background: "#10141d",
@@ -34,6 +37,7 @@ const palettes = {
     "waste-papier-fg": "#10141d",
     "waste-plastik-metale": "#f4d35e",
     "waste-plastik-metale-fg": "#10141d",
+    "waste-plastik-metale-border": "#f4d35e",
     "waste-szklo": "#58d39a",
     "waste-szklo-fg": "#10141d",
     "waste-bio": "#c4936a",
@@ -62,8 +66,9 @@ const palettes = {
     "waste-zmieszane-border": "#111111",
     "waste-papier": "#1f63c7",
     "waste-papier-fg": "#ffffff",
-    "waste-plastik-metale": "#7d6200",
-    "waste-plastik-metale-fg": "#ffffff",
+    "waste-plastik-metale": "#f2c200",
+    "waste-plastik-metale-fg": "#161b24",
+    "waste-plastik-metale-border": "#7d6200",
     "waste-szklo": "#1e7f4f",
     "waste-szklo-fg": "#ffffff",
     "waste-bio": "#7a4b2a",
@@ -120,8 +125,9 @@ function requiredPairs() {
     pairs.push([`waste-${w}-fg`, `waste-${w}`, "text"]);
   }
   for (const w of WASTE) {
-    if (w === "zmieszane") {
-      // Near-black fill disappears on the night background; the 1px border is the 3:1 edge.
+    if (OUTLINED.includes(w)) {
+      // Near-black (dark theme) and bright yellow (light theme) fills fade into
+      // the background; the outline is the 3:1 edge.
       pairs.push([`waste-${w}-border`, "background", "ui"]);
       pairs.push([`waste-${w}`, "background", "info"]);
     } else {

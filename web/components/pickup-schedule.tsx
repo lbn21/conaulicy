@@ -32,6 +32,10 @@ const TOKEN: Record<string, string> = {
 // Re-check the Warsaw day every minute and when the tab comes back, so a tab
 // left open overnight moves "jutro" to "dziś". React only re-renders when the
 // date string changes.
+// Fills that fade into a background in some theme; their outline token carries
+// the 3:1 non-text contrast (see design/tokens.md).
+const OUTLINED = new Set(["zmieszane", "plastik-metale"]);
+
 function subscribe(onChange: () => void): () => void {
   const timer = setInterval(onChange, 60_000);
   document.addEventListener("visibilitychange", onChange);
@@ -64,7 +68,7 @@ function WasteMark({ tone, large }: { tone: string; large: boolean }) {
   const token = TOKEN[tone];
   const fill = token ? `var(--waste-${token})` : "var(--secondary)";
   const outline =
-    token === "zmieszane" ? "var(--waste-zmieszane-border)" : "none";
+    token && OUTLINED.has(token) ? `var(--waste-${token}-border)` : "none";
   const [width, height] = large ? [34, 48] : [23, 32];
   return (
     <svg

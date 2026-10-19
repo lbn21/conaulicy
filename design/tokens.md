@@ -8,8 +8,8 @@ Source of truth: `design/tokens.css` (Tailwind v4, not yet imported by the app).
 - **Accent is fixed**: dark `#ffb547`, light `#9a5700`. `primary` is an alias of `accent`. Text on the accent uses `accent-contrast`.
 - **Typography**: Atkinson Hyperlegible Next, self-hosted (latin + latin-ext woff2), weights 400 and 700 only. Body text is 18px (`1.125rem`), and the type scale is mobile-first.
 - **Rhythm**: 4px spacing (`--spacing: 0.25rem`), one small radius (`--radius-sm: 4px`), one subtle elevation (`--shadow-raised`). No gradients.
-- **Waste colours** are fills. Each has a `-fg` for the label text on that fill. Papier is blue, szkło green, metale i tworzywa yellow, bio brown. Zmieszane is black, with a 1px `--waste-zmieszane-border` so the swatch stays visible on the night background. Popiół is a neutral grey. Gabaryty is a rose, distinct from the amber accent.
-- Starting from the Latarnia sample, these changed: added `surface-2`; renamed `muted` to `text-muted` and `on-accent` to `accent-contrast`; light `border` darkened to `#6f7a8d` so it clears 3:1 on `surface-2`; light `secondary` is now `#e8ecf2`; gabaryty moved from lavender to rose; bio moved away from the amber accent (dark `#c4936a`, light `#7a4b2a`); light plastik-metale is `#7d6200`.
+- **Waste colours** are fills. Each has a `-fg` for the label text on that fill. Papier is blue, szkło green, metale i tworzywa yellow, bio brown. Zmieszane is black, with a 1px `--waste-zmieszane-border` so the swatch stays visible on the night background. Metale i tworzywa has a `--waste-plastik-metale-border` too, for the light theme. Popiół is a neutral grey. Gabaryty is a rose, distinct from the amber accent.
+- Starting from the Latarnia sample, these changed: added `surface-2`; renamed `muted` to `text-muted` and `on-accent` to `accent-contrast`; light `border` darkened to `#6f7a8d` so it clears 3:1 on `surface-2`; light `secondary` is now `#e8ecf2`; gabaryty moved from lavender to rose; bio moved away from the amber accent (dark `#c4936a`, light `#7a4b2a`); light plastik-metale was `#7d6200`, which read as olive; it is now a clear yellow `#f2c200` with a `#7d6200` outline (see below).
 
 ## Dark (default)
 
@@ -30,7 +30,7 @@ Source of truth: `design/tokens.css` (Tailwind v4, not yet imported by the app).
 | `danger` | `#ff8f85` | error message |
 | `waste-zmieszane` / `-fg` / `-border` | `#111111` / `#f5f7fa` / `#9aa3b2` | mixed waste, black bin |
 | `waste-papier` / `-fg` | `#6eb4ff` / `#10141d` | paper |
-| `waste-plastik-metale` / `-fg` | `#f4d35e` / `#10141d` | plastic and metal |
+| `waste-plastik-metale` / `-fg` / `-border` | `#f4d35e` / `#10141d` / `#f4d35e` | plastic and metal, yellow bin |
 | `waste-szklo` / `-fg` | `#58d39a` / `#10141d` | glass |
 | `waste-bio` / `-fg` | `#c4936a` / `#10141d` | bio |
 | `waste-popiol` / `-fg` | `#c4c8ce` / `#10141d` | ash, grey bag |
@@ -55,7 +55,7 @@ Source of truth: `design/tokens.css` (Tailwind v4, not yet imported by the app).
 | `danger` | `#b42318` | error message |
 | `waste-zmieszane` / `-fg` / `-border` | `#111111` / `#ffffff` / `#111111` | mixed waste, black bin |
 | `waste-papier` / `-fg` | `#1f63c7` / `#ffffff` | paper |
-| `waste-plastik-metale` / `-fg` | `#7d6200` / `#ffffff` | plastic and metal |
+| `waste-plastik-metale` / `-fg` / `-border` | `#f2c200` / `#161b24` / `#7d6200` | plastic and metal, yellow bin |
 | `waste-szklo` / `-fg` | `#1e7f4f` / `#ffffff` | glass |
 | `waste-bio` / `-fg` | `#7a4b2a` / `#ffffff` | bio |
 | `waste-popiol` / `-fg` | `#5c6370` / `#ffffff` | ash, grey bag |
@@ -69,7 +69,7 @@ The swatches follow the bins and bags people already have at the gate.
 - Zmieszane, black containers and bags: Regulamin utrzymania czystości i porządku Gminy Miejskiej Lubaczów, uchwała nr 101/X/2024, § 3.
 - Popiół, grey bags (szare worki): UM Lubaczów, od lipca, as reported by [Business Insider](https://businessinsider.com.pl/wiadomosci/nowy-szary-worek-na-smieci-ruszaja-tez-kontrole/fgzpxpc). The article does not give a year.
 
-Zmieszane is `#111111` in both themes. On the dark background that fill is only 1.02:1, so the swatch draws a 1px `#9aa3b2` border (7.24:1 against the background). Text on every swatch is at least 4.5:1. Gabaryty stays rose; the regulation does not assign it a bin colour.
+Zmieszane is `#111111` in both themes. On the dark background that fill is only 1.02:1, so the swatch draws a 1px `#9aa3b2` border (7.24:1 against the background). In the light theme, metale i tworzywa is a clear yellow `#f2c200` (1.57:1 against the background), so the bin draws a dark `#7d6200` outline and shading (5.41:1). In the dark theme its border equals the fill. Labels next to the bins stay in the normal text colour. Text on every swatch is at least 4.5:1. Gabaryty stays rose; the regulation does not assign it a bin colour.
 
 ## Contrast
 
@@ -109,7 +109,8 @@ Computed by `node design/contrast.mjs` (WCAG 2.x, sRGB relative luminance). Text
 | waste-zmieszane-border vs background | 7.24 | pass | N/A |
 | waste-zmieszane vs background | 1.02 | n/a (see border) | N/A |
 | waste-papier vs background | 8.45 | pass | N/A |
-| waste-plastik-metale vs background | 12.57 | pass | N/A |
+| waste-plastik-metale-border vs background | 12.57 | pass | N/A |
+| waste-plastik-metale vs background | 12.57 | n/a (see border) | N/A |
 | waste-szklo vs background | 9.83 | pass | N/A |
 | waste-bio vs background | 6.78 | pass | N/A |
 | waste-popiol vs background | 10.97 | pass | N/A |
@@ -141,7 +142,7 @@ Computed by `node design/contrast.mjs` (WCAG 2.x, sRGB relative luminance). Text
 | accent vs background | 5.24 | pass | N/A |
 | waste-zmieszane-fg on waste-zmieszane | 18.88 | pass | pass |
 | waste-papier-fg on waste-papier | 5.73 | pass | fail |
-| waste-plastik-metale-fg on waste-plastik-metale | 5.80 | pass | fail |
+| waste-plastik-metale-fg on waste-plastik-metale | 10.27 | pass | pass |
 | waste-szklo-fg on waste-szklo | 5.00 | pass | fail |
 | waste-bio-fg on waste-bio | 7.32 | pass | pass |
 | waste-popiol-fg on waste-popiol | 6.05 | pass | fail |
@@ -149,7 +150,8 @@ Computed by `node design/contrast.mjs` (WCAG 2.x, sRGB relative luminance). Text
 | waste-zmieszane-border vs background | 17.59 | pass | N/A |
 | waste-zmieszane vs background | 17.59 | n/a (see border) | N/A |
 | waste-papier vs background | 5.34 | pass | N/A |
-| waste-plastik-metale vs background | 5.41 | pass | N/A |
+| waste-plastik-metale-border vs background | 5.41 | pass | N/A |
+| waste-plastik-metale vs background | 1.57 | n/a (see border) | N/A |
 | waste-szklo vs background | 4.65 | pass | N/A |
 | waste-bio vs background | 6.82 | pass | N/A |
 | waste-popiol vs background | 5.63 | pass | N/A |

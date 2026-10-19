@@ -90,6 +90,7 @@
   --waste-papier-fg: #10141d;
   --waste-plastik-metale: #f4d35e;
   --waste-plastik-metale-fg: #10141d;
+  --waste-plastik-metale-border: #f4d35e;
   --waste-szklo: #58d39a;
   --waste-szklo-fg: #10141d;
   --waste-bio: #c4936a;
@@ -122,8 +123,9 @@
     --waste-zmieszane-border: #111111;
     --waste-papier: #1f63c7;
     --waste-papier-fg: #ffffff;
-    --waste-plastik-metale: #7d6200;
-    --waste-plastik-metale-fg: #ffffff;
+    --waste-plastik-metale: #f2c200;
+    --waste-plastik-metale-fg: #161b24;
+    --waste-plastik-metale-border: #7d6200;
     --waste-szklo: #1e7f4f;
     --waste-szklo-fg: #ffffff;
     --waste-bio: #7a4b2a;
@@ -158,6 +160,7 @@
   --waste-papier-fg: #10141d;
   --waste-plastik-metale: #f4d35e;
   --waste-plastik-metale-fg: #10141d;
+  --waste-plastik-metale-border: #f4d35e;
   --waste-szklo: #58d39a;
   --waste-szklo-fg: #10141d;
   --waste-bio: #c4936a;
@@ -189,8 +192,9 @@
   --waste-zmieszane-border: #111111;
   --waste-papier: #1f63c7;
   --waste-papier-fg: #ffffff;
-  --waste-plastik-metale: #7d6200;
-  --waste-plastik-metale-fg: #ffffff;
+  --waste-plastik-metale: #f2c200;
+  --waste-plastik-metale-fg: #161b24;
+  --waste-plastik-metale-border: #7d6200;
   --waste-szklo: #1e7f4f;
   --waste-szklo-fg: #ffffff;
   --waste-bio: #7a4b2a;
@@ -224,6 +228,7 @@
   --color-waste-papier-fg: var(--waste-papier-fg);
   --color-waste-plastik-metale: var(--waste-plastik-metale);
   --color-waste-plastik-metale-fg: var(--waste-plastik-metale-fg);
+  --color-waste-plastik-metale-border: var(--waste-plastik-metale-border);
   --color-waste-szklo: var(--waste-szklo);
   --color-waste-szklo-fg: var(--waste-szklo-fg);
   --color-waste-bio: var(--waste-bio);
