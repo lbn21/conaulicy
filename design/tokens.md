@@ -30,7 +30,7 @@ Source of truth: `design/tokens.css` (Tailwind v4, not yet imported by the app).
 | `danger` | `#ff8f85` | error message |
 | `waste-zmieszane` / `-fg` / `-border` | `#111111` / `#f5f7fa` / `#9aa3b2` | mixed waste, black bin |
 | `waste-papier` / `-fg` | `#6eb4ff` / `#10141d` | paper |
-| `waste-plastik-metale` / `-fg` / `-border` | `#f4d35e` / `#10141d` / `#f4d35e` | plastic and metal, yellow bin |
+| `waste-plastik-metale` / `-fg` / `-border` | `#f4d35e` / `#10141d` / `transparent` | plastic and metal, yellow bin |
 | `waste-szklo` / `-fg` | `#58d39a` / `#10141d` | glass |
 | `waste-bio` / `-fg` | `#c4936a` / `#10141d` | bio |
 | `waste-popiol` / `-fg` | `#c4c8ce` / `#10141d` | ash, grey bag |
@@ -69,7 +69,7 @@ The swatches follow the bins and bags people already have at the gate.
 - Zmieszane, black containers and bags: Regulamin utrzymania czystości i porządku Gminy Miejskiej Lubaczów, uchwała nr 101/X/2024, § 3.
 - Popiół, grey bags (szare worki): UM Lubaczów, od lipca, as reported by [Business Insider](https://businessinsider.com.pl/wiadomosci/nowy-szary-worek-na-smieci-ruszaja-tez-kontrole/fgzpxpc). The article does not give a year.
 
-Zmieszane is `#111111` in both themes. On the dark background that fill is only 1.02:1, so the swatch draws a 1px `#9aa3b2` border (7.24:1 against the background). In the light theme, metale i tworzywa is a clear yellow `#f2c200` (1.57:1 against the background), so the bin draws a dark `#7d6200` outline and shading (5.41:1). In the dark theme its border equals the fill. Labels next to the bins stay in the normal text colour. Text on every swatch is at least 4.5:1. Gabaryty stays rose; the regulation does not assign it a bin colour.
+Zmieszane is `#111111` in both themes. On the dark background that fill is only 1.02:1, so the swatch draws a 1px `#9aa3b2` border (7.24:1 against the background). In the light theme, metale i tworzywa is a clear yellow `#f2c200` (1.57:1 against the background), so the bin draws a dark `#7d6200` outline and shading (5.41:1). In the dark theme the yellow is bright enough (12.57:1), so its border is `transparent` and the bin is fill only. Labels next to the bins stay in the normal text colour. Text on every swatch is at least 4.5:1. Gabaryty stays rose; the regulation does not assign it a bin colour.
 
 ## Contrast
 
@@ -109,8 +109,7 @@ Computed by `node design/contrast.mjs` (WCAG 2.x, sRGB relative luminance). Text
 | waste-zmieszane-border vs background | 7.24 | pass | N/A |
 | waste-zmieszane vs background | 1.02 | n/a (see border) | N/A |
 | waste-papier vs background | 8.45 | pass | N/A |
-| waste-plastik-metale-border vs background | 12.57 | pass | N/A |
-| waste-plastik-metale vs background | 12.57 | n/a (see border) | N/A |
+| waste-plastik-metale vs background | 12.57 | pass | N/A |
 | waste-szklo vs background | 9.83 | pass | N/A |
 | waste-bio vs background | 6.78 | pass | N/A |
 | waste-popiol vs background | 10.97 | pass | N/A |

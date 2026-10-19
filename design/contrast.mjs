@@ -12,8 +12,13 @@ const WASTE = [
   "gabaryty",
 ];
 
-// Fractions drawn with an outline token, which carries the non-text contrast.
-const OUTLINED = ["zmieszane", "plastik-metale"];
+// Fractions drawn with an outline token, per theme. The outline carries the
+// non-text contrast. Dark yellow is bright enough on its own, so its border
+// token is transparent there.
+const OUTLINED = {
+  dark: ["zmieszane"],
+  light: ["zmieszane", "plastik-metale"],
+};
 
 const palettes = {
   dark: {
@@ -37,7 +42,6 @@ const palettes = {
     "waste-papier-fg": "#10141d",
     "waste-plastik-metale": "#f4d35e",
     "waste-plastik-metale-fg": "#10141d",
-    "waste-plastik-metale-border": "#f4d35e",
     "waste-szklo": "#58d39a",
     "waste-szklo-fg": "#10141d",
     "waste-bio": "#c4936a",
@@ -100,7 +104,7 @@ function contrast(a, b) {
 }
 
 // [foreground, background, kind] — kind "text" needs 4.5, "ui" needs 3.
-function requiredPairs() {
+function requiredPairs(theme) {
   const pairs = [];
   for (const bg of ["background", "surface", "surface-2", "secondary"]) {
     pairs.push(["text", bg, "text"]);
@@ -125,7 +129,7 @@ function requiredPairs() {
     pairs.push([`waste-${w}-fg`, `waste-${w}`, "text"]);
   }
   for (const w of WASTE) {
-    if (OUTLINED.includes(w)) {
+    if (OUTLINED[theme].includes(w)) {
       // Near-black (dark theme) and bright yellow (light theme) fills fade into
       // the background; the outline is the 3:1 edge.
       pairs.push([`waste-${w}-border`, "background", "ui"]);
@@ -143,7 +147,7 @@ const lines = [];
 for (const [theme, p] of Object.entries(palettes)) {
   lines.push(`### ${theme}`, "");
   lines.push("| Pair | Ratio | AA | AAA |", "| --- | ---: | --- | --- |");
-  for (const [fg, bg, kind] of requiredPairs()) {
+  for (const [fg, bg, kind] of requiredPairs(theme)) {
     const ratio = contrast(p[fg], p[bg]);
     const min = kind === "text" ? 4.5 : 3;
     const aa = ratio >= min;

@@ -87,7 +87,7 @@
   --waste-papier-fg: #10141d;
   --waste-plastik-metale: #f4d35e;
   --waste-plastik-metale-fg: #10141d;
-  --waste-plastik-metale-border: #f4d35e;
+  --waste-plastik-metale-border: transparent;
   --waste-szklo: #58d39a;
   --waste-szklo-fg: #10141d;
   --waste-bio: #c4936a;
@@ -157,7 +157,7 @@
   --waste-papier-fg: #10141d;
   --waste-plastik-metale: #f4d35e;
   --waste-plastik-metale-fg: #10141d;
-  --waste-plastik-metale-border: #f4d35e;
+  --waste-plastik-metale-border: transparent;
   --waste-szklo: #58d39a;
   --waste-szklo-fg: #10141d;
   --waste-bio: #c4936a;
