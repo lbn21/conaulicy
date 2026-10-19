@@ -28,8 +28,16 @@ const TOKEN: Record<string, string> = {
   tekstylia: "gabaryty",
 };
 
-function subscribe(): () => void {
-  return () => {};
+// Re-check the Warsaw day every minute and when the tab comes back, so a tab
+// left open overnight moves "jutro" to "dziś". React only re-renders when the
+// date string changes.
+function subscribe(onChange: () => void): () => void {
+  const timer = setInterval(onChange, 60_000);
+  document.addEventListener("visibilitychange", onChange);
+  return () => {
+    clearInterval(timer);
+    document.removeEventListener("visibilitychange", onChange);
+  };
 }
 
 function tones(subtype: string): string[] {
