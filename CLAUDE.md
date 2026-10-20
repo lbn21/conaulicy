@@ -23,6 +23,21 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 - Avoid the AI look. Don't use purple gradients, glassmorphism, emoji icons, generic card grids, sparkles, slogans or the default Inter/shadcn look. Do use editorial type, restraint, local character and crafted details.
 - First-load JS is at most 150 KB gzip. Target Lighthouse mobile >= 95 and LCP < 1.5s on 4G.
 
+## Design system
+
+GOV.UK is our reference and gold standard; when in doubt, follow it:
+- [GOV.UK Design System](https://design-system.service.gov.uk/): components and patterns.
+- [GOV.UK Service Manual](https://www.gov.uk/service-manual): service design principles.
+- [GOV.UK style guide A–Z](https://www.gov.uk/guidance/style-guide/a-to-z): content; apply it in spirit to Polish copy.
+
+Concrete rules already adopted:
+- Links never open in a new tab (including PDF and source links).
+- One thing per page: no second search box. Use a „Zmień adres” change link (GOV.UK "Change" pattern) that returns to the home page with an empty, focused field.
+- Plain, warm Polish copy.
+- Deviations must be justified in the PR description.
+
+Brand (logo, colours, type, tone of voice): see [docs/brand.md](docs/brand.md).
+
 ## Architecture and data
 
 - No over-engineering: static pages, CDN cache and the fewest possible API routes. Storage: Neon Postgres (Vercel Marketplace, free plan, fra1), Drizzle ORM; schema in `web/lib/db/schema.ts`, migrations in `web/drizzle/` (dataset never in git). No state library or CMS, and nothing built "for later" (put it in the backlog).

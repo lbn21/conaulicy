@@ -7,3 +7,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Design system
+
+GOV.UK is the reference: [GOV.UK Design System](https://design-system.service.gov.uk/), [GOV.UK Service Manual](https://www.gov.uk/service-manual) and [GOV.UK style guide A–Z](https://www.gov.uk/guidance/style-guide/a-to-z). Brand: [docs/brand.md](../docs/brand.md). See the Design system section in ../CLAUDE.md.
