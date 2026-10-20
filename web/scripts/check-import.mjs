@@ -1,17 +1,19 @@
 // End-to-end check of the importer on a made-up dataset (never the real one):
-// seed, dry run, --apply, then the pages read the imported data. Also the
-// guards: changed sources, too many deletes, --offline, production.
-// Writes to DATABASE_URL, so only for a throwaway database (CI, a local
-// container). Run after `next build`. The schedules are served from a local
+// an empty database, dry run, a first --apply, then the pages read the
+// imported data. Also the guards: changed sources, too many deletes,
+// --offline, production. Empties and writes DATABASE_URL, so it refuses any
+// database but a local one (CI, a local container). Run after `next build`. The schedules are served from a local
 // HTTP server, so the source check runs without the internet.
 import { execFile } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import pg from "pg";
 import { todayInWarsaw } from "../lib/dates.ts";
 import { eventId } from "./lib/import-data.ts";
 import { FIXTURE_IDS, fixture } from "./lib/import-fixture.ts";
+import { localDatabaseUrl } from "./lib/local-db.ts";
 import { startServer } from "./lib/server.mjs";
 
 const failures = [];
@@ -70,9 +72,21 @@ const page = async (path) => {
 };
 
 try {
-  const seed = await exec("npm", ["run", "-s", "db:seed"]);
-  if (seed.code !== 0) throw new Error(`seed failed\n${seed.out}`);
-  // Read the seed's Asnyka once, so the cache holds what the import replaces.
+  // Start empty, as a first real import does (children first).
+  const db = new pg.Client({ connectionString: localDatabaseUrl() });
+  await db.connect();
+  for (const table of [
+    "events",
+    "zone_members",
+    "zones",
+    "streets",
+    "localities",
+    "gminy",
+    "meta",
+  ])
+    await db.query(`delete from ${table}`);
+  await db.end();
+  // Read Asnyka once, so the cache holds what the import must replace.
   await page(`/adres/${FIXTURE_IDS.asnyka}`);
 
   await expectRun("production guard", ["--apply"], 1, /--yes-production/, {
@@ -88,10 +102,10 @@ try {
     "dry run",
     [],
     0,
-    /holds test data[\s\S]*Dry run: nothing written/,
+    /Diff against the database:[\s\S]*Dry run: nothing written/,
   );
   await expectRun(
-    "apply over the seed",
+    "first apply",
     ["--apply"],
     0,
     /Imported: 12 events[\s\S]*Revalidate ok[\s\S]*Smoke check ok/,

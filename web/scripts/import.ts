@@ -2,9 +2,8 @@
 //
 // Loads the ETL output (docs/import-plan.md section 3). Without --apply it is
 // a dry run: validate, check the sources, print the diff against the
-// database, write nothing. With --apply, one transaction: a database that
-// still holds the seed (meta.testData) is replaced; otherwise rows are
-// upserted and rows missing from the input deleted. Then the site's cache is
+// database, write nothing. With --apply, one transaction: rows are upserted
+// and rows missing from the input deleted. Then the site's cache is
 // revalidated and one address page is checked.
 //
 // Options: --offline (dry run only: skip downloading the sources),
@@ -305,20 +304,15 @@ async function main() {
   for (const w of warnings) console.log(`Approval: ${w}`);
 
   const db = drizzle(url, { casing: "snake_case" });
-  const [metaRows, current] = await Promise.all([
-    db.select().from(meta),
-    Promise.all([
+  const [curGminy, curLocalities, curStreets, curZones, curMembers, curEvents] =
+    await Promise.all([
       db.select().from(gminy),
       db.select().from(localities),
       db.select().from(streets),
       db.select().from(zones),
       db.select().from(zoneMembers),
       db.select().from(events),
-    ]),
-  ]);
-  const [curGminy, curLocalities, curStreets, curZones, curMembers, curEvents] =
-    current;
-  const testData = metaRows.some((m) => m.key === "testData" && m.value);
+    ]);
 
   const diffs = {
     gminy: diffRows(rows.gminy as Row[], curGminy),
@@ -327,9 +321,7 @@ async function main() {
     zones: diffRows(rows.zones as Row[], curZones),
     events: diffRows(rows.events as Row[], curEvents),
   };
-  console.log(
-    `\nDiff against the database${testData ? " (holds test data: --apply replaces it all)" : ""}:`,
-  );
+  console.log("\nDiff against the database:");
   printDiff("gminy", diffs.gminy, (r) => `${r.id} ${r.name}`);
   printDiff("localities", diffs.localities, (r) => `${r.id} ${r.name}`);
   printDiff("streets", diffs.streets, (r) => `${r.id} ${r.prefix} ${r.name}`);
@@ -373,7 +365,7 @@ async function main() {
     return;
   }
 
-  if (!testData && !args["allow-deletes"]) {
+  if (!args["allow-deletes"]) {
     for (const [name, d] of Object.entries(diffs)) {
       if (d.total > 0 && d.removed.length / d.total > DELETE_LIMIT)
         fail(
@@ -413,48 +405,29 @@ async function main() {
         await tx.delete(table).where(inArray(table.id, chunk));
     };
 
-    if (testData) {
-      // Same order as the seed: children first.
-      for (const table of [
-        events,
-        zoneMembers,
-        zones,
-        streets,
-        localities,
-        gminy,
-      ])
-        await tx.delete(table);
-      await insert(gminy, rows.gminy, false);
-      await insert(localities, rows.localities, false);
-      await insert(streets, rows.streets, false);
-      await insert(zones, rows.zones, false);
-      await insert(zoneMembers as unknown as Table, rows.zoneMembers, false);
-      await insert(events, rows.events, false);
-    } else {
-      const changed = (d: Diff) => [...d.added, ...d.changed.map((c) => c.row)];
-      await insert(gminy, changed(diffs.gminy), true);
-      await insert(localities, changed(diffs.localities), true);
-      await insert(streets, changed(diffs.streets), true);
-      await insert(zones, changed(diffs.zones), true);
-      // Members have no natural key: replace each zone's list.
-      for (const chunk of chunks(rows.zones.map((z) => z.id)))
-        await tx.delete(zoneMembers).where(inArray(zoneMembers.zoneId, chunk));
-      await insert(zoneMembers as unknown as Table, rows.zoneMembers, false);
-      await insert(events, changed(diffs.events), true);
-      await remove(events, diffs.events.removed);
-      // Deleting a zone deletes its members and events (on delete cascade).
-      await remove(zones, diffs.zones.removed);
-      await remove(streets, diffs.streets.removed);
-      // Village parts before their villages.
-      await remove(
-        localities,
-        [...diffs.localities.removed].sort(
-          (a, b) => Number(Boolean(b.parentId)) - Number(Boolean(a.parentId)),
-        ),
-      );
-      await remove(gminy, diffs.gminy.removed);
-    }
-    await tx.delete(meta).where(inArray(meta.key, ["testData", "dataset"]));
+    const changed = (d: Diff) => [...d.added, ...d.changed.map((c) => c.row)];
+    await insert(gminy, changed(diffs.gminy), true);
+    await insert(localities, changed(diffs.localities), true);
+    await insert(streets, changed(diffs.streets), true);
+    await insert(zones, changed(diffs.zones), true);
+    // Members have no natural key: replace each zone's list.
+    for (const chunk of chunks(rows.zones.map((z) => z.id)))
+      await tx.delete(zoneMembers).where(inArray(zoneMembers.zoneId, chunk));
+    await insert(zoneMembers as unknown as Table, rows.zoneMembers, false);
+    await insert(events, changed(diffs.events), true);
+    await remove(events, diffs.events.removed);
+    // Deleting a zone deletes its members and events (on delete cascade).
+    await remove(zones, diffs.zones.removed);
+    await remove(streets, diffs.streets.removed);
+    // Village parts before their villages.
+    await remove(
+      localities,
+      [...diffs.localities.removed].sort(
+        (a, b) => Number(Boolean(b.parentId)) - Number(Boolean(a.parentId)),
+      ),
+    );
+    await remove(gminy, diffs.gminy.removed);
+    await tx.delete(meta).where(inArray(meta.key, ["dataset"]));
     await tx.insert(meta).values({ key: "dataset", value: dataset });
   });
   await db.$client.end();
