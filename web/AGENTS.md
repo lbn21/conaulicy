@@ -10,4 +10,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Design system
 
-GOV.UK is the reference: [GOV.UK Design System](https://design-system.service.gov.uk/), [GOV.UK Service Manual](https://www.gov.uk/service-manual) and [GOV.UK style guide A–Z](https://www.gov.uk/guidance/style-guide/a-to-z). Brand: [docs/brand.md](../docs/brand.md). See the Design system section in ../CLAUDE.md.
+GOV.UK Frontend CSS and JS and alphagov accessible-autocomplete, used unchanged; only the brand colours (Latarnia group), the typeface and the logo are ours. Light theme only. Rules: the "Design system" section of [../CLAUDE.md](../CLAUDE.md). References: [GOV.UK Design System](https://design-system.service.gov.uk/), [GOV.UK Service Manual](https://www.gov.uk/service-manual), [GOV.UK style guide A–Z](https://www.gov.uk/guidance/style-guide/a-to-z). Brand: [docs/brand.md](../docs/brand.md).
