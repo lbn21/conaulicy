@@ -1,14 +1,19 @@
 import { PLATE, PLATE_WIDTH, RIM, RIM_WIDTH, UL } from "@/lib/logo";
 
 // Our own footer markup with GOV.UK's footer classes, laid out as the GOV.UK
-// footer: logo, navigation, section break, meta links and text, licence, and
-// the copyright on the right. Never GOV.UK's crown, crest, Open Government
+// footer: logo, navigation and section break (once there is enough to
+// navigate), meta links and text, licence, and the copyright on the right. Never GOV.UK's crown, crest, Open Government
 // Licence or Crown copyright: our plate takes the crown's place (with the
 // crown's 25 px margin as a GOV.UK override class, not the crown class), and
 // the copyright is plain text (govuk-footer__copyright-logo is the crest).
 // The same on every page. The code licences are credited on /dostepnosc.
 
-/** Footer navigation: live features only; a new feature adds a link here. */
+/**
+ * Footer navigation: live features only; a new feature adds a link here. It
+ * appears (with its section break) once it has two or more links, or when
+ * SHOW_NAVIGATION is set; one link alone would only repeat the home page.
+ * Sections without links never render.
+ */
 const NAVIGATION: Array<{
   title: string;
   items: Array<{ href: string; text: string }>;
@@ -18,6 +23,13 @@ const NAVIGATION: Array<{
     items: [{ href: "/", text: "Wywóz śmieci" }],
   },
 ];
+
+const SHOW_NAVIGATION = false;
+const SECTIONS = NAVIGATION.filter((section) => section.items.length > 0);
+const NAVIGATION_SHOWN =
+  SECTIONS.length > 0 &&
+  (SHOW_NAVIGATION ||
+    SECTIONS.reduce((links, section) => links + section.items.length, 0) >= 2);
 
 const META = [
   { href: "/dostepnosc", text: "Dostępność" },
@@ -59,28 +71,32 @@ export function SiteFooter() {
       <div className="govuk-footer">
         <div className="govuk-width-container">
           <FooterPlate />
-          <div className="govuk-footer__navigation">
-            {NAVIGATION.map((section) => (
-              <div
-                key={section.title}
-                className="govuk-footer__section govuk-grid-column-full"
-              >
-                <h2 className="govuk-footer__heading govuk-heading-m">
-                  {section.title}
-                </h2>
-                <ul className="govuk-footer__list">
-                  {section.items.map((item) => (
-                    <li key={item.href} className="govuk-footer__list-item">
-                      <a className="govuk-footer__link" href={item.href}>
-                        {item.text}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+          {NAVIGATION_SHOWN && (
+            <>
+              <div className="govuk-footer__navigation">
+                {SECTIONS.map((section) => (
+                  <div
+                    key={section.title}
+                    className="govuk-footer__section govuk-grid-column-full"
+                  >
+                    <h2 className="govuk-footer__heading govuk-heading-m">
+                      {section.title}
+                    </h2>
+                    <ul className="govuk-footer__list">
+                      {section.items.map((item) => (
+                        <li key={item.href} className="govuk-footer__list-item">
+                          <a className="govuk-footer__link" href={item.href}>
+                            {item.text}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <hr className="govuk-footer__section-break" />
+              <hr className="govuk-footer__section-break" />
+            </>
+          )}
           <div className="govuk-footer__meta">
             <div className="govuk-footer__meta-item govuk-footer__meta-item--grow">
               <h2 className="govuk-visually-hidden">Linki pomocnicze</h2>
@@ -97,7 +113,7 @@ export function SiteFooter() {
                 ))}
               </ul>
               <div className="govuk-footer__meta-custom">
-                Zrobił Jakub Marciniszyn, mieszkaniec Lubaczowa.
+                Zrobił Jakub Marciniszyn dla mieszkańców Lubaczowa.
                 <br />
                 Nie jesteśmy urzędem – obowiązuje harmonogram gminy.
               </div>

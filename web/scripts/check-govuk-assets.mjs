@@ -17,7 +17,8 @@
 // /dostepnosc must link the MIT licence and the font's OFL (served from
 // public/fonts/OFL.txt, a copy of the one beside the font files).
 // Footer: our markup with govuk-footer classes, identical on every page,
-// with the CC BY 4.0 line for our texts; never the crown, the crest, the
+// with the CC BY 4.0 line for our texts, and navigation (with its section
+// break) only when it has links; never the crown, the crest, the
 // Open Government Licence, a Crown copyright line, or the code licences
 // (those are on /dostepnosc). No GOV.UK image (crest) URL in the CSS.
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -181,6 +182,16 @@ for (const [pattern, what] of [
   ],
 ]) {
   if (pattern.test(footer)) failures.push(`footer: ${what}`);
+}
+// The navigation shows only with links; its section break only with it.
+if (
+  footer.includes("govuk-footer__section-break") !==
+  footer.includes("govuk-footer__navigation")
+)
+  failures.push("footer: a section break without navigation, or the reverse");
+for (const section of footer.split('class="govuk-footer__section ').slice(1)) {
+  if (!section.split("</ul>")[0].includes("govuk-footer__list-item"))
+    failures.push("footer: a navigation section without links");
 }
 if (/govuk-crest|assets\/images\//.test(css))
   failures.push("compiled CSS: a GOV.UK image URL (crest)");
