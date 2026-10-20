@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { WebAnalytics } from "@/components/web-analytics";
 import { THEME_COLOR } from "@/lib/theme";
 import { atkinson } from "./fonts";
-import "./globals.css";
+import "./tokens.css";
 import "./govuk.scss";
 import "./site.scss";
 
@@ -43,6 +43,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   colorScheme: "light",
   themeColor: THEME_COLOR,
+  // As GOV.UK's page template.
+  viewportFit: "cover",
 };
 
 // GOV.UK's snippet, exactly as in its page template: marks browsers that run

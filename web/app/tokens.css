@@ -1,14 +1,7 @@
 /*
-  Tokens for the Tailwind utilities that pages still use while they move to
-  GOV.UK Frontend classes (docs/govuk-audit.md, PRs 2–7). Deleted with
-  Tailwind in PR 8. Light only, as GOV.UK.
-
-  The role colours (text, link, focus, error, …) come from GOV.UK's palette,
-  bridged in app/govuk.scss; only the real-world bin colours live here.
-  Contrast is verified by `node design/contrast.mjs`.
-
-  Spacing rhythm: 4px. Tailwind derives p-1 = 4px, p-2 = 8px, p-4 = 16px … from --spacing.
-  Weights: 400 (text) and 700 (emphasis) only.
+  The two things GOV.UK Frontend has no setting for: the typeface's
+  metric-matched fallback and the real bin colours (drawn by the bin markers,
+  .app-bin in site.scss). Contrast is verified by `node design/contrast.mjs`.
 */
 
 /*
@@ -46,95 +39,18 @@
 }
 
 :root {
-  color-scheme: light;
   --waste-zmieszane: #111111;
-  --waste-zmieszane-fg: #ffffff;
   --waste-zmieszane-border: #111111;
   --waste-papier: #1f63c7;
-  --waste-papier-fg: #ffffff;
   --waste-plastik-metale: #f2c200;
-  --waste-plastik-metale-fg: #161b24;
   --waste-plastik-metale-border: #7d6200;
   --waste-szklo: #1e7f4f;
-  --waste-szklo-fg: #ffffff;
   --waste-bio: #7a4b2a;
-  --waste-bio-fg: #ffffff;
   --waste-popiol: #5c6370;
-  --waste-popiol-fg: #ffffff;
   --waste-gabaryty: #c2410c;
-  --waste-gabaryty-fg: #ffffff;
   --waste-elektro: #1e3a8a;
-  --waste-elektro-fg: #ffffff;
   --waste-elektro-border: transparent;
   --waste-opony: #a3aab5;
-  --waste-opony-fg: #161b24;
   --waste-opony-border: #4a5160;
   --waste-tekstylia: #a8336a;
-  --waste-tekstylia-fg: #ffffff;
-  --elevation: 0 1px 2px rgb(22 27 36 / 0.12);
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-text: var(--text);
-  --color-text-muted: var(--text-muted);
-  --color-border: var(--border);
-  --color-input-border: var(--input-border);
-  --color-link: var(--link);
-  --color-accent: var(--accent);
-  --color-primary: var(--accent);
-  --color-accent-contrast: var(--accent-contrast);
-  --color-secondary: var(--secondary);
-  --color-focus: var(--focus);
-  --color-focus-text: var(--focus-text);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-danger: var(--danger);
-  --color-waste-zmieszane: var(--waste-zmieszane);
-  --color-waste-zmieszane-fg: var(--waste-zmieszane-fg);
-  --color-waste-zmieszane-border: var(--waste-zmieszane-border);
-  --color-waste-papier: var(--waste-papier);
-  --color-waste-papier-fg: var(--waste-papier-fg);
-  --color-waste-plastik-metale: var(--waste-plastik-metale);
-  --color-waste-plastik-metale-fg: var(--waste-plastik-metale-fg);
-  --color-waste-plastik-metale-border: var(--waste-plastik-metale-border);
-  --color-waste-szklo: var(--waste-szklo);
-  --color-waste-szklo-fg: var(--waste-szklo-fg);
-  --color-waste-bio: var(--waste-bio);
-  --color-waste-bio-fg: var(--waste-bio-fg);
-  --color-waste-popiol: var(--waste-popiol);
-  --color-waste-popiol-fg: var(--waste-popiol-fg);
-  --color-waste-gabaryty: var(--waste-gabaryty);
-  --color-waste-gabaryty-fg: var(--waste-gabaryty-fg);
-  --color-waste-elektro: var(--waste-elektro);
-  --color-waste-elektro-fg: var(--waste-elektro-fg);
-  --color-waste-opony: var(--waste-opony);
-  --color-waste-opony-fg: var(--waste-opony-fg);
-  --color-waste-tekstylia: var(--waste-tekstylia);
-  --color-waste-tekstylia-fg: var(--waste-tekstylia-fg);
-
-  --font-sans: var(--font-atkinson), "Atkinson Fallback", system-ui, sans-serif;
-  --font-weight-normal: 400;
-  --font-weight-bold: 700;
-
-  --spacing: 0.25rem;
-  --radius-sm: 4px;
-  --shadow-raised: var(--elevation);
-
-  /* Mobile-first type scale; step headings up with md:/lg: variants. */
-  --text-sm: 1.125rem;
-  --text-sm--line-height: 1.55;
-  /* GOV.UK body: 19px on a 25px line, at every size. */
-  --text-base: 1.1875rem;
-  --text-base--line-height: 1.3158;
-  --text-lg: 1.375rem;
-  --text-lg--line-height: 1.3;
-  --text-xl: 1.75rem;
-  --text-xl--line-height: 1.2;
-  --text-2xl: 2.25rem;
-  --text-2xl--line-height: 1.15;
-  --text-3xl: 3rem;
-  --text-3xl--line-height: 1.1;
 }

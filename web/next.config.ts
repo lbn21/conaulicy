@@ -11,14 +11,6 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/adres/[id]/harmonogram.pdf": ["./assets/fonts/*.ttf"],
   },
-  turbopack: {
-    rules: {
-      "*.css": {
-        loaders: ["@tailwindcss/turbopack"],
-        as: "*.css",
-      },
-    },
-  },
   // A house number in the query (?nr=12a, ?nr=7/22) keeps the street page
   // cached: it becomes a path. Any other ?nr= is routed by proxy.ts (a
   // rewrite cannot see an empty value).

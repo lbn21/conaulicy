@@ -60,7 +60,7 @@ function rectOf(r: {
 
 function WasteMark({ tone, large }: { tone: string; large: boolean }) {
   const token = TOKEN[tone];
-  const fill = token ? `var(--waste-${token})` : "var(--secondary)";
+  const fill = token ? `var(--waste-${token})` : "var(--app-bin-other)";
   const outline =
     token && OUTLINED.has(token) ? `var(--waste-${token}-border)` : "none";
   const [width, height] = large ? [34, 48] : [28, 40];
