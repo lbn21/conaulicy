@@ -4,7 +4,7 @@ Light only, as GOV.UK. Values: `design/tokens.css`. Contrast check: `node design
 
 ## Rationale
 - **GOV.UK Frontend as-is, including its palette; only the brand-blue roles, the typeface and the logo are ours** (`docs/govuk-audit.md`). The full palette, with every group and step, is in `docs/brand.md`.
-- **The Latarnia group** replaces GOV.UK's brand blue. It is computed from `#9a5700` with GOV.UK's own tint/shade percentages (`web/app/_palette.scss`). Brand is its primary, links are shade-10 `#8b4e00`, link hover is shade-50 `#4d2c00`, and the template and surface backgrounds are tint-95 `#faf7f2`. Visited links keep GOV.UK's purple `#54319f`: AA, and clearly distinct from the amber links.
+- **The Latarnia group** replaces GOV.UK's brand blue. It is computed from `#9a5700` with GOV.UK's own tint/shade percentages (`web/app/_palette.scss`). Brand is its primary, links are shade-10 `#8b4e00`, link hover is shade-50 `#4d2c00`, and the template and surface backgrounds are tint-95 `#faf7f2`. Visited links have no colour of their own: `link-visited` is the link colour.
 - **Everything else is GOV.UK's:**
   - text `#0b0c0c`, secondary text `#484949`;
   - yellow focus `#ffdd00` with black `#0b0c0c`;
@@ -47,7 +47,7 @@ Computed by `node design/contrast.mjs` (WCAG 2.x, sRGB relative luminance), ligh
 - borders and the surface border are decorative dividers, never the only cue;
 - light bin fills are carried by their outline.
 
-The script exits 1 if a required pair fails. Pairs that reach AAA (text, 7:1+): body text, secondary text, link hover, visited and active links, focus text, the button hover, the secondary button, surface text, header text, and the zmieszane, plastik-metale, bio, elektro and opony labels.
+The script exits 1 if a required pair fails. Pairs that reach AAA (text, 7:1+): body text, secondary text, link hover, active links, focus text, the button hover, the secondary button, surface text, header text, and the zmieszane, plastik-metale, bio, elektro and opony labels.
 
 | Pair | Ratio | AA | AAA |
 | --- | ---: | --- | --- |
@@ -60,7 +60,6 @@ The script exits 1 if a required pair fails. Pairs that reach AAA (text, 7:1+): 
 | link on template-background | 6.17 | pass | fail |
 | link on surface-background | 6.17 | pass | fail |
 | link-hover on body-background | 12.53 | pass | pass |
-| link-visited on body-background | 9.06 | pass | pass |
 | link-active on body-background | 19.59 | pass | pass |
 | focus-text on focus | 14.55 | pass | pass |
 | error on body-background | 5.16 | pass | fail |

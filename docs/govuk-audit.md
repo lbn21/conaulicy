@@ -22,11 +22,11 @@ Everything else is on one "later" line.
 - **Palette:**
   - GOV.UK's own palette and functional colours are kept: yellow focus, green button, red error, green success, black/grey text and borders, white.
   - Only the **brand-blue group** is replaced, by a Latarnia amber/brown group computed with GOV.UK's tint/shade method. It feeds brand, link, link hover, template and surface background, and surface border.
-  - Visited links keep GOV.UK's purple.
+  - Visited links have no colour of their own: `link-visited` is the link colour (D5).
 - **Typeface and logo:** Atkinson Hyperlegible Next instead of GDS Transport. Our "ul." plate in the GOV.UK **Generic header** (its default black bar, so the dark-background lockup). Our own footer.
 - **Light only, Polish copy.** Dark mode was dropped on 2026-10-20 to follow GOV.UK, which is light only: no toggle, no `prefers-color-scheme: dark` styles, no theme script.
 - **Everything else is exactly GOV.UK:**
-  - 40 px controls, `:focus` styling, visited links;
+  - 40 px controls, `:focus` styling;
   - the 960 px container and grid, 19 px body, every size, spacing step, type scale and breakpoint, and the page template;
   - GOV.UK markup and classes for every form element and button.
 - **Almost no own CSS:**
@@ -244,7 +244,7 @@ Source: [GOV.UK colour](https://design-system.service.gov.uk/styles/colour/) and
 | `brand` | **#9a5700** | latarnia primary (was blue) |
 | `link` | **#8b4e00** | latarnia shade-10 (was blue shade-10) |
 | `link-hover` | **#4d2c00** | latarnia shade-50 (was blue shade-50) |
-| `link-visited` | #54319f | GOV.UK purple, **kept** |
+| `link-visited` | **#8b4e00** | latarnia shade-10, the link colour (D5) |
 | `link-active` | #0b0c0c | GOV.UK (black) |
 | `border` | #cecece | GOV.UK (black tint-80) |
 | `input-border` | #0b0c0c | GOV.UK (black) |
@@ -259,10 +259,7 @@ Source: [GOV.UK colour](https://design-system.service.gov.uk/styles/colour/) and
 | `surface-text` | #0b0c0c | GOV.UK (black) |
 | `surface-border` | **#cdab80** | latarnia tint-50 (was blue tint-50) |
 
-**Visited links keep GOV.UK's purple.**
-- It passes comfortably (9.06 : 1 on white).
-- It's clearly distinct from the amber link, which is the whole point of a visited state.
-- It doesn't clash with the brand: it's the colour people already know means "visited" on GOV.UK.
+**Visited links have no colour of their own** (D5): `link-visited` is set to the link colour in `web/app/_settings.scss`, so a visited link looks like any other link.
 
 ### Contrast of every functional pair
 
@@ -277,7 +274,6 @@ These ratios use the WCAG 2.x formula of `design/contrast.mjs`. They are **all n
 | link on body-background | 6.59 | AA |
 | link on surface-background | 6.17 | AA |
 | link-hover on body-background | 12.53 | AAA |
-| link-visited on body-background | 9.06 | AAA |
 | link-active on body-background | 19.59 | AAA |
 | input-border vs body-background | 19.59 | UI pass |
 | focus-text on focus | 14.55 | AAA |
@@ -373,13 +369,14 @@ The target is the GOV.UK value in every row; only colours are mapped (table abov
 | B8 | Disabled | opacity .5, no hover or press ([`#L132-L144`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L132-L144)) | n/a |
 | B9 | Variants | secondary, warning, inverse, start ([`#L146-L231`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L146-L231)) | none |
 
-## Deviations (only what GOV.UK forbids us to copy, plus language)
+## Deviations (what GOV.UK forbids us to copy, language, and visited links)
 | # | What is ours | Why |
 |---|---|---|
 | D1 | The brand-blue group → the Latarnia amber group (brand, link, link hover, template/surface background, surface border); everything else is GOV.UK's palette | Service Manual: a site not on GOV.UK "must not … use the GOV.UK brand colours". (The colour page's "Do not copy the specific hexadecimal (hex) colour values" is coding guidance: use the Sass functions. We do.) |
 | D2 | Atkinson Hyperlegible Next, self-hosted | Typeface: off service.gov.uk, "use an alternative typeface"; Service Manual: "must not … use the GDS Transport typeface" |
 | D3 | Our "ul." plate in the GOV.UK **Generic header**; our own footer; no crown, GOV.UK logotype, GOV.UK header or footer | Header: "you must not use the GOV.UK header component … Use the Generic header component instead"; "Services outside of the GOV.UK proposition should stop using the header and footer components and instead create their own" |
 | D4 | Polish copy (e.g. „Błąd:", „Jest problem") | Our users; GOV.UK says the error prefix can be changed for another language |
+| D5 | No visited-link colour: `link-visited` = `link` (Latarnia shade-10), through the documented `$govuk-functional-colours` setting | Jakub's decision. GOV.UK's own option for links whose visited state does not help users ("links without a visited state", `govuk-link--no-visited-state`), applied site-wide by configuration rather than per-link classes |
 
 Light only is not a deviation: GOV.UK is light only. Any further deviation needs Jakub's approval.
 
