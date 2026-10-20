@@ -77,7 +77,18 @@ function makeRoom(input: HTMLElement) {
  * device ("Asnyka 12" carries the house number to ?nr=). If the index cannot
  * load, settled queries go to /api/search.
  */
-export function AddressSearch({ indexUrl }: { indexUrl: string }) {
+export function AddressSearch({
+  indexUrl,
+  label = "Twoja ulica albo wieś",
+  hint = HINT,
+  labelAsHeading = false,
+}: {
+  indexUrl: string;
+  label?: string;
+  hint?: string;
+  /** The label is the page heading (GOV.UK question pages). */
+  labelAsHeading?: boolean;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -230,15 +241,27 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
   return (
     <search id={SEARCH_ID} className="app-search">
       <div className="govuk-form-group">
-        <label
-          id={LABEL_ID}
-          htmlFor={INPUT_ID}
-          className="govuk-label govuk-label--m"
-        >
-          Twoja ulica albo wieś
-        </label>
+        {labelAsHeading ? (
+          <h1 className="govuk-label-wrapper">
+            <label
+              id={LABEL_ID}
+              htmlFor={INPUT_ID}
+              className="govuk-label govuk-label--l"
+            >
+              {label}
+            </label>
+          </h1>
+        ) : (
+          <label
+            id={LABEL_ID}
+            htmlFor={INPUT_ID}
+            className="govuk-label govuk-label--m"
+          >
+            {label}
+          </label>
+        )}
         <div id={HINT_ID} className="govuk-hint">
-          {HINT}
+          {hint}
         </div>
         <div
           ref={containerRef}
