@@ -82,10 +82,7 @@ export default function AccessibilityPage() {
               pomaga.
             </p>
             <p className="govuk-body">
-              <a
-                href="mailto:kontakt@conaulicy.pl"
-                className="font-bold underline decoration-2 underline-offset-4"
-              >
+              <a href="mailto:kontakt@conaulicy.pl" className="govuk-link">
                 kontakt@conaulicy.pl
               </a>
             </p>

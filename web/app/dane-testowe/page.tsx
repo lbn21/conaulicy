@@ -21,7 +21,7 @@ export default function TestDataPage() {
             <a
               href="https://czystylubaczow.info/odbior-odpadow/harmonogram-odbioru-odpadow/"
               rel="noopener"
-              className="underline decoration-2 underline-offset-4"
+              className="govuk-link"
             >
               miasta Lubaczów
             </a>{" "}
@@ -29,7 +29,7 @@ export default function TestDataPage() {
             <a
               href="https://www.gminalubaczow.pl/2026/01/02/harmonogram-odbioru-odpadow-komunalnych-na-rok-2026/"
               rel="noopener"
-              className="underline decoration-2 underline-offset-4"
+              className="govuk-link"
             >
               gminy Lubaczów
             </a>
