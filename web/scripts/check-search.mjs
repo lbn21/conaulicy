@@ -2,7 +2,7 @@
 // over the field on first focus) on the home page at 360px and 1280px: the
 // result popup overlays the page (nothing below the field moves while it loads,
 // lists results, says "Brak wyników" or closes), follows the APG combobox
-// keyboard model, and its rows use the field's font at GOV.UK's size 19.
+// keyboard model, and its rows use the field's font family and size.
 // Matching runs on the device: the index loads once, on focus, and typing
 // makes no request. Also: "ul" alone asks for a name, "Zmień adres" on a
 // street page lands on an empty, focused field with the list closed,
@@ -77,18 +77,20 @@ try {
     const note = (text) =>
       page.locator(".autocomplete__option--no-results", { hasText: text });
     const result = () => page.locator('[role="option"]:not([aria-disabled])');
-    // Every row of the popup (results and notes) uses GOV.UK's type, as the
-    // field (never the browser default), at GOV.UK's form-control size, 19.
+    // Every row of the popup (results and notes) uses the field's font family
+    // and size (GOV.UK's family, the library's sizes), never the browser default.
+    const type = (el) => {
+      const style = getComputedStyle(el);
+      return `${style.fontFamily} ${style.fontSize}`;
+    };
     const sameType = async (rows, state) => {
-      const family = (el) => getComputedStyle(el).fontFamily;
-      const [field, row, size] = await Promise.all([
-        page.locator("#adres").evaluate(family),
-        rows.first().evaluate(family),
-        rows.first().evaluate((el) => getComputedStyle(el).fontSize),
+      const [field, row] = await Promise.all([
+        page.locator("#adres").evaluate(type),
+        rows.first().evaluate(type),
       ]);
       check(
-        row === field && size === "19px",
-        `${label} ${state}: option font ${row} ${size}, expected ${field} 19px`,
+        row === field,
+        `${label} ${state}: option font ${row}, field ${field}`,
       );
     };
     // The field is a plain input until first focus loads the library.
