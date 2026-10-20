@@ -9,8 +9,8 @@ export default async function Home() {
     searchIndexUrl(),
   ]);
 
-  // Variant A: a lookup page, as GOV.UK's "Find your local council": the
-  // service in the heading, one line of context, the field, then what you get.
+  // A lookup page, as GOV.UK's "Find your local council": the service in the
+  // heading, one line of context, the field, then what you get.
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
@@ -18,11 +18,7 @@ export default async function Home() {
         <p className="govuk-body-l">Dla Lubaczowa i wsi w gminie Lubaczów.</p>
 
         <div className="govuk-!-margin-bottom-8">
-          <AddressSearch
-            indexUrl={indexUrl}
-            label="Ulica albo wieś"
-            hint="Na przykład Asnyka 12 albo Lisie Jamy – polskie znaki nie są potrzebne"
-          />
+          <AddressSearch indexUrl={indexUrl} />
         </div>
 
         <h2 className="govuk-heading-m">Co zobaczysz</h2>
@@ -36,9 +32,6 @@ export default async function Home() {
           <h2 id="sample-heading" className="govuk-heading-m">
             Przykładowe adresy
           </h2>
-          <p className="govuk-body">
-            Na razie znamy tylko część ulic i wsi. Kolejne dopisujemy.
-          </p>
           <ul className="govuk-list">
             {places.map((place) => (
               <li key={place.id}>

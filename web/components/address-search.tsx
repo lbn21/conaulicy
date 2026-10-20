@@ -20,7 +20,7 @@ const LABEL_ID = "adres-label";
 const HINT_ID = "adres-hint";
 
 const HINT =
-  "Ulica w Lubaczowie albo wieś, np. Lisie Jamy. Numer domu możesz dopisać: Asnyka 12. Polskie znaki nie są potrzebne.";
+  "Na przykład Asnyka 12 albo Lisie Jamy – polskie znaki nie są potrzebne";
 
 // The same field accessible-autocomplete renders (its classes, GOV.UK's
 // govuk-input), so nothing moves when it takes over on first focus.
@@ -77,18 +77,7 @@ function makeRoom(input: HTMLElement) {
  * device ("Asnyka 12" carries the house number to ?nr=). If the index cannot
  * load, settled queries go to /api/search.
  */
-export function AddressSearch({
-  indexUrl,
-  label = "Twoja ulica albo wieś",
-  hint = HINT,
-  labelAsHeading = false,
-}: {
-  indexUrl: string;
-  label?: string;
-  hint?: string;
-  /** The label is the page heading (GOV.UK question pages). */
-  labelAsHeading?: boolean;
-}) {
+export function AddressSearch({ indexUrl }: { indexUrl: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -241,27 +230,15 @@ export function AddressSearch({
   return (
     <search id={SEARCH_ID} className="app-search">
       <div className="govuk-form-group">
-        {labelAsHeading ? (
-          <h1 className="govuk-label-wrapper">
-            <label
-              id={LABEL_ID}
-              htmlFor={INPUT_ID}
-              className="govuk-label govuk-label--l"
-            >
-              {label}
-            </label>
-          </h1>
-        ) : (
-          <label
-            id={LABEL_ID}
-            htmlFor={INPUT_ID}
-            className="govuk-label govuk-label--m"
-          >
-            {label}
-          </label>
-        )}
+        <label
+          id={LABEL_ID}
+          htmlFor={INPUT_ID}
+          className="govuk-label govuk-label--m"
+        >
+          Ulica albo wieś
+        </label>
         <div id={HINT_ID} className="govuk-hint">
-          {hint}
+          {HINT}
         </div>
         <div
           ref={containerRef}
