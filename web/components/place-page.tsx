@@ -86,10 +86,7 @@ export async function PlaceMain({ id, nr }: { id: string; nr: string | null }) {
         {place.askNumber ? (
           <HouseNumberQuestion place={place} />
         ) : place.zoneId === null ? (
-          <section
-            aria-labelledby="empty-heading"
-            className="mt-8 border-l-4 border-accent pl-4"
-          >
+          <section aria-labelledby="empty-heading" className="govuk-inset-text">
             <h2 id="empty-heading" className="govuk-heading-m">
               {place.kind === "ulica"
                 ? "Tej ulicy jeszcze nie mamy"
@@ -140,7 +137,7 @@ export async function PlaceMain({ id, nr }: { id: string; nr: string | null }) {
 
             <PickupSchedule days={place.days} renderedOn={place.today} />
 
-            <div className="border-t border-border pt-6">
+            <div className="govuk-inset-text">
               {!place.verified && (
                 <p className="govuk-body">
                   Te daty odczytaliśmy automatycznie z harmonogramu gminy i nikt

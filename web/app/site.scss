@@ -40,3 +40,11 @@
     color: govuk-functional-colour(inverse-text);
   }
 }
+
+// Bin markers: the real bin colours (bin tokens in tokens.css), which GOV.UK's
+// tags cannot carry, beside each fraction's name.
+.app-bin {
+  display: inline-block; // Tailwind's preflight makes svg a block (until step 8)
+  margin-right: govuk-spacing(2);
+  vertical-align: middle;
+}
