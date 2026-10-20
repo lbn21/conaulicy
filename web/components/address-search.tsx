@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  type FormEvent,
-  type KeyboardEvent,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from "react";
+import "accessible-autocomplete/dist/accessible-autocomplete.min.css";
+import { useEffect, useRef } from "react";
 import { withHouseNumber } from "@/lib/house";
 import {
   findPlaces,
@@ -20,8 +14,26 @@ import {
   searchTerms,
 } from "@/lib/search";
 
-type Status = "idle" | "hint" | "loading" | "done" | "error";
-type Remote = { for: string; hits: SearchHit[]; failed: boolean };
+// One search per page (the home page), so fixed ids.
+const INPUT_ID = "adres";
+const LABEL_ID = "adres-label";
+const HINT_ID = "adres-hint";
+
+const HINT =
+  "Ulica w Lubaczowie albo wieś, np. Lisie Jamy. Numer domu możesz dopisać: Asnyka 12. Polskie znaki nie są potrzebne.";
+
+// The same field accessible-autocomplete renders (its classes, GOV.UK's
+// govuk-input), so nothing moves when it takes over on first focus.
+const PLACEHOLDER = `<div class="autocomplete__wrapper"><input id="${INPUT_ID}" type="text" class="autocomplete__input autocomplete__input--default govuk-input" autocomplete="off" aria-describedby="${HINT_ID}"></div>`;
+
+type Note = "hint" | "loading" | "error" | "none";
+
+const NOTES: Record<Note, string> = {
+  hint: "Wpisz nazwę ulicy.",
+  loading: "Szukam…",
+  error: "Błąd: coś nie zadziałało po naszej stronie. Spróbuj za chwilę.",
+  none: "Brak wyników. Nie mamy jeszcze tej ulicy ani wsi – sprawdź przykładowe adresy poniżej.",
+};
 
 function addresses(n: number): string {
   if (n === 1) return "1 adres";
@@ -31,288 +43,211 @@ function addresses(n: number): string {
   return `${n} adresów`;
 }
 
-// One download per page, shared by every field on it.
-const indexes = new Map<string, Promise<Matcher>>();
+function escapeHtml(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
 
-function loadIndex(url: string): Promise<Matcher> {
-  let index = indexes.get(url);
-  if (!index) {
-    index = fetch(url).then(async (res) => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return matcher((await res.json()) as SearchIndex);
-    });
-    indexes.set(url, index);
-  }
-  return index;
+// What accessible-autocomplete hands to the templates and onConfirm: our
+// results, or a plain string (its options may be strings, e.g. it seeds
+// them with defaultValue, which this field does not use).
+type Option = SearchHit | string | undefined;
+
+function optionText(option: Option): string {
+  if (!option) return "";
+  if (typeof option === "string") return option;
+  return withHouseNumber(option.label, option.nr ?? null);
+}
+
+// On a phone, move the field near the top so the list has room below it
+// (and above the keyboard). Scrolling only; the layout stays the same.
+function makeRoom(input: HTMLElement) {
+  if (!window.matchMedia("(max-width: 47.99rem)").matches) return;
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  input.scrollIntoView({ block: "start", behavior: still ? "auto" : "smooth" });
 }
 
 /**
- * The address search. The index of every place (indexUrl) loads on first
- * focus or input, not with the page; then each keystroke is matched on the
- * device. If the index cannot load, each settled query goes to /api/search.
+ * The address search: alphagov accessible-autocomplete, unmodified, set up
+ * through its documented options only. It and the index of every place load
+ * on first focus, not with the page; then each keystroke is matched on the
+ * device ("Asnyka 12" carries the house number to ?nr=). If the index cannot
+ * load, settled queries go to /api/search.
  */
 export function AddressSearch({ indexUrl }: { indexUrl: string }) {
-  const baseId = useId();
-  const inputId = `${baseId}-input`;
-  const listId = `${baseId}-list`;
-  const hintId = `${baseId}-hint`;
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const [query, setQuery] = useState("");
-  const [match, setMatch] = useState<Matcher | null>(null);
-  const [indexFailed, setIndexFailed] = useState(false);
-  const [remote, setRemote] = useState<Remote | null>(null);
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(-1);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // "Zmień adres" on a street page links to /#szukaj: an empty field, ready
-  // to type in, with the list closed. Without JS the link still lands here.
   useEffect(() => {
-    if (window.location.hash === `#${SEARCH_ID}`) inputRef.current?.focus();
-  }, []);
+    const container = containerRef.current;
+    if (!container) return;
+    let started = false;
+    let note: Note = "none";
+    let latest = "";
 
-  function startLoading() {
-    if (match || indexFailed) return;
-    loadIndex(indexUrl).then(
-      (m) => setMatch(() => m),
-      () => setIndexFailed(true),
-    );
-  }
-
-  const q = query.trim();
-  const terms = searchTerms(q);
-  // Fallback key: the query with the words that matter (and any number).
-  const remoteKey = terms.length > 0 ? q.replace(/\s+/g, " ") : "";
-
-  // Fallback only: without the index, ask the server once typing settles.
-  useEffect(() => {
-    if (!indexFailed || !remoteKey) return;
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `/api/search?q=${encodeURIComponent(remoteKey)}`,
-          { signal: controller.signal },
-        );
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setRemote({ for: remoteKey, hits: await res.json(), failed: false });
-      } catch {
-        if (controller.signal.aborted) return;
-        setRemote({ for: remoteKey, hits: [], failed: true });
-      }
-    }, 250);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [indexFailed, remoteKey]);
-
-  let hits: SearchHit[] = [];
-  let status: Status;
-  if (!q) {
-    status = "idle";
-  } else if (terms.length === 0) {
-    status = "hint";
-  } else if (match) {
-    hits = findPlaces(match, q);
-    status = "done";
-  } else if (indexFailed && remote?.for === remoteKey) {
-    hits = remote.hits;
-    status = remote.failed ? "error" : "done";
-  } else {
-    status = "loading";
-  }
-
-  // The popup floats over the page (absolute), so nothing below the field
-  // moves when it opens, updates or closes.
-  const popup = open && status !== "idle";
-  const expanded = popup && hits.length > 0;
-
-  // Keep the active option visible when the list scrolls.
-  useEffect(() => {
-    if (!expanded || active < 0) return;
-    document
-      .getElementById(`${listId}-${active}`)
-      ?.scrollIntoView({ block: "nearest" });
-  }, [expanded, active, listId]);
-
-  // On a phone, move the field near the top so the list has room below it
-  // (and above the keyboard). Scrolling only; the layout stays the same.
-  function makeRoom() {
-    const input = inputRef.current;
-    if (!input || !window.matchMedia("(max-width: 47.99rem)").matches) return;
-    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    input.scrollIntoView({
-      block: "start",
-      behavior: still ? "auto" : "smooth",
+    const index: Promise<Matcher> = new Promise((resolve, reject) => {
+      container.addEventListener(
+        "focusin",
+        () =>
+          fetch(indexUrl)
+            .then(async (res) => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              resolve(matcher((await res.json()) as SearchIndex));
+            })
+            .catch(reject),
+        { once: true },
+      );
     });
-  }
+    let match: Matcher | null = null;
+    let failed = false;
+    index.then(
+      (m) => {
+        match = m;
+      },
+      () => {
+        failed = true;
+      },
+    );
 
-  function go(hit: SearchHit) {
-    setOpen(false);
-    window.location.assign(placeHref(hit));
-  }
-
-  function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    switch (event.key) {
-      case "ArrowDown":
-        if (hits.length === 0) return;
-        event.preventDefault();
-        setOpen(true);
-        setActive((i) => (i + 1) % hits.length);
-        break;
-      case "ArrowUp":
-        if (hits.length === 0) return;
-        event.preventDefault();
-        setOpen(true);
-        setActive((i) => (i <= 0 ? hits.length - 1 : i - 1));
-        break;
-      case "Home":
-        if (hits.length === 0) return;
-        event.preventDefault();
-        setOpen(true);
-        setActive(0);
-        break;
-      case "End":
-        if (hits.length === 0) return;
-        event.preventDefault();
-        setOpen(true);
-        setActive(hits.length - 1);
-        break;
-      case "Escape":
-        event.preventDefault();
-        if (popup) {
-          setOpen(false);
-          setActive(-1);
-        } else {
-          setQuery("");
-        }
-        break;
+    async function remote(q: string): Promise<SearchHit[] | null> {
+      // Without the index, ask the server once typing settles.
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      if (q !== latest) return null;
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return (await res.json()) as SearchHit[];
     }
-  }
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const hit = hits[active] ?? (hits.length === 1 ? hits[0] : undefined);
-    if (hit) go(hit);
-    else setOpen(true);
-  }
+    async function source(
+      query: string,
+      populate: (options: Option[]) => void,
+    ) {
+      const q = query.trim().replace(/\s+/g, " ");
+      latest = q;
+      if (q && searchTerms(q).length === 0) {
+        note = "hint";
+        populate([]);
+        return;
+      }
+      if (!q) return populate([]);
+      if (!match && !failed) {
+        note = "loading";
+        populate([]);
+        await index.catch(() => {});
+        if (q !== latest) return;
+      }
+      if (match) {
+        note = "none";
+        populate(findPlaces(match, q));
+        return;
+      }
+      try {
+        const hits = await remote(q);
+        if (hits === null || q !== latest) return;
+        note = "none";
+        populate(hits);
+      } catch {
+        if (q !== latest) return;
+        note = "error";
+        populate([]);
+      }
+    }
 
-  // Shown in the popup when there are no options to list.
-  let note = "";
-  if (status === "hint") {
-    note = "Wpisz nazwę ulicy.";
-  } else if (status === "loading") {
-    note = "Szukam…";
-  } else if (status === "error") {
-    note = "Błąd: coś nie zadziałało po naszej stronie. Spróbuj za chwilę.";
-  } else if (status === "done" && hits.length === 0) {
-    note =
-      "Brak wyników. Nie mamy jeszcze tej ulicy ani wsi – sprawdź przykładowe adresy poniżej.";
-  }
+    async function start() {
+      if (started) return;
+      started = true;
+      const { default: accessibleAutocomplete } = await import(
+        "accessible-autocomplete"
+      );
+      const old = container?.querySelector("input");
+      if (!container || !old) return;
+      // Text typed while the library loaded, and whether the field had focus.
+      const typed = old.value;
+      const focused = document.activeElement === old;
+      // Render next to the placeholder and move focus to the new field in the
+      // same task, then drop the placeholder: focus goes input to input (no
+      // blur gap, so the phone keyboard stays) and nothing paints in between.
+      old.removeAttribute("id");
+      accessibleAutocomplete<Option>({
+        element: container,
+        id: INPUT_ID,
+        source,
+        name: "",
+        inputClasses: "govuk-input",
+        menuAttributes: { "aria-labelledby": LABEL_ID },
+        displayMenu: "overlay",
+        autoselect: true,
+        confirmOnBlur: false,
+        templates: {
+          inputValue: optionText,
+          suggestion: (option: Option) => escapeHtml(optionText(option)),
+        },
+        onConfirm: (option: Option) => {
+          if (option && typeof option !== "string") {
+            window.location.assign(placeHref(option));
+          }
+        },
+        tNoResults: () => NOTES[note],
+        tStatusNoResults: () => NOTES[note],
+        tStatusSelectedOption: (option: string, length: number, i: number) =>
+          `${option}, ${i + 1} z ${length}, zaznaczony`,
+        tStatusResults: (length: number, selected: string) =>
+          `${addresses(length)} do wyboru. ${selected}`,
+        tAssistiveHint: () =>
+          `${HINT} Gdy pojawią się podpowiedzi, wybierz je strzałkami w górę i w dół i Enterem albo dotknij.`,
+      });
+      const input = container.querySelector<HTMLInputElement>(`#${INPUT_ID}`);
+      if (focused) input?.focus();
+      old.closest(".autocomplete__wrapper")?.remove();
+      if (!input || !typed) return;
+      // The library selects all text when its field first gains focus (after
+      // its render), so hand over the typed text only after that render.
+      // Keys pressed meanwhile are already in the new field: keep them too.
+      // It searches on the input event, as for typing.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const value = typed + input.value;
+      input.value = value;
+      input.setSelectionRange(value.length, value.length);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
 
-  // For screen readers only, in a live region that takes no space.
-  let message = hits.length === 0 ? note : "";
-  if (status === "done" && expanded) {
-    message = `${addresses(hits.length)}. Wybierz strzałkami i Enterem albo dotknij.`;
-  }
+    function onFocus(event: FocusEvent) {
+      if (event.target instanceof HTMLInputElement) makeRoom(event.target);
+      void start();
+    }
+    container.addEventListener("focusin", onFocus);
+
+    // "Zmień adres" on a street page links to /#szukaj: an empty field, ready
+    // to type in, with the list closed. Without JS the link still lands here.
+    if (window.location.hash === `#${SEARCH_ID}`) {
+      container.querySelector("input")?.focus();
+    }
+    return () => container.removeEventListener("focusin", onFocus);
+  }, [indexUrl]);
 
   return (
     <search id={SEARCH_ID} className="app-search">
-      <form onSubmit={onSubmit}>
-        <div className="govuk-form-group">
-          <label htmlFor={inputId} className="govuk-label govuk-label--m">
-            Twoja ulica albo wieś
-          </label>
-          <div id={hintId} className="govuk-hint">
-            Ulica w Lubaczowie albo wieś, np. Lisie Jamy. Numer domu możesz
-            dopisać: Asnyka 12. Polskie znaki nie są potrzebne.
-          </div>
-          <div className="app-suggestions">
-            <input
-              id={inputId}
-              type="text"
-              role="combobox"
-              aria-autocomplete="list"
-              aria-expanded={expanded}
-              aria-controls={listId}
-              aria-activedescendant={
-                expanded && active >= 0 ? `${listId}-${active}` : undefined
-              }
-              aria-describedby={hintId}
-              autoComplete="off"
-              autoCapitalize="off"
-              spellCheck={false}
-              enterKeyHint="go"
-              value={query}
-              onChange={(event) => {
-                startLoading();
-                setQuery(event.target.value);
-                setActive(-1);
-                setOpen(true);
-              }}
-              ref={inputRef}
-              onFocus={() => {
-                startLoading();
-                setOpen(true);
-                makeRoom();
-              }}
-              onBlur={() => setOpen(false)}
-              onKeyDown={onKeyDown}
-              className="govuk-input"
-            />
-            <div hidden={!popup} className="app-suggestions__popup">
-              <div
-                id={listId}
-                role="listbox"
-                aria-label="Pasujące adresy"
-                hidden={hits.length === 0}
-                className="app-suggestions__list"
-              >
-                {hits.map((hit, i) => (
-                  // Keyed by position: when a keystroke narrows the list, rows
-                  // keep their place and change text, so nothing slides.
-                  // biome-ignore lint/a11y/useKeyWithClickEvents: the combobox input owns keyboard selection
-                  <div
-                    // biome-ignore lint/suspicious/noArrayIndexKey: see above
-                    key={i}
-                    id={`${listId}-${i}`}
-                    role="option"
-                    tabIndex={-1}
-                    aria-selected={i === active}
-                    onMouseDown={(event) => event.preventDefault()}
-                    // Move, not enter: the focus scroll slides options under a
-                    // resting pointer, which must not pick one.
-                    onMouseMove={() => setActive(i)}
-                    onClick={() => go(hit)}
-                    className="app-suggestions__option"
-                  >
-                    {withHouseNumber(hit.label, hit.nr ?? null)}
-                  </div>
-                ))}
-              </div>
-              {hits.length === 0 && note && (
-                // Announced by the live region below; hidden here to avoid twice.
-                <p
-                  aria-hidden="true"
-                  className={
-                    status === "error"
-                      ? "app-suggestions__note app-suggestions__note--error"
-                      : status === "hint"
-                        ? "app-suggestions__note"
-                        : "app-suggestions__note app-suggestions__note--muted"
-                  }
-                >
-                  {note}
-                </p>
-              )}
-            </div>
-          </div>
+      <div className="govuk-form-group">
+        <label
+          id={LABEL_ID}
+          htmlFor={INPUT_ID}
+          className="govuk-label govuk-label--m"
+        >
+          Twoja ulica albo wieś
+        </label>
+        <div id={HINT_ID} className="govuk-hint">
+          {HINT}
         </div>
-        <p role="status" className="govuk-visually-hidden">
-          {message}
-        </p>
-      </form>
+        <div
+          ref={containerRef}
+          // accessible-autocomplete owns this element's children after first
+          // focus; React never touches them.
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: a static field, replaced by accessible-autocomplete
+          dangerouslySetInnerHTML={{ __html: PLACEHOLDER }}
+        />
+      </div>
     </search>
   );
 }

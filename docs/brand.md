@@ -60,7 +60,9 @@ The unit is **P**, a quarter of the plate height (34 units → P = 8.5; 8 px in 
 
 - GOV.UK Frontend's palette and functional colours are used as-is, through its Sass functions (`govuk-colour()`, `govuk-functional-colour()`); never pasted hex.
 - **GOV.UK's brand-blue group is never used.** Its roles take the **Latarnia** group, computed from `#9a5700` with GOV.UK's own method: tints are the primary mixed with white, shades with black, at GOV.UK's percentages. Applied to `#1d70b8`, the method gives GOV.UK's blue group exactly. Defined once in `web/app/_palette.scss`.
-- **Exception:** GOV.UK hard-codes brand blue in `.govuk-button--inverse`. It may appear in the CSS output, never in markup (enforced by `check-own-css` and `check-govuk-assets`).
+- **Exceptions** (brand blue hard-coded upstream, with no setting; enforced by `check-own-css` and `check-govuk-assets`):
+  - `.govuk-button--inverse`: may appear in the CSS output, never in markup.
+  - accessible-autocomplete's highlighted option: the colour stays in its unchanged CSS; `site.scss` repaints it with the brand role (`#9a5700`, white text), so the blue is never rendered.
 - **Logo colours:** the plate is `#9a5700` on light and `#ffb547` on the black header (11.15 : 1); the wordmark is the text colour.
 - **Bin colours** are real-world colours for the bin markers only, never for the logo (`design/tokens.md`).
 

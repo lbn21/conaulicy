@@ -1,5 +1,6 @@
-// Checks the address search on the home page at 360px and 1280px: the result
-// popup overlays the page (nothing below the field moves while it loads,
+// Checks the address search (alphagov accessible-autocomplete, which takes
+// over the field on first focus) on the home page at 360px and 1280px: the
+// result popup overlays the page (nothing below the field moves while it loads,
 // lists results, says "Brak wyników" or closes) and follows the APG combobox
 // keyboard model. Matching runs on the device: the index loads once, on
 // focus, and typing makes no request. Also: "ul" alone asks for a name,
@@ -55,12 +56,7 @@ try {
     // Page positions (not viewport: focusing may scroll) of what follows the field.
     const below = () =>
       page.evaluate(() =>
-        [
-          "#sample-heading",
-          "main section ul",
-          "footer",
-          "search form > p[role=status]",
-        ].map((selector) => {
+        ["#sample-heading", "main section ul", "footer"].map((selector) => {
           const r = document.querySelector(selector).getBoundingClientRect();
           return `${selector} ${Math.round(r.left)},${Math.round(r.top + window.scrollY)} ${Math.round(r.width)}x${Math.round(r.height)}`;
         }),
@@ -75,12 +71,16 @@ try {
       );
     };
 
-    // The visible note in the popup (the live region repeats it, unseen).
+    // accessible-autocomplete's "no results" row carries its notes; real
+    // results are the options that are not disabled.
     const note = (text) =>
-      page.locator('search p[aria-hidden="true"]', { hasText: text });
+      page.locator(".autocomplete__option--no-results", { hasText: text });
+    const result = () => page.locator('[role="option"]:not([aria-disabled])');
+    // The field is a plain input until first focus loads the library.
+    await page.locator("#adres").click();
     const input = page.getByRole("combobox");
     const listbox = page.getByRole("listbox");
-    await input.click();
+    await input.waitFor();
     if (width < 768) {
       // Near the top, or as far as the page can scroll.
       const { top, room } = await input.evaluate((el) => ({
@@ -100,7 +100,7 @@ try {
     await note("Szukam…").waitFor();
     await same("loading");
 
-    await page.getByRole("option").first().waitFor();
+    await result().first().waitFor();
     await same("results");
     check(
       (await input.getAttribute("aria-expanded")) === "true",
@@ -115,12 +115,20 @@ try {
         popup.y >= field.y + field.height,
       `${label}: popup not anchored below the field at its width`,
     );
-    const rows = await page
-      .getByRole("option")
-      .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
-    // GOV.UK's control height (40px), the size Jakub approved over our old
-    // 48px rule (docs/govuk-audit.md).
-    check(Math.min(...rows) >= 40, `${label}: option shorter than 40px`);
+    const rows = await result().evaluateAll((els) =>
+      els.map((el) => el.getBoundingClientRect().height),
+    );
+    // accessible-autocomplete's own rows; at least WCAG 2.2's target size.
+    check(Math.min(...rows) >= 24, `${label}: option shorter than 24px`);
+
+    // Before Escape: accessible-autocomplete shows its "no results" row only
+    // while it counts the field as focused, and Escape clears that until the
+    // field is focused again (library behaviour, unchanged).
+    await input.fill("qqqq");
+    await note("Brak wyników").waitFor();
+    await same("no results");
+    await input.fill("a");
+    await result().first().waitFor();
 
     await input.press("ArrowDown");
     const activeId = await input.getAttribute("aria-activedescendant");
@@ -139,13 +147,15 @@ try {
       `${label}: Escape does not close the popup`,
     );
     await same("closed with Escape");
-
-    await input.fill("qqqq");
-    await note("Brak wyników").waitFor();
-    await same("no results");
+    // After Escape, accessible-autocomplete keeps its "focused" state cleared
+    // until the field is focused again, and until then a click outside does
+    // not close the list (library behaviour, unchanged). Focus it again, as
+    // a user returning to the field would.
+    await page.locator("h1").click();
+    await input.focus();
 
     await input.fill("asnyka");
-    await page.getByRole("option").first().waitFor();
+    await result().first().waitFor();
     await page.locator("h1").click();
     check(
       !(await listbox.isVisible()),
@@ -154,14 +164,14 @@ try {
     await same("closed by a click outside");
 
     await input.focus();
-    await page.getByRole("option").first().waitFor();
+    await result().first().waitFor();
 
     await input.fill("ul.");
     await note("Wpisz nazwę ulicy").waitFor();
     await same("only ul.");
     await input.fill("");
     await input.pressSequentially("slowac", { delay: 50 });
-    await page.getByRole("option").first().waitFor();
+    await result().first().waitFor();
     check(
       requests.index === 1 && requests.search === 0,
       `${label}: expected 1 index request and no /api/search, got ${requests.index} and ${requests.search}`,
@@ -223,8 +233,9 @@ try {
     viewport: { width: 360, height: 800 },
   });
   await house.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+  await house.locator("#adres").click();
   await house.getByRole("combobox").pressSequentially("kosciuszki 7A");
-  const option = house.getByRole("option").first();
+  const option = house.locator('[role="option"]:not([aria-disabled])').first();
   await option.waitFor();
   check(
     (await option.textContent()) === "ul. Tadeusza Kościuszki 7a, Lubaczów",
@@ -286,12 +297,74 @@ try {
     route.fulfill({ status: 500, body: "" }),
   );
   await fallback.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+  await fallback.locator("#adres").click();
   await fallback.getByRole("combobox").pressSequentially("asnyka");
   await fallback
     .getByRole("option", { name: /Asnyka/ })
     .waitFor({ timeout: 5000 })
     .catch(() => check(false, "fallback: /api/search did not answer"));
   await fallback.close();
+
+  // Typing straight after focus, before accessible-autocomplete has loaded,
+  // on Slow 4G + 4× CPU (as check-perf): no page error, the field stays,
+  // nothing typed is lost and the results appear. At 0 ms per key typing
+  // must end before the library mounts, so that path is really covered.
+  for (const delay of [0, 60, 150]) {
+    const context = await browser.newContext({
+      viewport: { width: 360, height: 800 },
+    });
+    const early = await context.newPage();
+    const errors = [];
+    early.on("pageerror", (error) => errors.push(error.message));
+    await early.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+    const cdp = await context.newCDPSession(early);
+    await cdp.send("Network.emulateNetworkConditions", {
+      offline: false,
+      latency: 562.5,
+      downloadThroughput: (1475 * 1024) / 8,
+      uploadThroughput: (675 * 1024) / 8,
+    });
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    const field = early.locator("#adres");
+    await field.click();
+    await field.pressSequentially("asnyka", { delay });
+    // The field vanishing (the #33 bug) must fail the check, not hang it.
+    const mounted = await field
+      .evaluate((el) => el.hasAttribute("aria-expanded"), null, {
+        timeout: 2000,
+      })
+      .catch(() => "missing");
+    if (delay === 0) {
+      check(
+        mounted === false,
+        `early typing: the field was ${mounted === "missing" ? "gone" : "already the library's"} when typing ended`,
+      );
+    }
+    await early
+      .locator('[role="option"]:not([aria-disabled])', { hasText: "Asnyka" })
+      .first()
+      .waitFor({ timeout: 20000 })
+      .catch(() => {});
+    const state = {
+      errors,
+      fields: await early.locator("#adres").count(),
+      value: await early
+        .locator("#adres")
+        .inputValue()
+        .catch(() => null),
+      results: await early
+        .locator('[role="option"]:not([aria-disabled])')
+        .allTextContents(),
+    };
+    check(
+      state.errors.length === 0 &&
+        state.fields === 1 &&
+        state.value === "asnyka" &&
+        state.results.some((text) => text.includes("Asnyka")),
+      `early typing at ${delay} ms per key: ${JSON.stringify(state)}`,
+    );
+    await context.close();
+  }
 } finally {
   await browser.close();
   server.stop();
