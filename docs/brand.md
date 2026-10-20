@@ -64,7 +64,7 @@ The unit is **P**, a quarter of the plate height (34 units → P = 8.5; 8 px in 
   - `.govuk-button--inverse`: may appear in the CSS output, never in markup.
   - accessible-autocomplete's highlighted option: the colour stays in its unchanged CSS; `site.scss` repaints it with the brand role (`#9a5700`, white text), so the blue is never rendered.
 - **Logo colours:** the plate is `#9a5700` on light and `#ffb547` on the black header (11.15 : 1); the wordmark is the text colour.
-- **Bin colours** are real-world colours for the bin markers only, never for the logo (`design/tokens.md`).
+- **Bin colours** are real-world colours for the bin markers only, never for the logo. Defined in `web/app/tokens.css`; rationale in `design/tokens.md`.
 
 ### Palette
 
@@ -148,7 +148,7 @@ WCAG 2.x, computed by `node design/contrast.mjs` (it exits 1 if a required pair 
 
 ## Typography
 
-**Atkinson Hyperlegible Next**, 400 and 700, self-hosted (SIL Open Font License); no third-party font requests. The wordmark and "ul." are Atkinson 700, outlined. GOV.UK's type scale and sizes apply unchanged.
+**Atkinson Hyperlegible Next**, 400 and 700, self-hosted (SIL Open Font License); no third-party font requests. The wordmark and "ul." are Atkinson 700, outlined. GOV.UK's type scale and sizes apply unchanged. Until the font loads, a metric-matched Arial fallback (`web/app/tokens.css`) holds the layout, so the swap moves nothing.
 
 ## Tone of voice
 
