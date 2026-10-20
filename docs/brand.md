@@ -26,7 +26,7 @@ The site uses **GOV.UK Frontend as-is, including its palette**. Only three thing
 | Apple | `web/app/apple-icon.png` (180, full-bleed night tile; iOS rounds it) |
 | PWA | `web/public/icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, listed in `web/app/manifest.ts` |
 | Share card | `web/public/og.png` (1200 × 630, flat plate on white), in the `openGraph` and `twitter` metadata |
-| PDF | The band at the top of each page, drawn as vector paths from `web/lib/logo.ts` |
+| PDF | The black band at the top of each page, as in the site header (wordmark x-height centred on the plate), drawn as vector paths from `web/lib/logo.ts` |
 
 ## Clear space and minimum size
 
@@ -65,6 +65,7 @@ The unit is **P**, a quarter of the plate height (34 units → P = 8.5; 8 px in 
   - accessible-autocomplete's highlighted option: the colour stays in its unchanged CSS; `site.scss` repaints it with the brand role (`#9a5700`, white text), so the blue is never rendered.
 - **Logo colours:** the plate is `#9a5700` on light and `#ffb547` on the black header (11.15 : 1); the wordmark is the text colour.
 - **Bin colours** are real-world colours for the bin markers only, never for the logo. Defined in `web/app/tokens.css`; rationale in `design/tokens.md`.
+- **PDF fraction marks:** the printable PDF marks each fraction with a shape in its bin colour, so it reads in black-and-white print and for colour-blind readers: zmieszane ● circle, popiół ○ ring, bio ■ square, papier ▲ triangle, tworzywa ◆ diamond (dark outline), szkło ★ star; rare fractions a letter in an outlined square (G wielkogabarytowe, E elektro, O opony, T tekstylia). The website keeps its bin icons.
 
 ### Palette
 
