@@ -18,13 +18,6 @@
   transform: translateY(4.12%);
 }
 
-// Our footer (components/site-footer.tsx): the GOV.UK footer's top bar and
-// background, so on short pages the footer runs into the template background.
-.app-footer {
-  border-top: govuk-spacing(2) solid govuk-functional-colour(brand);
-  background: govuk-functional-colour(template-background);
-}
-
 // The street search: alphagov accessible-autocomplete with its own CSS,
 // unchanged, plus two things. Its rows set no font family (on GOV.UK they
 // inherit GOV.UK's), so they get GOV.UK's, as the field; sizes stay the
