@@ -89,6 +89,16 @@ export default function AccessibilityPage() {
           </section>
 
           <p className="govuk-body">
+            Strona korzysta z GOV.UK Frontend (
+            <a
+              href="https://github.com/alphagov/govuk-frontend/blob/main/LICENSE.txt"
+              className="govuk-link"
+            >
+              licencja MIT
+            </a>
+            , © Crown copyright). Nie jest stroną rządu Wielkiej Brytanii.
+          </p>
+          <p className="govuk-body">
             Ostatnia zmiana tej strony:{" "}
             <time dateTime="2026-10-20">20 października 2026</time>.
           </p>

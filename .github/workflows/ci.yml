@@ -68,6 +68,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: GOV.UK brand assets (none shipped)
+        run: node scripts/check-govuk-assets.mjs
+
       - name: First-load JS budget
         run: npm run budget
 
