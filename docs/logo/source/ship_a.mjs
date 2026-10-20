@@ -77,5 +77,30 @@ const og = await png(img(uri(svgText("og-1200x630.svg")), 1200), [1200, 630], fa
 writeFileSync(path.join(logo, "og-1200x630.png"), og);
 writeFileSync(path.join(pub, "og.png"), og);
 
+// Downloads for the /marka page: SVG as drawn, PNG on transparent at 2400 px
+// (lockup) or 1024 px (plate) wide. Mono PNGs are black.
+const files = path.join(pub, "marka/pliki");
+mkdirSync(files, { recursive: true });
+for (const [from, to, width] of [
+  ["a-logo-dark", "conaulicy-logo-ciemne-tlo", 2400],
+  ["a-logo-light", "conaulicy-logo-jasne-tlo", 2400],
+  ["a-logo-mono", "conaulicy-logo-jednokolorowe", 2400],
+  ["a-mark-dark", "conaulicy-znak-ciemne-tlo", 1024],
+  ["a-mark-light", "conaulicy-znak-jasne-tlo", 1024],
+  ["a-mark-mono", "conaulicy-znak-jednokolorowe", 1024],
+]) {
+  const svg = svgText(`${from}.svg`);
+  writeFileSync(path.join(files, `${to}.svg`), svg);
+  const [, w, h] = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+  const height = Math.round((width * h) / w);
+  const ink = uri(svg.replaceAll("currentColor", "#000"));
+  writeFileSync(
+    path.join(files, `${to}.png`),
+    await png(img(ink, width), [width, height], true),
+  );
+}
+copyFileSync(path.join(logo, "a-favicon-16.svg"), path.join(files, "conaulicy-favicon-16.svg"));
+copyFileSync(path.join(logo, "a-favicon.svg"), path.join(files, "conaulicy-favicon-32.svg"));
+
 await browser.close();
 console.log("shipped");

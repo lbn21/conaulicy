@@ -2,6 +2,8 @@
 
 The logo is the flat **“ul.” plate** (option A “Tabliczka”, refined in task 22). Together with the Latarnia palette it is the official branding. Sources and generators are in [`docs/logo/`](logo/), and the geometry and centring are explained in [`docs/logo/README.md`](logo/README.md).
 
+The public version of this guide, in Polish and with downloads, is the page `/marka` (`web/app/marka/page.tsx`; files in `web/public/marka/pliki/`, built by `docs/logo/source/ship_a.mjs`).
+
 ## Logo variants
 
 | Variant | File | Use |

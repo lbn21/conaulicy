@@ -22,6 +22,14 @@ export function SiteFooter() {
               Dostępność
             </a>
           </li>
+          <li>
+            <a
+              href="/marka"
+              className="inline-flex min-h-12 items-center underline decoration-2 underline-offset-4"
+            >
+              Marka
+            </a>
+          </li>
         </ul>
       </div>
     </footer>
