@@ -84,7 +84,7 @@ export async function PlaceMain({ id, nr }: { id: string; nr: string | null }) {
         <p className="govuk-body">
           <a
             href={`/#${SEARCH_ID}`}
-            className="underline decoration-2 underline-offset-4"
+            className="govuk-link govuk-link--no-visited-state"
           >
             Zmień adres<span className="govuk-visually-hidden"> {name}</span>
           </a>
@@ -108,10 +108,7 @@ export async function PlaceMain({ id, nr }: { id: string; nr: string | null }) {
             </p>
             {place.schedulePage && (
               <p className="govuk-body">
-                <a
-                  href={place.schedulePage}
-                  className="font-bold underline decoration-2 underline-offset-4"
-                >
+                <a href={place.schedulePage} className="govuk-link">
                   {`Otwórz ${scheduleName(place.gmina)}`}
                 </a>
               </p>
@@ -136,7 +133,7 @@ export async function PlaceMain({ id, nr }: { id: string; nr: string | null }) {
                 href={`/adres/${encodeURIComponent(place.id)}/harmonogram.pdf${place.nr ? `?nr=${place.nr}` : ""}`}
                 data-event="pdf_open"
                 data-zone={place.zoneId}
-                className="font-bold underline decoration-2 underline-offset-4"
+                className="govuk-link"
               >
                 Harmonogram do druku (PDF)
               </a>
@@ -156,10 +153,7 @@ export async function PlaceMain({ id, nr }: { id: string; nr: string | null }) {
                 <p key={source.label} className="govuk-body">
                   Źródło:{" "}
                   {source.url ? (
-                    <a
-                      href={source.url}
-                      className="underline decoration-2 underline-offset-4"
-                    >
+                    <a href={source.url} className="govuk-link">
                       {scheduleName(place.gmina)}
                     </a>
                   ) : (

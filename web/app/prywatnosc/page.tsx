@@ -45,7 +45,7 @@ export default function PrivacyPage() {
             <p className="govuk-body">
               <a
                 href="https://vercel.com/docs/analytics/privacy-policy"
-                className="underline decoration-2 underline-offset-4"
+                className="govuk-link"
               >
                 Jak Vercel chroni te dane (po angielsku)
               </a>
@@ -78,10 +78,7 @@ export default function PrivacyPage() {
               na adres:
             </p>
             <p className="govuk-body">
-              <a
-                href="mailto:kontakt@conaulicy.pl"
-                className="font-bold underline decoration-2 underline-offset-4"
-              >
+              <a href="mailto:kontakt@conaulicy.pl" className="govuk-link">
                 kontakt@conaulicy.pl
               </a>
             </p>

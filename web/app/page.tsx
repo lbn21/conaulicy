@@ -35,10 +35,7 @@ export default async function Home() {
           <ul className="govuk-list">
             {places.map((place) => (
               <li key={place.id}>
-                <a
-                  href={`/adres/${place.id}`}
-                  className="underline decoration-2 underline-offset-4"
-                >
+                <a href={`/adres/${place.id}`} className="govuk-link">
                   {place.label}
                 </a>
               </li>

@@ -14,10 +14,7 @@ export default function NotFound() {
           na stronie głównej.
         </p>
         <p className="govuk-body">
-          <a
-            href="/"
-            className="font-bold underline decoration-2 underline-offset-4"
-          >
+          <a href="/" className="govuk-link">
             Wróć na stronę główną
           </a>
         </p>

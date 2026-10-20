@@ -27,20 +27,6 @@
     text-wrap: pretty;
   }
 
-  a {
-    text-decoration-thickness: 2px;
-    text-underline-offset: 0.2em;
-  }
-
-  /* Until PR 3 moves links and controls to GOV.UK classes: GOV.UK's focus
-     box (govuk-focused-box), yellow with a black edge. */
-  :focus-visible {
-    outline: 3px solid transparent;
-    box-shadow:
-      0 0 0 4px var(--focus),
-      0 0 0 8px var(--focus-text);
-  }
-
   ::selection {
     background-color: var(--accent);
     color: var(--accent-contrast);
