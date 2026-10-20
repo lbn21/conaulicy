@@ -49,7 +49,11 @@ export function SiteHeader() {
                   mask="url(#logo-plate)"
                   d={PLATE}
                 />
-                <path fill="currentColor" d={WORDMARK} />
+                <path
+                  className="app-logo__wordmark"
+                  fill="currentColor"
+                  d={WORDMARK}
+                />
               </svg>
               <span className="govuk-visually-hidden">
                 conaulicy.pl – strona główna
