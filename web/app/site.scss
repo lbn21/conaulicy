@@ -18,14 +18,20 @@
 }
 
 // The street search: alphagov accessible-autocomplete with its own CSS,
-// unchanged, except one colour: it paints the highlighted suggestion in
-// GOV.UK's brand blue, which sites off GOV.UK must not use. Here it takes the
-// brand role (the Latarnia group) instead. Outside forced-colours mode only,
-// so its system-colour rule still applies there. check-govuk-assets checks
-// this override is present.
+// unchanged, plus two things. Its rows set no font family (on GOV.UK they
+// inherit GOV.UK's), so they get GOV.UK's type at form-control size, as the
+// field. And it paints the highlighted suggestion in GOV.UK's brand blue,
+// which sites off GOV.UK must not use. Here it takes the brand role (the
+// Latarnia group) instead. Outside forced-colours mode only, so its
+// system-colour rule still applies there. check-govuk-assets checks this
+// override is present.
 .app-search,
 .app-search .govuk-input {
   scroll-margin-top: govuk-spacing(3);
+}
+
+.app-search .autocomplete__option {
+  @include govuk-font($size: 19);
 }
 
 @media (forced-colors: none) {
