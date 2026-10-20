@@ -11,7 +11,7 @@ import { startServer } from "./lib/server.mjs";
 
 const server = process.env.CHECK_URL
   ? { origin: process.env.CHECK_URL.replace(/\/$/, ""), stop: () => {} }
-  : await startServer(3304);
+  : await startServer(3305);
 const headers =
   process.env.CHECK_URL && process.env.SITE_BASIC_AUTH
     ? {
