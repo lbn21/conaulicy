@@ -13,6 +13,7 @@
     "check:a11y": "next build && node scripts/check-a11y.mjs",
     "check:search": "next build && node scripts/check-search.mjs",
     "check:examples": "next build && node scripts/check-examples.mjs",
+    "check:pdf": "next build && node scripts/check-pdf.mjs",
     "check:fonts": "next build && node scripts/check-fonts.mjs",
     "check:perf": "next build && node scripts/check-perf.mjs",
     "start": "next start",
