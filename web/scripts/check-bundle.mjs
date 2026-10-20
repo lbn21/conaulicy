@@ -4,7 +4,9 @@
 import { readFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 
-const BUDGET = 150_000;
+// Sized for GOV.UK Frontend's JS and accessible-autocomplete, used as-is
+// (docs/perf.md); the user-felt metrics are checked by check-perf.mjs.
+const BUDGET = 200_000;
 
 const routes = JSON.parse(
   readFileSync(".next/diagnostics/route-bundle-stats.json", "utf8"),
