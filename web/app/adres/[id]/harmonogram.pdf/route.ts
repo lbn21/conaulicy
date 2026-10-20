@@ -6,6 +6,16 @@ import { longDate, monthTitle, weekdayShort } from "@/lib/date-labels";
 import { absoluteDay } from "@/lib/dates";
 import { cacheControl } from "@/lib/gate";
 import { withHouseNumber } from "@/lib/house";
+import {
+  LOGO_HEIGHT,
+  LOGO_WIDTH,
+  PLATE,
+  RIM,
+  RIM_WIDTH,
+  UL,
+  WORDMARK,
+  WORDMARK_X,
+} from "@/lib/logo";
 import { normalize } from "@/lib/normalize";
 import {
   getPlace,
@@ -804,40 +814,27 @@ function drawBand(
     });
   }
 
-  // Our wordmark where Wigan has its crest: the lantern from the site header.
-  const s = compact ? 1.2 : 1.6;
-  const lx = PAGE_W - MARGIN - logoW;
-  const wordX = lx + 6 + 14 * s + 10;
+  // Our logo where Wigan has its crest: the flat "ul." plate and wordmark
+  // (docs/brand.md), as vector paths. On navy the rim and "ul." are painted
+  // navy, which reads exactly like the site's cut-outs.
+  const s = (logoW - 6) / LOGO_WIDTH;
+  const lx = PAGE_W - MARGIN - logoW + 6;
+  const wordX = lx + WORDMARK_X * s;
+  const linkY = 24 + LOGO_HEIGHT * s + 6;
   decoration(() => {
-    doc
-      .save()
-      .translate(lx + 6, 24)
-      .scale(s);
-    doc.roundedRect(0, 0, 14, 20, 1).fillColor(AMBER).fill();
-    doc
-      .moveTo(7, 0)
-      .lineTo(7, 20)
-      .moveTo(0, 9)
-      .lineTo(14, 9)
-      .lineWidth(1.5)
-      .strokeColor(NAVY)
-      .stroke();
+    doc.save().translate(lx, 24).scale(s);
+    doc.path(PLATE).fillColor(AMBER).fill();
+    doc.path(RIM).lineWidth(RIM_WIDTH).strokeColor(NAVY).stroke();
+    doc.path(UL).fillColor(NAVY).fill();
+    doc.path(WORDMARK).fillColor(WHITE).fill();
     doc.restore();
-    doc
-      .font("bold")
-      .fontSize(compact ? 17 : 22)
-      .fillColor(WHITE)
-      .text("conaulicy", wordX, 24, {
-        width: PAGE_W - MARGIN - wordX,
-        lineBreak: false,
-      });
   });
   tagged("P", () => {
     doc
       .font("regular")
       .fontSize(compact ? 10 : 11)
       .fillColor(AMBER)
-      .text("conaulicy.pl", wordX, compact ? 45 : 52, {
+      .text("conaulicy.pl", wordX, linkY, {
         width: PAGE_W - MARGIN - wordX,
         link: SITE_URL,
         lineBreak: false,
