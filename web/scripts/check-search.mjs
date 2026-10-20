@@ -118,7 +118,9 @@ try {
     const rows = await page
       .getByRole("option")
       .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
-    check(Math.min(...rows) >= 48, `${label}: option shorter than 48px`);
+    // GOV.UK's control height (40px), the size Jakub approved over our old
+    // 48px rule (docs/govuk-audit.md).
+    check(Math.min(...rows) >= 40, `${label}: option shorter than 40px`);
 
     await input.press("ArrowDown");
     const activeId = await input.getAttribute("aria-activedescendant");

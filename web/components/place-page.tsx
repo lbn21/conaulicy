@@ -28,36 +28,34 @@ export async function placeMetadata(
  */
 function HouseNumberQuestion({ place }: { place: PlaceView }) {
   return (
-    <form
-      method="get"
-      action={`/adres/${encodeURIComponent(place.id)}`}
-      className="mt-8 flex flex-col gap-2"
-    >
-      <label htmlFor="nr" className="text-lg font-bold">
-        Jaki jest numer domu?
-      </label>
-      <p id="nr-hint" className="text-text-muted">
-        Na tej ulicy śmieciarka przyjeżdża w różne dni, zależnie od numeru. Na
-        przykład 12, 12a albo 7/22.
-      </p>
-      {place.unknownNr && (
-        <p id="nr-note" className="font-bold">
-          Numeru {place.unknownNr} nie ma w harmonogramie tej ulicy. Sprawdź
-          numer albo harmonogram gminy.
-        </p>
-      )}
-      <input
-        id="nr"
-        name="nr"
-        type="text"
-        autoComplete="off"
-        autoCapitalize="off"
-        spellCheck={false}
-        enterKeyHint="go"
-        maxLength={12}
-        aria-describedby={place.unknownNr ? "nr-hint nr-note" : "nr-hint"}
-        className="mt-1 min-h-14 w-32 rounded-sm border-2 border-input-border bg-surface px-4 text-lg text-text"
-      />
+    <form method="get" action={`/adres/${encodeURIComponent(place.id)}`}>
+      <div className="govuk-form-group">
+        <label htmlFor="nr" className="govuk-label govuk-label--m">
+          Jaki jest numer domu?
+        </label>
+        <div id="nr-hint" className="govuk-hint">
+          Na tej ulicy śmieciarka przyjeżdża w różne dni, zależnie od numeru. Na
+          przykład 12, 12a albo 7/22.
+        </div>
+        {place.unknownNr && (
+          <p id="nr-note" className="govuk-body govuk-!-font-weight-bold">
+            Numeru {place.unknownNr} nie ma w harmonogramie tej ulicy. Sprawdź
+            numer albo harmonogram gminy.
+          </p>
+        )}
+        <input
+          id="nr"
+          name="nr"
+          type="text"
+          autoComplete="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          enterKeyHint="go"
+          maxLength={12}
+          aria-describedby={place.unknownNr ? "nr-hint nr-note" : "nr-hint"}
+          className="govuk-input govuk-input--width-5"
+        />
+      </div>
       <p className="mt-2">
         <button
           type="submit"
