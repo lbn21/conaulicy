@@ -16,6 +16,7 @@ export const ROUTES = [
   { path: "/adres/0972447-00470?nr=12", name: "city-street-number" },
   { path: "/prywatnosc", name: "privacy" },
   { path: "/dostepnosc", name: "accessibility" },
+  { path: "/o-projekcie", name: "about" },
   { path: "/dane-testowe", name: "test-data" },
   { path: "/nie-ma-takiej-strony", name: "not-found", status: 404 },
 ];
