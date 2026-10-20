@@ -18,7 +18,7 @@ export default function AboutPage() {
           Strona jest darmowa i niekomercyjna. Nie ma na niej reklam ani kont.
         </p>
         <p className="govuk-body">
-          Zrobił ją Jakub Marciniszyn, który przeprowadza się do Lubaczowa.
+          Zrobił ją Jakub Marciniszyn dla mieszkańców Lubaczowa.
         </p>
         <p className="govuk-body">
           Terminy przepisujemy z harmonogramów miasta Lubaczów i gminy Lubaczów.
