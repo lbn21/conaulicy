@@ -103,11 +103,9 @@ try {
   await page.goto(`${server.origin}/`, { waitUntil: "networkidle" });
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
-  // accessible-autocomplete takes over the field on first focus.
-  await page.locator("#adres").click();
   const input = page.getByRole("combobox");
   await input.pressSequentially("a");
-  await page.locator('[role="option"]:not([aria-disabled])').first().waitFor();
+  await page.getByRole("option").first().waitFor();
   await input.fill("");
   const times = [];
   for (const key of ["a", "d", "a", "m", "a"]) {
