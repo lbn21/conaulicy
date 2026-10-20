@@ -3,7 +3,7 @@
 // labelled with the place's own name (the page's h1). Fails otherwise.
 //
 // Runs against `next start` on the current build and database: in CI that is
-// the seed, locally .env.local's data (build with `SITE_BASIC_AUTH= npm run
+// the CI fixture, locally .env.local's data (build with `SITE_BASIC_AUTH= npm run
 // build`). With CHECK_URL it checks a deployed site instead, e.g.
 // CHECK_URL=https://conaulicy.pl (plus SITE_BASIC_AUTH while the gate is on).
 import { HOME_EXAMPLES } from "../lib/examples.ts";

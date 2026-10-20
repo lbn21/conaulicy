@@ -1,4 +1,4 @@
-// Checks the street PDFs (app/adres/[id]/harmonogram.pdf) on the seed: a
+// Checks the street PDFs (app/adres/[id]/harmonogram.pdf) on the CI fixture: a
 // city street over twelve months, a village, and a split street with ?nr=.
 // Each must be a tagged PDF of a sane length, within the size budget, with
 // only Atkinson Hyperlegible Next embedded, the text-only version included
