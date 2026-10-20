@@ -4,8 +4,9 @@
 // 12 months starting with the current one; nothing here is a real schedule.
 //
 // Covers: a city street from the old fixture URL (ul. Adama Asnyka), streets
-// with diacritics, a street in no zone, a village with streets, a village
-// without, one month with 6 pickup days and holiday-shifted dates.
+// with diacritics, a street in no zone, a village with streets, villages
+// without, one month with 6 pickup days and holiday-shifted dates, and the
+// home page's examples (lib/examples.ts) under their real ids.
 import { createHash } from "node:crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { addDays, todayInWarsaw } from "../lib/dates.ts";
@@ -43,13 +44,16 @@ const LOCALITIES = [
   { id: "0972447", gminaId: "1809011", name: "Lubaczów", kind: "miasto" },
   { id: "0606234", gminaId: "1809042", name: "Lisie Jamy", kind: "wies" },
   { id: "0606010", gminaId: "1809042", name: "Dąbrowa", kind: "wies" },
+  { id: "0606375", gminaId: "1809042", name: "Szczutków", kind: "wies" },
 ] as const;
 
 // SYM_UL 9xxxx are made up.
 const STREETS = [
   ["0972447", "00470", "Adama Asnyka"],
   ["0972447", "20291", "Juliusza Słowackiego"],
-  ["0972447", "90003", "Adama Mickiewicza"],
+  ["0972447", "12740", "Adama Mickiewicza"],
+  ["0972447", "19253", "Rynek"],
+  ["0972447", "16264", "Józefa Piłsudskiego"],
   ["0972447", "90004", "Tadeusza Kościuszki"],
   ["0972447", "90005", "Stefana Żeromskiego"],
   ["0972447", "23434", "Ustronna"],
@@ -88,7 +92,7 @@ const ZONES: Array<{
     id: "waste:miasto-s1",
     name: "Lubaczów, sektor 1",
     members: [
-      ...["00470", "20291", "90003"].map((sym) => ({
+      ...["00470", "20291", "12740", "19253", "16264"].map((sym) => ({
         localityId: "0972447",
         streetId: `0972447-${sym}`,
       })),
@@ -129,8 +133,10 @@ const ZONES: Array<{
   },
   {
     id: "waste:gmina-s1",
-    name: "Lisie Jamy i Dąbrowa",
-    members: [{ localityId: "0606234" }, { localityId: "0606010" }],
+    name: "Lisie Jamy, Dąbrowa i Szczutków",
+    members: ["0606234", "0606010", "0606375"].map((localityId) => ({
+      localityId,
+    })),
     rule: {
       weekday: 4,
       mixed: ["zmieszane_i_bio"],
