@@ -26,12 +26,9 @@
   src:
     local("Arial"), local("ArialMT"), local("Liberation Sans"),
     local("LiberationSans"), local("Arimo");
-  /* 96.4%, not the measured average 97.4%: re-measured on the GOV.UK
-     330px column (task 26), where the search hint's last line is within
-     1px of wrapping in Atkinson. */
-  size-adjust: 96.4%;
-  ascent-override: 102.07%;
-  descent-override: 32.78%;
+  size-adjust: 97.4%;
+  ascent-override: 101.03%;
+  descent-override: 32.44%;
   line-gap-override: 0%;
 }
 
