@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { LinkButton } from "@/components/link-button";
 import { PickupSchedule } from "@/components/pickup-schedule";
 import { longDate } from "@/lib/date-labels";
 import { withHouseNumber } from "@/lib/house";
@@ -57,7 +56,7 @@ function HouseNumberQuestion({ place }: { place: PlaceView }) {
           className="govuk-input govuk-input--width-5"
         />
       </div>
-      <button type="submit" className="govuk-button">
+      <button type="submit" className="govuk-button" data-module="govuk-button">
         Pokaż odbiory
       </button>
     </form>
@@ -110,14 +109,21 @@ export async function PlaceMain({ id, nr }: { id: string; nr: string | null }) {
           </section>
         ) : (
           <>
-            <LinkButton
+            {/* GOV.UK's link button: a link that looks and works like a
+                button; GOV.UK's Button JS makes Space activate it. */}
+            {/* biome-ignore lint/a11y/useSemanticElements: it navigates to a file, so it stays a link, as GOV.UK documents */}
+            <a
               href={`/ics/${encodeURIComponent(place.zoneId)}`}
+              role="button"
+              draggable="false"
+              className="govuk-button"
+              data-module="govuk-button"
               data-event="calendar_add"
               data-zone={place.zoneId}
               data-source="street"
             >
               Dodaj do kalendarza
-            </LinkButton>
+            </a>
             <p className="govuk-body">
               Plik z datami. Telefon zapyta, czy wpisać je do kalendarza.
             </p>
