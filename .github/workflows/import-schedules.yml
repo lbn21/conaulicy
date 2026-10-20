@@ -59,6 +59,9 @@ jobs:
           mkdir -p "$HOME/cursor-agent"
           curl -fsSL --retry 4 "https://downloads.cursor.com/lab/$CLI/linux/x64/agent-cli-package.tar.gz" \
             | tar --strip-components=1 -xzf - -C "$HOME/cursor-agent"
+          # The package's binary is cursor-agent; the CLI is called agent.
+          ln -sf "$HOME/cursor-agent/cursor-agent" "$HOME/cursor-agent/agent"
+          "$HOME/cursor-agent/agent" --version
           echo "$HOME/cursor-agent" >> "$GITHUB_PATH"
         env:
           CLI: ${{ steps.config.outputs.cli }}
