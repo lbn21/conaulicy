@@ -1,14 +1,15 @@
 // Checks the address search (alphagov accessible-autocomplete, which takes
 // over the field on first focus) on the home page at 360px and 1280px: the
 // result popup overlays the page (nothing below the field moves while it loads,
-// lists results, says "Brak wyników" or closes) and follows the APG combobox
-// keyboard model. Matching runs on the device: the index loads once, on
-// focus, and typing makes no request. Also: "ul" alone asks for a name,
-// "Zmień adres" on a street page lands on an empty, focused field with the
-// list closed, /api/search answers when the index cannot load, and a house
-// number ("kosciuszki 7a") reaches the street page, which picks the part of
-// a split street by it, or asks for it (also without JS). Run after
-// `next build`; needs Playwright's Chromium.
+// lists results, says "Brak wyników" or closes), follows the APG combobox
+// keyboard model, and its rows use the field's font at GOV.UK's size 19.
+// Matching runs on the device: the index loads once, on focus, and typing
+// makes no request. Also: "ul" alone asks for a name, "Zmień adres" on a
+// street page lands on an empty, focused field with the list closed,
+// /api/search answers when the index cannot load, and a house number
+// ("kosciuszki 7a") reaches the street page, which picks the part of a split
+// street by it, or asks for it (also without JS). Run after `next build`;
+// needs Playwright's Chromium.
 import { chromium } from "playwright";
 import { startServer } from "./lib/server.mjs";
 
@@ -76,6 +77,20 @@ try {
     const note = (text) =>
       page.locator(".autocomplete__option--no-results", { hasText: text });
     const result = () => page.locator('[role="option"]:not([aria-disabled])');
+    // Every row of the popup (results and notes) uses GOV.UK's type, as the
+    // field (never the browser default), at GOV.UK's form-control size, 19.
+    const sameType = async (rows, state) => {
+      const family = (el) => getComputedStyle(el).fontFamily;
+      const [field, row, size] = await Promise.all([
+        page.locator("#adres").evaluate(family),
+        rows.first().evaluate(family),
+        rows.first().evaluate((el) => getComputedStyle(el).fontSize),
+      ]);
+      check(
+        row === field && size === "19px",
+        `${label} ${state}: option font ${row} ${size}, expected ${field} 19px`,
+      );
+    };
     // The field is a plain input until first focus loads the library.
     await page.locator("#adres").click();
     const input = page.getByRole("combobox");
@@ -99,9 +114,11 @@ try {
     await input.pressSequentially("a");
     await note("Szukam…").waitFor();
     await same("loading");
+    await sameType(note("Szukam…"), "loading");
 
     await result().first().waitFor();
     await same("results");
+    await sameType(result(), "results");
     check(
       (await input.getAttribute("aria-expanded")) === "true",
       `${label}: aria-expanded not true with results`,
@@ -127,6 +144,7 @@ try {
     await input.fill("qqqq");
     await note("Brak wyników").waitFor();
     await same("no results");
+    await sameType(note("Brak wyników"), "no results");
     await input.fill("a");
     await result().first().waitFor();
 
