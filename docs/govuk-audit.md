@@ -137,9 +137,6 @@ $app-latarnia: ( /* the amber group below */ );
   - They are never rendered.
   - `check-govuk-assets.mjs` allows blue only inside `.govuk-button--inverse` rules and fails on blue anywhere else.
   - `check-own-css.mjs` fails if any page uses `govuk-button--inverse`.
-- **Second exception, approved by Jakub (task 27, step 5c):** alphagov accessible-autocomplete's unchanged CSS paints the highlighted and hovered suggestion in `#1d70b8` (`.autocomplete__option--focused,.autocomplete__option:hover`).
-  - `site.scss` overrides only that rule's colours with the brand role (`govuk-functional-colour(brand)`, white text), outside forced-colours mode, so the blue is never rendered.
-  - `check-govuk-assets.mjs` allows `#1d70b8` only in that exact rule and fails unless the override ships.
 - **`theme-color`:** `#9a5700`, the brand (latarnia primary), as GOV.UK's template uses its brand colour.
 
 **Autocomplete: alphagov `accessible-autocomplete` vs our combobox, restyled with GOV.UK classes**

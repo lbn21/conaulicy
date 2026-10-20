@@ -21,22 +21,56 @@
   color: govuk-functional-colour(inverse-text);
 }
 
-// The street search: alphagov accessible-autocomplete with its own CSS,
-// unchanged, except one colour: it paints the highlighted suggestion in
-// GOV.UK's brand blue, which sites off GOV.UK must not use. Here it takes the
-// brand role (the Latarnia group) instead. Outside forced-colours mode only,
-// so its system-colour rule still applies there. check-govuk-assets checks
-// this override is present.
+// The street search: GOV.UK's govuk-input with our suggestion list (an ARIA
+// combobox; GOV.UK Frontend has no autocomplete component).
 .app-search,
 .app-search .govuk-input {
   scroll-margin-top: govuk-spacing(3);
 }
 
-@media (forced-colors: none) {
-  .app-search .autocomplete__option--focused,
-  .app-search .autocomplete__option:hover {
-    border-color: govuk-functional-colour(brand);
-    background-color: govuk-functional-colour(brand);
-    color: govuk-functional-colour(inverse-text);
-  }
+.app-suggestions {
+  position: relative;
+}
+
+.app-suggestions__popup {
+  position: absolute;
+  z-index: 2;
+  top: 100%;
+  right: 0;
+  left: 0;
+  margin-top: govuk-spacing(1);
+  border: $govuk-border-width-form-element solid govuk-functional-colour(input-border);
+  background-color: govuk-functional-colour(body-background);
+}
+
+.app-suggestions__list {
+  max-height: 24.5rem;
+  padding: govuk-spacing(1) 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.app-suggestions__option,
+.app-suggestions__note {
+  @include govuk-font($size: 19);
+  margin: 0;
+  padding: govuk-spacing(2) govuk-spacing(3);
+}
+
+.app-suggestions__option {
+  cursor: pointer;
+}
+
+// The highlighted row: GOV.UK's link focus (yellow, black underline).
+.app-suggestions__option[aria-selected="true"] {
+  @include govuk-focused-text;
+}
+
+.app-suggestions__note--muted {
+  color: govuk-functional-colour(secondary-text);
+}
+
+.app-suggestions__note--error {
+  @include govuk-typography-weight-bold;
+  color: govuk-functional-colour(error);
 }

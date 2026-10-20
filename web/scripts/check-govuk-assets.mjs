@@ -7,11 +7,7 @@
 //   inside .govuk-button--inverse rules: govuk-frontend 6.5.1 hard-codes the
 //   inverse button's hover and shadow as blue (button/_mixin.scss), with no
 //   setting. We never use that button (check-own-css fails on the class), so
-//   the blue ships in an unused rule only.
-// - except inside accessible-autocomplete's own highlighted-option rule
-//   (.autocomplete__option--focused / :hover), which its unchanged CSS paints
-//   in brand blue. site.scss overrides that colour with the brand role, and
-//   this check fails unless the override is in the compiled CSS.
+//   the blue ships in an unused rule only. Agreed with Jakub, task 27 step 5.
 // or if app/_settings.scss stops turning off GOV.UK's default font face.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
@@ -79,12 +75,9 @@ for (const file of files) {
     );
     for (const [, selector, body] of text.matchAll(/([^{}]*)\{([^{}]*)\}/g)) {
       if (!pattern.test(body)) continue;
-      const parts = selector.split(",").map((part) => part.trim());
-      const allowed =
-        parts.every((part) => part.includes(".govuk-button--inverse")) ||
-        parts.every((part) =>
-          /^\.autocomplete__option(--focused|:hover)$/.test(part),
-        );
+      const allowed = selector
+        .split(",")
+        .every((part) => part.includes(".govuk-button--inverse"));
       if (!allowed) {
         failures.push(
           `${rel}: GOV.UK brand blue #${hex} in ${selector.trim()}`,
@@ -92,26 +85,6 @@ for (const file of files) {
       }
     }
   }
-}
-
-// The override of accessible-autocomplete's highlighted option must ship,
-// with a colour that is not brand blue.
-const css = files
-  .filter((file) => file.endsWith(".css"))
-  .map((file) => readFileSync(file, "utf8"))
-  .join("");
-const override = [
-  ...css.matchAll(
-    /([^{}]*\.app-search \.autocomplete__option--focused[^{}]*)\{([^{}]*)\}/g,
-  ),
-].find(([, , body]) => /background-color:/.test(body));
-if (
-  /autocomplete__option--focused/.test(css) &&
-  (!override || BLUE.some((hex) => override[2].toLowerCase().includes(hex)))
-) {
-  failures.push(
-    "accessible-autocomplete's highlighted option is not overridden (site.scss)",
-  );
 }
 
 if (cssFiles === 0)
