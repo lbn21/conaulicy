@@ -17,7 +17,6 @@ export function SiteHeader() {
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 md:flex-nowrap">
           <a
             href="/"
-            aria-label="conaulicy.pl – strona główna"
             className="inline-flex min-h-12 items-center py-1 no-underline"
           >
             <svg
@@ -47,6 +46,7 @@ export function SiteHeader() {
               <path fill="var(--accent)" mask="url(#logo-plate)" d={PLATE} />
               <path fill="currentColor" d={WORDMARK} />
             </svg>
+            <span className="sr-only">conaulicy.pl – strona główna</span>
           </a>
           <span className="text-text-muted">Lubaczów</span>
         </div>
