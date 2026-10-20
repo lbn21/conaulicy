@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 md:px-8">
+    <div className="max-w-2xl">
       <h1 className="mt-8 text-2xl font-bold tracking-tight md:mt-14 md:text-3xl">
         Prywatność
       </h1>
@@ -25,13 +25,10 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-bold">
-            Jedna rzecz w Twojej przeglądarce
-          </h2>
+          <h2 className="text-lg font-bold">Nic w Twojej przeglądarce</h2>
           <p className="mt-2">
-            Zapamiętujemy tylko, czy wolisz wygląd ciemny, jasny czy systemowy.
-            Ta informacja leży w pamięci przeglądarki (localStorage) na Twoim
-            urządzeniu i nie trafia do nas.
+            Nie zapisujemy niczego w pamięci Twojej przeglądarki. Strona tylko
+            pobiera listę ulic, żeby szybciej podpowiadać adresy.
           </p>
         </section>
 
@@ -89,6 +86,6 @@ export default function PrivacyPage() {
           </a>
         </section>
       </div>
-    </main>
+    </div>
   );
 }

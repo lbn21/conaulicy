@@ -1,24 +1,21 @@
+// Our own footer: GOV.UK classes and layout, not the GOV.UK footer component,
+// which only services on GOV.UK may use.
 export function SiteFooter() {
   return (
-    <footer className="mt-16 border-t border-border">
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-1 px-4 py-8 md:px-8">
-        <p className="max-w-prose">
+    <footer className="govuk-template__footer">
+      <div className="govuk-width-container">
+        <hr className="govuk-section-break govuk-section-break--visible govuk-!-margin-bottom-6" />
+        <p className="govuk-body">
           Nie jesteśmy urzędem – obowiązuje harmonogram gminy
         </p>
-        <ul className="flex flex-wrap gap-x-6">
+        <ul className="govuk-list govuk-!-margin-bottom-8">
           <li>
-            <a
-              href="/prywatnosc"
-              className="inline-flex min-h-12 items-center underline decoration-2 underline-offset-4"
-            >
+            <a className="govuk-link" href="/prywatnosc">
               Prywatność
             </a>
           </li>
           <li>
-            <a
-              href="/dostepnosc"
-              className="inline-flex min-h-12 items-center underline decoration-2 underline-offset-4"
-            >
+            <a className="govuk-link" href="/dostepnosc">
               Dostępność
             </a>
           </li>

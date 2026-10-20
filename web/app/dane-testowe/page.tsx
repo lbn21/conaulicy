@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 // The source page linked from every test-data event (source.url).
 export default function TestDataPage() {
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 md:px-8">
+    <div className="max-w-2xl">
       <h1 className="mt-8 text-2xl font-bold tracking-tight md:mt-14 md:text-3xl">
         Dane testowe
       </h1>
@@ -42,6 +42,6 @@ export default function TestDataPage() {
           sprawdziliśmy.
         </p>
       </div>
-    </main>
+    </div>
   );
 }
