@@ -1,3 +1,4 @@
+import { FEATURES } from "@/lib/config.generated";
 import { PLATE, PLATE_WIDTH, RIM, RIM_WIDTH, UL } from "@/lib/logo";
 
 // Our own footer markup with GOV.UK's footer classes, laid out as the GOV.UK
@@ -9,20 +10,15 @@ import { PLATE, PLATE_WIDTH, RIM, RIM_WIDTH, UL } from "@/lib/logo";
 // The same on every page. The code licences are credited on /dostepnosc.
 
 /**
- * Footer navigation: live features only; a new feature adds a link here. It
- * appears (with its section break) once it has two or more links, or when
- * SHOW_NAVIGATION is set; one link alone would only repeat the home page.
- * Sections without links never render.
+ * Footer navigation: live features only, from etl/sources.yaml (site.features)
+ * via the generated config. It appears (with its section break) once it has
+ * two or more links, or when SHOW_NAVIGATION is set; one link alone would
+ * only repeat the home page. Sections without links never render.
  */
-const NAVIGATION: Array<{
-  title: string;
-  items: Array<{ href: string; text: string }>;
-}> = [
-  {
-    title: "Sprawdź przy swojej ulicy",
-    items: [{ href: "/", text: "Wywóz śmieci" }],
-  },
-];
+const NAVIGATION = FEATURES.map(({ section, links }) => ({
+  title: section,
+  items: links,
+}));
 
 const SHOW_NAVIGATION = false;
 const SECTIONS = NAVIGATION.filter((section) => section.items.length > 0);

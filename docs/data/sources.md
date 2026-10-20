@@ -1,13 +1,16 @@
 # Data sources
 
-Raw source files are not in git. They are archived in a private S3 bucket and pulled into a gitignored local cache when the ETL needs them.
+<!-- Generated from etl/sources.yaml by `npm run config:sync`; do not edit. -->
 
-- Bucket: `conaulicy-sources-aaed02` (eu-central-1): Block Public Access on, versioning on, SSE-S3 encryption, no bucket policy, no ACL grants. Access with Jakub's AWS credentials only.
+Raw source files are not in git. They are archived in a private S3 bucket and pulled into a gitignored local cache when the ETL needs them. The sources, their public pages and this list live in `etl/sources.yaml`; this page is generated from it.
+
+- Bucket: `conaulicy-sources-aaed02` (eu-central-1): Block Public Access on, versioning on, SSE-S3 encryption, no bucket policy, no ACL grants. Jakub's AWS credentials, and the import's GitHub Actions role (PutObject/GetObject on `sources/*` only).
 - Key layout: `sources/<origin>/<fetch date>/<file>`.
 - Pull: `cd web && npm run sources:pull` downloads every file below into `.cache/sources/` (repo root, gitignored) and checks its SHA-256. Nothing in the build, CI or the running site needs these files.
-- Adding a source: upload it under the same layout, add a row here with its SHA-256, run `npm run sources:pull`.
+- Files the unattended import archives later (docs/import-schedules.md) are listed in the database table `source_files`, not here.
+- Adding a file by hand: upload it under the same layout, add it to `archived` in `etl/sources.yaml`, run `npm run config:sync` and `npm run sources:pull`.
 
-`meta` holds our own files about the sources (the inventory snapshot, checksums, the prototype transcription and its samples); the sources themselves are the public documents linked in the table.
+`meta` holds our own files about the sources (the inventory snapshot, checksums, the prototype transcription and its samples); the sources themselves are the public documents linked in the table. Public links are always the original pages, never the archive.
 
 | File | Origin | Public source | Fetched | S3 key | SHA-256 |
 |---|---|---|---|---|---|
