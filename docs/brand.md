@@ -21,15 +21,15 @@ The logo is the flat **“ul.” plate** (option A “Tabliczka”, refined in t
 
 **Enamel version** ([`a-hero-*.svg`](logo/a-hero-dark.svg), [`a-og-enamel.svg`](logo/a-og-enamel.svg), [`a-pdf-corner.svg`](logo/a-pdf-corner.svg)): backlog only. It may be used later for large decorative pieces such as a landing hero or a poster, and **never** in the header, favicon, app icons or at small sizes.
 
-### Where it ships (`docs/logo/source/ship_a.mjs` builds the files; as of task 23, before the GOV.UK migration)
+### Where it ships (`docs/logo/source/ship_a.mjs` builds the files)
 
 | Place | File |
 |---|---|
-| Header | Inline SVG in `web/components/site-header.tsx`; paths are in `web/lib/logo.ts`. Plate `var(--accent)`, wordmark `currentColor` |
-| Tab icon | `web/app/icon.svg` and `web/app/favicon.ico` (16 + 32). Light only: the SVG's dark `prefers-color-scheme` query is removed in task 26 |
+| Header | GOV.UK Generic header in `web/components/site-header.tsx`: inline SVG (paths in `web/lib/logo.ts`), plate `#ffb547` from `app/_palette.scss` via `app/site.scss`, wordmark `currentColor` (white on the black bar), then „Lubaczów” |
+| Tab icon | `web/app/icon.svg` (light colours, no colour-scheme query since task 26) and `web/app/favicon.ico` (16 + 32, night tile) |
 | Apple | `web/app/apple-icon.png` (180, full-bleed night tile; iOS rounds it) |
 | PWA | `web/public/icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, listed in `web/app/manifest.ts` |
-| Share card | `web/public/og.png` (1200 × 630, flat plate), in `openGraph` and `twitter` metadata |
+| Share card | `web/public/og.png` (1200 × 630, flat plate on white since task 26; the night version is `docs/logo/a-og-dark.*`), in `openGraph` and `twitter` metadata |
 | PDF | The band at the top of each page, drawn as vector paths from `web/lib/logo.ts` |
 
 ## Clear space and minimum size
