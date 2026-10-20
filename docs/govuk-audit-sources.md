@@ -34,7 +34,8 @@ Task 25, read on 2026-10-20. The scope is narrowed to foundations, forms and but
 | https://frontend.design-system.service.gov.uk/using-govuk-frontend-without-govuk-branding/ | Generic header, own font stack, own brand colour, own assets |
 | https://frontend.design-system.service.gov.uk/import-font-and-images-assets/ | Font and image assets (links to the no-branding guide) |
 | https://www.npmjs.com/package/govuk-frontend | Package; v6.5.1 measured (compiled subset sizes in the audit) |
-| https://github.com/alphagov/govuk-frontend/tree/v6.5.1/packages/govuk-frontend/src/govuk | Sass and JS sources: settings, helpers, objects, button, input, label, hint, error-message, error-summary |
+| https://github.com/alphagov/govuk-frontend/tree/v6.5.1/packages/govuk-frontend/src/govuk | Sass and JS sources: settings (incl. `_colours-palette--internal.scss`, `_colours-functional.scss`, `_typography-font.scss`), helpers, objects, button, input, label, hint, error-message, error-summary, generic-header |
+| https://www.npmjs.com/package/accessible-autocomplete | alphagov autocomplete, v3.0.2 measured (JS/CSS gzip) for the autocomplete evaluation |
 
 ## Service Manual
 | URL | What it's for |

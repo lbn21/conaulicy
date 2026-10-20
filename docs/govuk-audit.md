@@ -5,73 +5,146 @@
 - forms: text input, label, hint, error message, error summary, search;
 - buttons.
 
-Everything else is on one "later" line at the end.
+Everything else is on one "later" line.
 
-**Reference:** GOV.UK Frontend **v6.5.1** (the newest release more than two weeks old). Values are measured from its Sass and JS source; `S/` below means `https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/`. The pages read are listed in [`govuk-audit-sources.md`](govuk-audit-sources.md).
+**Reference:** GOV.UK Frontend **v6.5.1**, the newest release more than two weeks old (6.6.0 is from 2026-10-15). Values are measured from its Sass and JS source; `S/` means `https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/`. The pages read are in [`govuk-audit-sources.md`](govuk-audit-sources.md).
 
 **Checked against:**
-- the code in `web/` (`app/globals.css`, `app/tokens.css`, `components/address-search.tsx`, `components/place-page.tsx`, `components/theme-switch.tsx`, the page files);
+- the code in `web/`;
 - the pages `/`, `/adres/0972447-00470`, `/dostepnosc`, `/prywatnosc` and the 404 page;
-- the PDF, which has no forms, links or focus, so nothing there is in scope.
+- the PDF, which has no forms, links or focus states, so nothing there is in scope.
 
-**Colours stay ours.** GOV.UK colour *roles* are mapped onto Latarnia tokens; no GOV.UK hex value is adopted.
+## Decisions (Jakub, 2026-10-20)
+
+**Rule:** "GOV.UK Frontend as-is, including its palette; only the brand-blue roles, the typeface and the logo are ours." No other deviations without Jakub's approval.
+
+- **Package:** the official `govuk-frontend` npm package (6.5.1, exact pin), via its documented Sass settings. No `govuk-frontend` JS (no used component strictly needs it).
+- **Palette:**
+  - GOV.UK's own palette and functional colours are kept: yellow focus, green button, red error, green success, black/grey text and borders, white.
+  - Only the **brand-blue group** is replaced, by a Latarnia amber/brown group computed with GOV.UK's tint/shade method. It feeds brand, link, link hover, template and surface background, and surface border.
+  - Visited links keep GOV.UK's purple.
+- **Typeface and logo:** Atkinson Hyperlegible Next instead of GDS Transport. Our "ul." plate in the GOV.UK **Generic header** (its default black bar, so the dark-background lockup). Our own footer.
+- **Light only, Polish copy.** Dark mode was dropped on 2026-10-20 to follow GOV.UK, which is light only: no toggle, no `prefers-color-scheme: dark` styles, no theme script.
+- **Everything else is exactly GOV.UK:**
+  - 40 px controls, `:focus` styling, visited links;
+  - the 960 px container and grid, 19 px body, every size, spacing step, type scale and breakpoint, and the page template;
+  - GOV.UK markup and classes for every form element and button.
+- **Almost no own CSS:**
+  - Tailwind is removed.
+  - The UI is built from GOV.UK components, grid, typography, override and width classes.
+  - One small `web/app/site.scss` (logo plate, bin markers, search suggestions) uses GOV.UK Sass functions only, and is capped in CI.
 
 ## Summary
 
-### Top 10 gaps
-1. **Link focus:** a 3 px outline ring with 3 px offset (`globals.css`), not GOV.UK's focus fill plus dark 4 px underline. In the light theme the focus colour is dark brown (`#6b3d00`), so there is no light/dark pair at all.
-2. **Input focus:** the border turns the focus colour and the global ring floats 3 px outside. GOV.UK uses a 3 px focus outline with offset 0, plus an inset 2 px input-border shadow (the border looks 4 px thick).
+### Top 10 gaps (against GOV.UK Frontend as-is)
+1. **Not built on `govuk-frontend` at all.**
+   - Tailwind utilities and our own tokens.
+   - No `govuk-template`, `govuk-width-container`, `govuk-main-wrapper` or `govuk-grid-row`.
+   - No GOV.UK classes anywhere.
+2. **Focus states:**
+   - a 3 px ring with 3 px offset on `:focus-visible`;
+   - not GOV.UK's link focus (fill + 4 px dark underline), input focus (3 px outline + inset 2 px border) or button focus (fill + dark 2 px edge);
+   - the light focus colour is dark brown `#6b3d00`, not GOV.UK's yellow fill with a black edge.
 3. **Buttons:**
-   - nothing GOV.UK-like: no 2 px bottom shadow, no hover colour, no pressed 2 px offset;
-   - no focus state (focus fill, dark text, dark 2 px bottom edge);
-   - 4 px corners instead of square.
-4. **No error pattern at all:**
-   - An unknown house number shows a bold note. There is no error summary, no "Błąd: " title prefix, no red bar, no error message and no error border.
-   - An empty number has no message at all.
-5. **Input styling:**
-   - the border is the grey `border` token (4.25 : 1), not the input-border role (text colour);
+   - no `govuk-button`: 4 px corners, 56 px tall, bold 22 px text;
+   - no bottom shadow, no hover colour, no pressed offset;
+   - no GOV.UK focus state.
+4. **No error pattern at all.**
+   - An unknown house number shows a bold note. There is no error summary, no "Błąd: " title prefix, no `govuk-form-group--error` bar, no `govuk-error-message` and no `govuk-input--error` border.
+   - An empty number has no message.
+5. **Inputs are not `govuk-input`:**
+   - 56 px tall instead of 40 px;
+   - grey border instead of the input-border (text) colour;
    - 4 px radius instead of 0;
-   - text 22 px instead of 19 px;
-   - 16 px side padding instead of 5 px.
-6. **Placeholder** "np. Słowackiego" on the street search repeats the hint. GOV.UK: "Do not use placeholder text in place of a label, or for hints or examples".
+   - 22 px text instead of 19 px;
+   - 16 px padding instead of 5 px.
+6. **Placeholder** "np. Słowackiego" on the search. GOV.UK: "Do not use placeholder text in place of a label, or for hints or examples".
 7. **Links:**
    - text-coloured with a fixed 2 px underline;
-   - no hover state (GOV.UK thickens the underline to `max(3px, .1875rem, .12em)` and changes colour);
-   - no link colour role;
-   - offset `.2em` instead of `.1578em`.
-8. **Label and hint:**
-   - the label is 22 px bold;
-   - spacing is a uniform 8 px. GOV.UK uses label → hint 5 px, hint → input 10 px, and 15 px under a hint with no label.
+   - no link, hover or visited colour;
+   - no hover thickening;
+   - underline offset `.2em` instead of `.1578em`.
+8. **Labels and hints:**
+   - 22 px bold labels with uniform 8 px gaps;
+   - not `govuk-label` / `govuk-label--m` and `govuk-hint` spacing (5 / 10 / 15 px).
 9. **Type scale:**
-   - body is 18 px / 1.55, against 19 px / 25 px (1.316);
-   - `h2` is a fixed 22 px, against 21 → 24 px (heading-m);
-   - line heights are looser than GOV.UK's throughout.
-10. **Spacing and layout:**
-    - the 4 px Tailwind rhythm, not the 5 px GOV.UK scale, so no responsive steps;
-    - main padding 32 / 56 px, not 20 / 40 px (main wrapper);
-    - no skip link in the template.
+   - body 18 px / 1.55, against 19 / 25;
+   - headings 36→48 and 22, against `govuk-heading-xl/l/m` 32→48, 27→36, 21→24;
+   - looser line heights.
+10. **Layout and template:**
+    - a 672 px column with 16 / 32 px gutters, against the 960 px container with 15 / 30 px gutters;
+    - a 4 px spacing rhythm, against the GOV.UK 5 px responsive scale;
+    - `h1` margins instead of `govuk-main-wrapper` padding;
+    - no skip link;
+    - a dark-default theme with a toggle.
 
-### Recommendation: re-implement the specs on our Tailwind tokens
-| | `govuk-frontend` (Sass + JS) | Specs on Latarnia tokens |
+### Approach: the official `govuk-frontend` package (decided)
+
+The audit first recommended re-implementing the specs on Tailwind tokens. Jakub decided on GOV.UK Frontend as-is; the measured numbers stay as context.
+
+| | `govuk-frontend` 6.5.1, configured for us | (earlier option) specs on Tailwind tokens |
 |---|---|---|
-| CSS for foundations + forms + buttons | **36.3 KB raw, 5.35 KB gzip** (base, core, objects, button, input, error-summary, fieldset, radios, skip-link; Sass 1.105.1, compressed) | **4.0 KB raw, 1.27 KB gzip** (scratch prototype of the same rules) |
-| Forms and buttons only | 13.0 KB raw, 2.67 KB gzip | (included above) |
-| JS | **+2.54 KB gzip** first-load (Button + ErrorSummary, esbuild minified) → street page 141.2 → ~143.7 KB of 150 | **0 KB.** Error-summary focus via server-rendered `autofocus` + `tabindex="-1"`, to be verified in PR 5; fallback is a one-line client effect. No double-click guard needed: our forms are idempotent GET forms |
-| Dark mode | Partial. v6 exposes functional colours as `--govuk-*-colour` variables, but the button styles compile **14 hard-coded hex values** (greens, reds, greys) that need per-theme overrides | Native: every value is a Latarnia variable with dark and light |
-| Focus | `:focus`, so it also shows on mouse click | `:focus-visible`, keyboard only, as required |
-| Font | Compiles a GDS Transport `@font-face` unless overridden; the typeface must not be used here | Atkinson is already wired |
-| Tooling | New `sass` dependency. Two reset layers (Tailwind preflight + GOV.UK), px-based helpers | None new |
-| Current CSS | 19.2 KB raw, **4.9 KB gzip** | → about 6.2 KB gzip (+1.3 KB) |
-| Street HTML | 16.1 KB gzip of 30 | about the same; class names replace utility strings |
-| CLS | none (the rules are static) | none (outline and box-shadow don't move layout) |
+| CSS, **our build**: GOV.UK palette + amber group + Atkinson via settings; base, core, objects, skip link, generic header, button, input (+ label, hint, error message), error summary, details, summary list, inset text, tag | 63.0 KB raw, **7.7 KB gzip**; no GDS Transport `@font-face` (`$govuk-include-default-font-face: false`) | n/a |
+| CSS, generic subset with GOV.UK colours (base, core, objects, button, input, error summary, fieldset, radios, skip link) | 36.3 KB raw, 5.35 KB gzip | 4.0 KB raw, 1.27 KB gzip (scratch prototype) |
+| JS | **0 KB** (below). The optional Button + ErrorSummary JS would be 2.54 KB gzip | 0 KB |
 
-**Pick the token approach:**
-- It gives near 1:1 visual fidelity at a quarter of the CSS and zero JS.
-- Dark mode works natively.
-- It follows the brief's `:focus-visible` rule.
-- `govuk-frontend` would cost 2.5 KB of first-load JS and a second reset layer, and its branded parts (GDS Transport, button hex values) must be overridden anyway.
+**Budget.**
+- **CSS:**
+  - Today Tailwind + tokens is 4.9 KB gzip.
+  - The target is about 7.7 KB (GOV.UK) plus `site.scss` (capped at 1 KB), so about **8.7 KB, +3.8 KB**. That's within the agreed "about +5 KB".
+  - While both coexist during the migration, CSS peaks around +7–8 KB, until Tailwind is deleted in the last PR.
+- **JS falls:** the theme toggle is removed in PR 1, and nothing is added.
+- **CLS:** none. Static styles; the pressed button uses `position: relative; top: 2px`.
 
-Every spec value below links to the line in the GOV.UK source, so fidelity can be checked line by line.
+**Why no `govuk-frontend` JS.**
+- **Error summary:** focused on load by server-rendered `autofocus` on the summary, which has `tabindex="-1"` (verify in PR 7). Its links are plain `#field` anchors.
+- **Buttons:** our forms are idempotent GET forms, so there's no double-click guard. "Dodaj do kalendarza" uses GOV.UK's link-button markup without the Space-key module; it navigates.
+- **Skip link:** `<main id="main-content" tabindex="-1">` in the markup.
+- **Details:** the native `<details>` element.
+
+**Tailwind is removed entirely.**
+- It stays only while pages are still being migrated.
+- Each PR converts its area to GOV.UK classes and deletes the utilities it replaces.
+- The last PR deletes the Tailwind dependencies, config and PostCSS setup.
+- This is cleaner than removing it in PR 1, which would have to rebuild every page at once.
+
+**Settings** (per [Using GOV.UK Frontend without GOV.UK branding](https://frontend.design-system.service.gov.uk/using-govuk-frontend-without-govuk-branding/)): one palette definition, no scattered hex.
+
+```scss
+@use "sass:map";
+$app-latarnia: ( /* the amber group below */ );
+@use "pkg:govuk-frontend" as * with (
+  $govuk-font-family: ("Atkinson Hyperlegible Next", arial, sans-serif),
+  $govuk-include-default-font-face: false,   // Atkinson stays self-hosted via next/font
+  $govuk-functional-colours: (
+    brand: map.get($app-latarnia, "primary"),
+    link: map.get($app-latarnia, "shade-10"),
+    link-hover: map.get($app-latarnia, "shade-50"),
+    template-background: map.get($app-latarnia, "tint-95"),
+    surface-background: map.get($app-latarnia, "tint-95"),
+    surface-border: map.get($app-latarnia, "tint-50")
+  )
+);
+```
+
+- **Nothing else is overridden:** the green button, yellow focus, red error and black Generic header are GOV.UK's own defaults.
+- **Blue leftovers:** the compiled CSS was checked for brand-blue values. Two rules still contain them:
+  - the **default `govuk-tag`**, which hard-codes a blue tint and shade;
+  - the **inverse button**, which hard-codes blue.
+- **Rule:** we never use either. Tags always get a colour modifier (`govuk-tag--grey`, `--green`, …), and there is no inverse button. The own-CSS check flags `govuk-tag` without a modifier.
+- **`theme-color`:** `#0b0c0c` (the Generic header's black).
+
+**Autocomplete: alphagov `accessible-autocomplete` vs our combobox, restyled with GOV.UK classes**
+
+| | `accessible-autocomplete` 3.0.2 | Our combobox, restyled |
+|---|---|---|
+| JS (gzip) | **+18.99 KB** standalone (bundles Preact 8); +15.66 KB for the React build | **3.1 KB** today (search logic + index loading); restyle ≈ 0 |
+| CSS (gzip) | +0.95 KB (its own stylesheet, not GOV.UK classes) | ≤ 1 KB within `site.scss` (suggestion list), using GOV.UK mixins |
+| First-load JS on `/` | 142.1 → ~158 KB: **over the 150 KB budget**, breaks "JS must not grow" | unchanged |
+| a11y | Mature, GDS-tested; `role="combobox"`, live region; known issues with some screen readers | ARIA 1.2 combobox, live region, `check-search` (keys, no layout shift), axe clean |
+| Fit | An async `source(query, populateResults)` can call our index and the `/api/search` fallback. House numbers need custom `templates`. Its Preact runtime sits beside React | Already built on the cached index + fallback + house-number readings |
+
+**Keep our combobox.** Its input becomes `govuk-input` with `govuk-label`/`govuk-hint`; the list moves to `site.scss`, with GOV.UK focus colours on the highlighted row. `accessible-autocomplete` would cost about 16–19 KB gzip of JS and break the budget, for no functional gain.
 
 ## Use outside GOV.UK: we must not look like a government service
 
@@ -118,157 +191,220 @@ The GOV.UK footer carries the crown and "© Crown copyright" (https://design-sys
 
 **What this means for us.**
 - Patterns, specs and code are free to use (MIT).
-- We keep our own header and footer: the flat "ul." plate, conaulicy, the Latarnia palette and Atkinson Hyperlegible Next.
+- We use GOV.UK Frontend as-is, **including its palette** (green button, yellow focus, red error, greys).
+- Ours, as GOV.UK requires:
+  - the brand-blue group → Latarnia amber;
+  - Atkinson instead of GDS Transport;
+  - the "ul." plate in the Generic header, and our own footer.
 - We never use:
   - the crown, the GOV.UK logotype or GDS Transport;
-  - the GOV.UK blue/black header, the GOV.UK footer or "Crown copyright";
-  - GOV.UK hex values, including the button green and the focus yellow `#ffdd00`. We map the *roles*.
+  - the GOV.UK header or footer, or "Crown copyright";
+  - the brand-blue colours (including the default blue `govuk-tag` and the inverse button).
+- We use colours through `govuk-colour()` / `govuk-functional-colour()`, never pasted hex: that's what the colour page's "Do not copy the specific hexadecimal (hex) colour values" asks.
 - The existing footer line "Nie jesteśmy urzędem – obowiązuje harmonogram gminy" already does the "must not suggest it's official" job. Keep it.
 
-## Colour roles → Latarnia tokens
+## Palette (GOV.UK structure; the blue group replaced by Latarnia amber)
 
-Existing ratios come from `node design/contrast.mjs` (table in `design/tokens.md`). Ratios marked * are **new pairs**, computed with the same formula as `contrast.mjs`; PR 1 adds them to the script, so CI enforces them.
+Source: [GOV.UK colour](https://design-system.service.gov.uk/styles/colour/) and `govuk-frontend` 6.5.1 [`settings/_colours-palette--internal.scss`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/settings/_colours-palette--internal.scss).
 
-| GOV.UK role | Latarnia token, dark | Latarnia token, light | Contrast (dark / light) |
-|---|---|---|---|
-| `text` | `text` #e9edf2 | `text` #161b24 | on background 15.67 / 16.09 |
-| `secondary-text` | `text-muted` #b4bcc8 | `text-muted` #4a5568 | on background 9.62 / 7.01 |
-| `focus` | `focus` #ffdda0 (unchanged) | **`focus` #ffdda0 (was #6b3d00)** | vs background 14.13 / 1.22*. In light, the dark ring carries 3 : 1, as GOV.UK's black ring does on white |
-| `focus-text` | **new** `focus-text` #10141d | **new** `focus-text` #161b24 | on focus 14.13* / 13.24*. Ring vs background: 1.00* (yellow carries it) / 16.09 |
-| `input-border` | **new** `input-border` = `text` | = `text` | vs surface 13.92* / 17.26* |
-| `border` | `border` #6f7a8d | `border` #6f7a8d | vs background 4.25 / 4.04 |
-| `link` | **new** `link` = `accent` #ffb547 | = `accent` #9a5700 | on background 10.49 / 5.24; on surface 9.32* / 5.62* |
-| `link-hover`, `link-active` | `text` | `text` | 15.67 / 16.09 |
-| `link-visited` | none: "links without a visited state" (a few, mostly navigation links) | none | n/a |
-| `error` | `danger` #ff8f85 | `danger` #b42318 | on background 8.35 / 6.13; on surface 7.42 / 6.57 |
-| `success` | `success` #6fd49a | `success` #1e7a46 | on background 10.14 / 4.98 |
-| button (primary) | fill `accent`, text `accent-contrast` | fill `accent`, text `accent-contrast` | 10.49 / 5.62 |
-| button hover | **new** `accent-hover` #bf8835 (25 % shade) | **new** `accent-hover` #744100 | text on it 5.96* / 8.40* |
-| button shadow | **new** `accent-shadow` #805b24 (50 % shade) | **new** `accent-shadow` #4d2c00 | decorative edge; fill vs background 10.49 / 5.24 |
-| secondary button | fill `secondary`, text `text`, shadow `border`, hover `surface-2` | same tokens | 11.63 / 14.56; hover 12.43 / 12.40* |
-| warning button | fill `danger`, text `accent-contrast`, **new** `danger-hover` #bf6b64 / #871a12, **new** `danger-shadow` #804843 / #5a120c | | 8.35* / 6.57*; on hover 4.83* / 9.60* |
+**Method:** GOV.UK's steps are the primary colour mixed with white (tints) or black (shades) at fixed percentages. Checked: mixing `#1d70b8` this way reproduces GOV.UK's blue group exactly. The Latarnia group applies the same percentages to our accent `#9a5700`, and has a shade-10 like blue. The logo plate's amber `#ffb547` is unchanged and outside the palette.
 
-**Decision for Jakub:** is the link colour amber? It keeps one accent and passes AA, but the page gets warmer and busier. The alternative is GOV.UK's `govuk-link--text-colour` style (what we do now) and the `link` role stays `text`. The table and PR 3 assume amber.
+| Group | primary | tint-25 | tint-50 | tint-80 | tint-95 | shade-10 | shade-25 | shade-50 |
+|---|---|---|---|---|---|---|---|---|
+| **latarnia** (replaces blue) | #9a5700 | #b38140 | #cdab80 | #ebddcc | #faf7f2 | #8b4e00 | #744100 | #4d2c00 |
+| ~~blue~~ (not used) | #1d70b8 | #5694ca | #8eb8dc | #d2e2f1 | #f4f8fb | #1a65a6 | #16548a | #0f385c |
+| green (kept) | #0f7a52 | #4b9b7d | #87bca8 | #cfe4dc | #f3f8f6 | | #0b5c3e | #083d29 |
+| teal (kept) | #158187 | #50a1a5 | #8ac0c3 | #d0e6e7 | #f3f9f9 | | #106165 | #0b4144 |
+| purple (kept) | #54319f | #7f65b7 | #aa98cf | #ddd6ec | #f6f5fa | | #3f2577 | #2a1950 |
+| magenta (kept) | #ca357c | #d7689d | #e59abe | #f4d7e5 | #fcf5f8 | | #98285d | #651b3e |
+| red (kept) | #ca3535 | #d76868 | #e59a9a | #f4d7d7 | #fcf5f5 | | #982828 | #651b1b |
+| orange (kept) | #f47738 | #f7996a | #fabb9c | #fde4d7 | #fef8f5 | | #b7592a | #7a3c1c |
+| yellow (kept) | #ffdd00 | #ffe640 | #ffee80 | #fff8cc | #fffdf2 | | #bfa600 | #806f00 |
+| brown (kept) | #99704a | #b39477 | #ccb8a5 | | #faf8f6 | | | |
+| black (kept) | #0b0c0c | #484949 | #858686 | #cecece | #f3f3f3 | | | |
+| white (kept) | #ffffff | | | | | | | |
+
+(Teal also has `accent` #00ffe0.)
+
+### Functional colours
+
+| Role | Value | Source |
+|---|---|---|
+| `text` | #0b0c0c | GOV.UK (black) |
+| `secondary-text` | #484949 | GOV.UK (black tint-25) |
+| `inverse-text` | #ffffff | GOV.UK (white) |
+| `brand` | **#9a5700** | latarnia primary (was blue) |
+| `link` | **#8b4e00** | latarnia shade-10 (was blue shade-10) |
+| `link-hover` | **#4d2c00** | latarnia shade-50 (was blue shade-50) |
+| `link-visited` | #54319f | GOV.UK purple, **kept** |
+| `link-active` | #0b0c0c | GOV.UK (black) |
+| `border` | #cecece | GOV.UK (black tint-80) |
+| `input-border` | #0b0c0c | GOV.UK (black) |
+| `template-background` | **#faf7f2** | latarnia tint-95 (was blue tint-95) |
+| `body-background` | #ffffff | GOV.UK (white) |
+| `focus` | #ffdd00 | GOV.UK (yellow) |
+| `focus-text` | #0b0c0c | GOV.UK (black) |
+| `error` | #ca3535 | GOV.UK (red) |
+| `success` | #0f7a52 | GOV.UK (green) |
+| `hover` | #cecece | GOV.UK (black tint-80) |
+| `surface-background` | **#faf7f2** | latarnia tint-95 (was blue tint-95) |
+| `surface-text` | #0b0c0c | GOV.UK (black) |
+| `surface-border` | **#cdab80** | latarnia tint-50 (was blue tint-50) |
+
+**Visited links keep GOV.UK's purple.**
+- It passes comfortably (9.06 : 1 on white).
+- It's clearly distinct from the amber link, which is the whole point of a visited state.
+- It doesn't clash with the brand: it's the colour people already know means "visited" on GOV.UK.
+
+### Contrast of every functional pair
+
+These ratios use the WCAG 2.x formula of `design/contrast.mjs`. They are **all new pairs**: the palette changed, so PR 1 replaces the script's palette with this one and CI enforces it. Text needs 4.5 : 1 and UI components 3 : 1.
+
+| Pair | Ratio | Result |
+|---|---:|---|
+| text on body-background | 19.59 | AAA |
+| text on template-background | 18.33 | AAA |
+| secondary-text on body-background | 9.03 | AAA |
+| inverse-text on brand | 5.62 | AA |
+| link on body-background | 6.59 | AA |
+| link on surface-background | 6.17 | AA |
+| link-hover on body-background | 12.53 | AAA |
+| link-visited on body-background | 9.06 | AAA |
+| link-active on body-background | 19.59 | AAA |
+| input-border vs body-background | 19.59 | UI pass |
+| focus-text on focus | 14.55 | AAA |
+| focus vs text (the dark edge pairs with the yellow) | 14.55 | UI pass |
+| focus vs body-background | 1.35 | by design: the black `focus-text` edge carries the contrast, as on GOV.UK |
+| error on body-background | 5.16 | AA |
+| success on body-background | 5.35 | AA |
+| button text (white) on button (green) | 5.35 | AA |
+| button text on button hover (green shade-25) | 8.03 | AAA |
+| warning button text on red | 5.16 | AA |
+| secondary button text on black tint-95 | 17.65 | AAA |
+| surface-text on surface-background | 18.33 | AAA |
+| surface-border vs surface-background | 2.02 | decorative (GOV.UK's blue tint-50 is too); never the only cue |
+| border vs body-background | 1.57 | decorative divider (GOV.UK default); never the only cue |
+| brand vs body-background | 5.62 | UI pass |
+| Generic header text on black | 19.59 | AAA |
+| logo plate amber #ffb547 on the black header | 11.15 | UI pass |
 
 ## Audit table
 
-States: **C** compliant, **P** partial, **M** missing, **N/A**. Effort: S < ½ day, M ≈ 1 day, L > 1 day. All perf deltas are gzip.
+States: **C** compliant, **P** partial, **M** missing, **N/A**. "Change" means using the named GOV.UK class or markup exactly, with the palette above. Effort: S < ½ day, M ≈ 1 day, L > 1 day. Perf deltas are gzip.
 
 ### Styles
-| GOV.UK item | Now | Change needed | Effort | Perf |
+| GOV.UK item | Now | Change | Effort | Perf |
 |---|---|---|---|---|
-| [Focus: links](https://design-system.service.gov.uk/get-started/focus-states/) ([`S/helpers/_focused.scss#L20-L47`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/helpers/_focused.scss#L20-L47)) | **M**: outline 3 px, offset 3 px, `--focus` | `a:focus-visible`: transparent 3 px outline (forced colours), `color: focus-text`, `background: focus`, `box-shadow: 0 -2px focus, 0 4px focus-text`, no underline, `box-decoration-break: clone` | S | +0.2 KB CSS; no CLS (shadow) |
-| [Focus: boxes](https://design-system.service.gov.uk/get-started/focus-states/) ([`#L64-L69`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/helpers/_focused.scss#L64-L69)) | **M** | Theme switch, summary toggles and option rows: `box-shadow: 0 0 0 4px focus, 0 0 0 8px focus-text` with a transparent outline | S | +0.1 KB; no CLS |
-| [Focus: form inputs](https://design-system.service.gov.uk/get-started/focus-states/) ([`#L83-L94`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/helpers/_focused.scss#L83-L94)) | **P**: border → focus colour plus a ring at 3 px offset | `outline: 3px solid focus; outline-offset: 0; box-shadow: inset 0 0 0 2px input-border`; the border stays `input-border` | S | ~0; no CLS |
-| Focus: light-theme colour | **P**: dark brown `#6b3d00` | Pale amber `#ffdda0` plus the dark `focus-text` ring, as GOV.UK's yellow + black; add the pairs to `contrast.mjs` | S | 0 |
-| `:focus` vs `:focus-visible` | `:focus-visible` everywhere | Keep it (brief). Text inputs match `:focus-visible` on click too, so inputs behave like GOV.UK. Deviation D5 | n/a | 0 |
-| [Links](https://design-system.service.gov.uk/styles/links/) ([`S/settings/_links.scss#L19-L48`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/settings/_links.scss#L19-L48), [`S/helpers/_links.scss`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/helpers/_links.scss#L86-L104)) | **P**: underlined, but text colour, 2 px, offset .2em, no hover | Thickness `max(1px, .0625rem)`, offset `.1578em`; hover thickness `max(3px, .1875rem, .12em)` with `text-decoration-skip-ink: none`; colour `link` → hover/active `text`; no visited state | S | +0.1 KB; no CLS |
+| [Page template](https://design-system.service.gov.uk/styles/page-template/) | **P**: header, main and footer, `lang="pl"`; no skip link | `govuk-template` on `<html>`, `govuk-template__body` on `<body>`, skip link, Generic header, `govuk-width-container` > `govuk-main-wrapper` (`id="main-content"`), our footer | M | +core CSS (in the 7.7 KB); no JS |
+| [Layout: width container](https://design-system.service.gov.uk/styles/layout/) ([`S/helpers/_width-container.scss#L23-L72`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/helpers/_width-container.scss#L23-L72)) | **M**: `max-w-2xl` (672 px), gutters 16 / 32 | `govuk-width-container`: 960 px max, gutters 15 / 30 px with safe-area insets | S | in 7.7 KB |
+| [Layout: grid](https://design-system.service.gov.uk/styles/layout/) | **M** | `govuk-grid-row` > `govuk-grid-column-two-thirds` for text pages (≤ 75 characters per line) | S | in 7.7 KB |
+| [Layout: main wrapper](https://design-system.service.gov.uk/styles/layout/) ([`S/objects/_main-wrapper.mixin.scss#L26-L53`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/objects/_main-wrapper.mixin.scss#L26-L53)) | **M**: `mt-8` / `md:mt-14` on each `h1` | `govuk-main-wrapper` (20 / 40 px), `--l` where nothing precedes it | S | 0 |
+| Breakpoints ([`S/settings/_media-queries.scss#L11-L13`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/settings/_media-queries.scss#L11-L13)) | **P**: Tailwind 640 / 768 | GOV.UK 320 / 641 / 769 via `govuk-media-query()` | S | 0 |
+| [Type scale](https://design-system.service.gov.uk/styles/type-scale/) ([`S/settings/_typography-responsive.scss#L17-L138`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/settings/_typography-responsive.scss#L17-L138)) | **P**: body 18 / 27.9, h1 36→48, h2 22 | `govuk-body` (19 / 25), `govuk-heading-xl/l/m/s`, `govuk-caption-*`, `govuk-body-s`; CLAUDE.md updated | M | 0; `check-fonts` guards CLS |
+| [Paragraphs](https://design-system.service.gov.uk/styles/paragraphs/), [headings](https://design-system.service.gov.uk/styles/headings/) | **P**: ad hoc `mt-*` | the GOV.UK classes' own margins | M | 0 |
+| [Spacing](https://design-system.service.gov.uk/styles/spacing/) ([`S/settings/_spacing.scss#L11-L76`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/settings/_spacing.scss#L11-L76)) | **P**: 4 px rhythm | `govuk-!-margin-*` / `govuk-!-padding-*` overrides and `govuk-spacing()` in `app-*` Sass | M | spacing overrides +~1 KB if imported whole; import only the used ones |
+| [Focus: links](https://design-system.service.gov.uk/get-started/focus-states/) ([`S/helpers/_focused.scss#L20-L47`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/helpers/_focused.scss#L20-L47)) | **M** | `govuk-link` (`:focus` → `govuk-focused-text`) | S | in 7.7 KB |
+| [Focus: inputs](https://design-system.service.gov.uk/get-started/focus-states/) ([`#L83-L94`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/helpers/_focused.scss#L83-L94)) | **P** | `govuk-input` (`govuk-focused-form-input`) | S | in 7.7 KB |
+| Focus: other boxes ([`#L64-L69`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/helpers/_focused.scss#L64-L69)) | **M** | The "more dates" disclosure becomes `govuk-details` (its own focus); the `site.scss` suggestion rows use `govuk-focused-text` | S | ~0.1 KB |
+| [Links](https://design-system.service.gov.uk/styles/links/) ([`S/helpers/_links.scss#L86-L104`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/helpers/_links.scss#L86-L104)) | **P**: text colour, 2 px, `.2em`, no states | `govuk-link`: 1 px (`max(1px, .0625rem)`), offset `.1578em`, hover `max(3px, .1875rem, .12em)`, link / visited / hover / active colours | S | in 7.7 KB |
 | Links: same tab | **C** (task 16) | none | n/a | n/a |
-| [Type scale](https://design-system.service.gov.uk/styles/type-scale/) ([`S/settings/_typography-responsive.scss#L17-L138`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/settings/_typography-responsive.scss#L17-L138)) | **P**: body 18/27.9, h1 36→48, h2 22 | Body 19/25; `h1` heading-l 27/30→36/40, or xl for the home page 32/35→48/50; `h2` heading-m 21/25→24/30; `h3` heading-s 19/25; small 16/20. Changes the CLAUDE.md "body text 18px" rule (D6) | M | 0 bytes; CLS checked by `check-fonts` (fallback metrics are size-independent) |
-| [Paragraphs](https://design-system.service.gov.uk/styles/paragraphs/), [headings](https://design-system.service.gov.uk/styles/headings/) ([`S/core/_typography.mixin.scss`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/core/_typography.mixin.scss#L6-L60)) | **P**: ad-hoc `mt-*` per element | Heading bottom margins: xl 30→50, l 20→30, m and s 15→20; paragraphs 15→20 (responsive scale 8, 6, 4) | M | ~0 |
-| [Spacing](https://design-system.service.gov.uk/styles/spacing/) ([`S/settings/_spacing.scss#L11-L76`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/settings/_spacing.scss#L11-L76)) | **P**: 4 px Tailwind rhythm | Add the static scale 0, 5, 10, 15, 20, 25, 30, 40, 50, 60 px and responsive tokens (4: 15→20, 5: 15→25, 6: 20→30, 7: 25→40, 8: 30→50, 9: 40→60 at 641 px) as Tailwind theme values; migrate page by page | M | +0.3 KB CSS |
-| [Layout](https://design-system.service.gov.uk/styles/layout/): width container ([`S/helpers/_width-container.scss#L23-L72`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/helpers/_width-container.scss#L23-L72)) | **P**: `max-w-2xl` (672 px), gutters 16 / 32 px | Gutters 15 / 30 px with `env(safe-area-inset-*)`. Keep a single two-thirds-like column (≈ 640 px, ≤ 75 characters); a 960 px container adds nothing on a one-column site (D7) | S | 0 |
-| [Layout](https://design-system.service.gov.uk/styles/layout/): main wrapper ([`S/objects/_main-wrapper.mixin.scss#L26-L53`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/objects/_main-wrapper.mixin.scss#L26-L53)) | **P**: `mt-8` / `md:mt-14` (32 / 56) on each `h1` | `main` gets padding 20 / 40 px top and bottom, 30 / 50 px when nothing comes before it | S | 0 |
-| Breakpoints ([`S/settings/_media-queries.scss#L11-L13`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/settings/_media-queries.scss#L11-L13)) | **C** in effect: Tailwind `sm` 640, `md` 768 vs GOV.UK 641 / 769 | Optionally set `--breakpoint-sm: 40.0625rem`, `--breakpoint-md: 48.0625rem` for exactness | S | 0 |
-| [Page template](https://design-system.service.gov.uk/styles/page-template/) | **P**: header, main and footer present; no skip link; `lang="pl"` ✓ | Add the skip link ("Przejdź do treści") as the first focusable element. The component itself is in the "later" list, but it belongs to the template | S | +0.1 KB HTML |
+| Theme | **M** (for GOV.UK): dark default with a toggle | Light only: remove the dark tokens, the toggle and the theme script (PR 1) | S | JS −toggle; CSS −dark blocks |
+| Own CSS | **M** (for GOV.UK): Tailwind utilities everywhere | GOV.UK classes only; `site.scss` for the logo, bin markers and suggestions; `check-own-css` in CI; Tailwind deleted in PR 8 | L (spread over PRs 1–8) | CSS 4.9 → ~8.7 KB gzip |
 
 ### Forms
-| GOV.UK item | Now | Change needed | Effort | Perf |
+| GOV.UK item | Now | Change | Effort | Perf |
 |---|---|---|---|---|
-| [Text input](https://design-system.service.gov.uk/components/text-input/) | **P**: see the spec table | Spec table rows I1–I9 | S | ~0 |
-| Text input: widths | **P**: house number `w-32` (128 px); street search full width | House number `width-5` (`max-width: 5.5em`); search fluid 100 % | S | 0 |
-| Text input: no placeholder | **M**: "np. Słowackiego" | Remove it; the hint already gives examples | S | −30 B HTML |
-| [Label](https://design-system.service.gov.uk/components/text-input/) / [hint](https://design-system.service.gov.uk/components/text-input/) | **P**: label 22 px bold, uniform 8 px gaps | Spec rows L1–L4 | S | 0 |
-| [Error message](https://design-system.service.gov.uk/components/error-message/) | **M** | `<p class="error-message" id="nr-error"><span class="sr-only">Błąd:</span> …</p>` between hint and input; the input gets `aria-describedby="nr-hint nr-error"` and the error class | M | +0.1 KB HTML on error pages only |
-| [Error summary](https://design-system.service.gov.uk/components/error-summary/) | **M** | At the top of `main`: `div[tabindex=-1]` with `role="alert"` inside, title "Jest problem", a list of links to `#nr`, focused on load; same wording as the field message | M | +0.3 KB HTML on error pages; 0 JS (see the recommendation) |
-| [Validation pattern](https://design-system.service.gov.uk/patterns/validation/) | **M** | Server-side only (GET form): empty → "Wpisz numer domu, na przykład 12 albo 12a"; unknown → "Nie mamy numeru 42 w harmonogramie tej ulicy. Sprawdź numer albo harmonogram gminy". `<title>` starts with "Błąd: "; `novalidate` on forms | M | 0 |
-| Form group ([`S/objects/_form-group.mixin.scss#L5-L24`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/objects/_form-group.mixin.scss#L5-L24)) | **M** | Wrapper with bottom margin 20 / 30; error modifier with a 5 px `danger` left bar and 15 px padding | S | ~0 |
-| Radios / checkboxes | **N/A**: none on the site (the theme switch is a cycling button) | none | n/a | n/a |
-| Search with suggestions (autocomplete) | **P**: an ARIA 1.2 combobox, tested by `check-search`; there is no GOV.UK Design System autocomplete component (GOV.UK services use alphagov's accessible-autocomplete separately) | Keep the behaviour. Restyle the input to the text-input spec; option rows keep the 48 px minimum; the highlighted row gets the box focus colours (`focus` fill, `focus-text`) instead of `surface-2` + amber bar | S | ~0; `check-search` guards layout shift |
-| Search: submit control | **P**: no visible button; Enter picks the single or highlighted match | Keep it (one thing per page, and suggestions are the action). Revisit if research shows people look for a button | n/a | n/a |
+| [Text input](https://design-system.service.gov.uk/components/text-input/) | **P** | `govuk-form-group` > `govuk-label` + `govuk-hint` + `govuk-input`; house number `govuk-input--width-5` | S | in 7.7 KB |
+| Text input: placeholder | **M**: "np. Słowackiego" | Remove it (the hint has examples) | S | −30 B HTML |
+| [Label](https://design-system.service.gov.uk/components/text-input/), [hint](https://design-system.service.gov.uk/components/text-input/) | **P** | `govuk-label govuk-label--m` for the questions (or `govuk-label-wrapper` + `--l` when the question is the page heading); `govuk-hint` | S | 0 |
+| [Error message](https://design-system.service.gov.uk/components/error-message/) | **M** | `<p class="govuk-error-message" id="nr-error"><span class="govuk-visually-hidden">Błąd:</span> …</p>`; `govuk-input--error`; `aria-describedby="nr-hint nr-error"` | M | error pages only |
+| [Error summary](https://design-system.service.gov.uk/components/error-summary/) | **M** | GOV.UK markup: `govuk-error-summary` > `div[role=alert]` > `h2.govuk-error-summary__title` "Jest problem" + `ul.govuk-list.govuk-error-summary__list` with `#nr` links; focused on load without JS (`autofocus` + `tabindex="-1"`) | M | 0 JS |
+| [Validation pattern](https://design-system.service.gov.uk/patterns/validation/) | **M** | Server side (GET form):<br>empty → „Wpisz numer domu, na przykład 12 albo 12a";<br>unknown → „Nie mamy numeru 42 w harmonogramie tej ulicy. Sprawdź numer albo harmonogram gminy";<br>"Błąd: " title prefix; `novalidate` | M | 0 |
+| [Form group, error](https://design-system.service.gov.uk/components/error-message/) ([`S/objects/_form-group.mixin.scss#L14-L17`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/objects/_form-group.mixin.scss#L14-L17)) | **M** | `govuk-form-group--error` | S | 0 |
+| Radios / checkboxes | **N/A**: none (the theme toggle is removed) | none | n/a | n/a |
+| Search with suggestions | **P**: an ARIA 1.2 combobox (`check-search`); GOV.UK has no autocomplete component in the Design System (services use alphagov's accessible-autocomplete separately) | Keep the behaviour. The input becomes `govuk-input` (the search icon goes: GOV.UK inputs have none). The suggestion list is `app-suggestions`, with the highlighted row in the GOV.UK focus colours (`focus` fill, `focus-text`) | S | ~0; `check-search` guards layout shift |
+| Search: submit button | **P**: none; Enter picks the match | Keep (suggestions are the action). Revisit with research | n/a | n/a |
 
 ### Buttons
-| GOV.UK item | Now | Change needed | Effort | Perf |
+| GOV.UK item | Now | Change | Effort | Perf |
 |---|---|---|---|---|
-| [Default button](https://design-system.service.gov.uk/components/button/) | **P**: amber fill, but 4 px radius, no shadow, no hover/active, generic focus ring | Spec rows B1–B11 on "Pokaż odbiory" and "Dodaj do kalendarza". The latter stays a real link styled as a button. GOV.UK adds `role="button"` + `draggable="false"` + Space handling (JS) to such links; we skip them because it navigates to a file, and a link is the honest role | S | +0.4 KB CSS |
-| Secondary button | **N/A** now | Define the style (tokens above) for later; don't use it until a page needs two actions | S | in the +0.4 KB |
-| Warning button | **N/A**: nothing destructive on the site | Define only. GOV.UK: "Most services should not need one" | S | in the +0.4 KB |
-| Start button | **N/A**: the home page is the service (search), not a start page | none | n/a | n/a |
-| Disabled buttons | **C**: none used | Document "avoid", as GOV.UK does: "Disabled buttons have poor contrast and can confuse some users, so avoid them if possible" | S | 0 |
-| Double-click prevention | **N/A**: GET forms are safe to repeat | none | n/a | n/a |
+| [Button](https://design-system.service.gov.uk/components/button/) | **P** | `govuk-button` on "Pokaż odbiory" (`<button>`) and "Dodaj do kalendarza" (`<a class="govuk-button" role="button" draggable="false">`, as GOV.UK's link-button markup, without the Space-key JS) | S | in 7.7 KB |
+| Secondary / warning | **N/A** now | Available via `govuk-button--secondary` / `--warning` (GOV.UK colours); unused until needed | S | in 7.7 KB |
+| Start button | **N/A**: no start page | none | n/a | n/a |
+| Disabled | **C**: none used | Follow GOV.UK: avoid | n/a | 0 |
 
-**Later** (not audited in this phase): skip link (as a component), back link, breadcrumbs, details, inset text, warning text, notification banner, panel, summary list, table, tag, accordion, tabs, fieldset, date input, select, textarea, character count, file upload, cookie banner, phase banner, service navigation, footer, generic header, and the patterns other than validation (question pages, check answers, confirmation, cookies, contact details, addresses, …).
+**Later** (not audited now; details, summary list, inset text and tag are planned for the pickup display in PR 6): back link, breadcrumbs, warning text, notification banner, panel, table, accordion, tabs, fieldset, date input, select, textarea, character count, file upload, cookie banner, phase banner, service navigation, and the patterns other than validation.
 
-## Precise spec: forms and buttons
+## Spec reference: forms and buttons (GOV.UK values we now take as-is)
 
-`GOV.UK` values are from v6.5.1; px at the 16 px root (v6 outputs rem). The colours in the "proposed" column are Latarnia roles (see the mapping above). Each row is one property.
+The target is the GOV.UK value in every row; only colours are mapped (table above). Kept for review and visual QA.
 
-### Text input
-| # | Property | GOV.UK value (source) | Ours now | Proposed |
-|---|---|---|---|---|
-| I1 | Font size / line height | 19 px / 25 px, all sizes ([`input/_mixin.scss#L6`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/input/_mixin.scss#L6), [`_typography-responsive.scss#L116`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/settings/_typography-responsive.scss#L116)) | 22 px / 1.3 (`text-lg`) | 19 px (1.1875rem) / 25 px |
-| I2 | Height | 40 px, `govuk-px-to-rem(40px)` ([`#L10`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/input/_mixin.scss#L10)) | `min-h-14` = 56 px | **48 px** (3rem): deviation D8, our 48 px tap-target rule. Otherwise 40 px |
-| I3 | Padding | 5 px all round, `govuk-spacing(1)` ([`#L12`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/input/_mixin.scss#L12)) | 16 px sides (48 px left on search for the icon) | 5 px; the search keeps its left inset for the icon (`pl-10`) |
-| I4 | Border | 2 px solid `input-border` ([`#L17-L19`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/input/_mixin.scss#L17-L19), [`_measurements.scss#L76`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/settings/_measurements.scss#L76)) | 2 px `border` (#6f7a8d) | 2 px `input-border` (= `text`) |
-| I5 | Radius | 0 ([`#L18`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/input/_mixin.scss#L18)) | 4 px (`rounded-sm`) | 0 |
-| I6 | Background | not set (the page's white) | `surface` | `surface` (dark `#19202b` gives the field a visible well; light `#ffffff` = GOV.UK) |
-| I7 | Focus | `outline: 3px solid focus; outline-offset: 0; box-shadow: inset 0 0 0 2px input-border` ([`_focused.scss#L83-L94`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/helpers/_focused.scss#L83-L94)) | border → `focus` + 3 px ring at 3 px offset | Same as GOV.UK on `:focus-visible` |
-| I8 | Error | `border-color: error`; on focus back to `input-border` ([`#L46-L52`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/input/_mixin.scss#L46-L52)) | none | `danger`; `input-border` on focus |
-| I9 | Widths | Fluid 100 %; fixed `--width-30/20/10/5/4/3/2` = max-width 29.5 / 20.5 / 11.5 / 5.5 / 4.5 / 3.75 / 2.75 em ([`#L62-L88`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/input/_mixin.scss#L62-L88)) | search full width; number 128 px | search fluid; number `--width-5` (5.5em) |
-| I10 | Disabled | opacity .5, `cursor: not-allowed` ([`#L28-L33`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/input/_mixin.scss#L28-L33)) | n/a | same, if ever used |
+| # | Property | GOV.UK value (source) | Ours now |
+|---|---|---|---|
+| I1 | Input font | 19 px / 25 px ([`input/_mixin.scss#L6`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/input/_mixin.scss#L6)) | 22 px / 1.3 |
+| I2 | Input height | 40 px ([`#L10`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/input/_mixin.scss#L10)) | 56 px |
+| I3 | Input padding | 5 px ([`#L12`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/input/_mixin.scss#L12)) | 16 px (48 px left on the search) |
+| I4 | Input border | 2 px `input-border` ([`#L17-L19`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/input/_mixin.scss#L17-L19)) | 2 px `border` grey |
+| I5 | Input radius | 0 ([`#L18`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/input/_mixin.scss#L18)) | 4 px |
+| I6 | Input focus | `outline: 3px solid focus; outline-offset: 0; box-shadow: inset 0 0 0 2px input-border` on `:focus` ([`_focused.scss#L83-L94`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/helpers/_focused.scss#L83-L94)) | border → focus colour + ring at 3 px offset |
+| I7 | Input error | `border-color: error`; `input-border` on focus ([`#L46-L52`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/input/_mixin.scss#L46-L52)) | none |
+| I8 | Input widths | fluid 100 %; `--width-30/20/10/5/4/3/2` = 29.5 / 20.5 / 11.5 / 5.5 / 4.5 / 3.75 / 2.75 em ([`#L62-L88`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/input/_mixin.scss#L62-L88)) | full width; 128 px |
+| L1 | Label | 19 px; `--s` bold; `--m` 21→24 bold, 15 px below ([`label/_mixin.scss#L6-L35`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/label/_mixin.scss#L6-L35)) | 22 px bold, 8 px below |
+| L2 | Hint | 19 px `secondary-text`, 15 px below; 10 px after a small label ([`hint/_mixin.scss#L6-L24`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/hint/_mixin.scss#L6-L24)) | 18 px, 8 px |
+| L3 | Error message | 19 px bold `error`, 15 px below, hidden prefix ([`error-message/_mixin.scss#L6-L13`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/error-message/_mixin.scss#L6-L13), [`template.njk#L9`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/error-message/template.njk#L9)) | none |
+| L4 | Form group | 20→30 px below; error: 15 px padding + 5 px `error` bar ([`_form-group.mixin.scss#L5-L24`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/objects/_form-group.mixin.scss#L5-L24)) | none |
+| E1 | Error summary | 5 px `error` border, padding 15→20, margin 30→50, `:focus` 3 px outline; title 21→24 bold; bold error links ([`error-summary/_mixin.scss`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/error-summary/_mixin.scss#L5-L56)) | none |
+| E2 | Error summary behaviour | `role="alert"` inner div ([`template.njk#L7-L9`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/error-summary/template.njk#L7-L9)); focus on init ([`error-summary.mjs#L20-L26`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/error-summary/error-summary.mjs#L20-L26)); link click focuses the input ([`#L85-L88`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/error-summary/error-summary.mjs#L85-L88)) | none |
+| B1 | Button font | 19 px, line height 1, regular ([`button/_mixin.scss#L38`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L38)) | 22 px bold |
+| B2 | Button padding | 8 / 10 / 7 px ([`#L48-L49`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L48-L49)), so 38 px + 2 px shadow = 40 px | 56 px tall |
+| B3 | Button border / radius | 2 px transparent / 0 ([`#L50-L51`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L50-L51)) | none / 4 px |
+| B4 | Button shadow | `0 2px 0` shadow colour ([`#L54`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L54)) | none |
+| B5 | Button width / margin | 100 % → auto from 641 px; bottom 22→32 px ([`#L43-L61`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L43-L61)) | auto |
+| B6 | Hover / active | hover fill; active `top: 2px`, `::before` keeps the hit area ([`#L79-L129`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L79-L129)) | none |
+| B7 | Button focus | `:focus` border + inset 1 px focus; not hovered or active: fill `focus`, text `focus-text`, `0 2px 0 focus-text` ([`#L88-L99`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L88-L99)) | generic ring |
+| B8 | Disabled | opacity .5, no hover or press ([`#L132-L144`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L132-L144)) | n/a |
+| B9 | Variants | secondary, warning, inverse, start ([`#L146-L231`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L146-L231)) | none |
 
-### Label, hint, error message, form group, error summary
-| # | Property | GOV.UK value (source) | Ours now | Proposed |
-|---|---|---|---|---|
-| L1 | Label size | 19 px regular; `--s` 19 bold; `--m` 21→24 bold; `--l` 27→36; `--xl` 32→48 ([`label/_mixin.scss#L6-L35`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/label/_mixin.scss#L6-L35)) | 22 px bold | Question labels `--m` (21→24 bold); the search label `--m` |
-| L2 | Label → next | 5 px; 15 px for `--m/--l/--xl` ([`#L10`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/label/_mixin.scss#L10), [`#L19`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/label/_mixin.scss#L19)) | 8 px (`gap-2`) | 15 px under `--m` |
-| L3 | Hint | 19 px, `secondary-text`; 15 px below; 10 px when after a small label ([`hint/_mixin.scss#L6-L24`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/hint/_mixin.scss#L6-L24)) | 18 px `text-muted`, 8 px below (+4 px `mt-1` on the input) | 19 px `text-muted`, 15 px below |
-| L4 | Error message | 19 px **bold**, `error`, 15 px below, hidden "Error:" prefix ([`error-message/_mixin.scss#L6-L13`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/error-message/_mixin.scss#L6-L13), [`template.njk#L9`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/error-message/template.njk#L9)) | none | 19 px bold `danger`, 15 px below, `<span class="sr-only">Błąd:</span>` |
-| L5 | Form group | bottom margin 20→30 ([`_form-group.mixin.scss#L7`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/objects/_form-group.mixin.scss#L7)) | none (`gap-2` stack) | 20→30 |
-| L6 | Form group, error | `padding-left: 15px; border-left: 5px solid error` ([`#L14-L17`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/objects/_form-group.mixin.scss#L14-L17)) | none | same, `danger` |
-| E1 | Summary box | 5 px `error` border; padding 15→20; bottom margin 30→50; 19 px text ([`error-summary/_mixin.scss#L5-L12`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/error-summary/_mixin.scss#L5-L12)) | none | same, `danger` |
-| E2 | Summary focus | `outline: 3px solid focus` ([`#L14-L17`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/error-summary/_mixin.scss#L14-L17)) | none | same |
-| E3 | Summary title | 21→24 px bold, 15→20 below ([`#L20-L26`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/error-summary/_mixin.scss#L20-L26)); wording "There is a problem" | none | "Jest problem" |
-| E4 | Summary links | bold, error colour, link focus style ([`#L52-L56`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/error-summary/_mixin.scss#L52-L56)) | none | bold `danger`, link focus |
-| E5 | Summary semantics | `role="alert"` on an inner `div` ([`template.njk#L7-L9`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/error-summary/template.njk#L7-L9)); focused on init ([`error-summary.mjs#L20-L26`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/error-summary/error-summary.mjs#L20-L26)); a link click scrolls the label into view and focuses the input ([`#L85-L88`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/error-summary/error-summary.mjs#L85-L88)) | none | Same markup; focus via `autofocus` + `tabindex="-1"`; links `href="#nr"` (native jump; the label sits right above the input, so it stays in view) |
-| E6 | Page title | "Error: " prefix ([validation pattern](https://design-system.service.gov.uk/patterns/validation/)) | none | "Błąd: " prefix |
-
-### Buttons
-| # | Property | GOV.UK value (source: [`button/_mixin.scss`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss)) | Ours now | Proposed |
-|---|---|---|---|---|
-| B1 | Font | 19 px, line height 19 px (1), **regular** weight ([`#L38`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L38)) | 22 px bold | 19 px regular, line height 1 |
-| B2 | Padding | 8 / 10 / 7 px, top / sides / bottom (= `spacing(2)` − 2 border − 1 half-shadow) ([`#L48-L49`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L48-L49)) | 0 / 20 px, centred in 56 px | 12 / 10 / 11 px to reach 48 px including the shadow (D8); otherwise exact |
-| B3 | Border / radius | 2 px transparent / 0 ([`#L50-L51`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L50-L51)) | none / 4 px | 2 px transparent / 0 |
-| B4 | Bottom shadow | `0 2px 0 shadow-colour` ([`#L35`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L35), [`#L54`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L54)) | none | `0 2px 0 var(--accent-shadow)` |
-| B5 | Width | 100 % on mobile, `auto` from 641 px ([`#L43`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L43), [`#L61`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L61)) | auto | same |
-| B6 | Bottom margin | 22→32 px (responsive 6 + shadow) ([`#L47`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L47)) | ad hoc | same |
-| B7 | Hover | darker fill (shade 25 %) ([`#L79-L81`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L79-L81)) | none | `accent-hover` |
-| B8 | Active (pressed) | `top: 2px` (moves down onto its shadow); `::before` keeps the hit area ([`#L83-L86`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L83-L86), [`#L103-L129`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L103-L129)) | none | same (`position: relative`, so no layout shift) |
-| B9 | Focus | `border-color: focus`, transparent 3 px outline, `inset 0 0 0 1px focus`; when not hovered or active: fill `focus`, text `focus-text`, `box-shadow: 0 2px 0 focus-text` ([`#L88-L99`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L88-L99)) | generic ring | same on `:focus-visible` |
-| B10 | Disabled | opacity .5; no hover; no press ([`#L132-L144`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L132-L144)) | n/a | same; avoid using it |
-| B11 | Variants | secondary: grey fill, black text, grey shadow ([`#L146-L165`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L146-L165)); warning: red fill, white text ([`#L167-L186`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L167-L186)); start: 24 px bold, `inline-flex`, arrow icon with 5→10 px gap ([`#L209-L231`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L209-L231)) | none | secondary and warning with the tokens above; no start button |
-| B12 | Behaviour | Space activates a link-button; optional double-click guard of 1 s ([`button.mjs#L3`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/button.mjs#L3), [`#L45`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/button.mjs#L45)) | n/a | Real `<button>` for actions; "Dodaj do kalendarza" stays a link (it navigates to a file), so no Space handler and no JS |
-
-## Deliberate deviations
-| # | Deviation | Why |
+## Deviations (only what GOV.UK forbids us to copy, plus language)
+| # | What is ours | Why |
 |---|---|---|
-| D1 | Our flat "ul." logo and the Latarnia palette; no crown, no GOV.UK logotype, no GOV.UK blue/black header or footer | Required: the Service Manual says a site not on GOV.UK "must not … use the crown or GOV.UK logotype … use the GOV.UK brand colours" |
-| D2 | Atkinson Hyperlegible Next, self-hosted | Required: "use an alternative typeface" off service.gov.uk. It's also designed for low-vision readers |
-| D3 | Dark theme by default, with a toggle | Latarnia identity; many evening and older users. GOV.UK has no dark mode, so every role is mapped in both themes and checked by `contrast.mjs` |
-| D4 | Polish | Our users. GOV.UK says the error prefix can be translated ("Błąd:"); summary title "Jest problem" |
-| D5 | `:focus-visible` instead of `:focus` | The brief: keyboard-only focus. Inputs behave the same, since text inputs always match `:focus-visible` |
-| D6 | Body text 19 px (CLAUDE.md says 18 px) | Follows GOV.UK; needs Jakub's OK and a CLAUDE.md update in the same PR |
-| D7 | One ≈ 640 px column instead of the 960 px container + two-thirds grid | The site has no sidebar; the column already gives GOV.UK's reading width |
-| D8 | Inputs and buttons 48 px tall (GOV.UK 40 px) | CLAUDE.md's 48 px tap-target rule. Only the height differs; borders, shadow, focus and type follow the spec |
-| D9 | No visited link colour | GOV.UK's own "links without a visited state" option; our links are mostly navigation |
+| D1 | The brand-blue group → the Latarnia amber group (brand, link, link hover, template/surface background, surface border); everything else is GOV.UK's palette | Service Manual: a site not on GOV.UK "must not … use the GOV.UK brand colours". (The colour page's "Do not copy the specific hexadecimal (hex) colour values" is coding guidance: use the Sass functions. We do.) |
+| D2 | Atkinson Hyperlegible Next, self-hosted | Typeface: off service.gov.uk, "use an alternative typeface"; Service Manual: "must not … use the GDS Transport typeface" |
+| D3 | Our "ul." plate in the GOV.UK **Generic header**; our own footer; no crown, GOV.UK logotype, GOV.UK header or footer | Header: "you must not use the GOV.UK header component … Use the Generic header component instead"; "Services outside of the GOV.UK proposition should stop using the header and footer components and instead create their own" |
+| D4 | Polish copy (e.g. „Błąd:", „Jest problem") | Our users; GOV.UK says the error prefix can be changed for another language |
+
+Light only is not a deviation: GOV.UK is light only. Any further deviation needs Jakub's approval.
+
+## Own CSS: `web/app/site.scss` only
+
+**Allowed:** only what GOV.UK has no equivalent for, written with GOV.UK Sass functions and mixins (`govuk-spacing()`, `govuk-colour()` / `govuk-functional-colour()`, `govuk-font()`, `govuk-media-query()`, `govuk-focused-*`). No raw hex, no px.
+1. **Logo:** the "ul." plate inside `govuk-generic-header__homepage-link` (size and alignment).
+2. **Bin markers:** the waste-colour markers next to each fraction. The bin colours are real-world colours, so they're the only colours defined outside the GOV.UK palette (as Sass variables in this file).
+3. **Search suggestions:** the dropdown list under the `govuk-input`, with the highlighted row in the GOV.UK focus colours.
+
+**Everything else uses GOV.UK:**
+- **Pickups:** the next pickup is a `govuk-summary-list` (date → fractions) under a `govuk-heading-m`; fractions are text plus the bin marker.
+- **More dates:** "Pokaż więcej terminów" is `govuk-details`.
+- **Notes and the source line:** `govuk-inset-text` / `govuk-body-s`.
+- **Status labels:** e.g. "Termin przesunięty" uses a coloured `govuk-tag` (never the default blue).
+- **No `govuk-panel`:** GOV.UK reserves it for confirmation pages.
+
+**New CI check `scripts/check-own-css.mjs`** (in PR 1, tightened as pages migrate). It fails on:
+- `site.scss` over **80 lines** or its compiled CSS over **1 KB gzip** (`govuk-frontend` excluded);
+- any other `.css` / `.scss` file under `web/` besides `app/site.scss` and the GOV.UK entry file;
+- raw hex or `px` in `site.scss`;
+- `govuk-tag` without a colour modifier;
+- after the last migration PR, any Tailwind class (an allowlist: `govuk-*`, `govuk-!-*`, `app-*`, `js-*`) or any `tailwindcss` dependency.
 
 ## Implementation plan (one prompt per PR)
 | # | PR | Scope | Risk |
 |---|---|---|---|
-| 1 | **Tokens and contrast** | Add the roles to `design/tokens.css` and `web/app/tokens.css`: `focus` light #ffdda0, `focus-text`, `input-border`, `link`, `accent-hover/shadow`, `danger-hover/shadow`. Add the new pairs to `contrast.mjs` and `tokens.md`; GOV.UK spacing scale as Tailwind theme values. No visual change except the light focus colour | Low |
-| 2 | **Focus states** | Link text-focus, box focus (theme switch, `summary`, option rows), input focus, button focus, all `:focus-visible`; screenshot each in both themes | Low; no CLS (outline and shadow) |
-| 3 | **Links** | Underline thickness and offset, hover thickening, `link` colour, no visited state | Low, but very visible: decide the amber links first |
-| 4 | **Text input, label and hint** | Spec rows I1–I10 and L1–L3 on the search and the house number; remove the placeholder; fixed width for the number | Medium: `check-search` (layout shift) and `check-fonts` guard it |
-| 5 | **Validation pattern** | House number: empty and unknown → error summary + "Błąd: " title + form-group bar + error message + error border; `novalidate`; rows L4–L6 and E1–E6; extend the a11y check with an error URL | Medium: server logic and ISR rewrite for `?nr=` |
-| 6 | **Buttons** | Rows B1–B12 on "Pokaż odbiory" and "Dodaj do kalendarza"; define secondary and warning; note the disabled guidance in `docs/brand.md` | Low |
-| 7 | **Type scale, spacing, template** | Body 19 / 25 (with a CLAUDE.md update), heading scale and margins, `main` padding, gutters, breakpoints, skip link | Medium–high: touches every page; do last, with the fonts and perf checks |
+| 1 | **GOV.UK Frontend foundation + light only** | Install `govuk-frontend` 6.5.1 (exact pin) and `sass`. Add the GOV.UK Sass entry with the palette and font settings. Remove dark mode: tokens, theme toggle, theme script, `colorScheme`; `contrast.mjs` on the new palette. Page template: `govuk-template`, skip link, Generic header with our logo (dark-background lockup on black), `govuk-width-container` + `govuk-main-wrapper`, our footer. `site.scss` with the logo rules. Rebuild the OG image for the new palette; favicon without the dark media query. Add `check-own-css` | Medium–high: every page's frame changes; fonts, perf, HTML and a11y checks; CSS budget watched |
+| 2 | **Typography and spacing** | `govuk-heading-*`, `govuk-body*`, `govuk-caption-*`, `govuk-list`, the `govuk-!-` overrides, the two-thirds grid on text pages (`/dostepnosc`, `/prywatnosc`, 404); delete the replaced utilities | Medium: `check-fonts` (CLS) |
+| 3 | **Links and focus** | `govuk-link` everywhere; GOV.UK focus via the components; `site.scss` parts use `govuk-focused-*` | Low |
+| 4 | **Inputs, labels, hints, autocomplete** | `govuk-form-group`, `govuk-label`, `govuk-hint`, `govuk-input` (`--width-5` for the number); remove the placeholder and the search icon; the suggestion list moves into `site.scss` (our combobox kept) | Medium: `check-search` (layout shift) |
+| 5 | **Buttons** | `govuk-button` for "Pokaż odbiory" and "Dodaj do kalendarza" | Low |
+| 6 | **Pickup display** | Street page: `govuk-summary-list`, `govuk-details`, `govuk-inset-text`, `govuk-tag`; bin markers in `site.scss` | Medium: street HTML budget (≤ 30 KB gzip), fonts check |
+| 7 | **Error summary and validation UI** | `govuk-error-summary`, `govuk-error-message`, `govuk-form-group--error`, `govuk-input--error`, "Błąd: " title, `novalidate`; focus via `autofocus`; a11y check with an error URL | Medium |
+| 7b | **Validation server logic** | Empty and unknown house number → the error state from PR 7 (GET form, ISR rewrite for `?nr=`) | Medium |
+| 8 | **Remove Tailwind** | Delete the dependencies, config, PostCSS and the remaining utilities; `check-own-css` switches on the Tailwind-class failure; final CSS budget check | Low–medium |
