@@ -9,20 +9,28 @@ export default async function Home() {
     searchIndexUrl(),
   ]);
 
+  // Variant A: a lookup page, as GOV.UK's "Find your local council": the
+  // service in the heading, one line of context, the field, then what you get.
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
-        <h1 className="govuk-heading-xl">
-          Kiedy śmieciarka przyjedzie pod Twój dom?
-        </h1>
-        <p className="govuk-body-l">
-          Wpisz ulicę w Lubaczowie albo wieś w gminie. Pokażemy, co wystawić
-          przed dom i na kiedy.
-        </p>
+        <h1 className="govuk-heading-xl">Sprawdź dzień wywozu śmieci</h1>
+        <p className="govuk-body-l">Dla Lubaczowa i wsi w gminie Lubaczów.</p>
 
         <div className="govuk-!-margin-bottom-8">
-          <AddressSearch indexUrl={indexUrl} />
+          <AddressSearch
+            indexUrl={indexUrl}
+            label="Ulica albo wieś"
+            hint="Na przykład Asnyka 12 albo Lisie Jamy – polskie znaki nie są potrzebne"
+          />
         </div>
+
+        <h2 className="govuk-heading-m">Co zobaczysz</h2>
+        <ul className="govuk-list govuk-list--bullet govuk-!-margin-bottom-8">
+          <li>kiedy przyjedzie śmieciarka i co wystawić przed dom</li>
+          <li>wszystkie terminy do dodania do kalendarza w telefonie</li>
+          <li>harmonogram do wydrukowania (PDF)</li>
+        </ul>
 
         <section aria-labelledby="sample-heading">
           <h2 id="sample-heading" className="govuk-heading-m">
