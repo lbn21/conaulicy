@@ -10,6 +10,13 @@
   fill: map.get($app-latarnia, "plate");
 }
 
+// Our footer (components/site-footer.tsx): the GOV.UK footer's top bar and
+// background, so on short pages the footer runs into the template background.
+.app-footer {
+  border-top: govuk-spacing(2) solid govuk-functional-colour(brand);
+  background: govuk-functional-colour(template-background);
+}
+
 // The street search: alphagov accessible-autocomplete with its own CSS,
 // unchanged, except one colour: it paints the highlighted suggestion in
 // GOV.UK's brand blue, which sites off GOV.UK must not use. Here it takes the
