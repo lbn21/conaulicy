@@ -19,6 +19,14 @@ So every environment reads and writes production data. Previews only read; anyth
 
 Don't use `vercel env run` (Vercel CLI 64.5): it hands the command back to its own parser, so `vercel env run -e production -- node -e …` started a `vercel deploy` of the working tree (rejected only by luck). Use `web/.env.local` instead.
 
+## Places and zones
+
+A zone (`waste:miasto-s1` … `waste:gmina-s5`) links places to events. A village part (`czesc_wsi`) without a zone entry of its own takes its parent village's zone (`pickZone`, `web/lib/places.ts`). A street in no zone has no sector: the site says the data is missing and never guesses.
+
+## Import tables
+
+The unattended import (docs/import-schedules.md) adds `import_runs` (one row per source per run), `import_changes` (every change by batch, for `npm run import:revert`), `source_files` (every source file by SHA-256, with its S3 key) and `source_pages` (watched pages' link hashes). It connects as the Neon role `conaulicy_import`, which can only read places and zones, write `events` and `gminy.schedule_url`, and write those four tables.
+
 ## Schema changes
 
 Migrations only add what the code about to be deployed needs, and run before that deploy:

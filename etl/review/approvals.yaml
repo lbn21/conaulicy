@@ -1,0 +1,18 @@
+# Dates the published schedules put off a row's usual weekday, with no public
+# holiday nearby to explain it. The unattended import (docs/import-schedules.md)
+# applies a schedule only if every such date is listed here; a new one opens
+# an issue instead. To accept one after checking the source, add it here in a PR.
+#
+# Baseline: the 2026 schedules as imported to production on 19 Oct 2026.
+anomalies:
+  - { zone_id: "waste:gmina-s1", date: "2026-08-14", note: "baseline 2026" }
+  - { zone_id: "waste:gmina-s1", date: "2026-09-01", note: "baseline 2026" }
+  - { zone_id: "waste:gmina-s2", date: "2026-09-02", note: "baseline 2026" }
+  - { zone_id: "waste:gmina-s3", date: "2026-09-03", note: "baseline 2026" }
+  - { zone_id: "waste:gmina-s4", date: "2026-09-04", note: "baseline 2026" }
+  - { zone_id: "waste:gmina-s5", date: "2026-06-09", note: "baseline 2026" }
+  - { zone_id: "waste:gmina-s5", date: "2026-09-07", note: "baseline 2026" }
+  - { zone_id: "waste:miasto-s1", date: "2026-09-01", note: "baseline 2026" }
+  - { zone_id: "waste:miasto-s1", date: "2026-09-02", note: "baseline 2026" }
+  - { zone_id: "waste:miasto-s2", date: "2026-04-02", note: "baseline 2026" }
+  - { zone_id: "waste:miasto-s3", date: "2026-04-02", note: "baseline 2026" }

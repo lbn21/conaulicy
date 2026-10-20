@@ -1,8 +1,3 @@
-// Each gmina's own schedule page by TERYT, linked when a place has no zone.
-// Not in the ETL output yet, so the CI fixture and the importer share this list.
-export const GMINA_SCHEDULE_PAGES: Record<string, string> = {
-  "1809011":
-    "https://czystylubaczow.info/odbior-odpadow/harmonogram-odbioru-odpadow/",
-  "1809042":
-    "https://www.gminalubaczow.pl/2026/01/02/harmonogram-odbioru-odpadow-komunalnych-na-rok-2026/",
-};
+// Each gmina's schedule page by TERYT, linked when a place has no zone:
+// from etl/sources.yaml (sources[].page), via the generated site module.
+export { GMINA_SCHEDULE_PAGES } from "../../lib/config.generated.ts";

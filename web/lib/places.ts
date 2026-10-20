@@ -113,7 +113,7 @@ export function isSplitStreet(
  * The zone of a street or village: the street entry covering the house
  * number, then the whole street's entry, then its locality's, then the
  * parent village's (a village part without an entry of its own takes its
- * village's zone, docs/data-model.md). On a split street without a number:
+ * village's zone, docs/database.md). On a split street without a number:
  * none, never a guess.
  */
 export function pickZone(

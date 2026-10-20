@@ -1,0 +1,244 @@
+# yaml-language-server: $schema=./sources.schema.json
+#
+# THE configuration of conaulicy.pl's data: sources, their public pages, how
+# changes are detected, read and checked, when the import runs, the AI models,
+# alert rules, the source archive, and the site's feature links. Everything
+# else is derived from this file and CI fails on drift (npm run config:check):
+# docs/data/sources.md, web/lib/config.generated.ts (site), the import
+# workflow's cron lines. Schema: etl/sources.schema.json. How to change
+# things: docs/import-schedules.md (RUNBOOK).
+
+site:
+  url: https://conaulicy.pl
+  # Footer navigation: live features only; shown once there are 2+ links.
+  features:
+    - section: Sprawdź przy swojej ulicy
+      links:
+        - { href: /, text: Wywóz śmieci }
+
+schedule:
+  # Daily import time. GitHub cron is UTC-only, so the workflow carries one
+  # cron per UTC offset of this time zone (summer and winter); the import
+  # itself decides what is due. false = no cron lines in the workflow (the
+  # drift check enforces it); manual runs still work.
+  enabled: false
+  time: "05:00"
+  timezone: Europe/Warsaw
+
+import:
+  # Network calls: attempts, first backoff (doubles each time).
+  retries: { attempts: 4, backoffSeconds: 5 }
+  validate:
+    # A row's usual weekday is the one holding at least this share of dates.
+    weekdayShare: 0.6
+    # An off-weekday date is explained by a public holiday on the usual
+    # weekday at most this many days away.
+    holidayWindowDays: 6
+    # Dates per fraction may differ from last year by this factor ± slack,
+    # compared only when last year has data in at least minMonths months.
+    counts: { factor: 0.5, slack: 2, minMonths: 10 }
+  alerts:
+    # Dead-man switch: one issue while any zone's last date is closer than this.
+    coverageMinDays: 21
+
+vision:
+  # Cursor CLI build installed by the workflow (downloads.cursor.com/lab/<cli>).
+  cli: 2026.10.19-6bbf2c4
+  # Two independent passes, different vendors; never "auto" or a -fast model.
+  passes:
+    - { vendor: xai, model: grok-4.7-medium }
+    - { vendor: anthropic, model: claude-opus-5-5-medium }
+
+archive:
+  bucket: conaulicy-sources-aaed02
+  region: eu-central-1
+  # GitHub Actions role (OIDC), PutObject/GetObject on sources/* only.
+  role: arn:aws:iam::498654322749:role/conaulicy-import-gha
+
+sources:
+  # Each source: a detector (finds the published files), an extractor (reads
+  # them into events) and validators. Types are registered in
+  # web/scripts/schedules/adapters.ts; a new kind of source (e.g. water cuts
+  # announced as posts) is a new extractor type plus an entry here.
+  - id: gmina
+    name: Gmina Lubaczów
+    origin: gmina
+    gmina: { id: lubaczow-gmina, teryt: "1809042" }
+    # The public page the site links to (never the archive).
+    page: https://www.gminalubaczow.pl/2026/01/02/harmonogram-odbioru-odpadow-komunalnych-na-rok-2026/
+    detect:
+      type: wp-post-files
+      site: https://www.gminalubaczow.pl
+      postSearch: harmonogram odbioru odpadów
+      postTitle: '^Harmonogram odbioru odpadów (komunalnych )?na rok (?<year>\d{4})$'
+      file: '^(?<sector>[1-5])_(?<year>\d{4})_[^/]+\.pdf$'
+    # Pages whose schedule links are hashed every run: a new link nobody
+    # picked up is an issue. Also the fallback when the WP API is down.
+    watch:
+      - url: https://www.gminalubaczow.pl/2026/01/02/harmonogram-odbioru-odpadow-komunalnych-na-rok-2026/
+        links: '^https://www\.gminalubaczow\.pl/wp-content/uploads/.+\.pdf$'
+      # Search, newest first: a new yearly post shows up here.
+      - url: https://www.gminalubaczow.pl/?s=harmonogram+odbioru&orderby=date&order=DESC
+        links: '^https://www\.gminalubaczow\.pl/\d{4}/\d{2}/\d{2}/harmonogram-odbioru-odpadow[^/]*/$'
+    zone: waste:gmina-s{sector}
+    extract: { type: gmina-pdf-text }
+    validate: [year, weekday, counts, villages]
+
+  - id: miasto
+    name: Miasto Lubaczów
+    origin: miasto
+    gmina: { id: lubaczow-miasto, teryt: "1809011" }
+    page: https://czystylubaczow.info/odbior-odpadow/harmonogram-odbioru-odpadow/
+    detect:
+      type: wp-media
+      site: https://czystylubaczow.info
+      parent: 48
+      file: '^harmonogram-(?<year>\d{4})-s(?<sector>[1-5])\.jpg$'
+    watch:
+      - url: https://czystylubaczow.info/odbior-odpadow/harmonogram-odbioru-odpadow/
+        # Uploads, without WordPress's resized copies (-1024x725.jpg).
+        links: '^https://czystylubaczow\.info/wp-content/uploads/.+(?<!-\d+x\d+)\.(jpe?g|png|pdf)$'
+      - url: https://czystylubaczow.info/?s=harmonogram&orderby=date&order=DESC
+        links: '^https://czystylubaczow\.info/[^?#]*harmonogram[^?#]*/$'
+    zone: waste:miasto-s{sector}
+    # No text layer: the vision passes above; applied only if they agree 100%.
+    extract: { type: miasto-jpg-vision }
+    validate: [year, weekday, counts, streets]
+    aliases:
+      Monte Casino: Monte Cassino
+      Józefa Conrada-Korzeniowskiego: Józefa Conrad-Korzeniowskiego
+      Jagiellonów: Osiedle Jagiellonów
+
+# The initial archive (Oct 2026), in the private bucket under
+# sources/<origin>/<fetched>/<file>; `npm run sources:pull` fetches it.
+# Files the import archives later are listed in the source_files table.
+archived:
+  - file: 1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf
+    origin: gmina
+    fetched: 2026-10-18
+    url: https://www.gminalubaczow.pl/wp-content/uploads/2026/01/1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf
+    sha256: 139159406cbc20a5227225a428d65ee94962f55383ea0f3e235ef2d2ca760fcc
+  - file: 2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf
+    origin: gmina
+    fetched: 2026-10-18
+    url: https://www.gminalubaczow.pl/wp-content/uploads/2026/01/2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf
+    sha256: 9ede01e712ca718ae57cfb737bca9672fb4afde13c2ee231eacd901364417ee2
+  - file: 3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf
+    origin: gmina
+    fetched: 2026-10-18
+    url: https://www.gminalubaczow.pl/wp-content/uploads/2026/01/3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf
+    sha256: 2472148475fe77cfce5261197cb5f126beaaff8eeabe71665961ee1f53a10054
+  - file: 4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf
+    origin: gmina
+    fetched: 2026-10-18
+    url: https://www.gminalubaczow.pl/wp-content/uploads/2026/01/4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf
+    sha256: efbad93c131426210ec7b2c68c1ebc406664d40168a9d9c24c83d3f4dcde863a
+  - file: 5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf
+    origin: gmina
+    fetched: 2026-10-18
+    url: https://www.gminalubaczow.pl/wp-content/uploads/2026/01/5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf
+    sha256: 755893808bae353e2e5ea0ca371b8f81b2f2cb8d6187c9f4d1f58738aa2e9e8d
+  - file: gmina_harm2026.html
+    origin: gmina
+    fetched: 2026-10-18
+    url: https://www.gminalubaczow.pl/2026/01/02/harmonogram-odbioru-odpadow-komunalnych-na-rok-2026/
+    sha256: ea6df0aca9e32733812b4d4261408cb580dce120f54f8397e51fe44983e88d11
+  - file: gmina_woda_wp-api_sample.json
+    origin: gmina
+    fetched: 2026-10-18
+    url: https://www.gminalubaczow.pl/wp-json/wp/v2/posts?search=przerwa%20w%20dostawie%20wody&_fields=date,link,title,content
+    sha256: ec17aea15a49a631fba2c2af5c63b40d2de29737cff353a99bb7f8637c59b63a
+  - file: czystylubaczow_harmonogram.html
+    origin: miasto
+    fetched: 2026-10-18
+    url: https://czystylubaczow.info/odbior-odpadow/harmonogram-odbioru-odpadow/
+    sha256: 79dbfd2455d18cb5cd6732ef616c6298ac7aec6d8fce46caec15dcdee83ced11
+  - file: harmonogram-2026-s1.jpg
+    origin: miasto
+    fetched: 2026-10-18
+    url: https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s1.jpg
+    sha256: cd2dabc9053dc72111495a8ac4bcf1af36f0a7366af452b40806368fafaad624
+  - file: harmonogram-2026-s2.jpg
+    origin: miasto
+    fetched: 2026-10-18
+    url: https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s2.jpg
+    sha256: fb408b9ca0c3e3e109fcf2b692cef5b6c09e3a2d79745ee21fcd2094ef1e2761
+  - file: harmonogram-2026-s3.jpg
+    origin: miasto
+    fetched: 2026-10-18
+    url: https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s3.jpg
+    sha256: af55af4e1b8f16e093d9ce13dcace64b201be708857fa00837a0a1a43f1d5bce
+  - file: harmonogram-2026-s4.jpg
+    origin: miasto
+    fetched: 2026-10-18
+    url: https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s4.jpg
+    sha256: 91171038fbab823badd430d0249f0ed20596ccb973c26b5e817ea57901aba1dc
+  - file: harmonogram-2026-s5.jpg
+    origin: miasto
+    fetched: 2026-10-18
+    url: https://czystylubaczow.info/wp-content/uploads/2025/12/harmonogram-2026-s5.jpg
+    sha256: c17185d966dac2a7edb300487768f78ec3488134650e7f93a6820e54928c5705
+  - file: mzgkim_feed_2026-10-18.xml
+    origin: mzgkim
+    fetched: 2026-10-18
+    url: https://mzgkim.lubaczow.pl/feed/
+    sha256: 69e42a66943dad4f6b573e0e7ed0ca042b98ee3c30f0061e7f9b45d032691e9d
+  - file: imgw_warningshydro_2026-10-18.json
+    origin: imgw
+    fetched: 2026-10-18
+    url: https://danepubliczne.imgw.pl/api/data/warningshydro
+    sha256: 58f5645350c13d116caebf0ca51d81b49ef37e0b648f775e8fde120911d630d6
+  - file: imgw_warningsmeteo_2026-10-18.json
+    origin: imgw
+    fetched: 2026-10-18
+    url: https://danepubliczne.imgw.pl/api/data/warningsmeteo
+    sha256: 571a53e5e9a7a43042d47000b531fed3f9d580d3ece5183a038fd7af8088de8b
+  - file: rso_podkarpackie_2026-10-18.json
+    origin: rso
+    fetched: 2026-10-18
+    url: https://komunikaty.tvp.pl/komunikatyxml/podkarpackie/wszystkie/0?_format=json
+    sha256: 5f4260599deebc4755edf27b49865da8436f2e558875f5492f1d05be2905cde1
+  - file: SIMC_1809011_1809042.csv
+    origin: teryt
+    fetched: 2026-10-18
+    url: https://eteryt.stat.gov.pl/eTeryt/rejestr_teryt/udostepnianie_danych/baza_teryt/uzytkownicy_indywidualni/pobieranie/pliki_pelne.aspx
+    sha256: 4c67881735127667b2cd926c4c50a4886e274448d8f01c487500826726b1aeec
+  - file: ULIC_1809011_miasto_lubaczow.csv
+    origin: teryt
+    fetched: 2026-10-18
+    url: https://eteryt.stat.gov.pl/eTeryt/rejestr_teryt/udostepnianie_danych/baza_teryt/uzytkownicy_indywidualni/pobieranie/pliki_pelne.aspx
+    sha256: 58fa1651aa1b697a79fa7c14f0383f8b9cb911bb2f7045b7f6fdf0e4dcd077a2
+  - file: ULIC_1809042_gmina_lubaczow.csv
+    origin: teryt
+    fetched: 2026-10-18
+    url: https://eteryt.stat.gov.pl/eTeryt/rejestr_teryt/udostepnianie_danych/baza_teryt/uzytkownicy_indywidualni/pobieranie/pliki_pelne.aspx
+    sha256: 8515ea542c8e0b698ece7d5c81eb0e2160545a34b039c160945946eeb68fee7e
+  - file: wigan-calendar.pdf
+    origin: inspiration
+    fetched: 2026-10-19
+    url: https://apps.wigan.gov.uk/MyNeighbourhood/Calendars/THUCCG.pdf?id=55066
+    sha256: bcd57afdef51dbc597cf03d765b78a7915980bcea097a12d5b742d1cf4066ad8
+  - file: DATA-INVENTORY.md
+    origin: meta
+    fetched: 2026-10-18
+    sha256: 1e56afa446d759b597c23c4eba47265a95e2e212d2d898a39ab8cad94743f0d7
+  - file: SHA256SUMS.txt
+    origin: meta
+    fetched: 2026-10-18
+    sha256: 1a03dd61e02d8b566dc0978b251a131b3f7344bc34647f5b0f3bf0d0cc36f55c
+  - file: address-register.sample.json
+    origin: meta
+    fetched: 2026-10-18
+    sha256: a3f490dcabb8aed958efdafe379fae3e2feb0872a0b88ec009c549e92f718e97
+  - file: build_sample.py
+    origin: meta
+    fetched: 2026-10-18
+    sha256: ab6bed7bf68166b6c4a41c4d25c234e446d615d25934101d20495706ca7c77a5
+  - file: schedule-2026.sample.json
+    origin: meta
+    fetched: 2026-10-18
+    sha256: c0c659baceeedf3bdbefa636964a66840c63bd7e53c07d7234b31a61ed32e9a0
+  - file: weekday-anomalies.txt
+    origin: meta
+    fetched: 2026-10-18
+    sha256: 58b6977c264dabc1d9c0533941a4e96e2ee59fa82e18aaab5b7dc442f8f1b9c0

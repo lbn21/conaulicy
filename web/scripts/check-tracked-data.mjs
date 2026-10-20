@@ -18,6 +18,7 @@ const ALLOWED = [
   /^web\/(tsconfig|biome|vercel)\.json$/,
   /^web\/drizzle\/meta\/[^/]+\.json$/,
   /^\.cursor\/cli\.json$/,
+  /^etl\/sources\.schema\.json$/,
   /^design\/proposals\/([^/]+\/)?index\.html$/,
   /^docs\/logo\/debug\/a-measure\.json$/,
 ];

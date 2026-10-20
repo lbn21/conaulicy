@@ -1,0 +1,109 @@
+# The unattended schedule import (docs/import-schedules.md): GitHub-hosted
+# runner, no approvals, no people. A change that passes every check is
+# applied; anything else becomes an issue, closed by the next clean run.
+# Configured in etl/sources.yaml (CI fails if this file drifts from it).
+name: import-schedules
+
+on:
+  # Cron lines are derived from schedule in etl/sources.yaml: one per UTC
+  # offset of schedule.timezone (GitHub cron is UTC-only), the import decides
+  # what is due (--scheduled). With schedule.enabled: false there are none;
+  # `npm run config:check` prints the lines to paste when it is enabled.
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "extract-only: no database (tests the vision passes); dry-run: report, write only the import_runs row; apply: the real import"
+        type: choice
+        options: [extract-only, dry-run, apply]
+        default: extract-only
+      force_extract:
+        description: "Extract known files too (proves the extraction reproduces the database)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write # AWS through OIDC, no AWS keys
+  issues: write
+
+concurrency:
+  group: import-schedules
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Config
+        id: config
+        run: |
+          echo "cli=$(yq '.vision.cli' etl/sources.yaml)" >> "$GITHUB_OUTPUT"
+          echo "role=$(yq '.archive.role' etl/sources.yaml)" >> "$GITHUB_OUTPUT"
+          echo "region=$(yq '.archive.region' etl/sources.yaml)" >> "$GITHUB_OUTPUT"
+
+      - name: Install
+        working-directory: web
+        run: |
+          npm ci --no-audit --no-fund
+          command -v pdftotext || (sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils)
+          # Cursor CLI, the build pinned in etl/sources.yaml (vision.cli).
+          mkdir -p "$HOME/cursor-agent"
+          curl -fsSL --retry 4 "https://downloads.cursor.com/lab/$CLI/linux/x64/agent-cli-package.tar.gz" \
+            | tar --strip-components=1 -xzf - -C "$HOME/cursor-agent"
+          echo "$HOME/cursor-agent" >> "$GITHUB_PATH"
+        env:
+          CLI: ${{ steps.config.outputs.cli }}
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        if: github.event_name == 'schedule' || inputs.mode == 'apply'
+        with:
+          role-to-assume: ${{ steps.config.outputs.role }}
+          aws-region: ${{ steps.config.outputs.region }}
+
+      - name: Import
+        id: import
+        working-directory: web
+        run: |
+          case "$EVENT/$MODE" in
+            schedule/*) flags="--scheduled" ;;
+            */extract-only) flags="--extract-only" ;;
+            */dry-run) flags="--dry-run" ;;
+            */apply) flags="" ;;
+          esac
+          [ "$FORCE" = "true" ] && flags="$flags --force-extract"
+          node scripts/schedules/run.ts $flags
+        env:
+          EVENT: ${{ github.event_name }}
+          MODE: ${{ inputs.mode }}
+          FORCE: ${{ inputs.force_extract }}
+          IMPORT_DATABASE_URL: ${{ inputs.mode != 'extract-only' && secrets.IMPORT_DATABASE_URL || '' }}
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+          GH_TOKEN: ${{ github.token }}
+          ACTIONS_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      # Anything that broke outside the import's own reporting (install, AWS,
+      # database connection): one open issue (key "workflow"), commented on
+      # repeat failures, closed by the next clean run.
+      - name: Open an issue
+        if: failure() && steps.import.outputs.issued != 'true' && (github.event_name == 'schedule' || inputs.mode == 'apply')
+        run: |
+          number=$(gh issue list --repo "$REPO" --state open --search "[import] in:title" --limit 200 --json number,body \
+            -q '.[] | select(.body | contains("<!-- import-key: workflow -->")) | .number' | head -1)
+          body="The schedule import failed before it could report: $RUN"
+          if [ -n "$number" ]; then gh issue comment "$number" --repo "$REPO" --body "$body"
+          else gh issue create --repo "$REPO" --title "[import] Workflow import-schedules failed" \
+            --body "$body"$'\n\n'"<!-- import-key: workflow -->"; fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
