@@ -2,7 +2,10 @@
 // classes and components only, plus app/site.scss for what GOV.UK has no
 // equivalent for. Fails when:
 // - a stylesheet appears outside the allowed list;
-// - site.scss passes 80 lines or 1 KB gzip compiled, or uses a raw colour or px;
+// - site.scss passes 1 KB gzip compiled (the hard cap) or 80 lines of code
+//   (blank and comment-only lines are not counted), or uses a raw colour or px;
+// - a page uses govuk-button--inverse (its hover and shadow are GOV.UK brand
+//   blue, see check-govuk-assets.mjs);
 // - a govuk-tag has no colour modifier (the default tag is GOV.UK brand blue);
 // - Tailwind utility classes grow: they may only go down, until PR 8 deletes
 //   Tailwind (then BASELINE is 0 and tailwindcss must be gone).
@@ -25,7 +28,7 @@ const MAX_LINES = 80;
 const MAX_GZIP = 1000;
 // Tailwind utility classes in components and pages today; lower it as pages
 // move to GOV.UK classes, never raise it.
-const BASELINE = 53;
+const BASELINE = 32;
 
 const failures = [];
 
@@ -48,7 +51,11 @@ for (const file of files.filter((f) => /\.(css|scss|sass)$/.test(f))) {
 }
 
 const site = readFileSync(path.join(ROOT, "app/site.scss"), "utf8");
-const lines = site.split("\n").length;
+// Lines of code only: blank lines and comment-only lines don't count.
+const lines = site
+  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .split("\n")
+  .filter((line) => line.trim() && !line.trim().startsWith("//")).length;
 if (lines > MAX_LINES)
   failures.push(`app/site.scss: ${lines} lines (max ${MAX_LINES})`);
 const code = site.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
@@ -79,6 +86,9 @@ for (const file of files.filter((f) => /\.tsx$/.test(f))) {
       tailwind += 1;
     }
   }
+  if (source.includes("govuk-button--inverse")) {
+    failures.push(`${file}: govuk-button--inverse (GOV.UK brand blue)`);
+  }
   for (const [tag] of source.matchAll(/\bgovuk-tag\b(?!--|__)[^"`]*/g)) {
     if (!/govuk-tag--/.test(tag))
       failures.push(`${file}: govuk-tag without a colour modifier`);
@@ -98,7 +108,7 @@ if (BASELINE === 0 && Object.keys(deps).some((d) => d.includes("tailwind"))) {
 }
 
 console.log(
-  `Own CSS: app/site.scss ${lines} lines, ${gzip} B gzip compiled; ${tailwind} Tailwind classes left (baseline ${BASELINE}).`,
+  `Own CSS: app/site.scss ${lines} lines of code, ${gzip} B gzip compiled; ${tailwind} Tailwind classes left (baseline ${BASELINE}).`,
 );
 if (failures.length > 0) {
   console.error(failures.map((f) => `FAIL  ${f}`).join("\n"));

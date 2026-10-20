@@ -21,8 +21,8 @@ export default function AccessibilityPage() {
             <ul className="govuk-list govuk-list--bullet">
               <li>Duży tekst (co najmniej 18 px) i mocny kontrast.</li>
               <li>
-                Przyciski i linki duże na tyle, żeby trafić w nie palcem (co
-                najmniej 48 px).
+                Przyciski i pola do wpisywania duże na tyle, żeby trafić w nie
+                palcem (40 px wysokości).
               </li>
               <li>
                 Projektujemy od ekranu telefonu o szerokości 360 px i z myślą o

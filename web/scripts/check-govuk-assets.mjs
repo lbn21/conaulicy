@@ -3,7 +3,11 @@
 // the build output or public/ contains
 // - the GDS Transport typeface (files or @font-face),
 // - the crown or the GOV.UK logotype, or a copied govuk-frontend assets/ folder,
-// - GOV.UK's brand-blue family in the compiled CSS (hex or rgb()),
+// - GOV.UK's brand-blue family in the compiled CSS (hex or rgb()), except
+//   inside .govuk-button--inverse rules: govuk-frontend 6.5.1 hard-codes the
+//   inverse button's hover and shadow as blue (button/_mixin.scss), with no
+//   setting. We never use that button (check-own-css fails on the class), so
+//   the blue ships in an unused rule only. Agreed with Jakub, task 27 step 5.
 // or if app/_settings.scss stops turning off GOV.UK's default font face.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
@@ -69,7 +73,17 @@ for (const file of files) {
       `#${hex}\\b|rgba?\\(\\s*${r}[ ,]+${g}[ ,]+${b}\\b`,
       "i",
     );
-    if (pattern.test(text)) failures.push(`${rel}: GOV.UK brand blue #${hex}`);
+    for (const [, selector, body] of text.matchAll(/([^{}]*)\{([^{}]*)\}/g)) {
+      if (!pattern.test(body)) continue;
+      const allowed = selector
+        .split(",")
+        .every((part) => part.includes(".govuk-button--inverse"));
+      if (!allowed) {
+        failures.push(
+          `${rel}: GOV.UK brand blue #${hex} in ${selector.trim()}`,
+        );
+      }
+    }
   }
 }
 

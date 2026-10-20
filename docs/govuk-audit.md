@@ -132,7 +132,12 @@ $app-latarnia: ( /* the amber group below */ );
   - the **default `govuk-tag`**, which hard-codes a blue tint and shade;
   - the **inverse button**, which hard-codes blue.
 - **Rule:** we never use either. Tags always get a colour modifier (`govuk-tag--grey`, `--green`, …), and there is no inverse button. The own-CSS check flags `govuk-tag` without a modifier.
-- **`theme-color`:** `#0b0c0c` (the Generic header's black).
+- **Exception, approved by Jakub and the tech lead (task 27, step 5):** brand blue ships **only** in the unused `.govuk-button--inverse` rules.
+  - govuk-frontend 6.5.1 hard-codes the inverse button's hover (`#f4f8fb`) and shadow (`#0f385c`) in [`button/_mixin.scss#L29-L30`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/components/button/_mixin.scss#L29-L30), with no setting. They compile whenever the button component is imported.
+  - They are never rendered.
+  - `check-govuk-assets.mjs` allows blue only inside `.govuk-button--inverse` rules and fails on blue anywhere else.
+  - `check-own-css.mjs` fails if any page uses `govuk-button--inverse`.
+- **`theme-color`:** `#9a5700`, the brand (latarnia primary), as GOV.UK's template uses its brand colour.
 
 **Autocomplete: alphagov `accessible-autocomplete` vs our combobox, restyled with GOV.UK classes**
 

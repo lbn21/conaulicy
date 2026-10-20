@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { LinkButton } from "@/components/link-button";
 import { PickupSchedule } from "@/components/pickup-schedule";
 import { longDate } from "@/lib/date-labels";
 import { withHouseNumber } from "@/lib/house";
@@ -56,14 +57,9 @@ function HouseNumberQuestion({ place }: { place: PlaceView }) {
           className="govuk-input govuk-input--width-5"
         />
       </div>
-      <p className="mt-2">
-        <button
-          type="submit"
-          className="inline-flex min-h-14 items-center rounded-sm bg-accent px-5 text-lg font-bold text-accent-contrast"
-        >
-          Pokaż odbiory
-        </button>
-      </p>
+      <button type="submit" className="govuk-button">
+        Pokaż odbiory
+      </button>
     </form>
   );
 }
@@ -114,16 +110,15 @@ export async function PlaceMain({ id, nr }: { id: string; nr: string | null }) {
           </section>
         ) : (
           <>
-            <a
+            <LinkButton
               href={`/ics/${encodeURIComponent(place.zoneId)}`}
               data-event="calendar_add"
               data-zone={place.zoneId}
               data-source="street"
-              className="mt-6 inline-flex min-h-14 items-center rounded-sm bg-accent px-5 text-lg font-bold text-accent-contrast no-underline"
             >
               Dodaj do kalendarza
-            </a>
-            <p className="govuk-body govuk-!-margin-top-3">
+            </LinkButton>
+            <p className="govuk-body">
               Plik z datami. Telefon zapyta, czy wpisać je do kalendarza.
             </p>
             <p className="govuk-body">

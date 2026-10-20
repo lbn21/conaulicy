@@ -15,7 +15,7 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 
 - Mobile-first: design for 360px, then scale up. Must work at 200% text zoom.
 - WCAG AA minimum (aim for AAA on body text), with clear focus states.
-- **Use GOV.UK Frontend as-is, including its palette; only the brand-blue roles, the typeface and the logo are ours (GOV.UK forbids copying them). No other deviations without Jakub's approval.** So: GOV.UK sizes (19px body, 40px controls), spacing, focus, links and templates exactly.
+- **Use GOV.UK Frontend as-is, including its palette; only the brand-blue roles, the typeface and the logo are ours (GOV.UK forbids copying them). No other deviations without Jakub's approval.** So: GOV.UK sizes (19px body, 40px controls), spacing, focus, links and templates exactly. One approved exception: GOV.UK hard-codes brand blue (no setting) in the inverse button's hover and shadow, so it ships only in the unused `.govuk-button--inverse` rule and is never rendered; CI fails if any page uses that class (`check-own-css`) or if blue appears anywhere else (`check-govuk-assets`).
 - Light theme only, as on GOV.UK: no dark mode, no theme toggle, no `prefers-color-scheme: dark` styles.
 - Colours: GOV.UK's palette through its Sass functions; the brand-blue group is replaced by the Latarnia amber group (links, brand, surfaces). The palette and contrast table are in `docs/brand.md`. Waste colours follow the real bins (bin markers only).
 - Almost no own CSS: GOV.UK classes and components only, plus one small `web/app/site.scss` (logo plate, bin markers, search suggestions) written with GOV.UK Sass functions, no raw hex or px. CI caps it.
