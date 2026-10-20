@@ -6,10 +6,12 @@
 // govuk-frontend-supported class that the layout's snippet sets; errors are
 // logged, as createAll would.
 import { Button } from "govuk-frontend/dist/govuk/components/button/button.mjs";
+import { ErrorSummary } from "govuk-frontend/dist/govuk/components/error-summary/error-summary.mjs";
 import { SkipLink } from "govuk-frontend/dist/govuk/components/skip-link/skip-link.mjs";
 
 const COMPONENTS = [
   ["govuk-button", Button],
+  ["govuk-error-summary", ErrorSummary],
   ["govuk-skip-link", SkipLink],
 ] as const;
 

@@ -9,27 +9,78 @@ import { SEARCH_ID } from "@/lib/search";
 
 // The street or village page, for /adres/[id] and, with a house number,
 // /adres/[id]?nr=… (rewritten in next.config.ts to /adres/[id]/nr/…, so it
-// stays a cached page). Canonical is always /adres/[id].
+// stays a cached page). Any other ?nr= (empty, or not a house number) goes to
+// /adres/[id]/numer (proxy.ts), which a split street answers with an error.
+// Canonical is always /adres/[id].
+
+/**
+ * The house-number error on a split street (GOV.UK validation pattern), or
+ * null: a number no part of the street has, or no usable number at all.
+ */
+function numberError(place: PlaceView, missing: boolean): string | null {
+  if (!place.askNumber) return null;
+  if (place.unknownNr) {
+    return `Numeru ${place.unknownNr} nie ma w harmonogramie tej ulicy. Sprawdź numer albo harmonogram gminy`;
+  }
+  return missing ? "Wpisz numer domu, na przykład 12, 12a albo 7/22" : null;
+}
 
 export async function placeMetadata(
   id: string,
   nr: string | null,
+  missing = false,
 ): Promise<Metadata> {
   const place = await getPlace(id, nr);
+  const title = place ? withHouseNumber(place.label, place.nr) : "Adres";
   return {
-    title: place ? withHouseNumber(place.label, place.nr) : "Adres",
+    // GOV.UK: "Error: " first in the title, so screen readers hear it first.
+    title: place && numberError(place, missing) ? `Błąd: ${title}` : title,
     alternates: { canonical: `/adres/${encodeURIComponent(id)}` },
   };
+}
+
+/** GOV.UK's error summary, focused on load by its JS (lib/govuk-frontend). */
+function ErrorSummary({ error }: { error: string }) {
+  return (
+    <div className="govuk-error-summary" data-module="govuk-error-summary">
+      <div role="alert">
+        <h2 className="govuk-error-summary__title">Jest problem</h2>
+        <div className="govuk-error-summary__body">
+          <ul className="govuk-list govuk-error-summary__list">
+            <li>
+              <a href="#nr">{error}</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /**
  * A street split by house numbers: ask for the number, like a GOV.UK
  * question page. A plain GET form, so it works without JS.
  */
-function HouseNumberQuestion({ place }: { place: PlaceView }) {
+function HouseNumberQuestion({
+  place,
+  error,
+}: {
+  place: PlaceView;
+  error: string | null;
+}) {
   return (
-    <form method="get" action={`/adres/${encodeURIComponent(place.id)}`}>
-      <div className="govuk-form-group">
+    <form
+      method="get"
+      action={`/adres/${encodeURIComponent(place.id)}`}
+      noValidate
+    >
+      <div
+        className={
+          error
+            ? "govuk-form-group govuk-form-group--error"
+            : "govuk-form-group"
+        }
+      >
         <label htmlFor="nr" className="govuk-label govuk-label--m">
           Jaki jest numer domu?
         </label>
@@ -37,10 +88,9 @@ function HouseNumberQuestion({ place }: { place: PlaceView }) {
           Na tej ulicy śmieciarka przyjeżdża w różne dni, zależnie od numeru. Na
           przykład 12, 12a albo 7/22.
         </div>
-        {place.unknownNr && (
-          <p id="nr-note" className="govuk-body govuk-!-font-weight-bold">
-            Numeru {place.unknownNr} nie ma w harmonogramie tej ulicy. Sprawdź
-            numer albo harmonogram gminy.
+        {error && (
+          <p id="nr-error" className="govuk-error-message">
+            <span className="govuk-visually-hidden">Błąd:</span> {error}
           </p>
         )}
         <input
@@ -52,8 +102,12 @@ function HouseNumberQuestion({ place }: { place: PlaceView }) {
           spellCheck={false}
           enterKeyHint="go"
           maxLength={12}
-          aria-describedby={place.unknownNr ? "nr-hint nr-note" : "nr-hint"}
-          className="govuk-input govuk-input--width-5"
+          aria-describedby={error ? "nr-hint nr-error" : "nr-hint"}
+          className={
+            error
+              ? "govuk-input govuk-input--width-5 govuk-input--error"
+              : "govuk-input govuk-input--width-5"
+          }
         />
       </div>
       <button type="submit" className="govuk-button" data-module="govuk-button">
@@ -63,14 +117,25 @@ function HouseNumberQuestion({ place }: { place: PlaceView }) {
   );
 }
 
-export async function PlaceMain({ id, nr }: { id: string; nr: string | null }) {
+export async function PlaceMain({
+  id,
+  nr,
+  missing = false,
+}: {
+  id: string;
+  nr: string | null;
+  /** ?nr= was sent without a usable number (/adres/[id]/numer). */
+  missing?: boolean;
+}) {
   const place = await getPlace(id, nr);
   if (!place) notFound();
   const name = withHouseNumber(place.name, place.nr);
+  const error = numberError(place, missing);
 
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
+        {error && <ErrorSummary error={error} />}
         <span className="govuk-caption-l">{place.area}</span>
         <h1 className="govuk-heading-l">{name}</h1>
         {/* Like GOV.UK's "Change": back to an empty, focused search. */}
@@ -84,7 +149,7 @@ export async function PlaceMain({ id, nr }: { id: string; nr: string | null }) {
         </p>
 
         {place.askNumber ? (
-          <HouseNumberQuestion place={place} />
+          <HouseNumberQuestion place={place} error={error} />
         ) : place.zoneId === null ? (
           <section aria-labelledby="empty-heading" className="govuk-inset-text">
             <h2 id="empty-heading" className="govuk-heading-m">

@@ -7,6 +7,13 @@
 // optional second part (flat or double number). Up to 4 digits each.
 const HOUSE_NUMBER = /^(\d{1,4})([a-z]?)(?:\/(\d{1,4})([a-z]?))?$/;
 
+/**
+ * The same shape in a ?nr= query (either letter case), as a regex source:
+ * next.config.ts rewrites it to the cached /adres/[id]/nr/… page, and
+ * proxy.ts sends any other ?nr= (empty included) to /adres/[id]/numer.
+ */
+export const NR_QUERY = "\\d{1,4}[a-zA-Z]?(?:/\\d{1,4}[a-zA-Z]?)?";
+
 /** "12A" → "12a"; anything else that is not a house number → null. */
 export function houseNumber(raw: string | null | undefined): string | null {
   if (!raw) return null;
