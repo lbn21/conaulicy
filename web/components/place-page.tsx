@@ -36,12 +36,12 @@ function HouseNumberQuestion({ place }: { place: PlaceView }) {
       <label htmlFor="nr" className="text-lg font-bold">
         Jaki jest numer domu?
       </label>
-      <p id="nr-hint" className="max-w-prose text-text-muted">
+      <p id="nr-hint" className="text-text-muted">
         Na tej ulicy śmieciarka przyjeżdża w różne dni, zależnie od numeru. Na
         przykład 12, 12a albo 7/22.
       </p>
       {place.unknownNr && (
-        <p id="nr-note" className="max-w-prose font-bold">
+        <p id="nr-note" className="font-bold">
           Numeru {place.unknownNr} nie ma w harmonogramie tej ulicy. Sprawdź
           numer albo harmonogram gminy.
         </p>
@@ -76,105 +76,105 @@ export async function PlaceMain({ id, nr }: { id: string; nr: string | null }) {
   const name = withHouseNumber(place.name, place.nr);
 
   return (
-    <div className="max-w-2xl">
-      <p className="mt-8 text-text-muted md:mt-14">{place.area}</p>
-      <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">
-        {name}
-      </h1>
-      {/* Like GOV.UK's "Change": back to an empty, focused search. */}
-      <p className="mt-2">
-        <a
-          href={`/#${SEARCH_ID}`}
-          className="inline-flex min-h-12 items-center underline decoration-2 underline-offset-4"
-        >
-          Zmień adres<span className="sr-only"> {name}</span>
-        </a>
-      </p>
-
-      {place.askNumber ? (
-        <HouseNumberQuestion place={place} />
-      ) : place.zoneId === null ? (
-        <section
-          aria-labelledby="empty-heading"
-          className="mt-8 border-l-4 border-accent pl-4"
-        >
-          <h2 id="empty-heading" className="text-lg font-bold">
-            {place.kind === "ulica"
-              ? "Tej ulicy jeszcze nie mamy"
-              : "Tej wsi jeszcze nie mamy"}
-          </h2>
-          <p className="mt-3 max-w-prose">
-            Harmonogramu tu nie zgadujemy. Do tego czasu sprawdź odbiory w
-            harmonogramie gminy.
-          </p>
-          {place.schedulePage && (
-            <p className="mt-3">
-              <a
-                href={place.schedulePage}
-                className="inline-flex min-h-12 items-center font-bold underline decoration-2 underline-offset-4"
-              >
-                {`Otwórz ${scheduleName(place.gmina)}`}
-              </a>
-            </p>
-          )}
-        </section>
-      ) : (
-        <>
+    <div className="govuk-grid-row">
+      <div className="govuk-grid-column-two-thirds">
+        <span className="govuk-caption-l">{place.area}</span>
+        <h1 className="govuk-heading-l">{name}</h1>
+        {/* Like GOV.UK's "Change": back to an empty, focused search. */}
+        <p className="govuk-body">
           <a
-            href={`/ics/${encodeURIComponent(place.zoneId)}`}
-            data-event="calendar_add"
-            data-zone={place.zoneId}
-            data-source="street"
-            className="mt-6 inline-flex min-h-14 items-center rounded-sm bg-accent px-5 text-lg font-bold text-accent-contrast no-underline"
+            href={`/#${SEARCH_ID}`}
+            className="underline decoration-2 underline-offset-4"
           >
-            Dodaj do kalendarza
+            Zmień adres<span className="govuk-visually-hidden"> {name}</span>
           </a>
-          <p className="mt-3 max-w-prose text-text-muted">
-            Plik z datami. Telefon zapyta, czy wpisać je do kalendarza.
-          </p>
-          <p className="mt-2">
-            <a
-              href={`/adres/${encodeURIComponent(place.id)}/harmonogram.pdf${place.nr ? `?nr=${place.nr}` : ""}`}
-              data-event="pdf_open"
-              data-zone={place.zoneId}
-              className="inline-flex min-h-12 items-center font-bold underline decoration-2 underline-offset-4"
-            >
-              Harmonogram do druku (PDF)
-            </a>
-          </p>
+        </p>
 
-          <PickupSchedule days={place.days} renderedOn={place.today} />
-
-          <div className="mt-2 border-t border-border pt-6 text-text-muted">
-            {!place.verified && (
-              <p className="mb-3 max-w-prose">
-                Te daty odczytaliśmy automatycznie z harmonogramu gminy i nikt
-                ich jeszcze nie sprawdził drugi raz. Gdyby coś się nie zgadzało,
-                rację ma harmonogram gminy.
+        {place.askNumber ? (
+          <HouseNumberQuestion place={place} />
+        ) : place.zoneId === null ? (
+          <section
+            aria-labelledby="empty-heading"
+            className="mt-8 border-l-4 border-accent pl-4"
+          >
+            <h2 id="empty-heading" className="govuk-heading-m">
+              {place.kind === "ulica"
+                ? "Tej ulicy jeszcze nie mamy"
+                : "Tej wsi jeszcze nie mamy"}
+            </h2>
+            <p className="govuk-body">
+              Harmonogramu tu nie zgadujemy. Do tego czasu sprawdź odbiory w
+              harmonogramie gminy.
+            </p>
+            {place.schedulePage && (
+              <p className="govuk-body">
+                <a
+                  href={place.schedulePage}
+                  className="font-bold underline decoration-2 underline-offset-4"
+                >
+                  {`Otwórz ${scheduleName(place.gmina)}`}
+                </a>
               </p>
             )}
-            {place.sources.map((source) => (
-              <p key={source.label} className="max-w-prose">
-                Źródło:{" "}
-                {source.url ? (
-                  <a
-                    href={source.url}
-                    className="underline decoration-2 underline-offset-4"
-                  >
-                    {scheduleName(place.gmina)}
-                  </a>
-                ) : (
-                  scheduleName(place.gmina)
-                )}
-                , {source.label}
-                {source.checkedAt && (
-                  <>. Stan na {longDate(source.checkedAt)}.</>
-                )}
-              </p>
-            ))}
-          </div>
-        </>
-      )}
+          </section>
+        ) : (
+          <>
+            <a
+              href={`/ics/${encodeURIComponent(place.zoneId)}`}
+              data-event="calendar_add"
+              data-zone={place.zoneId}
+              data-source="street"
+              className="mt-6 inline-flex min-h-14 items-center rounded-sm bg-accent px-5 text-lg font-bold text-accent-contrast no-underline"
+            >
+              Dodaj do kalendarza
+            </a>
+            <p className="govuk-body govuk-!-margin-top-3">
+              Plik z datami. Telefon zapyta, czy wpisać je do kalendarza.
+            </p>
+            <p className="govuk-body">
+              <a
+                href={`/adres/${encodeURIComponent(place.id)}/harmonogram.pdf${place.nr ? `?nr=${place.nr}` : ""}`}
+                data-event="pdf_open"
+                data-zone={place.zoneId}
+                className="font-bold underline decoration-2 underline-offset-4"
+              >
+                Harmonogram do druku (PDF)
+              </a>
+            </p>
+
+            <PickupSchedule days={place.days} renderedOn={place.today} />
+
+            <div className="border-t border-border pt-6">
+              {!place.verified && (
+                <p className="govuk-body">
+                  Te daty odczytaliśmy automatycznie z harmonogramu gminy i nikt
+                  ich jeszcze nie sprawdził drugi raz. Gdyby coś się nie
+                  zgadzało, rację ma harmonogram gminy.
+                </p>
+              )}
+              {place.sources.map((source) => (
+                <p key={source.label} className="govuk-body">
+                  Źródło:{" "}
+                  {source.url ? (
+                    <a
+                      href={source.url}
+                      className="underline decoration-2 underline-offset-4"
+                    >
+                      {scheduleName(place.gmina)}
+                    </a>
+                  ) : (
+                    scheduleName(place.gmina)
+                  )}
+                  , {source.label}
+                  {source.checkedAt && (
+                    <>. Stan na {longDate(source.checkedAt)}.</>
+                  )}
+                </p>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

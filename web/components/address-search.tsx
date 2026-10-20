@@ -337,7 +337,7 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
             )}
           </div>
         </div>
-        <p role="status" className="sr-only">
+        <p role="status" className="govuk-visually-hidden">
           {message}
         </p>
       </form>
