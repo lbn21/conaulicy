@@ -20,7 +20,7 @@ const LABEL_ID = "adres-label";
 const HINT_ID = "adres-hint";
 
 const HINT =
-  "Ulica w Lubaczowie albo wieś, np. Lisie Jamy. Numer domu możesz dopisać: Asnyka 12. Polskie znaki nie są potrzebne.";
+  "Na przykład Asnyka 12 albo Lisie Jamy – polskie znaki nie są potrzebne";
 
 // The same field accessible-autocomplete renders (its classes, GOV.UK's
 // govuk-input), so nothing moves when it takes over on first focus.
@@ -235,7 +235,7 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
           htmlFor={INPUT_ID}
           className="govuk-label govuk-label--m"
         >
-          Twoja ulica albo wieś
+          Ulica albo wieś
         </label>
         <div id={HINT_ID} className="govuk-hint">
           {HINT}
