@@ -62,6 +62,9 @@ jobs:
       - name: No data files in git (sources live in S3)
         run: node scripts/check-tracked-data.mjs
 
+      - name: "Config (etl/sources.yaml: schema, nothing derived drifted)"
+        run: npm run config:check
+
       - name: Own CSS (GOV.UK classes only, site.scss capped)
         run: node scripts/check-own-css.mjs
 
@@ -114,3 +117,6 @@ jobs:
       # from a local server, so the source check needs no internet.
       - name: "Importer (synthetic dataset: dry run, apply, guards)"
         run: node scripts/check-import.mjs
+
+      - name: "Schedule import (made-up sources: apply, revert, issues, fallback, dead-man switch)"
+        run: node scripts/check-import-schedules.mjs
