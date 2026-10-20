@@ -414,14 +414,32 @@ function visionPasses(
     throw new Error(
       "CURSOR_API_KEY is not set, so the city JPG cannot be read automatically (repository secret).",
     );
-  const models = spawnSync("agent", ["--list-models"], {
+  // The account's models (`agent models`; older builds: --list-models).
+  let listing = spawnSync("agent", ["models"], {
     encoding: "utf8",
     timeout: 120_000,
   });
+  if (listing.status !== 0)
+    listing = spawnSync("agent", ["--list-models"], {
+      encoding: "utf8",
+      timeout: 120_000,
+    });
+  if (listing.status !== 0)
+    throw new Error(
+      `cannot list the Cursor models (exit ${listing.status}): ${(listing.stderr || listing.stdout || String(listing.error ?? "")).trim().slice(0, 300)}`,
+    );
+  const available = new Set(
+    listing.stdout.match(/[a-z0-9][a-z0-9.-]*[a-z0-9]/g) ?? [],
+  );
   for (const p of passes)
-    if (!models.stdout?.includes(p.model))
+    if (!available.has(p.model))
       throw new Error(
-        `model ${p.model} (${p.vendor}) is not in \`agent --list-models\`; update vision.passes in etl/sources.yaml`,
+        `model ${p.model} (${p.vendor}) is not available to this Cursor account; update vision.passes in etl/sources.yaml. Available: ${[
+          ...available,
+        ]
+          .filter((m) => /\d/.test(m))
+          .join(", ")
+          .slice(0, 1500)}`,
       );
   return passes.map((pass) => {
     // An empty workspace holding only the image; the agent may read it and
