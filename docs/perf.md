@@ -1,6 +1,6 @@
 # Performance budgets
 
-`web/scripts/check-perf.mjs` runs in CI on every pull request (step "Performance (Lighthouse budgets)"), against the built app with the throwaway Postgres and the seed, like the other checks. Run it locally with `npm run check:perf` (build included) or `node scripts/check-perf.mjs` after `next build`. `PERF_OUT=file.json` saves the numbers.
+`web/scripts/check-perf.mjs` runs in CI on every pull request (step "Performance (Lighthouse budgets)"), against the built app with the throwaway Postgres and the seed, like the other checks. In CI it runs through `web/scripts/check-perf-retry.mjs`: if it fails, it runs once more, unchanged, and the step fails only if that second attempt fails too. Both attempts' LCP/TBT medians per page are printed side by side, so a real regression (both attempts over) stays visible. No other check is re-run. Run it locally with `npm run check:perf` (build included) or `node scripts/check-perf.mjs` after `next build`. `PERF_OUT=file.json` saves the numbers.
 
 ## Profile
 
@@ -42,7 +42,7 @@ With real throttling the page really loads over the slowed network and CPU, so t
 
 - LCP has one mode, equal to FCP (the text paints with the fallback font as soon as the HTML and CSS arrive). The 1.8 s budget stays, ~320 ms above the worst run.
 - LCP is judged on the **median** again. Within one CI run the five values lie within ~80 ms, so there is no artifact for the best run to hide, and the median also catches a regression that only some runs would show.
-- TBT is steady within a CI run but differs between runners (medians 43–139 ms): real CPU throttling slows the runner's own CPU 4×, and runners differ. The 150 ms budget is unchanged; the worst median so far is 139 ms, so a slow runner could still fail it. If that happens, look at the TBT per run before rerunning.
+- TBT is steady within a CI run but differs between runners (medians 43–139 ms): real CPU throttling slows the runner's own CPU 4×, and runners differ. The 150 ms budget is unchanged. A slow runner can push one attempt over it; that is what the single automatic re-run absorbs. If both attempts fail, treat it as a regression.
 - Locally (M-series Mac) the same check gives LCP ~1340 ms and TBT 0–13 ms.
 - A run takes about 4 minutes in CI instead of 2.
 
