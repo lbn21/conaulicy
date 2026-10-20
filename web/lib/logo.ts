@@ -3,6 +3,10 @@
 // the wordmark sits on the baseline of "ul.". Units: the plate is 34 high.
 export const LOGO_WIDTH = 191.31;
 export const LOGO_HEIGHT = 34;
+// In headers (the site's and the PDF's) the wordmark sits this much lower,
+// so its x-height is centred on the plate (docs/logo/README.md). The site
+// applies it in app/site.scss as translateY(4.12%), 1.4 of 34.
+export const HEADER_WORDMARK_SHIFT = 1.4;
 export const PLATE_WIDTH = 41.32;
 export const PLATE =
   "M9.5 0h22.32a9.5 9.5 0 0 1 9.5 9.5v15a9.5 9.5 0 0 1-9.5 9.5H9.5A9.5 9.5 0 0 1 0 24.5v-15A9.5 9.5 0 0 1 9.5 0";

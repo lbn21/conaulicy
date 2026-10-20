@@ -23,10 +23,11 @@ Lighthouse (npm `lighthouse`, free, no Lighthouse CI server) with its mobile set
 | Preloaded fonts | ≤ 4 files | the page's `<link rel="preload" as="font">` |
 | Search keystroke → list updated | ≤ 50 ms | median of 5 keys, index loaded, CPU 4× slower |
 | First-load JS | ≤ 200 KB gzip | `npm run budget` (separate step) |
+| Street PDF | ≤ 150 KB, 2–6 pages | `scripts/check-pdf.mjs` (separate step): seed city street, village and split street with `?nr=` |
 
 **Hard gates:** LCP, TBT, CLS and the search keystroke are what people feel. They never move to make room for code; if one fails, report to Jakub.
 
-**Adaptable:** the size budgets (first-load JS, HTML, fonts) follow GOV.UK Frontend's CSS and JS and alphagov accessible-autocomplete, which are used as-is.
+**Adaptable:** the size budgets (first-load JS, HTML, fonts, PDF) follow GOV.UK Frontend's CSS and JS and alphagov accessible-autocomplete, which are used as-is.
 
 ## Flake fixed: real throttling (2026-10-19)
 

@@ -89,6 +89,13 @@ jobs:
       - name: Home examples (each has upcoming pickups)
         run: node scripts/check-examples.mjs
 
+      # pdfinfo, pdffonts and pdftotext read the generated PDFs.
+      - name: Install poppler-utils
+        run: command -v pdfinfo || (sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils)
+
+      - name: "Street PDFs (tagged, pages, size, Atkinson only, text version)"
+        run: node scripts/check-pdf.mjs
+
       - name: "Fonts (no layout shift when they arrive late)"
         run: node scripts/check-fonts.mjs
 
