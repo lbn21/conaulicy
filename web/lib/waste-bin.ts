@@ -1,7 +1,7 @@
 // The wheelie-bin icon, shared by the website (SVG) and the printable PDF
 // (PDFKit), so both draw the same shape. Coordinates are in a 28 × 40 box.
 
-/** Waste subtype → colour token name (design/tokens.css, --waste-{token}). */
+/** Waste subtype → colour token name (app/tokens.css, --waste-{token}). */
 export const TOKEN: Record<string, string> = {
   zmieszane: "zmieszane",
   popiol: "popiol",

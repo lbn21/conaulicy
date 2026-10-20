@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { WebAnalytics } from "@/components/web-analytics";
 import { THEME_COLOR } from "@/lib/theme";
 import { atkinson } from "./fonts";
-import "./globals.css";
+import "./tokens.css";
 import "./govuk.scss";
 import "./site.scss";
 
