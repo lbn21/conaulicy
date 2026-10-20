@@ -4,6 +4,7 @@ import {
   houseNumber,
   inRange,
   isPartial,
+  NR_QUERY,
   readings,
   withHouseNumber,
 } from "./house.ts";
@@ -79,4 +80,14 @@ test("even, odd, ranges and letters", () => {
   assert.equal(inRange("12c", from12b), true);
   assert.equal(inRange("13", from12b), true);
   assert.equal(inRange("abc", whole), false);
+});
+
+test("?nr= pattern: house numbers go to the cached page, the rest to /numer", () => {
+  const nr = new RegExp(`^${NR_QUERY}$`);
+  for (const value of ["12", "12a", "12A", "7/22", "12/14b"]) {
+    assert.equal(nr.test(value), true, value);
+  }
+  for (const value of ["", "abc", "12 a", "12345", "7/", "-1"]) {
+    assert.equal(nr.test(value), false, value);
+  }
 });

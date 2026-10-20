@@ -273,11 +273,71 @@ try {
       "/ics/waste%3Amiasto-s1",
     "split street: 12 (even) not in sektor 1",
   );
-  await ask.goto(`${server.origin}/adres/0972447-90004?nr=42`);
-  check(
-    (await ask.getByText("Numeru 42 nie ma").count()) === 1,
-    "split street: no note for a number outside every range",
-  );
+  // Valid numbers pick their part of the street, with no error.
+  for (const [nr, zone] of [
+    ["12", "s1"],
+    ["12a", "s1"],
+    ["7/22", "s2"],
+  ]) {
+    await ask.goto(`${server.origin}/adres/0972447-90004?nr=${nr}`);
+    const href = await ask.locator('a[href^="/ics/"]').getAttribute("href");
+    check(
+      href === `/ics/waste%3Amiasto-${zone}` &&
+        (await ask.locator(".govuk-error-summary").count()) === 0 &&
+        !(await ask.title()).startsWith("Błąd"),
+      `split street ?nr=${nr}: calendar ${href}, expected sektor ${zone} and no error`,
+    );
+  }
+
+  // The GOV.UK validation pattern, without JS too: "Błąd: " title, error
+  // summary linking to the field, error message, error styles.
+  const MISSING = "Wpisz numer domu, na przykład 12, 12a albo 7/22";
+  const UNKNOWN =
+    "Numeru 42 nie ma w harmonogramie tej ulicy. Sprawdź numer albo harmonogram gminy";
+  for (const [query, message] of [
+    ["", MISSING],
+    ["abc", MISSING],
+    ["42", UNKNOWN],
+  ]) {
+    await ask.goto(`${server.origin}/adres/0972447-90004?nr=${query}`);
+    const state = await ask.evaluate(() => ({
+      title: document.title,
+      summary: document.querySelector(
+        '.govuk-error-summary[data-module="govuk-error-summary"] [role="alert"] .govuk-error-summary__title',
+      )?.textContent,
+      link: document.querySelector(".govuk-error-summary__list a")
+        ? {
+            href: document
+              .querySelector(".govuk-error-summary__list a")
+              .getAttribute("href"),
+            text: document.querySelector(".govuk-error-summary__list a")
+              .textContent,
+          }
+        : null,
+      message: document.querySelector("#nr-error.govuk-error-message")
+        ?.textContent,
+      group: document
+        .querySelector(".govuk-form-group")
+        ?.classList.contains("govuk-form-group--error"),
+      input: document.querySelector("#nr")?.className,
+      describedBy: document
+        .querySelector("#nr")
+        ?.getAttribute("aria-describedby"),
+      novalidate: document.querySelector("form")?.hasAttribute("novalidate"),
+    }));
+    check(
+      state.title.startsWith("Błąd: ") &&
+        state.summary === "Jest problem" &&
+        state.link?.href === "#nr" &&
+        state.link?.text === message &&
+        state.message === `Błąd: ${message}` &&
+        state.group &&
+        state.input?.includes("govuk-input--error") &&
+        state.describedBy === "nr-hint nr-error" &&
+        state.novalidate,
+      `split street ?nr=${query}: error pattern wrong ${JSON.stringify(state)}`,
+    );
+  }
   await ask.goto(`${server.origin}/adres/0972447-00470?nr=bzdura`);
   check(
     (await ask.locator("h1").textContent()) === "ul. Adama Asnyka",
@@ -285,11 +345,45 @@ try {
   );
   await plain.close();
 
-  // A page with a number is cached like the plain one (ISR, not dynamic).
-  const url = `${server.origin}/adres/0972447-00470?nr=12`;
-  await fetch(url);
-  const cached = (await fetch(url)).headers.get("x-nextjs-cache");
-  check(cached === "HIT", `?nr= page not cached (x-nextjs-cache: ${cached})`);
+  // A page with a number is cached like the plain one (ISR, not dynamic),
+  // also on a split street after its error pages were served: the error has
+  // its own path (/numer, or the unknown number's own), never a valid one's.
+  for (const query of ["", "abc", "42"]) {
+    await fetch(`${server.origin}/adres/0972447-90004?nr=${query}`);
+  }
+  for (const page of ["0972447-00470?nr=12", "0972447-90004?nr=12"]) {
+    const url = `${server.origin}/adres/${page}`;
+    await fetch(url);
+    const res = await fetch(url);
+    const cached = res.headers.get("x-nextjs-cache");
+    const html = await res.text();
+    check(
+      cached === "HIT" && !html.includes("govuk-error-summary"),
+      `${page}: not cached or shows an error (x-nextjs-cache: ${cached})`,
+    );
+  }
+
+  // With JS, GOV.UK's ErrorSummary takes focus on load (so it is announced),
+  // and its link moves focus to the field.
+  const withJs = await browser.newPage({
+    viewport: { width: 360, height: 800 },
+  });
+  await withJs.goto(`${server.origin}/adres/0972447-90004?nr=`, {
+    waitUntil: "networkidle",
+  });
+  await withJs
+    .waitForFunction(
+      () => document.activeElement?.classList.contains("govuk-error-summary"),
+      null,
+      { timeout: 5000 },
+    )
+    .catch(() => check(false, "error summary: not focused on load"));
+  await withJs.locator(".govuk-error-summary__list a").click();
+  check(
+    (await withJs.evaluate(() => document.activeElement?.id)) === "nr",
+    "error summary: its link does not focus the field",
+  );
+  await withJs.close();
 
   // No index (blocked or broken): the server answers instead.
   const fallback = await browser.newPage();

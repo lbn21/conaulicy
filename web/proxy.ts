@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
+import { NR_QUERY } from "@/lib/house";
 
 // Pre-launch gate. Active only when SITE_BASIC_AUTH ("user:password") is set.
 // On Vercel the proxy runs before the CDN cache, so a cached page is never
@@ -30,9 +31,32 @@ const GATED_HEADERS = {
   "Cache-Control": "private, no-store",
 };
 
+const ADDRESS = /^\/adres\/([^/]+)\/?$/;
+const NR = new RegExp(`^${NR_QUERY}$`);
+
+// A street page asked with ?nr= but no usable house number (empty, or not a
+// number) goes to its own cached page, which shows the GOV.UK error on a
+// split street. Valid numbers are rewritten in next.config.ts; a rewrite's
+// `has` cannot match an empty value, hence here.
+function missingNumber(request: NextRequest): URL | null {
+  const match = ADDRESS.exec(request.nextUrl.pathname);
+  const nr = request.nextUrl.searchParams.get("nr");
+  if (!match || nr === null || NR.test(nr)) return null;
+  const url = request.nextUrl.clone();
+  url.pathname = `/adres/${match[1]}/numer`;
+  url.search = "";
+  return url;
+}
+
 export function proxy(request: NextRequest) {
+  const rewrite = missingNumber(request);
+  const pass = (headers?: Record<string, string>) =>
+    rewrite
+      ? NextResponse.rewrite(rewrite, { headers })
+      : NextResponse.next({ headers });
+
   const expected = process.env.SITE_BASIC_AUTH;
-  if (!expected) return NextResponse.next();
+  if (!expected) return pass();
 
   // Open to everyone, so crawlers read the Disallow instead of a 401.
   if (request.nextUrl.pathname === "/robots.txt") {
@@ -55,7 +79,7 @@ export function proxy(request: NextRequest) {
     });
   }
 
-  return NextResponse.next({ headers: GATED_HEADERS });
+  return pass(GATED_HEADERS);
 }
 
 export const config = {

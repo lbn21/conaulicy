@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { NR_QUERY } from "./lib/house";
 
 const nextConfig: NextConfig = {
   // PDFKit reads its own data files from __dirname, so it must stay a real
@@ -19,8 +20,8 @@ const nextConfig: NextConfig = {
     },
   },
   // A house number in the query (?nr=12a, ?nr=7/22) keeps the street page
-  // cached: it becomes a path. Anything else in nr is left out, and the
-  // plain page shows the street as it is.
+  // cached: it becomes a path. Any other ?nr= is routed by proxy.ts (a
+  // rewrite cannot see an empty value).
   async rewrites() {
     return {
       beforeFiles: [
@@ -30,7 +31,7 @@ const nextConfig: NextConfig = {
             {
               type: "query",
               key: "nr",
-              value: "(?<nr>\\d{1,4}[a-zA-Z]?(?:/\\d{1,4}[a-zA-Z]?)?)",
+              value: `(?<nr>${NR_QUERY})`,
             },
           ],
           destination: "/adres/:id/nr/:nr",

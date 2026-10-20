@@ -8,3 +8,7 @@ declare module "govuk-frontend/dist/govuk/components/button/button.mjs" {
 declare module "govuk-frontend/dist/govuk/components/skip-link/skip-link.mjs" {
   export const SkipLink: GovukComponent;
 }
+
+declare module "govuk-frontend/dist/govuk/components/error-summary/error-summary.mjs" {
+  export const ErrorSummary: GovukComponent;
+}
