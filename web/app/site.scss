@@ -10,6 +10,13 @@
   fill: map.get($app-latarnia, "plate");
 }
 
+// In the header the wordmark's x-height is centred on the plate: 1.4 of the
+// logo's 34 units lower than in the logo files (docs/logo/README.md). A
+// percentage of the SVG's viewBox, so nothing else moves.
+.app-logo__wordmark {
+  transform: translateY(4.12%);
+}
+
 // Our footer (components/site-footer.tsx): the GOV.UK footer's top bar and
 // background, so on short pages the footer runs into the template background.
 .app-footer {

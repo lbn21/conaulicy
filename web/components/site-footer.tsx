@@ -2,7 +2,7 @@
 // a content line) with GOV.UK layout, typography and link classes. Not the
 // GOV.UK footer component, which only services on GOV.UK may use: no crown,
 // no Open Government Licence, no Crown copyright line. Its background and top
-// bar are in site.scss (.app-footer).
+// bar are in site.scss (.app-footer). The licences are credited on /dostepnosc.
 export function SiteFooter() {
   return (
     <footer className="govuk-template__footer app-footer govuk-!-padding-top-7 govuk-!-padding-bottom-5">
@@ -26,25 +26,8 @@ export function SiteFooter() {
             </a>
           </li>
         </ul>
-        <p className="govuk-body">
-          Nie jesteśmy urzędem – obowiązuje harmonogram gminy
-        </p>
         <p className="govuk-body govuk-!-margin-bottom-0">
-          Strona korzysta z GOV.UK Frontend (
-          <a
-            className="govuk-link govuk-link--text-colour"
-            href="https://github.com/alphagov/govuk-frontend/blob/main/LICENSE.txt"
-          >
-            licencja MIT
-          </a>
-          ) i kroju Atkinson Hyperlegible Next (
-          <a
-            className="govuk-link govuk-link--text-colour"
-            href="https://openfontlicense.org/open-font-license-official-text/"
-          >
-            licencja SIL OFL
-          </a>
-          ). Nie jest stroną rządu Wielkiej Brytanii.
+          Nie jesteśmy urzędem – obowiązuje harmonogram gminy
         </p>
       </div>
     </footer>

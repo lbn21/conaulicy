@@ -27,8 +27,8 @@ See `debug/a-centring-overlay.png`, which shows plate centre lines, ink box and 
 
 **Kerning.** u|l −14 units, l|. +6, set by eye at 400 %.
 
-**Header.** The plate is 1.6 × the wordmark's cap height: "conaulicy" at 31.8 on a 34-high plate. In the 360 px header the whole mark is 32 px tall, next to "Lubaczów".
-- **Alignment:** the wordmark sits on the **baseline of "ul."** on the plate. Its x-height centre then lands 1.4 units above the plate centre, which reads as centred, because lowercase sits optically low.
+**Header.** The plate is 1.6 × the wordmark's cap height: "conaulicy" at 31.8 on a 34-high plate. In the 360 px header the whole mark is 32 px tall.
+- **Alignment:** in the logo files the wordmark sits on the **baseline of "ul."** on the plate, with its x-height centre 1.4 units above the plate centre. In the site header the wordmark is 1.4 units lower, so its x-height is centred on the plate (`.app-logo__wordmark` in `web/app/site.scss`).
 - **Size:** the mark is much larger than before. The old plate was 28 px tall with a 20 px wordmark.
 
 **Favicons.** These are separate designs, pixel-snapped: plate edges and baselines on whole pixels, x-height a whole number of pixels.
