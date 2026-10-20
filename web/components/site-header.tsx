@@ -11,7 +11,8 @@ import {
 
 // The GOV.UK Generic header (never the GOV.UK header or crown) with our
 // "ul." plate. On its black bar the plate is the logo's dark-background
-// lockup: amber plate, light wordmark (docs/brand.md).
+// lockup: amber plate, light wordmark (docs/brand.md). Markup as the
+// component's own template: only the logo goes in the homepage link.
 export function SiteHeader() {
   return (
     <header className="govuk-template__header">
@@ -54,7 +55,6 @@ export function SiteHeader() {
                 conaulicy.pl – strona główna
               </span>
             </a>
-            <span className="app-logo__place">Lubaczów</span>
           </div>
         </div>
       </div>

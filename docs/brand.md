@@ -13,15 +13,15 @@ The site uses **GOV.UK Frontend as-is, including its palette**. Only three thing
 | **Favicons** | [`a-favicon.svg`](logo/a-favicon.svg) (32 px), [`a-favicon-16.svg`](logo/a-favicon-16.svg) (16 px) | Browser tab, app icons: separate pixel-snapped drawings |
 
 - "ul." and the rim are **cut out** of the plate (an SVG mask), so the background shows through them.
-- **Header:** the GOV.UK **Generic header** (`govuk-generic-header`) with our logo in `govuk-generic-header__homepage-link`. Never the GOV.UK header, the crown or the GOV.UK logotype. The plate's size and alignment are the only header rules in `web/app/site.scss`.
-- **Footer:** our own, built with GOV.UK classes; never the GOV.UK footer component.
+- **Header:** the GOV.UK **Generic header** (`govuk-generic-header`), markup as its template, with only our logo in `govuk-generic-header__homepage-link`. The place name is in the page content, not the header. Never the GOV.UK header, the crown or the GOV.UK logotype. The plate colour is the only header rule in `web/app/site.scss`.
+- **Footer:** our own, modelled on the GOV.UK footer's structure (meta links, then a content line: „Nie jesteśmy urzędem” and the licence note) with GOV.UK layout, typography and link classes. Its brand top bar and template background are in `web/app/site.scss`. Never the GOV.UK footer component, the crown, the Open Government Licence or a Crown copyright line.
 - **Enamel version** ([`a-hero-*.svg`](logo/a-hero-dark.svg), [`a-og-enamel.svg`](logo/a-og-enamel.svg), [`a-pdf-corner.svg`](logo/a-pdf-corner.svg)): only for large decorative pieces such as a poster, and never in the header, favicon, app icons or at small sizes.
 
 ### Where it ships (`docs/logo/source/ship_a.mjs` builds the files)
 
 | Place | File |
 |---|---|
-| Header | `web/components/site-header.tsx`: inline SVG (paths in `web/lib/logo.ts`); plate `#ffb547` from `app/_palette.scss` via `app/site.scss`; wordmark `currentColor` (white on the black bar); then „Lubaczów” |
+| Header | `web/components/site-header.tsx`: inline SVG (paths in `web/lib/logo.ts`); plate `#ffb547` from `app/_palette.scss` via `app/site.scss`; wordmark `currentColor` (white on the black bar) |
 | Tab icon | `web/app/icon.svg` (light colours) and `web/app/favicon.ico` (16 + 32, night tile) |
 | Apple | `web/app/apple-icon.png` (180, full-bleed night tile; iOS rounds it) |
 | PWA | `web/public/icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, listed in `web/app/manifest.ts` |

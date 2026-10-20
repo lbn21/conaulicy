@@ -4,20 +4,17 @@
 @use "sass:map";
 @use "settings" as *;
 
-// Our "ul." plate in the Generic header.
-.app-logo {
-  vertical-align: middle;
-}
-
+// Our "ul." plate in the Generic header. Placed by the component's own rules
+// (vertical-align: top), so the hover underline sits below it.
 .app-logo__plate {
   fill: map.get($app-latarnia, "plate");
 }
 
-.app-logo__place {
-  @include govuk-font($size: 19);
-  display: inline-block;
-  vertical-align: middle;
-  color: govuk-functional-colour(inverse-text);
+// Our footer (components/site-footer.tsx): the GOV.UK footer's top bar and
+// background, so on short pages the footer runs into the template background.
+.app-footer {
+  border-top: govuk-spacing(2) solid govuk-functional-colour(brand);
+  background: govuk-functional-colour(template-background);
 }
 
 // The street search: alphagov accessible-autocomplete with its own CSS,

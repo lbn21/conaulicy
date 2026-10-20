@@ -24,7 +24,7 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
   - accessible-autocomplete's highlighted option (`.autocomplete__option--focused` / `:hover`): stays in its CSS, and `site.scss` overrides the colour with the brand role, so it is never rendered.
 - **Light theme only.**
 - Any other deviation needs Jakub's approval and a reason in the PR.
-- **Own CSS:** only `web/app/site.scss`, for what GOV.UK has no equivalent for (logo plate, bin markers, search suggestions). GOV.UK Sass functions and mixins only, no raw hex or px; capped at 1 KB gzip and 80 lines of code. `web/app/tokens.css` holds only the font's metric-matched fallback and the bin colours.
+- **Own CSS:** only `web/app/site.scss`, for what GOV.UK has no equivalent for (logo plate, footer background, bin markers, search suggestions). GOV.UK Sass functions and mixins only, no raw hex or px; capped at 1 KB gzip and 80 lines of code. `web/app/tokens.css` holds only the font's metric-matched fallback and the bin colours.
 - Brand, palette and contrast: [docs/brand.md](docs/brand.md). Audit and migration plan: [docs/govuk-audit.md](docs/govuk-audit.md).
 
 ## UI rules
