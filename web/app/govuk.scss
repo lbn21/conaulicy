@@ -15,3 +15,10 @@
 @use "govuk-frontend/dist/govuk/utilities";
 @use "govuk-frontend/dist/govuk/overrides";
 
+// The licence notice in the shipped CSS. The build's minifier drops every
+// comment, the /*! one above included, so it travels as a custom property,
+// as GOV.UK Frontend's own --govuk-frontend-version does.
+:root {
+  --govuk-frontend-licence: "GOV.UK Frontend v6.5.1 | MIT License | © Crown copyright (Government Digital Service) | https://github.com/alphagov/govuk-frontend";
+}
+

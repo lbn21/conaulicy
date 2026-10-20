@@ -88,16 +88,33 @@ export default function AccessibilityPage() {
             </p>
           </section>
 
-          <p className="govuk-body">
-            Strona korzysta z GOV.UK Frontend (
-            <a
-              href="https://github.com/alphagov/govuk-frontend/blob/main/LICENSE.txt"
-              className="govuk-link"
-            >
-              licencja MIT
-            </a>
-            , © Crown copyright). Nie jest stroną rządu Wielkiej Brytanii.
-          </p>
+          <section>
+            <h2 className="govuk-heading-m">Z czego zbudowana jest strona</h2>
+            <p className="govuk-body">
+              Korzystamy z darmowych, otwartych projektów. Dziękujemy ich
+              autorom.
+            </p>
+            <ul className="govuk-list govuk-list--bullet">
+              <li>
+                Wygląd strony, przyciski i formularze: GOV.UK Frontend (
+                <a
+                  href="https://github.com/alphagov/govuk-frontend/blob/main/LICENSE.txt"
+                  className="govuk-link"
+                >
+                  licencja MIT
+                </a>
+                , ©&nbsp;Crown copyright).
+              </li>
+              <li>
+                Krój pisma: Atkinson Hyperlegible Next (
+                <a href="/fonts/OFL.txt" className="govuk-link">
+                  licencja SIL OFL
+                </a>
+                ).
+              </li>
+            </ul>
+          </section>
+
           <p className="govuk-body">
             Ostatnia zmiana tej strony:{" "}
             <time dateTime="2026-10-20">20 października 2026</time>.

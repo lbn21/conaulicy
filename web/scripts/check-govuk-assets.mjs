@@ -13,6 +13,10 @@
 //   in brand blue. site.scss overrides that colour with the brand role, and
 //   this check fails unless the override is in the compiled CSS.
 // or if app/_settings.scss stops turning off GOV.UK's default font face.
+// Credits: the compiled CSS must carry GOV.UK Frontend's licence notice;
+// /dostepnosc must link the MIT licence and the font's OFL (served from
+// public/fonts/OFL.txt, a copy of the one beside the font files); the footer
+// must not carry the licence note.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
@@ -123,6 +127,29 @@ if (!/\$govuk-include-default-font-face:\s*false/.test(settings)) {
   );
 }
 
+if (
+  !/--govuk-frontend-licence:\s*"GOV\.UK Frontend v[\d.]+ \| MIT License/.test(
+    css,
+  )
+)
+  failures.push("compiled CSS: no GOV.UK Frontend licence notice");
+const html = (page) =>
+  readFileSync(path.join(ROOT, ".next/server/app", `${page}.html`), "utf8");
+const credits = html("dostepnosc");
+for (const [href, what] of [
+  ["https://github.com/alphagov/govuk-frontend/blob/main/LICENSE.txt", "MIT"],
+  ["/fonts/OFL.txt", "SIL OFL"],
+]) {
+  if (!credits.includes(`href="${href}"`))
+    failures.push(`/dostepnosc: no link to the ${what} licence (${href})`);
+}
+const footer = html("index").match(/<footer[\s\S]*<\/footer>/)?.[0] ?? "";
+if (/licencj|LICENSE|OFL/.test(footer))
+  failures.push("footer: licence note (it belongs on /dostepnosc)");
+const ofl = (dir) => readFileSync(path.join(ROOT, dir, "OFL.txt"), "utf8");
+if (ofl("public/fonts") !== ofl("assets/fonts"))
+  failures.push("public/fonts/OFL.txt differs from assets/fonts/OFL.txt");
+
 console.log(
   `GOV.UK assets: ${files.length} files in ${SCAN.join(", ")} scanned (${cssFiles} CSS).`,
 );
@@ -131,5 +158,5 @@ if (failures.length > 0) {
   process.exit(1);
 }
 console.log(
-  "No GDS Transport, crown, GOV.UK logotype, govuk assets or brand blue.",
+  "No GDS Transport, crown, GOV.UK logotype, govuk assets or brand blue; licences credited.",
 );
