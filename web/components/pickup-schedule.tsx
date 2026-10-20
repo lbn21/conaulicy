@@ -118,25 +118,31 @@ function DayBlock({
           : "border-t border-border py-4"
       }
     >
-      <h3 className={prominent ? "font-bold" : "text-xl font-bold"}>
+      <h3
+        className={
+          prominent
+            ? "govuk-heading-s govuk-!-margin-bottom-0"
+            : "govuk-heading-m govuk-!-margin-bottom-0"
+        }
+      >
         <time dateTime={day.date}>
           {prominent ? (
             <>
-              <span className="sr-only">{spokenDay(day.date, today)}</span>
+              <span className="govuk-visually-hidden">
+                {spokenDay(day.date, today)}
+              </span>
               <span aria-hidden="true" className="flex flex-col gap-1">
                 <span
                   className={
                     relative
-                      ? "text-xl font-bold text-accent"
-                      : "text-xl font-bold text-text-muted"
+                      ? "govuk-!-font-size-27 govuk-!-font-weight-bold text-accent"
+                      : "govuk-!-font-size-27 govuk-!-font-weight-bold text-text-muted"
                   }
                 >
                   {relative ?? "Najbliższy odbiór"}
                 </span>
-                <span className="text-[4.5rem] leading-none tracking-tight">
-                  {face.day}
-                </span>
-                <span className="text-lg font-bold">
+                <span className="govuk-!-font-size-80">{face.day}</span>
+                <span className="govuk-!-font-size-24 govuk-!-font-weight-bold">
                   {face.month}, {face.weekday}
                 </span>
               </span>
@@ -147,7 +153,7 @@ function DayBlock({
         </time>
       </h3>
       {putOutBy && (
-        <p className="mt-2 text-text-muted">
+        <p className="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0">
           Wystaw przed posesję do godziny {hour(putOutBy)}.
         </p>
       )}
@@ -187,7 +193,7 @@ export function PickupSchedule({
 
   if (visible.length === 0) {
     return (
-      <p className="mt-8 max-w-prose">
+      <p className="govuk-body">
         Nie mamy jeszcze kolejnych terminów. Dopiszemy je, gdy pojawi się nowy
         harmonogram.
       </p>
@@ -199,7 +205,7 @@ export function PickupSchedule({
 
   return (
     <div className="mt-8">
-      <h2 id="pickups-heading" className="sr-only">
+      <h2 id="pickups-heading" className="govuk-visually-hidden">
         Najbliższe odbiory
       </h2>
       <ol aria-labelledby="pickups-heading" className="flex flex-col gap-4">

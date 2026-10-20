@@ -11,39 +11,41 @@ export default async function Home() {
   ]);
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="mt-8 text-2xl font-bold tracking-tight md:mt-14 md:text-3xl">
-        Kiedy śmieciarka przyjedzie pod Twój dom?
-      </h1>
-      <p className="mt-4 max-w-prose">
-        Wpisz ulicę w Lubaczowie albo wieś w gminie. Pokażemy, co wystawić przed
-        dom i na kiedy.
-      </p>
-
-      <div className="mt-8">
-        <AddressSearch indexUrl={indexUrl} />
-      </div>
-
-      <section aria-labelledby="sample-heading" className="mt-12">
-        <h2 id="sample-heading" className="text-lg font-bold">
-          Przykładowe adresy
-        </h2>
-        <p className="mt-2 max-w-prose text-text-muted">
-          Na razie znamy tylko część ulic i wsi. Kolejne dopisujemy.
+    <div className="govuk-grid-row">
+      <div className="govuk-grid-column-two-thirds">
+        <h1 className="govuk-heading-xl">
+          Kiedy śmieciarka przyjedzie pod Twój dom?
+        </h1>
+        <p className="govuk-body-l">
+          Wpisz ulicę w Lubaczowie albo wieś w gminie. Pokażemy, co wystawić
+          przed dom i na kiedy.
         </p>
-        <ul className="mt-4 border-t border-border">
-          {places.map((place) => (
-            <li key={place.id} className="border-b border-border">
-              <a
-                href={`/adres/${place.id}`}
-                className="flex min-h-12 items-center py-2 underline decoration-2 underline-offset-4"
-              >
-                {place.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
+
+        <div className="govuk-!-margin-bottom-8">
+          <AddressSearch indexUrl={indexUrl} />
+        </div>
+
+        <section aria-labelledby="sample-heading">
+          <h2 id="sample-heading" className="govuk-heading-m">
+            Przykładowe adresy
+          </h2>
+          <p className="govuk-body">
+            Na razie znamy tylko część ulic i wsi. Kolejne dopisujemy.
+          </p>
+          <ul className="govuk-list">
+            {places.map((place) => (
+              <li key={place.id}>
+                <a
+                  href={`/adres/${place.id}`}
+                  className="underline decoration-2 underline-offset-4"
+                >
+                  {place.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
     </div>
   );
 }
