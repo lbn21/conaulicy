@@ -1,21 +1,23 @@
 # „Mój adres” – data inventory (Miasto Lubaczów 1809011 + Gmina Lubaczów 1809042)
 
 Checked: 18.10.2026, 22:48–23:05 (Europe/London, UTC+1). Read-only: nothing was sent, nobody was contacted, no logins.
-Labels: **[F]** = verified fact (URL + file in this folder), **[S]** = assessment/opinion, **[OPEN]** = not finished, to do in task-10.
+Labels: **[F]** = verified fact (URL + archived file), **[S]** = assessment/opinion, **[OPEN]** = not finished, to do in task-10.
 
-## 0. Files in this folder
+## 0. Archived files
+In the private S3 bucket under `sources/<origin>/<fetch date>/`; keys, public URLs and SHA-256 in [sources.md](sources.md). `npm run sources:pull` puts them in `.cache/sources/`.
+
 | Path | What it is |
 |---|---|
-| `miasto/harmonogram-2026-s{1..5}.jpg` | city waste schedule 2026, 5 sectors, 3508×2482 JPG (original files, see SHA256SUMS.txt) |
-| `gmina/{1..5}_2026_*.pdf` | gmina waste schedule 2026, 5 sectors, 1-page A3 PDF **with a text layer** |
-| `raw/czystylubaczow_harmonogram.html`, `raw/gmina_harm2026.html` | the source pages as downloaded |
-| `raw/gmina_woda_wp-api_sample.json` | the last 10 posts about water cuts (gmina WP REST API) |
-| `raw/mzgkim_feed_2026-10-18.xml` | MZGKiM RSS (city water) |
-| `raw/imgw_warningsmeteo_2026-10-18.json`, `raw/imgw_warningshydro_2026-10-18.json` | IMGW API snapshots |
-| `raw/rso_podkarpackie_2026-10-18.json` | RSO (komunikaty.tvp.pl) snapshot for podkarpackie |
-| `teryt/ULIC_1809011_miasto_lubaczow.csv` (206 streets), `teryt/ULIC_1809042_gmina_lubaczow.csv` (70), `teryt/SIMC_1809011_1809042.csv` (69 places) | TERYT subsets, version as of 2026-10-16 (ULIC) / 2026-01-01 (SIMC) |
-| `scripts/build_sample.py` | **prototype** (not production): manual 2026 transcription → sample JSON + weekday check |
-| `sample/schedule-2026.sample.json` (486 events), `sample/address-register.sample.json`, `sample/weekday-anomalies.txt` | samples for task-10 / task-11 |
+| `miasto/2026-10-18/harmonogram-2026-s{1..5}.jpg` | city waste schedule 2026, 5 sectors, 3508×2482 JPG (original files) |
+| `gmina/2026-10-18/{1..5}_2026_*.pdf` | gmina waste schedule 2026, 5 sectors, 1-page A3 PDF **with a text layer** |
+| `miasto/2026-10-18/czystylubaczow_harmonogram.html`, `gmina/2026-10-18/gmina_harm2026.html` | the source pages as downloaded |
+| `gmina/2026-10-18/gmina_woda_wp-api_sample.json` | the last 10 posts about water cuts (gmina WP REST API) |
+| `mzgkim/2026-10-18/mzgkim_feed_2026-10-18.xml` | MZGKiM RSS (city water) |
+| `imgw/2026-10-18/imgw_warningsmeteo_2026-10-18.json`, `imgw/2026-10-18/imgw_warningshydro_2026-10-18.json` | IMGW API snapshots |
+| `rso/2026-10-18/rso_podkarpackie_2026-10-18.json` | RSO (komunikaty.tvp.pl) snapshot for podkarpackie |
+| `teryt/2026-10-18/ULIC_1809011_miasto_lubaczow.csv` (206 streets), `teryt/2026-10-18/ULIC_1809042_gmina_lubaczow.csv` (70), `teryt/2026-10-18/SIMC_1809011_1809042.csv` (69 places) | TERYT subsets, version as of 2026-10-16 (ULIC) / 2026-01-01 (SIMC) |
+| `meta/2026-10-18/build_sample.py` | **prototype** (not production): manual 2026 transcription → sample JSON + weekday check |
+| `meta/2026-10-18/schedule-2026.sample.json` (486 events), `meta/2026-10-18/address-register.sample.json`, `meta/2026-10-18/weekday-anomalies.txt` | samples for task-10 / task-11 |
 
 > The transcription in `build_sample.py` is my manual reading of the JPGs/PDFs. It is a **seed for the review**, not the source of truth. Task-10 must extract it independently and compare 1:1 (test plan §4 MVP-PLAN).
 
@@ -29,7 +31,7 @@ Labels: **[F]** = verified fact (URL + file in this folder), **[S]** = assessmen
   2. `PAPIER I TEKTURA` + `TWORZYWA SZTUCZNE` + `OPAKOWANIA ZE SZKŁA` (shared cell, 1–2/month)
   3. `BIODEGRADOWALNE` (1–3/month)
   4. `WIELKOGABARYTOWE` + `ELEKTRYCZNE I ELEKTRONICZNE` + `ZUŻYTE OPONY` + `ODZIEŻ I TEKSTYLIA` (2× a year: March and September)
-- Sectors = weekdays: S1 Mon, S2 Tue, S3 Tue (!), S4 Thu, S5 Fri, with shifts around holidays (list in `sample/weekday-anomalies.txt`).
+- Sectors = weekdays: S1 Mon, S2 Tue, S3 Tue (!), S4 Thu, S5 Fri, with shifts around holidays (list in `meta/2026-10-18/weekday-anomalies.txt`, see §0).
 - ⚠️ **S2 and S3 tables are pixel-identical** (image diff = 0 px; the street lists differ). Either the two sectors really share dates, or this is a copy-paste error in the source. **[OPEN] Confirm** without contacting anyone: compare with the eGmina BOM app (open zone, by hand on a phone, Jakub) or with the 2025 schedules (`harmonogram-2025_01-06_s2.png` vs `_s3.png`). Until then, mark it as a "source flag" in the review.
 - History of publication dates (WP media API) [F]: 2021: 31.12.2020 (Jan–Feb), 19.05 (Mar–Jun), 10.06 (Jul–Dec); 2022: 04.01 (H1), 30.05 (H2); 2023: 16.12.2022 (Jan–May), 31.05 (Jun–Dec); 2025: 17.12.2024 (**H1 only**); 2026: 15.12.2025 (whole year). ⇒ **The 2027 schedule will most likely appear in mid-December 2026** [S], and it may only cover half a year (that has happened 4 times). **2027 has not been published** (as of 18.10.2026) [F].
 - Street → sector mapping: 192 street names from the JPGs, all matched to TERYT ULIC (189 automatically + 3 aliases: „Monte Casino”→Monte Cassino, „Conrada-Korzeniowskiego”→Conrad-Korzeniowskiego, „Jagiellonów”→os. Osiedle Jagiellonów). No street appears in 2 sectors [F].

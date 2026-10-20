@@ -2,7 +2,7 @@
 
 ## Changelog
 - **18.10.2026, task-00 (binding).** Overrides every Astro / `lbn21/gdzie-zamieszkac` / `moj-adres/` line below.
-  - Repo `lbn21/conaulicy` (private), local `~/projects/conaulicy`. Layout: `web/` (Next.js), `etl/` (Python), `docs/`. Seed data stays in `docs/data/`; the pipeline's own cache lives in `etl/data/`.
+  - Repo `lbn21/conaulicy` (private), local `~/projects/conaulicy`. Layout: `web/` (Next.js), `etl/` (Python), `docs/`. Raw sources live in a private S3 bucket (`docs/data/sources.md`; `npm run sources:pull` → `.cache/sources/`); the pipeline's own cache lives in `etl/data/`.
   - Stack: **Next.js latest stable** (App Router, TypeScript; 16.4.2 on 18.10.2026) on Vercel. Team `gdzie-zamieszkac` (always `--scope gdzie-zamieszkac`), project `conaulicy`, functions region **`fra1`**.
   - Domain **`conaulicy.pl`**. DNS is already in Route 53 zone `Z038133013GA1DDSHXFPJ` (NS propagation in progress). `www` redirects to the apex. Until launch: Basic Auth + `noindex` + `robots.txt` disallow.
   - **First release = waste pickups only** (street → next pickups → ICS). IMGW warnings, water/power outages and email are the next release. The `/api/warnings` design stays in task-12; do not build it now.
