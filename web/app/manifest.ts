@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { BACKGROUND_COLOR, THEME_COLOR } from "@/lib/theme";
 
 // Icons: the flat "ul." plate on night (docs/brand.md, docs/logo/source/ship_a.mjs).
 export default function manifest(): MetadataRoute.Manifest {
@@ -8,8 +9,8 @@ export default function manifest(): MetadataRoute.Manifest {
     lang: "pl",
     start_url: "/",
     display: "standalone",
-    background_color: "#10141d",
-    theme_color: "#10141d",
+    background_color: BACKGROUND_COLOR,
+    theme_color: THEME_COLOR,
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icon-512.png", sizes: "512x512", type: "image/png" },

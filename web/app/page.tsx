@@ -11,7 +11,7 @@ export default async function Home() {
   ]);
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 md:px-8">
+    <div className="max-w-2xl">
       <h1 className="mt-8 text-2xl font-bold tracking-tight md:mt-14 md:text-3xl">
         Kiedy śmieciarka przyjedzie pod Twój dom?
       </h1>
@@ -44,6 +44,6 @@ export default async function Home() {
           ))}
         </ul>
       </section>
-    </main>
+    </div>
   );
 }

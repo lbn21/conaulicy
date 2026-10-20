@@ -56,7 +56,7 @@ function HouseNumberQuestion({ place }: { place: PlaceView }) {
         enterKeyHint="go"
         maxLength={12}
         aria-describedby={place.unknownNr ? "nr-hint nr-note" : "nr-hint"}
-        className="mt-1 min-h-14 w-32 rounded-sm border-2 border-border bg-surface px-4 text-lg text-text focus-visible:border-focus"
+        className="mt-1 min-h-14 w-32 rounded-sm border-2 border-input-border bg-surface px-4 text-lg text-text"
       />
       <p className="mt-2">
         <button
@@ -76,7 +76,7 @@ export async function PlaceMain({ id, nr }: { id: string; nr: string | null }) {
   const name = withHouseNumber(place.name, place.nr);
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 md:px-8">
+    <div className="max-w-2xl">
       <p className="mt-8 text-text-muted md:mt-14">{place.area}</p>
       <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">
         {name}
@@ -175,6 +175,6 @@ export async function PlaceMain({ id, nr }: { id: string; nr: string | null }) {
           </div>
         </>
       )}
-    </main>
+    </div>
   );
 }

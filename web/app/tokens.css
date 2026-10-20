@@ -1,15 +1,11 @@
 /*
-  Latarnia — design tokens for Tailwind CSS v4.
-  Copy of design/tokens.css; the font itself loads through app/fonts.ts.
-  Dark is the default theme.
-  Contrast is verified by `node design/contrast.mjs`; keep the palettes in sync.
+  Tokens for the Tailwind utilities that pages still use while they move to
+  GOV.UK Frontend classes (docs/govuk-audit.md, PRs 2–7). Deleted with
+  Tailwind in PR 8. Light only, as GOV.UK.
 
-  Theme resolution:
-  1. :root holds dark tokens.
-  2. prefers-color-scheme: light swaps to light tokens.
-  3. [data-theme="dark"] and [data-theme="light"] override both.
-     [data-theme="system"] is intentionally unset, so the media query
-     keeps following the device live.
+  The role colours (text, link, focus, error, …) come from GOV.UK's palette,
+  bridged in app/govuk.scss; only the real-world bin colours live here.
+  Contrast is verified by `node design/contrast.mjs`.
 
   Spacing rhythm: 4px. Tailwind derives p-1 = 4px, p-2 = 8px, p-4 = 16px … from --spacing.
   Weights: 400 (text) and 700 (emphasis) only.
@@ -49,150 +45,8 @@
   line-gap-override: 0%;
 }
 
-/* Dark (default) */
 :root {
-  color-scheme: dark;
-  --background: #10141d;
-  --surface: #19202b;
-  --surface-2: #212937;
-  --text: #e9edf2;
-  --text-muted: #b4bcc8;
-  --border: #6f7a8d;
-  --accent: #ffb547;
-  --accent-contrast: #10141d;
-  --secondary: #262e3b;
-  --focus: #ffdda0;
-  --success: #6fd49a;
-  --warning: #f2a65a;
-  --danger: #ff8f85;
-  --waste-zmieszane: #111111;
-  --waste-zmieszane-fg: #f5f7fa;
-  --waste-zmieszane-border: #9aa3b2;
-  --waste-papier: #6eb4ff;
-  --waste-papier-fg: #10141d;
-  --waste-plastik-metale: #f4d35e;
-  --waste-plastik-metale-fg: #10141d;
-  --waste-plastik-metale-border: transparent;
-  --waste-szklo: #58d39a;
-  --waste-szklo-fg: #10141d;
-  --waste-bio: #c4936a;
-  --waste-bio-fg: #10141d;
-  --waste-popiol: #c4c8ce;
-  --waste-popiol-fg: #10141d;
-  --waste-gabaryty: #ff9147;
-  --waste-gabaryty-fg: #10141d;
-  --waste-elektro: #2747b0;
-  --waste-elektro-fg: #ffffff;
-  --waste-elektro-border: #8fa8ff;
-  --waste-opony: #8a919d;
-  --waste-opony-fg: #10141d;
-  --waste-opony-border: transparent;
-  --waste-tekstylia: #f293b8;
-  --waste-tekstylia-fg: #10141d;
-  --elevation: 0 1px 2px rgb(0 0 0 / 0.4);
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color-scheme: light;
-    --background: #f5f7fa;
-    --surface: #ffffff;
-    --surface-2: #eef1f5;
-    --text: #161b24;
-    --text-muted: #4a5568;
-    --border: #6f7a8d;
-    --accent: #9a5700;
-    --accent-contrast: #ffffff;
-    --secondary: #e8ecf2;
-    --focus: #6b3d00;
-    --success: #1e7a46;
-    --warning: #a0420a;
-    --danger: #b42318;
-    --waste-zmieszane: #111111;
-    --waste-zmieszane-fg: #ffffff;
-    --waste-zmieszane-border: #111111;
-    --waste-papier: #1f63c7;
-    --waste-papier-fg: #ffffff;
-    --waste-plastik-metale: #f2c200;
-    --waste-plastik-metale-fg: #161b24;
-    --waste-plastik-metale-border: #7d6200;
-    --waste-szklo: #1e7f4f;
-    --waste-szklo-fg: #ffffff;
-    --waste-bio: #7a4b2a;
-    --waste-bio-fg: #ffffff;
-    --waste-popiol: #5c6370;
-    --waste-popiol-fg: #ffffff;
-    --waste-gabaryty: #c2410c;
-    --waste-gabaryty-fg: #ffffff;
-    --waste-elektro: #1e3a8a;
-    --waste-elektro-fg: #ffffff;
-    --waste-elektro-border: transparent;
-    --waste-opony: #a3aab5;
-    --waste-opony-fg: #161b24;
-    --waste-opony-border: #4a5160;
-    --waste-tekstylia: #a8336a;
-    --waste-tekstylia-fg: #ffffff;
-    --elevation: 0 1px 2px rgb(22 27 36 / 0.12);
-  }
-}
-
-[data-theme="dark"] {
-  color-scheme: dark;
-  --background: #10141d;
-  --surface: #19202b;
-  --surface-2: #212937;
-  --text: #e9edf2;
-  --text-muted: #b4bcc8;
-  --border: #6f7a8d;
-  --accent: #ffb547;
-  --accent-contrast: #10141d;
-  --secondary: #262e3b;
-  --focus: #ffdda0;
-  --success: #6fd49a;
-  --warning: #f2a65a;
-  --danger: #ff8f85;
-  --waste-zmieszane: #111111;
-  --waste-zmieszane-fg: #f5f7fa;
-  --waste-zmieszane-border: #9aa3b2;
-  --waste-papier: #6eb4ff;
-  --waste-papier-fg: #10141d;
-  --waste-plastik-metale: #f4d35e;
-  --waste-plastik-metale-fg: #10141d;
-  --waste-plastik-metale-border: transparent;
-  --waste-szklo: #58d39a;
-  --waste-szklo-fg: #10141d;
-  --waste-bio: #c4936a;
-  --waste-bio-fg: #10141d;
-  --waste-popiol: #c4c8ce;
-  --waste-popiol-fg: #10141d;
-  --waste-gabaryty: #ff9147;
-  --waste-gabaryty-fg: #10141d;
-  --waste-elektro: #2747b0;
-  --waste-elektro-fg: #ffffff;
-  --waste-elektro-border: #8fa8ff;
-  --waste-opony: #8a919d;
-  --waste-opony-fg: #10141d;
-  --waste-opony-border: transparent;
-  --waste-tekstylia: #f293b8;
-  --waste-tekstylia-fg: #10141d;
-  --elevation: 0 1px 2px rgb(0 0 0 / 0.4);
-}
-
-[data-theme="light"] {
   color-scheme: light;
-  --background: #f5f7fa;
-  --surface: #ffffff;
-  --surface-2: #eef1f5;
-  --text: #161b24;
-  --text-muted: #4a5568;
-  --border: #6f7a8d;
-  --accent: #9a5700;
-  --accent-contrast: #ffffff;
-  --secondary: #e8ecf2;
-  --focus: #6b3d00;
-  --success: #1e7a46;
-  --warning: #a0420a;
-  --danger: #b42318;
   --waste-zmieszane: #111111;
   --waste-zmieszane-fg: #ffffff;
   --waste-zmieszane-border: #111111;
@@ -227,11 +81,14 @@
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-border: var(--border);
+  --color-input-border: var(--input-border);
+  --color-link: var(--link);
   --color-accent: var(--accent);
   --color-primary: var(--accent);
   --color-accent-contrast: var(--accent-contrast);
   --color-secondary: var(--secondary);
   --color-focus: var(--focus);
+  --color-focus-text: var(--focus-text);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);

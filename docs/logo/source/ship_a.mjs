@@ -67,7 +67,15 @@ writeFileSync(
     [32, await png(img(dark("a-favicon.svg"), 32), [32, 32], true)],
   ]),
 );
-copyFileSync(path.join(logo, "a-favicon.svg"), path.join(app, "icon.svg"));
+// The site is light only (task 26): the tab icon keeps the light colours and
+// drops the colour-scheme query. PNG and ICO stay on the night tile.
+writeFileSync(
+  path.join(app, "icon.svg"),
+  svgText("a-favicon.svg").replace(
+    /<style>[\s\S]*?<\/style>/,
+    "<style>.p{fill:#9A5700}.t{fill:#FFF}</style>",
+  ),
+);
 writeFileSync(path.join(app, "apple-icon.png"), await tile(180, 0.74, 0));
 writeFileSync(path.join(pub, "icon-192.png"), await tile(192, 0.74, 0.22));
 writeFileSync(path.join(pub, "icon-512.png"), await tile(512, 0.74, 0.22));

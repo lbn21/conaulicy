@@ -223,7 +223,10 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
         <label htmlFor={inputId} className="text-lg font-bold">
           Twoja ulica albo wieś
         </label>
-        <p id={hintId} className="text-text-muted">
+        {/* pr-1: on the GOV.UK 330px column this hint's last line ended
+            within 1px of the edge, so it wrapped differently in the web font
+            and its fallback (a layout shift). Goes with govuk-hint in PR 4. */}
+        <p id={hintId} className="pr-1 text-text-muted">
           Ulica w Lubaczowie albo wieś, np. Lisie Jamy. Numer domu możesz
           dopisać: Asnyka 12. Polskie znaki nie są potrzebne.
         </p>
@@ -282,7 +285,7 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
             }}
             onBlur={() => setOpen(false)}
             onKeyDown={onKeyDown}
-            className="min-h-14 w-full scroll-mt-4 rounded-sm border-2 border-border bg-surface pr-4 pl-12 text-lg text-text placeholder:text-text-muted focus-visible:border-focus"
+            className="min-h-14 w-full scroll-mt-4 rounded-sm border-2 border-input-border bg-surface pr-4 pl-12 text-lg text-text placeholder:text-text-muted"
           />
           <div
             hidden={!popup}

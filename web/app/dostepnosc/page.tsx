@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 
 export default function AccessibilityPage() {
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 md:px-8">
+    <div className="max-w-2xl">
       <h1 className="mt-8 text-2xl font-bold tracking-tight md:mt-14 md:text-3xl">
         Dostępność
       </h1>
@@ -20,10 +20,7 @@ export default function AccessibilityPage() {
         <section>
           <h2 className="text-lg font-bold">Jak budujemy stronę</h2>
           <ul className="mt-2 flex list-disc flex-col gap-2 pl-6">
-            <li>
-              Duży tekst (co najmniej 18 px) i mocny kontrast, w ciemnym i
-              jasnym wyglądzie.
-            </li>
+            <li>Duży tekst (co najmniej 18 px) i mocny kontrast.</li>
             <li>
               Przyciski i linki duże na tyle, żeby trafić w nie palcem (co
               najmniej 48 px).
@@ -49,9 +46,8 @@ export default function AccessibilityPage() {
             Przy każdej zmianie strony automatycznie uruchamiamy dwa testy:
             walidator HTML (Nu Html Checker, ten sam co na validator.w3.org)
             oraz axe-core, który szuka błędów dostępności według WCAG 2.2 AA.
-            Sprawdzamy każdą stronę w ciemnym i jasnym wyglądzie, na ekranie
-            telefonu i komputera. Ostatnio:{" "}
-            <time dateTime="2026-10-19">19 października 2026</time>, bez błędów.
+            Sprawdzamy każdą stronę na ekranie telefonu i komputera. Ostatnio:{" "}
+            <time dateTime="2026-10-20">20 października 2026</time>, bez błędów.
           </p>
         </section>
 
@@ -94,9 +90,9 @@ export default function AccessibilityPage() {
 
         <p className="text-text-muted">
           Ostatnia zmiana tej strony:{" "}
-          <time dateTime="2026-10-19">19 października 2026</time>.
+          <time dateTime="2026-10-20">20 października 2026</time>.
         </p>
       </div>
-    </main>
+    </div>
   );
 }

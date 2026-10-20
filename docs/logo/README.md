@@ -98,6 +98,7 @@ All three avoid the blue-and-white MSI street sign, the city's herb and any offi
 - `web/app/favicon.ico` (16 + 32 from the two favicon drawings);
 - `web/app/icon.svg`, `web/app/apple-icon.png`;
 - `web/public/icon-{192,512}.png`, `icon-maskable-512.png`;
-- `web/public/og.png` and `og-1200x630.png` (flat plate, from `og_flat()` in `make_logo_a.py`).
+- `web/public/og.png` and `og-1200x630.png`: the flat plate on white, from `og_flat("light")` in `make_logo_a.py` (task 26, light-only site). The task-23 night card is `a-og-dark.*`.
+- `web/app/icon.svg`: `a-favicon.svg` with its light colours and no colour-scheme query.
 
 The header and PDF paths live in `web/lib/logo.ts`, copied from `a-logo-mono.svg`.

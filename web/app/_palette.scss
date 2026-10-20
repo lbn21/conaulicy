@@ -1,0 +1,25 @@
+// The Latarnia group: our replacement for GOV.UK's brand-blue group, the one
+// part of GOV.UK's palette other sites must not use. Same structure and the
+// same method as GOV.UK's groups: the primary mixed with white (tints) or
+// black (shades) at GOV.UK's percentages; mixing #1d70b8 this way gives
+// GOV.UK's blue group exactly. Full palette and contrast: docs/brand.md.
+@use "sass:color";
+
+$app-latarnia-primary: #9a5700;
+
+@function _mix($with, $weight) {
+  @return color.mix($with, $app-latarnia-primary, $weight);
+}
+
+$app-latarnia: (
+  "primary": $app-latarnia-primary,
+  "tint-25": _mix(#ffffff, 25%),
+  "tint-50": _mix(#ffffff, 50%),
+  "tint-80": _mix(#ffffff, 80%),
+  "tint-95": _mix(#ffffff, 95%),
+  "shade-10": _mix(#000000, 10%),
+  "shade-25": _mix(#000000, 25%),
+  "shade-50": _mix(#000000, 50%),
+  // The logo plate on dark (the Generic header's black bar); unchanged.
+  "plate": #ffb547
+);

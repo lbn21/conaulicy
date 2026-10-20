@@ -1,15 +1,11 @@
 /*
-  Latarnia — design tokens for Tailwind CSS v4.
-  Not imported by the app yet. Dark is the default theme.
-  Contrast is verified by `node design/contrast.mjs`; keep the palettes in sync.
+  conaulicy.pl colour and type tokens, light only (as GOV.UK).
 
-  Theme resolution:
-  1. :root holds dark tokens.
-  2. prefers-color-scheme: light swaps to light tokens.
-  3. [data-theme] overrides both (declared last, so the attribute wins).
-
-  Spacing rhythm: 4px. Tailwind derives p-1 = 4px, p-2 = 8px, p-4 = 16px … from --spacing.
-  Weights: 400 (text) and 700 (emphasis) only.
+  The site uses GOV.UK Frontend as-is, including its palette; only the
+  brand-blue roles, the typeface and the logo are ours (docs/govuk-audit.md).
+  In the app the roles come from govuk-frontend's Sass settings
+  (web/app/_settings.scss, web/app/_palette.scss); this file documents the
+  resulting values. Contrast: `node design/contrast.mjs`.
 */
 
 @font-face {
@@ -64,150 +60,36 @@
     U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
-/* Dark (default) */
 :root {
-  color-scheme: dark;
-  --background: #10141d;
-  --surface: #19202b;
-  --surface-2: #212937;
-  --text: #e9edf2;
-  --text-muted: #b4bcc8;
-  --border: #6f7a8d;
-  --accent: #ffb547;
-  --accent-contrast: #10141d;
-  --secondary: #262e3b;
-  --focus: #ffdda0;
-  --success: #6fd49a;
-  --warning: #f2a65a;
-  --danger: #ff8f85;
-  --waste-zmieszane: #111111;
-  --waste-zmieszane-fg: #f5f7fa;
-  --waste-zmieszane-border: #9aa3b2;
-  --waste-papier: #6eb4ff;
-  --waste-papier-fg: #10141d;
-  --waste-plastik-metale: #f4d35e;
-  --waste-plastik-metale-fg: #10141d;
-  --waste-plastik-metale-border: transparent;
-  --waste-szklo: #58d39a;
-  --waste-szklo-fg: #10141d;
-  --waste-bio: #c4936a;
-  --waste-bio-fg: #10141d;
-  --waste-popiol: #c4c8ce;
-  --waste-popiol-fg: #10141d;
-  --waste-gabaryty: #ff9147;
-  --waste-gabaryty-fg: #10141d;
-  --waste-elektro: #2747b0;
-  --waste-elektro-fg: #ffffff;
-  --waste-elektro-border: #8fa8ff;
-  --waste-opony: #8a919d;
-  --waste-opony-fg: #10141d;
-  --waste-opony-border: transparent;
-  --waste-tekstylia: #f293b8;
-  --waste-tekstylia-fg: #10141d;
-  --elevation: 0 1px 2px rgb(0 0 0 / 0.4);
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color-scheme: light;
-    --background: #f5f7fa;
-    --surface: #ffffff;
-    --surface-2: #eef1f5;
-    --text: #161b24;
-    --text-muted: #4a5568;
-    --border: #6f7a8d;
-    --accent: #9a5700;
-    --accent-contrast: #ffffff;
-    --secondary: #e8ecf2;
-    --focus: #6b3d00;
-    --success: #1e7a46;
-    --warning: #a0420a;
-    --danger: #b42318;
-    --waste-zmieszane: #111111;
-    --waste-zmieszane-fg: #ffffff;
-    --waste-zmieszane-border: #111111;
-    --waste-papier: #1f63c7;
-    --waste-papier-fg: #ffffff;
-    --waste-plastik-metale: #f2c200;
-    --waste-plastik-metale-fg: #161b24;
-    --waste-plastik-metale-border: #7d6200;
-    --waste-szklo: #1e7f4f;
-    --waste-szklo-fg: #ffffff;
-    --waste-bio: #7a4b2a;
-    --waste-bio-fg: #ffffff;
-    --waste-popiol: #5c6370;
-    --waste-popiol-fg: #ffffff;
-    --waste-gabaryty: #c2410c;
-    --waste-gabaryty-fg: #ffffff;
-    --waste-elektro: #1e3a8a;
-    --waste-elektro-fg: #ffffff;
-    --waste-elektro-border: transparent;
-    --waste-opony: #a3aab5;
-    --waste-opony-fg: #161b24;
-    --waste-opony-border: #4a5160;
-    --waste-tekstylia: #a8336a;
-    --waste-tekstylia-fg: #ffffff;
-    --elevation: 0 1px 2px rgb(22 27 36 / 0.12);
-  }
-}
-
-[data-theme="dark"] {
-  color-scheme: dark;
-  --background: #10141d;
-  --surface: #19202b;
-  --surface-2: #212937;
-  --text: #e9edf2;
-  --text-muted: #b4bcc8;
-  --border: #6f7a8d;
-  --accent: #ffb547;
-  --accent-contrast: #10141d;
-  --secondary: #262e3b;
-  --focus: #ffdda0;
-  --success: #6fd49a;
-  --warning: #f2a65a;
-  --danger: #ff8f85;
-  --waste-zmieszane: #111111;
-  --waste-zmieszane-fg: #f5f7fa;
-  --waste-zmieszane-border: #9aa3b2;
-  --waste-papier: #6eb4ff;
-  --waste-papier-fg: #10141d;
-  --waste-plastik-metale: #f4d35e;
-  --waste-plastik-metale-fg: #10141d;
-  --waste-plastik-metale-border: transparent;
-  --waste-szklo: #58d39a;
-  --waste-szklo-fg: #10141d;
-  --waste-bio: #c4936a;
-  --waste-bio-fg: #10141d;
-  --waste-popiol: #c4c8ce;
-  --waste-popiol-fg: #10141d;
-  --waste-gabaryty: #ff9147;
-  --waste-gabaryty-fg: #10141d;
-  --waste-elektro: #2747b0;
-  --waste-elektro-fg: #ffffff;
-  --waste-elektro-border: #8fa8ff;
-  --waste-opony: #8a919d;
-  --waste-opony-fg: #10141d;
-  --waste-opony-border: transparent;
-  --waste-tekstylia: #f293b8;
-  --waste-tekstylia-fg: #10141d;
-  --elevation: 0 1px 2px rgb(0 0 0 / 0.4);
-}
-
-[data-theme="light"] {
   color-scheme: light;
-  --background: #f5f7fa;
-  --surface: #ffffff;
-  --surface-2: #eef1f5;
-  --text: #161b24;
-  --text-muted: #4a5568;
-  --border: #6f7a8d;
-  --accent: #9a5700;
-  --accent-contrast: #ffffff;
-  --secondary: #e8ecf2;
-  --focus: #6b3d00;
-  --success: #1e7a46;
-  --warning: #a0420a;
-  --danger: #b42318;
+
+  /* GOV.UK functional colours (govuk-frontend 6.5.1). Latarnia replaces
+     the brand-blue roles: brand, link, link-hover, template/surface. */
+  --govuk-text: #0b0c0c;
+  --govuk-secondary-text: #484949;
+  --govuk-inverse-text: #ffffff;
+  --govuk-brand: #9a5700; /* latarnia primary */
+  --govuk-link: #8b4e00; /* latarnia shade-10 */
+  --govuk-link-hover: #4d2c00; /* latarnia shade-50 */
+  --govuk-link-visited: #54319f; /* GOV.UK purple, kept */
+  --govuk-link-active: #0b0c0c;
+  --govuk-border: #cecece;
+  --govuk-input-border: #0b0c0c;
+  --govuk-template-background: #faf7f2; /* latarnia tint-95 */
+  --govuk-body-background: #ffffff;
+  --govuk-focus: #ffdd00;
+  --govuk-focus-text: #0b0c0c;
+  --govuk-error: #ca3535;
+  --govuk-success: #0f7a52;
+  --govuk-hover: #cecece;
+  --govuk-surface-background: #faf7f2; /* latarnia tint-95 */
+  --govuk-surface-text: #0b0c0c;
+  --govuk-surface-border: #cdab80; /* latarnia tint-50 */
+
+  /* The logo plate on the Generic header's black bar. */
+  --logo-plate: #ffb547;
+
+  /* Real-world bin colours (bin markers only). */
   --waste-zmieszane: #111111;
   --waste-zmieszane-fg: #ffffff;
   --waste-zmieszane-border: #111111;
@@ -232,66 +114,4 @@
   --waste-opony-border: #4a5160;
   --waste-tekstylia: #a8336a;
   --waste-tekstylia-fg: #ffffff;
-  --elevation: 0 1px 2px rgb(22 27 36 / 0.12);
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-text: var(--text);
-  --color-text-muted: var(--text-muted);
-  --color-border: var(--border);
-  --color-accent: var(--accent);
-  --color-primary: var(--accent);
-  --color-accent-contrast: var(--accent-contrast);
-  --color-secondary: var(--secondary);
-  --color-focus: var(--focus);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-danger: var(--danger);
-  --color-waste-zmieszane: var(--waste-zmieszane);
-  --color-waste-zmieszane-fg: var(--waste-zmieszane-fg);
-  --color-waste-zmieszane-border: var(--waste-zmieszane-border);
-  --color-waste-papier: var(--waste-papier);
-  --color-waste-papier-fg: var(--waste-papier-fg);
-  --color-waste-plastik-metale: var(--waste-plastik-metale);
-  --color-waste-plastik-metale-fg: var(--waste-plastik-metale-fg);
-  --color-waste-plastik-metale-border: var(--waste-plastik-metale-border);
-  --color-waste-szklo: var(--waste-szklo);
-  --color-waste-szklo-fg: var(--waste-szklo-fg);
-  --color-waste-bio: var(--waste-bio);
-  --color-waste-bio-fg: var(--waste-bio-fg);
-  --color-waste-popiol: var(--waste-popiol);
-  --color-waste-popiol-fg: var(--waste-popiol-fg);
-  --color-waste-gabaryty: var(--waste-gabaryty);
-  --color-waste-gabaryty-fg: var(--waste-gabaryty-fg);
-  --color-waste-elektro: var(--waste-elektro);
-  --color-waste-elektro-fg: var(--waste-elektro-fg);
-  --color-waste-opony: var(--waste-opony);
-  --color-waste-opony-fg: var(--waste-opony-fg);
-  --color-waste-tekstylia: var(--waste-tekstylia);
-  --color-waste-tekstylia-fg: var(--waste-tekstylia-fg);
-
-  --font-sans: "Atkinson Hyperlegible Next", system-ui, sans-serif;
-  --font-weight-normal: 400;
-  --font-weight-bold: 700;
-
-  --spacing: 0.25rem;
-  --radius-sm: 4px;
-  --shadow-raised: var(--elevation);
-
-  /* Mobile-first type scale; step headings up with md:/lg: variants. */
-  --text-sm: 1rem;
-  --text-sm--line-height: 1.5;
-  --text-base: 1.125rem;
-  --text-base--line-height: 1.55;
-  --text-lg: 1.375rem;
-  --text-lg--line-height: 1.3;
-  --text-xl: 1.75rem;
-  --text-xl--line-height: 1.2;
-  --text-2xl: 2.25rem;
-  --text-2xl--line-height: 1.15;
-  --text-3xl: 3rem;
-  --text-3xl--line-height: 1.1;
 }
