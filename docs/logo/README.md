@@ -1,6 +1,6 @@
 # “ul.” plate logo
 
-Jakub picked **A “Tabliczka”** (task 20), refined in task 22 (below). **Nothing here is live**: the header (`web/components/site-header.tsx`), favicon and manifest are unchanged until the swap PR.
+Jakub picked **A “Tabliczka”** (task 20), refined in task 22 (below). The **flat** version shipped in task 23 (header, icons, manifest, OG card, PDF); usage rules are in [`docs/brand.md`](../brand.md). The enamel version stays here as backlog.
 
 ## A “Tabliczka”, refined (task 22)
 
@@ -41,7 +41,7 @@ See `debug/a-centring-overlay.png`, which shows plate centre lines, ink box and 
 - **Letters:** dark enamel `#0F1419`, debossed with a hairline highlight below. Contrast is 10.5 : 1 against `#FFB547`, and at least 6.5 : 1 anywhere on the dome (`#D9851C` at its darkest), so AA holds everywhere.
 - **Details:** two rivets on the diagonal, fine `feTurbulence` grain with the faintest wear, and a soft shadow on the wall.
 - **Uses:**
-  - `og-1200x630.svg` / `.png`: share card with "conaulicy.pl", "Wywozy śmieci przy Twojej ulicy." and "Lubaczów i gmina", all outlined.
+  - `a-og-enamel.svg` / `.png`: share card with "conaulicy.pl", "Wywozy śmieci przy Twojej ulicy." and "Lubaczów i gmina", all outlined (backlog; the shipped card is the flat `og-1200x630.*`, task 23).
   - `a-hero-*.png`: landing hero, 2×.
   - `a-pdf-corner.svg` / `.png`: large, on white, for the PDF corner.
 
@@ -92,10 +92,12 @@ All three avoid the blue-and-white MSI street sign, the city's herb and any offi
 - `source/make_logos.py` regenerates the task-20 SVGs, A in its previous form included, so write to a temporary folder (needs `fonttools` and `uharfbuzz`), then:
   `npx svgo@4.1.0 --config docs/logo/source/svgo.config.mjs -f <out> -o <opt>`
 
-## Going live (separate PR)
+## Shipped (task 23)
 
-Swap the mark in `site-header.tsx` for the A lockup, either inlining the paths or as a themed `<svg>` using `var(--accent)` and `var(--text)`. Then:
-- replace `web/app/favicon.ico` with `a-favicon.svg`, `a-favicon-16.svg` and the 16/32 PNGs;
-- add the 180 px apple icon;
-- add the 512 and maskable icons to a manifest;
-- set the OG image to `og-1200x630.png`.
+`node docs/logo/source/ship_a.mjs` builds the web files from the SVGs here:
+- `web/app/favicon.ico` (16 + 32 from the two favicon drawings);
+- `web/app/icon.svg`, `web/app/apple-icon.png`;
+- `web/public/icon-{192,512}.png`, `icon-maskable-512.png`;
+- `web/public/og.png` and `og-1200x630.png` (flat plate, from `og_flat()` in `make_logo_a.py`).
+
+The header and PDF paths live in `web/lib/logo.ts`, copied from `a-logo-mono.svg`.
