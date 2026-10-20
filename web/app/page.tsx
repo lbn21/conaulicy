@@ -1,12 +1,11 @@
 import { AddressSearch } from "@/components/address-search";
+import { HOME_EXAMPLES } from "@/lib/examples";
 import { examplePlaces, searchIndexUrl } from "@/lib/schedule";
-
-const EXAMPLE_COUNT = 5;
 
 export default async function Home() {
   // A few examples only: the full address list never ships to the client.
   const [places, indexUrl] = await Promise.all([
-    examplePlaces(EXAMPLE_COUNT),
+    examplePlaces(HOME_EXAMPLES),
     searchIndexUrl(),
   ]);
 

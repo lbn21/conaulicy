@@ -21,9 +21,10 @@ export const ROUTES = [
 ];
 
 export async function startServer(port = 3300) {
-  // The pre-launch gate must be off, or every page is a 401.
-  const env = { ...process.env, PORT: String(port) };
-  delete env.SITE_BASIC_AUTH;
+  // The pre-launch gate must be off, or every page is a 401. Empty, not
+  // unset: Next's .env loading never overrides a set variable, so a local
+  // .env.local cannot turn it back on.
+  const env = { ...process.env, PORT: String(port), SITE_BASIC_AUTH: "" };
   const child = spawn("npx", ["next", "start", "-p", String(port)], {
     env,
     stdio: ["ignore", "pipe", "pipe"],

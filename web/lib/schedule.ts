@@ -278,17 +278,13 @@ export async function searchIndexUrl(): Promise<string> {
   return `/api/search-index/${version}`;
 }
 
-/** A few addresses for the home page. */
+/** The home page's examples (lib/examples.ts), by their own names. */
 export const examplePlaces = unstable_cache(
-  async (limit: number): Promise<SearchHit[]> => {
-    const [streetRows, villageRows] = await Promise.all([
-      streetPlaces(listed, limit),
-      villagePlaces(undefined, limit),
-    ]);
-    return hits(
-      [...streetRows.map(streetPlace), ...villageRows.map(villagePlace)],
-      limit,
-    );
+  async (ids: string[]): Promise<SearchHit[]> => {
+    const places = await Promise.all(ids.map(findPlace));
+    return places
+      .filter((place) => place !== null)
+      .map(({ id, name }) => ({ id, label: name }));
   },
   ["example-places"],
   CACHE,

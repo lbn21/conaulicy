@@ -86,6 +86,9 @@ jobs:
       - name: Search popup (no layout shift, combobox keys)
         run: node scripts/check-search.mjs
 
+      - name: Home examples (each has upcoming pickups)
+        run: node scripts/check-examples.mjs
+
       - name: "Fonts (no layout shift when they arrive late)"
         run: node scripts/check-fonts.mjs
 
