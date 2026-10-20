@@ -304,6 +304,67 @@ try {
     .waitFor({ timeout: 5000 })
     .catch(() => check(false, "fallback: /api/search did not answer"));
   await fallback.close();
+
+  // Typing straight after focus, before accessible-autocomplete has loaded,
+  // on Slow 4G + 4× CPU (as check-perf): no page error, the field stays,
+  // nothing typed is lost and the results appear. At 0 ms per key typing
+  // must end before the library mounts, so that path is really covered.
+  for (const delay of [0, 60, 150]) {
+    const context = await browser.newContext({
+      viewport: { width: 360, height: 800 },
+    });
+    const early = await context.newPage();
+    const errors = [];
+    early.on("pageerror", (error) => errors.push(error.message));
+    await early.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+    const cdp = await context.newCDPSession(early);
+    await cdp.send("Network.emulateNetworkConditions", {
+      offline: false,
+      latency: 562.5,
+      downloadThroughput: (1475 * 1024) / 8,
+      uploadThroughput: (675 * 1024) / 8,
+    });
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    const field = early.locator("#adres");
+    await field.click();
+    await field.pressSequentially("asnyka", { delay });
+    // The field vanishing (the #33 bug) must fail the check, not hang it.
+    const mounted = await field
+      .evaluate((el) => el.hasAttribute("aria-expanded"), null, {
+        timeout: 2000,
+      })
+      .catch(() => "missing");
+    if (delay === 0) {
+      check(
+        mounted === false,
+        `early typing: the field was ${mounted === "missing" ? "gone" : "already the library's"} when typing ended`,
+      );
+    }
+    await early
+      .locator('[role="option"]:not([aria-disabled])', { hasText: "Asnyka" })
+      .first()
+      .waitFor({ timeout: 20000 })
+      .catch(() => {});
+    const state = {
+      errors,
+      fields: await early.locator("#adres").count(),
+      value: await early
+        .locator("#adres")
+        .inputValue()
+        .catch(() => null),
+      results: await early
+        .locator('[role="option"]:not([aria-disabled])')
+        .allTextContents(),
+    };
+    check(
+      state.errors.length === 0 &&
+        state.fields === 1 &&
+        state.value === "asnyka" &&
+        state.results.some((text) => text.includes("Asnyka")),
+      `early typing at ${delay} ms per key: ${JSON.stringify(state)}`,
+    );
+    await context.close();
+  }
 } finally {
   await browser.close();
   server.stop();

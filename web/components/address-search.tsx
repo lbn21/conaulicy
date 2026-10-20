@@ -51,8 +51,15 @@ function escapeHtml(text: string): string {
     .replaceAll('"', "&quot;");
 }
 
-function hitText(hit: SearchHit | undefined): string {
-  return hit ? withHouseNumber(hit.label, hit.nr ?? null) : "";
+// What accessible-autocomplete hands to the templates and onConfirm: our
+// results, or a plain string (its options may be strings, e.g. it seeds
+// them with defaultValue, which this field does not use).
+type Option = SearchHit | string | undefined;
+
+function optionText(option: Option): string {
+  if (!option) return "";
+  if (typeof option === "string") return option;
+  return withHouseNumber(option.label, option.nr ?? null);
 }
 
 // On a phone, move the field near the top so the list has room below it
@@ -115,7 +122,7 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
 
     async function source(
       query: string,
-      populate: (hits: SearchHit[]) => void,
+      populate: (options: Option[]) => void,
     ) {
       const q = query.trim().replace(/\s+/g, " ");
       latest = q;
@@ -156,14 +163,17 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
       );
       const old = container?.querySelector("input");
       if (!container || !old) return;
-      const value = old.value;
+      // Text typed while the library loaded, and whether the field had focus.
+      const typed = old.value;
       const focused = document.activeElement === old;
-      container.replaceChildren();
-      accessibleAutocomplete({
+      // Render next to the placeholder and move focus to the new field in the
+      // same task, then drop the placeholder: focus goes input to input (no
+      // blur gap, so the phone keyboard stays) and nothing paints in between.
+      old.removeAttribute("id");
+      accessibleAutocomplete<Option>({
         element: container,
         id: INPUT_ID,
         source,
-        defaultValue: value,
         name: "",
         inputClasses: "govuk-input",
         menuAttributes: { "aria-labelledby": LABEL_ID },
@@ -171,11 +181,13 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
         autoselect: true,
         confirmOnBlur: false,
         templates: {
-          inputValue: hitText,
-          suggestion: (hit: SearchHit) => escapeHtml(hitText(hit)),
+          inputValue: optionText,
+          suggestion: (option: Option) => escapeHtml(optionText(option)),
         },
-        onConfirm: (hit?: SearchHit) => {
-          if (hit) window.location.assign(placeHref(hit));
+        onConfirm: (option: Option) => {
+          if (option && typeof option !== "string") {
+            window.location.assign(placeHref(option));
+          }
         },
         tNoResults: () => NOTES[note],
         tStatusNoResults: () => NOTES[note],
@@ -187,11 +199,18 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
           `${HINT} Gdy pojawią się podpowiedzi, wybierz je strzałkami w górę i w dół i Enterem albo dotknij.`,
       });
       const input = container.querySelector<HTMLInputElement>(`#${INPUT_ID}`);
-      if (input && focused) {
-        input.focus();
-        input.setSelectionRange(value.length, value.length);
-        if (value) input.dispatchEvent(new Event("input", { bubbles: true }));
-      }
+      if (focused) input?.focus();
+      old.closest(".autocomplete__wrapper")?.remove();
+      if (!input || !typed) return;
+      // The library selects all text when its field first gains focus (after
+      // its render), so hand over the typed text only after that render.
+      // Keys pressed meanwhile are already in the new field: keep them too.
+      // It searches on the input event, as for typing.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const value = typed + input.value;
+      input.value = value;
+      input.setSelectionRange(value.length, value.length);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
     }
 
     function onFocus(event: FocusEvent) {
