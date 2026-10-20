@@ -58,7 +58,7 @@ The unit is **P**, a quarter of the plate height (34 units → P = 8.5; 8 px in 
 
 ## Colour
 
-- GOV.UK Frontend's palette and functional colours are used as-is, through its Sass functions (`govuk-colour()`, `govuk-functional-colour()`); never pasted hex.
+- GOV.UK Frontend's palette and functional colours are used as-is, through its Sass functions (`govuk-colour()`, `govuk-functional-colour()`); never pasted hex. The one exception besides the brand roles: visited links (below).
 - **GOV.UK's brand-blue group is never used.** Its roles take the **Latarnia** group, computed from `#9a5700` with GOV.UK's own method: tints are the primary mixed with white, shades with black, at GOV.UK's percentages. Applied to `#1d70b8`, the method gives GOV.UK's blue group exactly. Defined once in `web/app/_palette.scss`.
 - **Exceptions** (brand blue hard-coded upstream, with no setting; enforced by `check-own-css` and `check-govuk-assets`):
   - `.govuk-button--inverse`: may appear in the CSS output, never in markup.
@@ -97,7 +97,7 @@ Structure and percentages from [GOV.UK colour](https://design-system.service.gov
 | `brand` | **#9a5700** | latarnia primary |
 | `link` | **#8b4e00** | latarnia shade-10 |
 | `link-hover` | **#4d2c00** | latarnia shade-50 |
-| `link-visited` | #54319f | GOV.UK (purple) |
+| `link-visited` | **#8b4e00** | latarnia shade-10, the link colour |
 | `link-active` | #0b0c0c | GOV.UK (black) |
 | `border` | #cecece | GOV.UK (black tint-80) |
 | `input-border` | #0b0c0c | GOV.UK (black) |
@@ -112,7 +112,7 @@ Structure and percentages from [GOV.UK colour](https://design-system.service.gov
 | `surface-text` | #0b0c0c | GOV.UK (black) |
 | `surface-border` | **#cdab80** | latarnia tint-50 |
 
-Visited links use GOV.UK's purple: 9.06 : 1 on white, and clearly distinct from the amber links.
+Visited links have no colour of their own: `link-visited` is the link colour (`web/app/_settings.scss`), as GOV.UK's links without a visited state. A deviation Jakub chose; see D5 in `docs/govuk-audit.md`.
 
 ### Contrast
 
@@ -127,7 +127,6 @@ WCAG 2.x, computed by `node design/contrast.mjs` (it exits 1 if a required pair 
 | link on body-background | 6.59 | AA |
 | link on surface-background | 6.17 | AA |
 | link-hover on body-background | 12.53 | AAA |
-| link-visited on body-background | 9.06 | AAA |
 | link-active on body-background | 19.59 | AAA |
 | input-border vs body-background | 19.59 | UI pass |
 | focus-text on focus | 14.55 | AAA |

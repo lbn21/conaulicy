@@ -71,7 +71,7 @@
   --govuk-brand: #9a5700; /* latarnia primary */
   --govuk-link: #8b4e00; /* latarnia shade-10 */
   --govuk-link-hover: #4d2c00; /* latarnia shade-50 */
-  --govuk-link-visited: #54319f; /* GOV.UK purple, kept */
+  --govuk-link-visited: #8b4e00; /* the link colour: no visited colour */
   --govuk-link-active: #0b0c0c;
   --govuk-border: #cecece;
   --govuk-input-border: #0b0c0c;
