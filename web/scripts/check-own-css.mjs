@@ -28,7 +28,9 @@ const MAX_LINES = 80;
 const MAX_GZIP = 1000;
 // Tailwind utility classes in components and pages today; lower it as pages
 // move to GOV.UK classes, never raise it.
-const BASELINE = 32;
+const BASELINE = 0;
+// The Tailwind packages and config are deleted in step 8 (docs/govuk-audit.md).
+const TAILWIND_PACKAGES_ALLOWED = true;
 
 const failures = [];
 
@@ -103,7 +105,10 @@ const packageJson = JSON.parse(
   readFileSync(path.join(ROOT, "package.json"), "utf8"),
 );
 const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
-if (BASELINE === 0 && Object.keys(deps).some((d) => d.includes("tailwind"))) {
+if (
+  !TAILWIND_PACKAGES_ALLOWED &&
+  Object.keys(deps).some((d) => d.includes("tailwind"))
+) {
   failures.push("Tailwind is still a dependency");
 }
 
