@@ -45,7 +45,7 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 ## Architecture and data
 
 - No over-engineering: static pages, CDN cache and the fewest possible API routes. Storage: Neon Postgres (Vercel Marketplace, free plan, fra1), Drizzle ORM; schema in `web/lib/db/schema.ts`, migrations in `web/drizzle/`. No state library or CMS, and nothing built "for later" (put it in the backlog).
-- The processed dataset is never committed to git.
+- Data never goes in git: the processed dataset is not committed, and raw sources live in a private S3 bucket (`docs/data/sources.md`; `npm run sources:pull` fills the gitignored `.cache/sources/`). CI fails if a data file is tracked (`check-tracked-data`).
 - CI runs on a made-up fixture (`npm run db:ci-fixture`, `web/scripts/ci-fixture.ts`) in a throwaway local Postgres; it refuses any other database, and production never holds it.
 - Search: a compact street index cached in the browser (`/api/search-index/<hash>`, immutable, loaded on first focus), with `/api/search` as the fallback. Both are rate-limited (Vercel WAF on `/api/*`). The schedules themselves never ship to the client.
 - ICS feeds are cacheable (`s-maxage=3600, stale-while-revalidate=86400`, `text/calendar; charset=utf-8`).

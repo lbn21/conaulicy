@@ -18,7 +18,7 @@ For the coding agent. Every pattern below has a source URL. Polish copy is an ex
 
 ## 2. Wigan (best overall reference)
 
-Sources: [My bin collection](https://www.wigan.gov.uk/Resident/Bins-Recycling/My-Bin-Collection/index.aspx), [My Neighbourhood postcode search](https://apps.wigan.gov.uk/myneighbourhood/Search.aspx), and the PDF calendar ([THUCCG.pdf](https://apps.wigan.gov.uk/MyNeighbourhood/Calendars/THUCCG.pdf?id=55066); local copy `inspiration/wigan-cal.pdf`, `page-*.png`).
+Sources: [My bin collection](https://www.wigan.gov.uk/Resident/Bins-Recycling/My-Bin-Collection/index.aspx), [My Neighbourhood postcode search](https://apps.wigan.gov.uk/myneighbourhood/Search.aspx), and the PDF calendar ([THUCCG.pdf](https://apps.wigan.gov.uk/MyNeighbourhood/Calendars/THUCCG.pdf?id=55066); archived in S3 as `sources/inspiration/2026-10-19/wigan-calendar.pdf`, see `docs/data/sources.md`).
 
 - **Collection-day headline.** The PDF opens with "Your collection day is Thursday" in about 30pt, before anything else. Ours: „Najbliższy odbiór: **jutro, czwartek 22 października** – zmieszane”. Use „Twój dzień odbioru to czwartek” *only* when every fraction for that street falls on the same weekday. Don't invent it otherwise.
 - **Shape + colour per bin.** Key: brown ■ square, blue ▲ triangle, green ★ star, black ● circle. It still reads on a black-and-white printer and for colour-blind users. Our mapping is in §4.

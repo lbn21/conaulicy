@@ -59,6 +59,9 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: No data files in git (sources live in S3)
+        run: node scripts/check-tracked-data.mjs
+
       - name: Own CSS (GOV.UK classes only, site.scss capped)
         run: node scripts/check-own-css.mjs
 
