@@ -17,8 +17,8 @@ jobs:
     defaults:
       run:
         working-directory: web
-    # A throwaway Postgres with the seed, so the build and the checks read
-    # the same kind of data as production without any secret.
+    # A throwaway Postgres with the CI fixture (scripts/ci-fixture.ts), so the
+    # build and the checks have every kind of place, without any secret.
     services:
       postgres:
         image: postgres:17
@@ -63,7 +63,7 @@ jobs:
         run: node scripts/check-own-css.mjs
 
       - name: Database (migrate + seed)
-        run: npm run db:migrate && npm run db:seed
+        run: npm run db:migrate && npm run db:ci-fixture
 
       - name: Build
         run: npm run build
@@ -103,11 +103,11 @@ jobs:
       # 5 runs per page against the budgets in docs/perf.md; plus HTML size,
       # preloaded fonts and search keystroke time. Re-run once if it fails
       # (runner noise); fails only if both attempts fail, and logs both
-      # attempts' medians. Before the importer, which replaces the seed.
+      # attempts' medians. Before the importer, which empties the fixture.
       - name: "Performance (Lighthouse budgets)"
         run: node scripts/check-perf-retry.mjs
 
-      # Last: it replaces the seed with a made-up import. Its schedules come
+      # Last: it empties the database and imports a made-up dataset. Its schedules come
       # from a local server, so the source check needs no internet.
       - name: "Importer (synthetic dataset: dry run, apply, guards)"
         run: node scripts/check-import.mjs

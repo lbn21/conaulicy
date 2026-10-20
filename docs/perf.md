@@ -1,6 +1,6 @@
 # Performance budgets
 
-`web/scripts/check-perf.mjs` runs in CI on every pull request (step "Performance (Lighthouse budgets)"), against the built app with the throwaway Postgres and the seed, like the other checks. In CI it runs through `web/scripts/check-perf-retry.mjs`: if it fails, it runs once more, unchanged, and the step fails only if that second attempt fails too. Both attempts' LCP/TBT medians per page are printed side by side, so a real regression (both attempts over) stays visible. No other check is re-run. Run it locally with `npm run check:perf` (build included) or `node scripts/check-perf.mjs` after `next build`. `PERF_OUT=file.json` saves the numbers.
+`web/scripts/check-perf.mjs` runs in CI on every pull request (step "Performance (Lighthouse budgets)"), against the built app with the throwaway Postgres and the CI fixture, like the other checks. In CI it runs through `web/scripts/check-perf-retry.mjs`: if it fails, it runs once more, unchanged, and the step fails only if that second attempt fails too. Both attempts' LCP/TBT medians per page are printed side by side, so a real regression (both attempts over) stays visible. No other check is re-run. Run it locally with `npm run check:perf` (build included) or `node scripts/check-perf.mjs` after `next build`. `PERF_OUT=file.json` saves the numbers.
 
 ## Profile
 
@@ -9,7 +9,7 @@ Lighthouse (npm `lighthouse`, free, no Lighthouse CI server) with its mobile set
 - Moto G Power screen, mobile user agent.
 - Slow 4G (150 ms RTT, 1.6 Mbps down), applied by Chrome with Lighthouse's devtools adjustment: 562.5 ms request latency (150 × 3.75), 1475 kbps down (× 0.9), 675 kbps up. The check prints the profile it used.
 - CPU slowed 4× (Lighthouse's default). Fixed, not calibrated (see "Flake fixed" below).
-- Pages: `/`, `/adres/0972447-00470` (seed street, Asnyka), `/dostepnosc`.
+- Pages: `/`, `/adres/0972447-00470` (CI fixture street, Asnyka), `/dostepnosc`.
 - 5 runs per page (`PERF_RUNS`).
 
 ## Budgets
@@ -23,7 +23,7 @@ Lighthouse (npm `lighthouse`, free, no Lighthouse CI server) with its mobile set
 | Preloaded fonts | ≤ 4 files | the page's `<link rel="preload" as="font">` |
 | Search keystroke → list updated | ≤ 50 ms | median of 5 keys, index loaded, CPU 4× slower |
 | First-load JS | ≤ 200 KB gzip | `npm run budget` (separate step) |
-| Street PDF | ≤ 150 KB, 2–6 pages | `scripts/check-pdf.mjs` (separate step): seed city street, village and split street with `?nr=` |
+| Street PDF | ≤ 150 KB, 2–6 pages | `scripts/check-pdf.mjs` (separate step): CI fixture's city street, village and split street with `?nr=` |
 
 **Hard gates:** LCP, TBT, CLS and the search keystroke are what people feel. They never move to make room for code; if one fails, report to Jakub.
 

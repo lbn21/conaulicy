@@ -21,7 +21,7 @@
     "format": "biome format --write",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=.env.local node_modules/drizzle-kit/bin.cjs migrate",
-    "db:seed": "node --env-file-if-exists=.env.local scripts/seed.ts",
+    "db:ci-fixture": "node --env-file-if-exists=.env.local scripts/ci-fixture.ts",
     "db:import": "node --env-file-if-exists=.env.local scripts/import.ts",
     "test": "node --test \"lib/**/*.test.ts\" \"scripts/**/*.test.ts\""
   },

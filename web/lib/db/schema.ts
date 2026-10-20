@@ -143,9 +143,8 @@ export const events = pgTable(
 );
 
 /**
- * Dataset-wide flags, e.g. testData = true while the seed is loaded, so a
- * real import knows it may replace everything; after an import, dataset
- * (year, sources, importedAt, etlCommit). Not shown to visitors.
+ * Dataset-wide facts, written by the importer: dataset (year, sources,
+ * importedAt, etlCommit). Not shown to visitors.
  */
 export const meta = pgTable("meta", {
   key: text().primaryKey(),

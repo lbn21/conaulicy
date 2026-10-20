@@ -2,7 +2,7 @@
 // routes they cover. Run `next build` first.
 import { spawn } from "node:child_process";
 
-// One of each kind of page. Keep in sync with the seed (scripts/seed.ts).
+// One of each kind of page. Keep in sync with the CI fixture (scripts/ci-fixture.ts).
 export const ROUTES = [
   { path: "/", name: "home" },
   { path: "/adres/0972447-00470", name: "city-street" },
@@ -17,7 +17,6 @@ export const ROUTES = [
   { path: "/prywatnosc", name: "privacy" },
   { path: "/dostepnosc", name: "accessibility" },
   { path: "/o-projekcie", name: "about" },
-  { path: "/dane-testowe", name: "test-data" },
   { path: "/nie-ma-takiej-strony", name: "not-found", status: 404 },
 ];
 

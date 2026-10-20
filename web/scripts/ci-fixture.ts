@@ -1,7 +1,9 @@
-// npm run db:seed: replaces EVERYTHING in the database with a small, clearly
-// fake dataset and sets meta.testData (not shown to visitors; it tells a real
-// import that the data may be replaced). Dates are made up from simple rules, for the
-// 12 months starting with the current one; nothing here is a real schedule.
+// npm run db:ci-fixture: the CI fixture. Replaces EVERYTHING in a local
+// database (CI's service container, a local Docker Postgres; it refuses any
+// other, see lib/local-db.ts) with a small made-up dataset, so the build and
+// the checks have every kind of place to test. Production never holds it.
+// Dates come from simple rules, for the 12 months starting with the current
+// one; nothing here is a real schedule.
 //
 // Covers: a city street from the old fixture URL (ul. Adama Asnyka), streets
 // with diacritics, a street in no zone, a village with streets, villages
@@ -22,8 +24,10 @@ import {
 import { normalize } from "../lib/normalize.ts";
 import { localitySearchLabel, streetLabel } from "../lib/places.ts";
 import { GMINA_SCHEDULE_PAGES } from "./lib/gmina-pages.ts";
+import { localDatabaseUrl } from "./lib/local-db.ts";
 
-const SOURCE_URL = "https://conaulicy.pl/dane-testowe";
+// A placeholder, never a public page: the fixture only lives in CI.
+const SOURCE_URL = "https://ci-fixture.invalid/harmonogram";
 
 const GMINY = [
   {
@@ -290,9 +294,7 @@ function months(today: string, count: number): string[] {
 }
 
 async function main() {
-  const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL is not set.");
-  const db = drizzle(url, { casing: "snake_case" });
+  const db = drizzle(localDatabaseUrl(), { casing: "snake_case" });
   const today = todayInWarsaw();
 
   const localityRows = LOCALITIES.map((l) => ({
@@ -339,9 +341,9 @@ async function main() {
         ...shift(date),
         allDay: true,
         label: LABELS[subtype],
-        sourceDoc: "dane-testowe",
+        sourceDoc: "ci-fixture",
         sourceUrl: SOURCE_URL,
-        sourceRef: `Dane testowe, ${zone.name}`,
+        sourceRef: `Fikstura CI, ${zone.name}`,
         checkedAt: today,
         verified: false,
         payload: zone.rule.putOutBy ? { putOutBy: zone.rule.putOutBy } : null,
@@ -375,12 +377,11 @@ async function main() {
         ZONES.flatMap((z) => z.members.map((m) => ({ zoneId: z.id, ...m }))),
       );
     await tx.insert(events).values(eventRows);
-    await tx.insert(meta).values({ key: "testData", value: true });
   });
 
   const shifted = eventRows.filter((e) => e.shiftedFrom);
   console.log(
-    `Seeded ${streetRows.length} streets, ${ZONES.length} zones, ${eventRows.length} events ` +
+    `CI fixture: ${streetRows.length} streets, ${ZONES.length} zones, ${eventRows.length} events ` +
       `(${window[0]}…${window.at(-1)}; 6 pickup days in ${busyMonth} on sektor 1; ` +
       `${shifted.length} holiday-shifted).`,
   );
