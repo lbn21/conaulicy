@@ -150,3 +150,96 @@ export const meta = pgTable("meta", {
   key: text().primaryKey(),
   value: jsonb().notNull(),
 });
+
+/**
+ * One row per source per run of the unattended schedule import
+ * (scripts/schedules, docs/import-schedules.md). The GitHub Actions log is the
+ * second log; actionsRunUrl links to it.
+ */
+export const importRuns = pgTable(
+  "import_runs",
+  {
+    id: text().primaryKey(),
+    startedAt: timestamp({ withTimezone: true, mode: "string" }).notNull(),
+    finishedAt: timestamp({ withTimezone: true, mode: "string" }),
+    source: text().notNull(),
+    status: text()
+      .$type<"no_change" | "applied" | "needs_review" | "failed">()
+      .notNull(),
+    dryRun: boolean().notNull().default(false),
+    /** How files were found: "api" (WordPress REST) or "page" (fallback). */
+    detectedVia: text().$type<"api" | "page">(),
+    filesSeen: integer().notNull().default(0),
+    filesChanged: integer().notNull().default(0),
+    eventsAdded: integer().notNull().default(0),
+    eventsRemoved: integer().notNull().default(0),
+    eventsChanged: integer().notNull().default(0),
+    batchId: text(),
+    error: text(),
+    actionsRunUrl: text(),
+  },
+  (t) => [
+    check(
+      "import_runs_status",
+      sql`${t.status} in ('no_change', 'applied', 'needs_review', 'failed')`,
+    ),
+    index().on(t.startedAt),
+  ],
+);
+
+/**
+ * Every source file the import has seen, by content: where it was published,
+ * its WordPress media id and date, and where it is archived in S3. The
+ * initial archive is also listed in docs/data/sources.md.
+ */
+export const sourceFiles = pgTable(
+  "source_files",
+  {
+    sha256: text().primaryKey(),
+    source: text().notNull(),
+    url: text().notNull(),
+    mediaId: integer(),
+    modifiedGmt: text(),
+    /** The events' sourceDoc for this file. */
+    doc: text().notNull(),
+    s3Key: text(),
+    /** Set once a run applied the file or found nothing to change. */
+    settledAt: timestamp({ withTimezone: true, mode: "string" }),
+    firstSeenAt: timestamp({ withTimezone: true, mode: "string" }).notNull(),
+    lastSeenAt: timestamp({ withTimezone: true, mode: "string" }).notNull(),
+  },
+  (t) => [index().on(t.source, t.mediaId)],
+);
+
+/**
+ * Watched schedule pages (etl/sources.yaml, watch): the schedule links in
+ * their content block and its hash, to notice a new link nobody picked up.
+ */
+export const sourcePages = pgTable("source_pages", {
+  url: text().primaryKey(),
+  source: text().notNull(),
+  hash: text().notNull(),
+  links: jsonb().$type<string[]>().notNull(),
+  checkedAt: timestamp({ withTimezone: true, mode: "string" }).notNull(),
+  changedAt: timestamp({ withTimezone: true, mode: "string" }).notNull(),
+});
+
+/**
+ * What an applied import batch changed, row by row, so
+ * `npm run import:revert -- <batch>` can undo it.
+ */
+export const importChanges = pgTable(
+  "import_changes",
+  {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    batchId: text().notNull(),
+    eventId: text().notNull(),
+    op: text().$type<"insert" | "update" | "delete">().notNull(),
+    before: jsonb().$type<Record<string, unknown>>(),
+    after: jsonb().$type<Record<string, unknown>>(),
+  },
+  (t) => [
+    check("import_changes_op", sql`${t.op} in ('insert', 'update', 'delete')`),
+    index().on(t.batchId),
+  ],
+);
