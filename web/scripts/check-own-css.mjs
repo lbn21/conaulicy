@@ -7,8 +7,8 @@
 // - a page uses govuk-button--inverse (its hover and shadow are GOV.UK brand
 //   blue, see check-govuk-assets.mjs);
 // - a govuk-tag has no colour modifier (the default tag is GOV.UK brand blue);
-// - Tailwind utility classes grow: they may only go down, until PR 8 deletes
-//   Tailwind (then BASELINE is 0 and tailwindcss must be gone).
+// - anything of Tailwind comes back: a package, a config, a directive in a
+//   stylesheet, or a utility class (any class not govuk-, app- or js-).
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
@@ -20,17 +20,11 @@ const ALLOWED = new Set([
   "app/_settings.scss",
   "app/_palette.scss",
   "app/site.scss",
-  // Tailwind and its tokens, until PR 8.
-  "app/globals.css",
+  // The font fallback and the bin colours (no GOV.UK setting for either).
   "app/tokens.css",
 ]);
 const MAX_LINES = 80;
 const MAX_GZIP = 1000;
-// Tailwind utility classes in components and pages today; lower it as pages
-// move to GOV.UK classes, never raise it.
-const BASELINE = 0;
-// The Tailwind packages and config are deleted in step 8 (docs/govuk-audit.md).
-const TAILWIND_PACKAGES_ALLOWED = true;
 
 const failures = [];
 
@@ -50,6 +44,17 @@ for (const file of files.filter((f) => /\.(css|scss|sass)$/.test(f))) {
     failures.push(
       `${file}: new stylesheet (use GOV.UK classes, or app/site.scss)`,
     );
+  else if (
+    /@import\s+["']tailwindcss|@(theme|apply|utility|variant|plugin|tailwind)\b/.test(
+      readFileSync(path.join(ROOT, file), "utf8"),
+    )
+  )
+    failures.push(`${file}: Tailwind directive`);
+}
+for (const file of files.filter((f) =>
+  /(^|\/)(tailwind|postcss)\.config\.|(^|\/)\.?postcssrc/.test(f),
+)) {
+  failures.push(`${file}: Tailwind or PostCSS config`);
 }
 
 const site = readFileSync(path.join(ROOT, "app/site.scss"), "utf8");
@@ -96,24 +101,19 @@ for (const file of files.filter((f) => /\.tsx$/.test(f))) {
       failures.push(`${file}: govuk-tag without a colour modifier`);
   }
 }
-if (tailwind > BASELINE) {
-  failures.push(
-    `${tailwind} Tailwind classes (baseline ${BASELINE}): use GOV.UK classes`,
-  );
+if (tailwind > 0) {
+  failures.push(`${tailwind} Tailwind classes: use GOV.UK classes`);
 }
 const packageJson = JSON.parse(
   readFileSync(path.join(ROOT, "package.json"), "utf8"),
 );
 const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
-if (
-  !TAILWIND_PACKAGES_ALLOWED &&
-  Object.keys(deps).some((d) => d.includes("tailwind"))
-) {
-  failures.push("Tailwind is still a dependency");
+for (const dep of Object.keys(deps).filter((d) => /tailwind|postcss/.test(d))) {
+  failures.push(`${dep}: Tailwind or PostCSS is a dependency`);
 }
 
 console.log(
-  `Own CSS: app/site.scss ${lines} lines of code, ${gzip} B gzip compiled; ${tailwind} Tailwind classes left (baseline ${BASELINE}).`,
+  `Own CSS: app/site.scss ${lines} lines of code, ${gzip} B gzip compiled; ${tailwind} Tailwind classes.`,
 );
 if (failures.length > 0) {
   console.error(failures.map((f) => `FAIL  ${f}`).join("\n"));
