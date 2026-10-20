@@ -11,7 +11,8 @@
 }
 
 // In the header the wordmark's x-height is centred on the plate: 1.4 of the
-// logo's 34 units lower than in the logo files (docs/logo/README.md). A
+// logo's 34 units lower than in the logo files (HEADER_WORDMARK_SHIFT in
+// lib/logo.ts, which the PDF header uses too; docs/logo/README.md). A
 // percentage of the SVG's viewBox, so nothing else moves.
 .app-logo__wordmark {
   transform: translateY(4.12%);

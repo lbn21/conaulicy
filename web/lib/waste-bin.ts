@@ -1,5 +1,6 @@
-// The wheelie-bin icon, shared by the website (SVG) and the printable PDF
-// (PDFKit), so both draw the same shape. Coordinates are in a 28 × 40 box.
+// The website's wheelie-bin icon (SVG), and the fraction → colour token map
+// the printable PDF shares for its shape marks. Coordinates are in a
+// 28 × 40 box.
 
 /** Waste subtype → colour token name (app/tokens.css, --waste-{token}). */
 export const TOKEN: Record<string, string> = {
