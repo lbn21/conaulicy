@@ -218,123 +218,95 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
   }
 
   return (
-    <search id={SEARCH_ID} className="scroll-mt-4">
-      <form onSubmit={onSubmit} className="flex flex-col gap-2">
-        <label htmlFor={inputId} className="text-lg font-bold">
-          Twoja ulica albo wieś
-        </label>
-        {/* pr-1: on the GOV.UK 330px column this hint's last line ended
-            within 1px of the edge, so it wrapped differently in the web font
-            and its fallback (a layout shift). Goes with govuk-hint in PR 4. */}
-        <p id={hintId} className="pr-1 text-text-muted">
-          Ulica w Lubaczowie albo wieś, np. Lisie Jamy. Numer domu możesz
-          dopisać: Asnyka 12. Polskie znaki nie są potrzebne.
-        </p>
-        <div className="relative mt-1">
-          <svg
-            aria-hidden="true"
-            width="22"
-            height="22"
-            viewBox="0 0 22 22"
-            className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-text-muted"
-          >
-            <circle
-              cx="9.5"
-              cy="9.5"
-              r="5.5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+    <search id={SEARCH_ID} className="app-search">
+      <form onSubmit={onSubmit}>
+        <div className="govuk-form-group">
+          <label htmlFor={inputId} className="govuk-label govuk-label--m">
+            Twoja ulica albo wieś
+          </label>
+          <div id={hintId} className="govuk-hint">
+            Ulica w Lubaczowie albo wieś, np. Lisie Jamy. Numer domu możesz
+            dopisać: Asnyka 12. Polskie znaki nie są potrzebne.
+          </div>
+          <div className="app-suggestions">
+            <input
+              id={inputId}
+              type="text"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={expanded}
+              aria-controls={listId}
+              aria-activedescendant={
+                expanded && active >= 0 ? `${listId}-${active}` : undefined
+              }
+              aria-describedby={hintId}
+              autoComplete="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              enterKeyHint="go"
+              value={query}
+              onChange={(event) => {
+                startLoading();
+                setQuery(event.target.value);
+                setActive(-1);
+                setOpen(true);
+              }}
+              ref={inputRef}
+              onFocus={() => {
+                startLoading();
+                setOpen(true);
+                makeRoom();
+              }}
+              onBlur={() => setOpen(false)}
+              onKeyDown={onKeyDown}
+              className="govuk-input"
             />
-            <path
-              d="M14 14.5 19 19.5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-          <input
-            id={inputId}
-            type="text"
-            role="combobox"
-            aria-autocomplete="list"
-            aria-expanded={expanded}
-            aria-controls={listId}
-            aria-activedescendant={
-              expanded && active >= 0 ? `${listId}-${active}` : undefined
-            }
-            aria-describedby={hintId}
-            autoComplete="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            enterKeyHint="go"
-            placeholder="np. Słowackiego"
-            value={query}
-            onChange={(event) => {
-              startLoading();
-              setQuery(event.target.value);
-              setActive(-1);
-              setOpen(true);
-            }}
-            ref={inputRef}
-            onFocus={() => {
-              startLoading();
-              setOpen(true);
-              makeRoom();
-            }}
-            onBlur={() => setOpen(false)}
-            onKeyDown={onKeyDown}
-            className="min-h-14 w-full scroll-mt-4 rounded-sm border-2 border-input-border bg-surface pr-4 pl-12 text-lg text-text placeholder:text-text-muted"
-          />
-          <div
-            hidden={!popup}
-            className="absolute inset-x-0 top-full z-20 mt-1 rounded-sm border-2 border-border bg-surface shadow-[var(--elevation)]"
-          >
-            <div
-              id={listId}
-              role="listbox"
-              aria-label="Pasujące adresy"
-              hidden={hits.length === 0}
-              className="max-h-[24.5rem] overflow-y-auto overscroll-contain py-1"
-            >
-              {hits.map((hit, i) => (
-                // Keyed by position: when a keystroke narrows the list, rows
-                // keep their place and change text, so nothing slides.
-                // biome-ignore lint/a11y/useKeyWithClickEvents: the combobox input owns keyboard selection
-                <div
-                  // biome-ignore lint/suspicious/noArrayIndexKey: see above
-                  key={i}
-                  id={`${listId}-${i}`}
-                  role="option"
-                  tabIndex={-1}
-                  aria-selected={i === active}
-                  onMouseDown={(event) => event.preventDefault()}
-                  // Move, not enter: the focus scroll slides options under a resting
-                  // pointer, which must not pick one.
-                  onMouseMove={() => setActive(i)}
-                  onClick={() => go(hit)}
-                  className="flex min-h-12 cursor-pointer items-center px-4 py-2 aria-selected:bg-surface-2 aria-selected:shadow-[inset_4px_0_0_var(--accent)]"
-                >
-                  {withHouseNumber(hit.label, hit.nr ?? null)}
-                </div>
-              ))}
-            </div>
-            {hits.length === 0 && note && (
-              // Announced by the live region below; hidden here to avoid twice.
-              <p
-                aria-hidden="true"
-                className={
-                  status === "error"
-                    ? "px-4 py-3 font-bold text-danger"
-                    : status === "hint"
-                      ? "px-4 py-3"
-                      : "px-4 py-3 text-text-muted"
-                }
+            <div hidden={!popup} className="app-suggestions__popup">
+              <div
+                id={listId}
+                role="listbox"
+                aria-label="Pasujące adresy"
+                hidden={hits.length === 0}
+                className="app-suggestions__list"
               >
-                {note}
-              </p>
-            )}
+                {hits.map((hit, i) => (
+                  // Keyed by position: when a keystroke narrows the list, rows
+                  // keep their place and change text, so nothing slides.
+                  // biome-ignore lint/a11y/useKeyWithClickEvents: the combobox input owns keyboard selection
+                  <div
+                    // biome-ignore lint/suspicious/noArrayIndexKey: see above
+                    key={i}
+                    id={`${listId}-${i}`}
+                    role="option"
+                    tabIndex={-1}
+                    aria-selected={i === active}
+                    onMouseDown={(event) => event.preventDefault()}
+                    // Move, not enter: the focus scroll slides options under a
+                    // resting pointer, which must not pick one.
+                    onMouseMove={() => setActive(i)}
+                    onClick={() => go(hit)}
+                    className="app-suggestions__option"
+                  >
+                    {withHouseNumber(hit.label, hit.nr ?? null)}
+                  </div>
+                ))}
+              </div>
+              {hits.length === 0 && note && (
+                // Announced by the live region below; hidden here to avoid twice.
+                <p
+                  aria-hidden="true"
+                  className={
+                    status === "error"
+                      ? "app-suggestions__note app-suggestions__note--error"
+                      : status === "hint"
+                        ? "app-suggestions__note"
+                        : "app-suggestions__note app-suggestions__note--muted"
+                  }
+                >
+                  {note}
+                </p>
+              )}
+            </div>
           </div>
         </div>
         <p role="status" className="govuk-visually-hidden">
