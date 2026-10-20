@@ -1,0 +1,22 @@
+// The only own CSS (docs/govuk-audit.md): what GOV.UK has no equivalent for.
+// GOV.UK Sass functions and mixins only; no raw colours or px.
+// Capped by scripts/check-own-css.mjs.
+@use "sass:map";
+@use "settings" as *;
+
+// Our "ul." plate in the Generic header.
+.app-logo {
+  display: inline-block; // Tailwind's preflight makes svg a block (until PR 8)
+  vertical-align: middle;
+}
+
+.app-logo__plate {
+  fill: map.get($app-latarnia, "plate");
+}
+
+.app-logo__place {
+  @include govuk-font($size: 19);
+  display: inline-block;
+  vertical-align: middle;
+  color: govuk-functional-colour(inverse-text);
+}

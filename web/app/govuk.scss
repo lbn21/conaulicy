@@ -1,0 +1,31 @@
+// GOV.UK Frontend, as-is: only the parts the site uses. Settings (palette,
+// typeface) are in _settings.scss; our own few rules are in site.scss.
+@use "settings" as base;
+@use "govuk-frontend/dist/govuk/core";
+@use "govuk-frontend/dist/govuk/objects";
+@use "govuk-frontend/dist/govuk/components/skip-link";
+@use "govuk-frontend/dist/govuk/components/generic-header";
+@use "govuk-frontend/dist/govuk/utilities";
+@use "govuk-frontend/dist/govuk/overrides";
+
+// Temporary bridge for the Tailwind utilities that pages still use until
+// they move to GOV.UK classes (PRs 2–7); deleted with Tailwind in PR 8.
+// Every value comes from GOV.UK's palette, never pasted hex.
+:root {
+  --background: #{base.govuk-functional-colour(template-background)};
+  --surface: #{base.govuk-functional-colour(body-background)};
+  --surface-2: #{base.govuk-colour("black", $variant: "tint-95")};
+  --secondary: #{base.govuk-colour("black", $variant: "tint-95")};
+  --text: #{base.govuk-functional-colour(text)};
+  --text-muted: #{base.govuk-functional-colour(secondary-text)};
+  --border: #{base.govuk-functional-colour(border)};
+  --input-border: #{base.govuk-functional-colour(input-border)};
+  --accent: #{base.govuk-functional-colour(brand)};
+  --accent-contrast: #{base.govuk-functional-colour(inverse-text)};
+  --link: #{base.govuk-functional-colour(link)};
+  --focus: #{base.govuk-functional-colour(focus)};
+  --focus-text: #{base.govuk-functional-colour(focus-text)};
+  --success: #{base.govuk-functional-colour(success)};
+  --warning: #{base.govuk-colour("orange", $variant: "shade-50")};
+  --danger: #{base.govuk-functional-colour(error)};
+}
