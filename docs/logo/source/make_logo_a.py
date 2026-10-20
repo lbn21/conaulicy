@@ -371,6 +371,30 @@ def og_image():
     return svg(w, h, body, defs=defs, title="conaulicy.pl: wywozy śmieci przy Twojej ulicy")
 
 
+def og_flat():
+    """The shipped 1200 × 630 share card (task 23): the flat plate on plain
+    night, same copy as the enamel card, no glow or grain. All text outlined."""
+    w, h = 1200, 630
+    g = G
+    scale = 10
+    W, H = g["W"] * scale, g["H"] * scale
+    px, py = 92, (h - H) / 2
+    mask, plate = flat_plate(g, AMBER["dark"], "og", 0, 0)
+    tx = px + W + 70
+    d1, _, _ = run(BOLD, "conaulicy.pl", 92, tx, 262, WORD_KERN)
+    d2, _, _ = run(REGULAR, "Wywozy śmieci", 52, tx, 350)
+    d3, _, _ = run(REGULAR, "przy Twojej ulicy.", 52, tx, 416)
+    d4, _, _ = run(REGULAR, "Lubaczów i gmina", 34, tx, 492)
+    body = (
+        f'<rect width="{w}" height="{h}" fill="{BG["dark"]}"/>'
+        f'<g transform="translate({fmt(px)} {fmt(py)}) scale({scale})">{plate}</g>'
+        f'<path fill="{INK["dark"]}" d="{d1}"/>'
+        f'<path fill="{AMBER["dark"]}" d="{d2}"/><path fill="{AMBER["dark"]}" d="{d3}"/>'
+        f'<path fill="#B4BCC8" d="{d4}"/>'
+    )
+    return svg(w, h, body, defs=mask, title="conaulicy.pl: wywozy śmieci przy Twojej ulicy")
+
+
 # ---------------------------------------------------------------- debug
 def previous_a():
     """The first A (PR #21, before task 22), rebuilt for the comparison:
@@ -462,7 +486,8 @@ write("a-favicon-16.svg", favicon(16))
 write("a-hero-dark.svg", hero("dark", 640, 400, 9, "hd"))
 write("a-hero-light.svg", hero("light", 640, 400, 9, "hl"))
 write("a-pdf-corner.svg", pdf_corner())
-write("og-1200x630.svg", og_image())
+write("og-1200x630.svg", og_flat())
+write("a-og-enamel.svg", og_image())
 write("a-centring-overlay.svg", overlay())
 
 ink = UL_B

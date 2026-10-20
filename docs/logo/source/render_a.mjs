@@ -60,7 +60,7 @@ for (const [name, w, h, scale] of [
   ["a-hero-dark", 640, 400, 2],
   ["a-hero-light", 640, 400, 2],
   ["a-pdf-corner", 0, 0, 3],
-  ["og-1200x630", 1200, 630, 1],
+  ["a-og-enamel", 1200, 630, 1],
 ]) {
   const s = svgText(`${name}.svg`);
   const [, vw, vh] = s.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
@@ -102,7 +102,7 @@ ${h2("1 · Flat mark: previous vs new, with the centring overlay")}
 ${h2("2 · Realistic enamel hero, dark and light")}
 <div style="display:flex;gap:16px"><img src="${uri(svgText("a-hero-dark.svg"))}" style="width:610px"><img src="${uri(svgText("a-hero-light.svg"))}" style="width:610px"></div>
 ${h2("3 · Share card (OG, 1200 × 630, shown at half size)")}
-<img src="${uri(svgText("og-1200x630.svg"))}" style="width:600px;border:1px solid #e3e7ee">
+<img src="${uri(svgText("a-og-enamel.svg"))}" style="width:600px;border:1px solid #e3e7ee">
 ${h2("4 · Header at 360 px")}
 <div style="display:flex;gap:24px">${header("dark")}${header("light")}</div>
 ${h2("5 · Favicons at 16 / 32 / 180 px")}
