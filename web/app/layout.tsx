@@ -43,6 +43,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   colorScheme: "light",
   themeColor: THEME_COLOR,
+  // As GOV.UK's page template.
+  viewportFit: "cover",
 };
 
 // GOV.UK's snippet, exactly as in its page template: marks browsers that run
