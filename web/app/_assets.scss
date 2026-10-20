@@ -1,0 +1,6 @@
+// GOV.UK Frontend's image URLs (its $govuk-image-url-function setting, used
+// in _settings.scss): we ship none of its images, so every image it would
+// load, such as the footer's crest, compiles to `none`, never to a URL.
+@function no-image($filename) {
+  @return none;
+}

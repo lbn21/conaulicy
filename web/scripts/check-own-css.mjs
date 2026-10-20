@@ -19,6 +19,7 @@ const ALLOWED = new Set([
   "app/govuk.scss",
   "app/_settings.scss",
   "app/_palette.scss",
+  "app/_assets.scss",
   "app/site.scss",
   // The font fallback and the bin colours (no GOV.UK setting for either).
   "app/tokens.css",

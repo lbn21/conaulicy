@@ -15,8 +15,12 @@
 // or if app/_settings.scss stops turning off GOV.UK's default font face.
 // Credits: the compiled CSS must carry GOV.UK Frontend's licence notice;
 // /dostepnosc must link the MIT licence and the font's OFL (served from
-// public/fonts/OFL.txt, a copy of the one beside the font files); the footer
-// must not carry the licence note.
+// public/fonts/OFL.txt, a copy of the one beside the font files).
+// Footer: our markup with govuk-footer classes, identical on every page,
+// with the CC BY 4.0 line for our texts, and navigation (with its section
+// break) only when it has links; never the crown, the crest, the
+// Open Government Licence, a Crown copyright line, or the code licences
+// (those are on /dostepnosc). No GOV.UK image (crest) URL in the CSS.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
@@ -69,7 +73,12 @@ for (const file of files) {
   if (/GDS Transport/i.test(text)) {
     failures.push(`${rel}: mentions the GDS Transport typeface`);
   }
-  if (/govuk-(header|footer)__(logotype|crown)|govuk-logo-dot/.test(text)) {
+  // Markup only: the compiled CSS keeps govuk-footer's unused
+  // .govuk-footer__crown margin rule (its crest image is `none`, checked below).
+  if (
+    !name.endsWith(".css") &&
+    /govuk-(header|footer)__(logotype|crown)|govuk-logo-dot/.test(text)
+  ) {
     failures.push(`${rel}: GOV.UK crown or logotype markup`);
   }
   if (!name.endsWith(".css")) continue;
@@ -143,9 +152,49 @@ for (const [href, what] of [
   if (!credits.includes(`href="${href}"`))
     failures.push(`/dostepnosc: no link to the ${what} licence (${href})`);
 }
-const footer = html("index").match(/<footer[\s\S]*<\/footer>/)?.[0] ?? "";
-if (/licencj|LICENSE|OFL/.test(footer))
-  failures.push("footer: licence note (it belongs on /dostepnosc)");
+const footerOf = (page) =>
+  html(page).match(/<footer[\s\S]*<\/footer>/)?.[0] ?? "";
+const footer = footerOf("index");
+for (const page of ["dostepnosc", "prywatnosc", "o-projekcie", "_not-found"]) {
+  if (footerOf(page) !== footer)
+    failures.push(
+      `footer: differs on ${page} (it must be the same on every page)`,
+    );
+}
+if (
+  !/href="https:\/\/creativecommons\.org\/licenses\/by\/4\.0\/deed\.pl"[^>]*rel="license"|rel="license"[^>]*href="https:\/\/creativecommons\.org\/licenses\/by\/4\.0\/deed\.pl"/.test(
+    footer,
+  )
+)
+  failures.push("footer: no CC BY 4.0 licence link");
+for (const [pattern, what] of [
+  [
+    /LICENSE\.txt|\/fonts\/OFL\.txt/,
+    "a code licence (it belongs on /dostepnosc)",
+  ],
+  [
+    /Crown copyright|Open Government Licence|nationalarchives\.gov\.uk/i,
+    "Crown copyright or OGL",
+  ],
+  [
+    /govuk-footer__(copyright-logo|licence-logo|crown)|govuk-logo/,
+    "a GOV.UK crown, crest, OGL or logo class",
+  ],
+]) {
+  if (pattern.test(footer)) failures.push(`footer: ${what}`);
+}
+// The navigation shows only with links; its section break only with it.
+if (
+  footer.includes("govuk-footer__section-break") !==
+  footer.includes("govuk-footer__navigation")
+)
+  failures.push("footer: a section break without navigation, or the reverse");
+for (const section of footer.split('class="govuk-footer__section ').slice(1)) {
+  if (!section.split("</ul>")[0].includes("govuk-footer__list-item"))
+    failures.push("footer: a navigation section without links");
+}
+if (/govuk-crest|assets\/images\//.test(css))
+  failures.push("compiled CSS: a GOV.UK image URL (crest)");
 const ofl = (dir) => readFileSync(path.join(ROOT, dir, "OFL.txt"), "utf8");
 if (ofl("public/fonts") !== ofl("assets/fonts"))
   failures.push("public/fonts/OFL.txt differs from assets/fonts/OFL.txt");

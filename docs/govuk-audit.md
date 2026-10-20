@@ -23,7 +23,7 @@ Everything else is on one "later" line.
   - GOV.UK's own palette and functional colours are kept: yellow focus, green button, red error, green success, black/grey text and borders, white.
   - Only the **brand-blue group** is replaced, by a Latarnia amber/brown group computed with GOV.UK's tint/shade method. It feeds brand, link, link hover, template and surface background, and surface border.
   - Visited links have no colour of their own: `link-visited` is the link colour (D5).
-- **Typeface and logo:** Atkinson Hyperlegible Next instead of GDS Transport. Our "ul." plate in the GOV.UK **Generic header** (its default black bar, so the dark-background lockup). Our own footer.
+- **Typeface and logo:** Atkinson Hyperlegible Next instead of GDS Transport. Our "ul." plate in the GOV.UK **Generic header** (its default black bar, so the dark-background lockup). Our own footer markup with `govuk-footer` classes, the plate in the crown's place.
 - **Light only, Polish copy.** Dark mode was dropped on 2026-10-20 to follow GOV.UK, which is light only: no toggle, no `prefers-color-scheme: dark` styles, no theme script.
 - **Everything else is exactly GOV.UK:**
   - 40 px controls, `:focus` styling;
@@ -203,10 +203,10 @@ The GOV.UK footer carries the crown and "© Crown copyright" (https://design-sys
 - Ours, as GOV.UK requires:
   - the brand-blue group → Latarnia amber;
   - Atkinson instead of GDS Transport;
-  - the "ul." plate in the Generic header, and our own footer.
+  - the "ul." plate in the Generic header, and our own footer markup with `govuk-footer` classes.
 - We never use:
   - the crown, the GOV.UK logotype or GDS Transport;
-  - the GOV.UK header or footer, or "Crown copyright";
+  - the GOV.UK header or the footer component, the crest, the OGL or "Crown copyright";
   - the brand-blue colours (including the default blue `govuk-tag` and the inverse button).
 - We use colours through `govuk-colour()` / `govuk-functional-colour()`, never pasted hex: that's what the colour page's "Do not copy the specific hexadecimal (hex) colour values" asks.
 - The existing footer line "Nie jesteśmy urzędem – obowiązuje harmonogram gminy" already does the "must not suggest it's official" job. Keep it.
@@ -374,7 +374,7 @@ The target is the GOV.UK value in every row; only colours are mapped (table abov
 |---|---|---|
 | D1 | The brand-blue group → the Latarnia amber group (brand, link, link hover, template/surface background, surface border); everything else is GOV.UK's palette | Service Manual: a site not on GOV.UK "must not … use the GOV.UK brand colours". (The colour page's "Do not copy the specific hexadecimal (hex) colour values" is coding guidance: use the Sass functions. We do.) |
 | D2 | Atkinson Hyperlegible Next, self-hosted | Typeface: off service.gov.uk, "use an alternative typeface"; Service Manual: "must not … use the GDS Transport typeface" |
-| D3 | Our "ul." plate in the GOV.UK **Generic header**; our own footer; no crown, GOV.UK logotype, GOV.UK header or footer | Header: "you must not use the GOV.UK header component … Use the Generic header component instead"; "Services outside of the GOV.UK proposition should stop using the header and footer components and instead create their own" |
+| D3 | Our "ul." plate in the GOV.UK **Generic header**; our own footer markup with `govuk-footer` classes (our plate where the crown goes, our licence line and copyright as plain text); no crown, crest (image URLs compile to `none`), GOV.UK logotype, OGL, Crown copyright, GOV.UK header or footer component | Header: "you must not use the GOV.UK header component … Use the Generic header component instead"; "Services outside of the GOV.UK proposition should stop using the header and footer components and instead create their own" |
 | D4 | Polish copy (e.g. „Błąd:", „Jest problem") | Our users; GOV.UK says the error prefix can be changed for another language |
 | D5 | No visited-link colour: `link-visited` = `link` (Latarnia shade-10), through the documented `$govuk-functional-colours` setting | Jakub's decision. GOV.UK's own option for links whose visited state does not help users ("links without a visited state", `govuk-link--no-visited-state`), applied site-wide by configuration rather than per-link classes |
 
