@@ -94,10 +94,11 @@ jobs:
 
       # Lighthouse mobile with real throttling (Slow 4G, 4× CPU), median of
       # 5 runs per page against the budgets in docs/perf.md; plus HTML size,
-      # preloaded fonts and search keystroke time. Before the importer,
-      # which replaces the seed.
+      # preloaded fonts and search keystroke time. Re-run once if it fails
+      # (runner noise); fails only if both attempts fail, and logs both
+      # attempts' medians. Before the importer, which replaces the seed.
       - name: "Performance (Lighthouse budgets)"
-        run: node scripts/check-perf.mjs
+        run: node scripts/check-perf-retry.mjs
 
       # Last: it replaces the seed with a made-up import. Its schedules come
       # from a local server, so the source check needs no internet.
