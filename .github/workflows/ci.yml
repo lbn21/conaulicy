@@ -21,7 +21,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Whether Lighthouse has anything to measure: the app (web/), this workflow,
+  # or etl/sources.yaml (web/lib/config.generated.ts is generated from it).
+  # Plain git: a pull_request checks out the merge commit, whose first parent
+  # is the base; a push compares with the commit before it. Unsure: run.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      perf: ${{ steps.diff.outputs.perf }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+
+      - name: Changed files
+        id: diff
+        env:
+          BEFORE: ${{ github.event_name == 'push' && github.event.before || '' }}
+        run: |
+          base=${BEFORE:-HEAD^1}
+          if files=$(git diff --name-only "$base" HEAD 2>/dev/null); then
+            echo "$files"
+            if echo "$files" | grep -qE '^(web/|package(-lock)?\.json$|\.github/workflows/ci\.yml$|etl/sources\.yaml$)'; then
+              perf=true
+            else
+              perf=false
+            fi
+          else
+            echo "No diff against $base: running perf."
+            perf=true
+          fi
+          echo "perf=$perf" | tee -a "$GITHUB_OUTPUT"
+
   web:
+    needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -84,6 +118,18 @@ jobs:
       - name: Build
         run: npm run build
 
+      # The same build for the perf job: what `next start` serves, without
+      # the build cache.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: needs.changes.outputs.perf == 'true'
+        with:
+          name: next-build
+          path: |
+            web/.next
+            !web/.next/cache
+          include-hidden-files: true
+          retention-days: 1
+
       - name: GOV.UK brand assets (none shipped)
         run: node scripts/check-govuk-assets.mjs
 
@@ -134,9 +180,13 @@ jobs:
       - name: "Unattended import (made-up waste sources: apply, revert, issues, fallback, dead-man switch)"
         run: node scripts/check-import-run.mjs
 
-  # Lighthouse on its own runner, in parallel with the rest: its own database
-  # with the CI fixture and its own build, so nothing else shares the CPU.
+  # Lighthouse on its own runner, only when the app could have changed: the
+  # web job's build, served with its own database holding the same CI
+  # fixture (the pages read it at runtime too, e.g. the search index), so
+  # nothing else shares the CPU.
   perf:
+    needs: [changes, web]
+    if: needs.changes.outputs.perf == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -178,8 +228,10 @@ jobs:
       - name: Database (migrate + seed)
         run: npm run db:migrate && npm run db:ci-fixture
 
-      - name: Build
-        run: npm run build
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: next-build
+          path: web/.next
 
       - name: Playwright version
         id: playwright
