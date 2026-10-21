@@ -46,6 +46,9 @@ try {
   for (const { path, name } of PAGES) {
     const url = `${server.origin}${path}`;
     const runs = [];
+    // Logged for information only (docs/perf.md): the runner's speed as
+    // Lighthouse measures it, per run, and the CPU slowdown in use.
+    const benchmarks = [];
     for (let i = 0; i < RUNS; i++) {
       const { lhr } = await lighthouse(url, {
         port: PORT,
@@ -60,6 +63,7 @@ try {
         throw new Error("Lighthouse did not use real (devtools) throttling");
       }
       profile ??= lhr.configSettings.throttling;
+      benchmarks.push(lhr.environment.benchmarkIndex);
       const audit = (id) => lhr.audits[id].numericValue;
       runs.push({
         score: lhr.categories.performance.score,
@@ -94,7 +98,7 @@ try {
       `${label}: ${m.preloadedFonts} preloaded fonts`,
     );
     console.log(
-      `${label.padEnd(22)} score ${m.score.toFixed(2)}  LCP ${Math.round(m.lcp)} ms  FCP ${Math.round(m.fcp)} ms  TBT ${Math.round(m.tbt)} ms  CLS ${m.cls.toFixed(3)}  ${(m.bytes / 1000).toFixed(1)} KB in ${m.requests} requests  HTML ${(m.htmlGzip / 1000).toFixed(1)} KB gz  ${m.preloadedFonts} fonts preloaded\n${"".padEnd(22)} per run: LCP ${runs.map((r) => Math.round(r.lcp)).join(", ")}; TBT ${runs.map((r) => Math.round(r.tbt)).join(", ")}`,
+      `${label.padEnd(22)} score ${m.score.toFixed(2)}  LCP ${Math.round(m.lcp)} ms  FCP ${Math.round(m.fcp)} ms  TBT ${Math.round(m.tbt)} ms  CLS ${m.cls.toFixed(3)}  ${(m.bytes / 1000).toFixed(1)} KB in ${m.requests} requests  HTML ${(m.htmlGzip / 1000).toFixed(1)} KB gz  ${m.preloadedFonts} fonts preloaded\n${"".padEnd(22)} per run: LCP ${runs.map((r) => Math.round(r.lcp)).join(", ")}; TBT ${runs.map((r) => Math.round(r.tbt)).join(", ")}\n${"".padEnd(22)} benchmarkIndex per run: ${benchmarks.map(Math.round).join(", ")} (CPU ${profile.cpuSlowdownMultiplier}×)`,
     );
   }
 
