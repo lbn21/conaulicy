@@ -1,0 +1,61 @@
+# Przejrzane daty z pliku harmonogram-2026-s4.jpg, wstępnie z przebiegu „grok-a = opus”.
+# Popraw dni miesiąca, jeśli trzeba. Scalenie PR zatwierdza je dla pliku
+# o tym sha256; ulice zawsze bierzemy z bazy, nie stąd.
+sha256: 91171038fbab823badd430d0249f0ed20596ccb973c26b5e817ea57901aba1dc
+file: "harmonogram-2026-s4.jpg"
+from: grok-a = opus
+sector: 4
+year: 2026
+rows:
+  "zmieszane+popiol":
+    styczeń: [2, 15, 29]
+    luty: [12, 26]
+    marzec: [12, 26]
+    kwiecień: [9, 23]
+    maj: [7, 21]
+    czerwiec: [3, 18]
+    lipiec: [2, 16, 30]
+    sierpień: [13, 27]
+    wrzesień: [10, 24]
+    październik: [8, 22]
+    listopad: [5, 19]
+    grudzień: [3, 17, 31]
+  "papier+tworzywa_metale+szklo":
+    styczeń: [22]
+    luty: [19]
+    marzec: [19]
+    kwiecień: [16]
+    maj: [21]
+    czerwiec: [11, 25]
+    lipiec: [16, 30]
+    sierpień: [13, 27]
+    wrzesień: [17]
+    październik: [22]
+    listopad: [19]
+    grudzień: [23]
+  "bio":
+    styczeń: [8]
+    luty: [5]
+    marzec: [5]
+    kwiecień: [2, 16, 30]
+    maj: [14, 28]
+    czerwiec: [11, 25]
+    lipiec: [9, 23]
+    sierpień: [6, 20]
+    wrzesień: [3, 17]
+    październik: [1, 15, 29]
+    listopad: [12]
+    grudzień: [10]
+  "wielkogabarytowe+elektro+opony+tekstylia":
+    styczeń: []
+    luty: []
+    marzec: [20]
+    kwiecień: []
+    maj: []
+    czerwiec: []
+    lipiec: []
+    sierpień: []
+    wrzesień: [21]
+    październik: []
+    listopad: []
+    grudzień: []
