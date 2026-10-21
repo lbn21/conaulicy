@@ -1,6 +1,7 @@
 # The unattended import (docs/import.md), every domain: GitHub-hosted
 # runner, no approvals, no people. A change that passes every check is
-# applied; anything else becomes an issue, closed by the next clean run.
+# applied; anything else becomes an issue, closed by the next clean run,
+# or a review PR for a file a person must look at (docs/import.md).
 # Configured in etl/sources.yaml (CI fails if this file drifts from it).
 name: import
 
@@ -22,9 +23,12 @@ on:
         default: false
 
 permissions:
-  contents: read
+  # Review PRs: the import pushes only its own import-review/* and
+  # import-review-image/* branches, never main.
+  contents: write
   id-token: write # AWS through OIDC, no AWS keys
   issues: write
+  pull-requests: write
 
 concurrency:
   group: import

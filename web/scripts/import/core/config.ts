@@ -51,6 +51,8 @@ export type Config = {
   vision: {
     cli: string;
     passes: Array<{ id: string; vendor: string; model: string }>;
+    /** The pass whose reading pre-fills a review PR's reviewed-data file. */
+    reviewFrom: string;
   };
   archive: { bucket: string; region: string; role: string };
   sources: Source[];
@@ -151,6 +153,10 @@ export function configErrors(config: Config): string[] {
   const passIds = config.vision.passes.map((p) => p.id);
   if (new Set(passIds).size !== passIds.length)
     errors.push("vision.passes: duplicate pass id");
+  if (!passIds.includes(config.vision.reviewFrom))
+    errors.push(
+      `vision.reviewFrom: ${config.vision.reviewFrom} is not a pass id`,
+    );
   try {
     new Intl.DateTimeFormat("en", { timeZone: config.schedule.timezone });
   } catch {

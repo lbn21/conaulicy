@@ -54,6 +54,9 @@ vision:
   passes:
     - { id: grok-a, vendor: xai, model: grok-4.7-medium }
     - { id: opus, vendor: anthropic, model: claude-opus-5-5-medium }
+  # When the passes disagree, a review PR proposes this pass's dates
+  # (docs/import.md, "Review pull requests").
+  reviewFrom: opus
 
 archive:
   bucket: conaulicy-sources-aaed02

@@ -8,6 +8,7 @@ import type { Config, Source } from "./config.ts";
 import type { Queryable } from "./db.ts";
 import type { Http } from "./http.ts";
 import type { Issues } from "./issues.ts";
+import type { Reviews } from "./review.ts";
 import type { readWatched } from "./watch.ts";
 
 /** One published file a detector found. */
@@ -59,16 +60,21 @@ export type Domain = {
   ): Detection;
   /**
    * The domain's checks of one extracted file before it is applied: each
-   * problem blocks it. db is null with --extract-only (no database).
+   * problem blocks it. db is null with --extract-only (no database). A file
+   * that needs a person gets a review PR (reviews.open) and is held
+   * (reviews.hold) instead.
    */
   check(input: {
     db: Queryable | null;
     config: Config;
     source: Source;
     file: Found;
+    body: Buffer;
+    digest: string;
     out: Extracted;
     zoneName: string;
     issues: Issues;
+    reviews: Reviews;
     dryRun: boolean;
     runUrl: string;
   }): Promise<string[]>;

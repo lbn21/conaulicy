@@ -502,3 +502,123 @@ export function streetReview(
   });
   return [...passes].map(([p, n]) => `${p} (pass ${n.join(", ")})`);
 }
+
+// ------------------------------------------------------------------ review PRs
+
+const days = (list: number[] | undefined) =>
+  list?.length ? list.join(", ") : "—";
+
+/** Days per row and month already in the database (each row's first fraction). */
+export function databaseRows(
+  events: Array<{ subtype: string; start: string }>,
+  fractions: Record<string, string[]>,
+): Rows {
+  const rows: Rows = {};
+  for (const [row, subtypes] of Object.entries(fractions)) {
+    rows[row] = Array.from({ length: 12 }, () => []);
+    for (const e of events)
+      if (e.subtype === subtypes[0])
+        rows[row][Number(e.start.slice(5, 7)) - 1].push(
+          Number(e.start.slice(8, 10)),
+        );
+    for (const month of rows[row]) month.sort((a, b) => a - b);
+  }
+  return rows;
+}
+
+/**
+ * A review PR's table (Polish markdown): every sector, year, row and month
+ * where the passes differ, each pass's value and the database's.
+ */
+export function disagreementTable(
+  readings: VisionReading[],
+  names: string[],
+  current: Rows,
+): string {
+  const lines = [
+    `| Wiersz | Miesiąc | ${names.join(" | ")} | w bazie |`,
+    `|---|---|${names.map(() => "---|").join("")}---|`,
+  ];
+  for (const field of ["sector", "year"] as const)
+    if (new Set(readings.map((r) => r[field])).size > 1)
+      lines.push(
+        `| ${field === "sector" ? "sektor" : "rok"} | | ${readings.map((r) => r[field]).join(" | ")} | |`,
+      );
+  for (const row of Object.keys(readings[0].rows))
+    MONTHS.forEach((month, i) => {
+      const values = readings.map((r) => days(r.rows[row]?.[i]));
+      if (new Set(values).size > 1)
+        lines.push(
+          `| ${row} | ${month.toLowerCase()} | ${values.join(" | ")} | ${days(current[row]?.[i])} |`,
+        );
+    });
+  return lines.join("\n");
+}
+
+/** streetReview's findings for a review PR, in Polish. */
+export function streetLines(review: string[]): string[] {
+  return review.map(
+    (p) =>
+      `- ${p
+        .replace(/^\S+: /, "")
+        .replace(
+          "is not a member now",
+          "z obrazka: nie ma jej w tej strefie w bazie",
+        )
+        .replace("is no longer listed", "z bazy: nie ma jej na obrazku")
+        .replace(
+          "matches several members",
+          "z obrazka: pasuje do kilku ulic w bazie",
+        )
+        .replace(/\(pass /, "(przebieg ")}`,
+  );
+}
+
+/** The reviewed-data file a review PR proposes (YAML, easy to edit by hand). */
+export function reviewedYaml(
+  reading: VisionReading,
+  from: string,
+  fileName: string,
+  digest: string,
+): string {
+  return [
+    `# Przejrzane daty z pliku ${fileName}, wstępnie z przebiegu „${from}”.`,
+    "# Popraw dni miesiąca, jeśli trzeba. Scalenie PR zatwierdza je dla pliku",
+    "# o tym sha256; ulice zawsze bierzemy z bazy, nie stąd.",
+    `sha256: ${digest}`,
+    `file: ${JSON.stringify(fileName)}`,
+    `from: ${from}`,
+    `sector: ${reading.sector}`,
+    `year: ${reading.year}`,
+    "rows:",
+    ...Object.entries(reading.rows).flatMap(([row, months]) => [
+      `  ${JSON.stringify(row)}:`,
+      ...months.map(
+        (d, i) => `    ${MONTHS[i].toLowerCase()}: [${d.join(", ")}]`,
+      ),
+    ]),
+    "",
+  ].join("\n");
+}
+
+/** A merged reviewed-data file as a reading, checked like a vision pass. */
+export function parseReviewed(
+  value: Record<string, unknown>,
+  rowNames: string[],
+): VisionReading {
+  const rows = (value.rows ?? {}) as Record<string, Record<string, unknown>>;
+  return parseVisionJson(
+    JSON.stringify({
+      sector: value.sector,
+      year: value.year,
+      streets: [],
+      rows: Object.fromEntries(
+        Object.entries(rows).map(([row, months]) => [
+          row,
+          MONTHS.map((m) => months?.[m.toLowerCase()]),
+        ]),
+      ),
+    }),
+    rowNames,
+  );
+}
