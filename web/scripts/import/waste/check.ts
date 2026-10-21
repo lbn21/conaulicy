@@ -91,7 +91,13 @@ export const check: Domain["check"] = async ({
     // A model's street spelling is never applied: differences open a
     // review issue that a person closes, and the dates still apply.
     const review = out.streetReadings
-      ? streetReview(out.zoneId, out.streetReadings, members, source.aliases)
+      ? streetReview(
+          out.zoneId,
+          out.streetReadings,
+          members,
+          source.aliases,
+          config.vision.passes.map((p) => p.id),
+        )
       : null;
     if (review?.length) {
       console.log(

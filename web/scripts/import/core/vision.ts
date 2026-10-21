@@ -1,5 +1,6 @@
 // Vision passes for every importer: the Cursor CLI reads an image in an
-// empty, locked-down workspace, once per vision.passes entry (two vendors),
+// empty, locked-down workspace, once per vision.passes entry: each pass is a
+// fresh agent (no resume, its own workspace), so the reads are independent,
 // and the reply's JSON is taken out of any prose around it. What the JSON
 // means, and whether the passes agree, is the domain's business.
 import { spawnSync } from "node:child_process";
@@ -75,7 +76,7 @@ export function visionPasses(
   for (const p of passes)
     if (!available.has(p.model))
       throw new Error(
-        `model ${p.model} (${p.vendor}) is not available to this Cursor account; update vision.passes in etl/sources.yaml. Available: ${[
+        `model ${p.model} (pass ${p.id}) is not available to this Cursor account; update vision.passes in etl/sources.yaml. Available: ${[
           ...available,
         ]
           .filter((m) => /\d/.test(m))
@@ -86,7 +87,7 @@ export function visionPasses(
     // An empty workspace holding only the image; the agent may read it and
     // nothing else (no shell, writes, web or MCP). Everything else (git, DB,
     // S3, issues) is done by this script, never by the agent.
-    const work = mkdtempSync(path.join(tmpdir(), "vision-"));
+    const work = mkdtempSync(path.join(tmpdir(), `vision-${pass.id}-`));
     writeFileSync(path.join(work, "schedule.jpg"), body);
     mkdirSync(path.join(work, ".cursor"));
     writeFileSync(
@@ -117,7 +118,7 @@ export function visionPasses(
     );
     if (run.status !== 0)
       throw new Error(
-        `${pass.model}: agent exited ${run.status}: ${(run.stderr ?? "").slice(0, 300)}`,
+        `pass ${pass.id} (${pass.model}): agent exited ${run.status}: ${(run.stderr ?? "").slice(0, 300)}`,
       );
     // Any prose or fence around the JSON is dropped by extractJson.
     return String(

@@ -486,8 +486,10 @@ export function streetReview(
   readings: string[][],
   members: Array<{ id: string; names: string[] }>,
   aliases: Record<string, string> = {},
+  /** Each pass's name in the messages (its id); 1, 2… by default. */
+  names: string[] = readings.map((_, i) => String(i + 1)),
 ): string[] {
-  const passes = new Map<string, number[]>();
+  const passes = new Map<string, string[]>();
   readings.forEach((streets, i) => {
     for (const p of compareMembers(
       zoneId,
@@ -496,7 +498,7 @@ export function streetReview(
       streetKey,
       aliases,
     ))
-      passes.set(p, [...(passes.get(p) ?? []), i + 1]);
+      passes.set(p, [...(passes.get(p) ?? []), names[i]]);
   });
   return [...passes].map(([p, n]) => `${p} (pass ${n.join(", ")})`);
 }

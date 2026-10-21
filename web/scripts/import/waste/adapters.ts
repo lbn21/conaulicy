@@ -252,7 +252,7 @@ export const EXTRACTORS: Record<string, Extractor> = {
     );
   },
 
-  /** Two Cursor CLI vision passes from different vendors; both must agree. */
+  /** Two independent Cursor CLI vision passes; both must agree. */
   async "miasto-jpg-vision"({ source, config, file, body, doc, digest }) {
     const rows = Object.keys(MIASTO_ROWS);
     const outputs = visionPasses(
@@ -266,14 +266,14 @@ export const EXTRACTORS: Record<string, Extractor> = {
         return parseVisionJson(o, rows);
       } catch (error) {
         throw new Error(
-          `vision pass ${i + 1} (${config.vision.passes[i].model}) is not valid JSON for the schema: ${(error as Error).message}`,
+          `vision pass ${config.vision.passes[i].id} (${config.vision.passes[i].model}) is not valid JSON for the schema: ${(error as Error).message}`,
         );
       }
     });
     const diffs = compareReadings(readings[0], readings[1]);
     if (diffs.length)
       throw new Error(
-        `the two vision passes disagree:\n  - ${diffs.join("\n  - ")}`,
+        `the two vision passes (${config.vision.passes.map((p) => p.id).join(", ")}) disagree:\n  - ${diffs.join("\n  - ")}`,
       );
     if (readings[0].sector !== file.sector || readings[0].year !== file.year)
       throw new Error(
