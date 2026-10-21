@@ -374,12 +374,11 @@ export function compareMembers(
   const matched = new Set<string>();
   for (const name of listed) {
     const k = key(aliases[name] ?? name);
-    const hits = members.filter((m) =>
-      m.names.some((n) => {
-        const mk = key(n);
-        return mk === k || mk.endsWith(` ${k}`);
-      }),
-    );
+    // An exact match wins over a longer name ending in it (Mazury, Boczna Mazury).
+    const exact = members.filter((m) => m.names.some((n) => key(n) === k));
+    const hits = exact.length
+      ? exact
+      : members.filter((m) => m.names.some((n) => key(n).endsWith(` ${k}`)));
     if (hits.length === 1) matched.add(hits[0].id);
     else
       problems.push(
@@ -403,6 +402,28 @@ export type VisionReading = {
 };
 
 /**
+ * The first balanced top-level JSON object in a model's reply, which may wrap
+ * it in prose or a ```json fence. Braces inside strings (and escaped quotes)
+ * do not count. Throws if there is none.
+ */
+export function extractJson(text: string): string {
+  const start = text.indexOf("{");
+  if (start < 0) throw new Error("no JSON object in the reply");
+  let depth = 0;
+  let inString = false;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (inString) {
+      if (c === "\\") i++;
+      else if (c === '"') inString = false;
+    } else if (c === '"') inString = true;
+    else if (c === "{") depth++;
+    else if (c === "}" && --depth === 0) return text.slice(start, i + 1);
+  }
+  throw new Error("the JSON object in the reply is not closed");
+}
+
+/**
  * One vision pass's JSON, checked against the strict schema: exactly these
  * keys, 12 months per row, days 1–31 as integers. Throws with the reason.
  */
@@ -410,7 +431,7 @@ export function parseVisionJson(
   text: string,
   rowNames: string[],
 ): VisionReading {
-  const value = JSON.parse(text) as Record<string, unknown>;
+  const value = JSON.parse(extractJson(text)) as Record<string, unknown>;
   const keys = Object.keys(value).sort().join(",");
   if (keys !== "rows,sector,streets,year")
     throw new Error(`keys ${keys}, expected rows, sector, streets, year`);
@@ -455,15 +476,15 @@ export function parseVisionJson(
   };
 }
 
-/** Every difference between two readings; empty when they agree 100%. */
+/**
+ * Every difference in sector, year and dates between two readings; empty
+ * when they agree 100%. Streets are not compared: the database owns them
+ * (streetReview).
+ */
 export function compareReadings(a: VisionReading, b: VisionReading): string[] {
   const diffs: string[] = [];
   if (a.sector !== b.sector) diffs.push(`sector: ${a.sector} vs ${b.sector}`);
   if (a.year !== b.year) diffs.push(`year: ${a.year} vs ${b.year}`);
-  const onlyA = a.streets.filter((s) => !b.streets.includes(s));
-  const onlyB = b.streets.filter((s) => !a.streets.includes(s));
-  if (onlyA.length) diffs.push(`streets only in pass 1: ${onlyA.join(", ")}`);
-  if (onlyB.length) diffs.push(`streets only in pass 2: ${onlyB.join(", ")}`);
   for (const row of Object.keys(a.rows)) {
     a.rows[row].forEach((days, i) => {
       const other = b.rows[row]?.[i] ?? [];
@@ -474,6 +495,31 @@ export function compareReadings(a: VisionReading, b: VisionReading): string[] {
     });
   }
   return diffs;
+}
+
+/**
+ * Each pass's street list against the zone's streets in the database
+ * (compareMembers, streetKey only). Model spelling is never applied; any
+ * difference is for a person to check. Empty when every pass matches.
+ */
+export function streetReview(
+  zoneId: string,
+  readings: string[][],
+  members: Array<{ id: string; names: string[] }>,
+  aliases: Record<string, string> = {},
+): string[] {
+  const passes = new Map<string, number[]>();
+  readings.forEach((streets, i) => {
+    for (const p of compareMembers(
+      zoneId,
+      streets,
+      members,
+      streetKey,
+      aliases,
+    ))
+      passes.set(p, [...(passes.get(p) ?? []), i + 1]);
+  });
+  return [...passes].map(([p, n]) => `${p} (pass ${n.join(", ")})`);
 }
 
 // ------------------------------------------------------------------ diff

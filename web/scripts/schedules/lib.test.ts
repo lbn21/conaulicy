@@ -5,6 +5,7 @@ import {
   compareReadings,
   coverageGaps,
   diffEvents,
+  extractJson,
   fold,
   MIASTO_ROWS,
   parseGminaLayout,
@@ -12,6 +13,7 @@ import {
   polishHolidays,
   rowsToEvents,
   streetKey,
+  streetReview,
   validateSchedule,
 } from "./lib.ts";
 
@@ -102,6 +104,21 @@ test("vision JSON must match the schema exactly", () => {
   assert.throws(() => parseVisionJson("not json", ROWS));
 });
 
+test("vision JSON is found inside prose and fences", () => {
+  const json = JSON.stringify(reading());
+  for (const text of [
+    `I'll read the schedule image and return only the JSON.${json}`,
+    `${json}\nDone: every row read.`,
+    `Here it is:\n\`\`\`json\n${json}\n\`\`\`\nAnything else?`,
+  ])
+    assert.equal(parseVisionJson(text, ROWS).rows.bio[0].join(), "5,19");
+  const tricky = '{"a": "} {", "b": "say \\"}\\" twice", "c": {"d": [1]}}';
+  assert.equal(extractJson(`x ${tricky} {"next": 1}`), tricky);
+  assert.throws(() => extractJson("No JSON here, sorry."), /no JSON object/);
+  assert.throws(() => extractJson('Cut off: {"a": "}'), /not closed/);
+  assert.throws(() => parseVisionJson("not json", ROWS), /no JSON object/);
+});
+
 test("readings agree only when identical", () => {
   const a = parseVisionJson(JSON.stringify(reading()), ROWS);
   assert.deepEqual(compareReadings(a, a), []);
@@ -114,6 +131,43 @@ test("readings agree only when identical", () => {
     ROWS,
   );
   assert.deepEqual(compareReadings(a, b), ["bio, styczeń: [5, 19] vs [5, 20]"]);
+  // Streets are for the database check, not for agreement.
+  assert.deepEqual(compareReadings(a, { ...a, streets: ["Inna"] }), []);
+  assert.deepEqual(compareReadings(a, { ...a, sector: 2 }), ["sector: 1 vs 2"]);
+});
+
+test("streets: each pass against the database, spelling folded only", () => {
+  const members = [
+    { id: "a", names: ["Płk. Jana Lisa"] },
+    { id: "b", names: ["Łążek"] },
+    { id: "c", names: ["Sudel"] },
+    { id: "d", names: ["Mazury"] },
+    { id: "e", names: ["Boczna Mazury"] },
+  ];
+  const db = ["Płk. Jana Lisa", "Łążek", "Sudel", "Mazury", "Boczna Mazury"];
+  assert.deepEqual(
+    streetReview(
+      "z",
+      [db, ["Plk. Jana Lisa", "Łązek", "Sudeł", "Mazury", "Boczna Mazury"]],
+      members,
+    ),
+    [],
+  );
+  assert.deepEqual(
+    streetReview(
+      "z",
+      [
+        [...db, "Jana Jeziorańskiego"],
+        [...db.slice(1), "Jana Jeziorskiego"],
+      ],
+      [...members, { id: "f", names: ["Jana Jeziorańskiego"] }],
+    ),
+    [
+      "z: „Jana Jeziorskiego” is not a member now (pass 2)",
+      "z: „Płk. Jana Lisa” is no longer listed (pass 2)",
+      "z: „Jana Jeziorańskiego” is no longer listed (pass 2)",
+    ],
+  );
 });
 
 test("validation: weekday per row, holiday shifts, year, counts", () => {

@@ -539,6 +539,41 @@ await step(
 );
 
 await step(
+  "prose around the JSON and a different street: dates apply, streets to review",
+  async () => {
+    const [one, two] = [reading(), reading()];
+    one.streets = ["ul. Adama Asnyka", "os. Osiedle Testowe"];
+    two.streets = ["Adama Asnyka", "Osiedle Nowe"];
+    setJpg([
+      `I'll read the schedule image and return only the JSON.${JSON.stringify(one)}`,
+      `\`\`\`json\n${JSON.stringify(two)}\n\`\`\`\nDone.`,
+    ]);
+    const members = async () =>
+      (await db.query("select count(*)::int as n from zone_members")).rows[0].n;
+    const before = await members();
+    await run();
+    check(
+      (await lastRuns()).miasto?.status === "applied",
+      `not applied: ${(await lastRuns()).miasto?.error}`,
+    );
+    check((await snapshot()) !== beforeReview, "the new file was not applied");
+    check((await members()) === before, "zone members changed");
+    const review = () => open(/^streets:waste:miasto-s1$/);
+    check(
+      review().length === 1 &&
+        /„Osiedle Nowe” is not a member now \(pass 2\)/.test(review()[0].body),
+      `no street-review issue: ${JSON.stringify(issues().map((i) => i.key))}`,
+    );
+    await run();
+    check(
+      (await lastRuns()).miasto?.status === "no_change" &&
+        review().length === 1,
+      "the street-review issue was closed without a person",
+    );
+  },
+);
+
+await step(
   "a new link on a watched page: an issue until the config handles it",
   async () => {
     const extra = `${M}/wp-content/uploads/${year}/06/harmonogram-${year}-s1-aktualizacja.jpg`;
