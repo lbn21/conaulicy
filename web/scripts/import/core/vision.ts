@@ -138,7 +138,8 @@ function runPass(
         pass.model,
         prompt(`./${image}`),
       ],
-      { cwd: work, timeout: 15 * 60_000 },
+      // stdin at EOF, as spawnSync gave it: the CLI must not wait on it.
+      { cwd: work, timeout: 15 * 60_000, stdio: ["ignore", "pipe", "pipe"] },
     );
     const stdout: Buffer[] = [];
     const stderr: Buffer[] = [];

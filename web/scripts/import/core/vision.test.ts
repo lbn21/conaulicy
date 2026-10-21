@@ -21,6 +21,7 @@ if [ "$1" = models ]; then echo "good-model bad-model"; exit 0; fi
 model=""; prev=""
 for a in "$@"; do [ "$prev" = --model ] && model="$a"; prev="$a"; done
 echo "start $model $(ls)" >> "${log}"
+cat > /dev/null # like a CLI that reads stdin: must see EOF, not hang
 if [ "$model" = bad-model ]; then echo "boom" >&2; exit 3; fi
 sleep 1
 echo "end $model" >> "${log}"
