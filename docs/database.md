@@ -7,7 +7,7 @@ One Neon project (Vercel Marketplace, free plan, fra1) and, for now, **one share
 | Production | Neon `main` | from the Vercel–Neon integration |
 | Preview (every non-`main` git branch) | Neon `main`, the same data as production | same integration vars |
 | Development (`vercel env pull`, `web/.env.local`) | Neon `main` | same integration vars |
-| CI (GitHub Actions) | throwaway `postgres:17` service, migrated and loaded with the CI fixture per run | in `.github/workflows/ci.yml`, no secrets |
+| CI (GitHub Actions) | throwaway `postgres:18` service, migrated and loaded with the CI fixture per run | in `.github/workflows/ci.yml`, no secrets |
 
 Vercel "Preview Branching" (one Neon branch per deployment) stays off: the free plan allows 10 branches.
 
@@ -38,7 +38,7 @@ npm run db:migrate      # reads web/.env.local (Neon main)
 
 ## Testing data changes without touching production
 
-Use a throwaway local Postgres (Docker `postgres:17`) with `DATABASE_URL` and `DATABASE_URL_UNPOOLED` pointing at it, then `db:migrate`, `db:ci-fixture` and `db:import`, exactly as CI does (`scripts/check-import.mjs`).
+Use a throwaway local Postgres (Docker `postgres:18`) with `DATABASE_URL` and `DATABASE_URL_UNPOOLED` pointing at it, then `db:migrate`, `db:ci-fixture` and `db:import`, exactly as CI does (`scripts/check-import.mjs`).
 
 ## If a separate preview database is wanted later
 

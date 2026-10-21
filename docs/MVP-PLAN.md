@@ -1,3 +1,5 @@
+> **Historical (18 Oct 2026).** Superseded by CLAUDE.md, docs/perf.md, docs/import.md.
+
 # „Mój adres” – MVP plan (Lubaczów) · v1 · 18.10.2026
 
 ## Changelog

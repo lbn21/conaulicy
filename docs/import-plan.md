@@ -1,3 +1,5 @@
+> **Historical (19 Oct 2026).** Superseded by CLAUDE.md, docs/perf.md, docs/import.md.
+
 # conaulicy.pl: real-data import plan (for a coding agent)
 
 Written 2026-10-19. Inputs: `main` at the search-overlay merge (schema identical to `eb5fed5`: `web/lib/db/schema.ts`, `web/lib/schedule.ts`, `web/app/api/revalidate/route.ts`). ETL: draft PR #2 `feat/etl` @ `c156836` (`etl/review/ANOMALIES.md`, `etl/review/approvals.yaml`, `docs/data-model.md`). Output copy: `/workspace/conaulicy/data/`.
@@ -72,6 +74,9 @@ Steps:
 8. Smoke check: fetch `/adres/0972447-00470` (Basic Auth) and assert the next date matches the DB.
 
 Where it runs: **locally by the operator** (Grok on the box, or the Mac repo). Reason: `etl/out/` is gitignored and the dataset must never be in git, so a GitHub Action would need the dataset and the prod DB URL as GitHub secrets. That is more exposure for no benefit at ~1 import/year. Use Vercel's env without writing secrets to disk:
+
+> **Do not use the `vercel env run` commands below:** `docs/database.md` forbids `vercel env run` (it once started a deploy). Use `web/.env.local` instead.
+
 ```sh
 cd web
 vercel env run -e preview    -- npm run db:migrate

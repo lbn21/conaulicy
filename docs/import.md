@@ -2,10 +2,10 @@
 
 Every day, a GitHub Actions workflow checks the sources in `etl/sources.yaml`. Today that is one domain, waste: the town's and the gmina's published schedules. A change that passes every check goes live on its own. Anything doubtful opens a GitHub issue instead, and nothing is applied; a file a person must look at gets a review pull request with the original shown inline. People only step in when an issue or a review PR opens.
 
-- Workflow: `.github/workflows/import.yml`. It runs on GitHub-hosted runners with no approval gates. Its only services are Neon, S3 (through an OIDC role) and Cursor CLI.
+- Workflow: `.github/workflows/import.yml`. It runs on GitHub-hosted runners with no approval gates. It talks to Neon, S3 (through an OIDC role), the Cursor CLI, the GitHub API (issues and review PRs), the site's `/api/revalidate`, and the source sites themselves.
 - Code: `web/scripts/import/`.
   - `core/` is shared by every domain: the run loop (`run.ts`), config, HTTP retries, watched pages, the vision runner and JSON extraction, issues and review PRs, the events diff, batches and revert.
-  - `waste/` is the waste domain: detectors and extractors (`adapters.ts`), parsing and validation (`lib.ts`) and its checks (`check.ts`).
+  - `waste/` is the waste domain: detectors and extractors (`adapters.ts`), parsing and validation (`lib.ts`), its checks (`check.ts`) and its hooks into the core (`index.ts`: config rules, the `gminy.schedule_url` sync, database rows, issue wording).
   - `domains.ts` registers the domains.
 - Config: **`etl/sources.yaml`**, the one config. A schema (`etl/sources.schema.json`) checks it, and `npm run config:check` fails CI if anything derived from it has drifted. That covers `docs/data/sources.md`, `web/lib/config.generated.ts` (footer features and public schedule pages), the workflow's cron lines, and the adapter types.
 
