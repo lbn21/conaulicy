@@ -55,7 +55,6 @@ jobs:
           echo "perf=$perf" | tee -a "$GITHUB_OUTPUT"
 
   web:
-    needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -118,18 +117,6 @@ jobs:
       - name: Build
         run: npm run build
 
-      # The same build for the perf job: what `next start` serves, without
-      # the build cache.
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: needs.changes.outputs.perf == 'true'
-        with:
-          name: next-build
-          path: |
-            web/.next
-            !web/.next/cache
-          include-hidden-files: true
-          retention-days: 1
-
       - name: GOV.UK brand assets (none shipped)
         run: node scripts/check-govuk-assets.mjs
 
@@ -180,12 +167,13 @@ jobs:
       - name: "Unattended import (made-up waste sources: apply, revert, issues, fallback, dead-man switch)"
         run: node scripts/check-import-run.mjs
 
-  # Lighthouse on its own runner, only when the app could have changed: the
-  # web job's build, served with its own database holding the same CI
-  # fixture (the pages read it at runtime too, e.g. the search index), so
-  # nothing else shares the CPU.
+  # Lighthouse on its own runner, in parallel with web and only when the app
+  # could have changed: its own database with the CI fixture and its own
+  # build, so nothing else shares the CPU. (Reusing web's build as an
+  # artifact was measured: 4 s up, 1 s down, but waiting for web cost
+  # 3.5 min of wall time against ~20 s for this build.)
   perf:
-    needs: [changes, web]
+    needs: changes
     if: needs.changes.outputs.perf == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -228,10 +216,8 @@ jobs:
       - name: Database (migrate + seed)
         run: npm run db:migrate && npm run db:ci-fixture
 
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: next-build
-          path: web/.next
+      - name: Build
+        run: npm run build
 
       - name: Playwright version
         id: playwright

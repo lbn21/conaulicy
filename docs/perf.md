@@ -1,6 +1,6 @@
 # Performance budgets
 
-`web/scripts/check-perf.mjs` runs in CI on every pull request (step "Performance (Lighthouse budgets)"), against the built app with the throwaway Postgres and the CI fixture, like the other checks. In CI it runs through `web/scripts/check-perf-retry.mjs`: if it fails, it runs once more, unchanged, and the step fails only if that second attempt fails too. Both attempts' LCP/TBT medians per page are printed side by side, so a real regression (both attempts over) stays visible. No other check is re-run. Run it locally with `npm run check:perf` (build included) or `node scripts/check-perf.mjs` after `next build`. `PERF_OUT=file.json` saves the numbers.
+`web/scripts/check-perf.mjs` runs in CI (job `perf`, step "Performance (Lighthouse budgets)") on every pull request that changes `web/`, `.github/workflows/ci.yml` or `etl/sources.yaml` (job `changes`; otherwise `perf` shows as skipped), in parallel with the other checks, against its own build of the app with its own throwaway Postgres and the CI fixture. In CI it runs through `web/scripts/check-perf-retry.mjs`: if it fails, it runs once more, unchanged, and the step fails only if that second attempt fails too. Both attempts' LCP/TBT medians per page are printed side by side, so a real regression (both attempts over) stays visible. No other check is re-run. Run it locally with `npm run check:perf` (build included) or `node scripts/check-perf.mjs` after `next build`. `PERF_OUT=file.json` saves the numbers.
 
 ## Profile
 
