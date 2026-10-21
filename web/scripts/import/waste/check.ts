@@ -106,7 +106,7 @@ export const check: Domain["check"] = async ({
       out.streetReadings ?? [],
       members,
       source.waste.aliases,
-      ids,
+      [config.vision.streetCheckFrom],
     );
   };
 
