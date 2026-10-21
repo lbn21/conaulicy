@@ -3,18 +3,20 @@
 // database), the import opens one PR per source file instead of an issue.
 // The PR's diff is a reviewed-data file, etl/review/<source>/<stem>.yaml,
 // pre-filled by the domain: merging it approves it (the next run uses it for
-// that exact sha256), closing it rejects it. The original file is shown
-// inline from its own branch, import-review-image/<source>/<stem>, which no
-// PR contains, so a merge never brings it into main. The bot force-updates
-// only these two branches. REVIEWS_FILE replaces GitHub in tests;
-// IMPORT_REVIEW_DIR replaces etl/review (where merged files are read).
+// that exact sha256), closing it rejects it. The original image is shown
+// inline from its public URL on the source site (GitHub's camo proxy renders
+// it on web and mobile); no source file is ever pushed to git. The bot
+// force-updates only import-review/* branches. REVIEWS_FILE replaces GitHub
+// in tests; IMPORT_REVIEW_DIR replaces etl/review (where merged files are read).
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import { ROOT, type Source } from "./config.ts";
 import type { Found } from "./domain.ts";
+import type { Http } from "./http.ts";
 
 type Pr = {
   number: number;
@@ -62,22 +64,17 @@ export function readReviewed(
   return null;
 }
 
-// The bot's commits; fixed dates, so the same image is the same commit.
+// The bot's commits.
 const BOT = {
   GIT_AUTHOR_NAME: "github-actions[bot]",
   GIT_AUTHOR_EMAIL: "41898283+github-actions[bot]@users.noreply.github.com",
   GIT_COMMITTER_NAME: "github-actions[bot]",
   GIT_COMMITTER_EMAIL: "41898283+github-actions[bot]@users.noreply.github.com",
 };
-const FIXED_DATE = {
-  GIT_AUTHOR_DATE: "2026-01-01T00:00:00Z",
-  GIT_COMMITTER_DATE: "2026-01-01T00:00:00Z",
-};
 
 export type ReviewRequest = {
   source: Source;
   file: Found;
-  body: Buffer;
   digest: string;
   /** Short, Polish: the PR title after "[import] ". */
   title: string;
@@ -91,10 +88,14 @@ export type ReviewRequest = {
 };
 
 export class Reviews {
+  #http: Http;
   #file = process.env.REVIEWS_FILE;
   #gh = !this.#file && Boolean(process.env.GH_TOKEN);
-  #repo = process.env.GITHUB_REPOSITORY ?? "";
   #held = new Map<string, { note: string; blocks: boolean }>();
+
+  constructor(http: Http) {
+    this.#http = http;
+  }
 
   #load(): Stored[] {
     return this.#file && existsSync(this.#file)
@@ -106,7 +107,7 @@ export class Reviews {
     if (this.#file) writeFileSync(this.#file, JSON.stringify(all, null, 1));
   }
 
-  #git(args: string[], input?: Buffer | string, env = {}) {
+  #git(args: string[], input?: string, env = {}) {
     return execFileSync("git", args, {
       encoding: "utf8",
       input,
@@ -148,16 +149,15 @@ export class Reviews {
     }));
   }
 
-  /** A commit with only `files` (path → content) on `parent`'s tree, if any. */
+  /** A commit with `files` (path → content) added to `parent`'s tree. */
   #commit(
-    files: Record<string, Buffer | string>,
+    files: Record<string, string>,
     message: string,
-    parent: string | null,
-    env = {},
+    parent: string,
   ): string {
     const index = path.join(mkdtempSync(path.join(tmpdir(), "review-")), "i");
-    const withIndex = { GIT_INDEX_FILE: index, ...env };
-    if (parent) this.#git(["read-tree", parent], undefined, withIndex);
+    const withIndex = { GIT_INDEX_FILE: index };
+    this.#git(["read-tree", parent], undefined, withIndex);
     for (const [file, content] of Object.entries(files)) {
       const blob = this.#git(["hash-object", "-w", "--stdin"], content);
       this.#git(
@@ -168,7 +168,7 @@ export class Reviews {
     }
     const tree = this.#git(["write-tree"], undefined, withIndex);
     return this.#git(
-      ["commit-tree", tree, ...(parent ? ["-p", parent] : []), "-m", message],
+      ["commit-tree", tree, "-p", parent, "-m", message],
       undefined,
       withIndex,
     );
@@ -198,10 +198,9 @@ export class Reviews {
    * branches only for a new version of the file (a person's edits to the
    * reviewed-data file are kept). Returns its link.
    */
-  open(req: ReviewRequest): string {
+  async open(req: ReviewRequest): Promise<string> {
     const key = reviewKey(req.source.id, req.file.name);
     const branch = `import-review/${key}`;
-    const imagePath = `etl/review/${key}/${req.file.name}`;
     const { open: current } = this.status(
       req.source.id,
       req.file.name,
@@ -210,24 +209,16 @@ export class Reviews {
     const keep = current?.sha256 === req.digest;
     const title = `[import] ${req.title}`;
 
-    let imageUrl = `https://github.com/${this.#repo || "OWNER/REPO"}/raw/test/${imagePath}`;
-    if (this.#gh) {
-      // Its own branch, never in a PR: a merge cannot bring it into main.
-      const image = this.#commit(
-        // Vercel reads this commit's web/vercel.json: no deployment for it.
-        {
-          [imagePath]: req.body,
-          "web/vercel.json": '{ "git": { "deploymentEnabled": false } }\n',
-        },
-        `Review image: ${req.file.name} (sha256 ${req.digest})`,
-        null,
-        FIXED_DATE,
-      );
-      this.#push(image, `import-review-image/${key}`);
-      // github.com/<repo>/raw/<commit>/… renders for anyone signed in with
-      // access to the private repository (raw.githubusercontent.com does not).
-      imageUrl = `https://github.com/${this.#repo}/raw/${image}/${imagePath}`;
-    }
+    // The image shown is whatever the URL serves now: say so when that is
+    // not the reviewed version (the SHA-256 stays the authority).
+    const live = await this.#http
+      .get(req.file.url)
+      .then(async (r) =>
+        createHash("sha256")
+          .update(Buffer.from(await r.arrayBuffer()))
+          .digest("hex"),
+      )
+      .catch(() => null);
     const isImage = /\.(jpe?g|png|gif|webp)$/i.test(req.file.name);
     const body = [
       req.blocking
@@ -244,8 +235,14 @@ export class Reviews {
       "### Oryginał",
       "",
       isImage
-        ? `[![${req.file.name}](${imageUrl})](${imageUrl})`
-        : `[${req.file.name}](${imageUrl})`,
+        ? `[![${req.file.name}](${req.file.url})](${req.file.url})`
+        : `[${req.file.name}](${req.file.url})`,
+      ...(live === req.digest
+        ? []
+        : [
+            "",
+            `_Uwaga: plik pod tym adresem ${live ? "ma teraz inny SHA-256" : "nie dał się teraz pobrać"}, więc obraz może się różnić od przeglądanej wersji. Liczy się SHA-256 powyżej._`,
+          ]),
       "",
       "### Co dalej",
       "",

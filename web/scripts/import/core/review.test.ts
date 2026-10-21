@@ -2,6 +2,7 @@
 // remote and a fake gh that records its calls).
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -23,7 +24,17 @@ const git = (args: string[], cwd = path.join(dir, "repo")) =>
     },
   }).trim();
 
-test("a review PR: image on its own branch, reviewed file on main, gh create", () => {
+// The source site: serves `served` at any URL, or fails when it is null.
+let served: Buffer | null = Buffer.from("JPEG");
+const http = {
+  get: async (url: string) => {
+    if (!served) throw new Error(`GET ${url}: HTTP 404`);
+    return new Response(new Uint8Array(served));
+  },
+};
+const digest = createHash("sha256").update("JPEG").digest("hex");
+
+test("a review PR: the reviewed file on main, the image from its public URL, gh create", async () => {
   git(["init", "-q", "--bare", path.join(dir, "origin.git")], dir);
   git(["init", "-q", "-b", "main", path.join(dir, "repo")], dir);
   writeFileSync(path.join(dir, "repo/README"), "x");
@@ -43,11 +54,10 @@ test("a review PR: image on its own branch, reviewed file on main, gh create", (
   );
   process.env.PATH = `${bin}:${process.env.PATH}`;
   process.env.GH_TOKEN = "fake";
-  process.env.GITHUB_REPOSITORY = "o/r";
   delete process.env.REVIEWS_FILE;
   process.chdir(path.join(dir, "repo"));
   const origin = (args: string[]) => git(args, path.join(dir, "origin.git"));
-  const reviews = new Reviews();
+  const reviews = new Reviews(http);
   const request = {
     source: {
       id: "miasto",
@@ -60,25 +70,20 @@ test("a review PR: image on its own branch, reviewed file on main, gh create", (
       mediaId: 1,
       modified: null,
     },
-    body: Buffer.from("JPEG"),
-    digest: "ab".repeat(32),
+    digest,
     title: "Sektor 5: odczyty się różnią",
     blocking: true,
     markdown: "| table |",
     reviewed: "sha256: ab\n",
     runUrl: "",
   };
-  assert.equal(reviews.open(request), "https://github.com/o/r/pull/7");
+  assert.equal(await reviews.open(request), "https://github.com/o/r/pull/7");
 
-  const image = origin([
-    "rev-parse",
-    "import-review-image/miasto/harmonogram-2026-s5",
-  ]);
+  // Only the review branch: no source file is pushed anywhere.
   assert.equal(
-    origin(["ls-tree", "-r", "--name-only", image]),
-    "etl/review/miasto/harmonogram-2026-s5/harmonogram-2026-s5.jpg\nweb/vercel.json",
+    origin(["for-each-ref", "--format=%(refname)", "refs/heads"]),
+    "refs/heads/import-review/miasto/harmonogram-2026-s5",
   );
-  assert.equal(origin(["rev-list", "--count", image]), "1");
   const review = origin([
     "rev-parse",
     "import-review/miasto/harmonogram-2026-s5",
@@ -95,18 +100,41 @@ test("a review PR: image on its own branch, reviewed file on main, gh create", (
   );
   assert.ok(
     calls.includes(
-      `https://github.com/o/r/raw/${image}/etl/review/miasto/harmonogram-2026-s5/harmonogram-2026-s5.jpg`,
+      "[![harmonogram-2026-s5.jpg](https://example.org/s5.jpg)](https://example.org/s5.jpg)",
     ),
   );
-  assert.match(
-    calls,
-    /<!-- import-review: miasto\/harmonogram-2026-s5 sha256:(ab){32} -->/,
+  assert.ok(!calls.includes("Uwaga:"), "a note for the reviewed version");
+  assert.ok(
+    calls.includes(
+      `<!-- import-review: miasto/harmonogram-2026-s5 sha256:${digest} -->`,
+    ),
   );
+});
 
-  // The same image is the same commit, so a later run pushes nothing new.
-  reviews.open(request);
-  assert.equal(
-    origin(["rev-parse", "import-review-image/miasto/harmonogram-2026-s5"]),
-    image,
-  );
+test("the live file is another version, or cannot be fetched: a note", async () => {
+  process.env.REVIEWS_FILE = path.join(dir, "reviews.json");
+  const reviews = new Reviews(http);
+  const request = {
+    source: { id: "miasto", name: "Miasto", page: "" } as Source,
+    file: {
+      name: "s1.jpg",
+      url: "https://example.org/s1.jpg",
+      mediaId: 1,
+      modified: null,
+    },
+    digest,
+    title: "t",
+    blocking: true,
+    markdown: "",
+    reviewed: "",
+    runUrl: "",
+  };
+  const body = () =>
+    JSON.parse(readFileSync(process.env.REVIEWS_FILE ?? "", "utf8"))[0].body;
+  served = Buffer.from("JPEG v2");
+  await reviews.open(request);
+  assert.match(body(), /ma teraz inny SHA-256, więc obraz może się różnić/);
+  served = null;
+  await reviews.open(request);
+  assert.match(body(), /nie dał się teraz pobrać, więc obraz może się różnić/);
 });

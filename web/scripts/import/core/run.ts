@@ -62,7 +62,7 @@ const dryRun = args["dry-run"] || readOnly;
 const config = loadConfig(process.env.IMPORT_CONFIG || undefined);
 const net = http(config.import.retries);
 const issues = new Issues();
-const reviews = new Reviews();
+const reviews = new Reviews(net);
 // The clock (IMPORT_NOW in tests): today, the hour, and every timestamp.
 const clock = () =>
   process.env.IMPORT_NOW ? new Date(process.env.IMPORT_NOW) : new Date();
@@ -178,7 +178,6 @@ if (extractOnly) {
             config,
             source,
             file,
-            body,
             digest: sha256(body),
             out,
             zoneName: "",
@@ -459,7 +458,6 @@ async function importSource(source: Source): Promise<Outcome> {
         config,
         source,
         file,
-        body,
         digest,
         out,
         zoneName: zone.name,

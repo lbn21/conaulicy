@@ -46,7 +46,6 @@ export const check: Domain["check"] = async ({
   config,
   source,
   file,
-  body,
   digest,
   out: extracted,
   zoneName,
@@ -78,7 +77,6 @@ export const check: Domain["check"] = async ({
     reviews.open({
       source,
       file,
-      body,
       digest,
       title: `${zoneName}: ${blocking ? "odczyty się różnią" : "ulice do sprawdzenia"} (${file.name})`,
       blocking,
@@ -136,7 +134,7 @@ export const check: Domain["check"] = async ({
       MIASTO_ROWS,
     );
     const streets = await streetFindings();
-    const url = review(
+    const url = await review(
       true,
       [
         `### Daty, w których odczyty się różnią`,
@@ -200,7 +198,7 @@ export const check: Domain["check"] = async ({
         );
         if (!rejected && !merged)
           console.log(
-            `Review PR: ${review(
+            `Review PR: ${await review(
               false,
               [
                 "### Ulice, które różnią się od bazy",
