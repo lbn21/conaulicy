@@ -1,7 +1,7 @@
 // Writing events for the unattended import and its revert: every change is
 // applied and logged in import_changes under its batch id, in the caller's
 // transaction.
-import type pg from "pg";
+import type { Queryable } from "./db.ts";
 import type { EventRow } from "./events.ts";
 
 /** events columns: [row key, column]. */
@@ -30,7 +30,7 @@ const columns = EVENT_FIELDS.map(([, c]) => `"${c}"`).join(", ");
 
 /** Events of one zone from..to (ISO dates), as rows comparable with transform()'s. */
 export async function scopeEvents(
-  db: pg.Client,
+  db: Queryable,
   zoneId: string,
   scope: { from: string; to: string },
 ): Promise<EventRow[]> {
@@ -57,7 +57,7 @@ export type Op = "insert" | "update" | "delete";
 
 /** Applies one change to events and logs it under the batch. */
 export async function writeChange(
-  db: pg.Client,
+  db: Queryable,
   batchId: string,
   op: Op,
   before: EventRow | null,
