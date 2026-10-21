@@ -21,6 +21,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Whether Lighthouse has anything to measure: the app (web/), this workflow,
+  # or etl/sources.yaml (web/lib/config.generated.ts is generated from it).
+  # Plain git: a pull_request checks out the merge commit, whose first parent
+  # is the base; a push compares with the commit before it. Unsure: run.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      perf: ${{ steps.diff.outputs.perf }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+
+      - name: Changed files
+        id: diff
+        env:
+          BEFORE: ${{ github.event_name == 'push' && github.event.before || '' }}
+        run: |
+          base=${BEFORE:-HEAD^1}
+          if files=$(git diff --name-only "$base" HEAD 2>/dev/null); then
+            echo "$files"
+            if echo "$files" | grep -qE '^(web/|package(-lock)?\.json$|\.github/workflows/ci\.yml$|etl/sources\.yaml$)'; then
+              perf=true
+            else
+              perf=false
+            fi
+          else
+            echo "No diff against $base: running perf."
+            perf=true
+          fi
+          echo "perf=$perf" | tee -a "$GITHUB_OUTPUT"
+
   web:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -134,9 +167,14 @@ jobs:
       - name: "Unattended import (made-up waste sources: apply, revert, issues, fallback, dead-man switch)"
         run: node scripts/check-import-run.mjs
 
-  # Lighthouse on its own runner, in parallel with the rest: its own database
-  # with the CI fixture and its own build, so nothing else shares the CPU.
+  # Lighthouse on its own runner, in parallel with web and only when the app
+  # could have changed: its own database with the CI fixture and its own
+  # build, so nothing else shares the CPU. (Reusing web's build as an
+  # artifact was measured: 4 s up, 1 s down, but waiting for web cost
+  # 3.5 min of wall time against ~20 s for this build.)
   perf:
+    needs: changes
+    if: needs.changes.outputs.perf == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
