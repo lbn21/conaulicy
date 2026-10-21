@@ -1,12 +1,29 @@
 export const WARSAW = "Europe/Warsaw";
 
+// Making an Intl.DateTimeFormat is slow (locale data), and a schedule page
+// formats dozens of dates while it hydrates: each formatter is made once,
+// on first use.
+let isoDay: Intl.DateTimeFormat | undefined;
+let polishDay: Intl.DateTimeFormat | undefined;
+
+function polishDayParts(iso: string) {
+  polishDay ??= new Intl.DateTimeFormat("pl-PL", {
+    timeZone: WARSAW,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  return polishDay.formatToParts(warsawNoon(iso));
+}
+
 export function todayInWarsaw(now: Date = new Date()): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
+  isoDay ??= new Intl.DateTimeFormat("en-CA", {
     timeZone: WARSAW,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).formatToParts(now);
+  });
+  const parts = isoDay.formatToParts(now);
   const get = (type: string) => parts.find((p) => p.type === type)?.value;
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
@@ -28,12 +45,7 @@ export function warsawNoon(iso: string): Date {
 
 /** Absolute label, safe to render on a static page. Example: "poniedziałek, 26 października". */
 export function absoluteDay(iso: string): string {
-  const parts = new Intl.DateTimeFormat("pl-PL", {
-    timeZone: WARSAW,
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  }).formatToParts(warsawNoon(iso));
+  const parts = polishDayParts(iso);
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
   return `${get("weekday")}, ${get("day")} ${get("month")}`;
 }
@@ -46,12 +58,7 @@ export type DayFace = {
 
 /** Visual pieces for the nearest date. Example: "20" and "października, wtorek". */
 export function dayFace(iso: string): DayFace {
-  const parts = new Intl.DateTimeFormat("pl-PL", {
-    timeZone: WARSAW,
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  }).formatToParts(warsawNoon(iso));
+  const parts = polishDayParts(iso);
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
   return {
     day: get("day"),
