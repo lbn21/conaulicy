@@ -1,16 +1,22 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { parse as parseYaml } from "yaml";
 import { extractJson } from "../core/vision.ts";
 import {
   compareMembers,
   compareReadings,
+  databaseRows,
+  disagreementTable,
   fold,
   MIASTO_ROWS,
   parseGminaLayout,
+  parseReviewed,
   parseVisionJson,
   polishHolidays,
+  reviewedYaml,
   rowsToEvents,
   streetKey,
+  streetLines,
   streetReview,
   validateSchedule,
 } from "./lib.ts";
@@ -233,4 +239,42 @@ test("members: a vanished or unknown street is a problem", () => {
     "z: „Józefa Conrada-Korzeniowskiego” is no longer listed",
   ]);
   assert.equal(fold("Łąka Górna"), "laka gorna");
+});
+
+test("review PRs: the table, the streets, the reviewed file round trip", () => {
+  const empty = () => Array.from({ length: 12 }, () => [] as number[]);
+  const a = { sector: 5, year: 2026, streets: [], rows: { bio: empty() } };
+  const b = structuredClone(a);
+  a.rows.bio[2] = [3, 17, 31];
+  b.rows.bio[2] = [3, 17];
+  const current = databaseRows(
+    [
+      { subtype: "bio", start: "2026-03-17" },
+      { subtype: "bio", start: "2026-03-03" },
+      { subtype: "papier", start: "2026-03-05" },
+    ],
+    { bio: ["bio"] },
+  );
+  assert.deepEqual(current.bio[2], [3, 17]);
+  assert.equal(
+    disagreementTable([a, b], ["grok-a", "opus"], current),
+    [
+      "| Wiersz | Miesiąc | grok-a | opus | w bazie |",
+      "|---|---|---|---|---|",
+      "| bio | marzec | 3, 17, 31 | 3, 17 | 3, 17 |",
+    ].join("\n"),
+  );
+  assert.deepEqual(
+    streetLines([
+      "waste:miasto-s5: „gen. Hallera” is no longer listed (pass grok-a, opus)",
+    ]),
+    ["- „gen. Hallera” z bazy: nie ma jej na obrazku (przebieg grok-a, opus)"],
+  );
+  const yaml = reviewedYaml(b, "opus", "harmonogram-2026-s5.jpg", "ab12");
+  assert.match(yaml, /^ {4}marzec: \[3, 17\]$/m);
+  const value = parseYaml(yaml);
+  assert.equal(value.sha256, "ab12");
+  assert.deepEqual(parseReviewed(value, ["bio"]).rows, b.rows);
+  value.rows.bio.marzec = [3, 32];
+  assert.throws(() => parseReviewed(value, ["bio"]), /integers 1–31/);
 });

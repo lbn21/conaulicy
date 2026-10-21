@@ -16,14 +16,17 @@ import type {
   Found as CoreFound,
 } from "../core/domain.ts";
 import type { Http } from "../core/http.ts";
+import { readReviewed } from "../core/review.ts";
 import { visionPasses } from "../core/vision.ts";
 import {
   compareReadings,
   GMINA_ROWS,
   MIASTO_ROWS,
   parseGminaLayout,
+  parseReviewed,
   parseVisionJson,
   rowsToEvents,
+  type VisionReading,
 } from "./lib.ts";
 
 // ------------------------------------------------------------------ detect
@@ -195,6 +198,9 @@ export function detectFromPages(
 export type Extracted = CoreExtracted & {
   /** Vision only: each pass's streets, checked for review, never applied. */
   streetReadings?: string[][];
+  /** Vision only: each pass's reading; disagree: a review PR decides. */
+  readings?: VisionReading[];
+  disagree?: boolean;
 };
 type Extractor = (input: {
   source: Source;
@@ -252,43 +258,62 @@ export const EXTRACTORS: Record<string, Extractor> = {
     );
   },
 
-  /** Two independent Cursor CLI vision passes; both must agree. */
+  /**
+   * Two independent Cursor CLI vision passes; their dates apply only if they
+   * agree, else a review PR (check.ts) proposes vision.reviewFrom's reading.
+   * A merged review of this exact file (sha256) replaces the passes.
+   */
   async "miasto-jpg-vision"({ source, config, file, body, doc, digest }) {
     const rows = Object.keys(MIASTO_ROWS);
+    const ref = { doc, url: file.url, sha256: digest };
+    const sameFile = (r: VisionReading) => {
+      if (r.sector !== file.sector || r.year !== file.year)
+        throw new Error(`the image says sector ${r.sector}, ${r.year}`);
+    };
+    const approved = readReviewed(source.id, file.name, digest);
+    if (approved) {
+      const reading = parseReviewed(approved, rows);
+      sameFile(reading);
+      console.log(`${file.name}: dates from its merged review.`);
+      // Reviewed by a person: no street review again.
+      return {
+        ...schedule(source, file, ref, reading.rows, MIASTO_ROWS, []),
+        streetReadings: [],
+      };
+    }
     const outputs = visionPasses(
       config,
       body,
       (image) => VISION_PROMPT(image, rows),
       `${source.id}-s${file.sector}-${file.year}`,
     );
+    const ids = config.vision.passes.map((p) => p.id);
     const readings = outputs.map((o, i) => {
       try {
         return parseVisionJson(o, rows);
       } catch (error) {
         throw new Error(
-          `vision pass ${config.vision.passes[i].id} (${config.vision.passes[i].model}) is not valid JSON for the schema: ${(error as Error).message}`,
+          `vision pass ${ids[i]} (${config.vision.passes[i].model}) is not valid JSON for the schema: ${(error as Error).message}`,
         );
       }
     });
-    const diffs = compareReadings(readings[0], readings[1]);
-    if (diffs.length)
-      throw new Error(
-        `the two vision passes (${config.vision.passes.map((p) => p.id).join(", ")}) disagree:\n  - ${diffs.join("\n  - ")}`,
-      );
-    if (readings[0].sector !== file.sector || readings[0].year !== file.year)
-      throw new Error(
-        `the image says sector ${readings[0].sector}, ${readings[0].year}`,
-      );
+    const disagree = compareReadings(readings[0], readings[1]).length > 0;
+    const reading = disagree
+      ? readings[ids.indexOf(config.vision.reviewFrom)]
+      : readings[0];
+    if (!disagree) sameFile(reading);
     return {
       ...schedule(
         source,
         file,
-        { doc, url: file.url, sha256: digest },
-        readings[0].rows,
+        ref,
+        reading.rows,
         MIASTO_ROWS,
-        readings[0].streets,
+        reading.streets,
       ),
       streetReadings: readings.map((r) => r.streets),
+      readings,
+      disagree,
     };
   },
 };

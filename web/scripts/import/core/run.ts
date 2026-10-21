@@ -9,7 +9,8 @@
 // watched pages, download only what is new, archive it in S3, extract,
 // validate, and apply the difference in one transaction tagged with a batch
 // id (undo: npm run import:revert -- <batch>). Anything doubtful is not
-// applied: an issue says why, one per problem, closed by the next clean run.
+// applied: an issue says why, one per problem, closed by the next clean run;
+// a file a person must look at gets a review PR instead (./review.ts).
 // One import_runs row per source per run. Then the dead-man switch: an issue
 // while any zone's dates run out within import.alerts.coverageMinDays.
 //
@@ -23,9 +24,10 @@
 //
 // Env: IMPORT_DATABASE_URL (or DATABASE_URL_UNPOOLED / DATABASE_URL);
 // CURSOR_API_KEY (vision passes, Actions only); REVALIDATE_SECRET; GH_TOKEN
-// (issues); AWS credentials (archive); ACTIONS_RUN_URL. Tests: IMPORT_CONFIG
-// (another config file), IMPORT_NOW (the clock), ARCHIVE_DIR (instead of S3),
-// ISSUES_FILE (instead of GitHub), CURSOR_AGENT_MOCK (pass outputs).
+// (issues, review PRs); AWS credentials (archive); ACTIONS_RUN_URL. Tests:
+// IMPORT_CONFIG (another config file), IMPORT_NOW (the clock), ARCHIVE_DIR
+// (instead of S3), ISSUES_FILE and REVIEWS_FILE (instead of GitHub),
+// IMPORT_REVIEW_DIR (instead of etl/review), CURSOR_AGENT_MOCK (pass outputs).
 import { execFileSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { appendFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
@@ -41,6 +43,7 @@ import { coverageGaps, diffEvents, type EventRow } from "./events.ts";
 import { scopeEvents, writeChange } from "./events-db.ts";
 import { http } from "./http.ts";
 import { Issues } from "./issues.ts";
+import { Reviews } from "./review.ts";
 import { linksHash, readWatched } from "./watch.ts";
 
 const { values: args } = parseArgs({
@@ -59,6 +62,7 @@ const dryRun = args["dry-run"] || readOnly;
 const config = loadConfig(process.env.IMPORT_CONFIG || undefined);
 const net = http(config.import.retries);
 const issues = new Issues();
+const reviews = new Reviews();
 // The clock (IMPORT_NOW in tests): today, the hour, and every timestamp.
 const clock = () =>
   process.env.IMPORT_NOW ? new Date(process.env.IMPORT_NOW) : new Date();
@@ -174,9 +178,12 @@ if (extractOnly) {
             config,
             source,
             file,
+            body,
+            digest: sha256(body),
             out,
             zoneName: "",
             issues,
+            reviews,
             dryRun,
             runUrl,
           })),
@@ -418,6 +425,7 @@ async function importSource(source: Source): Promise<Outcome> {
   // Extract, validate and diff each file in its scope.
   const plans: Array<{ zoneId: string; diff: ReturnType<typeof diffEvents> }> =
     [];
+  const held: string[] = [];
   for (const { file, body, digest, doc, checkedAt } of work) {
     // No connection waits idle through the vision passes (minutes).
     await db.close();
@@ -451,13 +459,23 @@ async function importSource(source: Source): Promise<Outcome> {
         config,
         source,
         file,
+        body,
+        digest,
         out,
         zoneName: zone.name,
         issues,
+        reviews,
         dryRun,
         runUrl,
       })),
     );
+    // Waiting for its review PR (or rejected there): not applied.
+    const hold = reviews.held(digest);
+    if (hold) {
+      console.log(`${file.name}: not applied, ${hold.note}`);
+      if (hold.blocks) held.push(`${file.name}: ${hold.note}`);
+      continue;
+    }
     const etl: Etl = {
       gminy: [],
       localities: [],
@@ -521,9 +539,10 @@ async function importSource(source: Source): Promise<Outcome> {
     changed,
   };
 
-  if (problems.length > 0) {
-    console.log(`\nNot applied:\n- ${problems.join("\n- ")}`);
-    if (!dryRun)
+  if (problems.length + held.length > 0) {
+    console.log(`\nNot applied:\n- ${[...problems, ...held].join("\n- ")}`);
+    // A held file's review PR is its notice; other problems open an issue.
+    if (!dryRun && problems.length > 0)
       issues.raise(
         `${source.id}:review:${shortHash(problems.join("\n"))}`,
         `${source.name}: ${filesChanged ? "zmiana wymaga sprawdzenia" : "problem z odczytem"}`,
@@ -543,7 +562,7 @@ async function importSource(source: Source): Promise<Outcome> {
       status: "needs_review",
       ...base,
       batchId: null,
-      error: problems.join("\n"),
+      error: [...problems, ...held].join("\n"),
     };
   }
   if (added + removed + changed === 0) {

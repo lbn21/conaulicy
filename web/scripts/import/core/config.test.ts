@@ -48,11 +48,13 @@ test("the schema rejects unknown keys, bad types and banned models", () => {
 test("rules beyond the schema: pass ids, hosts, patterns", () => {
   const config = structuredClone(loadConfig());
   config.vision.passes[1].id = config.vision.passes[0].id;
+  config.vision.reviewFrom = "gpt";
   config.sources[0].page =
     "https://conaulicy-sources-aaed02.s3.amazonaws.com/x.pdf";
   config.sources[1].detect.file = "^harmonogram\\.jpg$";
   const errors = configErrors(config).join("\n");
   assert.match(errors, /duplicate pass id/);
+  assert.match(errors, /vision\.reviewFrom: gpt is not a pass id/);
   assert.match(errors, /is not on www\.gminalubaczow\.pl/);
   assert.match(errors, /needs \(\?<sector>/);
 });
