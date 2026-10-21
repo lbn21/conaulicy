@@ -2,9 +2,10 @@
 // plugs into the shared import: its detector and extractor types, by the names
 // used in etl/sources.yaml, and its checks. The core (run.ts) does the rest:
 // fetching, archiving, watching pages, diffing, batches, issues, logging.
-import type pg from "pg";
+
 import type { Etl } from "../../lib/import-data.ts";
 import type { Config, Source } from "./config.ts";
+import type { Queryable } from "./db.ts";
 import type { Http } from "./http.ts";
 import type { Issues } from "./issues.ts";
 import type { readWatched } from "./watch.ts";
@@ -61,7 +62,7 @@ export type Domain = {
    * problem blocks it. db is null with --extract-only (no database).
    */
   check(input: {
-    db: pg.Client | null;
+    db: Queryable | null;
     config: Config;
     source: Source;
     file: Found;

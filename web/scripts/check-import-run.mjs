@@ -5,7 +5,8 @@
 // passes that disagree or are not JSON, a date off its weekday, a new link on
 // a watched page, both sites down) and each issue closed by the next clean
 // run; the page fallback when the WordPress API is down; the dead-man
-// switch; the due logic; a dry run. The two sites are local HTTP servers, the
+// switch; the due logic; a dry run; a dropped database connection (retried
+// once, else the failure path, never a crash). The two sites are local HTTP servers, the
 // config a copy of etl/sources.yaml pointing at them (IMPORT_CONFIG), the
 // vision passes mocked files, the archive a directory, GitHub issues a file,
 // the clock IMPORT_NOW. Empties and writes the database, so it refuses any
@@ -266,6 +267,14 @@ const node = (script, args, extra = {}) =>
   );
 const run = (args = [], extra = {}) =>
   node("scripts/import/core/run.ts", args, extra);
+// The server drops the connection before queries matching `query`
+// (scripts/lib/drop-connection.mjs), `times` times (default: always).
+const runDropping = (query, times, args = []) =>
+  run(args, {
+    NODE_OPTIONS: `--import=${new URL("./lib/drop-connection.mjs", import.meta.url).href}`,
+    DROP_QUERY: query,
+    DROP_TIMES: times ? String(times) : "",
+  });
 const revert = (...args) => node("scripts/import/core/revert.ts", args);
 const lastRuns = async () =>
   Object.fromEntries(
@@ -507,7 +516,7 @@ await step("vision passes that disagree: an issue", async () => {
 });
 
 await step(
-  "two Grok reads one date apart: nothing applied, one issue naming both passes",
+  "Grok and Opus one date apart: nothing applied, one issue naming both passes",
   async () => {
     const other = reading();
     other.rows["zmieszane+popiol"][2] =
@@ -521,7 +530,7 @@ await step(
     const now = open(/^miasto:review:/);
     check(
       now.length === 1 &&
-        /vision passes \(grok-a, grok-b\) disagree/.test(now[0].body) &&
+        /vision passes \(grok-a, opus\) disagree/.test(now[0].body) &&
         /zmieszane\+popiol, marzec/.test(now[0].body),
       `no single issue naming both passes: ${JSON.stringify(now.map((i) => i.body.slice(0, 300)))}`,
     );
@@ -584,7 +593,7 @@ await step(
     const review = () => open(/^streets:waste:miasto-s1$/);
     check(
       review().length === 1 &&
-        /„Osiedle Nowe” is not a member now \(pass grok-b\)/.test(
+        /„Osiedle Nowe” is not a member now \(pass opus\)/.test(
           review()[0].body,
         ),
       `no street-review issue: ${JSON.stringify(issues().map((i) => i.key))}`,
@@ -687,6 +696,70 @@ await step(
     check(
       open(/:failed:/).length === 0,
       "failure issues not closed by the clean run",
+    );
+  },
+);
+
+const crashed = (out) => /Unhandled 'error' event|node:events/.test(out);
+
+await step(
+  "a dropped connection: reconnected, the query retried once, the run completes",
+  async () => {
+    const r = await runDropping("from zones where id", 1, ["--force-extract"]);
+    const runs = await lastRuns();
+    check(
+      r.code === 0 && !crashed(r.out),
+      `exited ${r.code} after one drop:\n${r.out}`,
+    );
+    check(
+      /reconnecting and retrying once/.test(r.out),
+      "the drop was not retried",
+    );
+    check(
+      runs.gmina?.status === "no_change" && runs.miasto?.status === "no_change",
+      `statuses: ${runs.gmina?.status}, ${runs.miasto?.status}`,
+    );
+  },
+);
+
+await step(
+  "a connection that keeps dropping: each source fails with a row and an issue, no crash",
+  async () => {
+    const r = await runDropping("from zones where id", 0, ["--force-extract"]);
+    const runs = await lastRuns();
+    check(r.code === 1 && !crashed(r.out), `exited ${r.code}:\n${r.out}`);
+    check(
+      runs.gmina?.status === "failed" && runs.miasto?.status === "failed",
+      `statuses: ${runs.gmina?.status}, ${runs.miasto?.status}`,
+    );
+    check(open(/:failed:/).length === 2, "not one failure issue per source");
+    await run();
+    check(open(/:failed:/).length === 0, "not closed by the clean run");
+  },
+);
+
+await step(
+  "a drop inside the apply: the transaction is lost, nothing half-applied, applied next run",
+  async () => {
+    setPdf(
+      await gminaPdf(
+        ["Dąbrowa", "Basznia Górna"],
+        gminaRows.map((r, i) => (i === 2 ? quarterly(3) : r)),
+      ),
+    );
+    const events = await snapshot();
+    const r = await runDropping("insert into import_changes", 1);
+    check(r.code === 1 && !crashed(r.out), `exited ${r.code}:\n${r.out}`);
+    check(
+      (await lastRuns()).gmina?.status === "failed",
+      "the lost transaction did not fail the source",
+    );
+    check((await snapshot()) === events, "events half-applied");
+    await run();
+    check(
+      (await lastRuns()).gmina?.status === "applied" &&
+        open(/:failed:/).length === 0,
+      "not applied (and closed) by the next run",
     );
   },
 );

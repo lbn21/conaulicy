@@ -10,8 +10,8 @@
 // optional REVALIDATE_SECRET to refresh the site (etl/sources.yaml site.url).
 import { randomUUID } from "node:crypto";
 import { parseArgs } from "node:util";
-import pg from "pg";
 import { loadConfig } from "./config.ts";
+import { Db } from "./db.ts";
 import { diffEvents, type EventRow } from "./events.ts";
 import { EVENT_FIELDS, type Op, writeChange } from "./events-db.ts";
 
@@ -34,8 +34,7 @@ const url =
   process.env.DATABASE_URL_UNPOOLED ||
   process.env.DATABASE_URL;
 if (!url) fail("IMPORT_DATABASE_URL is not set.");
-const db = new pg.Client({ connectionString: url });
-await db.connect();
+const db = new Db(url as string);
 
 const undoId = `revert-${batchId}`;
 const { rows: changes } = await db.query(
@@ -93,7 +92,7 @@ try {
   if (args["dry-run"]) {
     await db.query("rollback");
     console.log(`Dry run: ${changes.length} changes would be undone.`);
-    await db.end();
+    await db.close();
     process.exit(0);
   }
   await db.query(
@@ -116,7 +115,7 @@ try {
   await db.query("rollback");
   fail(`Revert FAILED, nothing changed: ${(error as Error).message}`);
 }
-await db.end();
+await db.close();
 console.log(
   `Reverted batch ${batchId}: ${changes.length} changes (${undoId}).`,
 );

@@ -32,10 +32,10 @@ import { appendFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import pg from "pg";
 import { type Etl, transform } from "../../lib/import-data.ts";
 import { DOMAINS } from "../domains.ts";
 import { archiveKey, loadConfig, localNow, type Source } from "./config.ts";
+import { Db } from "./db.ts";
 import type { Detection, Extracted, Found } from "./domain.ts";
 import { coverageGaps, diffEvents, type EventRow } from "./events.ts";
 import { scopeEvents, writeChange } from "./events-db.ts";
@@ -206,9 +206,8 @@ const url =
   process.env.DATABASE_URL_UNPOOLED ||
   process.env.DATABASE_URL;
 if (!url) throw new Error("IMPORT_DATABASE_URL is not set.");
-const db = new pg.Client({ connectionString: url });
-await db.connect();
-if (readOnly) await db.query("SET default_transaction_read_only = on");
+// Opened on demand and closed during extraction (./db.ts).
+const db = new Db(url, { readOnly });
 const tracked = Boolean(
   (await db.query("select to_regclass('import_runs') as t")).rows[0].t,
 );
@@ -420,6 +419,8 @@ async function importSource(source: Source): Promise<Outcome> {
   const plans: Array<{ zoneId: string; diff: ReturnType<typeof diffEvents> }> =
     [];
   for (const { file, body, digest, doc, checkedAt } of work) {
+    // No connection waits idle through the vision passes (minutes).
+    await db.close();
     let out: Extracted;
     try {
       out = await domain.extractors[source.extract.type]({
@@ -597,12 +598,14 @@ if (args.scheduled && tracked) {
     console.log(
       `Nothing due (${today} ${local.hour}:00 ${config.schedule.timezone}; runs at ${config.schedule.time}, once a day).`,
     );
-    await db.end();
+    await db.close();
     process.exit(0);
   }
 }
 
 let failed = false;
+// A failure issue was opened, so the workflow need not open its own.
+let issued = false;
 for (const source of due) {
   const startedAt = clock().toISOString();
   let outcome: Outcome;
@@ -623,7 +626,8 @@ for (const source of due) {
       batchId: null,
       error: message.slice(0, 4000),
     };
-    if (!dryRun)
+    if (!dryRun) {
+      issued = true;
       issues.raise(
         `${source.id}:failed:${shortHash((error as Error).message ?? "")}`,
         `${source.name}: błąd importu`,
@@ -636,6 +640,7 @@ for (const source of due) {
           runUrl ? `Run: ${runUrl}` : "",
         ].join("\n"),
       );
+    }
   }
   // A clean (or merely blocked) run closes this source's older issues.
   if (!dryRun && outcome.status !== "failed")
@@ -644,77 +649,90 @@ for (const source of due) {
       `Resolved: the import of ${source.name} ran ${outcome.status === "needs_review" ? "again and reports the current problem in another issue" : "clean"} on ${today}.${runUrl ? ` ${runUrl}` : ""}`,
     );
   if (tracked && !readOnly)
-    await db.query(
-      `insert into import_runs (id, started_at, finished_at, source, status, dry_run, detected_via, files_seen, files_changed,
+    await db
+      .query(
+        `insert into import_runs (id, started_at, finished_at, source, status, dry_run, detected_via, files_seen, files_changed,
          events_added, events_removed, events_changed, batch_id, error, actions_run_url)
        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
-      [
-        randomUUID(),
-        startedAt,
-        clock().toISOString(),
-        source.id,
-        outcome.status,
-        dryRun,
-        outcome.via,
-        outcome.filesSeen,
-        outcome.filesChanged,
-        outcome.added,
-        outcome.removed,
-        outcome.changed,
-        outcome.batchId,
-        outcome.error,
-        runUrl || null,
-      ],
-    );
+        [
+          randomUUID(),
+          startedAt,
+          clock().toISOString(),
+          source.id,
+          outcome.status,
+          dryRun,
+          outcome.via,
+          outcome.filesSeen,
+          outcome.filesChanged,
+          outcome.added,
+          outcome.removed,
+          outcome.changed,
+          outcome.batchId,
+          outcome.error,
+          runUrl || null,
+        ],
+      )
+      .catch((error) => {
+        failed = true;
+        console.error(
+          `${source.id}: the import_runs row was not written: ${(error as Error).message}`,
+        );
+      });
   console.log(`${source.id}: ${outcome.status}${dryRun ? " (dry run)" : ""}`);
 }
 
-// Dead-man switch: the next schedule is late somewhere.
-const lastDates = (
-  await db.query(
-    "select z.id as zone_id, max(e.start) as last from zones z left join events e on e.zone_id = z.id where z.type = 'waste' group by z.id order by z.id",
-  )
-).rows.map((r) => ({
-  zoneId: r.zone_id as string,
-  last: r.last ? String(r.last).slice(0, 10) : null,
-}));
-const gaps = coverageGaps(
-  lastDates,
-  today,
-  config.import.alerts.coverageMinDays,
-);
-if (gaps.length)
-  console.log(
-    `\nCoverage: ${gaps.length} zone(s) run out within ${config.import.alerts.coverageMinDays} days:\n- ${gaps.join("\n- ")}`,
+// Dead-man switch: the next schedule is late somewhere. If the database is
+// gone by now, the job fails and the workflow opens its failure issue.
+try {
+  const lastDates = (
+    await db.query(
+      "select z.id as zone_id, max(e.start) as last from zones z left join events e on e.zone_id = z.id where z.type = 'waste' group by z.id order by z.id",
+    )
+  ).rows.map((r) => ({
+    zoneId: r.zone_id as string,
+    last: r.last ? String(r.last).slice(0, 10) : null,
+  }));
+  const gaps = coverageGaps(
+    lastDates,
+    today,
+    config.import.alerts.coverageMinDays,
   );
-if (!dryRun) {
   if (gaps.length)
-    issues.raise(
-      "coverage",
-      "harmonogram się kończy",
-      [
-        `These zones have dates for fewer than ${config.import.alerts.coverageMinDays} more days, and no new schedule has been imported:`,
-        "",
-        ...gaps.map((g) => `- ${g}`),
-        "",
-        "Check whether the next schedule is published and why the import has not picked it up (RUNBOOK: docs/import.md). Closed automatically once every zone is covered.",
-      ].join("\n"),
+    console.log(
+      `\nCoverage: ${gaps.length} zone(s) run out within ${config.import.alerts.coverageMinDays} days:\n- ${gaps.join("\n- ")}`,
     );
-  else
-    issues.resolve(
-      "coverage",
-      `Resolved: every zone has dates for ${config.import.alerts.coverageMinDays}+ days (${today}).`,
-    );
-  if (!failed)
-    issues.resolve(
-      "workflow",
-      `Resolved: the import ran on ${today}.${runUrl ? ` ${runUrl}` : ""}`,
-    );
+  if (!dryRun) {
+    if (gaps.length)
+      issues.raise(
+        "coverage",
+        "harmonogram się kończy",
+        [
+          `These zones have dates for fewer than ${config.import.alerts.coverageMinDays} more days, and no new schedule has been imported:`,
+          "",
+          ...gaps.map((g) => `- ${g}`),
+          "",
+          "Check whether the next schedule is published and why the import has not picked it up (RUNBOOK: docs/import.md). Closed automatically once every zone is covered.",
+        ].join("\n"),
+      );
+    else
+      issues.resolve(
+        "coverage",
+        `Resolved: every zone has dates for ${config.import.alerts.coverageMinDays}+ days (${today}).`,
+      );
+    if (!failed)
+      issues.resolve(
+        "workflow",
+        `Resolved: the import ran on ${today}.${runUrl ? ` ${runUrl}` : ""}`,
+      );
+  }
+} catch (error) {
+  failed = true;
+  console.error(`\nCoverage check failed: ${(error as Error).message}`);
 }
-await db.end();
+await db.close();
 if (failed) {
   // The workflow's own failure issue would repeat the one just opened.
-  if (process.env.GITHUB_OUTPUT && !dryRun)
+  if (process.env.GITHUB_OUTPUT && issued)
     appendFileSync(process.env.GITHUB_OUTPUT, "issued=true\n");
   process.exit(1);
 }

@@ -19,6 +19,19 @@ test("etl/sources.yaml is valid", () => {
   assert.equal(config.vision.passes.length, 2);
 });
 
+test("vision passes: two vendors or one, as long as the ids differ", () => {
+  const config = structuredClone(loadConfig());
+  const passErrors = () =>
+    [...schemaErrors(config, schema), ...configErrors(config)].filter((e) =>
+      e.includes("passes"),
+    );
+  config.vision.passes[0].vendor = "xai";
+  config.vision.passes[1].vendor = "anthropic";
+  assert.deepEqual(passErrors(), []);
+  config.vision.passes[1] = { ...config.vision.passes[0], id: "grok-b" };
+  assert.deepEqual(passErrors(), []);
+});
+
 test("the schema rejects unknown keys, bad types and banned models", () => {
   const config = structuredClone(loadConfig());
   (config as Record<string, unknown>).extra = 1;
