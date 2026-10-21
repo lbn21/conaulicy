@@ -59,6 +59,21 @@ test("rules beyond the schema: pass ids, hosts, patterns", () => {
   assert.match(errors, /needs \(\?<sector>/);
 });
 
+test("vision.streetCheckFrom: required, and an existing pass id", () => {
+  const config = structuredClone(loadConfig());
+  assert.equal(config.vision.streetCheckFrom, "opus");
+  config.vision.streetCheckFrom = "grok-b";
+  assert.match(
+    configErrors(config).join("\n"),
+    /vision\.streetCheckFrom: grok-b is not a pass id/,
+  );
+  delete (config.vision as Partial<typeof config.vision>).streetCheckFrom;
+  assert.match(
+    schemaErrors(config, schema).join("\n"),
+    /\$\.vision\.streetCheckFrom: required/,
+  );
+});
+
 test("crons: one per UTC offset, none when disabled", () => {
   const warsaw = { enabled: true, time: "05:00", timezone: "Europe/Warsaw" };
   assert.deepEqual(cronLines(warsaw), ["0 3 * * *", "0 4 * * *"]);

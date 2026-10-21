@@ -217,7 +217,7 @@ export function detectFromPages(
 export type Extracted = CoreExtracted & {
   year: number;
   events: Etl["events"];
-  /** Vision only: each pass's streets, checked for review, never applied. */
+  /** Vision only: vision.streetCheckFrom's streets, checked for review, never applied. */
   streetReadings?: string[][];
   /** Vision only: each pass's reading; disagree: a review PR decides. */
   readings?: VisionReading[];
@@ -333,7 +333,11 @@ export const EXTRACTORS: Record<string, Extractor> = {
         MIASTO_ROWS,
         reading.streets,
       ),
-      streetReadings: readings.map((r) => r.streets),
+      // Only vision.streetCheckFrom's streets are checked: the other passes
+      // count for dates, sector and year only.
+      streetReadings: [
+        readings[ids.indexOf(config.vision.streetCheckFrom)].streets,
+      ],
       readings,
       disagree,
     };

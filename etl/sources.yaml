@@ -57,6 +57,9 @@ vision:
   # When the passes disagree, a review PR proposes this pass's dates
   # (docs/import.md, "Review pull requests").
   reviewFrom: opus
+  # The only pass whose street list is checked against the database; the
+  # other passes count for dates, sector and year only (docs/import.md).
+  streetCheckFrom: opus
 
 archive:
   bucket: conaulicy-sources-aaed02
