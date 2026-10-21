@@ -2,8 +2,8 @@
 // and the CI check (never the real data). Dates are relative to `today`, so
 // there is always something upcoming. Source files are small text files the
 // check serves itself, so the source check runs without the internet.
-import { createHash } from "node:crypto";
 import { addDays } from "../../lib/dates.ts";
+import { sha256 } from "../import/core/hash.ts";
 import { type Etl, eventId } from "./import-data.ts";
 
 export const FIXTURE_IDS = {
@@ -20,8 +20,7 @@ export function fixture(today: string, sourceBase: string) {
     "miasto-s1.txt": "Harmonogram testowy, miasto, sektor 1\n",
     "gmina-s1.txt": "Harmonogram testowy, gmina, sektor 1\n",
   };
-  const sha = (name: string) =>
-    createHash("sha256").update(files[name]).digest("hex");
+  const sha = (name: string) => sha256(files[name]);
   const sources = Object.keys(files).map((name) => ({
     doc: `docs/data/test/${name}`,
     kind: name.startsWith("miasto") ? "miasto" : "gmina",

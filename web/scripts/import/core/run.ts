@@ -30,7 +30,7 @@
 // (instead of S3), ISSUES_FILE and REVIEWS_FILE (instead of GitHub),
 // IMPORT_REVIEW_DIR (instead of etl/review), CURSOR_AGENT_MOCK (pass outputs).
 import { execFileSync } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { appendFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -41,6 +41,7 @@ import { Db } from "./db.ts";
 import type { Detection, Extracted, Found } from "./domain.ts";
 import { coverageGaps, diffEvents } from "./events.ts";
 import { scopeEvents, writeChange } from "./events-db.ts";
+import { sha256 } from "./hash.ts";
 import { http } from "./http.ts";
 import { Issues } from "./issues.ts";
 import { Reviews } from "./review.ts";
@@ -60,7 +61,7 @@ const readOnly = args["read-only"] || extractOnly;
 const dryRun = args["dry-run"] || readOnly;
 
 const config = loadConfig(process.env.IMPORT_CONFIG || undefined);
-const net = http(config.import.retries);
+const net = http(config.import.retries, config.site.url);
 const issues = new Issues();
 const reviews = new Reviews(net);
 // The clock (IMPORT_NOW in tests): today, the hour, and every timestamp.
@@ -72,8 +73,6 @@ const runUrl = process.env.ACTIONS_RUN_URL ?? "";
 const archivedKeys = new Map(
   config.archived.map((a) => [a.sha256, archiveKey(a)]),
 );
-const sha256 = (body: Buffer | string) =>
-  createHash("sha256").update(body).digest("hex");
 const shortHash = (text: string) => sha256(text).slice(0, 8);
 
 function archive(key: string, body: Buffer, digest: string) {
@@ -151,13 +150,21 @@ async function detect(source: Source): Promise<{
 if (extractOnly) {
   let problems = 0;
   for (const source of config.sources) {
-    const { detection } = await detect(source);
+    // An unreachable site or file is a problem, not the end of the run.
+    let detection: Detection;
+    try {
+      ({ detection } = await detect(source));
+    } catch (error) {
+      problems++;
+      console.log(`\n${source.id}: ${(error as Error).message}`);
+      continue;
+    }
     console.log(
       `\n${source.id}: ${detection.files.length} files (via ${detection.via})`,
     );
     for (const file of detection.files) {
-      const body = Buffer.from(await (await net.get(file.url)).arrayBuffer());
       try {
+        const body = Buffer.from(await (await net.get(file.url)).arrayBuffer());
         const domain = DOMAINS[source.domain];
         const out = await domain.extractors[source.extract.type]({
           source,

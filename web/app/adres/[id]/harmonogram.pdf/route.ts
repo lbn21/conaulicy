@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
+import { SITE_URL } from "@/lib/config.generated";
 import { longDate, monthTitle, weekdayShort } from "@/lib/date-labels";
 import { absoluteDay } from "@/lib/dates";
 import { cacheControl } from "@/lib/gate";
@@ -26,9 +27,8 @@ import { TOKEN, tones } from "@/lib/waste-bin";
 
 export const runtime = "nodejs";
 
-// Printed QR codes and links must point at the permanent address, never at a
-// preview deployment.
-const SITE_URL = "https://conaulicy.pl";
+// Printed QR codes and links point at the permanent address (SITE_URL),
+// never at a preview deployment.
 
 // Bundled through outputFileTracingIncludes in next.config.ts.
 const FONT_DIR = path.join(process.cwd(), "assets/fonts");

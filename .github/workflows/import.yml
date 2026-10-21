@@ -44,7 +44,25 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # Of the two daily crons, the one that fires before schedule.time in
+      # schedule.timezone (03:00 UTC in winter: 04:00 in Warsaw) has nothing
+      # to do: it skips the install and the import, and the job succeeds. The
+      # import's own due check decides every other run; manual runs never skip.
+      - name: Due
+        id: due
+        if: github.event_name == 'schedule'
+        run: |
+          tz=$(yq '.schedule.timezone' etl/sources.yaml)
+          at=$(yq '.schedule.time' etl/sources.yaml)
+          now=$(TZ="$tz" date +%H)
+          # Without the zone's tz data, date silently uses UTC: never skip then.
+          if [ -e "/usr/share/zoneinfo/$tz" ] && [ "$((10#$now))" -lt "$((10#${at%%:*}))" ]; then
+            echo "Before $at in $tz (now ${now}h): nothing due."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.due.outputs.skip != 'true'
         with:
           node-version: 24
           cache: npm
@@ -52,12 +70,14 @@ jobs:
 
       - name: Config
         id: config
+        if: steps.due.outputs.skip != 'true'
         run: |
           echo "cli=$(yq '.vision.cli' etl/sources.yaml)" >> "$GITHUB_OUTPUT"
           echo "role=$(yq '.archive.role' etl/sources.yaml)" >> "$GITHUB_OUTPUT"
           echo "region=$(yq '.archive.region' etl/sources.yaml)" >> "$GITHUB_OUTPUT"
 
       - name: Install
+        if: steps.due.outputs.skip != 'true'
         working-directory: web
         run: |
           npm ci --no-audit --no-fund
@@ -74,13 +94,14 @@ jobs:
           CLI: ${{ steps.config.outputs.cli }}
 
       - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
-        if: github.event_name == 'schedule' || inputs.mode == 'apply'
+        if: steps.due.outputs.skip != 'true' && (github.event_name == 'schedule' || inputs.mode == 'apply')
         with:
           role-to-assume: ${{ steps.config.outputs.role }}
           aws-region: ${{ steps.config.outputs.region }}
 
       - name: Import
         id: import
+        if: steps.due.outputs.skip != 'true'
         working-directory: web
         run: |
           case "$EVENT/$MODE" in

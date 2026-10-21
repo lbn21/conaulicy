@@ -5,17 +5,16 @@
 // caller's AWS credentials; files already cached with the right hash are
 // skipped.
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync } from "node:fs";
 import path from "node:path";
 import { archiveKey, loadConfig, ROOT } from "./import/core/config.ts";
+import { sha256 } from "./import/core/hash.ts";
 
 const CACHE = path.join(ROOT, ".cache");
 const { archive, archived } = loadConfig();
 const files = archived.map((a) => ({ key: archiveKey(a), sha256: a.sha256 }));
 
-const sha256Of = (file: string) =>
-  createHash("sha256").update(readFileSync(file)).digest("hex");
+const sha256Of = (file: string) => sha256(readFileSync(file));
 
 let pulled = 0;
 for (const { key, sha256 } of files) {

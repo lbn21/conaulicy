@@ -9,13 +9,13 @@
 // force-updates only import-review/* branches. REVIEWS_FILE replaces GitHub
 // in tests; IMPORT_REVIEW_DIR replaces etl/review (where merged files are read).
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import type { Source } from "./config.ts";
 import type { Found } from "./domain.ts";
+import { sha256 } from "./hash.ts";
 import type { Http } from "./http.ts";
 import { ROOT } from "./paths.ts";
 
@@ -33,7 +33,7 @@ type Stored = Pr & {
 };
 
 /** source/stem: one review per source file, whatever its version. */
-export const reviewKey = (sourceId: string, fileName: string) =>
+const reviewKey = (sourceId: string, fileName: string) =>
   `${sourceId}/${fileName.replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9._-]/g, "-")}`;
 const reviewedFile = (key: string) => `etl/review/${key}.yaml`;
 const marker = (key: string, digest: string) =>
@@ -218,11 +218,7 @@ export class Reviews {
     // not the reviewed version (the SHA-256 stays the authority).
     const live = await this.#http
       .get(req.file.url)
-      .then(async (r) =>
-        createHash("sha256")
-          .update(Buffer.from(await r.arrayBuffer()))
-          .digest("hex"),
-      )
+      .then(async (r) => sha256(Buffer.from(await r.arrayBuffer())))
       .catch(() => null);
     const isImage = /\.(jpe?g|png|gif|webp)$/i.test(req.file.name);
     const body = [

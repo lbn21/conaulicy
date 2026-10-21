@@ -3,6 +3,7 @@ import { GovukFrontend } from "@/components/govuk-frontend";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { WebAnalytics } from "@/components/web-analytics";
+import { SITE_URL } from "@/lib/config.generated";
 import { THEME_COLOR } from "@/lib/theme";
 import { atkinson } from "./fonts";
 import "./tokens.css";
@@ -20,7 +21,7 @@ const SHARE_IMAGE = {
 
 export const metadata: Metadata = {
   // Share images and canonical links always point at the permanent address.
-  metadataBase: new URL("https://conaulicy.pl"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "conaulicy – wywóz śmieci w Lubaczowie i gminie",
     template: "%s – conaulicy",

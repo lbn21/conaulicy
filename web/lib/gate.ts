@@ -1,7 +1,7 @@
 // Pre-launch Basic Auth gate (see proxy.ts). While it is on, nothing may be
 // stored by a shared cache, so routes must not send their public headers.
 
-export function gated(): boolean {
+function gated(): boolean {
   return Boolean(process.env.SITE_BASIC_AUTH);
 }
 
