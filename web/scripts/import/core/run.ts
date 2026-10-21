@@ -1,10 +1,11 @@
-// npm run import:schedules -- [--scheduled] [--dry-run] [--read-only]
-//                               [--force-extract] [--extract-only]
+// npm run import:run -- [--scheduled] [--dry-run] [--read-only]
+//                         [--force-extract] [--extract-only]
 //
-// The unattended schedule import (docs/import-schedules.md), run by
-// .github/workflows/import-schedules.yml. Everything it does is configured in
-// etl/sources.yaml. For every source: detect the published files (WordPress
-// REST API; the watched pages if the API is down), notice new links on the
+// The unattended import (docs/import.md), run by .github/workflows/import.yml.
+// Everything it does is configured in etl/sources.yaml; what a source's
+// files mean is its domain's business (../domains.ts). For every source:
+// detect the published files (WordPress REST API; the watched pages if the
+// API is down), notice new links on the
 // watched pages, download only what is new, archive it in S3, extract,
 // validate, and apply the difference in one transaction tagged with a batch
 // id (undo: npm run import:revert -- <batch>). Anything doubtful is not
@@ -27,50 +28,20 @@
 // ISSUES_FILE (instead of GitHub), CURSOR_AGENT_MOCK (pass outputs).
 import { execFileSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import {
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { appendFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import pg from "pg";
-import { parse as parseYaml } from "yaml";
-import {
-  archiveKey,
-  loadConfig,
-  localNow,
-  ROOT,
-  type Source,
-} from "../config.ts";
-import { type Etl, transform } from "../lib/import-data.ts";
-import {
-  DETECTORS,
-  type Detection,
-  detectFromPages,
-  EXTRACTORS,
-  type Extracted,
-  type Found,
-  http,
-  linksHash,
-  readWatched,
-} from "./adapters.ts";
+import { type Etl, transform } from "../../lib/import-data.ts";
+import { DOMAINS } from "../domains.ts";
+import { archiveKey, loadConfig, localNow, type Source } from "./config.ts";
+import type { Detection, Extracted, Found } from "./domain.ts";
+import { coverageGaps, diffEvents, type EventRow } from "./events.ts";
 import { scopeEvents, writeChange } from "./events-db.ts";
+import { http } from "./http.ts";
 import { Issues } from "./issues.ts";
-import {
-  compareMembers,
-  coverageGaps,
-  diffEvents,
-  type EventRow,
-  fold,
-  streetKey,
-  streetReview,
-  validateSchedule,
-} from "./lib.ts";
+import { linksHash, readWatched } from "./watch.ts";
 
 const { values: args } = parseArgs({
   options: {
@@ -94,16 +65,6 @@ const clock = () =>
 const local = localNow(config.schedule.timezone, clock());
 const today = local.date;
 const runUrl = process.env.ACTIONS_RUN_URL ?? "";
-const approvalsFile = path.join(ROOT, "etl/review/approvals.yaml");
-const anomalies = new Set(
-  (
-    ((existsSync(approvalsFile) &&
-      parseYaml(readFileSync(approvalsFile, "utf8"))) ||
-      {}) as {
-      anomalies?: Array<{ zone_id: string; date: string }>;
-    }
-  ).anomalies?.map((a) => `${a.zone_id}|${a.date}`) ?? [],
-);
 const archivedKeys = new Map(
   config.archived.map((a) => [a.sha256, archiveKey(a)]),
 );
@@ -160,9 +121,10 @@ async function detect(source: Source): Promise<{
   detection: Detection;
   pages: Awaited<ReturnType<typeof readWatched>> | null;
 }> {
+  const domain = DOMAINS[source.domain];
   try {
     return {
-      detection: await DETECTORS[source.detect.type](
+      detection: await domain.detectors[source.detect.type](
         source,
         source.detect.site,
         net,
@@ -175,7 +137,7 @@ async function detect(source: Source): Promise<{
     );
     try {
       const pages = await readWatched(source, net);
-      return { detection: detectFromPages(source, pages), pages };
+      return { detection: domain.detectFromPages(source, pages), pages };
     } catch (pageError) {
       throw new Error(
         `the WordPress API and the watched pages both failed: ${(apiError as Error).message}; ${(pageError as Error).message}`,
@@ -196,7 +158,8 @@ if (extractOnly) {
     for (const file of detection.files) {
       const body = Buffer.from(await (await net.get(file.url)).arrayBuffer());
       try {
-        const out = await EXTRACTORS[source.extract.type]({
+        const domain = DOMAINS[source.domain];
+        const out = await domain.extractors[source.extract.type]({
           source,
           config,
           file,
@@ -206,15 +169,17 @@ if (extractOnly) {
         });
         const found = [
           ...out.problems,
-          ...validateSchedule({
-            zoneId: out.zoneId,
-            year: out.year,
-            events: out.events,
-            checks: new Set(source.validate),
-            rules: config.import.validate,
-            previous: null,
-            anomalies,
-          }),
+          ...(await domain.check({
+            db: null,
+            config,
+            source,
+            file,
+            out,
+            zoneName: "",
+            issues,
+            dryRun,
+            runUrl,
+          })),
         ];
         problems += found.length;
         console.log(
@@ -261,6 +226,7 @@ type Outcome = {
 };
 
 async function importSource(source: Source): Promise<Outcome> {
+  const domain = DOMAINS[source.domain];
   const { detection, pages: fallbackPages } = await detect(source);
   const problems = detection.unrecognised.map(
     (u) => `a new file the adapter cannot read: ${u}`,
@@ -451,13 +417,12 @@ async function importSource(source: Source): Promise<Outcome> {
   const filesChanged = work.filter((w) => w.isNew).length;
 
   // Extract, validate and diff each file in its scope.
-  const checks = new Set(source.validate);
   const plans: Array<{ zoneId: string; diff: ReturnType<typeof diffEvents> }> =
     [];
   for (const { file, body, digest, doc, checkedAt } of work) {
     let out: Extracted;
     try {
-      out = await EXTRACTORS[source.extract.type]({
+      out = await domain.extractors[source.extract.type]({
         source,
         config,
         file,
@@ -479,74 +444,32 @@ async function importSource(source: Source): Promise<Outcome> {
       continue;
     }
     problems.push(...out.problems.map((p) => `${file.name}: ${p}`));
-    const last = await db.query(
-      "select subtype, count(*)::int as n, count(distinct substr(start, 1, 7))::int as months from events where zone_id = $1 and start like $2 group by subtype",
-      [out.zoneId, `${out.year - 1}-%`],
-    );
-    const enough =
-      Math.max(0, ...last.rows.map((r) => r.months)) >=
-      config.import.validate.counts.minMonths;
     problems.push(
-      ...validateSchedule({
-        zoneId: out.zoneId,
-        year: out.year,
-        events: out.events,
-        checks,
-        rules: config.import.validate,
-        previous: enough
-          ? new Map(last.rows.map((r) => [r.subtype as string, r.n as number]))
-          : null,
-        anomalies,
-      }),
+      ...(await domain.check({
+        db,
+        config,
+        source,
+        file,
+        out,
+        zoneName: zone.name,
+        issues,
+        dryRun,
+        runUrl,
+      })),
     );
-    // Who the zone serves must not change without a person checking it.
-    if (checks.has("villages") || checks.has("streets")) {
-      const members = (
-        await db.query(
-          checks.has("villages")
-            ? "select l.id, l.name from zone_members m join localities l on l.id = m.locality_id where m.zone_id = $1 and m.street_id is null and l.kind = 'wies'"
-            : "select distinct s.id, s.name from zone_members m join streets s on s.id = m.street_id where m.zone_id = $1",
-          [out.zoneId],
-        )
-      ).rows.map((r) => ({ id: r.id as string, names: [r.name as string] }));
-      // A model's street spelling is never applied: differences open a
-      // review issue that a person closes, and the dates still apply.
-      const review = out.streetReadings
-        ? streetReview(out.zoneId, out.streetReadings, members, source.aliases)
-        : null;
-      if (review?.length) {
-        console.log(
-          `\n${file.name}: streets may have changed:\n- ${review.join("\n- ")}`,
-        );
-        if (!dryRun)
-          issues.raise(
-            `streets:${out.zoneId}`,
-            `${zone.name}: ulice mogły się zmienić`,
-            [
-              `The vision passes of **${file.name}** list streets that differ from **${out.zoneId}** in the database. This does not hold up the dates, which go through the usual checks; streets and zone membership come only from the database and were not changed.`,
-              "",
-              ...review.map((p) => `- ${p}`),
-              "",
-              "Check the image. If a street really joined or left the zone, change the database; if it is only spelt differently, add it to `aliases` in `etl/sources.yaml`. Then close this issue by hand: it is not closed automatically.",
-              runUrl ? `\nRun: ${runUrl}` : "",
-            ].join("\n"),
-          );
-      } else if (!review)
-        problems.push(
-          ...compareMembers(
-            out.zoneId,
-            out.listed,
-            members,
-            checks.has("villages") ? fold : streetKey,
-            source.aliases,
-          ),
-        );
-    }
     const etl: Etl = {
       gminy: [],
       localities: [],
       streets: [],
-      zones: [{ id: out.zoneId, type: "waste", name: zone.name, members: [] }],
+      // A zone's type is its domain.
+      zones: [
+        {
+          id: out.zoneId,
+          type: source.domain as Etl["zones"][number]["type"],
+          name: zone.name,
+          members: [],
+        },
+      ],
       events: out.events,
       meta: { year: out.year, sources: [] },
     };
@@ -610,7 +533,7 @@ async function importSource(source: Source): Promise<Outcome> {
           ...problems.map((p) => `- ${p}`),
           summary ? `\n**What would change:**\n\n${summary}` : "",
           "",
-          "Fix the cause (a config change in `etl/sources.yaml` or an approval in `etl/review/approvals.yaml`); the next run applies it and closes this issue. RUNBOOK: docs/import-schedules.md.",
+          "Fix the cause (a config change in `etl/sources.yaml` or an approval in `etl/review/approvals.yaml`); the next run applies it and closes this issue. RUNBOOK: docs/import.md.",
           runUrl ? `\nRun: ${runUrl}` : "",
         ].join("\n"),
       );
@@ -774,7 +697,7 @@ if (!dryRun) {
         "",
         ...gaps.map((g) => `- ${g}`),
         "",
-        "Check whether the next schedule is published and why the import has not picked it up (RUNBOOK: docs/import-schedules.md). Closed automatically once every zone is covered.",
+        "Check whether the next schedule is published and why the import has not picked it up (RUNBOOK: docs/import.md). Closed automatically once every zone is covered.",
       ].join("\n"),
     );
   else

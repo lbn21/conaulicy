@@ -10,7 +10,7 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 - Biome for lint and format. No ESLint, no Prettier.
 - Node 24. Latest stable versions only: no canary, beta or rc.
 - Vercel, functions region `fra1`. Always pass `--scope gdzie-zamieszkac`.
-- Layout: `web/` (Next.js app; the importer is `web/scripts/import.ts`), `docs/`, `design/`.
+- Layout: `web/` (Next.js app; the one-off importer is `web/scripts/import.ts`, the unattended import `web/scripts/import/`: shared `core/` plus one folder per domain, e.g. `waste/`; see `docs/import.md`), `docs/`, `design/`.
 
 ## Design system: GOV.UK Frontend as-is
 

@@ -3,7 +3,7 @@
   "title": "conaulicy.pl data configuration (etl/sources.yaml)",
   "type": "object",
   "additionalProperties": false,
-  "required": ["site", "schedule", "import", "vision", "archive", "sources", "archived"],
+  "required": ["site", "schedule", "import", "domains", "vision", "archive", "sources", "archived"],
   "properties": {
     "site": {
       "type": "object",
@@ -49,7 +49,7 @@
     "import": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["retries", "validate", "alerts"],
+      "required": ["retries", "alerts"],
       "properties": {
         "retries": {
           "type": "object",
@@ -60,31 +60,45 @@
             "backoffSeconds": { "type": "number", "minimum": 0, "maximum": 300 }
           }
         },
-        "validate": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["weekdayShare", "holidayWindowDays", "counts"],
-          "properties": {
-            "weekdayShare": { "type": "number", "minimum": 0.5, "maximum": 1 },
-            "holidayWindowDays": { "type": "integer", "minimum": 0, "maximum": 14 },
-            "counts": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["factor", "slack", "minMonths"],
-              "properties": {
-                "factor": { "type": "number", "minimum": 0, "maximum": 1 },
-                "slack": { "type": "integer", "minimum": 0 },
-                "minMonths": { "type": "integer", "minimum": 1, "maximum": 12 }
-              }
-            }
-          }
-        },
         "alerts": {
           "type": "object",
           "additionalProperties": false,
           "required": ["coverageMinDays"],
           "properties": {
             "coverageMinDays": { "type": "integer", "minimum": 1, "maximum": 365 }
+          }
+        }
+      }
+    },
+    "domains": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["waste"],
+      "properties": {
+        "waste": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["validate"],
+          "properties": {
+            "validate": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["weekdayShare", "holidayWindowDays", "counts"],
+              "properties": {
+                "weekdayShare": { "type": "number", "minimum": 0.5, "maximum": 1 },
+                "holidayWindowDays": { "type": "integer", "minimum": 0, "maximum": 14 },
+                "counts": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["factor", "slack", "minMonths"],
+                  "properties": {
+                    "factor": { "type": "number", "minimum": 0, "maximum": 1 },
+                    "slack": { "type": "integer", "minimum": 0 },
+                    "minMonths": { "type": "integer", "minimum": 1, "maximum": 12 }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -127,9 +141,10 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "name", "origin", "gmina", "page", "detect", "watch", "zone", "extract", "validate"],
+        "required": ["id", "domain", "name", "origin", "gmina", "page", "detect", "watch", "zone", "extract", "validate"],
         "properties": {
           "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "domain": { "enum": ["waste"] },
           "name": { "type": "string", "minLength": 1 },
           "origin": { "type": "string", "pattern": "^[a-z0-9-]+$" },
           "gmina": {

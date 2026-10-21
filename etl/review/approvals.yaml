@@ -1,5 +1,5 @@
 # Dates the published schedules put off a row's usual weekday, with no public
-# holiday nearby to explain it. The unattended import (docs/import-schedules.md)
+# holiday nearby to explain it. The unattended import (docs/import.md)
 # applies a schedule only if every such date is listed here; a new one opens
 # an issue instead. To accept one after checking the source, add it here in a PR.
 #

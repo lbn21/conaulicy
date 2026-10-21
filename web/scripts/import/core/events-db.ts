@@ -1,8 +1,8 @@
-// Writing events for the schedule import and its revert: every change is
+// Writing events for the unattended import and its revert: every change is
 // applied and logged in import_changes under its batch id, in the caller's
 // transaction.
 import type pg from "pg";
-import type { EventRow } from "./lib.ts";
+import type { EventRow } from "./events.ts";
 
 /** events columns: [row key, column]. */
 export const EVENT_FIELDS: Array<[string, string]> = [

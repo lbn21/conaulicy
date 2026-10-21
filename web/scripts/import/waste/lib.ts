@@ -1,8 +1,9 @@
-// The pure parts of the unattended schedule import (docs/import-schedules.md):
-// parsing, events, validation, comparing vision passes, diffing rows. No
-// network, no database: run.ts does those, tested end to end by
-// scripts/check-import-schedules.mjs; this file by lib.test.ts.
-import { type Etl, eventId } from "../lib/import-data.ts";
+// The pure parts of the waste schedule domain (docs/import.md): parsing,
+// events, validation, comparing vision passes. No network, no database: the
+// core does those, tested end to end by scripts/check-import-run.mjs; this
+// file by lib.test.ts.
+import { type Etl, eventId } from "../../lib/import-data.ts";
+import { extractJson } from "../core/vision.ts";
 
 export const MONTHS = [
   "STYCZEŃ",
@@ -402,28 +403,6 @@ export type VisionReading = {
 };
 
 /**
- * The first balanced top-level JSON object in a model's reply, which may wrap
- * it in prose or a ```json fence. Braces inside strings (and escaped quotes)
- * do not count. Throws if there is none.
- */
-export function extractJson(text: string): string {
-  const start = text.indexOf("{");
-  if (start < 0) throw new Error("no JSON object in the reply");
-  let depth = 0;
-  let inString = false;
-  for (let i = start; i < text.length; i++) {
-    const c = text[i];
-    if (inString) {
-      if (c === "\\") i++;
-      else if (c === '"') inString = false;
-    } else if (c === '"') inString = true;
-    else if (c === "{") depth++;
-    else if (c === "}" && --depth === 0) return text.slice(start, i + 1);
-  }
-  throw new Error("the JSON object in the reply is not closed");
-}
-
-/**
  * One vision pass's JSON, checked against the strict schema: exactly these
  * keys, 12 months per row, days 1–31 as integers. Throws with the reason.
  */
@@ -520,75 +499,4 @@ export function streetReview(
       passes.set(p, [...(passes.get(p) ?? []), i + 1]);
   });
   return [...passes].map(([p, n]) => `${p} (pass ${n.join(", ")})`);
-}
-
-// ------------------------------------------------------------------ diff
-
-export type EventRow = Record<string, unknown> & { id: string };
-
-/** Columns compared between the database and a new import. */
-export const EVENT_COLUMNS = [
-  "type",
-  "subtype",
-  "zoneId",
-  "start",
-  "end",
-  "allDay",
-  "label",
-  "sourceDoc",
-  "sourceUrl",
-  "sourceRef",
-  "sourceSha256",
-  "checkedAt",
-  "verified",
-  "reviewedBy",
-  "shiftedFrom",
-  "payload",
-] as const;
-
-const stable = (value: unknown): string =>
-  JSON.stringify(value, (_, v) =>
-    v && typeof v === "object" && !Array.isArray(v)
-      ? Object.fromEntries(
-          Object.entries(v).sort(([a], [b]) => a.localeCompare(b)),
-        )
-      : v,
-  ) ?? "null";
-
-export function diffEvents(current: EventRow[], next: EventRow[]) {
-  const before = new Map(current.map((r) => [r.id, r]));
-  const after = new Map(next.map((r) => [r.id, r]));
-  const added = next.filter((r) => !before.has(r.id));
-  const removed = current.filter((r) => !after.has(r.id));
-  const changed: Array<{
-    before: EventRow;
-    after: EventRow;
-    columns: string[];
-  }> = [];
-  for (const row of next) {
-    const old = before.get(row.id);
-    if (!old) continue;
-    const columns = EVENT_COLUMNS.filter(
-      (c) => stable(old[c] ?? null) !== stable(row[c] ?? null),
-    );
-    if (columns.length) changed.push({ before: old, after: row, columns });
-  }
-  return { added, removed, changed };
-}
-
-// ------------------------------------------------------------------ coverage
-
-/**
- * Zones whose last date is closer than minDays (or that have none): the next
- * schedule is late. The dead-man switch's single issue lists them.
- */
-export function coverageGaps(
-  lastDates: Array<{ zoneId: string; last: string | null }>,
-  today: string,
-  minDays: number,
-): string[] {
-  const limit = new Date(`${today}T12:00:00Z`).getTime() + minDays * 86_400_000;
-  return lastDates
-    .filter((z) => !z.last || new Date(`${z.last}T12:00:00Z`).getTime() < limit)
-    .map((z) => `${z.zoneId}: ${z.last ? `last date ${z.last}` : "no dates"}`);
 }

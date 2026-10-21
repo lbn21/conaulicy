@@ -153,7 +153,7 @@ export const meta = pgTable("meta", {
 
 /**
  * One row per source per run of the unattended schedule import
- * (scripts/schedules, docs/import-schedules.md). The GitHub Actions log is the
+ * (scripts/import, docs/import.md). The GitHub Actions log is the
  * second log; actionsRunUrl links to it.
  */
 export const importRuns = pgTable(

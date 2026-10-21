@@ -8,7 +8,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync } from "node:fs";
 import path from "node:path";
-import { archiveKey, loadConfig, ROOT } from "./config.ts";
+import { archiveKey, loadConfig, ROOT } from "./import/core/config.ts";
 
 const CACHE = path.join(ROOT, ".cache");
 const { archive, archived } = loadConfig();

@@ -9,7 +9,7 @@ import {
   SCHEMA_FILE,
   schemaErrors,
 } from "./config.ts";
-import { linksHash, pageLinks } from "./schedules/adapters.ts";
+import { linksHash, pageLinks } from "./watch.ts";
 
 const schema = JSON.parse(readFileSync(SCHEMA_FILE, "utf8"));
 

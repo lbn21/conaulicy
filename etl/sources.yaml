@@ -6,7 +6,7 @@
 # else is derived from this file and CI fails on drift (npm run config:check):
 # docs/data/sources.md, web/lib/config.generated.ts (site), the import
 # workflow's cron lines. Schema: etl/sources.schema.json. How to change
-# things: docs/import-schedules.md (RUNBOOK).
+# things: docs/import.md (RUNBOOK).
 
 site:
   url: https://conaulicy.pl
@@ -28,18 +28,22 @@ schedule:
 import:
   # Network calls: attempts, first backoff (doubles each time).
   retries: { attempts: 4, backoffSeconds: 5 }
-  validate:
-    # A row's usual weekday is the one holding at least this share of dates.
-    weekdayShare: 0.6
-    # An off-weekday date is explained by a public holiday on the usual
-    # weekday at most this many days away.
-    holidayWindowDays: 6
-    # Dates per fraction may differ from last year by this factor ± slack,
-    # compared only when last year has data in at least minMonths months.
-    counts: { factor: 0.5, slack: 2, minMonths: 10 }
   alerts:
     # Dead-man switch: one issue while any zone's last date is closer than this.
     coverageMinDays: 21
+
+# Each domain's own settings (web/scripts/import/<domain>/).
+domains:
+  waste:
+    validate:
+      # A row's usual weekday is the one holding at least this share of dates.
+      weekdayShare: 0.6
+      # An off-weekday date is explained by a public holiday on the usual
+      # weekday at most this many days away.
+      holidayWindowDays: 6
+      # Dates per fraction may differ from last year by this factor ± slack,
+      # compared only when last year has data in at least minMonths months.
+      counts: { factor: 0.5, slack: 2, minMonths: 10 }
 
 vision:
   # Cursor CLI build installed by the workflow (downloads.cursor.com/lab/<cli>).
@@ -56,11 +60,13 @@ archive:
   role: arn:aws:iam::498654322749:role/conaulicy-import-gha
 
 sources:
-  # Each source: a detector (finds the published files), an extractor (reads
-  # them into events) and validators. Types are registered in
-  # web/scripts/schedules/adapters.ts; a new kind of source (e.g. water cuts
-  # announced as posts) is a new extractor type plus an entry here.
+  # Each source: its domain, a detector (finds the published files), an
+  # extractor (reads them into events) and validators. Domains are registered
+  # in web/scripts/import/domains.ts, their types in each domain's folder; a
+  # new domain (e.g. water cuts announced as posts) is a new folder plus an
+  # entry here (docs/import.md).
   - id: gmina
+    domain: waste
     name: Gmina Lubaczów
     origin: gmina
     gmina: { id: lubaczow-gmina, teryt: "1809042" }
@@ -85,6 +91,7 @@ sources:
     validate: [year, weekday, counts, villages]
 
   - id: miasto
+    domain: waste
     name: Miasto Lubaczów
     origin: miasto
     gmina: { id: lubaczow-miasto, teryt: "1809011" }
