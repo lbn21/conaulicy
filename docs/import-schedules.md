@@ -15,13 +15,14 @@ For each source in `etl/sources.yaml`:
 3. **Fetch and archive.** Only files with a new media id or date are downloaded. A new file (new SHA-256) goes to `s3://conaulicy-sources-aaed02/sources/<origin>/<fetch date>/<file>` and into the `source_files` table (decision: the archive manifest for new files is that table; `docs/data/sources.md` lists only the initial archive).
 4. **Extract.**
    - Gmina PDFs are read from their text layer (`pdftotext -layout`) and parsed deterministically.
-   - City JPGs have no text layer. Two Cursor CLI vision passes from different vendors (`vision.passes`) read each one, and each pass must return JSON matching a strict schema. The result is applied only if both readings agree 100%.
+   - City JPGs have no text layer. Two Cursor CLI vision passes from different vendors (`vision.passes`) read each one, and each pass must return JSON matching a strict schema. Prose or a code fence around the JSON is dropped: the first balanced object is taken. The dates are applied only if both readings agree 100% on sector, year and every date.
+   - Streets are never taken from a model. Each pass's street list is checked against the zone's streets in the database (`streetKey`, plus `aliases`). A difference does not block the dates. Instead it opens one issue per zone, `streets:<zone>`, for a person to check. That issue is not closed automatically.
    - The agent runs in an empty workspace holding only the image, with `permissions` denying shell, writes, web and MCP. Git, the database, S3 and issues are handled by the script, never by the agent.
 5. **Validate.** The thresholds live in `import.validate`:
    - every date is in the schedule year;
    - each row keeps its usual weekday, unless a public holiday explains the move or the date is approved in `etl/review/approvals.yaml`;
    - dates per fraction stay within a sane range of last year;
-   - no village or street disappears from, or appears in, a zone.
+   - no village disappears from, or appears in, a gmina zone. City streets get the review issue above instead.
 6. **Apply.** The diff for the file's scope (zone and year) is written in one transaction, logged row by row in `import_changes` under a batch id, and the site is revalidated.
 
 Each run writes one `import_runs` row per source: status `no_change`, `applied`, `needs_review` or `failed`, plus counts, batch id, error and the Actions run URL. Then comes the **dead-man switch**: while any zone's last date is closer than `import.alerts.coverageMinDays` (21), one issue stays open. Every run also syncs `gminy.schedule_url` from `sources[].page`. If the gmina publishes a newer yearly post, an issue asks for the one-line config change.
@@ -64,6 +65,8 @@ npm run import:revert -- <batch id>             # undo, one transaction; refuses
 ```
 
 A reverted file stays settled: it is not re-applied until its source publishes a new version.
+
+**Close a street-review issue.** Check the image. If a street really joined or left the zone, change the database. If it is only spelled differently, add it to the source's `aliases` in `etl/sources.yaml`. Then close the issue by hand.
 
 **Accept a flagged date.** Check it against the source, then add `{ zone_id, date, note }` to `etl/review/approvals.yaml` in a PR. The next run applies the schedule and closes the issue.
 

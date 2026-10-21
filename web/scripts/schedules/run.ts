@@ -68,6 +68,7 @@ import {
   type EventRow,
   fold,
   streetKey,
+  streetReview,
   validateSchedule,
 } from "./lib.ts";
 
@@ -508,15 +509,38 @@ async function importSource(source: Source): Promise<Outcome> {
           [out.zoneId],
         )
       ).rows.map((r) => ({ id: r.id as string, names: [r.name as string] }));
-      problems.push(
-        ...compareMembers(
-          out.zoneId,
-          out.listed,
-          members,
-          checks.has("villages") ? fold : streetKey,
-          source.aliases,
-        ),
-      );
+      // A model's street spelling is never applied: differences open a
+      // review issue that a person closes, and the dates still apply.
+      const review = out.streetReadings
+        ? streetReview(out.zoneId, out.streetReadings, members, source.aliases)
+        : null;
+      if (review?.length) {
+        console.log(
+          `\n${file.name}: streets may have changed:\n- ${review.join("\n- ")}`,
+        );
+        if (!dryRun)
+          issues.raise(
+            `streets:${out.zoneId}`,
+            `${zone.name}: ulice mogły się zmienić`,
+            [
+              `The vision passes of **${file.name}** list streets that differ from **${out.zoneId}** in the database. This does not hold up the dates, which go through the usual checks; streets and zone membership come only from the database and were not changed.`,
+              "",
+              ...review.map((p) => `- ${p}`),
+              "",
+              "Check the image. If a street really joined or left the zone, change the database; if it is only spelt differently, add it to `aliases` in `etl/sources.yaml`. Then close this issue by hand: it is not closed automatically.",
+              runUrl ? `\nRun: ${runUrl}` : "",
+            ].join("\n"),
+          );
+      } else if (!review)
+        problems.push(
+          ...compareMembers(
+            out.zoneId,
+            out.listed,
+            members,
+            checks.has("villages") ? fold : streetKey,
+            source.aliases,
+          ),
+        );
     }
     const etl: Etl = {
       gminy: [],

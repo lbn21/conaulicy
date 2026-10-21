@@ -290,6 +290,8 @@ export type Extracted = {
   events: Etl["events"];
   /** Places or streets the file lists, for the member checks. */
   listed: string[];
+  /** Vision only: each pass's streets, checked for review, never applied. */
+  streetReadings?: string[][];
   problems: string[];
 };
 type Extractor = (input: {
@@ -370,21 +372,24 @@ export const EXTRACTORS: Record<string, Extractor> = {
       throw new Error(
         `the image says sector ${readings[0].sector}, ${readings[0].year}`,
       );
-    return schedule(
-      source,
-      file,
-      { doc, url: file.url, sha256: digest },
-      readings[0].rows,
-      MIASTO_ROWS,
-      readings[0].streets,
-    );
+    return {
+      ...schedule(
+        source,
+        file,
+        { doc, url: file.url, sha256: digest },
+        readings[0].rows,
+        MIASTO_ROWS,
+        readings[0].streets,
+      ),
+      streetReadings: readings.map((r) => r.streets),
+    };
   },
 };
 
 const VISION_PROMPT = (image: string, rows: string[]) =>
   [
     `Read the waste collection schedule image ${image}. Do not modify any file and do not run commands.`,
-    "Reply with ONE JSON object and nothing else, exactly this shape:",
+    "Respond with the JSON object only, no other text. Exactly this shape:",
     `{"sector": <sector number>, "year": <year>, "streets": [<every street name listed, as written>], "rows": {${rows
       .map((r) => `"${r}": [12 arrays of day numbers, January to December]`)
       .join(", ")}}}`,
@@ -478,9 +483,9 @@ function visionPasses(
       throw new Error(
         `${pass.model}: agent exited ${run.status}: ${(run.stderr ?? "").slice(0, 300)}`,
       );
-    const result = String(
+    // Any prose or fence around the JSON is dropped by parseVisionJson.
+    return String(
       (JSON.parse(run.stdout) as { result?: unknown }).result ?? "",
     );
-    return result.replace(/^\s*```(?:json)?\s*|\s*```\s*$/g, "");
   });
 }
