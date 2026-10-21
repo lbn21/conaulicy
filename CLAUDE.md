@@ -10,7 +10,7 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 - Biome for lint and format. No ESLint, no Prettier.
 - Node 24. Latest stable versions only: no canary, beta or rc.
 - Vercel, functions region `fra1`. Always pass `--scope gdzie-zamieszkac`.
-- Layout: `web/` (Next.js app; the one-off importer is `web/scripts/import.ts`, the unattended import `web/scripts/import/`: shared `core/` plus one folder per domain, e.g. `waste/`; see `docs/import.md`), `docs/`, `design/`.
+- Layout: `web/` (Next.js app; the one-off importer is `web/scripts/import.ts`, the unattended import `web/scripts/import/`: shared `core/` plus one folder per domain, e.g. `waste/`; see `docs/import.md`), `etl/` (config and review data, no code: `sources.yaml`, its schema, `review/`), `docs/`, `design/`.
 
 ## Design system: GOV.UK Frontend as-is
 
@@ -47,14 +47,14 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 - No over-engineering: static pages, CDN cache and the fewest possible API routes. Storage: Neon Postgres (Vercel Marketplace, free plan, fra1), Drizzle ORM; schema in `web/lib/db/schema.ts`, migrations in `web/drizzle/`. No state library or CMS, and nothing built "for later" (put it in the backlog).
 - Data never goes in git: the processed dataset is not committed, and raw sources live in a private S3 bucket (`docs/data/sources.md`; `npm run sources:pull` fills the gitignored `.cache/sources/`). CI fails if a data file is tracked (`check-tracked-data`).
 - CI runs on a made-up fixture (`npm run db:ci-fixture`, `web/scripts/ci-fixture.ts`) in a throwaway local Postgres; it refuses any other database, and production never holds it.
-- Search: a compact street index cached in the browser (`/api/search-index/<hash>`, immutable, loaded on first focus), with `/api/search` as the fallback. Both are rate-limited (Vercel WAF on `/api/*`). The schedules themselves never ship to the client.
+- Search: a compact street and village index cached in the browser (`/api/search-index/<hash>`, immutable, loaded on first focus), with `/api/search` as the fallback. Both are rate-limited (Vercel WAF on `/api/*`). The schedules themselves never ship to the client.
 - ICS feeds are cacheable (`s-maxage=3600, stale-while-revalidate=86400`, `text/calendar; charset=utf-8`).
 - The data model is a generic "event at a location", so other event types can be added. See `docs/database.md`.
 - **Hard rule:** every data item shown on the site or in the PDF keeps a visible link to its original source and the date it was last checked (`source.url`, `source.checkedAt`). No source, no display.
 
 ## Forbidden
 
-- No manual production deploys. Every merge to `main` deploys to production automatically.
+- No manual production deploys. Every merge to `main` deploys to production automatically; `import-review/**` branches never deploy (`web/vercel.json`). Production data also changes daily at 05:00 Europe/Warsaw through the unattended import (`docs/import.md`), without a deploy.
 - No force-push.
 - No changes to Vercel domains, DNS or billing. Never enable paid features.
 - Never touch `tynki-baryza`, Polymarket, other Vercel teams or other Route 53 zones.
@@ -65,4 +65,4 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 
 - Small, focused commits with short messages.
 - `biome check` and `next build` must pass before every commit.
-- Open normal PRs (drafts only when asked). Merge only when explicitly authorised, after green CI and review.
+- Open normal PRs (drafts only when asked). Merge when the task authorises it, after green CI and self-review; wait for the production deploy.

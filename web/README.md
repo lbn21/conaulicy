@@ -1,34 +1,12 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# conaulicy.pl – web
 
-## Getting Started
+The Next.js app for conaulicy.pl (street → next waste pickups → calendar), plus its scripts: the unattended import (`scripts/import/`), the one-off importer and the CI checks. Rules and design system: [../CLAUDE.md](../CLAUDE.md).
 
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```sh
+npm ci
+npm run dev        # needs DATABASE_URL
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`web/.env.local` (from `vercel env pull`) points at the production database. For local work use a throwaway Postgres with the CI fixture (`npm run db:migrate && npm run db:ci-fixture`), as described in [../docs/database.md](../docs/database.md).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Checks: `npx biome check`, `npm test`, `npm run config:check`, `npm run build`, and the `check:*` scripts in `package.json` (CI runs them all, `.github/workflows/ci.yml`). The import: [../docs/import.md](../docs/import.md). Performance budgets: [../docs/perf.md](../docs/perf.md).

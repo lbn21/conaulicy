@@ -2,6 +2,16 @@ name: CI
 
 on:
   pull_request:
+    # No CI for a PR that changes only prose or review data; the last
+    # matching pattern wins. Still checked: docs/data/sources.md (generated,
+    # config:check), etl/review/approvals.yaml (read by the import checks), and
+    # every other file (a data file anywhere fails check-tracked-data).
+    paths:
+      - "**"
+      - "!**.md"
+      - "docs/data/sources.md"
+      - "!etl/review/**"
+      - "etl/review/approvals.yaml"
 
 permissions:
   contents: read
@@ -21,7 +31,7 @@ jobs:
     # build and the checks have every kind of place, without any secret.
     services:
       postgres:
-        image: postgres:17
+        image: postgres:18
         env:
           POSTGRES_USER: ci
           POSTGRES_PASSWORD: ci
@@ -36,16 +46,16 @@ jobs:
     env:
       DATABASE_URL: postgres://ci:ci@localhost:5432/conaulicy
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Before npm ci: with Java on PATH, vnu-jar's postinstall does not
       # download its own runtime.
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: "21"
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
           cache: npm
@@ -83,6 +93,17 @@ jobs:
       - name: HTML (Nu Html Checker)
         run: node scripts/check-html.mjs
 
+      # Chromium, cached by Playwright version; the system packages it needs
+      # are installed every run (--with-deps).
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(node -p 'require("playwright/package.json").version')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
       - name: Install Chromium for axe
         run: npx playwright install --with-deps chromium
 
@@ -105,14 +126,6 @@ jobs:
       - name: "Fonts (no layout shift when they arrive late)"
         run: node scripts/check-fonts.mjs
 
-      # Lighthouse mobile with real throttling (Slow 4G, 4× CPU), median of
-      # 5 runs per page against the budgets in docs/perf.md; plus HTML size,
-      # preloaded fonts and search keystroke time. Re-run once if it fails
-      # (runner noise); fails only if both attempts fail, and logs both
-      # attempts' medians. Before the importer, which empties the fixture.
-      - name: "Performance (Lighthouse budgets)"
-        run: node scripts/check-perf-retry.mjs
-
       # Last: it empties the database and imports a made-up dataset. Its schedules come
       # from a local server, so the source check needs no internet.
       - name: "Importer (synthetic dataset: dry run, apply, guards)"
@@ -120,3 +133,70 @@ jobs:
 
       - name: "Unattended import (made-up waste sources: apply, revert, issues, fallback, dead-man switch)"
         run: node scripts/check-import-run.mjs
+
+  # Lighthouse on its own runner, in parallel with the rest: its own database
+  # with the CI fixture and its own build, so nothing else shares the CPU.
+  perf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: conaulicy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d conaulicy"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://ci:ci@localhost:5432/conaulicy
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # As in the web job: npm ci runs vnu-jar's postinstall.
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+
+      - name: Database (migrate + seed)
+        run: npm run db:migrate && npm run db:ci-fixture
+
+      - name: Build
+        run: npm run build
+
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(node -p 'require("playwright/package.json").version')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # Lighthouse mobile with real throttling (Slow 4G, 4× CPU), median of
+      # 5 runs per page against the budgets in docs/perf.md; plus HTML size,
+      # preloaded fonts and search keystroke time. Re-run once if it fails
+      # (runner noise); fails only if both attempts fail, and logs both
+      # attempts' medians.
+      - name: "Performance (Lighthouse budgets)"
+        run: node scripts/check-perf-retry.mjs
