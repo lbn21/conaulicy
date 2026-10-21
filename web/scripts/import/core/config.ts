@@ -48,7 +48,10 @@ export type Config = {
     alerts: { coverageMinDays: number };
   };
   domains: Record<string, unknown>;
-  vision: { cli: string; passes: Array<{ vendor: string; model: string }> };
+  vision: {
+    cli: string;
+    passes: Array<{ id: string; vendor: string; model: string }>;
+  };
   archive: { bucket: string; region: string; role: string };
   sources: Source[];
   archived: Array<{
@@ -145,9 +148,9 @@ export function configErrors(config: Config): string[] {
   const errors: string[] = [];
   const ids = config.sources.map((s) => s.id);
   if (new Set(ids).size !== ids.length) errors.push("sources: duplicate id");
-  const vendors = config.vision.passes.map((p) => p.vendor);
-  if (new Set(vendors).size !== vendors.length)
-    errors.push("vision.passes: the two passes must be different vendors");
+  const passIds = config.vision.passes.map((p) => p.id);
+  if (new Set(passIds).size !== passIds.length)
+    errors.push("vision.passes: duplicate pass id");
   try {
     new Intl.DateTimeFormat("en", { timeZone: config.schedule.timezone });
   } catch {

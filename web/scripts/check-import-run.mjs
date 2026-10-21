@@ -507,6 +507,29 @@ await step("vision passes that disagree: an issue", async () => {
 });
 
 await step(
+  "two Grok reads one date apart: nothing applied, one issue naming both passes",
+  async () => {
+    const other = reading();
+    other.rows["zmieszane+popiol"][2] =
+      other.rows["zmieszane+popiol"][2].slice(1);
+    setJpg([reading(), other]);
+    await run();
+    check(
+      (await lastRuns()).miasto?.status === "needs_review",
+      "not needs_review",
+    );
+    const now = open(/^miasto:review:/);
+    check(
+      now.length === 1 &&
+        /vision passes \(grok-a, grok-b\) disagree/.test(now[0].body) &&
+        /zmieszane\+popiol, marzec/.test(now[0].body),
+      `no single issue naming both passes: ${JSON.stringify(now.map((i) => i.body.slice(0, 300)))}`,
+    );
+    check((await snapshot()) === beforeReview, "events changed");
+  },
+);
+
+await step(
   "a pass that is not valid JSON: an issue (the earlier one closed)",
   async () => {
     setJpg([reading(), "Sorry, I cannot read this image."]);
@@ -561,7 +584,9 @@ await step(
     const review = () => open(/^streets:waste:miasto-s1$/);
     check(
       review().length === 1 &&
-        /„Osiedle Nowe” is not a member now \(pass 2\)/.test(review()[0].body),
+        /„Osiedle Nowe” is not a member now \(pass grok-b\)/.test(
+          review()[0].body,
+        ),
       `no street-review issue: ${JSON.stringify(issues().map((i) => i.key))}`,
     );
     await run();

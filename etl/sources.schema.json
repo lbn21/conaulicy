@@ -116,8 +116,9 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["vendor", "model"],
+            "required": ["id", "vendor", "model"],
             "properties": {
+              "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
               "vendor": { "enum": ["anthropic", "openai", "google", "xai"] },
               "model": { "type": "string", "pattern": "^(?!auto$)(?!.*-fast$)[a-z0-9.-]+$" }
             }
