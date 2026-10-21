@@ -69,7 +69,6 @@ export type Domain = {
     config: Config;
     source: Source;
     file: Found;
-    body: Buffer;
     digest: string;
     out: Extracted;
     zoneName: string;

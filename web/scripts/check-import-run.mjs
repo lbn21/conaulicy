@@ -547,7 +547,10 @@ await step(
     check(
       openPrs().length === 1 &&
         /\| bio \| czerwiec \|/.test(pr.body) &&
-        /!\[harmonogram-\d{4}-s1\.jpg\]/.test(pr.body) &&
+        pr.body.includes(
+          `[![harmonogram-${year}-s1.jpg](${M}${jpgPath})](${M}${jpgPath})`,
+        ) &&
+        !pr.body.includes("Uwaga:") &&
         pr.branch === `import-review/miasto/harmonogram-${year}-s1`,
       `no review PR: ${JSON.stringify(prs())}`,
     );
