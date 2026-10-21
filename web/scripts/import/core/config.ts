@@ -1,13 +1,17 @@
 // Loads etl/sources.yaml, the one configuration (sources, public pages,
 // detection, schedule, models, thresholds, alerts, archive, site features),
 // and checks it against etl/sources.schema.json plus the rules a schema
-// cannot express. Everything derived from it is in scripts/config-sync.ts.
-// Each domain's own settings (domains.<name>) are typed by that domain.
+// cannot express (the core's, and each source's domain's). Everything derived
+// from it is in scripts/config-sync.ts. Each domain's own settings
+// (domains.<name>, and the <name> block of its sources) are typed by that
+// domain.
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
+import { DOMAINS } from "../domains.ts";
+import { ROOT } from "./paths.ts";
 
-export const ROOT = path.resolve(import.meta.dirname, "../../../..");
+export { ROOT };
 export const CONFIG_FILE = path.join(ROOT, "etl/sources.yaml");
 export const SCHEMA_FILE = path.join(ROOT, "etl/sources.schema.json");
 
@@ -17,21 +21,12 @@ export type Source = {
   domain: string;
   name: string;
   origin: string;
-  gmina: { id: string; teryt: string };
+  /** The public page the site links to (never the archive). */
   page: string;
-  detect: {
-    type: string;
-    site: string;
-    parent?: number;
-    postSearch?: string;
-    postTitle?: string;
-    file: string;
-  };
-  watch: Array<{ url: string; links: string; ignore?: string[] }>;
-  zone: string;
+  /** The detector by type, with its own settings (typed by the domain). */
+  detect: { type: string } & Record<string, unknown>;
+  watch?: Array<{ url: string; links: string; ignore?: string[] }>;
   extract: { type: string };
-  validate: string[];
-  aliases?: Record<string, string>;
 };
 
 export type Config = {
@@ -45,9 +40,9 @@ export type Config = {
   schedule: { enabled: boolean; time: string; timezone: string };
   import: {
     retries: { attempts: number; backoffSeconds: number };
-    alerts: { coverageMinDays: number };
   };
-  domains: Record<string, unknown>;
+  /** Each domain's settings; coverageMinDays opts it in to the dead-man switch. */
+  domains: Record<string, { coverageMinDays?: number }>;
   vision: {
     cli: string;
     passes: Array<{ id: string; vendor: string; model: string }>;
@@ -165,40 +160,14 @@ export function configErrors(config: Config): string[] {
     );
   }
   for (const s of config.sources) {
-    const host = new URL(s.detect.site).host;
-    // Public links are the original pages, never the archive.
-    for (const [name, url] of [
-      ["page", s.page],
-      ...s.watch.map((w) => ["watch", w.url]),
-    ])
-      if (new URL(url).host !== host)
-        errors.push(`${s.id}.${name}: ${url} is not on ${host}`);
-    for (const pattern of [
-      s.detect.file,
-      s.detect.postTitle,
-      ...s.watch.map((w) => w.links),
-    ]) {
-      if (pattern === undefined) continue;
+    for (const w of s.watch ?? []) {
       try {
-        new RegExp(pattern);
+        new RegExp(w.links);
       } catch {
-        errors.push(`${s.id}: invalid pattern ${pattern}`);
+        errors.push(`${s.id}: invalid pattern ${w.links}`);
       }
     }
-    if (
-      !/\(\?<sector>/.test(s.detect.file) ||
-      !/\(\?<year>/.test(s.detect.file)
-    )
-      errors.push(`${s.id}.detect.file: needs (?<sector>…) and (?<year>…)`);
-    if (s.detect.type === "wp-media" && !s.detect.parent)
-      errors.push(`${s.id}.detect: wp-media needs parent`);
-    if (
-      s.detect.type === "wp-post-files" &&
-      !(s.detect.postSearch && s.detect.postTitle)
-    )
-      errors.push(
-        `${s.id}.detect: wp-post-files needs postSearch and postTitle`,
-      );
+    errors.push(...(DOMAINS[s.domain]?.configErrors(s) ?? []));
   }
   for (const a of config.archived)
     if (a.url && /amazonaws\.com|s3:\/\//.test(a.url))

@@ -11,8 +11,9 @@
 // id (undo: npm run import:revert -- <batch>). Anything doubtful is not
 // applied: an issue says why, one per problem, closed by the next clean run;
 // a file a person must look at gets a review PR instead (./review.ts).
-// One import_runs row per source per run. Then the dead-man switch: an issue
-// while any zone's dates run out within import.alerts.coverageMinDays.
+// One import_runs row per source per run. Then the dead-man switch, for each
+// domain that opts in: an issue while any of its zones' dates run out within
+// domains.<domain>.coverageMinDays.
 //
 // --scheduled: only sources that are due (schedule.time has passed today in
 // schedule.timezone and no run finished today), so a failed run is retried
@@ -34,12 +35,11 @@ import { appendFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { type Etl, transform } from "../../lib/import-data.ts";
 import { DOMAINS } from "../domains.ts";
 import { archiveKey, loadConfig, localNow, type Source } from "./config.ts";
 import { Db } from "./db.ts";
 import type { Detection, Extracted, Found } from "./domain.ts";
-import { coverageGaps, diffEvents, type EventRow } from "./events.ts";
+import { coverageGaps, diffEvents } from "./events.ts";
 import { scopeEvents, writeChange } from "./events-db.ts";
 import { http } from "./http.ts";
 import { Issues } from "./issues.ts";
@@ -128,11 +128,7 @@ async function detect(source: Source): Promise<{
   const domain = DOMAINS[source.domain];
   try {
     return {
-      detection: await domain.detectors[source.detect.type](
-        source,
-        source.detect.site,
-        net,
-      ),
+      detection: await domain.detectors[source.detect.type](source, net),
       pages: null,
     };
   } catch (apiError) {
@@ -189,7 +185,7 @@ if (extractOnly) {
         ];
         problems += found.length;
         console.log(
-          `  ${file.name}: ${out.events.length} events, ${out.listed.length} places/streets${found.length ? `\n  - ${found.join("\n  - ")}` : ", ok"}`,
+          `  ${file.name}: ${out.events.length} events, ${out.listed.length} listed${found.length ? `\n  - ${found.join("\n  - ")}` : ", ok"}`,
         );
       } catch (error) {
         problems++;
@@ -236,22 +232,9 @@ async function importSource(source: Source): Promise<Outcome> {
   const problems = detection.unrecognised.map(
     (u) => `a new file the adapter cannot read: ${u}`,
   );
-  let refresh = false;
-
-  // The public link: the config is the truth; the database follows it.
-  if (!dryRun) {
-    const synced = await db.query(
-      "update gminy set schedule_url = $1 where id = $2 and schedule_url is distinct from $1",
-      [source.page, source.gmina.id],
-    );
-    refresh ||= Boolean(synced.rowCount);
-  }
-  if (!dryRun && detection.page && detection.page !== source.page)
-    issues.raise(
-      `${source.id}:page-link`,
-      `${source.name}: nowa strona harmonogramu`,
-      `The newest schedule post is ${detection.page}, but etl/sources.yaml links ${source.page}.\n\nSet \`page\` (and the first \`watch\` url) of source \`${source.id}\` to the new post in a PR; the site's link follows from it.`,
-    );
+  const refresh =
+    (await domain.afterDetect?.({ db, source, detection, issues, dryRun })) ??
+    false;
 
   // Known files and links.
   const settledMedia = new Map<string, string>();
@@ -474,24 +457,7 @@ async function importSource(source: Source): Promise<Outcome> {
       if (hold.blocks) held.push(`${file.name}: ${hold.note}`);
       continue;
     }
-    const etl: Etl = {
-      gminy: [],
-      localities: [],
-      streets: [],
-      // A zone's type is its domain.
-      zones: [
-        {
-          id: out.zoneId,
-          type: source.domain as Etl["zones"][number]["type"],
-          name: zone.name,
-          members: [],
-        },
-      ],
-      events: out.events,
-      meta: { year: out.year, sources: [] },
-    };
-    const next = transform(etl, new Map([[doc, checkedAt]])).rows
-      .events as EventRow[];
+    const next = domain.rows({ out, zoneName: zone.name, doc, checkedAt });
     plans.push({
       zoneId: out.zoneId,
       diff: diffEvents(await scopeEvents(db, out.zoneId, out.scope), next),
@@ -551,7 +517,7 @@ async function importSource(source: Source): Promise<Outcome> {
           ...problems.map((p) => `- ${p}`),
           summary ? `\n**What would change:**\n\n${summary}` : "",
           "",
-          "Fix the cause (a config change in `etl/sources.yaml` or an approval in `etl/review/approvals.yaml`); the next run applies it and closes this issue. RUNBOOK: docs/import.md.",
+          `Fix the cause (${domain.fixHint}); the next run applies it and closes this issue. RUNBOOK: docs/import.md.`,
           runUrl ? `\nRun: ${runUrl}` : "",
         ].join("\n"),
       );
@@ -698,33 +664,35 @@ for (const source of due) {
   console.log(`${source.id}: ${outcome.status}${dryRun ? " (dry run)" : ""}`);
 }
 
-// Dead-man switch: the next schedule is late somewhere. If the database is
-// gone by now, the job fails and the workflow opens its failure issue.
+// Dead-man switch, per domain that opts in (domains.<domain>.coverageMinDays;
+// a zone's type is its domain): its next dates are late somewhere. If the
+// database is gone by now, the job fails and the workflow opens its failure
+// issue.
 try {
-  const lastDates = (
-    await db.query(
-      "select z.id as zone_id, max(e.start) as last from zones z left join events e on e.zone_id = z.id where z.type = 'waste' group by z.id order by z.id",
-    )
-  ).rows.map((r) => ({
-    zoneId: r.zone_id as string,
-    last: r.last ? String(r.last).slice(0, 10) : null,
-  }));
-  const gaps = coverageGaps(
-    lastDates,
-    today,
-    config.import.alerts.coverageMinDays,
-  );
-  if (gaps.length)
-    console.log(
-      `\nCoverage: ${gaps.length} zone(s) run out within ${config.import.alerts.coverageMinDays} days:\n- ${gaps.join("\n- ")}`,
-    );
-  if (!dryRun) {
+  for (const [name, settings] of Object.entries(config.domains)) {
+    const minDays = settings.coverageMinDays;
+    if (!minDays) continue;
+    const lastDates = (
+      await db.query(
+        "select z.id as zone_id, max(e.start) as last from zones z left join events e on e.zone_id = z.id where z.type = $1 group by z.id order by z.id",
+        [name],
+      )
+    ).rows.map((r) => ({
+      zoneId: r.zone_id as string,
+      last: r.last ? String(r.last).slice(0, 10) : null,
+    }));
+    const gaps = coverageGaps(lastDates, today, minDays);
+    if (gaps.length)
+      console.log(
+        `\nCoverage: ${gaps.length} zone(s) run out within ${minDays} days:\n- ${gaps.join("\n- ")}`,
+      );
+    if (dryRun) continue;
     if (gaps.length)
       issues.raise(
-        "coverage",
-        "harmonogram się kończy",
+        `coverage:${name}`,
+        DOMAINS[name]?.coverageTitle ?? `${name}: coverage`,
         [
-          `These zones have dates for fewer than ${config.import.alerts.coverageMinDays} more days, and no new schedule has been imported:`,
+          `These zones have dates for fewer than ${minDays} more days, and no new schedule has been imported:`,
           "",
           ...gaps.map((g) => `- ${g}`),
           "",
@@ -733,15 +701,15 @@ try {
       );
     else
       issues.resolve(
-        "coverage",
-        `Resolved: every zone has dates for ${config.import.alerts.coverageMinDays}+ days (${today}).`,
-      );
-    if (!failed)
-      issues.resolve(
-        "workflow",
-        `Resolved: the import ran on ${today}.${runUrl ? ` ${runUrl}` : ""}`,
+        `coverage:${name}`,
+        `Resolved: every zone has dates for ${minDays}+ days (${today}).`,
       );
   }
+  if (!dryRun && !failed)
+    issues.resolve(
+      "workflow",
+      `Resolved: the import ran on ${today}.${runUrl ? ` ${runUrl}` : ""}`,
+    );
 } catch (error) {
   failed = true;
   console.error(`\nCoverage check failed: ${(error as Error).message}`);

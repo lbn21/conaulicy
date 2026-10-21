@@ -806,7 +806,7 @@ await step(
     const late = { IMPORT_NOW: `${year}-12-20T10:00:00Z` };
     await run([], late);
     await run([], late);
-    const coverage = issues().filter((i) => i.key === "coverage");
+    const coverage = issues().filter((i) => i.key === "coverage:waste");
     check(
       coverage.length === 1 && coverage[0].state === "open",
       `coverage issues: ${coverage.length}`,
@@ -818,7 +818,7 @@ await step(
     );
     await run();
     check(
-      issues().find((i) => i.key === "coverage")?.state === "closed",
+      issues().find((i) => i.key === "coverage:waste")?.state === "closed",
       "not closed when covered",
     );
   },

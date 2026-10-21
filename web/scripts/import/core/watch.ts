@@ -31,7 +31,7 @@ export const linksHash = (links: string[]) =>
 /** The watched pages' schedule links (also the fallback detector). */
 export async function readWatched(source: Source, net: Http) {
   const pages: Array<{ url: string; links: string[]; ignore: string[] }> = [];
-  for (const w of source.watch) {
+  for (const w of source.watch ?? []) {
     const html = await (await net.get(w.url)).text();
     pages.push({
       url: w.url,

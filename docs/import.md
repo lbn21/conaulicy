@@ -30,7 +30,7 @@ For each source in `etl/sources.yaml`:
    - no village disappears from, or appears in, a gmina zone. City streets get the review PR above instead.
 6. **Apply.** The diff for the file's scope (zone and year) is written in one transaction, logged row by row in `import_changes` under a batch id, and the site is revalidated.
 
-Each run writes one `import_runs` row per source: status `no_change`, `applied`, `needs_review` or `failed`, plus counts, batch id, error and the Actions run URL. Then comes the **dead-man switch**: while any zone's last date is closer than `import.alerts.coverageMinDays` (21), one issue stays open. Every run also syncs `gminy.schedule_url` from `sources[].page`. If the gmina publishes a newer yearly post, an issue asks for the one-line config change.
+Each run writes one `import_runs` row per source: status `no_change`, `applied`, `needs_review` or `failed`, plus counts, batch id, error and the Actions run URL. Then comes the **dead-man switch**, for each domain that opts in with `domains.<domain>.coverageMinDays` (waste: 21): while any of its zones' last date is closer than that, one issue stays open (key `coverage:<domain>`). Every waste run also syncs `gminy.schedule_url` from `sources[].page`. If the gmina publishes a newer yearly post, an issue asks for the one-line config change.
 
 **Issues** carry a hidden key, one open issue per problem, and nobody gets email beyond GitHub's own notifications. The next run that no longer sees the problem closes the issue with a comment.
 
@@ -95,13 +95,13 @@ A reverted file stays settled: it is not re-applied until its source publishes a
 
 ### Adding a new source or domain
 
-- **Another source of an existing kind** (e.g. a third gmina's PDFs): add a `sources` entry with `domain: waste` and the existing `detect` and `extract` types.
+- **Another source of an existing kind** (e.g. a third gmina's PDFs): add a `sources` entry with `domain: waste`, the existing `detect` and `extract` types, and its `waste` block (`gmina`, `zone`, `validate`, optional `aliases`).
 - **A new kind of waste source:** write a detector or extractor in `web/scripts/import/waste/adapters.ts`, add its type name to the schema enum (`etl/sources.schema.json`), then add a `sources` entry.
 - **A new domain** (e.g. IMGW weather warnings, or water and power cuts posted on MZGKiM's RSS or the gmina's site), without touching waste code:
-  1. Create `web/scripts/import/<domain>/` exporting a `Domain` (`core/domain.ts`). It needs detectors that return one `Found` per published item, extractors that return that item's events with their scope, `detectFromPages` for when the API is down, and `check` with the domain's validations.
+  1. Create `web/scripts/import/<domain>/` exporting a `Domain` (`core/domain.ts`). It needs detectors that return one `Found` per published item, extractors that return that item's events with their scope, `detectFromPages` for when the API is down, `check` with the domain's validations, `rows` (its events as database rows), `configErrors` (its sources' rules beyond the schema) and `fixHint` (how to fix a blocked file, for the issue). Optional: `afterDetect` (e.g. waste keeps `gminy.schedule_url` in step with the config) and `coverageTitle` with `domains.<domain>.coverageMinDays` for the dead-man switch.
   2. Register it in `web/scripts/import/domains.ts`.
-  3. In `etl/sources.schema.json`, add its name to `sources.items.domain`, its types to the `detect` and `extract` enums, and any settings under `domains.<domain>`.
-  4. Add `domains.<domain>` and its `sources` entries (`domain: <domain>`) to `etl/sources.yaml`.
+  3. In `etl/sources.schema.json`, add its name to `sources.items.domain`, its types to the `detect` and `extract` enums (and its detectors' settings under `detect`), any settings under `domains.<domain>`, and its sources' own block under `sources.items.<domain>`.
+  4. Add `domains.<domain>` and its `sources` entries (`domain: <domain>`, with a `<domain>` block if it has one) to `etl/sources.yaml`.
   5. Run `npm run config:sync`. CI fails if a registered domain or type is missing from the schema, or the other way round.
   The core does the rest: fetching, archiving, watched pages, diffing, batches, issues, `import_runs` and revert.
 - **A domain on its own schedule:** today there is one daily schedule for all sources. To give a domain its own time, add an optional `schedule` under `domains.<domain>` (defaulting to the global one), make the due check in `core/run.ts` use it, and make `cronLines` emit the union of every domain's crons.

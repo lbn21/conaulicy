@@ -28,7 +28,7 @@ export const EVENT_FIELDS: Array<[string, string]> = [
 
 const columns = EVENT_FIELDS.map(([, c]) => `"${c}"`).join(", ");
 
-/** Events of one zone from..to (ISO dates), as rows comparable with transform()'s. */
+/** Events of one zone from..to (ISO dates), as rows comparable with Domain.rows'. */
 export async function scopeEvents(
   db: Queryable,
   zoneId: string,

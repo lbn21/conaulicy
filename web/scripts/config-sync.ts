@@ -18,6 +18,7 @@ import {
   SCHEMA_FILE,
 } from "./import/core/config.ts";
 import { DOMAINS } from "./import/domains.ts";
+import type { WasteSource } from "./import/waste/adapters.ts";
 
 const check = process.argv.includes("--check");
 const config = loadConfig();
@@ -54,8 +55,11 @@ export function sourcesMarkdown(c: Config): string {
 }
 
 export function siteModule(c: Config): string {
+  // The waste sources' gminy only: another domain's page is not a schedule.
   const pages = Object.fromEntries(
-    c.sources.map((s) => [s.gmina.teryt, s.page]),
+    c.sources
+      .filter((s) => s.domain === "waste")
+      .map((s) => [(s as WasteSource).waste.gmina.teryt, s.page]),
   );
   return [
     `// ${GENERATED}`,

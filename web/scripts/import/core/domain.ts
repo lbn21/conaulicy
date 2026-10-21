@@ -1,11 +1,12 @@
-// What a domain (waste schedules; later e.g. weather warnings or water cuts)
-// plugs into the shared import: its detector and extractor types, by the names
-// used in etl/sources.yaml, and its checks. The core (run.ts) does the rest:
-// fetching, archiving, watching pages, diffing, batches, issues, logging.
+// What a domain (e.g. waste schedules, weather warnings or water cuts) plugs
+// into the shared import: its detector and extractor types, by the names used
+// in etl/sources.yaml, its config rules, its checks and its database rows.
+// The core (run.ts) does the rest: fetching, archiving, watching pages,
+// diffing, batches, issues, logging.
 
-import type { Etl } from "../../lib/import-data.ts";
 import type { Config, Source } from "./config.ts";
 import type { Queryable } from "./db.ts";
+import type { EventRow } from "./events.ts";
 import type { Http } from "./http.ts";
 import type { Issues } from "./issues.ts";
 import type { Reviews } from "./review.ts";
@@ -25,19 +26,16 @@ export type Detection = {
   unrecognised: string[];
   via: "api" | "page";
 };
-export type Detector = (
-  source: Source,
-  site: string,
-  net: Http,
-) => Promise<Detection>;
+export type Detector = (source: Source, net: Http) => Promise<Detection>;
 
+/** One file's events, for one zone (a location in the shared events table). */
 export type Extracted = {
   zoneId: string;
   /** The range the import replaces: events of the zone from..to (ISO dates). */
   scope: { from: string; to: string };
-  year: number;
-  events: Etl["events"];
-  /** Places or streets the file lists, for the member checks. */
+  /** The domain's events, turned into database rows by Domain.rows. */
+  events: unknown[];
+  /** What the file says it covers, for the domain's checks. */
   listed: string[];
   problems: string[];
 };
@@ -53,6 +51,19 @@ export type Extractor = (input: {
 export type Domain = {
   detectors: Record<string, Detector>;
   extractors: Record<string, Extractor>;
+  /** Rules for one of its sources beyond the schema; [] when sound. */
+  configErrors(source: Source): string[];
+  /**
+   * After detection, before any file (not with --extract-only): e.g. keep
+   * the database in step with the config. True if the site needs a refresh.
+   */
+  afterDetect?(input: {
+    db: Queryable;
+    source: Source;
+    detection: Detection;
+    issues: Issues;
+    dryRun: boolean;
+  }): Promise<boolean>;
   /** Detection from the watched pages, when the source's API is down. */
   detectFromPages(
     source: Source,
@@ -77,4 +88,18 @@ export type Domain = {
     dryRun: boolean;
     runUrl: string;
   }): Promise<string[]>;
+  /**
+   * One file's events as database rows; checkedAt: the day the file was last
+   * compared with the original.
+   */
+  rows(input: {
+    out: Extracted;
+    zoneName: string;
+    doc: string;
+    checkedAt: string;
+  }): EventRow[];
+  /** How to fix what blocks one of its files, in that issue: "Fix the cause (…)". */
+  fixHint: string;
+  /** The dead-man switch's issue title (domains.<name>.coverageMinDays opts in). */
+  coverageTitle?: string;
 };

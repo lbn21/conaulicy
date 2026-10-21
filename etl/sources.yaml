@@ -28,13 +28,13 @@ schedule:
 import:
   # Network calls: attempts, first backoff (doubles each time).
   retries: { attempts: 4, backoffSeconds: 5 }
-  alerts:
-    # Dead-man switch: one issue while any zone's last date is closer than this.
-    coverageMinDays: 21
 
 # Each domain's own settings (web/scripts/import/<domain>/).
 domains:
   waste:
+    # Dead-man switch (opt-in per domain): one issue while any of its zones' last
+    # date is closer than this.
+    coverageMinDays: 21
     validate:
       # A row's usual weekday is the one holding at least this share of dates.
       weekdayShare: 0.6
@@ -66,15 +66,14 @@ archive:
 
 sources:
   # Each source: its domain, a detector (finds the published files), an
-  # extractor (reads them into events) and validators. Domains are registered
-  # in web/scripts/import/domains.ts, their types in each domain's folder; a
-  # new domain (e.g. water cuts announced as posts) is a new folder plus an
-  # entry here (docs/import.md).
+  # extractor (reads them into events), and its domain's own settings under
+  # the domain's name. Domains are registered in web/scripts/import/domains.ts,
+  # their types in each domain's folder; a new domain (e.g. water cuts
+  # announced as posts) is a new folder plus an entry here (docs/import.md).
   - id: gmina
     domain: waste
     name: Gmina Lubaczów
     origin: gmina
-    gmina: { id: lubaczow-gmina, teryt: "1809042" }
     # The public page the site links to (never the archive).
     page: https://www.gminalubaczow.pl/2026/01/02/harmonogram-odbioru-odpadow-komunalnych-na-rok-2026/
     detect:
@@ -91,15 +90,16 @@ sources:
       # Search, newest first: a new yearly post shows up here.
       - url: https://www.gminalubaczow.pl/?s=harmonogram+odbioru&orderby=date&order=DESC
         links: '^https://www\.gminalubaczow\.pl/\d{4}/\d{2}/\d{2}/harmonogram-odbioru-odpadow[^/]*/$'
-    zone: waste:gmina-s{sector}
     extract: { type: gmina-pdf-text }
-    validate: [year, weekday, counts, villages]
+    waste:
+      gmina: { id: lubaczow-gmina, teryt: "1809042" }
+      zone: waste:gmina-s{sector}
+      validate: [year, weekday, counts, villages]
 
   - id: miasto
     domain: waste
     name: Miasto Lubaczów
     origin: miasto
-    gmina: { id: lubaczow-miasto, teryt: "1809011" }
     page: https://czystylubaczow.info/odbior-odpadow/harmonogram-odbioru-odpadow/
     detect:
       type: wp-media
@@ -112,16 +112,18 @@ sources:
         links: '^https://czystylubaczow\.info/wp-content/uploads/.+(?<!-\d+x\d+)\.(jpe?g|png|pdf)$'
       - url: https://czystylubaczow.info/?s=harmonogram&orderby=date&order=DESC
         links: '^https://czystylubaczow\.info/[^?#]*harmonogram[^?#]*/$'
-    zone: waste:miasto-s{sector}
     # No text layer: the vision passes above; applied only if they agree 100%.
     extract: { type: miasto-jpg-vision }
-    validate: [year, weekday, counts, streets]
-    aliases:
-      Monte Casino: Monte Cassino
-      Józefa Conrada-Korzeniowskiego: Józefa Conrad-Korzeniowskiego
-      Jagiellonów: Osiedle Jagiellonów
-      Gen. Józefa Hallera: gen. Hallera
-      Mjr. Henryka Hubala: Mjr. Hubala
+    waste:
+      gmina: { id: lubaczow-miasto, teryt: "1809011" }
+      zone: waste:miasto-s{sector}
+      validate: [year, weekday, counts, streets]
+      aliases:
+        Monte Casino: Monte Cassino
+        Józefa Conrada-Korzeniowskiego: Józefa Conrad-Korzeniowskiego
+        Jagiellonów: Osiedle Jagiellonów
+        Gen. Józefa Hallera: gen. Hallera
+        Mjr. Henryka Hubala: Mjr. Hubala
 
 # The initial archive (Oct 2026), in the private bucket under
 # sources/<origin>/<fetched>/<file>; `npm run sources:pull` fetches it.

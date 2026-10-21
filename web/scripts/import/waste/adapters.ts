@@ -9,6 +9,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import type { Etl } from "../../lib/import-data.ts";
 import type { Config, Source } from "../core/config.ts";
 import type {
   Detection as CoreDetection,
@@ -31,12 +32,29 @@ import {
 
 // ------------------------------------------------------------------ detect
 
+/** A waste source: its detector's settings, and its waste block. */
+export type WasteSource = Source & {
+  detect: {
+    site: string;
+    parent?: number;
+    postSearch?: string;
+    postTitle?: string;
+    file: string;
+  };
+  waste: {
+    gmina: { id: string; teryt: string };
+    zone: string;
+    validate: string[];
+    aliases?: Record<string, string>;
+  };
+};
+
 /** A schedule file: one sector's schedule for one year. */
 export type Found = CoreFound & { sector: number; year: number };
 export type Detection = CoreDetection & { files: Found[] };
-type Detector = (source: Source, site: string, net: Http) => Promise<Detection>;
+type Detector = (source: WasteSource, net: Http) => Promise<Detection>;
 
-const nameMatch = (source: Source, name: string) =>
+const nameMatch = (source: WasteSource, name: string) =>
   new RegExp(source.detect.file).exec(name)?.groups;
 
 /** Only the newest schedule year counts; older files are history. */
@@ -47,7 +65,8 @@ function latestYear(files: Found[]): Found[] {
 
 export const DETECTORS: Record<string, Detector> = {
   /** Media attached to one page (the city's schedule page). */
-  async "wp-media"(source, site, net) {
+  async "wp-media"(source, net) {
+    const { site } = source.detect;
     const items = (await (
       await net.get(
         `${site}/wp-json/wp/v2/media?parent=${source.detect.parent}&per_page=100`,
@@ -96,8 +115,8 @@ export const DETECTORS: Record<string, Detector> = {
   },
 
   /** Files linked from the newest yearly schedule post (the gmina's PDFs). */
-  async "wp-post-files"(source, site, net) {
-    const { postSearch, postTitle } = source.detect;
+  async "wp-post-files"(source, net) {
+    const { site, postSearch, postTitle } = source.detect;
     const posts = (await (
       await net.get(
         `${site}/wp-json/wp/v2/posts?search=${encodeURIComponent(postSearch ?? "")}&per_page=10&_fields=id,link,title,content`,
@@ -166,7 +185,7 @@ export const DETECTORS: Record<string, Detector> = {
 
 /** Detection from the watched pages, when the WordPress API is down. */
 export function detectFromPages(
-  source: Source,
+  source: WasteSource,
   pages: Array<{ links: string[] }>,
 ): Detection {
   const files: Found[] = [];
@@ -196,6 +215,8 @@ export function detectFromPages(
 // ------------------------------------------------------------------ extract
 
 export type Extracted = CoreExtracted & {
+  year: number;
+  events: Etl["events"];
   /** Vision only: each pass's streets, checked for review, never applied. */
   streetReadings?: string[][];
   /** Vision only: each pass's reading; disagree: a review PR decides. */
@@ -203,7 +224,7 @@ export type Extracted = CoreExtracted & {
   disagree?: boolean;
 };
 type Extractor = (input: {
-  source: Source;
+  source: WasteSource;
   config: Config;
   file: Found;
   body: Buffer;
@@ -212,14 +233,14 @@ type Extractor = (input: {
 }) => Promise<Extracted>;
 
 const schedule = (
-  source: Source,
+  source: WasteSource,
   file: Found,
   ref: { doc: string; url: string; sha256: string },
   rows: Record<string, number[][]>,
   fractions: Record<string, string[]>,
   listed: string[],
 ): Extracted => {
-  const zoneId = source.zone.replace("{sector}", String(file.sector));
+  const zoneId = source.waste.zone.replace("{sector}", String(file.sector));
   const built = rowsToEvents(zoneId, file.year, rows, fractions, ref);
   return {
     zoneId,
