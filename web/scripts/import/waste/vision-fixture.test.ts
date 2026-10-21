@@ -16,11 +16,8 @@ test("the five real Grok replies parse; streets go to review only where they dif
     return streetReview(zone, [reading.streets], members, aliases);
   });
   assert.deepEqual(flagged, [
-    // The image gives the full name; the database has the short one.
-    [
-      "waste:miasto-s1: „Mjr. Henryka Hubala” is not a member now (pass 1)",
-      "waste:miasto-s1: „Mjr. Hubala” is no longer listed (pass 1)",
-    ],
+    // Full names on the image, short ones in the database: aliases.
+    [],
     [],
     [],
     // Misread by the model.
@@ -28,9 +25,6 @@ test("the five real Grok replies parse; streets go to review only where they dif
       "waste:miasto-s4: „Gen. Antoniego Jeziorskiego” is not a member now (pass 1)",
       "waste:miasto-s4: „Gen. Antoniego Jeziorańskiego” is no longer listed (pass 1)",
     ],
-    [
-      "waste:miasto-s5: „Gen. Józefa Hallera” is not a member now (pass 1)",
-      "waste:miasto-s5: „gen. Hallera” is no longer listed (pass 1)",
-    ],
+    [],
   ]);
 });

@@ -120,6 +120,8 @@ sources:
       Monte Casino: Monte Cassino
       Józefa Conrada-Korzeniowskiego: Józefa Conrad-Korzeniowskiego
       Jagiellonów: Osiedle Jagiellonów
+      Gen. Józefa Hallera: gen. Hallera
+      Mjr. Henryka Hubala: Mjr. Hubala
 
 # The initial archive (Oct 2026), in the private bucket under
 # sources/<origin>/<fetched>/<file>; `npm run sources:pull` fetches it.
