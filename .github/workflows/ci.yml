@@ -118,5 +118,5 @@ jobs:
       - name: "Importer (synthetic dataset: dry run, apply, guards)"
         run: node scripts/check-import.mjs
 
-      - name: "Schedule import (made-up sources: apply, revert, issues, fallback, dead-man switch)"
-        run: node scripts/check-import-schedules.mjs
+      - name: "Unattended import (made-up waste sources: apply, revert, issues, fallback, dead-man switch)"
+        run: node scripts/check-import-run.mjs

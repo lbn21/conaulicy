@@ -1,6 +1,6 @@
 // npm run import:revert -- <batch id> [--dry-run]
 //
-// Undoes one batch of the unattended schedule import (docs/import-schedules.md)
+// Undoes one batch of the unattended import (docs/import.md)
 // in one transaction: inserted events are deleted, changed ones restored,
 // deleted ones put back. The undo is logged as batch "revert-<batch id>" and
 // as an import_runs row, so a batch is reverted at most once. Refuses if an
@@ -11,9 +11,9 @@
 import { randomUUID } from "node:crypto";
 import { parseArgs } from "node:util";
 import pg from "pg";
-import { loadConfig } from "../config.ts";
+import { loadConfig } from "./config.ts";
+import { diffEvents, type EventRow } from "./events.ts";
 import { EVENT_FIELDS, type Op, writeChange } from "./events-db.ts";
-import { diffEvents, type EventRow } from "./lib.ts";
 
 const { values: args, positionals } = parseArgs({
   allowPositionals: true,

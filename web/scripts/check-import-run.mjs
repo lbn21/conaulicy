@@ -1,5 +1,5 @@
-// End-to-end check of the unattended schedule import (scripts/schedules/,
-// docs/import-schedules.md) on made-up schedules, never the real ones: a
+// End-to-end check of the unattended import (scripts/import/, its waste
+// domain; docs/import.md) on made-up schedules, never the real ones: a
 // first import, a quiet day, a changed file applied automatically and
 // reverted; every road to an issue instead of an apply (a broken PDF, vision
 // passes that disagree or are not JSON, a date off its weekday, a new link on
@@ -24,10 +24,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import pg from "pg";
 import { stringify } from "yaml";
-import { loadConfig } from "./config.ts";
+import { loadConfig } from "./import/core/config.ts";
+import { fold, MIASTO_ROWS } from "./import/waste/lib.ts";
 import { localDatabaseUrl } from "./lib/local-db.ts";
 import { fortnightly, gminaPdf } from "./lib/schedule-fixture.ts";
-import { fold, MIASTO_ROWS } from "./schedules/lib.ts";
 
 const failures = [];
 const check = (ok, message) => {
@@ -265,8 +265,8 @@ const node = (script, args, extra = {}) =>
     ),
   );
 const run = (args = [], extra = {}) =>
-  node("scripts/schedules/run.ts", args, extra);
-const revert = (...args) => node("scripts/schedules/revert.ts", args);
+  node("scripts/import/core/run.ts", args, extra);
+const revert = (...args) => node("scripts/import/core/revert.ts", args);
 const lastRuns = async () =>
   Object.fromEntries(
     (

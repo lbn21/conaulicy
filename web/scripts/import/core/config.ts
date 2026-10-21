@@ -2,16 +2,19 @@
 // detection, schedule, models, thresholds, alerts, archive, site features),
 // and checks it against etl/sources.schema.json plus the rules a schema
 // cannot express. Everything derived from it is in scripts/config-sync.ts.
+// Each domain's own settings (domains.<name>) are typed by that domain.
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
 
-export const ROOT = path.resolve(import.meta.dirname, "../..");
+export const ROOT = path.resolve(import.meta.dirname, "../../../..");
 export const CONFIG_FILE = path.join(ROOT, "etl/sources.yaml");
 export const SCHEMA_FILE = path.join(ROOT, "etl/sources.schema.json");
 
 export type Source = {
   id: string;
+  /** Its domain (../domains.ts): what its files mean and how they are checked. */
+  domain: string;
   name: string;
   origin: string;
   gmina: { id: string; teryt: string };
@@ -42,13 +45,9 @@ export type Config = {
   schedule: { enabled: boolean; time: string; timezone: string };
   import: {
     retries: { attempts: number; backoffSeconds: number };
-    validate: {
-      weekdayShare: number;
-      holidayWindowDays: number;
-      counts: { factor: number; slack: number; minMonths: number };
-    };
     alerts: { coverageMinDays: number };
   };
+  domains: Record<string, unknown>;
   vision: { cli: string; passes: Array<{ vendor: string; model: string }> };
   archive: { bucket: string; region: string; role: string };
   sources: Source[];

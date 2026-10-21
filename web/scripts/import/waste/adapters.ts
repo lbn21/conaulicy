@@ -1,25 +1,22 @@
-// Source adapters for the unattended import, by the type names used in
+// The waste domain's source adapters, by the type names used in
 // etl/sources.yaml. A detector finds a source's published files; an extractor
 // turns one file into events for one zone and a date range (its scope, which
-// the import diffs and replaces). Logging, issues, validation, batches and
-// revert are shared (run.ts), so a new kind of source is a new detector or
-// extractor here plus config. E.g. water cuts announced as posts (MZGKiM RSS,
-// gmina WP posts): a "rss" or "wp-posts" detector returning one Found per
-// post, and an "announcement-post" extractor returning that post's events,
-// scope = the zone(s) and dates it covers.
+// the import diffs and replaces). Fetching, logging, issues, batches and
+// revert are the core's (../core/), so a new kind of waste source is a new
+// detector or extractor here plus config; a new domain is its own folder
+// (docs/import.md).
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import type { Config, Source } from "../config.ts";
-import type { Etl } from "../lib/import-data.ts";
+import type { Config, Source } from "../core/config.ts";
+import type {
+  Detection as CoreDetection,
+  Extracted as CoreExtracted,
+  Found as CoreFound,
+} from "../core/domain.ts";
+import type { Http } from "../core/http.ts";
+import { visionPasses } from "../core/vision.ts";
 import {
   compareReadings,
   GMINA_ROWS,
@@ -29,61 +26,11 @@ import {
   rowsToEvents,
 } from "./lib.ts";
 
-const UA = "conaulicy-import (+https://conaulicy.pl)";
-
-// ------------------------------------------------------------------ http
-
-export type Http = { get(url: string): Promise<Response> };
-
-/** GET with retries and doubling backoff on network errors, 429 and 5xx. */
-export function http(retries: Config["import"]["retries"]): Http {
-  return {
-    async get(url) {
-      let last: Error = new Error(`GET ${url}: no attempt`);
-      for (let attempt = 1; attempt <= retries.attempts; attempt++) {
-        try {
-          const response = await fetch(url, {
-            headers: { "User-Agent": UA },
-            signal: AbortSignal.timeout(60_000),
-          });
-          if (response.ok) return response;
-          last = new Error(`GET ${url}: HTTP ${response.status}`);
-          if (response.status !== 429 && response.status < 500) throw last;
-        } catch (error) {
-          last = error as Error;
-          if (/HTTP 4\d\d/.test(last.message) && !/HTTP 429/.test(last.message))
-            throw last;
-        }
-        if (attempt < retries.attempts) {
-          const wait = retries.backoffSeconds * 1000 * 2 ** (attempt - 1);
-          console.log(
-            `  retry ${attempt}/${retries.attempts - 1} in ${wait / 1000}s: ${last.message}`,
-          );
-          await new Promise((resolve) => setTimeout(resolve, wait));
-        }
-      }
-      throw last;
-    },
-  };
-}
-
 // ------------------------------------------------------------------ detect
 
-export type Found = {
-  name: string;
-  url: string;
-  mediaId: number | null;
-  modified: string | null;
-  sector: number;
-  year: number;
-};
-export type Detection = {
-  files: Found[];
-  /** The public page the files were found on, if the detector knows it. */
-  page: string | null;
-  unrecognised: string[];
-  via: "api" | "page";
-};
+/** A schedule file: one sector's schedule for one year. */
+export type Found = CoreFound & { sector: number; year: number };
+export type Detection = CoreDetection & { files: Found[] };
 type Detector = (source: Source, site: string, net: Http) => Promise<Detection>;
 
 const nameMatch = (source: Source, name: string) =>
@@ -214,43 +161,6 @@ export const DETECTORS: Record<string, Detector> = {
 
 // ------------------------------------------------------------------ pages
 
-/** Absolute links in a page that match a pattern, sorted, without repeats. */
-export function pageLinks(
-  html: string,
-  base: string,
-  pattern: string,
-): string[] {
-  const re = new RegExp(pattern);
-  const links = new Set<string>();
-  for (const [, raw] of html.matchAll(/\b(?:href|src)="([^"]+)"/g)) {
-    try {
-      const url = new URL(
-        raw.replaceAll("&#038;", "&").replaceAll("&amp;", "&"),
-        base,
-      ).href;
-      if (re.test(url)) links.add(url);
-    } catch {}
-  }
-  return [...links].sort();
-}
-
-export const linksHash = (links: string[]) =>
-  createHash("sha256").update(links.join("\n")).digest("hex");
-
-/** The watched pages' schedule links (also the fallback detector). */
-export async function readWatched(source: Source, net: Http) {
-  const pages: Array<{ url: string; links: string[]; ignore: string[] }> = [];
-  for (const w of source.watch) {
-    const html = await (await net.get(w.url)).text();
-    pages.push({
-      url: w.url,
-      links: pageLinks(html, w.url, w.links),
-      ignore: w.ignore ?? [],
-    });
-  }
-  return pages;
-}
-
 /** Detection from the watched pages, when the WordPress API is down. */
 export function detectFromPages(
   source: Source,
@@ -282,17 +192,9 @@ export function detectFromPages(
 
 // ------------------------------------------------------------------ extract
 
-export type Extracted = {
-  zoneId: string;
-  /** The range the import replaces: events of the zone from..to (ISO dates). */
-  scope: { from: string; to: string };
-  year: number;
-  events: Etl["events"];
-  /** Places or streets the file lists, for the member checks. */
-  listed: string[];
+export type Extracted = CoreExtracted & {
   /** Vision only: each pass's streets, checked for review, never applied. */
   streetReadings?: string[][];
-  problems: string[];
 };
 type Extractor = (input: {
   source: Source;
@@ -353,7 +255,12 @@ export const EXTRACTORS: Record<string, Extractor> = {
   /** Two Cursor CLI vision passes from different vendors; both must agree. */
   async "miasto-jpg-vision"({ source, config, file, body, doc, digest }) {
     const rows = Object.keys(MIASTO_ROWS);
-    const outputs = visionPasses(source, config, file, body, rows);
+    const outputs = visionPasses(
+      config,
+      body,
+      (image) => VISION_PROMPT(image, rows),
+      `${source.id}-s${file.sector}-${file.year}`,
+    );
     const readings = outputs.map((o, i) => {
       try {
         return parseVisionJson(o, rows);
@@ -395,97 +302,3 @@ const VISION_PROMPT = (image: string, rows: string[]) =>
       .join(", ")}}}`,
     `Rows in table order: ${rows.join("; ")}. A cell with no date is []. Days are integers.`,
   ].join("\n");
-
-/** The raw text of each pass (CURSOR_AGENT_MOCK: files instead, for tests). */
-function visionPasses(
-  source: Source,
-  config: Config,
-  file: Found,
-  body: Buffer,
-  rows: string[],
-): string[] {
-  const passes = config.vision.passes;
-  const mock = process.env.CURSOR_AGENT_MOCK;
-  if (mock)
-    return passes.map((_, i) => {
-      const f = path.join(
-        mock,
-        `${source.id}-s${file.sector}-${file.year}.pass-${i + 1}.json`,
-      );
-      if (!existsSync(f)) throw new Error(`mock pass ${i + 1} missing`);
-      return readFileSync(f, "utf8");
-    });
-  if (!process.env.CURSOR_API_KEY)
-    throw new Error(
-      "CURSOR_API_KEY is not set, so the city JPG cannot be read automatically (repository secret).",
-    );
-  // The account's models (`agent models`; older builds: --list-models).
-  let listing = spawnSync("agent", ["models"], {
-    encoding: "utf8",
-    timeout: 120_000,
-  });
-  if (listing.status !== 0)
-    listing = spawnSync("agent", ["--list-models"], {
-      encoding: "utf8",
-      timeout: 120_000,
-    });
-  if (listing.status !== 0)
-    throw new Error(
-      `cannot list the Cursor models (exit ${listing.status}): ${(listing.stderr || listing.stdout || String(listing.error ?? "")).trim().slice(0, 300)}`,
-    );
-  const available = new Set(
-    listing.stdout.match(/[a-z0-9][a-z0-9.-]*[a-z0-9]/g) ?? [],
-  );
-  for (const p of passes)
-    if (!available.has(p.model))
-      throw new Error(
-        `model ${p.model} (${p.vendor}) is not available to this Cursor account; update vision.passes in etl/sources.yaml. Available: ${[
-          ...available,
-        ]
-          .filter((m) => /\d/.test(m))
-          .join(", ")
-          .slice(0, 1500)}`,
-      );
-  return passes.map((pass) => {
-    // An empty workspace holding only the image; the agent may read it and
-    // nothing else (no shell, writes, web or MCP). Everything else (git, DB,
-    // S3, issues) is done by this script, never by the agent.
-    const work = mkdtempSync(path.join(tmpdir(), "vision-"));
-    writeFileSync(path.join(work, "schedule.jpg"), body);
-    mkdirSync(path.join(work, ".cursor"));
-    writeFileSync(
-      path.join(work, ".cursor/cli.json"),
-      JSON.stringify({
-        permissions: {
-          allow: ["Read(schedule.jpg)"],
-          deny: ["Shell(*)", "Write(**)", "WebFetch(*)", "Mcp(*:*)"],
-        },
-      }),
-    );
-    const run = spawnSync(
-      "agent",
-      [
-        "-p",
-        "--output-format",
-        "json",
-        "--mode",
-        "ask",
-        "--trust",
-        "--workspace",
-        work,
-        "--model",
-        pass.model,
-        VISION_PROMPT("./schedule.jpg", rows),
-      ],
-      { cwd: work, encoding: "utf8", timeout: 15 * 60_000, maxBuffer: 1 << 26 },
-    );
-    if (run.status !== 0)
-      throw new Error(
-        `${pass.model}: agent exited ${run.status}: ${(run.stderr ?? "").slice(0, 300)}`,
-      );
-    // Any prose or fence around the JSON is dropped by parseVisionJson.
-    return String(
-      (JSON.parse(run.stdout) as { result?: unknown }).result ?? "",
-    );
-  });
-}

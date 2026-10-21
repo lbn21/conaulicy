@@ -26,8 +26,8 @@
     "db:migrate": "node --env-file-if-exists=.env.local node_modules/drizzle-kit/bin.cjs migrate",
     "db:ci-fixture": "node --env-file-if-exists=.env.local scripts/ci-fixture.ts",
     "db:import": "node --env-file-if-exists=.env.local scripts/import.ts",
-    "import:schedules": "node --env-file-if-exists=.env.local scripts/schedules/run.ts",
-    "import:revert": "node --env-file-if-exists=.env.local scripts/schedules/revert.ts",
+    "import:run": "node --env-file-if-exists=.env.local scripts/import/core/run.ts",
+    "import:revert": "node --env-file-if-exists=.env.local scripts/import/core/revert.ts",
     "test": "node --test \"lib/**/*.test.ts\" \"scripts/**/*.test.ts\""
   },
   "dependencies": {

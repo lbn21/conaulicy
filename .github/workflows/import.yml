@@ -1,8 +1,8 @@
-# The unattended schedule import (docs/import-schedules.md): GitHub-hosted
+# The unattended import (docs/import.md), every domain: GitHub-hosted
 # runner, no approvals, no people. A change that passes every check is
 # applied; anything else becomes an issue, closed by the next clean run.
 # Configured in etl/sources.yaml (CI fails if this file drifts from it).
-name: import-schedules
+name: import
 
 on:
   # Cron lines are derived from schedule in etl/sources.yaml: one per UTC
@@ -27,7 +27,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: import-schedules
+  group: import
   cancel-in-progress: false
 
 jobs:
@@ -83,7 +83,7 @@ jobs:
             */apply) flags="" ;;
           esac
           [ "$FORCE" = "true" ] && flags="$flags --force-extract"
-          node scripts/schedules/run.ts $flags
+          node scripts/import/core/run.ts $flags
         env:
           EVENT: ${{ github.event_name }}
           MODE: ${{ inputs.mode }}
@@ -102,9 +102,9 @@ jobs:
         run: |
           number=$(gh issue list --repo "$REPO" --state open --search "[import] in:title" --limit 200 --json number,body \
             -q '.[] | select(.body | contains("<!-- import-key: workflow -->")) | .number' | head -1)
-          body="The schedule import failed before it could report: $RUN"
+          body="The import failed before it could report: $RUN"
           if [ -n "$number" ]; then gh issue comment "$number" --repo "$REPO" --body "$body"
-          else gh issue create --repo "$REPO" --title "[import] Workflow import-schedules failed" \
+          else gh issue create --repo "$REPO" --title "[import] Workflow import failed" \
             --body "$body"$'\n\n'"<!-- import-key: workflow -->"; fi
         env:
           GH_TOKEN: ${{ github.token }}

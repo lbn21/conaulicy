@@ -1,10 +1,10 @@
-// Made-up schedules for scripts/check-import-schedules.mjs: a gmina PDF with
+// Made-up schedules for scripts/check-import-run.mjs: a gmina PDF with
 // a real text layer (pdfkit, laid out like the published ones, so the real
 // pdftotext parser runs) and the two vision readings of a city JPG. Never
 // real data.
 import path from "node:path";
 import PDFDocument from "pdfkit";
-import { MONTHS } from "../schedules/lib.ts";
+import { MONTHS } from "../import/waste/lib.ts";
 
 const FONT = path.join(
   import.meta.dirname,

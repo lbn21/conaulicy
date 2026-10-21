@@ -1,9 +1,12 @@
-# Unattended schedule import
+# Unattended import
 
-Every day, a GitHub Actions workflow checks the town's and the gmina's published waste schedules. A change that passes every check goes live on its own. Anything doubtful opens a GitHub issue instead, and nothing is applied. People only step in when an issue opens.
+Every day, a GitHub Actions workflow checks the sources in `etl/sources.yaml`. Today that is one domain, waste: the town's and the gmina's published schedules. A change that passes every check goes live on its own. Anything doubtful opens a GitHub issue instead, and nothing is applied. People only step in when an issue opens.
 
-- Workflow: `.github/workflows/import-schedules.yml`. It runs on GitHub-hosted runners with no approval gates. Its only services are Neon, S3 (through an OIDC role) and Cursor CLI.
-- Code: `web/scripts/schedules/` (`run.ts`, `adapters.ts`, `lib.ts`, `events-db.ts`, `issues.ts`, `revert.ts`).
+- Workflow: `.github/workflows/import.yml`. It runs on GitHub-hosted runners with no approval gates. Its only services are Neon, S3 (through an OIDC role) and Cursor CLI.
+- Code: `web/scripts/import/`.
+  - `core/` is shared by every domain: the run loop (`run.ts`), config, HTTP retries, watched pages, the vision runner and JSON extraction, issues, the events diff, batches and revert.
+  - `waste/` is the waste domain: detectors and extractors (`adapters.ts`), parsing and validation (`lib.ts`) and its checks (`check.ts`).
+  - `domains.ts` registers the domains.
 - Config: **`etl/sources.yaml`**, the one config. A schema (`etl/sources.schema.json`) checks it, and `npm run config:check` fails CI if anything derived from it has drifted. That covers `docs/data/sources.md`, `web/lib/config.generated.ts` (footer features and public schedule pages), the workflow's cron lines, and the adapter types.
 
 ## What a run does
@@ -18,7 +21,7 @@ For each source in `etl/sources.yaml`:
    - City JPGs have no text layer. Two Cursor CLI vision passes from different vendors (`vision.passes`) read each one, and each pass must return JSON matching a strict schema. Prose or a code fence around the JSON is dropped: the first balanced object is taken. The dates are applied only if both readings agree 100% on sector, year and every date.
    - Streets are never taken from a model. Each pass's street list is checked against the zone's streets in the database (`streetKey`, plus `aliases`). A difference does not block the dates. Instead it opens one issue per zone, `streets:<zone>`, for a person to check. That issue is not closed automatically.
    - The agent runs in an empty workspace holding only the image, with `permissions` denying shell, writes, web and MCP. Git, the database, S3 and issues are handled by the script, never by the agent.
-5. **Validate.** The thresholds live in `import.validate`:
+5. **Validate.** The domain checks each file. For waste, the thresholds live in `domains.waste.validate`:
    - every date is in the schedule year;
    - each row keeps its usual weekday, unless a public holiday explains the move or the date is approved in `etl/review/approvals.yaml`;
    - dates per fraction stay within a sane range of last year;
@@ -36,7 +39,7 @@ Each run writes one `import_runs` row per source: status `no_change`, `applied`,
 
 **Schedule:** `schedule.time` is in `schedule.timezone`. GitHub cron is UTC-only, so the workflow carries one cron per UTC offset (`0 3 * * *` for CEST, `0 4 * * *` for CET), and `--scheduled` runs only the sources that are due. A source is due once the time has passed today and no run has finished today, so the second cron is a free retry. **The schedule is off** (`schedule.enabled: false`, no cron lines) until Jakub's first production run.
 
-**Adding a new kind of source** (e.g. water cuts posted on MZGKiM's RSS or the gmina's site): write a detector that returns one `Found` per post and an extractor that returns that post's events with its scope, both registered in `adapters.ts`. Add their type names to the schema enum, then a `sources` entry. Logging, issues, validation, batches and revert stay as they are.
+**Adding a source or a domain:** see the RUNBOOK below.
 
 ## Secrets and access
 
@@ -49,12 +52,12 @@ Each run writes one `import_runs` row per source: status `no_change`, `applied`,
 
 ## RUNBOOK
 
-**Run it by hand.** Actions → import-schedules → Run workflow, from `main`. Pick a mode:
+**Run it by hand.** Actions → import → Run workflow, from `main`. Pick a mode:
 - `extract-only`: no database. It reads every file, including both vision passes, and prints what it found.
 - `dry-run`: compares with the database and writes only the `import_runs` row.
 - `apply`: the real import.
 
-`force_extract` re-reads files that are already known; with `dry-run` it proves the extraction still reproduces the database. Locally, without the vision key: `cd web && npm run import:schedules -- --read-only --force-extract`.
+`force_extract` re-reads files that are already known; with `dry-run` it proves the extraction still reproduces the database. Locally, without the vision key: `cd web && npm run import:run -- --read-only --force-extract`.
 
 **Revert a batch.** The batch id is in the `import_runs` row and the run log.
 
@@ -70,6 +73,19 @@ A reverted file stays settled: it is not re-applied until its source publishes a
 
 **Accept a flagged date.** Check it against the source, then add `{ zone_id, date, note }` to `etl/review/approvals.yaml` in a PR. The next run applies the schedule and closes the issue.
 
-**Add or change a source, URL, time, model or threshold.** Edit `etl/sources.yaml`, run `cd web && npm run config:sync` (it rewrites everything derived, and prints the cron lines if the schedule changed), and open a PR. CI checks the schema and drift. New detector or extractor kinds need code in `adapters.ts`, as described above.
+**Add or change a source, URL, time, model or threshold.** Edit `etl/sources.yaml`, run `cd web && npm run config:sync` (it rewrites everything derived, and prints the cron lines if the schedule changed), and open a PR. CI checks the schema and drift.
+
+### Adding a new source or domain
+
+- **Another source of an existing kind** (e.g. a third gmina's PDFs): add a `sources` entry with `domain: waste` and the existing `detect` and `extract` types.
+- **A new kind of waste source:** write a detector or extractor in `web/scripts/import/waste/adapters.ts`, add its type name to the schema enum (`etl/sources.schema.json`), then add a `sources` entry.
+- **A new domain** (e.g. IMGW weather warnings, or water and power cuts posted on MZGKiM's RSS or the gmina's site), without touching waste code:
+  1. Create `web/scripts/import/<domain>/` exporting a `Domain` (`core/domain.ts`). It needs detectors that return one `Found` per published item, extractors that return that item's events with their scope, `detectFromPages` for when the API is down, and `check` with the domain's validations.
+  2. Register it in `web/scripts/import/domains.ts`.
+  3. In `etl/sources.schema.json`, add its name to `sources.items.domain`, its types to the `detect` and `extract` enums, and any settings under `domains.<domain>`.
+  4. Add `domains.<domain>` and its `sources` entries (`domain: <domain>`) to `etl/sources.yaml`.
+  5. Run `npm run config:sync`. CI fails if a registered domain or type is missing from the schema, or the other way round.
+  The core does the rest: fetching, archiving, watched pages, diffing, batches, issues, `import_runs` and revert.
+- **A domain on its own schedule:** today there is one daily schedule for all sources. To give a domain its own time, add an optional `schedule` under `domains.<domain>` (defaulting to the global one), make the due check in `core/run.ts` use it, and make `cronLines` emit the union of every domain's crons.
 
 **Turn the schedule on.** Set `schedule.enabled: true`, run `npm run config:check`, and paste the cron lines it prints under `on: schedule:` in the workflow. Then open a PR.

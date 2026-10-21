@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { loadConfig } from "../config.ts";
+import { loadConfig } from "../core/config.ts";
 import { MIASTO_ROWS, parseVisionJson, streetReview } from "./lib.ts";
 import { DB_STREETS, GROK_RESULTS } from "./vision-fixture.ts";
 
