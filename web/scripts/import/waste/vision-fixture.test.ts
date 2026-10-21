@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { loadConfig } from "../core/config.ts";
+import type { WasteSource } from "./adapters.ts";
 import { MIASTO_ROWS, parseVisionJson, streetReview } from "./lib.ts";
 import { DB_STREETS, GROK_RESULTS } from "./vision-fixture.ts";
 
-const aliases = loadConfig().sources.find((s) => s.id === "miasto")?.aliases;
+const aliases = (
+  loadConfig().sources.find((s) => s.id === "miasto") as WasteSource
+).waste.aliases;
 
 test("the five real Grok replies parse; streets go to review only where they differ", () => {
   const flagged = GROK_RESULTS.map((text, i) => {

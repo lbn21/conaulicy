@@ -7,9 +7,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
-import { ROOT } from "../core/config.ts";
 import type { Domain } from "../core/domain.ts";
-import type { Extracted } from "./adapters.ts";
+import { ROOT } from "../core/paths.ts";
+import type { Extracted, WasteSource } from "./adapters.ts";
 import {
   compareMembers,
   compareReadings,
@@ -27,6 +27,7 @@ import {
 
 /** domains.waste in etl/sources.yaml. */
 export type WasteSettings = {
+  coverageMinDays: number;
   validate: ValidationRules & { counts: { minMonths: number } };
 };
 
@@ -44,7 +45,7 @@ const anomalies = new Set(
 export const check: Domain["check"] = async ({
   db,
   config,
-  source,
+  source: anySource,
   file,
   digest,
   out: extracted,
@@ -52,9 +53,10 @@ export const check: Domain["check"] = async ({
   reviews,
   runUrl,
 }) => {
+  const source = anySource as WasteSource;
   const out = extracted as Extracted;
   const rules = (config.domains.waste as WasteSettings).validate;
-  const checks = new Set(source.validate);
+  const checks = new Set(source.waste.validate);
   const ids = config.vision.passes.map((p) => p.id);
   const readings = out.readings ?? [];
   const reviewFrom = readings[ids.indexOf(config.vision.reviewFrom)];
@@ -81,6 +83,9 @@ export const check: Domain["check"] = async ({
       title: `${zoneName}: ${blocking ? "odczyty się różnią" : "ulice do sprawdzenia"} (${file.name})`,
       blocking,
       markdown,
+      pageLabel: "Strona harmonogramu",
+      ackNote:
+        "Ulice i strefy biorą się wyłącznie z bazy; jeśli ulica naprawdę zmieniła strefę, popraw bazę, a jeśli to tylko inna pisownia, dodaj ją do `aliases` w `etl/sources.yaml`.",
       reviewed: reviewedYaml(
         out.disagree ? reviewFrom : readings[0],
         out.disagree ? config.vision.reviewFrom : ids.join(" = "),
@@ -100,7 +105,7 @@ export const check: Domain["check"] = async ({
       out.zoneId,
       out.streetReadings ?? [],
       members,
-      source.aliases,
+      source.waste.aliases,
       ids,
     );
   };
@@ -225,7 +230,7 @@ export const check: Domain["check"] = async ({
           out.listed,
           members,
           checks.has("villages") ? fold : streetKey,
-          source.aliases,
+          source.waste.aliases,
         ),
       );
     }

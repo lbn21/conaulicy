@@ -2,6 +2,7 @@
 // the network or the database: validation, ids, labels, sources, approvals.
 // docs/import-plan.md section 2. Used by scripts/import.ts; tested on its own.
 import { createHash } from "node:crypto";
+import type { EventType } from "../../lib/data-model.ts";
 import type {
   events,
   gminy,
@@ -41,13 +42,13 @@ export type Etl = {
   }>;
   zones: Array<{
     id: string;
-    type: "waste";
+    type: EventType;
     name: string;
     members: Array<{ localityId: string; streetId?: string | null }>;
   }>;
   events: Array<{
     id: string;
-    type: "waste";
+    type: EventType;
     subtype: string;
     zoneId: string;
     start: string;

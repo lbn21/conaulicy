@@ -1,6 +1,6 @@
 // Review pull requests (docs/import.md, "Review pull requests"): when a file
-// needs a person (vision passes that disagree, streets that differ from the
-// database), the import opens one PR per source file instead of an issue.
+// needs a person (e.g. vision passes that disagree), its domain opens one PR
+// per source file instead of an issue.
 // The PR's diff is a reviewed-data file, etl/review/<source>/<stem>.yaml,
 // pre-filled by the domain: merging it approves it (the next run uses it for
 // that exact sha256), closing it rejects it. The original image is shown
@@ -14,9 +14,10 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
-import { ROOT, type Source } from "./config.ts";
+import type { Source } from "./config.ts";
 import type { Found } from "./domain.ts";
 import type { Http } from "./http.ts";
+import { ROOT } from "./paths.ts";
 
 type Pr = {
   number: number;
@@ -82,6 +83,10 @@ export type ReviewRequest = {
   blocking: boolean;
   /** The domain's part of the PR body (Polish markdown). */
   markdown: string;
+  /** What the source's page is, in the body's link list (Polish). */
+  pageLabel?: string;
+  /** Appended to "merge or close: both acknowledge" when not blocking. */
+  ackNote?: string;
   /** The reviewed-data file's content (YAML). */
   reviewed: string;
   runUrl: string;
@@ -226,7 +231,7 @@ export class Reviews {
         : `Cześć! Daty z pliku **${req.file.name}** (${req.source.name}) się zgadzają i idą zwykłą drogą. Coś jednak warto sprawdzić:`,
       "",
       `- Plik na stronie źródła: ${req.file.url}`,
-      `- Strona harmonogramu: ${req.source.page}`,
+      `- ${req.pageLabel ?? "Strona źródła"}: ${req.source.page}`,
       `- SHA-256: \`${req.digest}\``,
       req.runUrl ? `- Przebieg importu: ${req.runUrl}` : "",
       "",
@@ -252,7 +257,7 @@ export class Reviews {
             "- **Zamknij** = odrzucam. Baza zostaje bez zmian.",
           ]
         : [
-            "- **Scal** albo **zamknij**: jedno i drugie tylko potwierdza, że to przejrzane. Ulice i strefy biorą się wyłącznie z bazy; jeśli ulica naprawdę zmieniła strefę, popraw bazę, a jeśli to tylko inna pisownia, dodaj ją do `aliases` w `etl/sources.yaml`.",
+            `- **Scal** albo **zamknij**: jedno i drugie tylko potwierdza, że to przejrzane.${req.ackNote ? ` ${req.ackNote}` : ""}`,
           ]),
       "",
       "PR otworzył import (GITHUB_TOKEN), więc CI na nim nie rusza. To w porządku: plik sprawdza następny import.",
