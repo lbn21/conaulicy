@@ -1,9 +1,10 @@
 // Vision passes for every importer: the Cursor CLI reads an image in an
 // empty, locked-down workspace, once per vision.passes entry: each pass is a
-// fresh agent (no resume, its own workspace), so the reads are independent,
-// and the reply's JSON is taken out of any prose around it. What the JSON
-// means, and whether the passes agree, is the domain's business.
-import { spawnSync } from "node:child_process";
+// fresh agent (no resume, its own workspace), so the reads are independent;
+// they run at the same time. The reply's JSON is taken out of any prose
+// around it. What the JSON means, and whether the passes agree, is the
+// domain's business.
+import { spawn, spawnSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -37,13 +38,17 @@ export function extractJson(text: string): string {
   throw new Error("the JSON object in the reply is not closed");
 }
 
-/** The raw text of each pass (CURSOR_AGENT_MOCK: files instead, for tests). */
-export function visionPasses(
+/**
+ * The raw text of each pass (CURSOR_AGENT_MOCK: files instead, for tests).
+ * ext: the source file's extension (".jpg"), which the image keeps.
+ */
+export async function visionPasses(
   config: Config,
   body: Buffer,
+  ext: string,
   prompt: (image: string) => string,
   mockName: string,
-): string[] {
+): Promise<string[]> {
   const passes = config.vision.passes;
   const mock = process.env.CURSOR_AGENT_MOCK;
   if (mock)
@@ -83,23 +88,42 @@ export function visionPasses(
           .join(", ")
           .slice(0, 1500)}`,
       );
-  return passes.map((pass) => {
-    // An empty workspace holding only the image; the agent may read it and
-    // nothing else (no shell, writes, web or MCP). Everything else (git, DB,
-    // S3, issues) is done by this script, never by the agent.
-    const work = mkdtempSync(path.join(tmpdir(), `vision-${pass.id}-`));
-    writeFileSync(path.join(work, "schedule.jpg"), body);
-    mkdirSync(path.join(work, ".cursor"));
-    writeFileSync(
-      path.join(work, ".cursor/cli.json"),
-      JSON.stringify({
-        permissions: {
-          allow: ["Read(schedule.jpg)"],
-          deny: ["Shell(*)", "Write(**)", "WebFetch(*)", "Mcp(*:*)"],
-        },
-      }),
-    );
-    const run = spawnSync(
+  // All passes at once. A failed pass fails the file with the first failure
+  // in pass order, as when they ran one after another.
+  const image = `source${ext.toLowerCase()}`;
+  const results = await Promise.allSettled(
+    passes.map((pass) => runPass(pass, body, image, prompt)),
+  );
+  for (const result of results)
+    if (result.status === "rejected") throw result.reason;
+  return results.map((r) => (r as PromiseFulfilledResult<string>).value);
+}
+
+/** One pass: a fresh agent in its own workspace; its reply's text. */
+function runPass(
+  pass: Config["vision"]["passes"][number],
+  body: Buffer,
+  image: string,
+  prompt: (image: string) => string,
+): Promise<string> {
+  // An empty workspace holding only the image; the agent may read it and
+  // nothing else (no shell, writes, web or MCP). Everything else (git, DB,
+  // S3, issues) is done by this script, never by the agent.
+  const work = mkdtempSync(path.join(tmpdir(), `vision-${pass.id}-`));
+  writeFileSync(path.join(work, image), body);
+  mkdirSync(path.join(work, ".cursor"));
+  writeFileSync(
+    path.join(work, ".cursor/cli.json"),
+    JSON.stringify({
+      permissions: {
+        allow: [`Read(${image})`],
+        deny: ["Shell(*)", "Write(**)", "WebFetch(*)", "Mcp(*:*)"],
+      },
+    }),
+  );
+  const started = Date.now();
+  return new Promise((resolve, reject) => {
+    const agent = spawn(
       "agent",
       [
         "-p",
@@ -112,17 +136,35 @@ export function visionPasses(
         work,
         "--model",
         pass.model,
-        prompt("./schedule.jpg"),
+        prompt(`./${image}`),
       ],
-      { cwd: work, encoding: "utf8", timeout: 15 * 60_000, maxBuffer: 1 << 26 },
+      // stdin at EOF, as spawnSync gave it: the CLI must not wait on it.
+      { cwd: work, timeout: 15 * 60_000, stdio: ["ignore", "pipe", "pipe"] },
     );
-    if (run.status !== 0)
-      throw new Error(
-        `pass ${pass.id} (${pass.model}): agent exited ${run.status}: ${(run.stderr ?? "").slice(0, 300)}`,
+    const stdout: Buffer[] = [];
+    const stderr: Buffer[] = [];
+    agent.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
+    agent.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
+    agent.on("error", reject);
+    agent.on("close", (code) => {
+      console.log(
+        `  vision pass ${pass.id}: exit ${code} after ${Math.round((Date.now() - started) / 1000)}s`,
       );
-    // Any prose or fence around the JSON is dropped by extractJson.
-    return String(
-      (JSON.parse(run.stdout) as { result?: unknown }).result ?? "",
-    );
+      if (code !== 0)
+        return reject(
+          new Error(
+            `pass ${pass.id} (${pass.model}): agent exited ${code}: ${Buffer.concat(stderr).toString("utf8").slice(0, 300)}`,
+          ),
+        );
+      try {
+        // Any prose or fence around the JSON is dropped by extractJson.
+        const reply = JSON.parse(Buffer.concat(stdout).toString("utf8")) as {
+          result?: unknown;
+        };
+        resolve(String(reply.result ?? ""));
+      } catch (error) {
+        reject(error);
+      }
+    });
   });
 }

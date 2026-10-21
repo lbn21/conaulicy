@@ -12,7 +12,8 @@ import { DOMAINS } from "../domains.ts";
 import { ROOT } from "./paths.ts";
 
 export { ROOT };
-export const CONFIG_FILE = path.join(ROOT, "etl/sources.yaml");
+
+const CONFIG_FILE = path.join(ROOT, "etl/sources.yaml");
 export const SCHEMA_FILE = path.join(ROOT, "etl/sources.schema.json");
 
 export type Source = {
@@ -210,7 +211,7 @@ export function cronLines(schedule: Config["schedule"], year = 2026): string[] {
 }
 
 /** The zone's UTC offset in hours at a moment (e.g. 2 for CEST). */
-export function utcOffsetHours(date: Date, timeZone: string): number {
+function utcOffsetHours(date: Date, timeZone: string): number {
   const part = new Intl.DateTimeFormat("en", {
     timeZone,
     timeZoneName: "longOffset",

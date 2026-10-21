@@ -29,11 +29,6 @@ export function monthTitle(iso: string): string {
   return `${month.charAt(0).toUpperCase()}${month.slice(1)} ${iso.slice(0, 4)}`;
 }
 
-/** Month in the genitive, as in "od października". */
-export function monthGenitive(iso: string): string {
-  return part(iso, "month", { day: "numeric", month: "long" });
-}
-
 /** Short weekday without the dot. Example: "czw". */
 export function weekdayShort(iso: string): string {
   return part(iso, "weekday", { weekday: "short" }).replace(".", "");

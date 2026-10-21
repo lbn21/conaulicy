@@ -302,9 +302,10 @@ export const EXTRACTORS: Record<string, Extractor> = {
         streetReadings: [],
       };
     }
-    const outputs = visionPasses(
+    const outputs = await visionPasses(
       config,
       body,
+      path.extname(file.name),
       (image) => VISION_PROMPT(image, rows),
       `${source.id}-s${file.sector}-${file.year}`,
     );

@@ -37,7 +37,7 @@ export const MIASTO_ROWS: Record<string, string[]> = {
     "tekstylia",
   ],
 };
-export const LABELS: Record<string, string> = {
+const LABELS: Record<string, string> = {
   zmieszane: "Zmieszane",
   popiol: "Popiół",
   bio: "Bio",

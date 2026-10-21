@@ -17,7 +17,7 @@ export type Queryable = {
 const DROPPED_CODES = new Set(["57P01", "57P02", "57P03"]);
 
 /** True if the error means the connection is gone (not a bad query). */
-export function droppedConnection(error: unknown): boolean {
+function droppedConnection(error: unknown): boolean {
   const { code, message } = error as { code?: string; message?: string };
   return (
     (code !== undefined &&

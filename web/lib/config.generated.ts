@@ -1,6 +1,9 @@
 // Generated from etl/sources.yaml by `npm run config:sync`; do not edit.
 // The site's share of the one config: no constant here is written by hand.
 
+/** The permanent address: share images, canonical links, printed QR codes. */
+export const SITE_URL = "https://conaulicy.pl";
+
 /** Footer navigation: live features only; shown once there are 2+ links. */
 export const FEATURES: Array<{ section: string; links: Array<{ href: string; text: string }> }> = [
   {

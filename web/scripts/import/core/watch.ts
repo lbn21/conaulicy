@@ -1,8 +1,8 @@
 // Watched pages: the links a source's pages list, hashed every run, so a new
 // link nobody picked up is noticed. Also the input of a domain's fallback
 // detector when the source's API is down.
-import { createHash } from "node:crypto";
 import type { Source } from "./config.ts";
+import { sha256 } from "./hash.ts";
 import type { Http } from "./http.ts";
 
 /** Absolute links in a page that match a pattern, sorted, without repeats. */
@@ -25,8 +25,7 @@ export function pageLinks(
   return [...links].sort();
 }
 
-export const linksHash = (links: string[]) =>
-  createHash("sha256").update(links.join("\n")).digest("hex");
+export const linksHash = (links: string[]) => sha256(links.join("\n"));
 
 /** The watched pages' schedule links (also the fallback detector). */
 export async function readWatched(source: Source, net: Http) {

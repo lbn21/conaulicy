@@ -286,7 +286,7 @@ export function transform(
 }
 
 /** The Neon endpoint id ("ep-…") of a host, the only part safe to print. */
-export function neonEndpoint(host: string | undefined): string | null {
+function neonEndpoint(host: string | undefined): string | null {
   if (!host?.endsWith(".neon.tech")) return null;
   return host.split(".")[0].replace(/-pooler$/, "");
 }

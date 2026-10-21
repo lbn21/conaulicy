@@ -6,7 +6,7 @@
 export type EventRow = Record<string, unknown> & { id: string };
 
 /** Columns compared between the database and a new import. */
-export const EVENT_COLUMNS = [
+const EVENT_COLUMNS = [
   "type",
   "subtype",
   "zoneId",
