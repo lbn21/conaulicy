@@ -1,6 +1,7 @@
 // Checks the street PDFs (app/adres/[id]/harmonogram.pdf) on the CI fixture: a
 // city street over twelve months, a village, and a split street with ?nr=.
-// Each must be a tagged PDF of a sane length, within the size budget, with
+// Each must be a tagged PDF (MarkInfo, Lang, structure tree) with no PDF/UA
+// claim (it fails veraPDF), of a sane length, within the size budget, with
 // only Atkinson Hyperlegible Next embedded, the text-only version included,
 // the "not double-checked" note (the fixture is unverified) and no example
 // ("PRZYKŁADOWE DANE") content anywhere. A split street without a number has
@@ -19,6 +20,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { inflateSync } from "node:zlib";
 import { UNVERIFIED_NOTE } from "../lib/schedule-notes.ts";
 import { startServer } from "./lib/server.mjs";
 
@@ -59,6 +61,20 @@ const check = (ok, message) => {
   if (!ok) failures.push(message);
 };
 const run = (cmd, args) => execFileSync(cmd, args, { encoding: "utf8" });
+// The raw file plus every stream that inflates, so compressed metadata counts.
+function pdfSource(bytes) {
+  const raw = bytes.toString("latin1");
+  const parts = [raw];
+  for (const m of raw.matchAll(/stream\r?\n/g)) {
+    const start = m.index + m[0].length;
+    const end = raw.indexOf("endstream", start);
+    if (end < 0) continue;
+    try {
+      parts.push(inflateSync(bytes.subarray(start, end)).toString("latin1"));
+    } catch {}
+  }
+  return parts.join("\n");
+}
 
 // No example data in anything that ships.
 function walk(dir, out = []) {
@@ -108,6 +124,17 @@ try {
       `${c.name}: ${pages} pages (expected ${MIN_PAGES}–${MAX_PAGES})`,
     );
     check(/^Tagged:\s+yes/m.test(info), `${c.name}: not a tagged PDF`);
+    const source = pdfSource(bytes);
+    check(
+      /\/MarkInfo\b/.test(source) && /\/Marked\s+true/.test(source),
+      `${c.name}: no /MarkInfo Marked true`,
+    );
+    check(/\/Lang\s*\(pl-PL\)/.test(source), `${c.name}: no /Lang pl-PL`);
+    check(/\/StructTreeRoot\b/.test(source), `${c.name}: no structure tree`);
+    check(
+      !/pdfuaid/i.test(source),
+      `${c.name}: claims PDF/UA (pdfuaid) but fails veraPDF`,
+    );
     check(
       bytes.length <= MAX_BYTES,
       `${c.name}: ${bytes.length} B (budget ${MAX_BYTES} B)`,
@@ -188,7 +215,7 @@ if (failures.length > 0) {
   process.exit(1);
 }
 console.log(
-  `PDFs: tagged, ${MIN_PAGES}–${MAX_PAGES} pages, ≤ ${MAX_BYTES / 1000} KB, Atkinson only, text version, no example data.`,
+  `PDFs: tagged, no PDF/UA claim, ${MIN_PAGES}–${MAX_PAGES} pages, ≤ ${MAX_BYTES / 1000} KB, Atkinson only, text version, no example data.`,
 );
 // The server's output pipes would otherwise keep Node alive (as in check-a11y).
 process.exit(0);
