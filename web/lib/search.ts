@@ -15,7 +15,7 @@ export type SearchHit = {
 /** What /api/search-index serves: [id, label] per searchable place. */
 export type SearchIndex = Array<[id: string, label: string]>;
 
-/** Id of the home page's search: "Zmień adres" links to /#szukaj. */
+/** Id of the home page's search element. */
 export const SEARCH_ID = "szukaj";
 
 /** At most this many places in the list. */
