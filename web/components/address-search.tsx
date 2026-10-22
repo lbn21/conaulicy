@@ -62,14 +62,6 @@ function optionText(option: Option): string {
   return withHouseNumber(option.label, option.nr ?? null);
 }
 
-// On a phone, move the field near the top so the list has room below it
-// (and above the keyboard). Scrolling only; the layout stays the same.
-function makeRoom(input: HTMLElement) {
-  if (!window.matchMedia("(max-width: 47.99rem)").matches) return;
-  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  input.scrollIntoView({ block: "start", behavior: still ? "auto" : "smooth" });
-}
-
 /**
  * The address search: alphagov accessible-autocomplete, unmodified, set up
  * through its documented options only. It and the index of every place load
@@ -213,8 +205,7 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
       input.dispatchEvent(new Event("input", { bubbles: true }));
     }
 
-    function onFocus(event: FocusEvent) {
-      if (event.target instanceof HTMLInputElement) makeRoom(event.target);
+    function onFocus() {
       void start();
     }
     container.addEventListener("focusin", onFocus);
