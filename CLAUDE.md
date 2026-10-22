@@ -54,7 +54,7 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 
 ## Forbidden
 
-- No manual production deploys. Every merge to `main` deploys to production automatically; `import-review/**` branches never deploy (`web/vercel.json`). Production data also changes daily at 05:00 Europe/Warsaw through the unattended import (`docs/import.md`), without a deploy.
+- No manual production deploys. Every merge to `main` deploys to production automatically; `import-review/**` branches never deploy (`web/vercel.json`). Production data also changes daily at 05:23 Europe/Warsaw through the unattended import (`docs/import.md`), without a deploy.
 - No force-push.
 - No changes to Vercel domains, DNS or billing. Never enable paid features.
 - Never touch `tynki-baryza`, Polymarket, other Vercel teams or other Route 53 zones.

@@ -586,7 +586,7 @@ if (args.scheduled && tracked) {
     local.hour < hour ? [] : config.sources.filter((s) => !finished.has(s.id));
   if (due.length === 0) {
     console.log(
-      `Nothing due (${today} ${local.hour}:00 ${config.schedule.timezone}; runs at ${config.schedule.time}, once a day).`,
+      `Nothing due (${today}, ${local.hour}h in ${config.schedule.timezone}; runs at ${config.schedule.time}, once a day).`,
     );
     await db.close();
     process.exit(0);

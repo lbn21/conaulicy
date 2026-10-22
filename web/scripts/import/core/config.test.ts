@@ -75,9 +75,13 @@ test("vision.streetCheckFrom: required, and an existing pass id", () => {
 });
 
 test("crons: one per UTC offset, none when disabled", () => {
-  const warsaw = { enabled: true, time: "05:00", timezone: "Europe/Warsaw" };
-  assert.deepEqual(cronLines(warsaw), ["0 3 * * *", "0 4 * * *"]);
-  assert.deepEqual(cronLines({ ...warsaw, timezone: "UTC" }), ["0 5 * * *"]);
+  const warsaw = { enabled: true, time: "05:23", timezone: "Europe/Warsaw" };
+  assert.deepEqual(cronLines(warsaw), ["23 3 * * *", "23 4 * * *"]);
+  assert.deepEqual(cronLines({ ...warsaw, time: "05:00" }), [
+    "0 3 * * *",
+    "0 4 * * *",
+  ]);
+  assert.deepEqual(cronLines({ ...warsaw, timezone: "UTC" }), ["23 5 * * *"]);
   assert.deepEqual(cronLines({ ...warsaw, enabled: false }), []);
   assert.deepEqual(
     localNow("Europe/Warsaw", new Date("2026-07-01T03:30:00Z")),

@@ -53,7 +53,7 @@ One PR per source file that needs a person (`core/review.ts`, waste content in `
 - A failed source is retried by the day's next cron, and again the next day.
 - Network calls retry with backoff (`import.retries`).
 
-**Schedule:** `schedule.time` is in `schedule.timezone`. GitHub cron is UTC-only, so the workflow carries one cron per UTC offset (`0 3 * * *` for CEST, `0 4 * * *` for CET), and `--scheduled` runs only the sources that are due. A source is due once the time has passed today and no run has finished today, so the second cron is a free retry. **The schedule is on** (since 21 Oct 2026): every day at 05:00 Europe/Warsaw, scheduled runs apply (no force-extract).
+**Schedule:** `schedule.time` is in `schedule.timezone`. GitHub cron is UTC-only, so the workflow carries one cron per UTC offset (`23 3 * * *` for CEST, `23 4 * * *` for CET), and `--scheduled` runs only the sources that are due. A source is due once the hour of `schedule.time` has come today and no run has finished today, so the second cron is a free retry. **The schedule is on** (since 21 Oct 2026): every day at 05:23 Europe/Warsaw, scheduled runs apply (no force-extract). It runs off the top of the hour because GitHub may delay or drop scheduled runs at the start of every hour ([GitHub docs](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)).
 
 **Adding a source or a domain:** see the RUNBOOK below.
 
