@@ -164,11 +164,12 @@ jobs:
 
       # A second, production-like build (lib/indexing.ts). The normal build is
       # set aside and put back, because the importer checks below serve pages
-      # from it; a copy, so this build reuses .next/cache. Before them: they
-      # empty the database.
+      # from it. Moved, not copied: .next/cache holds the pages the checks
+      # above rendered, which this build would serve. Before the importer
+      # checks: they empty the database.
       - name: "Indexing (production-like build: indexable, vercel.app redirect)"
         run: |
-          cp -a .next .next-ci
+          mv .next .next-ci
           VERCEL_ENV=production npm run build
           node scripts/check-indexing.mjs --expect=index
           rm -rf .next
