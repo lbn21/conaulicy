@@ -10,6 +10,8 @@ To launch: remove `SITE_BASIC_AUTH` from Production in Vercel, then redeploy (he
 
 CI checks both builds: `web/scripts/check-indexing.mjs --expect=noindex|index`.
 
+No Vercel WAF at launch; unknown query parameters are redirected to the clean URL (task 62).
+
 ## Sitemap
 
 `/sitemap.xml` (`web/app/sitemap.ts`) lists the four static pages (`/`, `/dostepnosc`, `/prywatnosc`, `/o-projekcie`) and one `/adres/<id>` per place in the search index, as each page's canonical URL. It never lists the house-number variants (`/adres/<id>/nr/…`, canonicalised to the street), the number-error page (`/numer`, meta robots `noindex`), street PDFs or calendars (both `X-Robots-Tag: noindex`). It is empty unless the site is indexable, and `robots.txt` names it only then.
