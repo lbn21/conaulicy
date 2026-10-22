@@ -6,9 +6,10 @@
 // one; nothing here is a real schedule.
 //
 // Covers: a city street from the old fixture URL (ul. Adama Asnyka), streets
-// with diacritics, a street in no zone, a village with streets, villages
-// without, one month with 6 pickup days and holiday-shifted dates, and the
-// home page's examples (lib/examples.ts) under their real ids.
+// with diacritics, a street in no zone, a street whose schedule has ended
+// (only past dates), a village with streets, villages without, one month
+// with 6 pickup days and holiday-shifted dates, and the home page's examples
+// (lib/examples.ts) under their real ids.
 import { createHash } from "node:crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { addDays, todayInWarsaw } from "../lib/dates.ts";
@@ -61,6 +62,7 @@ const STREETS = [
   ["0972447", "90004", "Tadeusza Kościuszki"],
   ["0972447", "90005", "Stefana Żeromskiego"],
   ["0972447", "23434", "Ustronna"],
+  ["0972447", "90009", "Wrzosowa"],
   ["0606234", "90007", "Polna"],
   ["0606234", "90008", "Leśna"],
 ] as const;
@@ -91,6 +93,8 @@ const ZONES: Array<{
     parity?: "even" | "odd";
   }>;
   rule: Rule;
+  /** Only the three months before this one: a schedule that has ended. */
+  ended?: true;
 }> = [
   {
     id: "waste:miasto-s1",
@@ -149,6 +153,19 @@ const ZONES: Array<{
       bulkyMonths: [4, 10],
       putOutBy: "06:00",
     },
+  },
+  {
+    id: "waste:miasto-s3",
+    name: "Lubaczów, sektor 3",
+    members: [{ localityId: "0972447", streetId: "0972447-90009" }],
+    rule: {
+      weekday: 3,
+      mixed: ["zmieszane", "bio"],
+      recycling: CITY_RECYCLING,
+      recyclingDay: { weekday: 4, nth: 1 },
+      bulkyMonths: [],
+    },
+    ended: true,
   },
 ];
 
@@ -284,9 +301,10 @@ function zonePickups(rule: Rule, month: string, extraDays: boolean) {
   return pickups;
 }
 
-function months(today: string, count: number): string[] {
+/** `count` months from the current one, or from `offset` months away. */
+function months(today: string, count: number, offset = 0): string[] {
   const year = Number(today.slice(0, 4));
-  const month = Number(today.slice(5, 7)) - 1;
+  const month = Number(today.slice(5, 7)) - 1 + offset;
   return Array.from({ length: count }, (_, i) => {
     const d = new Date(Date.UTC(year, month + i, 1));
     return d.toISOString().slice(0, 7);
@@ -324,9 +342,10 @@ async function main() {
   });
 
   const window = months(today, 12);
+  const ended = months(today, 3, -3);
   const busyMonth = window[1];
   const eventRows = ZONES.flatMap((zone) =>
-    window.flatMap((month) =>
+    (zone.ended ? ended : window).flatMap((month) =>
       zonePickups(
         zone.rule,
         month,

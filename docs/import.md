@@ -28,7 +28,7 @@ For each source in `etl/sources.yaml`:
    - each row keeps its usual weekday, unless a public holiday explains the move or the date is approved in `etl/review/approvals.yaml`;
    - dates per fraction stay within a sane range of last year;
    - no village disappears from, or appears in, a gmina zone. City streets get the review PR above instead.
-6. **Apply.** The diff for the file's scope (zone and year) is written in one transaction, logged row by row in `import_changes` under a batch id, and the site is revalidated.
+6. **Apply.** The diff for the file's scope (zone and year) is written in one transaction, logged row by row in `import_changes` under a batch id, and the site is revalidated (`revalidateTag("dataset")`: the data cache and the CDN copies of the PDF, ICS and search responses, which send `Vercel-Cache-Tag: dataset`).
 
 Each run writes one `import_runs` row per source: status `no_change`, `applied`, `needs_review` or `failed`, plus counts, batch id, error and the Actions run URL. Then comes the **dead-man switch**, for each domain that opts in with `domains.<domain>.coverageMinDays` (waste: 21): while any of its zones' last date is closer than that, one issue stays open (key `coverage:<domain>`). Every waste run also syncs `gminy.schedule_url` from `sources[].page`. If the gmina publishes a newer yearly post, an issue asks for the one-line config change.
 

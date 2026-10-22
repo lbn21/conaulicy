@@ -3,8 +3,9 @@ import { revalidateTag } from "next/cache";
 import { DATASET } from "@/lib/schedule";
 
 // Called after an import: drops every cached database read, so the next
-// request per page or query reads the new data once. CDN copies still expire
-// on their own s-maxage.
+// request per page or query reads the new data once. On Vercel the same tag
+// also deletes the CDN copies of the responses that send it as
+// Vercel-Cache-Tag (the PDF, the ICS feed and /api/search).
 //
 //   curl -X POST -H "Authorization: Bearer $REVALIDATE_SECRET" \
 //     https://conaulicy.pl/api/revalidate

@@ -9,6 +9,7 @@ export const ROUTES = [
   { path: "/adres/0606010", name: "village" },
   { path: "/adres/0606234-90008", name: "village-street" },
   { path: "/adres/0972447-23434", name: "street-without-schedule" },
+  { path: "/adres/0972447-90009", name: "street-schedule-ended" },
   { path: "/adres/0972447-90004", name: "split-street" },
   { path: "/adres/0972447-90004?nr=7a", name: "split-street-number" },
   { path: "/adres/0972447-90004?nr=42", name: "split-street-unknown-number" },
