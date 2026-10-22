@@ -149,6 +149,21 @@ jobs:
       - name: Home examples (each has upcoming pickups)
         run: node scripts/check-examples.mjs
 
+      - name: "All places (/ulice: every place once, Polish order, no JS of its own)"
+        run: node scripts/check-all-places.mjs
+        env:
+          SCREENSHOT_DIR: ${{ runner.temp }}/ulice-screenshots
+
+      # For the reviewer: /ulice at 390 px and 1280 px, from this build.
+      - name: Screenshots of /ulice
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ulice-screenshots
+          path: ${{ runner.temp }}/ulice-screenshots
+          if-no-files-found: ignore
+          retention-days: 14
+
       # pdfinfo, pdffonts and pdftotext read the generated PDFs.
       - name: Install poppler-utils
         run: command -v pdfinfo || (sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils)

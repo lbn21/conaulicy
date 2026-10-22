@@ -29,7 +29,9 @@ import { houseNumber, readings } from "@/lib/house";
 import {
   gminaShortName,
   isSplitStreet,
+  type PlaceList,
   pickZone,
+  placeList,
   streetLabel,
   streetName,
   UNLISTED_PREFIXES,
@@ -148,6 +150,7 @@ const streetPlaces = (where: SQL | undefined, limit: number) =>
       localityId: streets.localityId,
       parentId: localities.parentId,
       locality: localities.name,
+      localityKind: localities.kind,
       gmina: gminy.name,
       scheduleUrl: gminy.scheduleUrl,
     })
@@ -250,10 +253,15 @@ export async function search(q: string): Promise<SearchHit[]> {
  * Every place search can find, as [id, label] (~4 KB gzip), so the search
  * field matches on the device with no request per keystroke. The version is
  * a hash of the content: its URL changes with the data, so the CDN may keep
- * each version for good.
+ * each version for good. `list` is the same places grouped for /ulice; it
+ * stays on the server.
  */
 export const searchIndex = unstable_cache(
-  async (): Promise<{ version: string; places: SearchIndex }> => {
+  async (): Promise<{
+    version: string;
+    places: SearchIndex;
+    list: PlaceList;
+  }> => {
     const [streetRows, villageRows] = await Promise.all([
       streetPlaces(listed, 100_000),
       villagePlaces(undefined, 100_000),
@@ -266,7 +274,7 @@ export const searchIndex = unstable_cache(
       .update(JSON.stringify(places))
       .digest("hex")
       .slice(0, 16);
-    return { version, places };
+    return { version, places, list: placeList(streetRows, villageRows) };
   },
   ["search-index"],
   CACHE,

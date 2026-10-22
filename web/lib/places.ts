@@ -137,3 +137,93 @@ export function pickZone(
     .sort((a, b) => a.rank - b.rank || a.c.zoneId.localeCompare(b.c.zoneId))[0];
   return best?.c.zoneId ?? null;
 }
+
+export type ListedPlace = { id: string; label: string };
+
+/** /ulice's list: the town's streets by first letter, then the villages. */
+export type PlaceList = {
+  town: Array<{ letter: string; places: ListedPlace[] }>;
+  /** A village is a place, or (with streets of its own) holds its streets. */
+  villages: Array<{ id: string | null; label: string; streets: ListedPlace[] }>;
+};
+
+const collator = new Intl.Collator("pl");
+
+/** "A", "Ł", "Ż"; streets named from a number ("3 Maja") under "0–9". */
+function letterOf(name: string): string {
+  const letter = name.charAt(0).toLocaleUpperCase("pl");
+  return /\d/.test(letter) ? "0–9" : letter;
+}
+
+/**
+ * The search index's places for /ulice, in Polish order (Ł after L, Ż at the
+ * end): town streets by their own name, not the prefix; villages by name,
+ * village streets under their village. Labels drop the town or village name
+ * where the heading or the village already says it.
+ */
+export function placeList(
+  streets: Array<{
+    id: string;
+    prefix: string;
+    name: string;
+    localityId: string;
+    locality: string;
+    localityKind: Locality["kind"];
+  }>,
+  villages: Array<{
+    id: string;
+    name: string;
+    parent: string | null;
+    gmina: string;
+  }>,
+): PlaceList {
+  const byName = <T extends { name: string; label: string }>(a: T, b: T) =>
+    collator.compare(a.name, b.name) || collator.compare(a.label, b.label);
+  const listed = (s: (typeof streets)[number]) => ({
+    id: s.id,
+    name: s.name,
+    label: streetName(s.prefix, s.name),
+  });
+
+  const town: PlaceList["town"] = [];
+  for (const street of streets
+    .filter((s) => s.localityKind === "miasto")
+    .map(listed)
+    .sort(byName)) {
+    const letter = letterOf(street.name);
+    if (town.at(-1)?.letter !== letter) town.push({ letter, places: [] });
+    town.at(-1)?.places.push({ id: street.id, label: street.label });
+  }
+
+  const withStreets = new Map<
+    string,
+    { name: string; label: string; streets: ReturnType<typeof listed>[] }
+  >();
+  for (const street of streets.filter((s) => s.localityKind !== "miasto")) {
+    const village = withStreets.get(street.localityId) ?? {
+      name: street.locality,
+      label: street.locality,
+      streets: [],
+    };
+    village.streets.push(listed(street));
+    withStreets.set(street.localityId, village);
+  }
+  const groups = [
+    ...villages.map((v) => ({
+      id: v.id,
+      name: v.name,
+      label: villageLabel(v),
+      streets: [] as ReturnType<typeof listed>[],
+    })),
+    ...[...withStreets.values()].map((v) => ({ id: null, ...v })),
+  ].sort(byName);
+
+  return {
+    town,
+    villages: groups.map(({ id, label, streets }) => ({
+      id,
+      label,
+      streets: streets.sort(byName).map(({ id, label }) => ({ id, label })),
+    })),
+  };
+}

@@ -15,6 +15,7 @@ export const ROUTES = [
   { path: "/adres/0972447-90004?nr=42", name: "split-street-unknown-number" },
   { path: "/adres/0972447-90004?nr=", name: "split-street-missing-number" },
   { path: "/adres/0972447-00470?nr=12", name: "city-street-number" },
+  { path: "/ulice", name: "all-places" },
   { path: "/prywatnosc", name: "privacy" },
   { path: "/dostepnosc", name: "accessibility" },
   { path: "/o-projekcie", name: "about" },

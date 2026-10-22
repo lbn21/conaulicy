@@ -13,6 +13,7 @@ const PAGES = {
   home: "/",
   street: "/adres/0972447-00470",
   a11y: "/dostepnosc",
+  "all-places": "/ulice",
 };
 
 function attempt(n) {
