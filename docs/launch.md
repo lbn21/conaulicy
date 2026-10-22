@@ -10,7 +10,7 @@ To launch: remove `SITE_BASIC_AUTH` from Production in Vercel, then redeploy (he
 
 CI checks both builds: `web/scripts/check-indexing.mjs --expect=noindex|index`.
 
-No Vercel WAF at launch; unknown query parameters are redirected to the clean URL (task 62).
+No Vercel WAF at launch; on the cacheable page and API routes, unknown query parameters are redirected to the clean URL (tasks 62, 63); files and Next.js metadata routes keep their query.
 
 ## Sitemap
 
