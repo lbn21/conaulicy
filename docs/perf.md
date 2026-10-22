@@ -9,7 +9,7 @@ Lighthouse (npm `lighthouse`, free, no Lighthouse CI server) with its mobile set
 - Moto G Power screen, mobile user agent.
 - Slow 4G (150 ms RTT, 1.6 Mbps down), applied by Chrome with Lighthouse's devtools adjustment: 562.5 ms request latency (150 × 3.75), 1475 kbps down (× 0.9), 675 kbps up. The check prints the profile it used.
 - CPU slowed 4× (Lighthouse's default). Fixed, not calibrated (see "Flake fixed" below). Each run's `benchmarkIndex` and the CPU slowdown are logged per page for information only; calibrating with Lighthouse's official CPU throttling calculator was not adopted, because on CI runners it would raise the slowdown above 4×.
-- Pages: `/`, `/adres/0972447-00470` (CI fixture street, Asnyka), `/dostepnosc`.
+- Pages: `/`, `/adres/0972447-00470` (CI fixture street, Asnyka), `/dostepnosc`, `/ulice` (every place, from the CI fixture).
 - 5 runs per page (`PERF_RUNS`).
 
 ## Budgets

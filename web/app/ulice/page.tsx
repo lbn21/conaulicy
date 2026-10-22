@@ -1,0 +1,101 @@
+import type { Metadata } from "next";
+import { searchIndex } from "@/lib/schedule";
+import { pageMetadata } from "@/lib/share";
+
+export const metadata: Metadata = {
+  title: "Wszystkie ulice i wsie",
+  ...pageMetadata({
+    path: "/ulice",
+    title: "Wszystkie ulice i wsie",
+    description:
+      "Wszystkie ulice Lubaczowa i wsie gminy Lubaczów w jednym miejscu. Wybierz swoją i sprawdź, kiedy przyjedzie śmieciarka.",
+  }),
+};
+
+// From the cached search index, as the sitemap: the same places, refreshed
+// with it (tag `dataset`, POST /api/revalidate), hourly as a safety net.
+export const revalidate = 3600;
+
+/**
+ * Every place search can find, as plain links: for people who would rather
+ * browse, without JS, and for search engines. The town's streets by first
+ * letter (Polish order), then the villages, with their streets if they have
+ * any. No client JS of its own.
+ */
+export default async function AllPlacesPage() {
+  const { list } = await searchIndex();
+
+  return (
+    <div className="govuk-grid-row">
+      <div className="govuk-grid-column-two-thirds">
+        <h1 className="govuk-heading-l">Wszystkie ulice i wsie</h1>
+        <p className="govuk-body-l">
+          Wybierz swoją ulicę albo wieś, żeby zobaczyć terminy wywozu śmieci.
+        </p>
+        <p className="govuk-body govuk-!-margin-bottom-8">
+          Wolisz wpisać adres?{" "}
+          <a href="/" className="govuk-link">
+            Wyszukaj go na stronie głównej
+          </a>
+          .
+        </p>
+
+        <section aria-labelledby="ulice-heading">
+          <h2 id="ulice-heading" className="govuk-heading-m">
+            Ulice w Lubaczowie
+          </h2>
+          {list.town.map(({ letter, places }) => (
+            <div key={letter}>
+              <h3 className="govuk-heading-s">{letter}</h3>
+              <ul className="govuk-list">
+                {places.map((place) => (
+                  <li key={place.id}>
+                    <a href={`/adres/${place.id}`} className="govuk-link">
+                      {place.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </section>
+
+        <section aria-labelledby="wsie-heading">
+          <h2
+            id="wsie-heading"
+            className="govuk-heading-m govuk-!-margin-top-6"
+          >
+            Wsie w gminie Lubaczów
+          </h2>
+          <ul className="govuk-list">
+            {list.villages.map((village) => (
+              <li key={village.id ?? village.label}>
+                {village.id ? (
+                  <a href={`/adres/${village.id}`} className="govuk-link">
+                    {village.label}
+                  </a>
+                ) : (
+                  <>
+                    {village.label}
+                    <ul className="govuk-list govuk-!-margin-left-4 govuk-!-margin-top-1">
+                      {village.streets.map((street) => (
+                        <li key={street.id}>
+                          <a
+                            href={`/adres/${street.id}`}
+                            className="govuk-link"
+                          >
+                            {street.label}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+    </div>
+  );
+}

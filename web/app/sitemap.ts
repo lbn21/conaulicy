@@ -9,7 +9,7 @@ import { searchIndex } from "@/lib/schedule";
 // through the index's `dataset` tag.
 export const revalidate = 3600;
 
-const PAGES = ["/", "/dostepnosc", "/prywatnosc", "/o-projekcie"];
+const PAGES = ["/", "/ulice", "/dostepnosc", "/prywatnosc", "/o-projekcie"];
 
 // One URL per place, as its canonical link (components/place-page.tsx):
 // never the /nr/ or /numer variants, PDFs or calendars.

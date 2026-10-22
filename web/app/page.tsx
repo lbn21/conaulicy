@@ -66,6 +66,11 @@ export default async function Home() {
               </li>
             ))}
           </ul>
+          <p className="govuk-body">
+            <a href="/ulice" className="govuk-link">
+              Zobacz wszystkie ulice i wsie
+            </a>
+          </p>
         </section>
       </div>
     </div>

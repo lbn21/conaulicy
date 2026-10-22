@@ -28,6 +28,7 @@ const NAVIGATION_SHOWN =
     SECTIONS.reduce((links, section) => links + section.items.length, 0) >= 2);
 
 const META = [
+  { href: "/ulice", text: "Wszystkie ulice i wsie" },
   { href: "/dostepnosc", text: "Dostępność" },
   { href: "/prywatnosc", text: "Prywatność" },
   { href: "/o-projekcie", text: "O projekcie" },

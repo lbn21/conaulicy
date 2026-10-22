@@ -4,6 +4,7 @@ import {
   isSplitStreet,
   localitySearchLabel,
   pickZone,
+  placeList,
   scheduleName,
   streetLabel,
   streetName,
@@ -115,4 +116,64 @@ test("pickZone: a split street needs the house number", () => {
   assert.equal(pickZone([lowOdd, even], { ...street, nr: "11" }), null);
   // A number on a street that is not split changes nothing.
   assert.equal(pickZone([town], { ...street, nr: "12" }), "z-town");
+});
+
+test("/ulice lists the town by letter in Polish order, villages with their streets", () => {
+  const town = (id: string, name: string, prefix = "ul.") => ({
+    id,
+    prefix,
+    name,
+    localityId: "0972447",
+    locality: "Lubaczów",
+    localityKind: "miasto" as const,
+  });
+  const list = placeList(
+    [
+      town("6", "Źródlana"),
+      town("1", "Leśna"),
+      town("2", "Łąkowa"),
+      town("3", "Szkolna"),
+      town("4", "Śląska"),
+      town("5", "Żeromskiego"),
+      town("7", "Zielona", "al."),
+      town("8", "3 Maja"),
+      {
+        id: "9",
+        prefix: "ul.",
+        name: "Polna",
+        localityId: "0606234",
+        locality: "Lisie Jamy",
+        localityKind: "wies",
+      },
+    ],
+    [
+      { id: "10", name: "Szczutków", parent: null, gmina: "Lubaczów (gmina)" },
+      { id: "11", name: "Dąbrowa", parent: null, gmina: "Lubaczów (gmina)" },
+    ],
+  );
+  assert.deepEqual(
+    list.town.map(({ letter, places }) => [
+      letter,
+      places.map((p) => p.label).join(", "),
+    ]),
+    [
+      ["0–9", "ul. 3 Maja"],
+      ["L", "ul. Leśna"],
+      ["Ł", "ul. Łąkowa"],
+      ["S", "ul. Szkolna"],
+      ["Ś", "ul. Śląska"],
+      ["Z", "al. Zielona"],
+      ["Ź", "ul. Źródlana"],
+      ["Ż", "ul. Żeromskiego"],
+    ],
+  );
+  assert.deepEqual(list.villages, [
+    { id: "11", label: "Dąbrowa (gm. Lubaczów)", streets: [] },
+    {
+      id: null,
+      label: "Lisie Jamy",
+      streets: [{ id: "9", label: "ul. Polna" }],
+    },
+    { id: "10", label: "Szczutków (gm. Lubaczów)", streets: [] },
+  ]);
 });

@@ -6,8 +6,8 @@
 //                     index, follow; robots.txt allows all but /api/ and
 //                     names the sitemap; conaulicy.vercel.app redirects (308)
 //                     to conaulicy.pl, path and query kept.
-// Both: /sitemap.xml is well-formed; empty unless indexable, else the four
-// static pages and every place in the search index, nothing else. PDFs and
+// Both: /sitemap.xml is well-formed; empty unless indexable, else the five
+// static pages (/ulice included) and every place in the search index, nothing else. PDFs and
 // calendars send X-Robots-Tag: noindex; the number-error page (/numer) has
 // meta robots noindex; the static pages have one canonical link each.
 //
@@ -44,7 +44,7 @@ const get = (origin, path, headers) =>
   });
 
 const SITE = "https://conaulicy.pl";
-const STATIC = ["/", "/dostepnosc", "/prywatnosc", "/o-projekcie"];
+const STATIC = ["/", "/ulice", "/dostepnosc", "/prywatnosc", "/o-projekcie"];
 const SITEMAP_NS = "http://www.sitemaps.org/schemas/sitemap/0.9";
 const CANONICAL = /<link rel="canonical" href="([^"]*)"\/?>/g;
 // Tags or text, nothing else: whatever is left over is malformed.

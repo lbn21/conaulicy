@@ -13,6 +13,7 @@
     "check:a11y": "next build && node scripts/check-a11y.mjs",
     "check:search": "next build && node scripts/check-search.mjs",
     "check:examples": "next build && node scripts/check-examples.mjs",
+    "check:all-places": "next build && node scripts/check-all-places.mjs",
     "check:pdf": "next build && node scripts/check-pdf.mjs",
     "sources:pull": "node scripts/sources-pull.ts",
     "config:sync": "node scripts/config-sync.ts",

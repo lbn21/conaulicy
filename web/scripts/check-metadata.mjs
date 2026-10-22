@@ -8,7 +8,7 @@
 import { ROUTES, startServer } from "./lib/server.mjs";
 
 const SITE = "https://conaulicy.pl";
-const STATIC = ["/", "/dostepnosc", "/prywatnosc", "/o-projekcie"];
+const STATIC = ["/", "/ulice", "/dostepnosc", "/prywatnosc", "/o-projekcie"];
 
 const all = (html, pattern) => [...html.matchAll(pattern)].map(([, v]) => v);
 const decode = (text) =>
