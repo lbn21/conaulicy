@@ -199,7 +199,7 @@ export const archiveKey = (a: Config["archived"][number]) =>
  */
 export function cronLines(schedule: Config["schedule"], year = 2026): string[] {
   if (!schedule.enabled) return [];
-  const hour = Number(schedule.time.slice(0, 2));
+  const [hour, minute] = schedule.time.split(":").map(Number);
   const offsets = new Set<number>();
   for (let day = 0; day < 366; day += 1) {
     const date = new Date(Date.UTC(year, 0, 1 + day, 12));
@@ -208,7 +208,7 @@ export function cronLines(schedule: Config["schedule"], year = 2026): string[] {
   return [...offsets]
     .map((offset) => (hour - offset + 24) % 24)
     .sort((a, b) => a - b)
-    .map((utc) => `0 ${utc} * * *`);
+    .map((utc) => `${minute} ${utc} * * *`);
 }
 
 /** The zone's UTC offset in hours at a moment (e.g. 2 for CEST). */

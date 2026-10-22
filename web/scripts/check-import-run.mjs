@@ -43,7 +43,7 @@ const db = new pg.Client({ connectionString: url });
 await db.connect();
 const year = new Date().getUTCFullYear();
 const day = `${year}-03-02`;
-const NOW = `${day}T10:00:00Z`; // 11:00 in Warsaw, after the 05:00 run time
+const NOW = `${day}T10:00:00Z`; // 11:00 in Warsaw, after the 05:23 run time
 const dir = mkdtempSync(join(tmpdir(), "conaulicy-schedules-"));
 const archive = join(dir, "archive");
 const mock = join(dir, "agent");
@@ -422,7 +422,7 @@ await step("scheduled: not before the run time, once a day", async () => {
   const early = await run(["--scheduled"], { IMPORT_NOW: `${day}T02:00:00Z` }); // 03:00 Warsaw
   check(
     early.code === 0 && /Nothing due/.test(early.out),
-    `before 05:00: ${early.out}`,
+    `before 05:23: ${early.out}`,
   );
   const again = await run(["--scheduled"]);
   check(

@@ -11,8 +11,8 @@ on:
   # what is due (--scheduled). With schedule.enabled: false there are none;
   # `npm run config:check` prints the lines to paste when it is enabled.
   schedule:
-    - cron: "0 3 * * *"
-    - cron: "0 4 * * *"
+    - cron: "23 3 * * *"
+    - cron: "23 4 * * *"
   workflow_dispatch:
     inputs:
       mode:
@@ -45,7 +45,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Of the two daily crons, the one that fires before schedule.time in
-      # schedule.timezone (03:00 UTC in winter: 04:00 in Warsaw) has nothing
+      # schedule.timezone (03:23 UTC in winter: 04:23 in Warsaw) has nothing
       # to do: it skips the install and the import, and the job succeeds. The
       # import's own due check decides every other run; manual runs never skip.
       - name: Due
