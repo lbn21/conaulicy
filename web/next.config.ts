@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
+import { SITE_URL } from "./lib/config.generated";
 import { NR_QUERY } from "./lib/house";
+import { indexable } from "./lib/indexing";
 
 const nextConfig: NextConfig = {
   // PDFKit reads its own data files from __dirname, so it must stay a real
@@ -31,7 +33,13 @@ const nextConfig: NextConfig = {
       ],
     };
   },
+  // headers() and redirects() are evaluated at build time (baked into the
+  // routes manifest). On Vercel VERCEL_ENV and SITE_BASIC_AUTH are set at
+  // build, so this is right, but changing SITE_BASIC_AUTH needs a redeploy
+  // to flip indexing (see lib/indexing.ts; pages rendered on demand read it
+  // at runtime, which on Vercel sees the same values).
   async headers() {
+    if (indexable()) return [];
     return [
       {
         source: "/:path*",
@@ -41,6 +49,19 @@ const nextConfig: NextConfig = {
             value: "noindex, nofollow",
           },
         ],
+      },
+    ];
+  },
+  // The Vercel address goes to the permanent one, path and query kept. Only
+  // this host: preview URLs (conaulicy-git-*.vercel.app) keep working. 308
+  // keeps the method, so a POST /api/revalidate still arrives.
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "conaulicy.vercel.app" }],
+        destination: `${SITE_URL}/:path*`,
+        permanent: true,
       },
     ];
   },

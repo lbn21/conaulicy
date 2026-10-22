@@ -4,6 +4,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { WebAnalytics } from "@/components/web-analytics";
 import { SITE_URL } from "@/lib/config.generated";
+import { indexable } from "@/lib/indexing";
 import { THEME_COLOR } from "@/lib/theme";
 import { atkinson } from "./fonts";
 import "./tokens.css";
@@ -35,10 +36,9 @@ export const metadata: Metadata = {
     images: [SHARE_IMAGE],
   },
   twitter: { card: "summary_large_image", images: [SHARE_IMAGE] },
-  robots: {
-    index: false,
-    follow: false,
-  },
+  robots: indexable()
+    ? { index: true, follow: true }
+    : { index: false, follow: false },
 };
 
 export const viewport: Viewport = {
