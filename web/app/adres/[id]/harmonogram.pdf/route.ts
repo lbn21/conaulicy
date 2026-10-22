@@ -362,9 +362,8 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     // from adding a page when the footer ends right at the edge.
     margins: { top: MARGIN, left: MARGIN, right: MARGIN, bottom: 4 },
     pdfVersion: "1.7",
+    // Tagged, but no PDF/UA claim (subset) until it passes veraPDF.
     tagged: true,
-    // @types/pdfkit lags behind 0.20, which supports PDF/UA.
-    subset: "PDF/UA" as PDFKit.Mixins.PDFSubsets,
     lang: "pl-PL",
     displayTitle: true,
     font: REGULAR as unknown as string,
