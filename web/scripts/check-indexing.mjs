@@ -38,7 +38,9 @@ const get = (origin, path, headers) =>
       .end();
   });
 
-const server = await startServer(3306);
+// A port per mode: the noindex run's server can outlive its stop() (it signals
+// npx), and the index run must not be answered by it.
+const server = await startServer(index ? 3307 : 3306);
 const failures = [];
 
 try {
