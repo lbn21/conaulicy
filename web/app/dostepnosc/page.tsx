@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Dostępność",
+  alternates: { canonical: "/dostepnosc" },
 };
 
 export default function AccessibilityPage() {

@@ -6,3 +6,7 @@ export function indexable(
 ): boolean {
   return env.VERCEL_ENV === "production" && !env.SITE_BASIC_AUTH;
 }
+
+// Files that are never search results (street PDFs, calendars), indexable
+// site or not.
+export const NOINDEX = { "X-Robots-Tag": "noindex" };
