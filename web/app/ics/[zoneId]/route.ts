@@ -1,6 +1,7 @@
 import { longDate } from "@/lib/date-labels";
 import { addDays } from "@/lib/dates";
 import { cacheControl } from "@/lib/gate";
+import { NOINDEX } from "@/lib/indexing";
 import { DATASET, getZone } from "@/lib/schedule";
 
 const encoder = new TextEncoder();
@@ -45,7 +46,7 @@ export async function GET(
   if (!zone) {
     return new Response("Nie znamy takiego harmonogramu.", {
       status: 404,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
+      headers: { "Content-Type": "text/plain; charset=utf-8", ...NOINDEX },
     });
   }
 
@@ -97,6 +98,7 @@ export async function GET(
       ),
       // So an import's POST /api/revalidate deletes the CDN copy too.
       "Vercel-Cache-Tag": DATASET,
+      ...NOINDEX,
     },
   });
 }

@@ -7,6 +7,7 @@ import { longDate, monthTitle, weekdayShort } from "@/lib/date-labels";
 import { absoluteDay } from "@/lib/dates";
 import { cacheControl } from "@/lib/gate";
 import { withHouseNumber } from "@/lib/house";
+import { NOINDEX } from "@/lib/indexing";
 import {
   HEADER_WORDMARK_SHIFT,
   LOGO_HEIGHT,
@@ -1073,6 +1074,7 @@ export async function GET(
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": cacheControl("public, s-maxage=3600"),
         "Vercel-Cache-Tag": DATASET,
+        ...NOINDEX,
       },
     });
   }
@@ -1091,6 +1093,7 @@ export async function GET(
       ),
       // So an import's POST /api/revalidate deletes the CDN copy too.
       "Vercel-Cache-Tag": DATASET,
+      ...NOINDEX,
     },
   });
 }

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { PickupSchedule } from "@/components/pickup-schedule";
 import { longDate } from "@/lib/date-labels";
 import { withHouseNumber } from "@/lib/house";
+import { indexable } from "@/lib/indexing";
 import { scheduleName } from "@/lib/places";
 import { getPlace, type PlaceView } from "@/lib/schedule";
 import { hasUpcoming, UNVERIFIED_NOTE } from "@/lib/schedule-notes";
@@ -36,6 +37,9 @@ export async function placeMetadata(
     // GOV.UK: "Error: " first in the title, so screen readers hear it first.
     title: place && numberError(place, missing) ? `Błąd: ${title}` : title,
     alternates: { canonical: `/adres/${encodeURIComponent(id)}` },
+    // /numer is an error variant of the street page: never a search result,
+    // its links still followed once the site is indexable.
+    ...(missing && { robots: { index: false, follow: indexable() } }),
   };
 }
 

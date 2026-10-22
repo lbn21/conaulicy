@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "O projekcie",
+  alternates: { canonical: "/o-projekcie" },
 };
 
 export default function AboutPage() {

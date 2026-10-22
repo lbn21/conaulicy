@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import { AddressSearch } from "@/components/address-search";
 import { HOME_EXAMPLES } from "@/lib/examples";
 import { examplePlaces, searchIndexUrl } from "@/lib/schedule";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 export default async function Home() {
   // A few examples only: the full address list never ships to the client.

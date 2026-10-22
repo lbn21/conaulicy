@@ -6,8 +6,13 @@
 //                     index, follow; robots.txt allows all but /api/ and
 //                     names the sitemap; conaulicy.vercel.app redirects (308)
 //                     to conaulicy.pl, path and query kept.
+// Both: /sitemap.xml is well-formed; empty unless indexable, else the four
+// static pages and every place in the search index, nothing else. PDFs and
+// calendars send X-Robots-Tag: noindex; the number-error page (/numer) has
+// meta robots noindex; the static pages have one canonical link each.
 //
 // Runs against `next start` on the current build and the CI fixture.
+import { readFileSync } from "node:fs";
 import { request } from "node:http";
 import { ROUTES, startServer } from "./lib/server.mjs";
 
@@ -37,6 +42,66 @@ const get = (origin, path, headers) =>
       .on("error", reject)
       .end();
   });
+
+const SITE = "https://conaulicy.pl";
+const STATIC = ["/", "/dostepnosc", "/prywatnosc", "/o-projekcie"];
+const SITEMAP_NS = "http://www.sitemaps.org/schemas/sitemap/0.9";
+const CANONICAL = /<link rel="canonical" href="([^"]*)"\/?>/g;
+// Tags or text, nothing else: whatever is left over is malformed.
+const TOKEN =
+  /<(\/?)([A-Za-z][\w:.-]*)((?:\s+[\w:.-]+="[^"<]*")*)\s*(\/?)>|([^<]+)/gy;
+const ENTITY = /&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-f]+);)/i;
+
+/**
+ * A small, dependency-free XML check for the sitemap: the declaration, then
+ * one <urlset> in the sitemap namespace holding <url> elements with exactly
+ * one <loc> each; every tag closed in order. Returns the <loc> values.
+ */
+function sitemapLocs(xml) {
+  const declaration = /^<\?xml version="1\.0" encoding="UTF-8"\?>\s*/.exec(xml);
+  if (!declaration) throw new Error("no <?xml …?> declaration");
+  const stack = [];
+  const locs = [];
+  let roots = 0;
+  let url = null;
+  TOKEN.lastIndex = declaration[0].length;
+  while (TOKEN.lastIndex < xml.length) {
+    const at = TOKEN.lastIndex;
+    const match = TOKEN.exec(xml);
+    if (!match)
+      throw new Error(`malformed at ${at}: ${xml.slice(at, at + 40)}`);
+    const [, close, name, attrs, empty, text] = match;
+    if (text !== undefined) {
+      if (ENTITY.test(text)) throw new Error(`bad entity in ${text.trim()}`);
+      if (stack.at(-1) === "loc") url.locs.push(text);
+      else if (text.trim()) throw new Error(`text outside <loc>: ${text}`);
+    } else if (close) {
+      if (stack.pop() !== name) throw new Error(`</${name}> closes nothing`);
+      if (name === "url") {
+        if (url.locs.length !== 1) throw new Error("<url> without one <loc>");
+        locs.push(url.locs[0]);
+      }
+    } else {
+      const parent = stack.at(-1);
+      if (parent === undefined) {
+        roots += 1;
+        if (name !== "urlset" || roots > 1) throw new Error(`root <${name}>`);
+        if (!attrs.includes(`xmlns="${SITEMAP_NS}"`)) {
+          throw new Error("<urlset> outside the sitemap namespace");
+        }
+      } else if (name === "url" && parent === "urlset") {
+        url = { locs: [] };
+      } else if (name === "loc" && parent === "url") {
+        url.locs.push(...(empty ? [""] : []));
+      } else if (parent !== "url") {
+        throw new Error(`<${name}> inside <${parent}>`);
+      }
+      if (!empty) stack.push(name);
+    }
+  }
+  if (roots !== 1 || stack.length > 0) throw new Error("unclosed or no root");
+  return locs.map((loc) => loc.replaceAll("&amp;", "&"));
+}
 
 // A port per mode: the noindex run's server can outlive its stop() (it signals
 // npx), and the index run must not be answered by it.
@@ -94,6 +159,114 @@ try {
       );
     }
   }
+
+  for (const path of STATIC) {
+    const html = await (await fetch(`${server.origin}${path}`)).text();
+    const links = [...html.matchAll(CANONICAL)].map(([, href]) => href);
+    // The root canonicalises with or without its slash; both are one URL.
+    const want = path === "/" ? [SITE, `${SITE}/`] : [`${SITE}${path}`];
+    if (links.length !== 1 || !want.includes(links[0])) {
+      failures.push(`${path}: canonical ${JSON.stringify(links)}`);
+    }
+  }
+
+  // The number-error page: never indexed; while not indexable, as the rest.
+  const numer = "/adres/0972447-90004?nr=";
+  const numerHtml = await (await fetch(`${server.origin}${numer}`)).text();
+  const numerMetas = [...numerHtml.matchAll(META)].map(
+    ([, content]) => content,
+  );
+  const numerWant = index ? "noindex, follow" : "noindex, nofollow";
+  if (numerMetas.length !== 1 || numerMetas[0] !== numerWant) {
+    failures.push(
+      `${numer}: meta robots ${JSON.stringify(numerMetas)}, want "${numerWant}"`,
+    );
+  }
+
+  const street = ROUTES.find((route) => route.name === "city-street").path;
+  const streetHtml = await (await fetch(`${server.origin}${street}`)).text();
+  const ics = /href="(\/ics\/[^"]+)"/.exec(streetHtml)?.[1];
+  if (!ics) failures.push(`${street}: no /ics/ link`);
+  const files = [
+    [`${street}/harmonogram.pdf`, 200],
+    // Schedule ended: check-pdf.mjs's 404.
+    ["/adres/0972447-90009/harmonogram.pdf", 404],
+    ...(ics ? [[ics, 200]] : []),
+    ["/ics/nie-ma-takiej-strefy", 404],
+  ];
+  for (const [path, status] of files) {
+    const response = await fetch(`${server.origin}${path}`);
+    await response.arrayBuffer();
+    const header = response.headers.get("x-robots-tag") ?? "";
+    if (response.status !== status) {
+      failures.push(`${path}: ${response.status}, want ${status}`);
+    }
+    if (!header.includes("noindex")) {
+      failures.push(`${path}: X-Robots-Tag ${JSON.stringify(header)}`);
+    }
+  }
+
+  const sitemap = await fetch(`${server.origin}/sitemap.xml`);
+  const xml = await sitemap.text();
+  const type = sitemap.headers.get("content-type") ?? "";
+  if (sitemap.status !== 200) failures.push(`/sitemap.xml: ${sitemap.status}`);
+  if (!/\bxml\b/.test(type)) failures.push(`/sitemap.xml: ${type}`);
+  let locs = [];
+  try {
+    locs = sitemapLocs(xml);
+  } catch (error) {
+    failures.push(`/sitemap.xml: ${error.message}`);
+  }
+  if (!index && locs.length > 0) {
+    failures.push(`/sitemap.xml: ${locs.length} URLs, want none`);
+  }
+  if (index) {
+    // The places, from the index the running app links on the home page.
+    const home = await (await fetch(`${server.origin}/`)).text();
+    const indexUrl = /\/api\/search-index\/[\da-f]{16}/.exec(home)?.[0];
+    const places = indexUrl
+      ? await (await fetch(`${server.origin}${indexUrl}`)).json()
+      : [];
+    if (places.length === 0) failures.push("/: no search index");
+    const placeUrls = places.map(
+      ([id]) => `${SITE}/adres/${encodeURIComponent(id)}`,
+    );
+    const fixturePlaces = ROUTES.filter(
+      (route) => /^\/adres\/[^/?]+$/.test(route.path) && !route.status,
+    ).map((route) => `${SITE}${route.path}`);
+    const want = [...STATIC.map((path) => `${SITE}${path}`), ...placeUrls];
+    const got = new Set(locs);
+    if (got.size !== locs.length) failures.push("/sitemap.xml: duplicates");
+    for (const loc of locs) {
+      if (
+        !loc.startsWith(`${SITE}/`) ||
+        /\/nr\/|\/numer|\.pdf|\/ics\//.test(loc)
+      ) {
+        failures.push(`/sitemap.xml: ${loc}`);
+      }
+    }
+    for (const url of [...want, ...fixturePlaces]) {
+      if (!got.has(url)) failures.push(`/sitemap.xml: no ${url}`);
+    }
+    if (locs.length !== places.length + STATIC.length) {
+      failures.push(
+        `/sitemap.xml: ${locs.length} URLs, want ${places.length} places + ${STATIC.length}`,
+      );
+    }
+    // Whether the build's copy carries the search index's `dataset` tag,
+    // which POST /api/revalidate purges (information only).
+    try {
+      const meta = JSON.parse(
+        readFileSync(".next/server/app/sitemap.xml.meta", "utf8"),
+      );
+      console.log(
+        `/sitemap.xml cache tags: ${meta.headers?.["x-next-cache-tags"] ?? "(none)"}`,
+      );
+    } catch (error) {
+      console.log(`/sitemap.xml cache tags: unreadable (${error.message})`);
+    }
+    console.log(`/sitemap.xml: ${locs.length} URLs (${places.length} places)`);
+  }
 } finally {
   server.stop();
 }
@@ -104,8 +277,8 @@ if (failures.length > 0) {
 }
 console.log(
   index
-    ? `Indexing (${PAGES.join(", ")}): indexable, robots.txt open, vercel.app redirects.`
-    : `Indexing (${PAGES.join(", ")}): noindex everywhere, robots.txt closed.`,
+    ? `Indexing (${PAGES.join(", ")}): indexable, robots.txt open, vercel.app redirects, sitemap complete; PDF, ICS, /numer noindex; canonicals.`
+    : `Indexing (${PAGES.join(", ")}): noindex everywhere, robots.txt closed, sitemap empty; PDF, ICS noindex; canonicals.`,
 );
 // The server's output pipes would otherwise keep Node alive (as in check-a11y).
 process.exit(0);
