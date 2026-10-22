@@ -36,7 +36,8 @@ const nextConfig: NextConfig = {
   // headers() and redirects() are evaluated at build time (baked into the
   // routes manifest). On Vercel VERCEL_ENV and SITE_BASIC_AUTH are set at
   // build, so this is right, but changing SITE_BASIC_AUTH needs a redeploy
-  // to flip indexing (see lib/indexing.ts).
+  // to flip indexing (see lib/indexing.ts; pages rendered on demand read it
+  // at runtime, which on Vercel sees the same values).
   async headers() {
     if (indexable()) return [];
     return [

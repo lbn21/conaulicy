@@ -170,7 +170,10 @@ jobs:
       - name: "Indexing (production-like build: indexable, vercel.app redirect)"
         run: |
           mv .next .next-ci
-          VERCEL_ENV=production npm run build
+          export VERCEL_ENV=production
+          npm run build
+          # Also for next start: pages rendered on demand read it at runtime,
+          # as on Vercel.
           node scripts/check-indexing.mjs --expect=index
           rm -rf .next
           mv .next-ci .next
