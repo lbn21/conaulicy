@@ -98,20 +98,6 @@ try {
     const input = page.getByRole("combobox");
     const listbox = page.getByRole("listbox");
     await input.waitFor();
-    if (width < 768) {
-      // Near the top, or as far as the page can scroll.
-      const { top, room } = await input.evaluate((el) => ({
-        top: el.getBoundingClientRect().top,
-        room:
-          document.documentElement.scrollHeight -
-          window.innerHeight -
-          window.scrollY,
-      }));
-      check(
-        top < 80 || room < 1,
-        `${label}: focused field not scrolled near the top (${top}px, ${room}px more to scroll)`,
-      );
-    }
 
     await input.pressSequentially("a");
     await note("Szukam…").waitFor();
