@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
+import { cleanQuery } from "@/lib/clean-query";
 import { NR_QUERY } from "@/lib/house";
 
 // Pre-launch gate. Active only when SITE_BASIC_AUTH ("user:password") is set.
@@ -49,6 +50,20 @@ function missingNumber(request: NextRequest): URL | null {
 }
 
 export function proxy(request: NextRequest) {
+  // Unknown query parameters go to the clean, cached URL (lib/clean-query.ts).
+  // Before the gate: a redirect reveals nothing, and both behave the same.
+  if (request.method === "GET" || request.method === "HEAD") {
+    const search = cleanQuery(
+      request.nextUrl.pathname,
+      request.nextUrl.searchParams,
+    );
+    if (search !== null) {
+      const url = request.nextUrl.clone();
+      url.search = search;
+      return NextResponse.redirect(url, 308);
+    }
+  }
+
   const rewrite = missingNumber(request);
   const pass = (headers?: Record<string, string>) =>
     rewrite
