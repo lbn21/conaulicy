@@ -159,6 +159,21 @@ jobs:
       - name: "Fonts (no layout shift when they arrive late)"
         run: node scripts/check-fonts.mjs
 
+      - name: "Indexing (CI build: noindex, robots.txt closed)"
+        run: node scripts/check-indexing.mjs --expect=noindex
+
+      # A second, production-like build (lib/indexing.ts). The normal build is
+      # set aside and put back, because the importer checks below serve pages
+      # from it; a copy, so this build reuses .next/cache. Before them: they
+      # empty the database.
+      - name: "Indexing (production-like build: indexable, vercel.app redirect)"
+        run: |
+          cp -a .next .next-ci
+          VERCEL_ENV=production npm run build
+          node scripts/check-indexing.mjs --expect=index
+          rm -rf .next
+          mv .next-ci .next
+
       # Last: it empties the database and imports a made-up dataset. Its schedules come
       # from a local server, so the source check needs no internet.
       - name: "Importer (synthetic dataset: dry run, apply, guards)"
