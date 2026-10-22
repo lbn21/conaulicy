@@ -18,11 +18,13 @@ import {
 } from "@/lib/logo";
 import { normalize } from "@/lib/normalize";
 import {
+  DATASET,
   getPlace,
   type Pickup,
   type PickupDay,
   type PlaceView,
 } from "@/lib/schedule";
+import { hasUpcoming, UNVERIFIED_NOTE } from "@/lib/schedule-notes";
 import { TOKEN, tones } from "@/lib/waste-bin";
 
 export const runtime = "nodejs";
@@ -650,9 +652,10 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   };
 
   // ------------------------------------------------------------ panel
-  // GOV.UK Warning text on the grey band, then any other notes: the put-out
-  // time, and the line about months not announced yet when it does not fit
-  // below the calendar.
+  // GOV.UK Warning text on the grey band, then any other notes: that no one
+  // has checked the dates yet (as on the page), the put-out time, and the
+  // line about months not announced yet when it does not fit below the
+  // calendar.
   type Note = { bold: string; text: string };
   const warnD = px(35);
   const noteX = MARGIN + warnD + px(15);
@@ -661,6 +664,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     ? { bold: `${emptyRange(trailing)}: `, text: LATER }
     : null;
   const panelNotes = (withLater: boolean): Note[] => [
+    ...(place.verified ? [] : [{ bold: "", text: UNVERIFIED_NOTE }]),
     ...(putOut ? [{ bold: "", text: putOut }] : []),
     ...(withLater && later ? [later] : []),
   ];
@@ -1063,12 +1067,13 @@ export async function GET(
 ) {
   const { id } = await ctx.params;
   const place = await getPlace(id, new URL(request.url).searchParams.get("nr"));
-  if (!place || place.days.length === 0) {
+  if (!place || !hasUpcoming(place.days, place.today)) {
     return new Response("Nie mamy harmonogramu dla tego adresu.", {
       status: 404,
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": cacheControl("public, s-maxage=3600"),
+        "Vercel-Cache-Tag": DATASET,
       },
     });
   }
@@ -1082,10 +1087,11 @@ export async function GET(
       "Content-Type": "application/pdf",
       // With a house number: in the file name too.
       "Content-Disposition": `inline; filename="harmonogram-${slug(withHouseNumber(place.label, place.nr))}.pdf"`,
-      // Short CDN life: an import purges our data cache, not the CDN copy.
       "Cache-Control": cacheControl(
         "public, s-maxage=3600, stale-while-revalidate=86400",
       ),
+      // So an import's POST /api/revalidate deletes the CDN copy too.
+      "Vercel-Cache-Tag": DATASET,
     },
   });
 }

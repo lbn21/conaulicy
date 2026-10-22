@@ -1,10 +1,14 @@
 // Checks the street PDFs (app/adres/[id]/harmonogram.pdf) on the CI fixture: a
 // city street over twelve months, a village, and a split street with ?nr=.
 // Each must be a tagged PDF of a sane length, within the size budget, with
-// only Atkinson Hyperlegible Next embedded, the text-only version included
-// and no example ("PRZYKŁADOWE DANE") content anywhere. A split street without a
-// number has no PDF (404), as on the street page. Run after `next build`;
-// needs poppler-utils (pdfinfo, pdffonts, pdftotext).
+// only Atkinson Hyperlegible Next embedded, the text-only version included,
+// the "not double-checked" note (the fixture is unverified) and no example
+// ("PRZYKŁADOWE DANE") content anywhere. A split street without a number has
+// no PDF (404), as on the street page; nor has a street whose schedule has
+// ended, and its page offers neither the PDF nor the calendar file. The PDF,
+// ICS and search responses carry the dataset cache tag, so an import's
+// revalidate purges their CDN copies. Run after `next build`; needs
+// poppler-utils (pdfinfo, pdffonts, pdftotext).
 import { execFileSync } from "node:child_process";
 import {
   mkdtempSync,
@@ -15,6 +19,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { UNVERIFIED_NOTE } from "../lib/schedule-notes.ts";
 import { startServer } from "./lib/server.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
@@ -35,6 +40,18 @@ const CASES = [
     path: "/adres/0972447-90004/harmonogram.pdf",
     status: 404,
   },
+  {
+    name: "schedule ended",
+    path: "/adres/0972447-90009/harmonogram.pdf",
+    status: 404,
+  },
+];
+// Responses the CDN keeps (when the gate is off), tagged for the purge.
+const TAGGED = [
+  "/adres/0972447-00470/harmonogram.pdf",
+  "/adres/0972447-90009/harmonogram.pdf",
+  "/ics/waste%3Amiasto-s1",
+  "/api/search?q=asnyka",
 ];
 
 const failures = [];
@@ -127,6 +144,10 @@ try {
     );
     check(text.includes("Źródło:"), `${c.name}: no source line`);
     check(
+      text.replace(/\s+/g, " ").includes(UNVERIFIED_NOTE),
+      `${c.name}: no "not double-checked" note`,
+    );
+    check(
       !SAMPLE.test(text),
       `${c.name}: example ("PRZYKŁADOWE DANE") content`,
     );
@@ -134,6 +155,30 @@ try {
       `ok    ${c.name}: ${pages} pages, ${(bytes.length / 1000).toFixed(1)} KB, fonts ${[...new Set(names)].join(", ")}`,
     );
   }
+
+  // The page of an ended schedule says so, with no dead PDF link and no
+  // empty calendar file.
+  const ended = await (
+    await fetch(`${server.origin}/adres/0972447-90009`)
+  ).text();
+  check(
+    !ended.includes("harmonogram.pdf") && !ended.includes('href="/ics/'),
+    "schedule ended: the page still offers the PDF or the calendar file",
+  );
+  check(
+    ended.includes("Kolejnych terminów jeszcze nie mamy"),
+    "schedule ended: no notice on the page",
+  );
+  console.log("ok    schedule ended: page without PDF or calendar file");
+
+  for (const p of TAGGED) {
+    const response = await fetch(server.origin + p);
+    check(
+      response.headers.get("vercel-cache-tag") === "dataset",
+      `${p}: Vercel-Cache-Tag ${response.headers.get("vercel-cache-tag")}, expected dataset`,
+    );
+  }
+  console.log(`ok    cache tag on ${TAGGED.length} responses`);
 } finally {
   server.stop();
 }

@@ -5,6 +5,7 @@ import { longDate } from "@/lib/date-labels";
 import { withHouseNumber } from "@/lib/house";
 import { scheduleName } from "@/lib/places";
 import { getPlace, type PlaceView } from "@/lib/schedule";
+import { hasUpcoming, UNVERIFIED_NOTE } from "@/lib/schedule-notes";
 import { SEARCH_ID } from "@/lib/search";
 
 // The street or village page, for /adres/[id] and, with a house number,
@@ -169,6 +170,25 @@ export async function PlaceMain({
               </p>
             )}
           </section>
+        ) : !hasUpcoming(place.days, place.today) ? (
+          // The schedule has ended and the next one is not in yet: no PDF
+          // and no calendar file, as both would be empty.
+          <section aria-labelledby="ended-heading" className="govuk-inset-text">
+            <h2 id="ended-heading" className="govuk-heading-m">
+              Kolejnych terminów jeszcze nie mamy
+            </h2>
+            <p className="govuk-body">
+              Dodamy je, gdy tylko gmina ogłosi nowy harmonogram. Do tego czasu
+              sprawdź odbiory w harmonogramie gminy.
+            </p>
+            {place.schedulePage && (
+              <p className="govuk-body">
+                <a href={place.schedulePage} className="govuk-link">
+                  {`Otwórz ${scheduleName(place.gmina)}`}
+                </a>
+              </p>
+            )}
+          </section>
         ) : (
           <>
             {/* GOV.UK's link button: a link that looks and works like a
@@ -204,11 +224,7 @@ export async function PlaceMain({
 
             <div className="govuk-inset-text">
               {!place.verified && (
-                <p className="govuk-body">
-                  Te daty odczytaliśmy automatycznie z harmonogramu gminy i nikt
-                  ich jeszcze nie sprawdził drugi raz. Gdyby coś się nie
-                  zgadzało, rację ma harmonogram gminy.
-                </p>
+                <p className="govuk-body">{UNVERIFIED_NOTE}</p>
               )}
               {place.sources.map((source) => (
                 <p key={source.label} className="govuk-body">

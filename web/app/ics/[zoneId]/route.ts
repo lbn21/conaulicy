@@ -1,7 +1,7 @@
 import { longDate } from "@/lib/date-labels";
 import { addDays } from "@/lib/dates";
 import { cacheControl } from "@/lib/gate";
-import { getZone } from "@/lib/schedule";
+import { DATASET, getZone } from "@/lib/schedule";
 
 const encoder = new TextEncoder();
 
@@ -95,6 +95,8 @@ export async function GET(
       "Cache-Control": cacheControl(
         "public, s-maxage=3600, stale-while-revalidate=86400",
       ),
+      // So an import's POST /api/revalidate deletes the CDN copy too.
+      "Vercel-Cache-Tag": DATASET,
     },
   });
 }
