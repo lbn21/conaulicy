@@ -22,7 +22,7 @@ schedule:
   # itself decides what is due. false = no cron lines in the workflow (the
   # drift check enforces it); manual runs still work.
   enabled: true
-  time: "10:37"
+  time: "05:23"
   timezone: Europe/Warsaw
 
 import:

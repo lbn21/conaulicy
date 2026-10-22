@@ -11,8 +11,8 @@ on:
   # what is due (--scheduled). With schedule.enabled: false there are none;
   # `npm run config:check` prints the lines to paste when it is enabled.
   schedule:
-    - cron: "37 8 * * *"
-    - cron: "37 9 * * *"
+    - cron: "23 3 * * *"
+    - cron: "23 4 * * *"
   workflow_dispatch:
     inputs:
       mode:
