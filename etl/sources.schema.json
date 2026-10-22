@@ -3,7 +3,7 @@
   "title": "conaulicy.pl data configuration (etl/sources.yaml)",
   "type": "object",
   "additionalProperties": false,
-  "required": ["site", "schedule", "import", "domains", "vision", "archive", "sources", "archived"],
+  "required": ["site", "import", "domains", "vision", "archive", "sources", "archived"],
   "properties": {
     "site": {
       "type": "object",
@@ -34,16 +34,6 @@
             }
           }
         }
-      }
-    },
-    "schedule": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["enabled", "time", "timezone"],
-      "properties": {
-        "enabled": { "type": "boolean" },
-        "time": { "type": "string", "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$" },
-        "timezone": { "type": "string", "minLength": 1 }
       }
     },
     "import": {

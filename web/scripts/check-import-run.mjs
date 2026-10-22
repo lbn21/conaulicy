@@ -7,7 +7,7 @@
 // PRs for passes that disagree and for streets (one per file, updated, a
 // merged review applied for its sha256 only, a rejected one keeping the
 // database); the page fallback when the WordPress API is down; the dead-man
-// switch; the due logic; a dry run; a dropped database connection (retried
+// switch; a dry run; a dropped database connection (retried
 // once, else the failure path, never a crash). The two sites are local HTTP servers, the
 // config a copy of etl/sources.yaml pointing at them (IMPORT_CONFIG), the
 // vision passes mocked files, the archive a directory, GitHub issues and
@@ -43,7 +43,7 @@ const db = new pg.Client({ connectionString: url });
 await db.connect();
 const year = new Date().getUTCFullYear();
 const day = `${year}-03-02`;
-const NOW = `${day}T10:00:00Z`; // 11:00 in Warsaw, after the 05:23 run time
+const NOW = `${day}T10:00:00Z`; // 11:00 in Warsaw
 const dir = mkdtempSync(join(tmpdir(), "conaulicy-schedules-"));
 const archive = join(dir, "archive");
 const mock = join(dir, "agent");
@@ -148,7 +148,6 @@ const writeConfig = (patch = () => {}) => {
   );
   const config = {
     ...real,
-    schedule: { ...real.schedule, enabled: true },
     import: { ...real.import, retries: { attempts: 2, backoffSeconds: 0 } },
     sources: [
       {
@@ -416,26 +415,6 @@ await step("next run, nothing new: no_change, nothing downloaded", async () => {
     "an unchanged PDF was downloaded again",
   );
   check((await snapshot()) === settled, "events changed");
-});
-
-await step("scheduled: not before the run time, once a day", async () => {
-  const early = await run(["--scheduled"], { IMPORT_NOW: `${day}T02:00:00Z` }); // 03:00 Warsaw
-  check(
-    early.code === 0 && /Nothing due/.test(early.out),
-    `before 05:23: ${early.out}`,
-  );
-  const again = await run(["--scheduled"]);
-  check(
-    again.code === 0 && /Nothing due/.test(again.out),
-    `already ran today: ${again.out}`,
-  );
-  const next = await run(["--scheduled"], {
-    IMPORT_NOW: `${year}-03-03T10:00:00Z`,
-  });
-  check(
-    /gmina: no_change/.test(next.out) && /miasto: no_change/.test(next.out),
-    `next day: ${next.out}`,
-  );
 });
 
 await step(

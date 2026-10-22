@@ -2,17 +2,12 @@
 # runner, no approvals, no people. A change that passes every check is
 # applied; anything else becomes an issue, closed by the next clean run,
 # or a review PR for a file a person must look at (docs/import.md).
-# Configured in etl/sources.yaml (CI fails if this file drifts from it).
+# Configured in etl/sources.yaml. Started by workflow_dispatch only: no GitHub
+# schedule (it never fired in this repo); daily runs come from an external
+# trigger (planned) dispatching mode=apply.
 name: import
 
 on:
-  # Cron lines are derived from schedule in etl/sources.yaml: one per UTC
-  # offset of schedule.timezone (GitHub cron is UTC-only), the import decides
-  # what is due (--scheduled). With schedule.enabled: false there are none;
-  # `npm run config:check` prints the lines to paste when it is enabled.
-  schedule:
-    - cron: "23 3 * * *"
-    - cron: "23 4 * * *"
   workflow_dispatch:
     inputs:
       mode:
@@ -44,25 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Of the two daily crons, the one that fires before schedule.time in
-      # schedule.timezone (03:23 UTC in winter: 04:23 in Warsaw) has nothing
-      # to do: it skips the install and the import, and the job succeeds. The
-      # import's own due check decides every other run; manual runs never skip.
-      - name: Due
-        id: due
-        if: github.event_name == 'schedule'
-        run: |
-          tz=$(yq '.schedule.timezone' etl/sources.yaml)
-          at=$(yq '.schedule.time' etl/sources.yaml)
-          now=$(TZ="$tz" date +%H)
-          # Without the zone's tz data, date silently uses UTC: never skip then.
-          if [ -e "/usr/share/zoneinfo/$tz" ] && [ "$((10#$now))" -lt "$((10#${at%%:*}))" ]; then
-            echo "Before $at in $tz (now ${now}h): nothing due."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: steps.due.outputs.skip != 'true'
         with:
           node-version: 24
           cache: npm
@@ -70,14 +47,12 @@ jobs:
 
       - name: Config
         id: config
-        if: steps.due.outputs.skip != 'true'
         run: |
           echo "cli=$(yq '.vision.cli' etl/sources.yaml)" >> "$GITHUB_OUTPUT"
           echo "role=$(yq '.archive.role' etl/sources.yaml)" >> "$GITHUB_OUTPUT"
           echo "region=$(yq '.archive.region' etl/sources.yaml)" >> "$GITHUB_OUTPUT"
 
       - name: Install
-        if: steps.due.outputs.skip != 'true'
         working-directory: web
         run: |
           npm ci --no-audit --no-fund
@@ -94,26 +69,23 @@ jobs:
           CLI: ${{ steps.config.outputs.cli }}
 
       - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
-        if: steps.due.outputs.skip != 'true' && (github.event_name == 'schedule' || inputs.mode == 'apply')
+        if: inputs.mode == 'apply'
         with:
           role-to-assume: ${{ steps.config.outputs.role }}
           aws-region: ${{ steps.config.outputs.region }}
 
       - name: Import
         id: import
-        if: steps.due.outputs.skip != 'true'
         working-directory: web
         run: |
-          case "$EVENT/$MODE" in
-            schedule/*) flags="--scheduled" ;;
-            */extract-only) flags="--extract-only" ;;
-            */dry-run) flags="--dry-run" ;;
-            */apply) flags="" ;;
+          case "$MODE" in
+            extract-only) flags="--extract-only" ;;
+            dry-run) flags="--dry-run" ;;
+            apply) flags="" ;;
           esac
           [ "$FORCE" = "true" ] && flags="$flags --force-extract"
           node scripts/import/core/run.ts $flags
         env:
-          EVENT: ${{ github.event_name }}
           MODE: ${{ inputs.mode }}
           FORCE: ${{ inputs.force_extract }}
           IMPORT_DATABASE_URL: ${{ inputs.mode != 'extract-only' && secrets.IMPORT_DATABASE_URL || '' }}
@@ -126,7 +98,7 @@ jobs:
       # database connection): one open issue (key "workflow"), commented on
       # repeat failures, closed by the next clean run.
       - name: Open an issue
-        if: failure() && steps.import.outputs.issued != 'true' && (github.event_name == 'schedule' || inputs.mode == 'apply')
+        if: failure() && steps.import.outputs.issued != 'true' && inputs.mode == 'apply'
         run: |
           number=$(gh issue list --repo "$REPO" --state open --search "[import] in:title" --limit 200 --json number,body \
             -q '.[] | select(.body | contains("<!-- import-key: workflow -->")) | .number' | head -1)
