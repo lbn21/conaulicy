@@ -198,8 +198,9 @@ try {
     await page.close();
   }
 
-  // "Zmień adres" on a street page: an empty, focused field, list closed,
-  // and nothing moves.
+  // "Zmień adres" on a street page: back to the home page (no hash), an
+  // empty field that is not focused, and nothing moves. A real tap then
+  // focuses it, with the list closed until typing.
   const page = await browser.newPage({ viewport: { width: 360, height: 800 } });
   await page.addInitScript(() => {
     window.__shift = 0;
@@ -211,27 +212,42 @@ try {
     waitUntil: "networkidle",
   });
   await page.getByRole("link", { name: /^Zmień adres/ }).click();
-  await page.waitForURL(`${server.origin}/#szukaj`);
-  const input = page.getByRole("combobox");
-  await page.waitForFunction(
-    () => document.activeElement?.getAttribute("role") === "combobox",
-  );
+  await page.waitForURL(`${server.origin}/`);
   await page.waitForTimeout(500);
-  const state = await input.evaluate((el) => ({
+  const state = await page.locator("#adres").evaluate((el) => ({
+    url: window.location.href,
     value: el.value,
-    expanded: el.getAttribute("aria-expanded"),
+    focused: document.activeElement === el,
     fontSize: Number.parseFloat(getComputedStyle(el).fontSize),
     shift: window.__shift,
   }));
   check(
-    state.value === "" && state.expanded === "false",
-    `Zmień adres: field not empty or list open (${JSON.stringify(state)})`,
+    !state.url.includes("#"),
+    `Zmień adres: landed on ${state.url}, expected no hash`,
+  );
+  check(
+    state.value === "" && !state.focused,
+    `Zmień adres: field not empty or focused without a tap (${JSON.stringify(state)})`,
   );
   check(
     state.fontSize >= 16,
     `Zmień adres: field text ${state.fontSize}px, phones zoom in below 16px`,
   );
   check(state.shift === 0, `Zmień adres: layout shift ${state.shift}`);
+
+  await page.locator("#adres").click();
+  const input = page.getByRole("combobox");
+  await input.waitFor();
+  await page.waitForTimeout(500);
+  const tapped = await input.evaluate((el) => ({
+    focused: document.activeElement === el,
+    expanded: el.getAttribute("aria-expanded"),
+    listbox: document.querySelector('[role="listbox"]')?.checkVisibility(),
+  }));
+  check(
+    tapped.focused && tapped.expanded === "false" && !tapped.listbox,
+    `Zmień adres: a tap does not focus the field, or the list opens before typing (${JSON.stringify(tapped)})`,
+  );
   await page.close();
 
   // A house number: typed after the street, carried to the page.

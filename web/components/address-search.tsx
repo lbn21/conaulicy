@@ -209,12 +209,6 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
       void start();
     }
     container.addEventListener("focusin", onFocus);
-
-    // "Zmień adres" on a street page links to /#szukaj: an empty field, ready
-    // to type in, with the list closed. Without JS the link still lands here.
-    if (window.location.hash === `#${SEARCH_ID}`) {
-      container.querySelector("input")?.focus();
-    }
     return () => container.removeEventListener("focusin", onFocus);
   }, [indexUrl]);
 

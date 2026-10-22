@@ -6,7 +6,6 @@ import { withHouseNumber } from "@/lib/house";
 import { scheduleName } from "@/lib/places";
 import { getPlace, type PlaceView } from "@/lib/schedule";
 import { hasUpcoming, UNVERIFIED_NOTE } from "@/lib/schedule-notes";
-import { SEARCH_ID } from "@/lib/search";
 
 // The street or village page, for /adres/[id] and, with a house number,
 // /adres/[id]?nr=… (rewritten in next.config.ts to /adres/[id]/nr/…, so it
@@ -139,12 +138,9 @@ export async function PlaceMain({
         {error && <ErrorSummary error={error} />}
         <span className="govuk-caption-l">{place.area}</span>
         <h1 className="govuk-heading-l">{name}</h1>
-        {/* Like GOV.UK's "Change": back to an empty, focused search. */}
+        {/* Like GOV.UK's "Change": back to the search on the home page. */}
         <p className="govuk-body">
-          <a
-            href={`/#${SEARCH_ID}`}
-            className="govuk-link govuk-link--no-visited-state"
-          >
+          <a href="/" className="govuk-link govuk-link--no-visited-state">
             Zmień adres<span className="govuk-visually-hidden"> {name}</span>
           </a>
         </p>
