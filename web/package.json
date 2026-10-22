@@ -18,6 +18,7 @@
     "config:sync": "node scripts/config-sync.ts",
     "config:check": "node scripts/config-sync.ts --check",
     "check:fonts": "next build && node scripts/check-fonts.mjs",
+    "check:metadata": "next build && node scripts/check-metadata.mjs",
     "check:perf": "next build && node scripts/check-perf.mjs",
     "start": "next start",
     "lint": "biome check",

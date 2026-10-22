@@ -5,37 +5,23 @@ import { SiteHeader } from "@/components/site-header";
 import { WebAnalytics } from "@/components/web-analytics";
 import { SITE_URL } from "@/lib/config.generated";
 import { indexable } from "@/lib/indexing";
+import { HOME_TITLE, SHARE } from "@/lib/share";
 import { THEME_COLOR } from "@/lib/theme";
 import { atkinson } from "./fonts";
 import "./tokens.css";
 import "./govuk.scss";
 import "./site.scss";
 
-// Built by docs/logo/source/ship_a.mjs. A static file, not opengraph-image.png:
-// the file convention splits a shared client chunk (+0.3 KB first-load JS).
-const SHARE_IMAGE = {
-  url: "/og.png",
-  width: 1200,
-  height: 630,
-  alt: "conaulicy.pl: wywozy śmieci przy Twojej ulicy. Lubaczów i gmina.",
-};
-
 export const metadata: Metadata = {
   // Share images and canonical links always point at the permanent address.
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "conaulicy – wywóz śmieci w Lubaczowie i gminie",
+    default: HOME_TITLE,
     template: "%s – conaulicy",
   },
   description:
     "Kiedy przyjeżdża śmieciarka na Twoją ulicę w Lubaczowie albo do Twojej wsi w gminie.",
-  openGraph: {
-    type: "website",
-    siteName: "conaulicy.pl",
-    locale: "pl_PL",
-    images: [SHARE_IMAGE],
-  },
-  twitter: { card: "summary_large_image", images: [SHARE_IMAGE] },
+  ...SHARE,
   robots: indexable()
     ? { index: true, follow: true }
     : { index: false, follow: false },
