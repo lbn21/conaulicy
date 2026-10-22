@@ -1,11 +1,26 @@
 import type { Metadata } from "next";
 import { AddressSearch } from "@/components/address-search";
+import { SITE_URL } from "@/lib/config.generated";
 import { HOME_EXAMPLES } from "@/lib/examples";
 import { examplePlaces, searchIndexUrl } from "@/lib/schedule";
+import { HOME_TITLE, pageMetadata } from "@/lib/share";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/" },
-};
+export const metadata: Metadata = pageMetadata({
+  path: "/",
+  title: { absolute: HOME_TITLE },
+  description:
+    "Sprawdź, kiedy śmieciarka przyjedzie na Twoją ulicę w Lubaczowie albo do Twojej wsi w gminie Lubaczów. Terminy do kalendarza w telefonie i do wydruku.",
+});
+
+// For search engines: the site's name. No SearchAction: the search runs on
+// the device, there is no results URL to point at.
+const WEBSITE = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "conaulicy.pl",
+  url: `${SITE_URL}/`,
+  inLanguage: "pl",
+});
 
 export default async function Home() {
   // A few examples only: the full address list never ships to the client.
@@ -18,6 +33,11 @@ export default async function Home() {
   // heading, one line of context, the field, then what you get.
   return (
     <div className="govuk-grid-row">
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: our own constant JSON, rendered on the server; React would escape it as text
+        dangerouslySetInnerHTML={{ __html: WEBSITE }}
+      />
       <div className="govuk-grid-column-two-thirds">
         <h1 className="govuk-heading-xl">Sprawdź dzień wywozu śmieci</h1>
         <p className="govuk-body-l">Dla Lubaczowa i wsi w gminie Lubaczów.</p>

@@ -159,6 +159,9 @@ jobs:
       - name: "Fonts (no layout shift when they arrive late)"
         run: node scripts/check-fonts.mjs
 
+      - name: "Page metadata (own title, description and share link)"
+        run: node scripts/check-metadata.mjs
+
       - name: "Indexing (CI build: noindex, robots.txt closed)"
         run: node scripts/check-indexing.mjs --expect=noindex
 

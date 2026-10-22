@@ -6,7 +6,12 @@ import { withHouseNumber } from "@/lib/house";
 import { indexable } from "@/lib/indexing";
 import { scheduleName } from "@/lib/places";
 import { getPlace, type PlaceView } from "@/lib/schedule";
-import { hasUpcoming, UNVERIFIED_NOTE } from "@/lib/schedule-notes";
+import {
+  hasUpcoming,
+  placeDescription,
+  UNVERIFIED_NOTE,
+} from "@/lib/schedule-notes";
+import { pageMetadata } from "@/lib/share";
 
 // The street or village page, for /adres/[id] and, with a house number,
 // /adres/[id]?nr=… (rewritten in next.config.ts to /adres/[id]/nr/…, so it
@@ -32,11 +37,20 @@ export async function placeMetadata(
   missing = false,
 ): Promise<Metadata> {
   const place = await getPlace(id, nr);
-  const title = place ? withHouseNumber(place.label, place.nr) : "Adres";
+  const path = `/adres/${encodeURIComponent(id)}`;
+  if (!place) return { title: "Adres", alternates: { canonical: path } };
+  const label = withHouseNumber(place.label, place.nr);
+  // GOV.UK: "Error: " first in the title, so screen readers hear it first.
+  const title = numberError(place, missing) ? `Błąd: ${label}` : label;
+  // The house-number and /numer variants describe the place itself.
+  const whole = nr ? await getPlace(id, null) : place;
   return {
-    // GOV.UK: "Error: " first in the title, so screen readers hear it first.
-    title: place && numberError(place, missing) ? `Błąd: ${title}` : title,
-    alternates: { canonical: `/adres/${encodeURIComponent(id)}` },
+    title,
+    ...pageMetadata({
+      path,
+      title,
+      description: placeDescription(whole ?? place),
+    }),
     // /numer is an error variant of the street page: never a search result,
     // its links still followed once the site is indexable.
     ...(missing && { robots: { index: false, follow: indexable() } }),
