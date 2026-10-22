@@ -31,14 +31,30 @@ test("the search API keeps only q", () => {
   assert.equal(clean("/api/search?q=asn&x=1"), "?q=asn");
 });
 
-test("every other route takes no parameters", () => {
+test("the other cacheable routes take no parameters", () => {
   assert.equal(clean("/?x=1"), "");
   assert.equal(clean("/ulice?utm_source=fb"), "");
+  assert.equal(clean("/dostepnosc?x=1"), "");
+  assert.equal(clean("/prywatnosc?x=1"), "");
+  assert.equal(clean("/o-projekcie?x=1"), "");
   assert.equal(clean("/ics/Z?x=1"), "");
   assert.equal(clean("/api/search-index/abc?x=1"), "");
   assert.equal(clean("/adres/X/numer?nr=1"), "");
   assert.equal(clean("/adres/X/nr/12?nr=1"), "");
-  assert.equal(clean("/sitemap.xml?x=1"), "");
+  assert.equal(clean("/adres/X/nr/12?x=1"), "");
+  assert.equal(clean("/adres/X/nr/7/22?x=1"), "");
+});
+
+test("files, metadata and unknown paths are never touched", () => {
+  assert.equal(clean("/favicon.ico?favicon.2zyqv1b-1_vd2.ico"), null);
+  assert.equal(clean("/icon.svg?icon.0otmg08cw9-wb.svg"), null);
+  assert.equal(clean("/apple-icon.png?apple-icon.290v98y1wixts.png"), null);
+  assert.equal(clean("/manifest.webmanifest?x=1"), null);
+  assert.equal(clean("/og.png?x=1"), null);
+  assert.equal(clean("/robots.txt?x=1"), null);
+  assert.equal(clean("/sitemap.xml?x=1"), null);
+  assert.equal(clean("/nie-ma-takiej-strony?x=1"), null);
+  assert.equal(clean("/adres/X/cos-innego?x=1"), null);
 });
 
 test("no query, nothing to do", () => {
