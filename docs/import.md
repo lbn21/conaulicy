@@ -1,13 +1,13 @@
 # Unattended import
 
-Every day, a GitHub Actions workflow checks the sources in `etl/sources.yaml`. Today that is one domain, waste: the town's and the gmina's published schedules. A change that passes every check goes live on its own. Anything doubtful opens a GitHub issue instead, and nothing is applied; a file a person must look at gets a review pull request with the original shown inline. People only step in when an issue or a review PR opens.
+A GitHub Actions workflow checks the sources in `etl/sources.yaml`. Today that is one domain, waste: the town's and the gmina's published schedules. A change that passes every check goes live on its own. Anything doubtful opens a GitHub issue instead, and nothing is applied; a file a person must look at gets a review pull request with the original shown inline. People only step in when an issue or a review PR opens.
 
 - Workflow: `.github/workflows/import.yml`. It runs on GitHub-hosted runners with no approval gates. It talks to Neon, S3 (through an OIDC role), the Cursor CLI, the GitHub API (issues and review PRs), the site's `/api/revalidate`, and the source sites themselves.
 - Code: `web/scripts/import/`.
   - `core/` is shared by every domain: the run loop (`run.ts`), config, HTTP retries, watched pages, the vision runner and JSON extraction, issues and review PRs, the events diff, batches and revert.
   - `waste/` is the waste domain: detectors and extractors (`adapters.ts`), parsing and validation (`lib.ts`), its checks (`check.ts`) and its hooks into the core (`index.ts`: config rules, the `gminy.schedule_url` sync, database rows, issue wording).
   - `domains.ts` registers the domains.
-- Config: **`etl/sources.yaml`**, the one config. A schema (`etl/sources.schema.json`) checks it, and `npm run config:check` fails CI if anything derived from it has drifted. That covers `docs/data/sources.md`, `web/lib/config.generated.ts` (footer features and public schedule pages), the workflow's cron lines, and the adapter types.
+- Config: **`etl/sources.yaml`**, the one config. A schema (`etl/sources.schema.json`) checks it, and `npm run config:check` fails CI if anything derived from it has drifted. That covers `docs/data/sources.md`, `web/lib/config.generated.ts` (footer features and public schedule pages), and the adapter types.
 
 ## What a run does
 
@@ -50,10 +50,17 @@ One PR per source file that needs a person (`core/review.ts`, waste content in `
 
 **Self-healing:**
 - A file waiting for review is re-extracted on every run, so it applies as soon as its fix (an approval or a config change) is merged.
-- A failed source is retried by the day's next cron, and again the next day.
+- A failed source is retried by the next run.
 - Network calls retry with backoff (`import.retries`).
 
-**Schedule:** `schedule.time` is in `schedule.timezone`. GitHub cron is UTC-only, so the workflow carries one cron per UTC offset (`23 3 * * *` for CEST, `23 4 * * *` for CET), and `--scheduled` runs only the sources that are due. A source is due once the hour of `schedule.time` has come today and no run has finished today, so the second cron is a free retry. **The schedule is on** (since 21 Oct 2026): every day at 05:23 Europe/Warsaw, scheduled runs apply (no force-extract). It runs off the top of the hour because GitHub may delay or drop scheduled runs at the start of every hour ([GitHub docs](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)).
+**Schedule:** there is no GitHub schedule: `schedule` events never fired in this repo (proven 22 Oct 2026). Today the import runs only when dispatched by hand (Actions → import → Run workflow). A daily external trigger is planned (Vercel Cron → `workflow_dispatch`).
+
+**How the trigger calls it:**
+- `POST https://api.github.com/repos/lbn21/conaulicy/actions/workflows/import.yml/dispatches`
+- Headers: `Authorization: Bearer <token>`, `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28`.
+- Body: `{"ref":"main","inputs":{"mode":"apply"}}` (no `force_extract`; it defaults to `false`). Without `mode` the run is `extract-only` and changes nothing.
+- Token: fine-grained, this repo only, permission Actions: read and write; stored only in the trigger's secrets.
+- Concurrency `group: import` queues a second dispatch behind a running one; nothing runs in parallel.
 
 **Adding a source or a domain:** see the RUNBOOK below.
 
@@ -91,7 +98,7 @@ A reverted file stays settled: it is not re-applied until its source publishes a
 
 **Accept a flagged date.** Check it against the source, then add `{ zone_id, date, note }` to `etl/review/approvals.yaml` in a PR. The next run applies the schedule and closes the issue.
 
-**Add or change a source, URL, time, model or threshold.** Edit `etl/sources.yaml`, run `cd web && npm run config:sync` (it rewrites everything derived, and prints the cron lines if the schedule changed), and open a PR. CI checks the schema and drift.
+**Add or change a source, URL, model or threshold.** Edit `etl/sources.yaml`, run `cd web && npm run config:sync` (it rewrites everything derived), and open a PR. CI checks the schema and drift.
 
 ### Adding a new source or domain
 
@@ -104,6 +111,3 @@ A reverted file stays settled: it is not re-applied until its source publishes a
   4. Add `domains.<domain>` and its `sources` entries (`domain: <domain>`, with a `<domain>` block if it has one) to `etl/sources.yaml`.
   5. Run `npm run config:sync`. CI fails if a registered domain or type is missing from the schema, or the other way round.
   The core does the rest: fetching, archiving, watched pages, diffing, batches, issues, `import_runs` and revert.
-- **A domain on its own schedule:** today there is one daily schedule for all sources. To give a domain its own time, add an optional `schedule` under `domains.<domain>` (defaulting to the global one), make the due check in `core/run.ts` use it, and make `cronLines` emit the union of every domain's crons.
-
-**Turn the schedule on.** Set `schedule.enabled: true`, run `npm run config:check`, and paste the cron lines it prints under `on: schedule:` in the workflow. Then open a PR.

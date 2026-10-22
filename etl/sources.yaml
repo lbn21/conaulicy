@@ -1,12 +1,11 @@
 # yaml-language-server: $schema=./sources.schema.json
 #
 # THE configuration of conaulicy.pl's data: sources, their public pages, how
-# changes are detected, read and checked, when the import runs, the AI models,
-# alert rules, the source archive, and the site's feature links. Everything
-# else is derived from this file and CI fails on drift (npm run config:check):
-# docs/data/sources.md, web/lib/config.generated.ts (site), the import
-# workflow's cron lines. Schema: etl/sources.schema.json. How to change
-# things: docs/import.md (RUNBOOK).
+# changes are detected, read and checked, the AI models, alert rules, the
+# source archive, and the site's feature links. Everything else is derived
+# from this file and CI fails on drift (npm run config:check):
+# docs/data/sources.md, web/lib/config.generated.ts (site). Schema:
+# etl/sources.schema.json. How to change things: docs/import.md (RUNBOOK).
 
 site:
   url: https://conaulicy.pl
@@ -15,15 +14,6 @@ site:
     - section: Sprawdź przy swojej ulicy
       links:
         - { href: /, text: Wywóz śmieci }
-
-schedule:
-  # Daily import time. GitHub cron is UTC-only, so the workflow carries one
-  # cron per UTC offset of this time zone (summer and winter); the import
-  # itself decides what is due. false = no cron lines in the workflow (the
-  # drift check enforces it); manual runs still work.
-  enabled: true
-  time: "05:23"
-  timezone: Europe/Warsaw
 
 import:
   # Network calls: attempts, first backoff (doubles each time).

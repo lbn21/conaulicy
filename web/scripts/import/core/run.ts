@@ -1,5 +1,5 @@
-// npm run import:run -- [--scheduled] [--dry-run] [--read-only]
-//                         [--force-extract] [--extract-only]
+// npm run import:run -- [--dry-run] [--read-only] [--force-extract]
+//                         [--extract-only]
 //
 // The unattended import (docs/import.md), run by .github/workflows/import.yml.
 // Everything it does is configured in etl/sources.yaml; what a source's
@@ -15,13 +15,11 @@
 // domain that opts in: an issue while any of its zones' dates run out within
 // domains.<domain>.coverageMinDays.
 //
-// --scheduled: only sources that are due (schedule.time has passed today in
-// schedule.timezone and no run finished today), so a failed run is retried
-// by the day's next cron and a missed day is caught up. --dry-run: no data
-// written (the import_runs row still is). --read-only: nothing written at all.
-// --force-extract: extract known files too (proves the extraction reproduces
-// the database). --extract-only: no database at all: detect, download,
-// extract and validate, print, exit 1 on any problem (tests the vision passes).
+// --dry-run: no data written (the import_runs row still is). --read-only:
+// nothing written at all. --force-extract: extract known files too (proves
+// the extraction reproduces the database). --extract-only: no database at
+// all: detect, download, extract and validate, print, exit 1 on any problem
+// (tests the vision passes).
 //
 // Env: IMPORT_DATABASE_URL (or DATABASE_URL_UNPOOLED / DATABASE_URL);
 // CURSOR_API_KEY (vision passes, Actions only); REVALIDATE_SECRET; GH_TOKEN
@@ -35,8 +33,9 @@ import { appendFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
+import { todayInWarsaw } from "../../../lib/dates.ts";
 import { DOMAINS } from "../domains.ts";
-import { archiveKey, loadConfig, localNow, type Source } from "./config.ts";
+import { archiveKey, loadConfig, type Source } from "./config.ts";
 import { Db } from "./db.ts";
 import type { Detection, Extracted, Found } from "./domain.ts";
 import { coverageGaps, diffEvents } from "./events.ts";
@@ -49,7 +48,6 @@ import { linksHash, readWatched } from "./watch.ts";
 
 const { values: args } = parseArgs({
   options: {
-    scheduled: { type: "boolean", default: false },
     "dry-run": { type: "boolean", default: false },
     "read-only": { type: "boolean", default: false },
     "force-extract": { type: "boolean", default: false },
@@ -64,11 +62,10 @@ const config = loadConfig(process.env.IMPORT_CONFIG || undefined);
 const net = http(config.import.retries, config.site.url);
 const issues = new Issues();
 const reviews = new Reviews(net);
-// The clock (IMPORT_NOW in tests): today, the hour, and every timestamp.
+// The clock (IMPORT_NOW in tests): today and every timestamp.
 const clock = () =>
   process.env.IMPORT_NOW ? new Date(process.env.IMPORT_NOW) : new Date();
-const local = localNow(config.schedule.timezone, clock());
-const today = local.date;
+const today = todayInWarsaw(clock());
 const runUrl = process.env.ACTIONS_RUN_URL ?? "";
 const archivedKeys = new Map(
   config.archived.map((a) => [a.sha256, archiveKey(a)]),
@@ -571,32 +568,10 @@ async function importSource(source: Source): Promise<Outcome> {
 
 // ------------------------------------------------------------------ main
 
-let due = config.sources;
-if (args.scheduled && tracked) {
-  const hour = Number(config.schedule.time.slice(0, 2));
-  const finished = new Set(
-    (
-      await db.query(
-        "select distinct source from import_runs where status <> 'failed' and not dry_run and (started_at at time zone $1)::date = $2::date",
-        [config.schedule.timezone, today],
-      )
-    ).rows.map((r) => r.source as string),
-  );
-  due =
-    local.hour < hour ? [] : config.sources.filter((s) => !finished.has(s.id));
-  if (due.length === 0) {
-    console.log(
-      `Nothing due (${today}, ${local.hour}h in ${config.schedule.timezone}; runs at ${config.schedule.time}, once a day).`,
-    );
-    await db.close();
-    process.exit(0);
-  }
-}
-
 let failed = false;
 // A failure issue was opened, so the workflow need not open its own.
 let issued = false;
-for (const source of due) {
+for (const source of config.sources) {
   const startedAt = clock().toISOString();
   let outcome: Outcome;
   try {
@@ -622,7 +597,7 @@ for (const source of due) {
         `${source.id}:failed:${shortHash((error as Error).message ?? "")}`,
         `${source.name}: błąd importu`,
         [
-          `The unattended import of **${source.name}** failed; nothing was applied. It is retried by the next scheduled run.`,
+          `The unattended import of **${source.name}** failed; nothing was applied. It is retried by the next run.`,
           "",
           "```",
           message.slice(0, 3000),

@@ -3,16 +3,13 @@
 //
 // Derived from the one config: docs/data/sources.md (the archive manifest),
 // web/lib/config.generated.ts (what the site needs: footer features, each
-// gmina's public schedule page), and, checked only, the cron lines of
-// .github/workflows/import.yml (GitHub needs literal crons) and the domains
-// and adapter types the schema accepts (scripts/import/domains.ts).
+// gmina's public schedule page), and, checked only, the domains and adapter
+// types the schema accepts (scripts/import/domains.ts).
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { parse as parseYaml } from "yaml";
 import {
   archiveKey,
   type Config,
-  cronLines,
   loadConfig,
   ROOT,
   SCHEMA_FILE,
@@ -90,23 +87,6 @@ function sync(file: string, content: string) {
 
 sync("docs/data/sources.md", sourcesMarkdown(config));
 sync("web/lib/config.generated.ts", siteModule(config));
-
-// The workflow's crons must be exactly those the schedule implies.
-const workflow = parseYaml(
-  readFileSync(path.join(ROOT, ".github/workflows/import.yml"), "utf8"),
-) as {
-  on: { schedule?: Array<{ cron: string }> };
-};
-const actual = (workflow.on.schedule ?? []).map((s) => s.cron).sort();
-const expected = cronLines(config.schedule).sort();
-if (actual.join("|") !== expected.join("|"))
-  drift.push(
-    `.github/workflows/import.yml crons [${actual.join(", ")}] do not match schedule in etl/sources.yaml: ${
-      expected.length
-        ? `expected\n    on:\n      schedule:\n${expected.map((c) => `        - cron: "${c}"`).join("\n")}`
-        : "expected no schedule (schedule.enabled: false)"
-    }`,
-  );
 
 // The schema accepts exactly the domains and adapter types that exist.
 const schema = JSON.parse(readFileSync(SCHEMA_FILE, "utf8"));

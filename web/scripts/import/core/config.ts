@@ -1,5 +1,5 @@
 // Loads etl/sources.yaml, the one configuration (sources, public pages,
-// detection, schedule, models, thresholds, alerts, archive, site features),
+// detection, models, thresholds, alerts, archive, site features),
 // and checks it against etl/sources.schema.json plus the rules a schema
 // cannot express (the core's, and each source's domain's). Everything derived
 // from it is in scripts/config-sync.ts. Each domain's own settings
@@ -38,7 +38,6 @@ export type Config = {
       links: Array<{ href: string; text: string }>;
     }>;
   };
-  schedule: { enabled: boolean; time: string; timezone: string };
   import: {
     retries: { attempts: number; backoffSeconds: number };
   };
@@ -154,13 +153,6 @@ export function configErrors(config: Config): string[] {
   for (const key of ["reviewFrom", "streetCheckFrom"] as const)
     if (!passIds.includes(config.vision[key]))
       errors.push(`vision.${key}: ${config.vision[key]} is not a pass id`);
-  try {
-    new Intl.DateTimeFormat("en", { timeZone: config.schedule.timezone });
-  } catch {
-    errors.push(
-      `schedule.timezone: unknown time zone ${config.schedule.timezone}`,
-    );
-  }
   for (const s of config.sources) {
     for (const w of s.watch ?? []) {
       try {
@@ -192,54 +184,3 @@ export function loadConfig(file = CONFIG_FILE): Config {
 /** S3 key of an archived file. */
 export const archiveKey = (a: Config["archived"][number]) =>
   `sources/${a.origin}/${a.fetched}/${a.file}`;
-
-/**
- * The UTC cron lines that fire at schedule.time in its time zone on every
- * day of the year: one per UTC offset the zone uses (two with DST).
- */
-export function cronLines(schedule: Config["schedule"], year = 2026): string[] {
-  if (!schedule.enabled) return [];
-  const [hour, minute] = schedule.time.split(":").map(Number);
-  const offsets = new Set<number>();
-  for (let day = 0; day < 366; day += 1) {
-    const date = new Date(Date.UTC(year, 0, 1 + day, 12));
-    offsets.add(utcOffsetHours(date, schedule.timezone));
-  }
-  return [...offsets]
-    .map((offset) => (hour - offset + 24) % 24)
-    .sort((a, b) => a - b)
-    .map((utc) => `${minute} ${utc} * * *`);
-}
-
-/** The zone's UTC offset in hours at a moment (e.g. 2 for CEST). */
-function utcOffsetHours(date: Date, timeZone: string): number {
-  const part = new Intl.DateTimeFormat("en", {
-    timeZone,
-    timeZoneName: "longOffset",
-  })
-    .formatToParts(date)
-    .find((p) => p.type === "timeZoneName")?.value;
-  const m = /GMT(?:([+-])(\d{2}):(\d{2}))?/.exec(part ?? "");
-  if (!m?.[1]) return 0;
-  return (m[1] === "-" ? -1 : 1) * (Number(m[2]) + Number(m[3]) / 60);
-}
-
-/** Local date and hour in the schedule's time zone. */
-export function localNow(timeZone: string, now = new Date()) {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      hourCycle: "h23",
-    })
-      .formatToParts(now)
-      .map((p) => [p.type, p.value]),
-  );
-  return {
-    date: `${parts.year}-${parts.month}-${parts.day}`,
-    hour: Number(parts.hour),
-  };
-}

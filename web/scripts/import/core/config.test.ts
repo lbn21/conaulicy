@@ -3,9 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
   configErrors,
-  cronLines,
   loadConfig,
-  localNow,
   SCHEMA_FILE,
   schemaErrors,
 } from "./config.ts";
@@ -35,12 +33,10 @@ test("vision passes: two vendors or one, as long as the ids differ", () => {
 test("the schema rejects unknown keys, bad types and banned models", () => {
   const config = structuredClone(loadConfig());
   (config as Record<string, unknown>).extra = 1;
-  config.schedule.time = "5:00";
   config.vision.passes[0].model = "claude-opus-5-5-fast";
   config.vision.passes[1].model = "auto";
   const errors = schemaErrors(config, schema).join("\n");
   assert.match(errors, /\$\.extra: unknown key/);
-  assert.match(errors, /schedule\.time/);
   assert.match(errors, /passes\[0\]\.model/);
   assert.match(errors, /passes\[1\]\.model/);
 });
@@ -71,25 +67,6 @@ test("vision.streetCheckFrom: required, and an existing pass id", () => {
   assert.match(
     schemaErrors(config, schema).join("\n"),
     /\$\.vision\.streetCheckFrom: required/,
-  );
-});
-
-test("crons: one per UTC offset, none when disabled", () => {
-  const warsaw = { enabled: true, time: "05:23", timezone: "Europe/Warsaw" };
-  assert.deepEqual(cronLines(warsaw), ["23 3 * * *", "23 4 * * *"]);
-  assert.deepEqual(cronLines({ ...warsaw, time: "05:00" }), [
-    "0 3 * * *",
-    "0 4 * * *",
-  ]);
-  assert.deepEqual(cronLines({ ...warsaw, timezone: "UTC" }), ["23 5 * * *"]);
-  assert.deepEqual(cronLines({ ...warsaw, enabled: false }), []);
-  assert.deepEqual(
-    localNow("Europe/Warsaw", new Date("2026-07-01T03:30:00Z")),
-    { date: "2026-07-01", hour: 5 },
-  );
-  assert.deepEqual(
-    localNow("Europe/Warsaw", new Date("2026-12-31T23:30:00Z")),
-    { date: "2027-01-01", hour: 0 },
   );
 });
 
