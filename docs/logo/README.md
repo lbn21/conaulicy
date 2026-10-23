@@ -29,6 +29,7 @@ See `debug/a-centring-overlay.png`, which shows plate centre lines, ink box and 
 
 **Header.** The plate is 1.6 × the wordmark's cap height: "conaulicy" at 31.8 on a 34-high plate. In the site header the whole mark is 30 px tall (about 169 px wide), the GOV.UK header's logotype height, lifted 3 px as GOV.UK's logo so the hover underline clears it by 6 px (task 72).
 - **Alignment:** in the logo files the wordmark sits on the **baseline of "ul."** on the plate, with its x-height centre 1.4 units above the plate centre. In the headers, on the site and in the PDF, the wordmark is 1.4 units lower, so its x-height is centred on the plate (`HEADER_WORDMARK_SHIFT` in `web/lib/logo.ts`; on the site `.app-logo__wordmark` in `web/app/site.scss`).
+- **Focus:** on keyboard focus, a black plate with the "ul." in focus yellow: the plate takes the link's `currentColor` (GOV.UK's focus-text), as GOV.UK's logo goes all black on focus (`web/app/site.scss`, task 73).
 - **Size:** the mark is much larger than before. The old plate was 28 px tall with a 20 px wordmark.
 
 **Favicons.** These are separate designs, pixel-snapped: plate edges and baselines on whole pixels, x-height a whole number of pixels.

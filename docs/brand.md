@@ -21,7 +21,7 @@ The site uses **GOV.UK Frontend as-is, including its palette**. Only three thing
 
 | Place | File |
 |---|---|
-| Header | `web/components/site-header.tsx`: inline SVG (paths in `web/lib/logo.ts`); plate `#ffb547` from `app/_palette.scss` via `app/site.scss`; wordmark `currentColor` (white on the black bar) |
+| Header | `web/components/site-header.tsx`: inline SVG (paths in `web/lib/logo.ts`); plate `#ffb547` from `app/_palette.scss` via `app/site.scss`; wordmark `currentColor` (white on the black bar); on focus, a black plate with the "ul." in focus yellow (the plate takes `currentColor`, GOV.UK's focus-text) |
 | Tab icon | `web/app/icon.svg` (light colours) and `web/app/favicon.ico` (16 + 32, night tile) |
 | Apple | `web/app/apple-icon.png` (180, full-bleed night tile; iOS rounds it) |
 | PWA | `web/public/icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, listed in `web/app/manifest.ts` |
@@ -63,7 +63,7 @@ The unit is **P**, a quarter of the plate height (34 units → P = 8.5; 8 px in 
 - **Exceptions** (brand blue hard-coded upstream, with no setting; enforced by `check-own-css` and `check-govuk-assets`):
   - `.govuk-button--inverse`: may appear in the CSS output, never in markup.
   - accessible-autocomplete's highlighted option: the colour stays in its unchanged CSS; `site.scss` repaints it with the brand role (`#9a5700`, white text), so the blue is never rendered.
-- **Logo colours:** the plate is `#9a5700` on light and `#ffb547` on the black header (11.15 : 1); the wordmark is the text colour.
+- **Logo colours:** the plate is `#9a5700` on light and `#ffb547` on the black header (11.15 : 1); the wordmark is the text colour. On focus the header plate is focus-text black on focus yellow (14.55 : 1).
 - **Bin colours** are real-world colours for the bin markers only, never for the logo. Defined in `web/app/tokens.css`; rationale in `design/tokens.md`.
 - **PDF fraction marks:** the printable PDF marks each fraction with a shape in its bin colour, so it reads in black-and-white print and for colour-blind readers: zmieszane ● circle, popiół ○ ring, bio ■ square, papier ▲ triangle, tworzywa ◆ diamond (dark outline), szkło ★ star; rare fractions a letter in an outlined square (G wielkogabarytowe, E elektro, O opony, T tekstylia). The website keeps its bin icons.
 
@@ -145,6 +145,7 @@ WCAG 2.x, computed by `node design/contrast.mjs` (it exits 1 if a required pair 
 | brand vs body-background | 5.62 | UI pass |
 | Generic header text on black | 19.59 | AAA |
 | logo plate amber #ffb547 on the black header | 11.15 | UI pass |
+| logo plate on focus (focus-text #0b0c0c) vs focus yellow | 14.55 | UI pass |
 
 ## Typography
 
