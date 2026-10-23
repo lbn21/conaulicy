@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/share";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: "/dostepnosc",
   title: "Dostępność",
-  ...pageMetadata({
-    path: "/dostepnosc",
-    title: "Dostępność",
-    description:
-      "Chcemy, żeby z conaulicy.pl wygodnie korzystał każdy: duży tekst, mocny kontrast, obsługa klawiaturą. Co już sprawdzamy, a czego jeszcze nie.",
-  }),
-};
+  description:
+    "Chcemy, żeby z conaulicy.pl wygodnie korzystał każdy: duży tekst, mocny kontrast, obsługa klawiaturą. Co już sprawdzamy, a czego jeszcze nie.",
+});
 
 export default function AccessibilityPage() {
   return (

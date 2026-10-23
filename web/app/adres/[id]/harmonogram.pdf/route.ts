@@ -18,13 +18,12 @@ import {
   WORDMARK,
 } from "@/lib/logo";
 import { normalize } from "@/lib/normalize";
-import { movedPath } from "@/lib/places";
 import {
   getPlace,
+  movedTarget,
   type Pickup,
   type PickupDay,
   type PlaceView,
-  placeRedirect,
 } from "@/lib/schedule";
 import {
   DISCLAIMER,
@@ -32,6 +31,8 @@ import {
   putOutNote,
   UNVERIFIED_NOTE,
 } from "@/lib/schedule-notes";
+import { placePath } from "@/lib/search";
+import { SITE_NAME } from "@/lib/share";
 import { FRACTIONS, TOKEN, tones } from "@/lib/waste-bin";
 
 export const runtime = "nodejs";
@@ -359,7 +360,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     font: REGULAR as unknown as string,
     info: {
       Title: `Harmonogram odbioru odpadów – ${withHouseNumber(place.label, place.nr)}`,
-      Author: "conaulicy.pl",
+      Author: SITE_NAME,
       Subject: place.gmina,
     },
   });
@@ -1058,8 +1059,7 @@ export async function GET(
   const url = new URL(request.url);
   const place = await getPlace(id, url.searchParams.get("nr"));
   // A renamed place's old PDF address: the same PDF on its new id.
-  const to = place ? null : await placeRedirect(id);
-  const moved = to && movedPath(url.pathname + url.search, id, to);
+  const moved = place ? null : await movedTarget(id, url.pathname + url.search);
   if (moved) {
     return new Response(null, {
       status: 308,
@@ -1082,7 +1082,7 @@ export async function GET(
 
   const pdf = await render(
     place,
-    `${SITE_URL}/adres/${place.id}${place.nr ? `?nr=${place.nr}` : ""}`,
+    `${SITE_URL}${placePath(place.id, place.nr)}`,
   );
   return new Response(new Uint8Array(pdf), {
     headers: {

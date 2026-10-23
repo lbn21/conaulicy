@@ -35,7 +35,7 @@ export const SHARE = {
  * A page's own description, in search results and when shared. Next replaces
  * a parent's openGraph and twitter instead of merging them, so each page
  * repeats the layout's base. The page's title goes through the layout's
- * template; the share title is the same full title.
+ * template ({ absolute } skips it); the share title is the same full title.
  */
 export function pageMetadata({
   path,
@@ -49,6 +49,7 @@ export function pageMetadata({
 }): Metadata {
   const full = typeof title === "string" ? pageTitle(title) : title.absolute;
   return {
+    title,
     description,
     alternates: { canonical: path },
     openGraph: { ...SHARE.openGraph, url: path, title: full, description },

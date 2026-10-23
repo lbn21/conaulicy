@@ -30,6 +30,7 @@ import {
   gminaShortName,
   hasZone,
   isSplitStreet,
+  movedPath,
   type PlaceList,
   pickZone,
   placeList,
@@ -202,6 +203,24 @@ function villagePlace(row: VillageRow): Place {
   };
 }
 
+/** Waste zone members, all of them or those matching `where`. */
+function wasteMembers(where?: SQL) {
+  return db()
+    .select({
+      zoneId: zoneMembers.zoneId,
+      localityId: zoneMembers.localityId,
+      streetId: zoneMembers.streetId,
+      houseFrom: zoneMembers.houseFrom,
+      houseTo: zoneMembers.houseTo,
+      parity: zoneMembers.parity,
+    })
+    .from(zoneMembers)
+    .innerJoin(zones, eq(zones.id, zoneMembers.zoneId))
+    .where(
+      where ? and(eq(zones.type, "waste"), where) : eq(zones.type, "waste"),
+    );
+}
+
 /**
  * At most 8 places for q, ranked as the search field ranks them (the same
  * matcher over the same index). The fallback when the field cannot load
@@ -212,12 +231,13 @@ export async function search(q: string): Promise<SearchHit[]> {
 }
 
 /**
- * Every place search can find, as [id, label] (~4 KB gzip), so the search
- * field matches on the device with no request per keystroke. The version is
- * a hash of the content: its URL changes with the data, so the CDN may keep
- * each version for good. `list` is the same places grouped for /ulice, and
- * `noData` those without pickup data (no zone, lib/places.ts hasZone); both
- * stay on the server.
+ * Every place search can find, as [id, label, type] (4.0 KB gzip in
+ * production, measured 23 Oct 2026), so the search field matches on the
+ * device with no request per keystroke. The version is a hash of the
+ * content: its URL changes with the data, so the CDN may keep each version
+ * for good. `list` is the same places grouped for /ulice, and `noData`
+ * those without pickup data (no zone, lib/places.ts hasZone); both stay on
+ * the server.
  */
 export const searchIndex = unstable_cache(
   async (): Promise<{
@@ -229,18 +249,7 @@ export const searchIndex = unstable_cache(
     const [streetRows, villageRows, members] = await Promise.all([
       streetPlaces(listed, 100_000),
       villagePlaces(undefined, 100_000),
-      db()
-        .select({
-          zoneId: zoneMembers.zoneId,
-          localityId: zoneMembers.localityId,
-          streetId: zoneMembers.streetId,
-          houseFrom: zoneMembers.houseFrom,
-          houseTo: zoneMembers.houseTo,
-          parity: zoneMembers.parity,
-        })
-        .from(zoneMembers)
-        .innerJoin(zones, eq(zones.id, zoneMembers.zoneId))
-        .where(eq(zones.type, "waste")),
+      wasteMembers(),
     ]);
     const all = [
       ...streetRows.map(streetPlace),
@@ -310,6 +319,18 @@ export async function placeRedirect(id: string): Promise<string | null> {
   return (await movedPlaces())[id] ?? null;
 }
 
+/**
+ * Where a renamed place's old address `path` (as asked for) now lives, or
+ * null: not renamed. For an id with no place of its own (getPlace null).
+ */
+export async function movedTarget(
+  id: string,
+  path: string,
+): Promise<string | null> {
+  const to = await placeRedirect(id);
+  return to && movedPath(path, id, to);
+}
+
 /** Where the search field loads the current index from. */
 export async function searchIndexUrl(): Promise<string> {
   const { version } = await searchIndex();
@@ -342,25 +363,11 @@ async function wasteZoneFor(place: Place, nr: string | null) {
     isNull(zoneMembers.streetId),
     inArray(zoneMembers.localityId, localityIds),
   );
-  const candidates = await db()
-    .select({
-      zoneId: zoneMembers.zoneId,
-      localityId: zoneMembers.localityId,
-      streetId: zoneMembers.streetId,
-      houseFrom: zoneMembers.houseFrom,
-      houseTo: zoneMembers.houseTo,
-      parity: zoneMembers.parity,
-    })
-    .from(zoneMembers)
-    .innerJoin(zones, eq(zones.id, zoneMembers.zoneId))
-    .where(
-      and(
-        eq(zones.type, "waste"),
-        place.streetId
-          ? or(eq(zoneMembers.streetId, place.streetId), wholeLocality)
-          : wholeLocality,
-      ),
-    );
+  const candidates = await wasteMembers(
+    place.streetId
+      ? or(eq(zoneMembers.streetId, place.streetId), wholeLocality)
+      : wholeLocality,
+  );
   return {
     id: pickZone(candidates, { ...place, nr }),
     split: isSplitStreet(candidates, place),

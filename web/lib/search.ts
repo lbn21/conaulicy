@@ -347,11 +347,16 @@ export function exactPlace(index: SearchIndex, q: string): SearchHit | null {
   return null;
 }
 
+/** A place's page, and its house number if given. */
+export function placePath(id: string, nr?: string | null): string {
+  const path = `/adres/${encodeURIComponent(id)}`;
+  // A valid number is only digits, a-z and "/", all fine in a query.
+  return nr ? `${path}?nr=${nr}` : path;
+}
+
 /** Where a hit links to: the place, and its house number if given. */
 export function placeHref(hit: SearchHit): string {
-  const path = `/adres/${encodeURIComponent(hit.id)}`;
-  // A valid number is only digits, a-z and "/", all fine in a query.
-  return hit.nr ? `${path}?nr=${hit.nr}` : path;
+  return placePath(hit.id, hit.nr);
 }
 
 /** "1 adres", "3 adresy", "5 adresów", "22 adresy". */

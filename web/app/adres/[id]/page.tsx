@@ -3,6 +3,7 @@ import {
   placeMetadata,
   redirectIfMoved,
 } from "@/components/place-page";
+import { placePath } from "@/lib/search";
 
 // Rendered on first visit, then served from the cache like a static page.
 // Regenerate every 10 minutes, so the static HTML drops past pickups and its
@@ -22,6 +23,6 @@ export async function generateMetadata({ params }: PageProps<"/adres/[id]">) {
 
 export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
   const { id } = await params;
-  await redirectIfMoved(id, `/adres/${encodeURIComponent(id)}`);
+  await redirectIfMoved(id, placePath(id));
   return <PlaceMain id={id} nr={null} />;
 }

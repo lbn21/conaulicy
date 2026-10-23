@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/share";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: "/o-projekcie",
   title: "O projekcie",
-  ...pageMetadata({
-    path: "/o-projekcie",
-    title: "O projekcie",
-    description:
-      "Darmowa, niekomercyjna strona dla mieszkańców Lubaczowa i okolicznych wsi. Skąd bierzemy terminy wywozu śmieci i dlaczego rację ma zawsze harmonogram gminy.",
-  }),
-};
+  description:
+    "Darmowa, niekomercyjna strona dla mieszkańców Lubaczowa i okolicznych wsi. Skąd bierzemy terminy wywozu śmieci i dlaczego rację ma zawsze harmonogram gminy.",
+});
 
 export default function AboutPage() {
   return (

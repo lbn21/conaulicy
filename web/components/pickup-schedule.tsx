@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { absoluteDay, dayFace, relativeWord, todayInWarsaw } from "@/lib/dates";
+import type { PickupDay } from "@/lib/schedule";
 import {
   NO_MORE_DATES,
   NO_MORE_DATES_NEXT,
@@ -15,15 +16,6 @@ import {
   TOKEN,
   tones,
 } from "@/lib/waste-bin";
-
-type Pickup = {
-  id: string;
-  subtype: string;
-  label: string;
-  putOutBy: string | null;
-};
-
-export type PickupDay = { date: string; pickups: Pickup[] };
 
 const HERO_COUNT = 3;
 
