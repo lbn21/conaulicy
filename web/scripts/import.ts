@@ -179,10 +179,15 @@ const memberKey = (m: Record<string, unknown>) =>
 function upsertSet(table: PgTable) {
   const snake = (key: string) =>
     key.replace(/[A-Z]/g, (ch) => `_${ch.toLowerCase()}`);
+  // A column named in the schema (streets.nazwa_1) keeps its name; the
+  // others are their key in snake_case, as the casing option writes them.
   return Object.fromEntries(
-    Object.keys(getTableColumns(table))
-      .filter((key) => key !== "id")
-      .map((key) => [key, sql.raw(`excluded."${snake(key)}"`)]),
+    Object.entries(getTableColumns(table))
+      .filter(([key]) => key !== "id")
+      .map(([key, column]) => [
+        key,
+        sql.raw(`excluded."${column.keyAsName ? snake(key) : column.name}"`),
+      ]),
   );
 }
 
