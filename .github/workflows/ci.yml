@@ -129,8 +129,9 @@ jobs:
       - name: HTML (Nu Html Checker)
         run: node scripts/check-html.mjs
 
-      # Chromium, cached by Playwright version; the system packages it needs
-      # are installed every run (--with-deps).
+      # Chromium, cached by Playwright version. No --with-deps: the runner
+      # already has the libraries it needs, and apt (slow mirrors) only added
+      # unused CJK/X fonts and xvfb.
       - name: Playwright version
         id: playwright
         run: echo "version=$(node -p 'require("playwright/package.json").version')" >> "$GITHUB_OUTPUT"
@@ -141,7 +142,7 @@ jobs:
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
 
       - name: Install Chromium for axe
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Accessibility (axe, WCAG 2.2 AA)
         run: node scripts/check-a11y.mjs
@@ -167,9 +168,30 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      # pdfinfo, pdffonts and pdftotext read the generated PDFs.
+      # pdfinfo, pdffonts and pdftotext read the generated PDFs. Not on the
+      # runner, so its .debs are cached: apt (slow mirrors) only on a miss,
+      # and a hit installs them offline.
+      - name: Runner image
+        id: image
+        run: echo "key=$ImageOS-$ImageVersion-$(dpkg --print-architecture)" | tee -a "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: poppler-cache
+        with:
+          path: ~/.cache/poppler-debs
+          key: poppler-debs-${{ steps.image.outputs.key }}
+
       - name: Install poppler-utils
-        run: command -v pdfinfo || (sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils)
+        env:
+          CACHE_HIT: ${{ steps.poppler-cache.outputs.cache-hit }}
+        run: |
+          if [ "$CACHE_HIT" != true ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq --download-only poppler-utils
+            mkdir -p ~/.cache/poppler-debs
+            cp /var/cache/apt/archives/*.deb ~/.cache/poppler-debs/
+          fi
+          sudo dpkg -i ~/.cache/poppler-debs/*.deb
 
       - name: "Street PDFs (tagged, pages, size, Atkinson only, text version)"
         run: node scripts/check-pdf.mjs
@@ -272,7 +294,7 @@ jobs:
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
 
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       # Lighthouse mobile with real throttling (Slow 4G, 4× CPU), median of
       # 5 runs per page against the budgets in docs/perf.md; plus HTML size,
