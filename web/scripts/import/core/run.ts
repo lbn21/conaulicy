@@ -27,14 +27,12 @@
 // IMPORT_CONFIG (another config file), IMPORT_NOW (the clock), ARCHIVE_DIR
 // (instead of S3), ISSUES_FILE and REVIEWS_FILE (instead of GitHub),
 // IMPORT_REVIEW_DIR (instead of etl/review), CURSOR_AGENT_MOCK (pass outputs).
-import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { appendFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { todayInWarsaw } from "../../../lib/dates.ts";
 import { DOMAINS } from "../domains.ts";
+import { archive } from "./archive.ts";
 import { archiveKey, loadConfig, type Source } from "./config.ts";
 import { Db } from "./db.ts";
 import type { Detection, Extracted, Found } from "./domain.ts";
@@ -71,36 +69,6 @@ const archivedKeys = new Map(
   config.archived.map((a) => [a.sha256, archiveKey(a)]),
 );
 const shortHash = (text: string) => sha256(text).slice(0, 8);
-
-function archive(key: string, body: Buffer, digest: string) {
-  if (process.env.ARCHIVE_DIR) {
-    const target = path.join(process.env.ARCHIVE_DIR, key);
-    mkdirSync(path.dirname(target), { recursive: true });
-    writeFileSync(target, body);
-    return;
-  }
-  const file = path.join(mkdtempSync(path.join(tmpdir(), "archive-")), "body");
-  writeFileSync(file, body);
-  const { bucket, region } = config.archive;
-  execFileSync(
-    "aws",
-    [
-      "s3api",
-      "put-object",
-      "--bucket",
-      bucket,
-      "--region",
-      region,
-      "--key",
-      key,
-      "--body",
-      file,
-      "--metadata",
-      `sha256=${digest}`,
-    ],
-    { stdio: "ignore" },
-  );
-}
 
 async function revalidate() {
   const secret = process.env.REVALIDATE_SECRET;
@@ -374,7 +342,7 @@ async function importSource(source: Source): Promise<Outcome> {
       `sources/${source.origin}/${today}/${file.name}`;
     let s3Key = known?.s3Key ?? archivedKeys.get(digest) ?? null;
     if (!s3Key && !dryRun) {
-      archive(doc, body, digest);
+      archive(config, doc, body, digest);
       s3Key = doc;
     }
     if (tracked && !dryRun)

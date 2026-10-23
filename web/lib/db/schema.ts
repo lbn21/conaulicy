@@ -63,15 +63,36 @@ export const streets = pgTable(
     localityId: text()
       .notNull()
       .references(() => localities.id),
-    /** TERYT SYM_UL. */
+    /** TERYT SYM_UL: the street's name, not the street (a rename is a new one). */
     teryt: text(),
+    /** TERYT CECHA: "ul.", "os.", "al." (lib/places.ts CECHA_WORDS). */
     prefix: text().notNull(),
+    /** NAZWA_2 NAZWA_1 (lib/places.ts terytName); what the pages show. */
     name: text().notNull(),
+    /** TERYT NAZWA_1, the key part ("Asnyka"); null until an import fills it. */
+    nazwa1: text("nazwa_1"),
+    /** TERYT NAZWA_2, the beginning ("Adama"), if any. */
+    nazwa2: text("nazwa_2"),
     ...houseNumbers,
     search: text().notNull(),
   },
   (t) => [parityCheck("streets_parity", t.parity), index().on(t.localityId)],
 );
+
+/**
+ * A street page whose id changed (a TERYT rename gives a new SYM_UL, so a
+ * new SIMC-SYM_UL): /adres/<oldId>/… answers 308 to the same path on newId.
+ * Filled only by the reviewed step (scripts/place-redirect.ts), never by an
+ * import.
+ */
+export const placeRedirects = pgTable("place_redirects", {
+  oldId: text().primaryKey(),
+  newId: text().notNull(),
+  reason: text(),
+  createdAt: timestamp({ withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+});
 
 export const zones = pgTable("zones", {
   /** For example "waste:miasto-s1". */

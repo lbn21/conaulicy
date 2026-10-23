@@ -12,8 +12,13 @@ import type {
   zones,
 } from "../../lib/db/schema.ts";
 import { normalize } from "../../lib/normalize.ts";
-import { localitySearchLabel, streetLabel } from "../../lib/places.ts";
+import {
+  localitySearchLabel,
+  streetLabel,
+  terytName,
+} from "../../lib/places.ts";
 import { GMINA_SCHEDULE_PAGES } from "./gmina-pages.ts";
+import { type UlicRow, ulicName } from "./teryt.ts";
 
 export type EtlSource = {
   doc: string;
@@ -37,8 +42,13 @@ export type Etl = {
     id: string;
     localityId: string;
     teryt: string | null;
+    /** TERYT CECHA. */
     prefix: string;
+    /** Used only while nazwa1 is missing (an ETL output before TERYT fields). */
     name: string;
+    /** TERYT NAZWA_1 and NAZWA_2: the name is built from them. */
+    nazwa1?: string | null;
+    nazwa2?: string | null;
   }>;
   zones: Array<{
     id: string;
@@ -79,6 +89,39 @@ export type Rows = {
   zoneMembers: Array<Omit<typeof zoneMembers.$inferInsert, "id">>;
   events: Array<typeof events.$inferInsert>;
 };
+
+/**
+ * Every street's CECHA, NAZWA_1 and NAZWA_2 from the official ULIC rows, by
+ * its locality's SIMC and its SYM_UL: TERYT is the one source of street
+ * names and types (CLAUDE.md). A street missing from ULIC is an error; a
+ * name the ETL spelled differently is a warning (TERYT's wins).
+ */
+export function withTeryt(
+  etl: Etl,
+  ulic: UlicRow[],
+): { etl: Etl; errors: string[]; warnings: string[] } {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const byId = new Map(ulic.map((r) => [`${r.simc}-${r.symUl}`, r]));
+  const streets = etl.streets.map((s) => {
+    const row = byId.get(`${stripPrefix(s.localityId)}-${s.teryt}`);
+    if (!row) {
+      errors.push(`streets: ${s.id} (SYM_UL ${s.teryt}) is not in TERYT ULIC`);
+      return s;
+    }
+    if (s.prefix !== row.cecha || s.name !== ulicName(row)) {
+      warnings.push(
+        `streets: ${s.id} "${s.prefix} ${s.name}" is "${row.cecha} ${ulicName(row)}" in TERYT; TERYT's used`,
+      );
+    }
+    return { ...s, prefix: row.cecha, nazwa1: row.nazwa1, nazwa2: row.nazwa2 };
+  });
+  return { etl: { ...etl, streets }, errors, warnings };
+}
+
+/** The name a street shows: from its TERYT fields, else the ETL's name. */
+const etlStreetName = (s: Etl["streets"][number]) =>
+  s.nazwa1 ? terytName(s.nazwa1, s.nazwa2 ?? null) : s.name;
 
 /** "simc-0972447" → "0972447", "ulic-0972447-00470" → "0972447-00470". */
 export function stripPrefix(id: string): string {
@@ -228,14 +271,16 @@ export function transform(
       localityId: stripPrefix(s.localityId),
       teryt: s.teryt,
       prefix: s.prefix,
-      name: s.name,
+      name: etlStreetName(s),
+      nazwa1: s.nazwa1 ?? null,
+      nazwa2: s.nazwa2 ?? null,
       houseFrom: null,
       houseTo: null,
       parity: null,
       search: normalize(
         streetLabel({
           prefix: s.prefix,
-          name: s.name,
+          name: etlStreetName(s),
           locality: localityName.get(s.localityId) ?? "",
         }),
       ),

@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { Suspense } from "react";
 import { NOT_FOUND_TITLE, PageNotFound } from "@/components/page-not-found";
 import { PickupSchedule } from "@/components/pickup-schedule";
 import { longDate } from "@/lib/date-labels";
 import { withHouseNumber } from "@/lib/house";
 import { indexable } from "@/lib/indexing";
-import { scheduleName } from "@/lib/places";
-import { getPlace, type PlaceView } from "@/lib/schedule";
+import { movedPath, scheduleName } from "@/lib/places";
+import { getPlace, type PlaceView, placeRedirect } from "@/lib/schedule";
 import {
   hasUpcoming,
   placeDescription,
@@ -31,6 +31,19 @@ function numberError(place: PlaceView, missing: boolean): string | null {
     return `Numeru ${place.unknownNr} nie ma w harmonogramie tej ulicy. Sprawdź numer albo harmonogram gminy`;
   }
   return missing ? "Wpisz numer domu, na przykład 12, 12a albo 7/22" : null;
+}
+
+/**
+ * A renamed place's old address (place_redirects): 308 to the same page on
+ * its new id. `path` is the address as the visitor asked for it. Thrown
+ * before the page streams, so the status is a real 308. Only for pages
+ * reached without a rewrite: proxy.ts answers the ?nr= addresses.
+ */
+export async function redirectIfMoved(id: string, path: string) {
+  if (await getPlace(id, null)) return;
+  const to = await placeRedirect(id);
+  const target = to && movedPath(path, id, to);
+  if (target) permanentRedirect(target);
 }
 
 export async function placeMetadata(

@@ -91,11 +91,14 @@ Legality: as in §1 (public notices of a municipal company / gmina; short facts 
 - Location = voivodeship + text (catchment), **no powiat code** ⇒ precise filtering for Lubaczów is not possible without a rule set [S]. MVP: **left out** (IMGW is enough). v1.1+: display podkarpackie items with `rso_alarm=1` and a word filter („lubaczowsk”, „Lubaczówk”, the catchment of the Lubaczówka/San) – to be designed.
 - Licence: public feed, no documented terms [OPEN]; the RCB SMS alerts are official and go to every phone anyway [S].
 
-## 7. TERYT (address register for autocomplete) [F]
+## 7. TERYT (the source of every place and street name) [F]
+- **The single source of truth** for place and street names and types, for every gmina: names from gmina PDFs or schedules are mapped *to* TERYT, never the other way (`CLAUDE.md`).
+- What we store: localities by SIMC (`localities.teryt`, an id that never changes), streets by SIMC + SYM_UL (page id `SIMC-SYM_UL`) with CECHA (`streets.prefix`), NAZWA_1 and NAZWA_2 (`streets.nazwa_1`, `streets.nazwa_2`); the shown name is NAZWA_2 + NAZWA_1 (`terytName`, `web/lib/places.ts`), and `db:import --teryt <dir>` takes all three from the ULIC files. SYM_UL names a street *name* with its CECHA (GUS, [zasady implementacji słowników](https://eteryt.stat.gov.pl/eTeryt/rejestr_teryt/udostepnianie_danych/zasady_implementacji_slownikow/zasady_implementacji_slownikow.aspx)): a renamed street gets a new one, so its page id changes, and `place_redirects` keeps the old address (`docs/database.md`).
 - Source: GUS eTERYT, full files "urzędowy" (official version), https://eteryt.stat.gov.pl/eTeryt/rejestr_teryt/udostepnianie_danych/baza_teryt/uzytkownicy_indywidualni/pobieranie/pliki_pelne.aspx (public, no login, ASP.NET postback → `ULIC_Urzedowy_2026-10-18.zip` 8.1 MB, `SIMC_Urzedowy_2026-10-18.zip` 3.4 MB).
 - Codes: Miasto Lubaczów = **18 09 01 1**, Gmina Lubaczów = **18 09 04 2** (not 02, that is Cieszanów!). City SIMC: Lubaczów 0972447 + parts Mazury, Niwki, Ostrowiec, Piaski, Zaprzekop.
 - Licence: TERYT is public and re-usable (official register), give the source GUS + "stan na" date [S].
-- Refresh: monthly in the ETL (the file is dated daily); a diff of new streets → issue "nowa ulica bez sektora".
+- Check: every apply run of the import workflow downloads ULIC and SIMC once (one GET, one POST per file) and compares them by id with our places for every configured gmina (`web/scripts/check-teryt.ts`): new (D), changed (M) or removed (U) streets and localities open one review issue, with our gminy's rows archived in S3 (`sources/teryt/<day>/`). Nothing is applied automatically: waste zones map streets by name. Full files rather than TERYT's update files: a diff by id needs no record of the last check. TERYT ws1 (SOAP, needs an account) is the alternative if the form ever stops working; that is Jakub's call.
+- 2026-10-23: today's files match those of 2026-10-16 for both gminy (276 streets, 69 localities).
 
 ## 8. Change monitoring (summary)
 | What | How | Frequency |

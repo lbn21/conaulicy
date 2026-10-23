@@ -28,6 +28,8 @@
     "db:migrate": "node --env-file-if-exists=.env.local node_modules/drizzle-kit/bin.cjs migrate",
     "db:ci-fixture": "node --env-file-if-exists=.env.local scripts/ci-fixture.ts",
     "db:import": "node --env-file-if-exists=.env.local scripts/import.ts",
+    "db:redirect": "node --env-file-if-exists=.env.local scripts/place-redirect.ts",
+    "check:teryt": "node scripts/check-teryt.ts",
     "import:run": "node --env-file-if-exists=.env.local scripts/import/core/run.ts",
     "import:revert": "node --env-file-if-exists=.env.local scripts/import/core/revert.ts",
     "test": "node --test \"lib/**/*.test.ts\" \"scripts/**/*.test.ts\""

@@ -20,6 +20,7 @@ import {
   events,
   gminy,
   localities,
+  placeRedirects,
   streets,
   zoneMembers,
   zones,
@@ -58,6 +59,8 @@ type Place = {
   kind: "ulica" | "wies";
   name: string;
   label: string;
+  /** TERYT's: a street's CECHA, a village's kind (lib/search.ts SearchIndex). */
+  type: string;
   area: string;
   gmina: string;
   schedulePage: string | null;
@@ -163,6 +166,7 @@ const villagePlaces = (where: SQL | undefined, limit: number) =>
     .select({
       id: localities.id,
       name: localities.name,
+      kind: localities.kind,
       parentId: localities.parentId,
       parent: parent.name,
       gmina: gminy.name,
@@ -184,6 +188,7 @@ function streetPlace(row: StreetRow): Place {
     kind: "ulica",
     name: streetName(row.prefix, row.name),
     label: streetLabel(row),
+    type: row.prefix,
     area: row.locality,
     gmina: row.gmina,
     schedulePage: row.scheduleUrl,
@@ -200,6 +205,7 @@ function villagePlace(row: VillageRow): Place {
     kind: "wies",
     name: row.name,
     label: villageLabel(row),
+    type: row.kind,
     area: row.parent ? `${row.parent}, gmina ${gmina}` : `gmina ${gmina}`,
     gmina: row.gmina,
     schedulePage: row.scheduleUrl,
@@ -207,12 +213,6 @@ function villagePlace(row: VillageRow): Place {
     parentId: row.parentId,
   };
 }
-
-const hits = (places: Place[], limit: number): SearchHit[] =>
-  places
-    .map(({ id, label }) => ({ id, label }))
-    .sort(byLabel)
-    .slice(0, limit);
 
 /**
  * At most 8 places for q, ranked as the search field ranks them (the same
@@ -258,9 +258,9 @@ export const searchIndex = unstable_cache(
       ...streetRows.map(streetPlace),
       ...villageRows.map(villagePlace),
     ];
-    const places: SearchIndex = hits(all, Number.POSITIVE_INFINITY).map(
-      ({ id, label }) => [id, label],
-    );
+    const places: SearchIndex = [...all]
+      .sort(byLabel)
+      .map(({ id, label, type }) => [id, label, type]);
     const version = createHash("sha256")
       .update(JSON.stringify(places))
       .digest("hex")
@@ -289,6 +289,37 @@ export async function searchMatcher(): Promise<Matcher> {
     prepared = { version, match: matcher(places) };
   }
   return prepared.match;
+}
+
+// Postgres: undefined_table. Drizzle wraps the driver's error in `cause`.
+const missingTable = (error: unknown) =>
+  [error, (error as { cause?: unknown })?.cause].some(
+    (e) => (e as { code?: string } | undefined)?.code === "42P01",
+  );
+
+/**
+ * Renamed places: old id → new id (place_redirects, filled only by the
+ * reviewed step). Before that table's migration: none.
+ */
+export const movedPlaces = unstable_cache(
+  async (): Promise<Record<string, string>> => {
+    try {
+      const rows = await db()
+        .select({ oldId: placeRedirects.oldId, newId: placeRedirects.newId })
+        .from(placeRedirects);
+      return Object.fromEntries(rows.map((r) => [r.oldId, r.newId]));
+    } catch (error) {
+      if (missingTable(error)) return {};
+      throw error;
+    }
+  },
+  ["moved-places"],
+  CACHE,
+);
+
+/** The id a renamed place moved to, or null. */
+export async function placeRedirect(id: string): Promise<string | null> {
+  return (await movedPlaces())[id] ?? null;
 }
 
 /** Where the search field loads the current index from. */

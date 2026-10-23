@@ -48,18 +48,40 @@ export function scheduleName(gmina: string): string {
     : `harmonogram gminy ${gminaShortName(gmina)}`;
 }
 
-// TERYT names some streets in full, e.g. "os." + "Osiedle Mickiewicza".
-const PREFIX_WORDS: Record<string, string> = {
+/**
+ * TERYT's street types (CECHA, the ULIC dictionary) and the word each stands
+ * for: one table for labels and search. TERYT names some streets in full,
+ * e.g. "os." + "Osiedle Mickiewicza".
+ */
+export const CECHA_WORDS: Record<string, string> = {
   "ul.": "ulica",
-  "os.": "osiedle",
   "al.": "aleja",
-  rondo: "rondo",
+  "pl.": "plac",
   skwer: "skwer",
+  "bulw.": "bulwar",
+  rondo: "rondo",
+  park: "park",
+  rynek: "rynek",
+  szosa: "szosa",
+  droga: "droga",
+  "os.": "osiedle",
+  ogród: "ogród",
+  wyspa: "wyspa",
+  "wyb.": "wybrzeże",
 };
+
+/**
+ * A street's name as GUS composes it from ULIC: NAZWA_2 (the beginning,
+ * e.g. "Adama") then NAZWA_1 (the key part, e.g. "Asnyka"); the CECHA goes
+ * in front (streetName). GUS, zasady implementacji słowników TERYT.
+ */
+export function terytName(nazwa1: string, nazwa2: string | null): string {
+  return nazwa2 ? `${nazwa2} ${nazwa1}` : nazwa1;
+}
 
 /** "ul. Adama Asnyka", but "Osiedle Mickiewicza" rather than "os. Osiedle …". */
 export function streetName(prefix: string, name: string): string {
-  const word = PREFIX_WORDS[prefix];
+  const word = CECHA_WORDS[prefix];
   return word && name.toLowerCase().startsWith(`${word} `)
     ? name
     : `${prefix} ${name}`;
@@ -71,6 +93,26 @@ export function streetLabel(street: {
   locality: string;
 }): string {
   return `${streetName(street.prefix, street.name)}, ${street.locality}`;
+}
+
+/**
+ * A moved place's path (place_redirects): /adres/<oldId> and everything
+ * under it (/harmonogram.pdf, /nr/…, /numer), query included, on newId.
+ * Null for any other path.
+ */
+export function movedPath(
+  path: string,
+  oldId: string,
+  newId: string,
+): string | null {
+  const old = `/adres/${encodeURIComponent(oldId)}`;
+  if (
+    path !== old &&
+    !path.startsWith(`${old}/`) &&
+    !path.startsWith(`${old}?`)
+  )
+    return null;
+  return `/adres/${encodeURIComponent(newId)}${path.slice(old.length)}`;
 }
 
 /** Not offered in search (nobody lives there); a direct link still works. */

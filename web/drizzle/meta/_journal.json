@@ -15,6 +15,13 @@
       "when": 1792537189635,
       "tag": "0001_import_runs",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792744876719,
+      "tag": "0002_teryt_names",
+      "breakpoints": true
     }
   ]
 }

@@ -94,6 +94,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ACTIONS_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
+      # TERYT (GUS ULIC/SIMC) is the source of place and street names: any
+      # difference from our places becomes one review issue, never a change
+      # to them (scripts/check-teryt.ts). Read-only on the database; runs
+      # even when the import failed.
+      - name: TERYT check
+        if: ${{ !cancelled() && inputs.mode == 'apply' }}
+        working-directory: web
+        run: node scripts/check-teryt.ts --issue
+        env:
+          IMPORT_DATABASE_URL: ${{ secrets.IMPORT_DATABASE_URL }}
+          GH_TOKEN: ${{ github.token }}
+          ACTIONS_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
       # Anything that broke outside the import's own reporting (install, AWS,
       # database connection): one open issue (key "workflow"), commented on
       # repeat failures, closed by the next clean run.

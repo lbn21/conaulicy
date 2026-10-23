@@ -1,7 +1,12 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import { type NextRequest, NextResponse } from "next/server";
+import {
+  type NextFetchEvent,
+  type NextRequest,
+  NextResponse,
+} from "next/server";
 import { cleanQuery } from "@/lib/clean-query";
 import { NR_QUERY } from "@/lib/house";
+import { movedPath } from "@/lib/places";
 
 // Pre-launch gate. Active only when SITE_BASIC_AUTH ("user:password") is set.
 // On Vercel the proxy runs before the CDN cache, so a cached page is never
@@ -49,7 +54,56 @@ function missingNumber(request: NextRequest): URL | null {
   return url;
 }
 
-export function proxy(request: NextRequest) {
+// Renamed places (old id → new id, /api/place-redirects). An address with
+// ?nr= is rewritten to another page (next.config.ts, missingNumber), and a
+// redirect from a rewritten page carries Location twice (Next.js replays the
+// render's headers onto the response), so its 308 is answered here, before
+// the rewrite. The plain page and the PDF redirect themselves. The map stays
+// in memory: a cold instance fetches it once (from the CDN), later
+// refreshes run after the response, so a normal request pays only a lookup.
+const MOVED_TTL = 5 * 60_000;
+let moved: { map: Record<string, string>; at: number } | null = null;
+let loading: Promise<void> | null = null;
+
+function loadMoved(request: NextRequest): Promise<void> {
+  const authorization = request.headers.get("authorization");
+  loading ??= fetch(new URL("/api/place-redirects", request.url), {
+    headers: authorization ? { authorization } : {},
+  })
+    .then((res) => (res.ok ? res.json() : {}))
+    .catch(() => ({}))
+    .then((map: Record<string, string>) => {
+      moved = { map, at: Date.now() };
+    })
+    .finally(() => {
+      loading = null;
+    });
+  return loading;
+}
+
+async function movedAddress(
+  request: NextRequest,
+  event: NextFetchEvent,
+): Promise<URL | null> {
+  const match = ADDRESS.exec(request.nextUrl.pathname);
+  if (!match || !request.nextUrl.searchParams.has("nr")) return null;
+  if (!moved) await loadMoved(request);
+  else if (Date.now() - moved.at > MOVED_TTL)
+    event.waitUntil(loadMoved(request));
+  let id: string;
+  try {
+    id = decodeURIComponent(match[1]);
+  } catch {
+    return null;
+  }
+  const to = moved?.map[id];
+  const path =
+    to &&
+    movedPath(`${request.nextUrl.pathname}${request.nextUrl.search}`, id, to);
+  return path ? new URL(path, request.url) : null;
+}
+
+export async function proxy(request: NextRequest, event: NextFetchEvent) {
   // Unknown query parameters go to the clean, cached URL (lib/clean-query.ts).
   // Before the gate: a redirect reveals nothing, and both behave the same.
   if (request.method === "GET" || request.method === "HEAD") {
@@ -63,6 +117,10 @@ export function proxy(request: NextRequest) {
       return NextResponse.redirect(url, 308);
     }
   }
+
+  // Before the gate, as above: the redirect reveals only the new address.
+  const renamed = await movedAddress(request, event);
+  if (renamed) return NextResponse.redirect(renamed, 308);
 
   const rewrite = missingNumber(request);
   const pass = (headers?: Record<string, string>) =>
