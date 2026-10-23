@@ -59,7 +59,7 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 - No production database write (`db:migrate`, `db:import --apply`, `db:redirect --apply`) without asking Jakub in chat and getting his explicit approval for that one run; then backup, dry run, apply, 0-change dry run, through the npm scripts, never `vercel env run` ([docs/database.md](docs/database.md#writing-to-production)).
 - No force-push.
 - No changes to Vercel domains, DNS or billing. Never enable paid features.
-- Never touch `tynki-baryza`, Polymarket, other Vercel teams or other Route 53 zones.
+- Never touch resources outside this project.
 - Never print or commit secrets (`.env*` stays out of git and out of output).
 - Anything paid or destructive needs Jakub's approval.
 
