@@ -47,7 +47,7 @@ GitHub, per [Managing environments for deployment](https://docs.github.com/en/ac
    - `NEON_PROJECT_ID`: the project's ID (Neon Console, project settings).
    - `PROD_DATABASE_URL`: the **direct (unpooled)** connection string of the default branch, owner role (migrations need DDL).
 7. Start the first run with `task: backup-only`: **Actions → prod-db → Run workflow** on `main`, approve it, and check the backup branch in the Neon Console.
-8. After that first run, rotate the database password, because the old one has been on the laptop (`web/.env.local`): reset the role's password per Neon's [roles docs](https://neon.com/docs/manage/roles), then update `PROD_DATABASE_URL` and the Vercel integration's variables per Neon's [Vercel-managed integration docs](https://neon.com/docs/guides/vercel-managed-integration), and redeploy production. The site uses this connection, so it fails between the reset and the redeploy: do it at a quiet hour. Finally remove the production URL from `web/.env.local`.
+8. After that first run, rotate the database password, because the old one has been on the laptop (`web/.env.local`): reset the role's password per Neon's [roles docs](https://neon.com/docs/manage/roles), then update `PROD_DATABASE_URL` and the Vercel integration's variables per Neon's [Vercel-managed integration docs](https://neon.com/docs/guides/vercel-managed-integration), and redeploy production. The site uses this connection, so it fails between the reset and the redeploy: do it at a quiet hour. The old password was on the laptop (`web/.env.local`) until 23 Oct 2026 and has since been removed there.
 
 ## Acceptance criteria
 
