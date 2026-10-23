@@ -1,8 +1,4 @@
-import {
-  PlaceMain,
-  placeMetadata,
-  redirectIfMoved,
-} from "@/components/place-page";
+import { PlaceMain, placeMetadata } from "@/components/place-page";
 
 // /adres/[id]?nr= with no usable house number (empty, or not a number) lands
 // here (proxy.ts rewrites it). A split street answers with GOV.UK's
@@ -25,7 +21,5 @@ export default async function PlaceMissingNumberPage({
   params,
 }: PageProps<"/adres/[id]/numer">) {
   const { id } = await params;
-  // Asked as /adres/<id>?nr= with no usable number (proxy.ts rewrites it).
-  await redirectIfMoved(id, `/adres/${encodeURIComponent(id)}?nr=`);
   return <PlaceMain id={id} nr={null} missing />;
 }

@@ -35,8 +35,9 @@ function numberError(place: PlaceView, missing: boolean): string | null {
 
 /**
  * A renamed place's old address (place_redirects): 308 to the same page on
- * its new id. `path` is the address as the visitor asked for it, query
- * included. Thrown before the page streams, so the status is a real 308.
+ * its new id. `path` is the address as the visitor asked for it. Thrown
+ * before the page streams, so the status is a real 308. Only for pages
+ * reached without a rewrite: proxy.ts answers the ?nr= addresses.
  */
 export async function redirectIfMoved(id: string, path: string) {
   if (await getPlace(id, null)) return;

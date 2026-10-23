@@ -298,25 +298,29 @@ const missingTable = (error: unknown) =>
   );
 
 /**
- * The id a renamed place moved to (place_redirects, filled only by the
- * reviewed step), or null. Before that table's migration: never moved.
+ * Renamed places: old id → new id (place_redirects, filled only by the
+ * reviewed step). Before that table's migration: none.
  */
-export const placeRedirect = unstable_cache(
-  async (id: string): Promise<string | null> => {
+export const movedPlaces = unstable_cache(
+  async (): Promise<Record<string, string>> => {
     try {
-      const [row] = await db()
-        .select({ newId: placeRedirects.newId })
-        .from(placeRedirects)
-        .where(eq(placeRedirects.oldId, id));
-      return row?.newId ?? null;
+      const rows = await db()
+        .select({ oldId: placeRedirects.oldId, newId: placeRedirects.newId })
+        .from(placeRedirects);
+      return Object.fromEntries(rows.map((r) => [r.oldId, r.newId]));
     } catch (error) {
-      if (missingTable(error)) return null;
+      if (missingTable(error)) return {};
       throw error;
     }
   },
-  ["place-redirect"],
+  ["moved-places"],
   CACHE,
 );
+
+/** The id a renamed place moved to, or null. */
+export async function placeRedirect(id: string): Promise<string | null> {
+  return (await movedPlaces())[id] ?? null;
+}
 
 /** Where the search field loads the current index from. */
 export async function searchIndexUrl(): Promise<string> {

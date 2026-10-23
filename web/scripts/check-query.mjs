@@ -12,8 +12,9 @@
 // place: every label in /api/search-index, and some with a house number.
 //
 // A renamed street's old id (place_redirects; the CI fixture's made-up
-// 0972447-99999) answers 308 on every address under it, query kept; an
-// unknown id stays a 404.
+// 0972447-99999) answers 308 on every address under it, query kept, with
+// exactly one Location (the ?nr= ones from proxy.ts); an unknown id stays a
+// 404, with or without a number.
 //
 // Runs against `next start` on the current build and the CI fixture.
 import { withHouseNumber } from "../lib/house.ts";
@@ -72,6 +73,8 @@ const CASES = [
     `${STREET}/harmonogram.pdf?nr=12`,
   ],
   ["GET", "/adres/0972447-88888", 404],
+  ["GET", "/adres/0972447-88888?nr=12", 404],
+  ["GET", "/api/place-redirects", 200],
 ];
 
 // [query, what the raw HTML of /szukaj must hold]
@@ -207,6 +210,12 @@ try {
       const type = response.headers.get("content-type") ?? "";
       if (!type.includes("json")) failures.push(`${path}: ${type}`);
     }
+  }
+  const moved = await (
+    await fetch(`${server.origin}/api/place-redirects`)
+  ).json();
+  if (moved["0972447-99999"] !== "0972447-00470") {
+    failures.push(`/api/place-redirects: ${JSON.stringify(moved)}`);
   }
 } finally {
   server.stop();
