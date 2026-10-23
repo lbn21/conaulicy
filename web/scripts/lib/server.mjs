@@ -19,7 +19,11 @@ export const ROUTES = [
   { path: "/prywatnosc", name: "privacy" },
   { path: "/dostepnosc", name: "accessibility" },
   { path: "/o-projekcie", name: "about" },
+  { path: "/szukaj?q=adama", name: "search-results" },
+  { path: "/szukaj?q=xyzqq", name: "search-none" },
+  { path: "/szukaj?q=", name: "search-empty" },
   { path: "/nie-ma-takiej-strony", name: "not-found", status: 404 },
+  { path: "/adres/9999999", name: "unknown-place", status: 404 },
 ];
 
 export async function startServer(port = 3300) {

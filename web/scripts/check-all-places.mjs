@@ -1,8 +1,9 @@
 // Checks /ulice (app/ulice/page.tsx) on the CI fixture: it links every place
 // of the search index exactly once, to /adres/<id>, and nothing else; the
 // town's streets and their letter headings are in Polish order (by the
-// street's own name, not its prefix); and the route loads no JS beyond what
-// /dostepnosc, a page without client code, loads.
+// street's own name, not its prefix); a place without pickup data (the
+// fixture's street in no zone, only it) says „(brak danych)”; and the route
+// loads no JS beyond what /dostepnosc, a page without client code, loads.
 //
 // With SCREENSHOT_DIR, also saves screenshots of /ulice at 390 px and 1280 px
 // there (needs Playwright's Chromium). Runs against `next start` on the
@@ -53,6 +54,16 @@ try {
     if (!known.has(id)) failures.push(`/ulice: ${id} is not in the index`);
   }
   if (/target="_blank"/.test(main)) failures.push("/ulice: target=_blank");
+  const noData = [
+    ...main.matchAll(
+      /<a href="\/adres\/([^"]+)" class="govuk-link">[^<]*<\/a> \(brak danych\)/g,
+    ),
+  ].map(([, id]) => id);
+  if (JSON.stringify(noData) !== JSON.stringify(["0972447-23434"])) {
+    failures.push(
+      `/ulice: „(brak danych)” on ${JSON.stringify(noData)}, want only 0972447-23434`,
+    );
+  }
 
   const town = main.slice(
     main.indexOf('id="ulice-heading"'),
