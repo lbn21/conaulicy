@@ -1,22 +1,21 @@
 import type { Metadata } from "next";
 import { permanentRedirect } from "next/navigation";
+import { AddressSearch } from "@/components/address-search";
 import { withHouseNumber } from "@/lib/house";
 import { indexable } from "@/lib/indexing";
-import { searchIndex, searchMatcher } from "@/lib/schedule";
+import { searchIndex, searchIndexUrl, searchMatcher } from "@/lib/schedule";
 import { addresses, exactPlace, placeHref, type SearchHit } from "@/lib/search";
 import { pageMetadata } from "@/lib/share";
 
-// The home page's search form, with or without JS. A picked suggestion's
-// text (the field's value after a pick) opens its place; anything else gets
-// the same ranked search as the search field (lib/search.ts, over the cached
-// index), every result instead of 8. One clearly best place: straight to its
-// page; otherwise the ranked list; none: what to try next. Rendered per
-// request, so never cached by the CDN; never indexed (next.config.ts sends
-// the header).
+// The home page's search form, with or without JS, and below the results
+// the same field (components/address-search.tsx), filled with what was
+// searched for. A picked suggestion's text (the field's value after a pick)
+// opens its place; anything else gets the same ranked search as the search
+// field (lib/search.ts, over the cached index), every result instead of 8.
+// One clearly best place: straight to its page; otherwise the ranked list;
+// none: what to try next. Rendered per request, so never cached by the CDN;
+// never indexed (next.config.ts sends the header).
 
-const INPUT_ID = "adres";
-const HINT =
-  "Na przykład Asnyka 12 albo Lisie Jamy – polskie znaki nie są potrzebne";
 const EMPTY_ERROR = "Wpisz nazwę ulicy albo wsi";
 
 type Outcome =
@@ -67,47 +66,6 @@ export async function generateMetadata({
   };
 }
 
-/** The home page's field as a plain form, filled with what was typed. */
-function SearchForm({ value, error }: { value: string; error: string | null }) {
-  return (
-    <form method="get" action="/szukaj" noValidate>
-      <div
-        className={
-          error
-            ? "govuk-form-group govuk-form-group--error"
-            : "govuk-form-group"
-        }
-      >
-        <label htmlFor={INPUT_ID} className="govuk-label govuk-label--m">
-          Ulica albo wieś
-        </label>
-        <div id={`${INPUT_ID}-hint`} className="govuk-hint">
-          {HINT}
-        </div>
-        {error && (
-          <p id={`${INPUT_ID}-error`} className="govuk-error-message">
-            <span className="govuk-visually-hidden">Błąd:</span> {error}
-          </p>
-        )}
-        <input
-          id={INPUT_ID}
-          name="q"
-          type="text"
-          autoComplete="off"
-          defaultValue={value}
-          aria-describedby={
-            error ? `${INPUT_ID}-hint ${INPUT_ID}-error` : `${INPUT_ID}-hint`
-          }
-          className={error ? "govuk-input govuk-input--error" : "govuk-input"}
-        />
-      </div>
-      <button type="submit" className="govuk-button" data-module="govuk-button">
-        Szukaj
-      </button>
-    </form>
-  );
-}
-
 export default async function SearchPage({
   searchParams,
 }: PageProps<"/szukaj">) {
@@ -129,7 +87,7 @@ export default async function SearchPage({
               <div className="govuk-error-summary__body">
                 <ul className="govuk-list govuk-error-summary__list">
                   <li>
-                    <a href={`#${INPUT_ID}`}>{EMPTY_ERROR}</a>
+                    <a href="#adres">{EMPTY_ERROR}</a>
                   </li>
                 </ul>
               </div>
@@ -172,7 +130,8 @@ export default async function SearchPage({
           </>
         )}
 
-        <SearchForm
+        <AddressSearch
+          indexUrl={await searchIndexUrl()}
           value={result.kind === "empty" ? "" : result.q}
           error={result.kind === "empty" ? EMPTY_ERROR : null}
         />

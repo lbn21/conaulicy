@@ -13,18 +13,14 @@ import {
   searchTerms,
 } from "@/lib/search";
 
-// One search per page (the home page), so fixed ids.
+// One search per page (the home page or /szukaj), so fixed ids.
 const INPUT_ID = "adres";
 const LABEL_ID = "adres-label";
 const HINT_ID = "adres-hint";
+const ERROR_ID = "adres-error";
 
 const HINT =
   "Na przykład Asnyka 12 albo Lisie Jamy – polskie znaki nie są potrzebne";
-
-// The same field accessible-autocomplete renders (its classes, GOV.UK's
-// govuk-input), so nothing moves when it takes over on first focus. Named q,
-// as the library's field, so the form works before and without it.
-const PLACEHOLDER = `<div class="autocomplete__wrapper"><input id="${INPUT_ID}" name="q" type="text" class="autocomplete__input autocomplete__input--default govuk-input" autocomplete="off" aria-describedby="${HINT_ID}"></div>`;
 
 type Note = "hint" | "loading" | "error" | "none";
 
@@ -43,9 +39,21 @@ function escapeHtml(text: string): string {
     .replaceAll('"', "&quot;");
 }
 
+// The same field accessible-autocomplete renders (its classes, GOV.UK's
+// govuk-input), so nothing moves when it takes over on first focus. Named q,
+// as the library's field, so the form works before and without it.
+function placeholder(
+  value: string,
+  inputClasses: string,
+  error: boolean,
+): string {
+  const describedBy = error ? `${HINT_ID} ${ERROR_ID}` : HINT_ID;
+  return `<div class="autocomplete__wrapper"><input id="${INPUT_ID}" name="q" type="text" value="${escapeHtml(value)}" class="autocomplete__input autocomplete__input--default ${inputClasses}" autocomplete="off" aria-describedby="${describedBy}"></div>`;
+}
+
 // What accessible-autocomplete hands to the templates: our
-// results, or a plain string (its options may be strings, e.g. it seeds
-// them with defaultValue, which this field does not use).
+// results, or a plain string (its options may be strings: it seeds them
+// with defaultValue, the text /szukaj was asked for).
 type Option = SearchHit | string | undefined;
 
 function optionText(option: Option): string {
@@ -68,9 +76,22 @@ function optionText(option: Option): string {
  * list open picks it and the next Enter submits; with none (none found,
  * still loading) Enter submits at once. confirmOnBlur stays off: leaving the
  * field keeps what was typed rather than the highlighted suggestion.
+ *
+ * The one search field: the home page and /szukaj both render it. On
+ * /szukaj it holds the text searched for (`value`) and, for an empty search,
+ * GOV.UK's error message (`error`).
  */
-export function AddressSearch({ indexUrl }: { indexUrl: string }) {
+export function AddressSearch({
+  indexUrl,
+  value = "",
+  error = null,
+}: {
+  indexUrl: string;
+  value?: string;
+  error?: string | null;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputClasses = error ? "govuk-input govuk-input--error" : "govuk-input";
 
   useEffect(() => {
     const container = containerRef.current;
@@ -155,7 +176,8 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
       );
       const old = container?.querySelector("input");
       if (!container || !old) return;
-      // Text typed while the library loaded, and whether the field had focus.
+      // Text in the field when the library loaded (the server's value, or
+      // what was typed meanwhile), and whether the field had focus.
       const typed = old.value;
       const focused = document.activeElement === old;
       // Render next to the placeholder and move focus to the new field in the
@@ -167,7 +189,13 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
         id: INPUT_ID,
         source,
         name: "q",
-        inputClasses: "govuk-input",
+        // The server's text, as the library's own value: never handed over
+        // a second time below. Its first option is that text, so the input
+        // event below replaces it with real results.
+        defaultValue: value,
+        // govuk-input--error survives the takeover (hintClasses, the
+        // autoselect hint's field, follows inputClasses).
+        inputClasses,
         menuAttributes: { "aria-labelledby": LABEL_ID },
         displayMenu: "overlay",
         autoselect: true,
@@ -182,8 +210,12 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
           `${option}, ${i + 1} z ${length}, zaznaczony`,
         tStatusResults: (length: number, selected: string) =>
           `${addresses(length)} do wyboru. ${selected}`,
+        // 3.0.2 sets the field's aria-describedby itself (to this text only,
+        // and only until something is typed) and cannot add ids to it, so
+        // adres-hint and adres-error are lost once it takes over: the error,
+        // then the hint, are read from here instead.
         tAssistiveHint: () =>
-          `${HINT} Gdy pojawią się podpowiedzi, wybierz je strzałkami w górę i w dół i Enterem albo dotknij.`,
+          `${error ? `Błąd: ${error}. ` : ""}${HINT} Gdy pojawią się podpowiedzi, wybierz je strzałkami w górę i w dół i Enterem albo dotknij.`,
       });
       const input = container.querySelector<HTMLInputElement>(`#${INPUT_ID}`);
       if (focused) input?.focus();
@@ -194,9 +226,12 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
       // Keys pressed meanwhile are already in the new field: keep them too.
       // It searches on the input event, as for typing.
       await new Promise((resolve) => setTimeout(resolve, 0));
-      const value = typed + input.value;
-      input.value = value;
-      input.setSelectionRange(value.length, value.length);
+      // Unchanged server text keeps the library's select-all on focus.
+      if (typed !== value) {
+        const text = typed + input.value.slice(value.length);
+        input.value = text;
+        input.setSelectionRange(text.length, text.length);
+      }
       input.dispatchEvent(new Event("input", { bubbles: true }));
     }
 
@@ -205,12 +240,18 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
     }
     container.addEventListener("focusin", onFocus);
     return () => container.removeEventListener("focusin", onFocus);
-  }, [indexUrl]);
+  }, [indexUrl, value, error, inputClasses]);
 
   return (
     <search id={SEARCH_ID} className="app-search">
       <form method="get" action="/szukaj">
-        <div className="govuk-form-group">
+        <div
+          className={
+            error
+              ? "govuk-form-group govuk-form-group--error"
+              : "govuk-form-group"
+          }
+        >
           <label
             id={LABEL_ID}
             htmlFor={INPUT_ID}
@@ -221,12 +262,19 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
           <div id={HINT_ID} className="govuk-hint">
             {HINT}
           </div>
+          {error && (
+            <p id={ERROR_ID} className="govuk-error-message">
+              <span className="govuk-visually-hidden">Błąd:</span> {error}
+            </p>
+          )}
           <div
             ref={containerRef}
             // accessible-autocomplete owns this element's children after first
             // focus; React never touches them.
-            // biome-ignore lint/security/noDangerouslySetInnerHtml: a static field, replaced by accessible-autocomplete
-            dangerouslySetInnerHTML={{ __html: PLACEHOLDER }}
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: a static field (value escaped), replaced by accessible-autocomplete
+            dangerouslySetInnerHTML={{
+              __html: placeholder(value, inputClasses, Boolean(error)),
+            }}
           />
         </div>
         <button

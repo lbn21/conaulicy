@@ -14,7 +14,8 @@
 // /szukaj opens the picked place, also with a house number typed after it.
 // The search form works without JS (one clearly best place: its page;
 // otherwise /szukaj lists them), and with JS, Enter with no suggestion
-// submits it. /szukaj, /api/search and lib/search.ts rank alike. Run after
+// submits it. /szukaj, /api/search and lib/search.ts rank alike. /szukaj
+// has the same field, prefilled once, with its error state. Run after
 // `next build`; needs Playwright's Chromium.
 import { chromium } from "playwright";
 import { matcher, placeHref } from "../lib/search.ts";
@@ -394,6 +395,48 @@ try {
     .waitForURL(`${server.origin}/szukaj?q=xyzqq`, { timeout: 5000 })
     .catch(() => check(false, `Enter with no results: at ${enter.url()}`));
   await enter.close();
+
+  // /szukaj's field is the home page's, enhanced alike: it keeps what was
+  // searched for, once, its suggestions are real places, and an empty search
+  // keeps GOV.UK's error styles, with the error read first.
+  const again = await browser.newPage({
+    viewport: { width: 360, height: 800 },
+  });
+  await again.goto(`${server.origin}/szukaj?q=adama`, {
+    waitUntil: "networkidle",
+  });
+  await again.locator("#adres").click();
+  const prefilled = again.getByRole("combobox");
+  await prefilled.waitFor();
+  const options = again.locator('[role="option"]:not([aria-disabled])');
+  await options
+    .first()
+    .waitFor({ timeout: 5000 })
+    .catch(() => check(false, "/szukaj?q=adama: no suggestions on focus"));
+  const texts = await options.allTextContents();
+  check(
+    (await prefilled.inputValue()) === "adama" &&
+      (await again.locator('input[name="q"]').count()) === 1 &&
+      !texts.includes("adama"),
+    `/szukaj?q=adama enhanced: field "${await prefilled.inputValue()}", options ${JSON.stringify(texts)}`,
+  );
+  await again.goto(`${server.origin}/szukaj?q=`, { waitUntil: "networkidle" });
+  await again.locator("#adres").click();
+  const errored = again.getByRole("combobox");
+  await errored.waitFor();
+  const enhanced = await errored.evaluate((el) => ({
+    value: el.value,
+    input: el.classList.contains("govuk-input--error"),
+    group: Boolean(el.closest(".govuk-form-group--error")),
+    hint: document
+      .getElementById(el.getAttribute("aria-describedby") ?? "")
+      ?.textContent?.startsWith("Błąd: Wpisz nazwę ulicy albo wsi."),
+  }));
+  check(
+    Object.values(enhanced).every((v) => v === true || v === ""),
+    `/szukaj?q= enhanced: ${JSON.stringify(enhanced)}`,
+  );
+  await again.close();
 
   // The same search everywhere: for each query, /szukaj's redirect (or its
   // first result), /api/search's first place and lib/search.ts's over the
