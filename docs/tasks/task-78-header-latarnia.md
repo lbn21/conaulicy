@@ -1,54 +1,62 @@
-# Task 78: header in the Latarnia brand colour (preview only)
+# Task 78: header logo, white plate, centred, even focus box (preview only)
 
 Draft PR, Vercel Preview only. Not merged, not marked ready, until Jakub decides.
 
+## Outcome (Jakub's decisions)
+
+- **The header bar stays GOV.UK's default black Generic header.** We tried the Latarnia brand colour (#9a5700) and dropped it.
+- **The plate is GOV.UK white** (`govuk-colour("white")`), as GOV.UK's white crown. The cut-out "ul." and rim show the header's black. The amber `plate` value stays in `_palette.scss`, and the PDF keeps its own amber.
+- **The plate is centred in the bar:** logo container padding 18/10 instead of GOV.UK's 16/12. This is a deviation from GOV.UK's magic numbers.
+- **The focus box is an even 7px round the plate.** It uses focus-only padding, a deviation from GOV.UK's link-styles.
+- Jakub accepts that GOV.UK's black focus bar is invisible on black, as on GOV.UK's own black header. The yellow box is the indicator (14.55:1 on black).
+
 ## Problem
 
-When the header logo is focused, GOV.UK shows a yellow box with its black focus bar underneath, and it looks even because GOV.UK's header is blue. Our Generic header is black: that is govuk-frontend 6.5.1's `generic-header` `block-styles($background-colour: govuk-colour("black"))` default, which nobody chose. On black, the black bar disappears and the yellow box looks cut off at the bottom. The yellow box also seems to hug the plate on the left and the wordmark on the right.
+- On focus, the yellow box around the header logo looked cut off and uneven.
+- The logo sat high in the bar: 39 device px above the plate, 54 below.
 
 ## Root cause
 
-Measured on the focused homepage link in headless Chromium at 1280px, on production and on www.gov.uk:
+Measured in headless Chromium, 375 and 1280 (same at both), CSS px:
 
-| | GOV.UK | conaulicy.pl |
-|---|---|---|
-| yellow above the logo (2px box-shadow + content area) | 3px | 4px |
-| yellow below the logo | 6px | 7px |
-| black focus bar (box-shadow `0 4px`) | 4px | 4px |
-| yellow left / right of the logo | 0 / 0 | 0 / 0.5px |
+- **Focus box:** the yellow is the inline link's content area, so the font sets it, not the logo. Atkinson at 30px is 39px tall. That leaves 4px of yellow above the plate (2 of them GOV.UK's box-shadow), 7px below, and none at the sides.
+  - GOV.UK's box is flush at the sides too. Its crown only looks padded because its edges are small round dots. Our plate is a solid rectangle, so flush reads as cut off.
+  - The header wordmark is shifted down on purpose (`HEADER_WORDMARK_SHIFT`, `translateY(4.12%)`), so its x-height is centred on the plate and the "y" stays within the plate's height. So the plate's box is the logo's optical frame, and the focus box is centred on it.
+- **Vertical position:** GOV.UK's padding 16/12 puts its own logo at 13px above and 18px below in the 61px bar; GOV.UK's header example measures the same. That reads fine with the airy crown but not with a solid plate. The font's content area does not affect it, because the bar's layout uses the 30px line-height.
 
-- **The geometry already matches GOV.UK's.** The same `link-styles`, the same 30px logo, `top: -3px` and padding 16/12 are used. The 1px more above and below comes from Atkinson's taller content area at 30px (39px against GDS Transport's 37px). The yellow is the inline link's content area, so the font sets its height, not the SVG. Neither the `top: -3px` lift nor the wordmark's `translateY` changes the box.
-- **What is visibly uneven is the missing bottom edge.** On a black header the black 4px bar is the same colour as the header. So below the logo you see 7px of yellow with no edge, against 4px above. On GOV.UK's blue the bar is visible and closes the box.
-- **Left and right:** GOV.UK's yellow is also flush with its SVG. The crown only looks padded because its edges are small round dots. Our plate is a solid rectangle, so flush reads as cut off.
-- **Optical centre (Jakub's addition):** the box has to sit evenly round plate + wordmark as you see them, not round the link's box. The header wordmark is shifted down on purpose (`HEADER_WORDMARK_SHIFT`, `translateY(4.12%)`), so its x-height is centred on the plate and the "y" descender stays inside the plate's height (wordmark ink 0.9px below the plate top, 3.5px above its bottom). That makes the plate's box the logo's optical frame. Centring on the wordmark's ink box instead would put the box off-centre against the plate.
+## Change (`web/app/site.scss`)
 
-## Change
+1. `.app-logo__plate` fill: `govuk-colour("white")` instead of the amber `plate`. `@use "sass:map"` is dropped, as the plate was its only use.
+2. `.govuk-generic-header__logo`: `logo-styles($padding-top: 18px, $padding-bottom: 10px)`. The sum is the same, so the bar is the same height. The logo, its `top: -3px` lift, the wordmark's centring, the hover underline and the focus box all move down 2px together.
+3. `.govuk-generic-header__homepage-link:focus`: `padding: 3px 7px 0; margin-left: -7px`. Inline padding leaves the line box alone, and the negative margin cancels the left padding, so the logo does not move on focus.
 
-`web/app/site.scss`: `.govuk-generic-header` includes govuk-frontend's own `generic-header.block-styles` with `$background-colour: govuk-functional-colour("brand")` and `$text-colour: govuk-functional-colour("inverse-text")`. This is exactly what `components/header/_mixin.scss` does for the GOV.UK header. `brand` is Latarnia primary #9a5700 (`_settings.scss`). There is no raw colour, and the focus styles are unchanged.
+`scripts/check-own-css.mjs`: `RAW_PX` takes the 18/10 padding and the two focus declarations.
 
-The header plate is GOV.UK white (`govuk-colour("white")`) instead of amber (Jakub's choice, as GOV.UK's white crown on its blue). The cut-out "ul." and the rim show the header colour through it. The amber `plate` value stays in `_palette.scss` for dark bars, and the PDF keeps its own amber. On focus the plate still takes `currentColor` (black on yellow).
+## Measurements
 
-Also in `site.scss`, on `.govuk-generic-header__homepage-link:focus` only: `padding: 3px 7px 0; margin-left: -7px`. This gives an even 7px of yellow round the plate's box on all four sides (measured: 7 / 7 / 7.1 / 7.5 at 375px and 1280px), above GOV.UK's unchanged black bar. Inline padding does not change the line box, and the negative margin cancels the left padding, so the logo stays where it is (checked). This is a deviation from GOV.UK's link-styles, which have no focus padding, and needs Jakub's approval. The two declarations are added to `RAW_PX` in `scripts/check-own-css.mjs`. The values depend on Atkinson's content area at 30px (not checked with the fallback font).
-
-## Vertical centring in the bar (Jakub's addition)
-
-Measured in headless Chromium, 375 and 1280 (same at both), CSS px; the bar includes GOV.UK's 1px transparent bottom border, which shows the header colour:
-
-| | bar | above plate | below plate | hover underline below plate | focus black bar to bar bottom |
+| | bar | above plate | below plate (incl. 1px transparent border) | focus box top / bottom / left / right | hover underline below plate |
 |---|---|---|---|---|---|
-| GOV.UK header example (crown) | 61 | 13 | 18 | | |
-| before (padding 16/12) | 61 | 13 | 18 | 7 | 7 |
-| after (padding 18/10) | 61 | 15 | 16 | 7 | 5 |
+| production (16/12) | 61 | 13 | 18 | 4 / 7 / 0.1 / 0.5 | 7 |
+| this PR (18/10) | 61 | 15 | 16 | 7 / 7 / 7.1 / 7.5 | 7 |
 
-GOV.UK's 16/12 ("magic numbers ... to vertically centre align the logo") sit its logo high on purpose. That reads fine with the airy crown but not with a solid plate. The fix is one declaration, a deviation from GOV.UK's numbers: `logo-styles($padding-top: 18px, $padding-bottom: 10px)`, with the same sum, so the same bar. The logo, its `top: -3px` lift, the wordmark's centring on the plate, the hover underline and the focus box (still 7 / 7 / 7.1 / 7.5) all move together. `RAW_PX` is updated to match.
+An exact split is not possible: a 61px bar minus a 30px plate leaves 31px. Chromium snaps the SVG to whole pixels, so 18.5/9.5 renders as 16/15. 15/16 leaves the plate half a pixel above centre. An exact split needs a 60 or 62px bar (padding 18/9 or 18/11).
 
-Exact centring is not possible in a 61px bar with a 30px plate: that leaves 31px, an odd number. Chromium snaps the inline SVG to whole pixels, so 18.5/9.5 renders as 16 above / 15 below at 1×, 32/30 device px at 2× and 48/45 at 3×. 15/16 leaves the plate half a pixel above centre. If an exact split is wanted, the bar has to go to 60 or 62px (padding 18/9 or 18/11), which needs Jakub's decision.
+## Contrast (WCAG 2.2)
+
+| pair | ratio |
+|---|---|
+| white wordmark on black #0b0c0c | 19.59 |
+| white plate on black (non-text) | 19.59 |
+| "ul." cut-out and rim (black through the white plate) | 19.59 |
+| focus yellow #ffdd00 on black | 14.55 |
+| focused plate and wordmark, black on yellow | 14.55 |
+| GOV.UK's black focus bar on black | 1.00 (invisible, accepted) |
 
 ## Acceptance
 
-- Focused, the yellow is visually even round plate + wordmark: 7px on every side of the plate's box, and the logo does not move.
-- Plate centred in the 61px bar: 15px above, 16px below (was 13 / 18), bar height unchanged.
-- Header background #9a5700, white text, white plate with the "ul." and rim in the header colour (5.62:1). Focus stays GOV.UK's yellow with the black bar, and the bar is visible under the focused logo.
+- Black Generic header as GOV.UK's default, white plate with the "ul." and rim in black.
+- Plate centred in the 61px bar, 15 above and 16 below (was 13 / 18), bar height unchanged.
+- Focused, an even 7px of yellow round the plate, and the logo does not move. Hover underline unchanged, 7px below the plate.
 - `check-own-css`, `biome check` and CI green. Vercel Preview built.
-- Contrast numbers and screenshots (Preview against production, 375px and desktop; normal, hover, focus) in the PR.
-- Nothing else changed: PDF, OG image, favicons, theme-color and docs are listed in the PR as follow-ups for if Jakub approves.
+- Screenshots (production against this branch's CSS on production, 375 and 1280; normal, hover, focus, focus close-up) in `docs/tasks/task-78/` and the PR.
+- Nothing else changed. Follow-ups for consistency are listed in the PR.

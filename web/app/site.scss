@@ -4,16 +4,6 @@
 @use "settings" as *;
 @use "govuk-frontend/dist/govuk/components/generic-header/mixin" as generic-header;
 
-// The Generic header in the brand colour, as the GOV.UK header takes GOV.UK's
-// (components/header/_mixin.scss), instead of the mixin's default black: on
-// black, the black bar of GOV.UK's focus style under the focused logo is lost.
-.govuk-generic-header {
-  @include generic-header.block-styles(
-    $background-colour: govuk-functional-colour("brand"),
-    $text-colour: govuk-functional-colour("inverse-text")
-  );
-}
-
 // Our "ul." plate in the Generic header, with the GOV.UK header's logo
 // geometry (govuk-frontend components/header/_mixin.scss): the logo 30px tall
 // (site-header.tsx), lifted 3px as .govuk-header__logotype, so the 3px hover
@@ -35,13 +25,12 @@
   vertical-align: top;
 }
 
-// The plate's fill is one custom property: GOV.UK white on the brand header,
-// as GOV.UK's crown on its blue, so the cut-out "ul." and rim show the header
-// colour (the amber plate is for dark bars only). On focus GOV.UK's
-// link-styles paint the link focus yellow with focus-text black (the
-// wordmark's currentColor); the plate takes that colour too, so the cut-out
-// "ul." and rim show focus yellow in a black plate, as GOV.UK's logo goes
-// all black on focus. :focus, as in link-styles.
+// The plate's fill is one custom property: GOV.UK white on the Generic
+// header's black, as GOV.UK's white crown, so the cut-out "ul." and rim show
+// the header's black. On focus GOV.UK's link-styles paint the link focus
+// yellow with focus-text black (the wordmark's currentColor); the plate takes
+// that colour too, so the cut-out "ul." and rim show focus yellow in a black
+// plate, as GOV.UK's logo goes all black on focus. :focus, as in link-styles.
 .app-logo__plate {
   fill: var(--app-logo-plate, #{govuk-colour("white")});
 }
