@@ -1,7 +1,6 @@
 // The only own CSS (docs/govuk-audit.md): what GOV.UK has no equivalent for.
 // GOV.UK Sass functions and mixins only; no raw colours or px.
 // Capped by scripts/check-own-css.mjs.
-@use "sass:map";
 @use "settings" as *;
 @use "govuk-frontend/dist/govuk/components/generic-header/mixin" as generic-header;
 
@@ -32,13 +31,15 @@
   vertical-align: top;
 }
 
-// The plate's fill is one custom property, amber by default. On focus GOV.UK's
+// The plate's fill is one custom property: GOV.UK white on the brand header,
+// as GOV.UK's crown on its blue, so the cut-out "ul." and rim show the header
+// colour (the amber plate is for dark bars only). On focus GOV.UK's
 // link-styles paint the link focus yellow with focus-text black (the
 // wordmark's currentColor); the plate takes that colour too, so the cut-out
 // "ul." and rim show focus yellow in a black plate, as GOV.UK's logo goes
 // all black on focus. :focus, as in link-styles.
 .app-logo__plate {
-  fill: var(--app-logo-plate, #{map.get($app-latarnia, "plate")});
+  fill: var(--app-logo-plate, #{govuk-colour("white")});
 }
 
 // The focus box is the link's inline content area, set by the font (Atkinson

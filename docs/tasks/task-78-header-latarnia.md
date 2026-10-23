@@ -26,12 +26,14 @@ Measured on the focused homepage link in headless Chromium at 1280px, on product
 
 `web/app/site.scss`: `.govuk-generic-header` includes govuk-frontend's own `generic-header.block-styles` with `$background-colour: govuk-functional-colour("brand")` and `$text-colour: govuk-functional-colour("inverse-text")`. This is exactly what `components/header/_mixin.scss` does for the GOV.UK header. `brand` is Latarnia primary #9a5700 (`_settings.scss`). There is no raw colour, and the focus styles are unchanged.
 
+The header plate is GOV.UK white (`govuk-colour("white")`) instead of amber (Jakub's choice, as GOV.UK's white crown on its blue). The cut-out "ul." and the rim show the header colour through it. The amber `plate` value stays in `_palette.scss` for dark bars, and the PDF keeps its own amber. On focus the plate still takes `currentColor` (black on yellow).
+
 Also in `site.scss`, on `.govuk-generic-header__homepage-link:focus` only: `padding: 3px 7px 0; margin-left: -7px`. This gives an even 7px of yellow round the plate's box on all four sides (measured: 7 / 7 / 7.1 / 7.5 at 375px and 1280px), above GOV.UK's unchanged black bar. Inline padding does not change the line box, and the negative margin cancels the left padding, so the logo stays where it is (checked). This is a deviation from GOV.UK's link-styles, which have no focus padding, and needs Jakub's approval. The two declarations are added to `RAW_PX` in `scripts/check-own-css.mjs`. The values depend on Atkinson's content area at 30px (not checked with the fallback font).
 
 ## Acceptance
 
 - Focused, the yellow is visually even round plate + wordmark: 7px on every side of the plate's box, and the logo does not move.
-- Header background #9a5700, white text. Focus stays GOV.UK's yellow with the black bar, and the bar is visible under the focused logo.
+- Header background #9a5700, white text, white plate with the "ul." and rim in the header colour (5.62:1). Focus stays GOV.UK's yellow with the black bar, and the bar is visible under the focused logo.
 - `check-own-css`, `biome check` and CI green. Vercel Preview built.
 - Contrast numbers and screenshots (Preview against production, 375px and desktop; normal, hover, focus) in the PR.
 - Nothing else changed: PDF, OG image, favicons, theme-color and docs are listed in the PR as follow-ups for if Jakub approves.
