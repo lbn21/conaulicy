@@ -15,13 +15,17 @@
 }
 
 // Our "ul." plate in the Generic header, with the GOV.UK header's logo
-// geometry (govuk-frontend components/header/_mixin.scss): the logo
-// container's 16/12 padding, and the logo 30px tall (site-header.tsx), lifted
-// 3px as .govuk-header__logotype, so the 3px hover underline of the shared
-// link-styles sits 6px below it. The px are GOV.UK's magic numbers, allowed
-// one by one in scripts/check-own-css.mjs.
+// geometry (govuk-frontend components/header/_mixin.scss): the logo 30px tall
+// (site-header.tsx), lifted 3px as .govuk-header__logotype, so the 3px hover
+// underline of the shared link-styles sits 6px below it. Deviation from
+// GOV.UK's magic numbers (Jakub's decision): GOV.UK's padding 16/12 sits its
+// airy crown high, 13px above and 18px below in the 61px bar, which a solid
+// plate does not carry. 18/10 (the same sum, so the same bar) centres the
+// plate: 15px above, 16px below with the 1px transparent border. 31px cannot
+// split evenly, and Chromium snaps the SVG to whole pixels. The px are
+// allowed one by one in scripts/check-own-css.mjs.
 .govuk-generic-header__logo {
-  @include generic-header.logo-styles($padding-top: 16px, $padding-bottom: 12px);
+  @include generic-header.logo-styles($padding-top: 18px, $padding-bottom: 10px);
 }
 
 .app-logo {

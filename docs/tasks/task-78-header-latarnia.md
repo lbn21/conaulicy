@@ -30,9 +30,24 @@ The header plate is GOV.UK white (`govuk-colour("white")`) instead of amber (Jak
 
 Also in `site.scss`, on `.govuk-generic-header__homepage-link:focus` only: `padding: 3px 7px 0; margin-left: -7px`. This gives an even 7px of yellow round the plate's box on all four sides (measured: 7 / 7 / 7.1 / 7.5 at 375px and 1280px), above GOV.UK's unchanged black bar. Inline padding does not change the line box, and the negative margin cancels the left padding, so the logo stays where it is (checked). This is a deviation from GOV.UK's link-styles, which have no focus padding, and needs Jakub's approval. The two declarations are added to `RAW_PX` in `scripts/check-own-css.mjs`. The values depend on Atkinson's content area at 30px (not checked with the fallback font).
 
+## Vertical centring in the bar (Jakub's addition)
+
+Measured in headless Chromium, 375 and 1280 (same at both), CSS px; the bar includes GOV.UK's 1px transparent bottom border, which shows the header colour:
+
+| | bar | above plate | below plate | hover underline below plate | focus black bar to bar bottom |
+|---|---|---|---|---|---|
+| GOV.UK header example (crown) | 61 | 13 | 18 | | |
+| before (padding 16/12) | 61 | 13 | 18 | 7 | 7 |
+| after (padding 18/10) | 61 | 15 | 16 | 7 | 5 |
+
+GOV.UK's 16/12 ("magic numbers ... to vertically centre align the logo") sit its logo high on purpose. That reads fine with the airy crown but not with a solid plate. The fix is one declaration, a deviation from GOV.UK's numbers: `logo-styles($padding-top: 18px, $padding-bottom: 10px)`, with the same sum, so the same bar. The logo, its `top: -3px` lift, the wordmark's centring on the plate, the hover underline and the focus box (still 7 / 7 / 7.1 / 7.5) all move together. `RAW_PX` is updated to match.
+
+Exact centring is not possible in a 61px bar with a 30px plate: that leaves 31px, an odd number. Chromium snaps the inline SVG to whole pixels, so 18.5/9.5 renders as 16 above / 15 below at 1×, 32/30 device px at 2× and 48/45 at 3×. 15/16 leaves the plate half a pixel above centre. If an exact split is wanted, the bar has to go to 60 or 62px (padding 18/9 or 18/11), which needs Jakub's decision.
+
 ## Acceptance
 
 - Focused, the yellow is visually even round plate + wordmark: 7px on every side of the plate's box, and the logo does not move.
+- Plate centred in the 61px bar: 15px above, 16px below (was 13 / 18), bar height unchanged.
 - Header background #9a5700, white text, white plate with the "ul." and rim in the header colour (5.62:1). Focus stays GOV.UK's yellow with the black bar, and the bar is visible under the focused logo.
 - `check-own-css`, `biome check` and CI green. Vercel Preview built.
 - Contrast numbers and screenshots (Preview against production, 375px and desktop; normal, hover, focus) in the PR.
