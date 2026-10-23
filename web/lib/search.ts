@@ -8,6 +8,7 @@
 import uFuzzy from "@leeoniya/ufuzzy";
 import { houseNumber, withHouseNumber } from "./house.ts";
 import { normalize } from "./normalize.ts";
+import { CECHA_WORDS } from "./places.ts";
 
 export type SearchHit = {
   id: string;
@@ -16,8 +17,12 @@ export type SearchHit = {
   nr?: string | null;
 };
 
-/** What /api/search-index serves: [id, label] per searchable place. */
-export type SearchIndex = Array<[id: string, label: string]>;
+/**
+ * What /api/search-index serves, per searchable place: [id, label, type].
+ * The type is TERYT's: a street's CECHA ("ul.", "os.", "al.", lib/places.ts
+ * CECHA_WORDS), or a locality's kind ("wies", "czesc_wsi", "miasto").
+ */
+export type SearchIndex = Array<[id: string, label: string, type: string]>;
 
 /** Id of the home page's search element. */
 export const SEARCH_ID = "szukaj";
@@ -25,14 +30,23 @@ export const SEARCH_ID = "szukaj";
 /** At most this many places in the list. */
 export const SEARCH_LIMIT = 8;
 
-// "ul. Asnyka" and "ulica Asnyka" find the same street; the word only hints
-// that a street is meant (rather than an osiedle).
-const STREET_WORDS = new Set(["ul", "ulica"]);
+const STREET = "ul.";
 
-// One spelling per word, for labels and queries alike.
+// "ul. Asnyka" and "ulica Asnyka" find the same street; the word only hints
+// that a street is meant (rather than an osiedle or a village).
+const STREET_WORDS = new Set([
+  normalize(STREET),
+  normalize(CECHA_WORDS[STREET]),
+]);
+
+// One spelling per word, for labels and queries alike: each CECHA's
+// abbreviation stands for its word ("os." = "osiedle", "pl." = "plac").
 const SYNONYMS: Record<string, string> = {
-  os: "osiedle",
-  al: "aleja",
+  ...Object.fromEntries(
+    Object.entries(CECHA_WORDS)
+      .map(([cecha, word]) => [normalize(cecha), normalize(word)])
+      .filter(([abbreviation, word]) => abbreviation !== word),
+  ),
   trzeciego: "3",
   swietej: "sw",
   swietego: "sw",
@@ -77,10 +91,12 @@ type Place = {
   hit: SearchHit;
   text: string;
   words: string[];
+  type: string;
+  /** Its type's word as search spells it ("osiedle"); "" for a locality. */
+  typeWord: string;
   /** A part of a village: "Kamienna (Opaka, gm. Lubaczów)". */
   part: boolean;
-  osiedle: boolean;
-  /** How many places share its town or village, after the comma. */
+  /** How many places its town or village has (see identity). */
   size: number;
 };
 
@@ -148,9 +164,9 @@ function tiers(places: Place[], terms: string[], pass: number): number[][] {
   });
 }
 
-type Ranked = { place: Place; key: number[]; first: boolean };
+type Ranked = { place: Place; key: number[]; bare: boolean; first: boolean };
 
-/** Lower is better: worst word, sum of words, an osiedle for "ul.". */
+/** Lower is better: worst word, sum of words, not a street for "ul.". */
 function compareKeys(a: number[], b: number[]): number {
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] - b[i];
   return 0;
@@ -170,8 +186,15 @@ function rank(places: Place[], terms: string[], street: boolean): Ranked[] {
         key: [
           Math.max(...own),
           own.reduce((sum, tier) => sum + tier, 0),
-          street && place.osiedle ? 1 : 0,
+          street && place.type !== STREET ? 1 : 0,
         ],
+        // A bare name means a street (Polish addressing): another street
+        // type whose word was not typed ("osiedle") yields to it. Villages
+        // are not street types.
+        bare:
+          place.typeWord !== "" &&
+          place.type !== STREET &&
+          !terms.includes(place.typeWord),
         first: place.text.startsWith(query),
       });
     });
@@ -180,6 +203,7 @@ function rank(places: Place[], terms: string[], street: boolean): Ranked[] {
         (a, b) =>
           compareKeys(a.key, b.key) ||
           Number(a.place.part) - Number(b.place.part) ||
+          Number(a.bare) - Number(b.bare) ||
           Number(b.first) - Number(a.first) ||
           b.place.size - a.place.size ||
           a.place.hit.label.length - b.place.hit.label.length ||
@@ -213,6 +237,22 @@ function readings(q: string): Reading[] {
   return result;
 }
 
+const PART = "czesc_wsi";
+
+/**
+ * The town or village a place belongs to, by name as its label gives it
+ * (lib/places.ts streetLabel, villageLabel): a street's locality, a
+ * village itself, a part's parent village.
+ */
+function identity(label: string, type: string): string {
+  if (type === PART)
+    return label.slice(label.indexOf("(") + 1, label.indexOf(","));
+  if (!CECHA_WORDS[type]) {
+    return label.includes("(") ? label.slice(0, label.indexOf(" (")) : label;
+  }
+  return label.slice(label.lastIndexOf(",") + 2);
+}
+
 export type Found = {
   hits: SearchHit[];
   /** The first place is clearly the best (or the only) match. */
@@ -228,21 +268,22 @@ export type Matcher = (q: string, limit?: number) => Found;
  * most `limit` places: the search field lists 8, /szukaj every one.
  */
 export function matcher(index: SearchIndex): Matcher {
-  const area = (label: string) =>
-    label.includes("(") ? "" : label.slice(label.lastIndexOf(",") + 1);
   const sizes = new Map<string, number>();
-  for (const [, label] of index) {
-    sizes.set(area(label), (sizes.get(area(label)) ?? 0) + 1);
+  for (const [, label, type] of index) {
+    const town = identity(label, type);
+    sizes.set(town, (sizes.get(town) ?? 0) + 1);
   }
-  const places: Place[] = index.map(([id, label]) => {
+  const places: Place[] = index.map(([id, label, type]) => {
     const words = canonical(label);
+    const word = CECHA_WORDS[type];
     return {
       hit: { id, label },
       text: words.join(" "),
       words,
-      part: /\(.+,/.test(label),
-      osiedle: words[0] === "osiedle",
-      size: area(label) ? (sizes.get(area(label)) ?? 0) : 0,
+      type,
+      typeWord: word ? normalize(word) : "",
+      part: type === PART,
+      size: sizes.get(identity(label, type)) ?? 0,
     };
   });
   return (q, limit = SEARCH_LIMIT) => {

@@ -43,13 +43,13 @@ const battery: Array<[string, string]> = [
   ["Asnyka Adama", "ul. Adama Asnyka, Lubaczów"],
   ["Asnyka 12", "ul. Adama Asnyka, Lubaczów"],
   ["ul. Adama Asnyka 12, Lubaczów", "ul. Adama Asnyka, Lubaczów"],
-  ["Mickiewicza", "Mickiewicza, Lubaczów"],
-  ["Mickiewicz", "Mickiewicza, Lubaczów"],
-  ["Mickewicza", "Mickiewicza, Lubaczów"],
+  ["Mickiewicza", "ul. Adama Mickiewicza, Lubaczów"],
+  ["Mickiewicz", "ul. Adama Mickiewicza, Lubaczów"],
+  ["Mickewicza", "ul. Adama Mickiewicza, Lubaczów"],
   ["ckiewi", "Mickiewicza"],
   ["os. Mickiewicza", "Osiedle Mickiewicza, Lubaczów"],
   ["osiedle mickiewicza", "Osiedle Mickiewicza, Lubaczów"],
-  ["ul. Mickiewicza", "Mickiewicza, Lubaczów"],
+  ["ul. Mickiewicza", "ul. Adama Mickiewicza, Lubaczów"],
   ["al. Jaworskiego", "aleja kardynała Mariana Jaworskiego"],
   ["Jaworskiego Lubaczów", "aleja kardynała Mariana Jaworskiego, Lubaczów"],
   ["3 Maja", "ul. 3-go Maja, Lubaczów"],
@@ -258,8 +258,65 @@ test("anything else is left to the search proper", () => {
     assert.equal(exactPlace(PLACES, q), null, q);
   }
   const twice: SearchIndex = [
-    ["a", "Wola (gm. Lubaczów)"],
-    ["b", "Wola (gm. Lubaczów)"],
+    ["a", "Wola (gm. Lubaczów)", "wies"],
+    ["b", "Wola (gm. Lubaczów)", "wies"],
   ];
   assert.equal(exactPlace(twice, "Wola (gm. Lubaczów)"), null);
+});
+
+test("a bare name means a street: anything else yields on a tie", () => {
+  for (const q of ["Mickiewicza", "Mickewicza"]) {
+    const { hits, clear } = match(q);
+    assert.deepEqual(
+      hits.slice(0, 2).map((hit) => hit.label),
+      ["ul. Adama Mickiewicza, Lubaczów", "Osiedle Mickiewicza, Lubaczów"],
+      q,
+    );
+    assert.equal(clear, false, q);
+  }
+  for (const q of ["os. Mickiewicza", "osiedle mickiewicza"]) {
+    const { hits, clear } = match(q);
+    assert.equal(hits[0].label, "Osiedle Mickiewicza, Lubaczów", q);
+    assert.equal(clear, true, q);
+  }
+  assert.equal(labels("Unii Lubelskiej")[0], "ul. Unii Lubelskiej, Lubaczów");
+  assert.equal(
+    labels("al. Jaworskiego")[0].startsWith("aleja kardynała Mariana"),
+    true,
+  );
+});
+
+test("a village before an osiedle in it: size by town or village", () => {
+  // Krowica Sama has a street, so in the real index it is no place of its
+  // own; its osiedle and parts are.
+  assert.ok(labels("Sama")[0].includes("Krowica Sama"));
+  const village: SearchIndex = [
+    ["v", "Krowica Sama (gm. Lubaczów)", "wies"],
+    ["o", "Osiedle Wolności, Krowica Sama", "os."],
+    ["p", "Blusy (Krowica Sama, gm. Lubaczów)", "czesc_wsi"],
+  ];
+  assert.deepEqual(
+    matcher(village)("Sama").hits.map((hit) => hit.id),
+    ["v", "o", "p"],
+  );
+});
+
+test("a CECHA abbreviation and its word match each other", () => {
+  const squares: SearchIndex = [
+    ["a", "pl. Wolności, Lubaczów", "pl."],
+    ["b", "ul. Wolności, Lubaczów", "ul."],
+  ];
+  const find = matcher(squares);
+  for (const q of ["plac Wolności", "pl. Wolności", "pl Wolnosci"]) {
+    assert.deepEqual(
+      find(q).hits.map((hit) => hit.id),
+      ["a"],
+      q,
+    );
+  }
+  // Bare, the street first; the square still listed.
+  assert.deepEqual(
+    find("Wolności").hits.map((hit) => hit.id),
+    ["b", "a"],
+  );
 });

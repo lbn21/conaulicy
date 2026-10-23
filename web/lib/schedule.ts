@@ -58,6 +58,8 @@ type Place = {
   kind: "ulica" | "wies";
   name: string;
   label: string;
+  /** TERYT's: a street's CECHA, a village's kind (lib/search.ts SearchIndex). */
+  type: string;
   area: string;
   gmina: string;
   schedulePage: string | null;
@@ -163,6 +165,7 @@ const villagePlaces = (where: SQL | undefined, limit: number) =>
     .select({
       id: localities.id,
       name: localities.name,
+      kind: localities.kind,
       parentId: localities.parentId,
       parent: parent.name,
       gmina: gminy.name,
@@ -184,6 +187,7 @@ function streetPlace(row: StreetRow): Place {
     kind: "ulica",
     name: streetName(row.prefix, row.name),
     label: streetLabel(row),
+    type: row.prefix,
     area: row.locality,
     gmina: row.gmina,
     schedulePage: row.scheduleUrl,
@@ -200,6 +204,7 @@ function villagePlace(row: VillageRow): Place {
     kind: "wies",
     name: row.name,
     label: villageLabel(row),
+    type: row.kind,
     area: row.parent ? `${row.parent}, gmina ${gmina}` : `gmina ${gmina}`,
     gmina: row.gmina,
     schedulePage: row.scheduleUrl,
@@ -207,12 +212,6 @@ function villagePlace(row: VillageRow): Place {
     parentId: row.parentId,
   };
 }
-
-const hits = (places: Place[], limit: number): SearchHit[] =>
-  places
-    .map(({ id, label }) => ({ id, label }))
-    .sort(byLabel)
-    .slice(0, limit);
 
 /**
  * At most 8 places for q, ranked as the search field ranks them (the same
@@ -258,9 +257,9 @@ export const searchIndex = unstable_cache(
       ...streetRows.map(streetPlace),
       ...villageRows.map(villagePlace),
     ];
-    const places: SearchIndex = hits(all, Number.POSITIVE_INFINITY).map(
-      ({ id, label }) => [id, label],
-    );
+    const places: SearchIndex = [...all]
+      .sort(byLabel)
+      .map(({ id, label, type }) => [id, label, type]);
     const version = createHash("sha256")
       .update(JSON.stringify(places))
       .digest("hex")
