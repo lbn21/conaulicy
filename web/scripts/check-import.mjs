@@ -41,8 +41,12 @@ const write = (data) => {
 };
 write(etl);
 
-process.env.REVALIDATE_SECRET = "check-import";
+// The server gets the secret; an import run only with SITE_URL, so no run
+// ever revalidates etl/sources.yaml's site.url (production).
+const REVALIDATE_SECRET = "check-import";
+process.env.REVALIDATE_SECRET = REVALIDATE_SECRET;
 const server = await startServer(3304);
+delete process.env.REVALIDATE_SECRET;
 
 // Async, so the event loop notices when the server closes an idle socket.
 const exec = (command, args, env = {}) =>
@@ -109,7 +113,7 @@ try {
     ["--apply"],
     0,
     /Imported: 12 events[\s\S]*Revalidate ok[\s\S]*Smoke check ok/,
-    { SITE_URL: server.origin },
+    { SITE_URL: server.origin, REVALIDATE_SECRET },
   );
   await expectRun("re-run", [], 0, /events\s+\+0\s+−0\s+~0/);
 
