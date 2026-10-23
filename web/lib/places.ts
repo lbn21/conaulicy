@@ -138,6 +138,20 @@ export function pickZone(
   return best?.c.zoneId ?? null;
 }
 
+/**
+ * Whether we have pickup data for a place: a zone of its own, its locality's
+ * or its village's, or (a split street) zones for parts of it. Candidates may
+ * be every zone member: pickZone ignores other places' entries.
+ */
+export function hasZone(
+  candidates: ZoneCandidate[],
+  place: ZonePlace,
+): boolean {
+  return (
+    isSplitStreet(candidates, place) || pickZone(candidates, place) !== null
+  );
+}
+
 export type ListedPlace = { id: string; label: string };
 
 /** /ulice's list: the town's streets by first letter, then the villages. */

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ListedPlace } from "@/lib/places";
 import { searchIndex } from "@/lib/schedule";
 import { pageMetadata } from "@/lib/share";
 
@@ -23,7 +24,18 @@ export const revalidate = 3600;
  * any. No client JS of its own.
  */
 export default async function AllPlacesPage() {
-  const { list } = await searchIndex();
+  const { list, noData } = await searchIndex();
+  const without = new Set(noData);
+  // A place we have no dates for says so (its page links the gmina's
+  // schedule).
+  const Place = ({ place }: { place: ListedPlace }) => (
+    <>
+      <a href={`/adres/${place.id}`} className="govuk-link">
+        {place.label}
+      </a>
+      {without.has(place.id) && " (brak danych)"}
+    </>
+  );
 
   return (
     <div className="govuk-grid-row">
@@ -50,9 +62,7 @@ export default async function AllPlacesPage() {
               <ul className="govuk-list">
                 {places.map((place) => (
                   <li key={place.id}>
-                    <a href={`/adres/${place.id}`} className="govuk-link">
-                      {place.label}
-                    </a>
+                    <Place place={place} />
                   </li>
                 ))}
               </ul>
@@ -71,21 +81,14 @@ export default async function AllPlacesPage() {
             {list.villages.map((village) => (
               <li key={village.id ?? village.label}>
                 {village.id ? (
-                  <a href={`/adres/${village.id}`} className="govuk-link">
-                    {village.label}
-                  </a>
+                  <Place place={{ id: village.id, label: village.label }} />
                 ) : (
                   <>
                     {village.label}
                     <ul className="govuk-list govuk-!-margin-left-4 govuk-!-margin-top-1">
                       {village.streets.map((street) => (
                         <li key={street.id}>
-                          <a
-                            href={`/adres/${street.id}`}
-                            className="govuk-link"
-                          >
-                            {street.label}
-                          </a>
+                          <Place place={street} />
                         </li>
                       ))}
                     </ul>

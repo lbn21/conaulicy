@@ -12,15 +12,19 @@ export const revalidate = 3600;
 const PAGES = ["/", "/ulice", "/dostepnosc", "/prywatnosc", "/o-projekcie"];
 
 // One URL per place, as its canonical link (components/place-page.tsx):
-// never the /nr/ or /numer variants, PDFs or calendars.
+// never the /nr/ or /numer variants, PDFs or calendars, and no place we have
+// no pickup data for (its page is noindex).
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // While gated, proxy.ts blocks it anyway.
   if (!indexable()) return [];
-  const { places } = await searchIndex();
+  const { places, noData } = await searchIndex();
+  const skip = new Set(noData);
   return [
     ...PAGES.map((path) => ({ url: `${SITE_URL}${path}` })),
-    ...places.map(([id]) => ({
-      url: `${SITE_URL}/adres/${encodeURIComponent(id)}`,
-    })),
+    ...places
+      .filter(([id]) => !skip.has(id))
+      .map(([id]) => ({
+        url: `${SITE_URL}/adres/${encodeURIComponent(id)}`,
+      })),
   ];
 }

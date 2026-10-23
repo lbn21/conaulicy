@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  hasZone,
   isSplitStreet,
   localitySearchLabel,
   pickZone,
@@ -72,6 +73,24 @@ test("pickZone: street entry, then own locality, then the parent village", () =>
     pickZone([street], { localityId: "L", parentId: null, streetId: "L-2" }),
     null,
   );
+});
+
+test("hasZone: own, locality's, village's or a split street's parts", () => {
+  const members = [
+    { zoneId: "z1", localityId: "L", streetId: "L-1" },
+    { zoneId: "z2", localityId: "V", streetId: null },
+    { zoneId: "z3", localityId: "L", streetId: "L-2", parity: "odd" as const },
+  ];
+  const street = (streetId: string) => ({
+    localityId: "L",
+    parentId: null,
+    streetId,
+  });
+  assert.equal(hasZone(members, street("L-1")), true);
+  assert.equal(hasZone(members, street("L-2")), true);
+  assert.equal(hasZone(members, street("L-3")), false);
+  assert.equal(hasZone(members, { localityId: "P", parentId: "V" }), true);
+  assert.equal(hasZone(members, { localityId: "W", parentId: null }), false);
 });
 
 test("a schedule link names who publishes it", () => {
