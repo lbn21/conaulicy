@@ -91,8 +91,10 @@ test("every suggestion's text opens its own place", () => {
   for (const [id, label] of PLACES) {
     assert.deepEqual(exactPlace(PLACES, label), { id, label }, label);
     for (const nr of ["12", "7a", "7/22"]) {
-      const text = withHouseNumber(label, nr);
-      assert.deepEqual(exactPlace(PLACES, text), { id, label, nr }, text);
+      // Where the field puts it, or typed after a picked suggestion.
+      for (const text of [withHouseNumber(label, nr), `${label} ${nr}`]) {
+        assert.deepEqual(exactPlace(PLACES, text), { id, label, nr }, text);
+      }
     }
   }
   assert.ok(findPlaces(matcher(PLACES, Infinity), PLACES[0][1]).length > 1);
@@ -106,6 +108,16 @@ test("the text as search compares it: case, Polish letters, spaces", () => {
       label: "Basznia (Basznia Dolna, gm. Lubaczów)",
     },
   );
+  for (const q of [
+    "ul. Adama Asnyka, Lubaczów 12",
+    "ul. Adama Asnyka 12, Lubaczów",
+  ]) {
+    assert.deepEqual(exactPlace(PLACES, q), {
+      id: "0972447-00470",
+      label: "ul. Adama Asnyka, Lubaczów",
+      nr: "12",
+    });
+  }
   assert.deepEqual(exactPlace(PLACES, "ul. Adama Asnyka 12A, Lubaczów"), {
     id: "0972447-00470",
     label: "ul. Adama Asnyka, Lubaczów",
@@ -118,7 +130,6 @@ test("anything else is left to the search proper", () => {
     "Basznia",
     "Asnyka",
     "Asnyka 12",
-    "ul. Adama Asnyka, Lubaczów, 12",
     "12 ul. Adama Asnyka, Lubaczów",
     "ul. Adama Asnyka 12 14, Lubaczów",
   ]) {

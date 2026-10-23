@@ -73,10 +73,11 @@ export function findPlaces(match: Matcher, q: string): SearchHit[] {
 
 /**
  * The place whose suggestion text q is (the field holds it after a pick):
- * its label, or its label with a house number where the field puts one
- * ("ul. Adama Asnyka 12, Lubaczów"), compared as search compares (case,
- * Polish letters, punctuation, spaces). Null when no label, or more than
- * one, reads so: then the search proper decides.
+ * its label, or its label with a house number, where the field puts one
+ * ("ul. Adama Asnyka 12, Lubaczów") or typed after it ("ul. Adama Asnyka,
+ * Lubaczów 12"), compared as search compares (case, Polish letters,
+ * punctuation, spaces). Null when no label, or more than one, reads so:
+ * then the search proper decides.
  */
 export function exactPlace(index: SearchIndex, q: string): SearchHit | null {
   const wanted = normalize(q);
@@ -86,7 +87,9 @@ export function exactPlace(index: SearchIndex, q: string): SearchHit | null {
   );
   for (const nr of [null, ...numbers]) {
     const found = index.filter(
-      ([, label]) => normalize(withHouseNumber(label, nr)) === wanted,
+      ([, label]) =>
+        normalize(withHouseNumber(label, nr)) === wanted ||
+        (nr !== null && normalize(`${label} ${nr}`) === wanted),
     );
     if (found.length === 1) {
       const [[id, label]] = found;
