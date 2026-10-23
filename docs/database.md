@@ -15,7 +15,20 @@ So every environment reads and writes production data. Previews only read; anyth
 
 - CI uses a made-up fixture (`npm run db:ci-fixture`, `web/scripts/ci-fixture.ts`); it refuses any database but a local one, and production never holds it.
 - `db:import` refuses `--apply` on this endpoint unless `--yes-production` is passed (it compares the target with the integration's `PGHOST`).
-- Before a write, back up with `pg_dump -Fc` to `~/.conaulicy-secret/backups/`, with a client matching Neon's major version (Postgres 18: Homebrew `libpq`, `/opt/homebrew/opt/libpq/bin/pg_dump`). Neon's free plan also keeps 6 hours of restore history.
+- Before a write, back up as in "Writing to production" below. Neon's free plan also keeps 6 hours of restore history.
+
+## Writing to production
+
+Jakub's rule (23 Oct 2026): an agent may run `db:migrate`, `db:import --apply` or `db:redirect --apply` on production **only after asking Jakub in chat and getting his explicit approval, every time**. One approval covers one run; it never carries over to the next.
+
+Each approved run:
+
+1. Back up first: `pg_dump -Fc` from Docker `postgres:18` (matching Neon's major version) into `~/.conaulicy-secret/backups/`, `chmod 600` the file, and check it with `pg_restore --list`. Note the UTC time as the Neon point-in-time restore marker.
+2. Run the dry run and review it. Stop on any unexpected delete or change.
+3. Apply.
+4. Run the dry run again: it must show 0 changes.
+
+Still forbidden: a local `next build`, `next start`, `next dev` or `npm run check:*`, or anything else that reads `web/.env.local` (production).
 
 Don't use `vercel env run` (Vercel CLI 64.5): it hands the command back to its own parser, so `vercel env run -e production -- node -e …` started a `vercel deploy` of the working tree (rejected only by luck). Use `web/.env.local` instead.
 
@@ -48,7 +61,9 @@ cd web
 npm run db:migrate      # reads web/.env.local (Neon main)
 ```
 
-The code may also ship first when it tolerates the old schema, as for `0002_teryt_names` (task 67): merge (the site never reads the new columns, and a missing `place_redirects` means no redirects); then Jakub backs up, runs `db:migrate`, and reloads the data with `npm run db:import -- --from <etl out> --teryt ../.cache/sources/teryt/<day> --apply --yes-production` (`npm run sources:pull` fetches the TERYT files), which fills `nazwa_1` and `nazwa_2`. Agents never run either on production.
+The code may also ship first when it tolerates the old schema, as for `0002_teryt_names` (task 67): merge (the site never reads the new columns, and a missing `place_redirects` means no redirects); then, after a backup, `db:migrate` and a data reload with `npm run db:import -- --from <etl out> --teryt ../.cache/sources/teryt/<day> --apply --yes-production` (`npm run sources:pull` fetches the TERYT files), which fills `nazwa_1` and `nazwa_2`. Both follow "Writing to production" above: by an agent only with Jakub's approval for that run.
+
+Applied to production: `0002_teryt_names` on 2026-10-23 at about 10:06 UTC; the TERYT reload filled `nazwa_1` for 276 streets and `nazwa_2` for 82.
 
 ## Testing data changes without touching production
 
