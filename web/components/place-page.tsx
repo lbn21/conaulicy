@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { NOT_FOUND_TITLE, PageNotFound } from "@/components/page-not-found";
 import { PickupSchedule } from "@/components/pickup-schedule";
 import { longDate } from "@/lib/date-labels";
 import { withHouseNumber } from "@/lib/house";
@@ -38,10 +40,12 @@ export async function placeMetadata(
 ): Promise<Metadata> {
   const place = await getPlace(id, nr);
   const path = `/adres/${encodeURIComponent(id)}`;
-  if (!place) return { title: "Adres", alternates: { canonical: path } };
-  const label = withHouseNumber(place.label, place.nr);
-  // GOV.UK: "Error: " first in the title, so screen readers hear it first.
-  const title = numberError(place, missing) ? `Błąd: ${label}` : label;
+  // As app/not-found.tsx: Next.js's own noindex is the only robots tag.
+  if (!place) return { title: NOT_FOUND_TITLE, robots: null };
+  // GOV.UK: the title is the H1, and "Error: " first, so screen readers
+  // hear it first.
+  const name = withHouseNumber(place.name, place.nr);
+  const title = numberError(place, missing) ? `Błąd: ${name}` : name;
   // The house-number and /numer variants describe the place itself.
   const whole = nr ? await getPlace(id, null) : place;
   return {
@@ -51,10 +55,30 @@ export async function placeMetadata(
       title,
       description: placeDescription(whole ?? place),
     }),
-    // /numer is an error variant of the street page: never a search result,
-    // its links still followed once the site is indexable.
-    ...(missing && { robots: { index: false, follow: indexable() } }),
+    // Never a search result, its links still followed once the site is
+    // indexable: /numer, an error variant of the street page, and a place
+    // we have no dates for (its page only links the gmina's schedule).
+    ...((missing || noData(place)) && {
+      robots: { index: false, follow: indexable() },
+    }),
   };
+}
+
+/** No pickup data at all, as lib/places.ts hasZone (/ulice, the sitemap). */
+function noData(place: PlaceView): boolean {
+  return place.zoneId === null && !place.askNumber;
+}
+
+/**
+ * Throws notFound() inside a Suspense boundary whose fallback is the 404
+ * page. Thrown outside one, Next.js 16 sends an empty error shell (no
+ * layout, no text) and draws the page only with JS; here the server HTML has
+ * the full page, and Next.js still answers 404 (it sets the status when an
+ * error ends a boundary). With JS, Next.js renders app/not-found.tsx, the
+ * same content.
+ */
+function NotFound(): never {
+  notFound();
 }
 
 /** GOV.UK's error summary, focused on load by its JS (lib/govuk-frontend). */
@@ -146,7 +170,13 @@ export async function PlaceMain({
   missing?: boolean;
 }) {
   const place = await getPlace(id, nr);
-  if (!place) notFound();
+  if (!place) {
+    return (
+      <Suspense fallback={<PageNotFound />}>
+        <NotFound />
+      </Suspense>
+    );
+  }
   const name = withHouseNumber(place.name, place.nr);
   const error = numberError(place, missing);
 
@@ -236,10 +266,18 @@ export async function PlaceMain({
 
             <PickupSchedule days={place.days} renderedOn={place.today} />
 
+            {!place.verified && (
+              <div className="govuk-warning-text">
+                <span className="govuk-warning-text__icon" aria-hidden="true">
+                  !
+                </span>
+                <strong className="govuk-warning-text__text">
+                  <span className="govuk-visually-hidden">Uwaga</span>
+                  {UNVERIFIED_NOTE}
+                </strong>
+              </div>
+            )}
             <div className="govuk-inset-text">
-              {!place.verified && (
-                <p className="govuk-body">{UNVERIFIED_NOTE}</p>
-              )}
               {place.sources.map((source) => (
                 <p key={source.label} className="govuk-body">
                   Źródło:{" "}
