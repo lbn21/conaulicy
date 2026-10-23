@@ -18,12 +18,14 @@ import {
   WORDMARK,
 } from "@/lib/logo";
 import { normalize } from "@/lib/normalize";
+import { movedPath } from "@/lib/places";
 import {
   DATASET,
   getPlace,
   type Pickup,
   type PickupDay,
   type PlaceView,
+  placeRedirect,
 } from "@/lib/schedule";
 import { hasUpcoming, UNVERIFIED_NOTE } from "@/lib/schedule-notes";
 import { TOKEN, tones } from "@/lib/waste-bin";
@@ -1066,7 +1068,21 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const { id } = await ctx.params;
-  const place = await getPlace(id, new URL(request.url).searchParams.get("nr"));
+  const url = new URL(request.url);
+  const place = await getPlace(id, url.searchParams.get("nr"));
+  // A renamed place's old PDF address: the same PDF on its new id.
+  const to = place ? null : await placeRedirect(id);
+  const moved = to && movedPath(url.pathname + url.search, id, to);
+  if (moved) {
+    return new Response(null, {
+      status: 308,
+      headers: {
+        Location: moved,
+        "Cache-Control": cacheControl("public, s-maxage=3600"),
+        "Vercel-Cache-Tag": DATASET,
+      },
+    });
+  }
   if (!place || !hasUpcoming(place.days, place.today)) {
     return new Response("Nie mamy harmonogramu dla tego adresu.", {
       status: 404,

@@ -20,6 +20,7 @@ import {
   events,
   gminy,
   localities,
+  placeRedirects,
   streets,
   zoneMembers,
   zones,
@@ -289,6 +290,33 @@ export async function searchMatcher(): Promise<Matcher> {
   }
   return prepared.match;
 }
+
+// Postgres: undefined_table. Drizzle wraps the driver's error in `cause`.
+const missingTable = (error: unknown) =>
+  [error, (error as { cause?: unknown })?.cause].some(
+    (e) => (e as { code?: string } | undefined)?.code === "42P01",
+  );
+
+/**
+ * The id a renamed place moved to (place_redirects, filled only by the
+ * reviewed step), or null. Before that table's migration: never moved.
+ */
+export const placeRedirect = unstable_cache(
+  async (id: string): Promise<string | null> => {
+    try {
+      const [row] = await db()
+        .select({ newId: placeRedirects.newId })
+        .from(placeRedirects)
+        .where(eq(placeRedirects.oldId, id));
+      return row?.newId ?? null;
+    } catch (error) {
+      if (missingTable(error)) return null;
+      throw error;
+    }
+  },
+  ["place-redirect"],
+  CACHE,
+);
 
 /** Where the search field loads the current index from. */
 export async function searchIndexUrl(): Promise<string> {

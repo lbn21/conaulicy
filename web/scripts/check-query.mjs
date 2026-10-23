@@ -11,12 +11,17 @@
 // A suggestion's text, as a pick leaves it in the field, opens its own
 // place: every label in /api/search-index, and some with a house number.
 //
+// A renamed street's old id (place_redirects; the CI fixture's made-up
+// 0972447-99999) answers 308 on every address under it, query kept; an
+// unknown id stays a 404.
+//
 // Runs against `next start` on the current build and the CI fixture.
 import { withHouseNumber } from "../lib/house.ts";
 import { startServer } from "./lib/server.mjs";
 
 const STREET = "/adres/0972447-00470";
 const SPLIT = "/adres/0972447-90004";
+const RENAMED = "/adres/0972447-99999";
 
 // [method, path, status, clean path + query for a redirect]
 const CASES = [
@@ -57,6 +62,16 @@ const CASES = [
   ["GET", "/szukaj?q=xyzqq", 200],
   ["GET", "/szukaj?q=", 200],
   ["GET", "/szukaj?q=Rynek&utm_source=x", 308, "/szukaj?q=Rynek"],
+  ["GET", RENAMED, 308, STREET],
+  ["GET", `${RENAMED}?nr=12`, 308, `${STREET}?nr=12`],
+  ["GET", `${RENAMED}?nr=`, 308, `${STREET}?nr=`],
+  [
+    "GET",
+    `${RENAMED}/harmonogram.pdf?nr=12`,
+    308,
+    `${STREET}/harmonogram.pdf?nr=12`,
+  ],
+  ["GET", "/adres/0972447-88888", 404],
 ];
 
 // [query, what the raw HTML of /szukaj must hold]

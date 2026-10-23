@@ -1,4 +1,8 @@
-import { PlaceMain, placeMetadata } from "@/components/place-page";
+import {
+  PlaceMain,
+  placeMetadata,
+  redirectIfMoved,
+} from "@/components/place-page";
 
 // /adres/[id]?nr=7/22 lands here (next.config.ts rewrites it), so a street
 // page with a house number is cached like the plain one. The number may
@@ -20,5 +24,10 @@ export default async function PlaceWithNumberPage({
   params,
 }: PageProps<"/adres/[id]/nr/[...nr]">) {
   const { id, nr } = await params;
+  // The address as asked: /adres/<id>?nr=… (next.config.ts rewrites it here).
+  await redirectIfMoved(
+    id,
+    `/adres/${encodeURIComponent(id)}?nr=${nr.join("/")}`,
+  );
   return <PlaceMain id={id} nr={nr.join("/")} />;
 }
