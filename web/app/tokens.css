@@ -1,7 +1,9 @@
 /*
   The two things GOV.UK Frontend has no setting for: the typeface's
   metric-matched fallback and the real bin colours (drawn by the bin markers,
-  .app-bin in site.scss). Contrast is verified by `node design/contrast.mjs`.
+  .app-bin in site.scss). Contrast is verified by `node design/contrast.mjs`,
+  run in CI: every colour token here must be in a text or UI pair it checks,
+  or listed in its NOT_CHECKED with the reason.
 */
 
 /*

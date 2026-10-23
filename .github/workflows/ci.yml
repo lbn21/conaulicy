@@ -111,6 +111,9 @@ jobs:
       - name: Own CSS (GOV.UK classes only, site.scss capped)
         run: node scripts/check-own-css.mjs
 
+      - name: "Contrast (WCAG pairs, every colour token checked)"
+        run: node ../design/contrast.mjs
+
       - name: Database (migrate + seed)
         run: npm run db:migrate && npm run db:ci-fixture
 

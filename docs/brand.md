@@ -117,7 +117,7 @@ Visited links have no colour of their own: `link-visited` is the link colour (`w
 
 ### Contrast
 
-WCAG 2.x, computed by `node design/contrast.mjs` (it exits 1 if a required pair fails). Text needs 4.5 : 1 and UI components 3 : 1.
+WCAG 2.x, computed by `node design/contrast.mjs`, which CI runs on every pull request (the web job's "Contrast" step). It exits 1 if a required pair fails, or if a colour token in `web/app/tokens.css` is in no text or UI pair and not in its `NOT_CHECKED` list with the reason (today: the outlined fills, whose `-border` outline carries the contrast, and the transparent `--waste-elektro-border`). Text needs 4.5 : 1 and UI components 3 : 1.
 
 | Pair | Ratio | Result |
 |---|---:|---|
