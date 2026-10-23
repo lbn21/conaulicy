@@ -7,9 +7,14 @@
 //                     names the sitemap; conaulicy.vercel.app redirects (308)
 //                     to conaulicy.pl, path and query kept.
 // Both: /sitemap.xml is well-formed; empty unless indexable, else the five
-// static pages (/ulice included) and every place in the search index, nothing else. PDFs and
-// calendars send X-Robots-Tag: noindex; the number-error page (/numer) has
-// meta robots noindex; the static pages have one canonical link each.
+// static pages (/ulice included) and every place in the search index but
+// those /ulice marks „(brak danych)”, nothing else. PDFs and calendars send
+// X-Robots-Tag: noindex; the number-error page (/numer), a place without
+// data and /szukaj have meta robots noindex (/szukaj the header too); the
+// static pages have one canonical link each. 404s (an unknown path, unknown
+// addresses) are whole pages in the raw HTML, no JS needed: status 404, the
+// layout (lang, stylesheet), GOV.UK's "page not found" H1, and one robots
+// meta, noindex.
 //
 // Runs against `next start` on the current build and the CI fixture.
 import { readFileSync } from "node:fs";
@@ -170,17 +175,59 @@ try {
     }
   }
 
-  // The number-error page: never indexed; while not indexable, as the rest.
-  const numer = "/adres/0972447-90004?nr=";
-  const numerHtml = await (await fetch(`${server.origin}${numer}`)).text();
-  const numerMetas = [...numerHtml.matchAll(META)].map(
-    ([, content]) => content,
-  );
-  const numerWant = index ? "noindex, follow" : "noindex, nofollow";
-  if (numerMetas.length !== 1 || numerMetas[0] !== numerWant) {
-    failures.push(
-      `${numer}: meta robots ${JSON.stringify(numerMetas)}, want "${numerWant}"`,
+  // Never indexed, links followed once indexable: the number-error page, a
+  // place without data, search results (with the header too).
+  const noindexWant = index ? "noindex, follow" : "noindex, nofollow";
+  for (const path of [
+    "/adres/0972447-90004?nr=",
+    ROUTES.find((route) => route.name === "street-without-schedule").path,
+    "/szukaj?q=adama",
+  ]) {
+    const response = await fetch(`${server.origin}${path}`);
+    const metas = [...(await response.text()).matchAll(META)].map(
+      ([, content]) => content,
     );
+    if (metas.length !== 1 || metas[0] !== noindexWant) {
+      failures.push(
+        `${path}: meta robots ${JSON.stringify(metas)}, want "${noindexWant}"`,
+      );
+    }
+    const header = response.headers.get("x-robots-tag");
+    const headerWant = index ? "noindex" : "noindex, nofollow";
+    if (path.startsWith("/szukaj") && header !== headerWant) {
+      failures.push(`${path}: X-Robots-Tag ${header}, want ${headerWant}`);
+    }
+  }
+
+  // Not found: the whole page in the raw HTML, never Next.js's empty error
+  // shell, and one robots tag.
+  for (const path of [
+    "/nie-ma-takiej-strony",
+    "/adres/9999999",
+    "/adres/abc",
+    "/adres/0972447-99999",
+  ]) {
+    const response = await fetch(`${server.origin}${path}`);
+    const html = await response.text();
+    const metas = [...html.matchAll(META)].map(([, content]) => content);
+    const missing = [
+      '<html lang="pl"',
+      '<link rel="stylesheet"',
+      '<h1 class="govuk-heading-l">Nie znaleziono strony</h1>',
+      "<title>Nie znaleziono strony – conaulicy.pl</title>",
+      'href="mailto:kontakt@conaulicy.pl"',
+    ].filter((part) => !html.includes(part));
+    if (
+      response.status !== 404 ||
+      missing.length > 0 ||
+      html.includes("__next_error__") ||
+      metas.length !== 1 ||
+      metas[0] !== "noindex"
+    ) {
+      failures.push(
+        `${path}: ${response.status}, missing ${JSON.stringify(missing)}, meta robots ${JSON.stringify(metas)}${html.includes("__next_error__") ? ", error shell" : ""}`,
+      );
+    }
   }
 
   const street = ROUTES.find((route) => route.name === "city-street").path;
@@ -228,12 +275,30 @@ try {
       ? await (await fetch(`${server.origin}${indexUrl}`)).json()
       : [];
     if (places.length === 0) failures.push("/: no search index");
-    const placeUrls = places.map(
-      ([id]) => `${SITE}/adres/${encodeURIComponent(id)}`,
+    // Places without data: /ulice marks them, the sitemap leaves them out.
+    const ulice = await (await fetch(`${server.origin}/ulice`)).text();
+    const noData = new Set(
+      [
+        ...ulice.matchAll(
+          /<a href="\/adres\/([^"]+)" class="govuk-link">[^<]*<\/a> \(brak danych\)/g,
+        ),
+      ].map(([, id]) => `${SITE}/adres/${id}`),
     );
+    const withoutSchedule = `${SITE}${ROUTES.find((route) => route.name === "street-without-schedule").path}`;
+    if (!noData.has(withoutSchedule)) {
+      failures.push(`/ulice: ${withoutSchedule} not „(brak danych)”`);
+    }
+    const placeUrls = places
+      .map(([id]) => `${SITE}/adres/${encodeURIComponent(id)}`)
+      .filter((url) => !noData.has(url));
     const fixturePlaces = ROUTES.filter(
       (route) => /^\/adres\/[^/?]+$/.test(route.path) && !route.status,
-    ).map((route) => `${SITE}${route.path}`);
+    )
+      .map((route) => `${SITE}${route.path}`)
+      .filter((url) => !noData.has(url));
+    for (const url of noData) {
+      if (locs.includes(url)) failures.push(`/sitemap.xml: ${url} (no data)`);
+    }
     const want = [...STATIC.map((path) => `${SITE}${path}`), ...placeUrls];
     const got = new Set(locs);
     if (got.size !== locs.length) failures.push("/sitemap.xml: duplicates");
@@ -248,9 +313,9 @@ try {
     for (const url of [...want, ...fixturePlaces]) {
       if (!got.has(url)) failures.push(`/sitemap.xml: no ${url}`);
     }
-    if (locs.length !== places.length + STATIC.length) {
+    if (locs.length !== placeUrls.length + STATIC.length) {
       failures.push(
-        `/sitemap.xml: ${locs.length} URLs, want ${places.length} places + ${STATIC.length}`,
+        `/sitemap.xml: ${locs.length} URLs, want ${places.length} places − ${noData.size} without data + ${STATIC.length}`,
       );
     }
     // Whether the build's copy carries the search index's `dataset` tag,
@@ -265,7 +330,9 @@ try {
     } catch (error) {
       console.log(`/sitemap.xml cache tags: unreadable (${error.message})`);
     }
-    console.log(`/sitemap.xml: ${locs.length} URLs (${places.length} places)`);
+    console.log(
+      `/sitemap.xml: ${locs.length} URLs (${places.length} places, ${noData.size} without data left out)`,
+    );
   }
 } finally {
   server.stop();
@@ -277,8 +344,8 @@ if (failures.length > 0) {
 }
 console.log(
   index
-    ? `Indexing (${PAGES.join(", ")}): indexable, robots.txt open, vercel.app redirects, sitemap complete; PDF, ICS, /numer noindex; canonicals.`
-    : `Indexing (${PAGES.join(", ")}): noindex everywhere, robots.txt closed, sitemap empty; PDF, ICS noindex; canonicals.`,
+    ? `Indexing (${PAGES.join(", ")}): indexable, robots.txt open, vercel.app redirects, sitemap complete; PDF, ICS, /numer, no-data places, /szukaj noindex; 404s whole pages; canonicals.`
+    : `Indexing (${PAGES.join(", ")}): noindex everywhere, robots.txt closed, sitemap empty; PDF, ICS noindex; 404s whole pages; canonicals.`,
 );
 // The server's output pipes would otherwise keep Node alive (as in check-a11y).
 process.exit(0);

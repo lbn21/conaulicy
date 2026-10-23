@@ -28,6 +28,7 @@ import {
 import { houseNumber, readings } from "@/lib/house";
 import {
   gminaShortName,
+  hasZone,
   isSplitStreet,
   type PlaceList,
   pickZone,
@@ -253,28 +254,53 @@ export async function search(q: string): Promise<SearchHit[]> {
  * Every place search can find, as [id, label] (~4 KB gzip), so the search
  * field matches on the device with no request per keystroke. The version is
  * a hash of the content: its URL changes with the data, so the CDN may keep
- * each version for good. `list` is the same places grouped for /ulice; it
- * stays on the server.
+ * each version for good. `list` is the same places grouped for /ulice, and
+ * `noData` those without pickup data (no zone, lib/places.ts hasZone); both
+ * stay on the server.
  */
 export const searchIndex = unstable_cache(
   async (): Promise<{
     version: string;
     places: SearchIndex;
     list: PlaceList;
+    noData: string[];
   }> => {
-    const [streetRows, villageRows] = await Promise.all([
+    const [streetRows, villageRows, members] = await Promise.all([
       streetPlaces(listed, 100_000),
       villagePlaces(undefined, 100_000),
+      db()
+        .select({
+          zoneId: zoneMembers.zoneId,
+          localityId: zoneMembers.localityId,
+          streetId: zoneMembers.streetId,
+          houseFrom: zoneMembers.houseFrom,
+          houseTo: zoneMembers.houseTo,
+          parity: zoneMembers.parity,
+        })
+        .from(zoneMembers)
+        .innerJoin(zones, eq(zones.id, zoneMembers.zoneId))
+        .where(eq(zones.type, "waste")),
     ]);
-    const places: SearchIndex = hits(
-      [...streetRows.map(streetPlace), ...villageRows.map(villagePlace)],
-      Number.POSITIVE_INFINITY,
-    ).map(({ id, label }) => [id, label]);
+    const all = [
+      ...streetRows.map(streetPlace),
+      ...villageRows.map(villagePlace),
+    ];
+    const places: SearchIndex = hits(all, Number.POSITIVE_INFINITY).map(
+      ({ id, label }) => [id, label],
+    );
     const version = createHash("sha256")
       .update(JSON.stringify(places))
       .digest("hex")
       .slice(0, 16);
-    return { version, places, list: placeList(streetRows, villageRows) };
+    const noData = all
+      .filter((place) => !hasZone(members, place))
+      .map(({ id }) => id);
+    return {
+      version,
+      places,
+      list: placeList(streetRows, villageRows),
+      noData,
+    };
   },
   ["search-index"],
   CACHE,
@@ -404,7 +430,9 @@ const placeCached = unstable_cache(
       area: place.area,
       gmina: place.gmina,
       zoneId: zone.id,
-      nr: askNumber ? null : nr,
+      // A number only matters on a split street; elsewhere it is ignored,
+      // so the page never repeats one nobody checked.
+      nr: zone.split && !askNumber ? nr : null,
       askNumber,
       unknownNr: askNumber ? nr : null,
       today,

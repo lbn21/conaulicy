@@ -8,8 +8,10 @@
 // street page lands on an empty, focused field with the list closed,
 // /api/search answers when the index cannot load, and a house number
 // ("kosciuszki 7a") reaches the street page, which picks the part of a split
-// street by it, or asks for it (also without JS). Run after `next build`;
-// needs Playwright's Chromium.
+// street by it, or asks for it (also without JS). The search form works
+// without JS (one place: its page; several: /szukaj lists them), and with
+// JS, Enter with no suggestion submits it. Run after `next build`; needs
+// Playwright's Chromium.
 import { chromium } from "playwright";
 import { startServer } from "./lib/server.mjs";
 
@@ -279,8 +281,44 @@ try {
   );
   await house.close();
 
+  // Enter with no suggestion (none found) submits the form, as without JS.
+  const enter = await browser.newPage({
+    viewport: { width: 360, height: 800 },
+  });
+  await enter.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+  await enter.locator("#adres").click();
+  await enter.getByRole("combobox").pressSequentially("xyzqq");
+  await enter
+    .locator(".autocomplete__option--no-results", { hasText: "Brak wyników" })
+    .waitFor();
+  await enter.getByRole("combobox").press("Enter");
+  await enter
+    .waitForURL(`${server.origin}/szukaj?q=xyzqq`, { timeout: 5000 })
+    .catch(() => check(false, `Enter with no results: at ${enter.url()}`));
+  await enter.close();
+
   // A split street without a number asks for it, with no JS at all.
   const plain = await browser.newContext({ javaScriptEnabled: false });
+  // The home page's form without JS: one place opens its page; several are
+  // listed on /szukaj.
+  const form = await plain.newPage();
+  for (const [query, url] of [
+    ["rynek", "/adres/0972447-19253"],
+    ["Asnyka 12", "/adres/0972447-00470?nr=12"],
+    ["adama", "/szukaj?q=adama"],
+  ]) {
+    await form.goto(`${server.origin}/`);
+    await form.getByLabel("Ulica albo wieś").fill(query);
+    await form.getByRole("button", { name: "Szukaj" }).click();
+    await form
+      .waitForURL(`${server.origin}${url}`, { timeout: 5000 })
+      .catch(() => check(false, `no-JS search "${query}": at ${form.url()}`));
+  }
+  check(
+    (await form.locator("main ul.govuk-list a").count()) === 2,
+    "no-JS search adama: not 2 results",
+  );
+  await form.close();
   const ask = await plain.newPage();
   await ask.goto(`${server.origin}/adres/0972447-90004`);
   check(

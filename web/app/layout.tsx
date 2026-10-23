@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { WebAnalytics } from "@/components/web-analytics";
 import { SITE_URL } from "@/lib/config.generated";
 import { indexable } from "@/lib/indexing";
-import { HOME_TITLE, SHARE } from "@/lib/share";
+import { HOME_TITLE, SHARE, SITE_NAME } from "@/lib/share";
 import { THEME_COLOR } from "@/lib/theme";
 import { atkinson } from "./fonts";
 import "./tokens.css";
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: HOME_TITLE,
-    template: "%s – conaulicy",
+    template: `%s – ${SITE_NAME}`,
   },
   description:
     "Kiedy przyjeżdża śmieciarka na Twoją ulicę w Lubaczowie albo do Twojej wsi w gminie.",

@@ -12,8 +12,8 @@ export const metadata: Metadata = pageMetadata({
     "Sprawdź, kiedy śmieciarka przyjedzie na Twoją ulicę w Lubaczowie albo do Twojej wsi w gminie Lubaczów. Terminy do kalendarza w telefonie i do wydruku.",
 });
 
-// For search engines: the site's name. No SearchAction: the search runs on
-// the device, there is no results URL to point at.
+// For search engines: the site's name. No SearchAction: the results page
+// (/szukaj, for the form without JS) is never indexed.
 const WEBSITE = JSON.stringify({
   "@context": "https://schema.org",
   "@type": "WebSite",

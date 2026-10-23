@@ -37,8 +37,14 @@ export function byLabel(a: SearchHit, b: SearchHit): number {
 
 export type Matcher = (terms: string[]) => SearchHit[];
 
-/** Normalizes every label once; the matcher then runs on each keystroke. */
-export function matcher(index: SearchIndex): Matcher {
+/**
+ * Normalizes every label once; the matcher then runs on each keystroke. At
+ * most `limit` places: the search field lists 8, /szukaj every one.
+ */
+export function matcher(
+  index: SearchIndex,
+  limit: number = SEARCH_LIMIT,
+): Matcher {
   const places = index.map(([id, label]) => ({
     hit: { id, label },
     search: normalize(label),
@@ -50,7 +56,7 @@ export function matcher(index: SearchIndex): Matcher {
           .filter(({ search }) => terms.every((term) => search.includes(term)))
           .map(({ hit }) => hit)
           .sort(byLabel)
-          .slice(0, SEARCH_LIMIT);
+          .slice(0, limit);
 }
 
 /**
@@ -70,4 +76,13 @@ export function placeHref(hit: SearchHit): string {
   const path = `/adres/${encodeURIComponent(hit.id)}`;
   // A valid number is only digits, a-z and "/", all fine in a query.
   return hit.nr ? `${path}?nr=${hit.nr}` : path;
+}
+
+/** "1 adres", "3 adresy", "5 adresów", "22 adresy". */
+export function addresses(n: number): string {
+  if (n === 1) return "1 adres";
+  const tens = n % 100;
+  const ones = n % 10;
+  if (ones >= 2 && ones <= 4 && (tens < 12 || tens > 14)) return `${n} adresy`;
+  return `${n} adresów`;
 }
