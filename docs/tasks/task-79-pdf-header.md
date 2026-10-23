@@ -79,3 +79,36 @@ Measured at 600 dpi on page 1 (ink-box centre minus circle centre, pt; the circl
 | this fix, both addresses | −0.12 | −0.12 |
 
 −0.12 pt is one 600-dpi pixel, the measurement's own rounding (it shows on both axes). Close-ups: `docs/tasks/task-79/<id>-warning-icon-before-production.png` and `<id>-warning-icon-after.png`.
+
+## Addition: symmetric spacing (independent pixel audit)
+
+Every gap is now set from the ink of the actual text. `inkOf()` reads the glyph boxes of the embedded font (PDFKit keeps it as `_font.font`), so each line's real ascenders and descenders count, not a guess. Changes:
+
+1. **Page 1 band:** the usual day and the caption share one baseline, the lower of the two natural ones. The band ends `MARGIN` below the deeper descender of the two lines.
+2. **Warning panel:** 12 pt above the circle and 12 pt below the last line's ink (or the circle's, when there are no notes).
+3. **Table:** each date's digits are centred in the row by their ink, as the marks are. The red cell (2 pt in from each rule) is centred too, so its inner padding is even. "Dzień" starts at the same 3 pt inset as the dates (`inset`, the red cell's inner padding).
+4. **Legend:** the red swatch is as wide as a mark (13 pt), so its label is as far away as the others.
+5. **Footer:** one leading for every line (`small × 1.3 + 2`; the URL keeps that baseline even when set smaller). The divider has 8 pt to the ink on both sides; the key note above is placed from it. The closing line's ink ends 28 pt above the page edge.
+6. **Page 2:** one leading for all 19 px text (`lineGap` 2, 20.5 pt): paragraphs, list items and wrapped lines.
+
+Measured on page 1 (and page 2 for items 5–6) of both addresses: ink, pt, 288 dpi, so ±0.25 pt is one pixel. "Before" is the previous commit (`93084a2`).
+
+| item | before | after |
+|---|---|---|
+| 1 band: left column ink to band bottom | 35.0–35.25 | **28.0** |
+| 1 band: caption ink to band bottom | 28.5 | 28.25–28.5 (its "j" is shallower than the day line's; it shares the day line's baseline) |
+| 1 band: day baseline / caption baseline | 141.0 / 148.0 | **148.0 / 148.0** |
+| 1 band: top / left / right | 28 / 28 / 28 | 28 / 28 / 28 |
+| 2 warning: above circle / below last ink | 12.0 / 14.0 | **12.0 / 12.0–12.25** |
+| 3 rows: rule to digit top / digit bottom to rule | 8.0–8.5 / 6.0–6.25 | **7.0–7.25 / 7.25–7.5** (marks: 6.5 / 6.5) |
+| 3 red cell: inner left / right | 3.5 / 3.5 | 3.5 / 3.5 |
+| 3 red cell: above / below digits | 6.5 / 4.5 | **5.5 / 5.5** ("23 śr"); 5.25 / 5.75 ("30 śr": round digits overshoot) |
+| 3 "Dzień" / dates from column edge | +0.5 / +3.0–3.25 | **+3.5 / +3.0–3.25** (the same 3 pt inset; the rest is each glyph's side bearing) |
+| 4 legend: red swatch to label | 4.75 | **5.75** (marks 4.5–6.0, by shape and first letter; left alone as agreed) |
+| 5 footer: divider, above / below | 7.0 / 8.75 | **8.25 / 7.75**; at 1200 dpi **8.10 / 7.98** (was 7.14 / 9.06) |
+| 5 footer: baseline steps | 17.75, 17.0 | **17.5, 17.5** |
+| 5 footer: bottom margin | 29.5 | **28.25** |
+| 6 page 2: intro / list item / wrapped line steps | 20.5 / 19.5 / 18.5 | **20.5 / 20.5 / 20.5** |
+| warning "!" centre offset dx / dy (600 dpi) | −0.12 / 0.00 | −0.12 / 0.00 (unchanged) |
+
+Page 1 band: 178.5 pt (unchanged for ul. Adama Mickiewicza; 178.25 for ul. 3-go Maja). Page 2 band: 110.5–111. A synthetic full year is still 6 pages. The after-PNGs and icon close-ups in `docs/tasks/task-79/` are re-rendered from this commit.

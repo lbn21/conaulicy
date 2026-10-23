@@ -66,12 +66,13 @@ const TABLE_W = (CONTENT_W - COLUMN_GAP * (COLUMNS - 1)) / COLUMNS;
 const px = (n: number) => n * 0.75;
 
 // Atkinson Hyperlegible Next's vertical metrics, in em. PDFKit sets a line
-// from the top of its ascender (0.984), so the cap height (0.668) starts
-// below y and descenders end about 0.2 below the baseline. The bands pad to
-// this ink, not to the line box.
-const LINE = 0.984 + 0.316;
-const CAP_TOP = 0.984 - 0.668;
-const INK_BOTTOM = 0.984 + 0.2;
+// from the top of its ascender (0.984), so the baseline is ASCENT below y and
+// the cap height (0.668) starts CAP_TOP below it. Spacing is measured to the
+// ink: inkOf() gives a text's own glyphs.
+const ASCENT = 0.984;
+const LINE = ASCENT + 0.316;
+const CAP = 0.668;
+const CAP_TOP = ASCENT - CAP;
 
 // GOV.UK Frontend's palette, as on the site.
 const BLACK = "#0b0c0c";
@@ -260,6 +261,38 @@ function fitSize(
   return min;
 }
 
+type InkFont = {
+  _font: {
+    font: {
+      unitsPerEm: number;
+      layout(text: string): {
+        glyphs: Array<{ bbox: { minY: number; maxY: number } }>;
+      };
+    };
+  };
+};
+
+/**
+ * How far a text's ink reaches above and below its baseline, in pt, from its
+ * glyphs' boxes. PDFKit keeps an embedded font's fontkit font as _font.font.
+ * For a wrapped paragraph it covers every line.
+ */
+function inkOf(
+  doc: PDFKit.PDFDocument,
+  font: string,
+  size: number,
+  text: string,
+): { above: number; below: number } {
+  doc.font(font).fontSize(size);
+  const { font: face } = (doc as unknown as InkFont)._font;
+  const boxes = face.layout(text).glyphs.map((glyph) => glyph.bbox);
+  const scale = size / face.unitsPerEm;
+  return {
+    above: Math.max(0, ...boxes.map((box) => box.maxY)) * scale,
+    below: -Math.min(0, ...boxes.map((box) => box.minY)) * scale,
+  };
+}
+
 /** The current month and the 11 after it, as "YYYY-MM". */
 function windowMonths(today: string): string[] {
   const year = Number(today.slice(0, 4));
@@ -409,22 +442,45 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // A URL never breaks: its own line, smaller if it must.
   const urlSize = (text: string) =>
     fitSize(doc, "regular", text, CONTENT_W, small, 6);
+  // One leading for every footer line, wrapped ones and the URL too.
+  const footerGap = 2;
+  const footerLead = small * LINE + footerGap;
   let footerH = 0;
   for (const line of footerLines) {
     doc.font("regular").fontSize(small);
-    footerH += doc.heightOfString(line.text, { width: CONTENT_W }) + 2;
-    if (line.url) footerH += urlSize(line.url) * 1.25 + 2;
+    footerH += doc.heightOfString(line.text, {
+      width: CONTENT_W,
+      lineGap: footerGap,
+    });
+    if (line.url) footerH += footerLead;
   }
   doc.font("bold").fontSize(small);
-  footerH += doc.heightOfString(closing, { width: CONTENT_W });
-  const footerTop = PAGE_H - MARGIN - footerH;
+  footerH += doc.heightOfString(closing, {
+    width: CONTENT_W,
+    lineGap: footerGap,
+  });
+  // The closing line's ink ends MARGIN above the page's edge.
+  const footerTop =
+    PAGE_H -
+    MARGIN -
+    inkOf(doc, "bold", small, closing).below -
+    (footerH - footerGap - small * (LINE - ASCENT));
+  // The divider: ruleGap of space on both sides, to the ink.
+  const ruleW = 0.75;
+  const ruleGap = 8;
+  const footerInkTop = footerLines.length
+    ? footerTop +
+      small * ASCENT -
+      inkOf(doc, "regular", small, footerLines[0].text).above
+    : footerTop + small * ASCENT - inkOf(doc, "bold", small, closing).above;
+  const ruleY = footerInkTop - ruleGap - ruleW / 2;
 
   const drawFooter = (parent: PDFKit.PDFStructureElement | null) => {
     const rule = () => {
       doc
-        .moveTo(MARGIN, footerTop - 8)
-        .lineTo(PAGE_W - MARGIN, footerTop - 8)
-        .lineWidth(0.75)
+        .moveTo(MARGIN, ruleY)
+        .lineTo(PAGE_W - MARGIN, ruleY)
+        .lineWidth(ruleW)
         .strokeColor(BORDER)
         .stroke();
     };
@@ -434,22 +490,30 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     for (const line of footerLines) {
       const top = fy;
       doc.font("regular").fontSize(small);
-      fy += doc.heightOfString(line.text, { width: CONTENT_W }) + 2;
-      const urlTop = fy;
+      fy += doc.heightOfString(line.text, {
+        width: CONTENT_W,
+        lineGap: footerGap,
+      });
+      // A smaller URL keeps the line's baseline.
       const url = line.url;
+      const size = url ? urlSize(url) : small;
+      const urlTop = fy + (small - size) * ASCENT;
       tag(parent, "P", () => {
         doc
           .font("regular")
           .fontSize(small)
           .fillColor(SECONDARY_TEXT)
-          .text(line.text, MARGIN, top, { width: CONTENT_W });
+          .text(line.text, MARGIN, top, {
+            width: CONTENT_W,
+            lineGap: footerGap,
+          });
         if (url) {
           doc
-            .fontSize(urlSize(url))
+            .fontSize(size)
             .text(url, MARGIN, urlTop, { link: url, lineBreak: false });
         }
       });
-      if (url) fy += urlSize(url) * 1.25 + 2;
+      if (url) fy += footerLead;
     }
     const closingTop = fy;
     tag(parent, "P", () => {
@@ -457,7 +521,10 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         .font("bold")
         .fontSize(small)
         .fillColor(BLACK)
-        .text(closing, MARGIN, closingTop, { width: CONTENT_W });
+        .text(closing, MARGIN, closingTop, {
+          width: CONTENT_W,
+          lineGap: footerGap,
+        });
     });
   };
   const footerArtifact = () => artifact(doc, () => drawFooter(null));
@@ -484,9 +551,10 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     (a, b) => KEY_ORDER.indexOf(a.tone) - KEY_ORDER.indexOf(b.tone),
   );
   type KeyItem = { label: string; draw: (x: number, cy: number) => void };
+  // As wide as a mark, so every label is as far from its swatch.
   const cell = (colour: string) => (x: number, cy: number) => {
     doc
-      .rect(x - 1, cy - keyMark * 0.75, keyMark + 2, keyMark * 1.5)
+      .rect(x, cy - keyMark * 0.75, keyMark, keyMark * 1.5)
       .fillColor(colour)
       .fill();
   };
@@ -516,7 +584,17 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   });
   const keyNoteH = small * 1.6;
   const keyH = (keyRow + 1) * keyLine + keyNoteH;
-  const keyTop = footerTop - 14 - keyH;
+  const keyNote = (page: number) =>
+    `Wersja tekstowa (bez kolorów i znaków) na stronie ${page}.`;
+  // The note's ink ends ruleGap above the divider (a page number has no
+  // descender, so any page gives the same ink).
+  const keyNoteTop =
+    ruleY -
+    ruleW / 2 -
+    ruleGap -
+    inkOf(doc, "bold", small, keyNote(0)).below -
+    small * ASCENT;
+  const keyTop = keyNoteTop - (keyH - keyNoteH + 4);
 
   const drawKey = (
     parent: PDFKit.PDFStructureElement | null,
@@ -550,12 +628,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         .font("bold")
         .fontSize(small)
         .fillColor(BLACK)
-        .text(
-          `Wersja tekstowa (bez kolorów i znaków) na stronie ${textPage}.`,
-          MARGIN,
-          keyTop + keyH - keyNoteH + 4,
-          { width: CONTENT_W },
-        );
+        .text(keyNote(textPage), MARGIN, keyNoteTop, { width: CONTENT_W });
     });
   };
 
@@ -573,13 +646,26 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const titleSize = fitSize(doc, "bold", title, bandTextW, px(36), px(24));
   doc.font("bold").fontSize(titleSize);
   const titleH = doc.heightOfString(title, { width: bandTextW });
-  const dayTop = titleTop + titleH + 6;
-  const wordsBottom = dayLine
-    ? dayTop + px(19) * INK_BOTTOM
-    : titleTop + titleH - titleSize * (LINE - INK_BOTTOM);
   const qrBottom = MARGIN + qrSize + 12;
-  const scanBottom = qrBottom + 8 + small * (INK_BOTTOM - CAP_TOP);
-  const bandH = Math.max(wordsBottom, scanBottom) + MARGIN;
+  const scan = "Zeskanuj: aktualne terminy";
+  // The usual day and the caption share one baseline: the lower of their
+  // own (the day 6 below the title, the caption's cap height 8 below the QR
+  // code). The band ends MARGIN below the lower ink.
+  const baseline = Math.max(
+    qrBottom + 8 + small * CAP,
+    dayLine ? titleTop + titleH + 6 + px(19) * ASCENT : 0,
+  );
+  const baseInk = Math.max(
+    inkOf(doc, "regular", small, scan).below,
+    dayLine ? inkOf(doc, "bold", px(19), dayLine).below : 0,
+  );
+  const titleInk =
+    titleTop +
+    titleH -
+    titleSize * (LINE - ASCENT) +
+    inkOf(doc, "bold", titleSize, title).below;
+  const bandH = Math.max(baseline + baseInk, dayLine ? 0 : titleInk) + MARGIN;
+  const bandBaseline = bandH - MARGIN - baseInk;
 
   /** Page 1: black band, plate, place, usual day and the QR code. */
   const drawBand = () => {
@@ -612,27 +698,35 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
           .font("bold")
           .fontSize(px(19))
           .fillColor(WHITE)
-          .text(dayLine, MARGIN, dayTop, { lineBreak: false });
+          .text(dayLine, MARGIN, bandBaseline - px(19) * ASCENT, {
+            lineBreak: false,
+          });
       });
     }
-    // On the bottom padding, under the QR code.
+    // On the shared baseline, under the QR code.
     tag(root, "P", () => {
       doc
         .font("regular")
         .fontSize(small)
         .fillColor(WHITE)
-        .text(
-          "Zeskanuj: aktualne terminy",
-          PAGE_W - MARGIN - 170,
-          bandH - MARGIN - small * INK_BOTTOM,
-          { width: 170, align: "right", lineBreak: false, link: url },
-        );
+        .text(scan, PAGE_W - MARGIN - 170, bandBaseline - small * ASCENT, {
+          width: 170,
+          align: "right",
+          lineBreak: false,
+          link: url,
+        });
     });
     return bandH;
   };
 
   /** Later pages: a compact black band with the plate and the place. */
-  const compactH = MARGIN + logoH + logoGap + px(19) * INK_BOTTOM + MARGIN;
+  const compactH =
+    MARGIN +
+    logoH +
+    logoGap +
+    px(19) * ASCENT +
+    inkOf(doc, "bold", px(19), `${title} · wersja tekstowa`).below +
+    MARGIN;
   const compactBand = (
     what: string,
     parent: PDFKit.PDFStructureElement | null,
@@ -649,9 +743,15 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         .font("bold")
         .fontSize(size)
         .fillColor(WHITE)
-        .text(text, MARGIN, compactH - MARGIN - size * INK_BOTTOM, {
-          lineBreak: false,
-        });
+        .text(
+          text,
+          MARGIN,
+          compactH -
+            MARGIN -
+            inkOf(doc, "bold", size, text).below -
+            size * ASCENT,
+          { lineBreak: false },
+        );
     };
     // A repeated band is decoration as a whole.
     if (parent) {
@@ -691,8 +791,21 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     doc.font("bold").fontSize(px(19));
     return Math.max(warnD, doc.heightOfString(warningText, { width: noteW }));
   };
-  const panelH = (notes: Note[]) =>
-    12 + warnH() + notes.reduce((sum, n) => sum + 8 + noteH(n, noteW), 0) + 12;
+  // 12 above the circle and 12 below the last ink: the last note's
+  // descenders, or the warning's or the circle's without notes.
+  const panelH = (notes: Note[]) => {
+    const below = (font: string, text: string) =>
+      px(19) * (LINE - ASCENT) - inkOf(doc, font, px(19), text).below;
+    const last = notes[notes.length - 1];
+    if (last) {
+      const end =
+        12 + warnH() + notes.reduce((sum, n) => sum + 8 + noteH(n, noteW), 0);
+      return end - below("regular", last.bold + last.text) + 12;
+    }
+    doc.font("bold").fontSize(px(19));
+    const text = 15 + doc.heightOfString(warningText, { width: noteW });
+    return Math.max(12 + warnD, text - below("bold", warningText)) + 12;
+  };
 
   const drawNote = (note: Note, x: number, top: number, width: number) => {
     tag(root, "P", () => {
@@ -754,6 +867,13 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const dateW = 56;
   const mark = 12.5;
   const markGap = 6;
+  // Dates and "Dzień" start this far in: the red cell's even inner padding.
+  const inset = 3;
+  // A date's digits centred in their row by their ink, as the marks are.
+  const dateTop = (rowTop: number, n: string) => {
+    const ink = inkOf(doc, "bold", cellText, n);
+    return rowTop + rowH / 2 + (ink.above - ink.below) / 2 - cellText * ASCENT;
+  };
   const perLine = Math.floor((TABLE_W - dateW - 8) / (mark + markGap));
   const lines = (day: PickupDay) =>
     Math.max(
@@ -801,7 +921,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
           .font("bold")
           .fontSize(cellText)
           .fillColor(BLACK)
-          .text("Dzień", x, headY, { lineBreak: false });
+          .text("Dzień", x + inset, headY, { lineBreak: false });
       }),
     );
     headRow.add(
@@ -830,7 +950,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       artifact(doc, () => {
         if (marked) {
           doc
-            .rect(x, top + 2, textW + 6, rowH - 4)
+            .rect(x, top + 2, textW + 2 * inset, rowH - 4)
             .fillColor(RED)
             .fill();
         }
@@ -849,7 +969,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
             .font("bold")
             .fontSize(cellText)
             .fillColor(marked ? WHITE : BLACK)
-            .text(text, x + 3, top + (rowH - cellText) / 2 - 1, {
+            .text(text, x + inset, dateTop(top, n), {
               lineBreak: false,
             });
         }),
@@ -972,6 +1092,9 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   doc.addPage();
   y = compactBand("wersja tekstowa", root) + 18;
   const textBottom = footerTop - 14;
+  // One leading for the page's 19px text: paragraphs, list items and their
+  // wrapped lines alike.
+  const bodyGap = 2;
   const intro = [
     ...(dayLine ? [`${dayLine}.`] : []),
     "Te same terminy co w kalendarzu, w formie listy.",
@@ -985,9 +1108,9 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         .font("regular")
         .fontSize(px(19))
         .fillColor(BLACK)
-        .text(line, MARGIN, top, { width: CONTENT_W });
+        .text(line, MARGIN, top, { width: CONTENT_W, lineGap: bodyGap });
     });
-    y = doc.y + 2;
+    y = doc.y;
   }
   const link = url.replace("https://", "");
   const linkTop = y;
@@ -999,7 +1122,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       .fillColor(BLACK)
       .text(link, MARGIN, linkTop, { link: url, lineBreak: false });
   });
-  y += linkSize * 1.3 + 12;
+  y += linkSize * LINE + bodyGap + 10;
 
   const ensure = (height: number) => {
     if (y + height <= textBottom) return;
@@ -1025,11 +1148,15 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         .font("bold")
         .fontSize(listSize)
         .fillColor(BLACK)
-        .text(range, MARGIN, top, { width: CONTENT_W, continued: true })
+        .text(range, MARGIN, top, {
+          width: CONTENT_W,
+          lineGap: bodyGap,
+          continued: true,
+        })
         .font("regular")
         .text(text);
     });
-    y = doc.y + 8;
+    y = doc.y + 8 - bodyGap;
   };
   // Months before the first date (e.g. the rest of this month, with no
   // pickups left) are simply skipped.
@@ -1057,17 +1184,23 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     for (const day of days) {
       const text = `${spoken(day)} – ${label(day.pickups)}`;
       doc.font("regular").fontSize(listSize);
-      const h = doc.heightOfString(text, { width: CONTENT_W - 12 });
-      ensure(h + 1);
+      const h = doc.heightOfString(text, {
+        width: CONTENT_W - 12,
+        lineGap: bodyGap,
+      });
+      ensure(h);
       const top = y;
       tag(list, "LI", () => {
         doc
           .font("regular")
           .fontSize(listSize)
           .fillColor(BLACK)
-          .text(text, MARGIN + 12, top, { width: CONTENT_W - 12 });
+          .text(text, MARGIN + 12, top, {
+            width: CONTENT_W - 12,
+            lineGap: bodyGap,
+          });
       });
-      y = doc.y + 1;
+      y = doc.y;
     }
     list.end();
     section.end();
