@@ -10,7 +10,7 @@
 // several are listed, none says what to try, an empty q is GOV.UK's error.
 // /szukaj's field is the home page's (components/address-search.tsx): the
 // same <search> markup, holding what was searched for, or GOV.UK's error
-// markup for an empty q.
+// markup for an empty q, between the H1 and the results.
 // A suggestion's text, as a pick leaves it in the field, opens its own
 // place: every label in /api/search-index, and some with a house number.
 //
@@ -217,6 +217,16 @@ try {
     }
     for (const part of parts) {
       if (!html.includes(part)) failures.push(`/szukaj?q=${q}: no ${part}`);
+    }
+    // GOV.UK search results: the error summary (if any), the H1, the field,
+    // then the results.
+    const order = (
+      error
+        ? ['class="govuk-error-summary"', "<h1", "<search"]
+        : ["<h1", "<search", parts[1], parts[2]]
+    ).map((part) => html.indexOf(part));
+    if (order.some((at, i) => at < 0 || (i > 0 && at < order[i - 1]))) {
+      failures.push(`/szukaj?q=${q}: page order ${order}`);
     }
     // Metadata in <head>, never streamed into <body> (htmlLimitedBots).
     const head = html.slice(0, html.indexOf("</head>"));
