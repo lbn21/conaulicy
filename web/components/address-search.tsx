@@ -52,8 +52,8 @@ function placeholder(
 }
 
 // What accessible-autocomplete hands to the templates: our
-// results, or a plain string (its options may be strings: it seeds them
-// with defaultValue, the text /szukaj was asked for).
+// results, or a plain string (its options may be strings, e.g. it seeds
+// them with defaultValue, which this field does not use).
 type Option = SearchHit | string | undefined;
 
 function optionText(option: Option): string {
@@ -176,8 +176,9 @@ export function AddressSearch({
       );
       const old = container?.querySelector("input");
       if (!container || !old) return;
-      // Text in the field when the library loaded (the server's value, or
-      // what was typed meanwhile), and whether the field had focus.
+      // Text in the field when the library loaded (the server's value on
+      // /szukaj, or what was typed meanwhile), and whether the field had
+      // focus.
       const typed = old.value;
       const focused = document.activeElement === old;
       // Render next to the placeholder and move focus to the new field in the
@@ -189,9 +190,12 @@ export function AddressSearch({
         id: INPUT_ID,
         source,
         name: "q",
-        // The server's text, as the library's own value: never appended a
-        // second time below, where its search runs on it.
-        defaultValue: value,
+        // No defaultValue: 3.0.2 would make it the only option (constructor,
+        // autocomplete.js l. 69–70) and reopen the menu on it at focus
+        // (handleInputFocus, l. 253–260), a bare-text "suggestion"; its
+        // source runs only when the query changes (l. 218–232). The server's
+        // value is in the placeholder instead and is handed over below as
+        // typed text, so it is searched for real places, and appears once.
         // govuk-input--error survives the takeover (hintClasses, the
         // autoselect hint's field, follows inputClasses).
         inputClasses,
@@ -224,18 +228,8 @@ export function AddressSearch({
       // its render), so hand over the typed text only after that render.
       // Keys pressed meanwhile are already in the new field: keep them too.
       // It searches on the input event, as for typing.
-      const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
-      await tick();
-      const text =
-        typed === value ? value : typed + input.value.slice(value.length);
-      if (value) {
-        // The library starts with defaultValue as its only option and
-        // searches only when its text changes: empty it first (one render),
-        // so the input event below lists real places, not the bare text.
-        input.value = "";
-        input.dispatchEvent(new Event("input", { bubbles: true }));
-        await tick();
-      }
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const text = typed + input.value;
       input.value = text;
       input.setSelectionRange(text.length, text.length);
       input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -246,7 +240,7 @@ export function AddressSearch({
     }
     container.addEventListener("focusin", onFocus);
     return () => container.removeEventListener("focusin", onFocus);
-  }, [indexUrl, value, error, inputClasses]);
+  }, [indexUrl, error, inputClasses]);
 
   return (
     <search id={SEARCH_ID} className="app-search">

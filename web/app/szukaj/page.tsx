@@ -7,7 +7,7 @@ import { searchIndex, searchIndexUrl, searchMatcher } from "@/lib/schedule";
 import { addresses, exactPlace, placeHref, type SearchHit } from "@/lib/search";
 import { pageMetadata } from "@/lib/share";
 
-// The home page's search form, with or without JS, and below the results
+// The home page's search form, with or without JS, and above the results
 // the same field (components/address-search.tsx), filled with what was
 // searched for. A picked suggestion's text (the field's value after a pick)
 // opens its place; anything else gets the same ranked search as the search
@@ -96,12 +96,21 @@ export default async function SearchPage({
         )}
         <h1 className="govuk-heading-l">{H1[result.kind]}</h1>
 
+        {/* GOV.UK search results: the heading, the field, then the results. */}
+        <div className="govuk-!-margin-bottom-8">
+          <AddressSearch
+            indexUrl={await searchIndexUrl()}
+            value={result.kind === "empty" ? "" : result.q}
+            error={result.kind === "empty" ? EMPTY_ERROR : null}
+          />
+        </div>
+
         {result.kind === "many" && (
           <>
             <p className="govuk-body">
               {`Dla „${result.q}” znaleźliśmy ${addresses(result.hits.length)}. Wybierz swój.`}
             </p>
-            <ul className="govuk-list govuk-!-margin-bottom-8">
+            <ul className="govuk-list">
               {result.hits.map((hit) => (
                 <li key={hit.id}>
                   <a href={placeHref(hit)} className="govuk-link">
@@ -129,12 +138,6 @@ export default async function SearchPage({
             </ul>
           </>
         )}
-
-        <AddressSearch
-          indexUrl={await searchIndexUrl()}
-          value={result.kind === "empty" ? "" : result.q}
-          error={result.kind === "empty" ? EMPTY_ERROR : null}
-        />
       </div>
     </div>
   );
