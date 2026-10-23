@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { Suspense } from "react";
+import { ErrorSummary } from "@/components/error-summary";
 import { NOT_FOUND_TITLE, PageNotFound } from "@/components/page-not-found";
 import { PickupSchedule } from "@/components/pickup-schedule";
 import { longDate } from "@/lib/date-labels";
 import { withHouseNumber } from "@/lib/house";
 import { indexable } from "@/lib/indexing";
-import { movedPath, scheduleName } from "@/lib/places";
-import { getPlace, type PlaceView, placeRedirect } from "@/lib/schedule";
+import { scheduleName } from "@/lib/places";
+import { getPlace, movedTarget, type PlaceView } from "@/lib/schedule";
 import {
   hasUpcoming,
   NO_MORE_DATES,
@@ -15,6 +16,7 @@ import {
   placeDescription,
   UNVERIFIED_NOTE,
 } from "@/lib/schedule-notes";
+import { placePath } from "@/lib/search";
 import { pageMetadata } from "@/lib/share";
 
 // The street or village page, for /adres/[id] and, with a house number,
@@ -43,8 +45,7 @@ function numberError(place: PlaceView, missing: boolean): string | null {
  */
 export async function redirectIfMoved(id: string, path: string) {
   if (await getPlace(id, null)) return;
-  const to = await placeRedirect(id);
-  const target = to && movedPath(path, id, to);
+  const target = await movedTarget(id, path);
   if (target) permanentRedirect(target);
 }
 
@@ -54,7 +55,7 @@ export async function placeMetadata(
   missing = false,
 ): Promise<Metadata> {
   const place = await getPlace(id, nr);
-  const path = `/adres/${encodeURIComponent(id)}`;
+  const path = placePath(id);
   // As app/not-found.tsx: Next.js's own noindex is the only robots tag.
   if (!place) return { title: NOT_FOUND_TITLE, robots: null };
   // GOV.UK: the title is the H1, and "Error: " first, so screen readers
@@ -64,7 +65,6 @@ export async function placeMetadata(
   // The house-number and /numer variants describe the place itself.
   const whole = nr ? await getPlace(id, null) : place;
   return {
-    title,
     ...pageMetadata({
       path,
       title,
@@ -96,24 +96,6 @@ function NotFound(): never {
   notFound();
 }
 
-/** GOV.UK's error summary, focused on load by its JS (lib/govuk-frontend). */
-function ErrorSummary({ error }: { error: string }) {
-  return (
-    <div className="govuk-error-summary" data-module="govuk-error-summary">
-      <div role="alert">
-        <h2 className="govuk-error-summary__title">Jest problem</h2>
-        <div className="govuk-error-summary__body">
-          <ul className="govuk-list govuk-error-summary__list">
-            <li>
-              <a href="#nr">{error}</a>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /**
  * A street split by house numbers: ask for the number, like a GOV.UK
  * question page. A plain GET form, so it works without JS.
@@ -126,11 +108,7 @@ function HouseNumberQuestion({
   error: string | null;
 }) {
   return (
-    <form
-      method="get"
-      action={`/adres/${encodeURIComponent(place.id)}`}
-      noValidate
-    >
+    <form method="get" action={placePath(place.id)} noValidate>
       <div
         className={
           error
@@ -198,7 +176,7 @@ export async function PlaceMain({
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
-        {error && <ErrorSummary error={error} />}
+        {error && <ErrorSummary error={error} href="#nr" />}
         <span className="govuk-caption-l">{place.area}</span>
         <h1 className="govuk-heading-l">{name}</h1>
         {/* Like GOV.UK's "Change": back to the search on the home page. */}
@@ -269,7 +247,7 @@ export async function PlaceMain({
             </p>
             <p className="govuk-body">
               <a
-                href={`/adres/${encodeURIComponent(place.id)}/harmonogram.pdf${place.nr ? `?nr=${place.nr}` : ""}`}
+                href={`${placePath(place.id)}/harmonogram.pdf${place.nr ? `?nr=${place.nr}` : ""}`}
                 data-event="pdf_open"
                 data-zone={place.zoneId}
                 className="govuk-link"

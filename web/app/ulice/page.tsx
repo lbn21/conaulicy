@@ -1,17 +1,15 @@
 import type { Metadata } from "next";
 import type { ListedPlace } from "@/lib/places";
 import { searchIndex } from "@/lib/schedule";
+import { placePath } from "@/lib/search";
 import { pageMetadata } from "@/lib/share";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: "/ulice",
   title: "Wszystkie ulice i wsie",
-  ...pageMetadata({
-    path: "/ulice",
-    title: "Wszystkie ulice i wsie",
-    description:
-      "Wszystkie ulice Lubaczowa i wsie gminy Lubaczów w jednym miejscu. Wybierz swoją i sprawdź, kiedy przyjedzie śmieciarka.",
-  }),
-};
+  description:
+    "Wszystkie ulice Lubaczowa i wsie gminy Lubaczów w jednym miejscu. Wybierz swoją i sprawdź, kiedy przyjedzie śmieciarka.",
+});
 
 // From the cached search index, as the sitemap: the same places, refreshed
 // with it (tag `dataset`, POST /api/revalidate), hourly as a safety net.
@@ -30,7 +28,7 @@ export default async function AllPlacesPage() {
   // schedule).
   const Place = ({ place }: { place: ListedPlace }) => (
     <>
-      <a href={`/adres/${place.id}`} className="govuk-link">
+      <a href={placePath(place.id)} className="govuk-link">
         {place.label}
       </a>
       {without.has(place.id) && " (brak danych)"}

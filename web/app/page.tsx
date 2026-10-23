@@ -3,7 +3,8 @@ import { AddressSearch } from "@/components/address-search";
 import { SITE_URL } from "@/lib/config.generated";
 import { HOME_EXAMPLES } from "@/lib/examples";
 import { examplePlaces, searchIndexUrl } from "@/lib/schedule";
-import { HOME_TITLE, pageMetadata } from "@/lib/share";
+import { placeHref } from "@/lib/search";
+import { HOME_TITLE, pageMetadata, SITE_NAME } from "@/lib/share";
 
 export const metadata: Metadata = pageMetadata({
   path: "/",
@@ -17,7 +18,7 @@ export const metadata: Metadata = pageMetadata({
 const WEBSITE = JSON.stringify({
   "@context": "https://schema.org",
   "@type": "WebSite",
-  name: "conaulicy.pl",
+  name: SITE_NAME,
   url: `${SITE_URL}/`,
   inLanguage: "pl",
 });
@@ -60,7 +61,7 @@ export default async function Home() {
           <ul className="govuk-list">
             {places.map((place) => (
               <li key={place.id}>
-                <a href={`/adres/${place.id}`} className="govuk-link">
+                <a href={placeHref(place)} className="govuk-link">
                   {place.label}
                 </a>
               </li>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { permanentRedirect } from "next/navigation";
 import { AddressSearch } from "@/components/address-search";
+import { ErrorSummary } from "@/components/error-summary";
 import { withHouseNumber } from "@/lib/house";
 import { indexable } from "@/lib/indexing";
 import { searchIndex, searchIndexUrl, searchMatcher } from "@/lib/schedule";
@@ -56,7 +57,6 @@ export async function generateMetadata({
   // GOV.UK: "Error: " first in the title, so screen readers hear it first.
   const title = result.kind === "empty" ? `Błąd: ${h1}` : h1;
   return {
-    title,
     ...pageMetadata({
       path: "/szukaj",
       title,
@@ -78,21 +78,7 @@ export default async function SearchPage({
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
         {result.kind === "empty" && (
-          <div
-            className="govuk-error-summary"
-            data-module="govuk-error-summary"
-          >
-            <div role="alert">
-              <h2 className="govuk-error-summary__title">Jest problem</h2>
-              <div className="govuk-error-summary__body">
-                <ul className="govuk-list govuk-error-summary__list">
-                  <li>
-                    <a href="#adres">{EMPTY_ERROR}</a>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
+          <ErrorSummary error={EMPTY_ERROR} href="#adres" />
         )}
         <h1 className="govuk-heading-l">{H1[result.kind]}</h1>
 

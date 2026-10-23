@@ -1,4 +1,3 @@
-import { createHash, timingSafeEqual } from "node:crypto";
 import {
   type NextFetchEvent,
   type NextRequest,
@@ -7,17 +6,12 @@ import {
 import { cleanQuery } from "@/lib/clean-query";
 import { NR_QUERY } from "@/lib/house";
 import { movedPath } from "@/lib/places";
+import { sameSecret } from "@/lib/secret";
 
 // Pre-launch gate. Active only when SITE_BASIC_AUTH ("user:password") is set.
 // On Vercel the proxy runs before the CDN cache, so a cached page is never
 // served to a request that has not passed this check.
 
-function digest(value: string): Buffer {
-  return createHash("sha256").update(value).digest();
-}
-
-// Hashing first gives equal-length buffers, so the compare time does not
-// depend on where the strings differ or on their lengths.
 function authorized(header: string | null, expected: string): boolean {
   if (!header?.startsWith("Basic ")) return false;
   let given: string;
@@ -26,7 +20,7 @@ function authorized(header: string | null, expected: string): boolean {
   } catch {
     return false;
   }
-  return timingSafeEqual(digest(given), digest(expected));
+  return sameSecret(given, expected);
 }
 
 // While gated: never indexed, and never stored by a shared cache. The CDN is

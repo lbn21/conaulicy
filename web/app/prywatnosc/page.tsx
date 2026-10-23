@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/share";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: "/prywatnosc",
   title: "Prywatność",
-  ...pageMetadata({
-    path: "/prywatnosc",
-    title: "Prywatność",
-    description:
-      "Bez ciasteczek, kont i reklam. Nie wiemy, kim jesteś, i nie chcemy wiedzieć. Krótko o tym, co liczymy i co zapisuje serwer.",
-  }),
-};
+  description:
+    "Bez ciasteczek, kont i reklam. Nie wiemy, kim jesteś, i nie chcemy wiedzieć. Krótko o tym, co liczymy i co zapisuje serwer.",
+});
 
 export default function PrivacyPage() {
   return (
