@@ -39,7 +39,7 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 
 ## Performance
 
-- **Hard gates** (Slow 4G + 4× CPU, `docs/perf.md`): LCP ≤ 1.8 s median, TBT ≤ 150 ms, CLS 0, search keystroke ≤ 50 ms. They never move to make room for code; if one fails, report to Jakub.
+- **Hard gates** (Slow 4G + 4× CPU, `docs/perf.md`): LCP ≤ 1.8 s median, TBT ≤ 150 ms, CLS 0, search keystroke ≤ 50 ms. They never move to make room for code; if one fails, report to Jakub. Checked by Lighthouse on demand, not in PR CI: run it before bigger UI changes (`gh workflow run ci.yml --ref <branch>`).
 - **Size budgets** adapt to GOV.UK Frontend and accessible-autocomplete: first-load JS ≤ 200 KB gzip, street HTML ≤ 30 KB gzip.
 
 ## Architecture and data

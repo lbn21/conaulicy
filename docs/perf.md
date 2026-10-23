@@ -1,6 +1,6 @@
 # Performance budgets
 
-`web/scripts/check-perf.mjs` runs in CI (job `perf`, step "Performance (Lighthouse budgets)") on every pull request that changes `web/`, `.github/workflows/ci.yml` or `etl/sources.yaml` (job `changes`; otherwise `perf` shows as skipped), in parallel with the other checks, against its own build of the app with its own throwaway Postgres and the CI fixture. In CI it runs through `web/scripts/check-perf-retry.mjs`: if it fails, it runs once more, unchanged, and the step fails only if that second attempt fails too. Both attempts' LCP/TBT medians per page are printed side by side, so a real regression (both attempts over) stays visible. No other check is re-run. Run it locally with `npm run check:perf` (build included) or `node scripts/check-perf.mjs` after `next build`. `PERF_OUT=file.json` saves the numbers.
+`web/scripts/check-perf.mjs` (Lighthouse) is a **manual check**, not part of pull request CI (task 75c): run it before bigger UI changes (layout, fonts, scripts, the search). On GitHub: `gh workflow run ci.yml --ref <branch>` (or Actions → CI → Run workflow) runs only the `perf` job, step "Performance (Lighthouse budgets)", against its own build of the app with its own throwaway Postgres and the CI fixture. `PERF_OUT=file.json` saves the numbers. The deterministic checks stay in every PR's CI: First-load JS budget and Fonts (no layout shift).
 
 ## Profile
 
@@ -43,7 +43,7 @@ With real throttling the page really loads over the slowed network and CPU, so t
 
 - LCP has one mode, equal to FCP (the text paints with the fallback font as soon as the HTML and CSS arrive). The 1.8 s budget stays, ~320 ms above the worst run.
 - LCP is judged on the **median** again. Within one CI run the five values lie within ~80 ms, so there is no artifact for the best run to hide, and the median also catches a regression that only some runs would show.
-- TBT is steady within a CI run but differs between runners (medians 43–139 ms): real CPU throttling slows the runner's own CPU 4×, and runners differ. The 150 ms budget is unchanged. A slow runner can push one attempt over it; that is what the single automatic re-run absorbs. If both attempts fail, treat it as a regression.
+- TBT is steady within a CI run but differs between runners (medians 43–139 ms): real CPU throttling slows the runner's own CPU 4×, and runners differ. The 150 ms budget is unchanged. A slow runner can push one run over it; if a re-run fails too, treat it as a regression.
 - Locally (M-series Mac) the same check gives LCP ~1340 ms and TBT 0–13 ms.
 - A run takes about 4 minutes in CI instead of 2.
 

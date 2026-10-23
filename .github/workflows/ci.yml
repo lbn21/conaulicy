@@ -12,6 +12,8 @@ on:
       - "docs/data/sources.md"
       - "!etl/review/**"
       - "etl/review/approvals.yaml"
+  # Lighthouse (job perf) only, on demand: gh workflow run ci.yml --ref <branch>
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -21,40 +23,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Whether Lighthouse has anything to measure: the app (web/), this workflow,
-  # or etl/sources.yaml (web/lib/config.generated.ts is generated from it).
-  # Plain git: a pull_request checks out the merge commit, whose first parent
-  # is the base; a push compares with the commit before it. Unsure: run.
-  changes:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      perf: ${{ steps.diff.outputs.perf }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 2
-
-      - name: Changed files
-        id: diff
-        env:
-          BEFORE: ${{ github.event_name == 'push' && github.event.before || '' }}
-        run: |
-          base=${BEFORE:-HEAD^1}
-          if files=$(git diff --name-only "$base" HEAD 2>/dev/null); then
-            echo "$files"
-            if echo "$files" | grep -qE '^(web/|package(-lock)?\.json$|\.github/workflows/ci\.yml$|etl/sources\.yaml$)'; then
-              perf=true
-            else
-              perf=false
-            fi
-          else
-            echo "No diff against $base: running perf."
-            perf=true
-          fi
-          echo "perf=$perf" | tee -a "$GITHUB_OUTPUT"
-
   web:
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -232,14 +202,10 @@ jobs:
       - name: "Unattended import (made-up waste sources: apply, revert, issues, fallback, dead-man switch)"
         run: node scripts/check-import-run.mjs
 
-  # Lighthouse on its own runner, in parallel with web and only when the app
-  # could have changed: its own database with the CI fixture and its own
-  # build, so nothing else shares the CPU. (Reusing web's build as an
-  # artifact was measured: 4 s up, 1 s down, but waiting for web cost
-  # 3.5 min of wall time against ~20 s for this build.)
+  # Lighthouse, on demand only (docs/perf.md): its own database with the CI
+  # fixture and its own build.
   perf:
-    needs: changes
-    if: needs.changes.outputs.perf == 'true'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -298,8 +264,6 @@ jobs:
 
       # Lighthouse mobile with real throttling (Slow 4G, 4× CPU), median of
       # 5 runs per page against the budgets in docs/perf.md; plus HTML size,
-      # preloaded fonts and search keystroke time. Re-run once if it fails
-      # (runner noise); fails only if both attempts fail, and logs both
-      # attempts' medians.
+      # preloaded fonts and search keystroke time.
       - name: "Performance (Lighthouse budgets)"
-        run: node scripts/check-perf-retry.mjs
+        run: node scripts/check-perf.mjs
