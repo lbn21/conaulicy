@@ -272,19 +272,24 @@ type InkFont = {
   };
 };
 
+// A document of its own, only for measuring: reading glyphs through the
+// PDF's own fonts would disturb their text layer (pdftotext lost characters).
+const measurer = new PDFDocument({ autoFirstPage: false });
+measurer.registerFont("regular", REGULAR);
+measurer.registerFont("bold", BOLD);
+
 /**
  * How far a text's ink reaches above and below its baseline, in pt, from its
  * glyphs' boxes. PDFKit keeps an embedded font's fontkit font as _font.font.
  * For a wrapped paragraph it covers every line.
  */
 function inkOf(
-  doc: PDFKit.PDFDocument,
   font: string,
   size: number,
   text: string,
 ): { above: number; below: number } {
-  doc.font(font).fontSize(size);
-  const { font: face } = (doc as unknown as InkFont)._font;
+  measurer.font(font);
+  const { font: face } = (measurer as unknown as InkFont)._font;
   const boxes = face.layout(text).glyphs.map((glyph) => glyph.bbox);
   const scale = size / face.unitsPerEm;
   return {
@@ -463,7 +468,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const footerTop =
     PAGE_H -
     MARGIN -
-    inkOf(doc, "bold", small, closing).below -
+    inkOf("bold", small, closing).below -
     (footerH - footerGap - small * (LINE - ASCENT));
   // The divider: ruleGap of space on both sides, to the ink.
   const ruleW = 0.75;
@@ -471,8 +476,8 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const footerInkTop = footerLines.length
     ? footerTop +
       small * ASCENT -
-      inkOf(doc, "regular", small, footerLines[0].text).above
-    : footerTop + small * ASCENT - inkOf(doc, "bold", small, closing).above;
+      inkOf("regular", small, footerLines[0].text).above
+    : footerTop + small * ASCENT - inkOf("bold", small, closing).above;
   const ruleY = footerInkTop - ruleGap - ruleW / 2;
 
   const drawFooter = (parent: PDFKit.PDFStructureElement | null) => {
@@ -592,7 +597,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     ruleY -
     ruleW / 2 -
     ruleGap -
-    inkOf(doc, "bold", small, keyNote(0)).below -
+    inkOf("bold", small, keyNote(0)).below -
     small * ASCENT;
   const keyTop = keyNoteTop - (keyH - keyNoteH + 4);
 
@@ -656,14 +661,14 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     dayLine ? titleTop + titleH + 6 + px(19) * ASCENT : 0,
   );
   const baseInk = Math.max(
-    inkOf(doc, "regular", small, scan).below,
-    dayLine ? inkOf(doc, "bold", px(19), dayLine).below : 0,
+    inkOf("regular", small, scan).below,
+    dayLine ? inkOf("bold", px(19), dayLine).below : 0,
   );
   const titleInk =
     titleTop +
     titleH -
     titleSize * (LINE - ASCENT) +
-    inkOf(doc, "bold", titleSize, title).below;
+    inkOf("bold", titleSize, title).below;
   const bandH = Math.max(baseline + baseInk, dayLine ? 0 : titleInk) + MARGIN;
   const bandBaseline = bandH - MARGIN - baseInk;
 
@@ -725,7 +730,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     logoH +
     logoGap +
     px(19) * ASCENT +
-    inkOf(doc, "bold", px(19), `${title} · wersja tekstowa`).below +
+    inkOf("bold", px(19), `${title} · wersja tekstowa`).below +
     MARGIN;
   const compactBand = (
     what: string,
@@ -746,10 +751,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         .text(
           text,
           MARGIN,
-          compactH -
-            MARGIN -
-            inkOf(doc, "bold", size, text).below -
-            size * ASCENT,
+          compactH - MARGIN - inkOf("bold", size, text).below - size * ASCENT,
           { lineBreak: false },
         );
     };
@@ -795,7 +797,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // descenders, or the warning's or the circle's without notes.
   const panelH = (notes: Note[]) => {
     const below = (font: string, text: string) =>
-      px(19) * (LINE - ASCENT) - inkOf(doc, font, px(19), text).below;
+      px(19) * (LINE - ASCENT) - inkOf(font, px(19), text).below;
     const last = notes[notes.length - 1];
     if (last) {
       const end =
@@ -871,7 +873,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const inset = 3;
   // A date's digits centred in their row by their ink, as the marks are.
   const dateTop = (rowTop: number, n: string) => {
-    const ink = inkOf(doc, "bold", cellText, n);
+    const ink = inkOf("bold", cellText, n);
     return rowTop + rowH / 2 + (ink.above - ink.below) / 2 - cellText * ASCENT;
   };
   const perLine = Math.floor((TABLE_W - dateW - 8) / (mark + markGap));

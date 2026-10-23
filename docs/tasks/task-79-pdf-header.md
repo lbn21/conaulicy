@@ -112,3 +112,5 @@ Measured on page 1 (and page 2 for items 5–6) of both addresses: ink, pt, 288 
 | warning "!" centre offset dx / dy (600 dpi) | −0.12 / −0.12 | −0.12 / 0.00 (one 600-dpi pixel at most) |
 
 Page 1 band: 178.5 pt (unchanged for ul. Adama Mickiewicza; 178.25 for ul. 3-go Maja). Page 2 band: 110.5–111. A synthetic full year is still 6 pages. The after-PNGs and icon close-ups in `docs/tasks/task-79/` are re-rendered from this commit.
+
+`inkOf()` measures through a separate PDFKit document. Reading glyphs through the PDF's own embedded fonts broke its text layer: `pdftotext` lost characters ("eskanuj", full stops), and CI's `check:pdf` caught it. With the separate document, the text layer matches production word for word (except the intended warning change), and the pages are pixel-identical to the measured renders.
