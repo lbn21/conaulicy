@@ -29,3 +29,9 @@ Approved by Jakub, 23 Oct 2026, after a phone test. Branch: `fix/autocomplete-fi
 
 ## Done
 Commits on `fix/autocomplete-fill-only` (this brief included), PR titled "Suggestions fill the field; the form opens the place", body summarising changes and decisions. Wait for CI green (`gh pr checks --watch`), fix failures. Do not merge. Report the PR link, `git diff --stat origin/main`, CI duration and decisions.
+
+## Addendum (Jakub, 23 Oct 2026): house number typed after picking
+After picking a suggestion the user may keep typing a house number in the field:
+- appended after the label: „ul. Rynek, Lubaczów 5”
+- edited into the street part: „ul. Rynek 5, Lubaczów”
+`/szukaj` must resolve both forms to the same single place with `nr=5` (same handling as the existing „Asnyka 12” → `?nr=12`; the L3 rule — the page ignores `nr` on non-split streets — stays as already implemented). Make sure the autocomplete does not wipe the typed number or reopen and override it before submit (native input behaviour; no custom keydown/focus JS). Tests: unit + CI for both forms (e.g. Rynek and Asnyka: „ul. Adama Asnyka, Lubaczów 12” and „ul. Adama Asnyka 12, Lubaczów” → `/adres/0972447-00470?nr=12`), and an e2e: pick a suggestion, type „ 5”, click „Szukaj” → lands on the place with `nr=5` in the URL.
