@@ -718,8 +718,11 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         .font("bold")
         .fontSize(warnD * 0.72)
         .fillColor(WHITE);
+      // Centred by its ink: the "!" is symmetric in its advance, and runs
+      // from the cap height to 0.012 em below the baseline (0.68 em).
       const tw = doc.widthOfString("!");
-      doc.text("!", MARGIN + warnD / 2 - tw / 2, top + 12 + warnD * 0.1, {
+      const bangTop = warnD / 2 - warnD * 0.72 * (CAP_TOP + 0.68 / 2);
+      doc.text("!", MARGIN + warnD / 2 - tw / 2, top + 12 + bangTop, {
         lineBreak: false,
       });
     });

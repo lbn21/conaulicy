@@ -65,3 +65,17 @@ Month headings 24 px bold (heading-m, like the calendar's month captions), list 
 ### PNGs
 
 `docs/tasks/task-79/`: `<id>-page<1|2>-before-production.png` (the production PDF) and `<id>-page<1|2>-after.png`, for `/adres/0972447-29830` (ul. 3-go Maja, Wednesday 23 December) and `/adres/0972447-12740` (ul. Adama Mickiewicza, Wednesday 30 December).
+
+## Addition: the Warning text "!" centred
+
+The "!" sat low in its circle. It was placed by its advance width and a guessed `warnD * 0.1` top. Now its ink box is centred on the circle, using the font's metrics (the same method as the logo wordmark's shift). In Atkinson Hyperlegible Next Bold, the "!" is symmetric in its advance (ink 60–243 of 303), so horizontally it was already centred. Vertically, its ink runs from the cap height (0.668 em) to 0.012 em below the baseline, 0.68 em in all.
+
+Measured at 600 dpi on page 1 (ink-box centre minus circle centre, pt; the circle is 26.28 pt, the "!" ink 3.48 × 12.84 pt):
+
+| | dx | dy |
+|---|---|---|
+| production, both addresses | −0.12 | **+1.92** (low) |
+| task 79 before this fix | −0.12 | +1.80 |
+| this fix, both addresses | −0.12 | −0.12 |
+
+−0.12 pt is one 600-dpi pixel, the measurement's own rounding (it shows on both axes). Close-ups: `docs/tasks/task-79/<id>-warning-icon-before-production.png` and `<id>-warning-icon-after.png`.
