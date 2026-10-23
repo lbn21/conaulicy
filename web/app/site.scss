@@ -5,6 +5,16 @@
 @use "settings" as *;
 @use "govuk-frontend/dist/govuk/components/generic-header/mixin" as generic-header;
 
+// The Generic header in the brand colour, as the GOV.UK header takes GOV.UK's
+// (components/header/_mixin.scss), instead of the mixin's default black: on
+// black, the black bar of GOV.UK's focus style under the focused logo is lost.
+.govuk-generic-header {
+  @include generic-header.block-styles(
+    $background-colour: govuk-functional-colour("brand"),
+    $text-colour: govuk-functional-colour("inverse-text")
+  );
+}
+
 // Our "ul." plate in the Generic header, with the GOV.UK header's logo
 // geometry (govuk-frontend components/header/_mixin.scss): the logo
 // container's 16/12 padding, and the logo 30px tall (site-header.tsx), lifted
