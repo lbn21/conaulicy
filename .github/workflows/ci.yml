@@ -171,15 +171,15 @@ jobs:
       # pdfinfo, pdffonts and pdftotext read the generated PDFs. Not on the
       # runner, so its .debs are cached: apt (slow mirrors) only on a miss,
       # and a hit installs them offline.
-      - name: poppler-utils version
-        id: poppler
-        run: echo "version=$(apt-cache policy poppler-utils | awk '/Candidate:/ {print $2}')" >> "$GITHUB_OUTPUT"
+      - name: Runner image
+        id: image
+        run: echo "key=$ImageOS-$ImageVersion-$(dpkg --print-architecture)" | tee -a "$GITHUB_OUTPUT"
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: poppler-cache
         with:
           path: ~/.cache/poppler-debs
-          key: poppler-debs-${{ runner.os }}-${{ steps.poppler.outputs.version }}
+          key: poppler-debs-${{ steps.image.outputs.key }}
 
       - name: Install poppler-utils
         env:

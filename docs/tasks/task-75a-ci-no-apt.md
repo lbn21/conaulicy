@@ -11,7 +11,7 @@ Approved by Jakub, 23 Oct 2026.
 ## Do (only `.github/workflows/ci.yml`)
 
 1. `web` and `perf` jobs: `npx playwright install chromium`, no `--with-deps`. Keep the `ms-playwright` cache step.
-2. poppler-utils (`web` job): not preinstalled on the runner (every run installs it), and no PDF text extractor in our dependencies (`pdfkit` only writes PDFs). So cache its `.debs` with `actions/cache`, keyed on runner OS + poppler-utils version: on a miss, `apt-get update` and download the missing packages once; on a hit, `sudo dpkg -i` the cached debs, with no `apt-get update` and no network.
+2. poppler-utils (`web` job): not preinstalled on the runner (every run installs it), and no PDF text extractor in our dependencies (`pdfkit` only writes PDFs). So cache its `.debs` with `actions/cache`, keyed on the runner image (`$ImageOS-$ImageVersion` + arch; the image's apt list is stale, so the poppler-utils version there is not what gets cached): on a miss, `apt-get update` and download the missing packages once; on a hit, `sudo dpkg -i` the cached debs, with no `apt-get update` and no network.
 3. Nothing else: Lighthouse, `check-perf*`, the indexing check, the paths filter and `setup-java` are separate PRs.
 
 ## Prove it
