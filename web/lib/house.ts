@@ -1,4 +1,4 @@
-// House numbers: peeled off a search query ("Asnyka 12", "12 Asnyka"),
+// House numbers: peeled off a search query (lib/search.ts readings),
 // carried as ?nr=12a, and matched against a zone member's range
 // (houseFrom/houseTo/parity in zone_members). Pure functions, shared by the
 // search field, /api/search and the street page.
@@ -19,28 +19,6 @@ export function houseNumber(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const nr = raw.trim().toLowerCase().replace(/\s+/g, "");
   return HOUSE_NUMBER.test(nr) ? nr : null;
-}
-
-export type Reading = { text: string; nr: string | null };
-
-/**
- * Ways to read a query, best first: a trailing number ("Asnyka 12"), the
- * query as typed (street names with digits: "3 Maja"), a leading number
- * ("12 Asnyka"). Search takes the first reading that finds a place.
- */
-export function readings(q: string): Reading[] {
-  const words = q.trim().split(/\s+/).filter(Boolean);
-  const result: Reading[] = [];
-  if (words.length > 1) {
-    const last = houseNumber(words.at(-1));
-    if (last) result.push({ text: words.slice(0, -1).join(" "), nr: last });
-  }
-  result.push({ text: words.join(" "), nr: null });
-  if (words.length > 1) {
-    const first = houseNumber(words[0]);
-    if (first) result.push({ text: words.slice(1).join(" "), nr: first });
-  }
-  return result;
 }
 
 /** "ul. Adama Asnyka, Lubaczów" + "12" → "ul. Adama Asnyka 12, Lubaczów". */

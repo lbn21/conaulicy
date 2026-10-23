@@ -33,6 +33,7 @@
     "test": "node --test \"lib/**/*.test.ts\" \"scripts/**/*.test.ts\""
   },
   "dependencies": {
+    "@leeoniya/ufuzzy": "1.0.19",
     "@neondatabase/serverless": "1.2.0",
     "@vercel/analytics": "2.0.1",
     "accessible-autocomplete": "3.0.2",

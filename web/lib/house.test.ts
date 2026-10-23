@@ -5,7 +5,6 @@ import {
   inRange,
   isPartial,
   NR_QUERY,
-  readings,
   withHouseNumber,
 } from "./house.ts";
 
@@ -19,25 +18,6 @@ test("house numbers in Polish formats", () => {
   for (const bad of ["", "a12", "12ab", "12345", "1/2/3", "Asnyka", null]) {
     assert.equal(houseNumber(bad), null, String(bad));
   }
-});
-
-test("a number is peeled off the end or the front, not from the middle", () => {
-  assert.deepEqual(readings("Asnyka 12")[0], { text: "Asnyka", nr: "12" });
-  assert.deepEqual(readings("ul. Asnyka 12a")[0], {
-    text: "ul. Asnyka",
-    nr: "12a",
-  });
-  assert.deepEqual(readings("Asnyka 7/22")[0], { text: "Asnyka", nr: "7/22" });
-  assert.deepEqual(readings("12 Asnyka"), [
-    { text: "12 Asnyka", nr: null },
-    { text: "Asnyka", nr: "12" },
-  ]);
-  // "3 Maja" is a street: as typed comes before a leading number.
-  assert.deepEqual(readings("3 Maja")[0], { text: "3 Maja", nr: null });
-  assert.deepEqual(readings("3 Maja 5")[0], { text: "3 Maja", nr: "5" });
-  // A number alone stays the query.
-  assert.deepEqual(readings("12"), [{ text: "12", nr: null }]);
-  assert.deepEqual(readings("Asnyka"), [{ text: "Asnyka", nr: null }]);
 });
 
 test("the number goes after the street or village name", () => {
