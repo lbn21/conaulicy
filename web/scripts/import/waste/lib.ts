@@ -2,6 +2,7 @@
 // events, validation, comparing vision passes. No network, no database: the
 // core does those, tested end to end by scripts/check-import-run.mjs; this
 // file by lib.test.ts.
+import { FRACTIONS } from "../../../lib/waste-bin.ts";
 import { type Etl, eventId } from "../../lib/import-data.ts";
 import { extractJson } from "../core/vision.ts";
 
@@ -37,18 +38,9 @@ export const MIASTO_ROWS: Record<string, string[]> = {
     "tekstylia",
   ],
 };
-const LABELS: Record<string, string> = {
-  zmieszane: "Zmieszane",
-  popiol: "Popiół",
-  bio: "Bio",
-  papier: "Papier",
-  tworzywa_metale: "Tworzywa sztuczne i metale",
-  szklo: "Szkło",
-  wielkogabarytowe: "Wielkogabarytowe",
-  elektro: "Elektryczne i elektroniczne",
-  opony: "Zużyte opony",
-  tekstylia: "Odzież i tekstylia",
-};
+const LABELS: Record<string, string> = Object.fromEntries(
+  FRACTIONS.map((f) => [f.subtype, f.label]),
+);
 
 /** Days per month, per schedule row: rows[row][month 0–11] = [days]. */
 export type Rows = Record<string, number[][]>;

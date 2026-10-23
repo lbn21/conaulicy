@@ -1,6 +1,22 @@
-// The website's wheelie-bin icon (SVG), and the fraction → colour token map
-// the printable PDF shares for its shape marks. Coordinates are in a
-// 28 × 40 box.
+// The waste fractions and their labels, the website's wheelie-bin icon
+// (SVG), and the fraction → colour token map the printable PDF shares for
+// its shape marks. Coordinates are in a 28 × 40 box.
+
+/** Every waste fraction, in display order, with its label. */
+export const FRACTIONS: ReadonlyArray<{ subtype: string; label: string }> = [
+  { subtype: "zmieszane", label: "Zmieszane" },
+  { subtype: "zmieszane_i_bio", label: "Zmieszane i bio" },
+  { subtype: "popiol", label: "Popiół" },
+  { subtype: "bio", label: "Bio" },
+  { subtype: "papier", label: "Papier" },
+  { subtype: "tworzywa", label: "Tworzywa sztuczne" },
+  { subtype: "tworzywa_metale", label: "Tworzywa sztuczne i metale" },
+  { subtype: "szklo", label: "Szkło" },
+  { subtype: "wielkogabarytowe", label: "Wielkogabarytowe" },
+  { subtype: "elektro", label: "Elektryczne i elektroniczne" },
+  { subtype: "opony", label: "Zużyte opony" },
+  { subtype: "tekstylia", label: "Odzież i tekstylia" },
+];
 
 /** Waste subtype → colour token name (app/tokens.css, --waste-{token}). */
 export const TOKEN: Record<string, string> = {
