@@ -7,7 +7,7 @@
 // build`). With CHECK_URL it checks a deployed site instead, e.g.
 // CHECK_URL=https://conaulicy.pl (plus SITE_BASIC_AUTH while the gate is on).
 import { HOME_EXAMPLES } from "../lib/examples.ts";
-import { startServer } from "./lib/server.mjs";
+import { finish, startServer } from "./lib/server.mjs";
 
 const server = process.env.CHECK_URL
   ? { origin: process.env.CHECK_URL.replace(/\/$/, ""), stop: () => {} }
@@ -53,10 +53,4 @@ try {
   server.stop();
 }
 
-if (failures.length > 0) {
-  console.log(failures.map((f) => `FAIL  ${f}`).join("\n"));
-  process.exit(1);
-}
-console.log("Home examples: every one has upcoming pickups.");
-// The server's output pipes would otherwise keep Node alive (as in check-a11y).
-process.exit(0);
+finish(failures, "Home examples: every one has upcoming pickups.");

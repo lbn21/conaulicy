@@ -1,5 +1,5 @@
 // Starts the production server (`next start`) for the checks and lists the
-// routes they cover. Run `next build` first.
+// routes they cover, and ends a check (finish). Run `next build` first.
 import { spawn } from "node:child_process";
 
 // One of each kind of page. Keep in sync with the CI fixture (scripts/ci-fixture.ts).
@@ -57,4 +57,15 @@ export async function startServer(port = 3300) {
   }
   child.kill("SIGTERM");
   throw new Error(`next start did not answer on ${origin}.\n${log}`);
+}
+
+// A check's ending: its FAIL lines and exit 1, or its summary and exit 0
+// (the server's output pipes would otherwise keep Node alive).
+export function finish(failures, summary) {
+  if (failures.length > 0) {
+    console.log(failures.map((f) => `FAIL  ${f}`).join("\n"));
+    process.exit(1);
+  }
+  console.log(summary);
+  process.exit(0);
 }

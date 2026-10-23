@@ -22,7 +22,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { inflateSync } from "node:zlib";
 import { UNVERIFIED_NOTE } from "../lib/schedule-notes.ts";
-import { startServer } from "./lib/server.mjs";
+import { finish, startServer } from "./lib/server.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const MAX_BYTES = 150_000;
@@ -210,12 +210,7 @@ try {
   server.stop();
 }
 
-if (failures.length > 0) {
-  console.log(failures.map((f) => `FAIL  ${f}`).join("\n"));
-  process.exit(1);
-}
-console.log(
+finish(
+  failures,
   `PDFs: tagged, no PDF/UA claim, ${MIN_PAGES}–${MAX_PAGES} pages, ≤ ${MAX_BYTES / 1000} KB, Atkinson only, text version, no example data.`,
 );
-// The server's output pipes would otherwise keep Node alive (as in check-a11y).
-process.exit(0);

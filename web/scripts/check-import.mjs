@@ -14,7 +14,7 @@ import { todayInWarsaw } from "../lib/dates.ts";
 import { eventId } from "./lib/import-data.ts";
 import { FIXTURE_IDS, fixture } from "./lib/import-fixture.ts";
 import { localDatabaseUrl } from "./lib/local-db.ts";
-import { startServer } from "./lib/server.mjs";
+import { finish, startServer } from "./lib/server.mjs";
 
 const failures = [];
 const check = (ok, message) => {
@@ -218,10 +218,4 @@ try {
   rmSync(dir, { recursive: true, force: true });
 }
 
-if (failures.length > 0) {
-  console.log(failures.map((f) => `FAIL  ${f}`).join("\n"));
-  process.exit(1);
-}
-console.log("Importer: dry run, apply, update and guards ok.");
-// The server's output pipes would otherwise keep Node alive (as in check-a11y).
-process.exit(0);
+finish(failures, "Importer: dry run, apply, update and guards ok.");

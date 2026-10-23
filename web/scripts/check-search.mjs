@@ -19,7 +19,7 @@
 // `next build`; needs Playwright's Chromium.
 import { chromium } from "playwright";
 import { matcher, placeHref } from "../lib/search.ts";
-import { startServer } from "./lib/server.mjs";
+import { finish, startServer } from "./lib/server.mjs";
 
 const WIDTHS = [360, 1280];
 
@@ -708,10 +708,4 @@ try {
   server.stop();
 }
 
-if (failures.length > 0) {
-  console.log(failures.map((f) => `FAIL  ${f}`).join("\n"));
-  process.exit(1);
-}
-console.log("Search popup: no layout shift, combobox keyboard ok.");
-// The server's output pipes would otherwise keep Node alive (as in check-a11y).
-process.exit(0);
+finish(failures, "Search popup: no layout shift, combobox keyboard ok.");

@@ -19,7 +19,7 @@
 // Runs against `next start` on the current build and the CI fixture.
 import { readFileSync } from "node:fs";
 import { request } from "node:http";
-import { ROUTES, startServer } from "./lib/server.mjs";
+import { finish, ROUTES, startServer } from "./lib/server.mjs";
 
 const mode = process.argv
   .find((arg) => arg.startsWith("--expect="))
@@ -338,14 +338,9 @@ try {
   server.stop();
 }
 
-if (failures.length > 0) {
-  console.log(failures.map((f) => `FAIL  ${f}`).join("\n"));
-  process.exit(1);
-}
-console.log(
+finish(
+  failures,
   index
     ? `Indexing (${PAGES.join(", ")}): indexable, robots.txt open, vercel.app redirects, sitemap complete; PDF, ICS, /numer, no-data places, /szukaj noindex; 404s whole pages; canonicals.`
     : `Indexing (${PAGES.join(", ")}): noindex everywhere, robots.txt closed, sitemap empty; PDF, ICS noindex; 404s whole pages; canonicals.`,
 );
-// The server's output pipes would otherwise keep Node alive (as in check-a11y).
-process.exit(0);
