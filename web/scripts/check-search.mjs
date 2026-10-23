@@ -8,10 +8,13 @@
 // street page lands on an empty, focused field with the list closed,
 // /api/search answers when the index cannot load, and a house number
 // ("kosciuszki 7a") reaches the street page, which picks the part of a split
-// street by it, or asks for it (also without JS). The search form works
-// without JS (one place: its page; several: /szukaj lists them), and with
-// JS, Enter with no suggestion submits it. Run after `next build`; needs
-// Playwright's Chromium.
+// street by it, or asks for it (also without JS). Picking a suggestion (a
+// tap, or ArrowDown and Enter) only fills the field and closes the list, as
+// GOV.UK's default; „Szukaj” or the next Enter submits the form, and
+// /szukaj opens the picked place. The search form works without JS (one
+// place: its page; several: /szukaj lists them), and with JS, Enter with no
+// suggestion submits it. Run after `next build`; needs Playwright's
+// Chromium.
 import { chromium } from "playwright";
 import { startServer } from "./lib/server.mjs";
 
@@ -265,6 +268,22 @@ try {
     (await option.textContent()) === "ul. Tadeusza Kościuszki 7a, Lubaczów",
     `house number: option reads "${await option.textContent()}"`,
   );
+  // ArrowDown, Enter: the field holds the suggestion, the page stays; the
+  // next Enter submits the form.
+  await house.getByRole("combobox").press("ArrowDown");
+  await house.getByRole("combobox").press("Enter");
+  await house.waitForTimeout(500);
+  const picked = {
+    url: house.url(),
+    value: await house.getByRole("combobox").inputValue(),
+    list: await house.getByRole("listbox").isVisible(),
+  };
+  check(
+    picked.url === `${server.origin}/` &&
+      picked.value === "ul. Tadeusza Kościuszki 7a, Lubaczów" &&
+      !picked.list,
+    `house number: ArrowDown, Enter does not only fill the field ${JSON.stringify(picked)}`,
+  );
   await house.getByRole("combobox").press("Enter");
   await house.waitForURL(`${server.origin}/adres/0972447-90004?nr=7a`);
   const heading = await house.locator("h1").textContent();
@@ -280,6 +299,57 @@ try {
     "house number: PDF link without ?nr=",
   );
   await house.close();
+
+  // A tap (phone) or click on a suggestion fills the field and closes the
+  // list, uncovering „Szukaj”; the page stays until it is pressed. "adama"
+  // finds two places; the picked one's text opens it.
+  for (const [width, touch] of [
+    [360, true],
+    [1280, false],
+  ]) {
+    const how = touch ? "tap" : "click";
+    const pick = await browser.newPage({
+      viewport: { width, height: 800 },
+      hasTouch: touch,
+    });
+    const press = (locator) => (touch ? locator.tap() : locator.click());
+    await pick.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+    await press(pick.locator("#adres"));
+    await pick.getByRole("combobox").pressSequentially("adama");
+    const suggestion = pick
+      .locator('[role="option"]:not([aria-disabled])', { hasText: "Asnyka" })
+      .first();
+    await suggestion.waitFor();
+    await press(suggestion);
+    await pick.waitForTimeout(500);
+    const button = pick.getByRole("button", { name: "Szukaj" });
+    const picked = {
+      url: pick.url(),
+      value: await pick.getByRole("combobox").inputValue(),
+      list: await pick.getByRole("listbox").isVisible(),
+      // The button is on top at its centre, no longer under the list.
+      button: await button.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const top = document.elementFromPoint(
+          r.left + r.width / 2,
+          r.top + r.height / 2,
+        );
+        return el.contains(top);
+      }),
+    };
+    check(
+      picked.url === `${server.origin}/` &&
+        picked.value === "ul. Adama Asnyka, Lubaczów" &&
+        !picked.list &&
+        picked.button,
+      `${how} on a suggestion: does not only fill the field ${JSON.stringify(picked)}`,
+    );
+    await press(button);
+    await pick
+      .waitForURL(`${server.origin}/adres/0972447-00470`, { timeout: 5000 })
+      .catch(() => check(false, `${how}, Szukaj: at ${pick.url()}`));
+    await pick.close();
+  }
 
   // Enter with no suggestion (none found) submits the form, as without JS.
   const enter = await browser.newPage({

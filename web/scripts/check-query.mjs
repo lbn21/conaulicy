@@ -8,8 +8,11 @@
 // /szukaj with a field named q and a submit button, and /szukaj answers it:
 // one place redirects (308, never stored) to its page with the house number,
 // several are listed, none says what to try, an empty q is GOV.UK's error.
+// A suggestion's text, as a pick leaves it in the field, opens its own
+// place: every label in /api/search-index, and some with a house number.
 //
 // Runs against `next start` on the current build and the CI fixture.
+import { withHouseNumber } from "../lib/house.ts";
 import { startServer } from "./lib/server.mjs";
 
 const STREET = "/adres/0972447-00470";
@@ -37,6 +40,18 @@ const CASES = [
   ["GET", "/robots.txt?x=1", 200],
   ["GET", "/szukaj?q=Rynek", 308, "/adres/0972447-19253"],
   ["GET", "/szukaj?q=asnyka%2012", 308, "/adres/0972447-00470?nr=12"],
+  [
+    "GET",
+    `/szukaj?q=${encodeURIComponent("ul. Rynek, Lubaczów")}`,
+    308,
+    "/adres/0972447-19253",
+  ],
+  [
+    "GET",
+    `/szukaj?q=${encodeURIComponent("ul. Adama Asnyka 12, Lubaczów")}`,
+    308,
+    "/adres/0972447-00470?nr=12",
+  ],
   ["GET", "/szukaj?q=adama", 200],
   ["GET", "/szukaj?q=xyzqq", 200],
   ["GET", "/szukaj?q=", 200],
@@ -94,6 +109,26 @@ try {
       .find((href) => href?.startsWith(`/${name}?`));
     if (icon) CASES.push(["GET", icon, 200]);
     else failures.push(`/: no <link> to /${name}?…`);
+  }
+
+  const indexUrl = /\/api\/search-index\/[a-z0-9]+/.exec(home)?.[0];
+  const places = indexUrl
+    ? await (await fetch(`${server.origin}${indexUrl}`)).json()
+    : [];
+  if (places.length === 0) failures.push("/: no search index");
+  for (const [i, [id, label]] of places.entries()) {
+    const href = `/adres/${encodeURIComponent(id)}`;
+    CASES.push(["GET", `/szukaj?q=${encodeURIComponent(label)}`, 308, href]);
+    // Every third with a house number, as the field writes it.
+    if (i % 3 === 0) {
+      const text = withHouseNumber(label, "7a");
+      CASES.push([
+        "GET",
+        `/szukaj?q=${encodeURIComponent(text)}`,
+        308,
+        `${href}?nr=7a`,
+      ]);
+    }
   }
 
   const form = /<form[^>]*>[\s\S]*?<\/form>/.exec(home)?.[0] ?? "";
