@@ -55,6 +55,8 @@ const palette = {
   "secondary-button": "#f3f3f3",
   "header-background": "#0b0c0c",
   "logo-plate": "#ffb547",
+  // The plate on keyboard focus: currentColor, i.e. focus-text (app/site.scss).
+  "logo-plate-focus": "#0b0c0c",
   ...waste,
 };
 
@@ -104,6 +106,7 @@ function requiredPairs() {
     ["focus", "focus-text", "ui"],
     ["brand", "body-background", "ui"],
     ["logo-plate", "header-background", "ui"],
+    ["logo-plate-focus", "focus", "ui"],
     ["focus", "body-background", "info"],
     ["border", "body-background", "info"],
     ["surface-border", "surface-background", "info"],

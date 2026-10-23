@@ -22,8 +22,17 @@
   vertical-align: top;
 }
 
+// The plate's fill is one custom property, amber by default. On focus GOV.UK's
+// link-styles paint the link focus yellow with focus-text black (the
+// wordmark's currentColor); the plate takes that colour too, so the cut-out
+// "ul." and rim show focus yellow in a black plate, as GOV.UK's logo goes
+// all black on focus. :focus, as in link-styles.
 .app-logo__plate {
-  fill: map.get($app-latarnia, "plate");
+  fill: var(--app-logo-plate, #{map.get($app-latarnia, "plate")});
+}
+
+.govuk-generic-header__homepage-link:focus {
+  --app-logo-plate: currentColor;
 }
 
 // In the header the wordmark's x-height is centred on the plate: 1.4 of the
