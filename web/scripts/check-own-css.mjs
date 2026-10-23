@@ -51,6 +51,10 @@ const RAW_PX = [
   "top: -3px;",
   // .govuk-header__logotype: margin-bottom: $logo-bottom-margin (2px)
   "margin-bottom: 2px;",
+  // Ours, not GOV.UK's (task 78): the focused logo's even 7px of yellow round
+  // the plate, measured against Atkinson's content area at 30px.
+  "margin-left: -7px;",
+  "padding: 3px 7px 0;",
 ];
 const MAX_LINES = 80;
 const MAX_GZIP = 1000;
