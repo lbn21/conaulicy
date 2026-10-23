@@ -4,8 +4,8 @@ import { BACKGROUND_COLOR, THEME_COLOR } from "@/lib/theme";
 // Icons: the flat "ul." plate on night (docs/brand.md, docs/logo/source/ship_a.mjs).
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "conaulicy – wywóz śmieci w Lubaczowie i gminie",
-    short_name: "conaulicy",
+    name: "conaulicy.pl – wywóz śmieci w Lubaczowie i gminie",
+    short_name: "conaulicy.pl",
     lang: "pl",
     start_url: "/",
     display: "standalone",

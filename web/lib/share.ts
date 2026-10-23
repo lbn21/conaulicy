@@ -9,14 +9,22 @@ const SHARE_IMAGE = {
   alt: "conaulicy.pl: wywozy śmieci przy Twojej ulicy. Lubaczów i gmina.",
 };
 
+/** The service's one name: in every title, the header and share tags. */
+export const SITE_NAME = "conaulicy.pl";
+
+/** GOV.UK's title: the page's H1, then the service. */
+export function pageTitle(h1: string): string {
+  return `${h1} – ${SITE_NAME}`;
+}
+
 /** The home page's title, and every page's without one of its own. */
-export const HOME_TITLE = "conaulicy – wywóz śmieci w Lubaczowie i gminie";
+export const HOME_TITLE = pageTitle("Sprawdź dzień wywozu śmieci");
 
 /** The layout's share metadata: every page's image, name and language. */
 export const SHARE = {
   openGraph: {
     type: "website",
-    siteName: "conaulicy.pl",
+    siteName: SITE_NAME,
     locale: "pl_PL",
     images: [SHARE_IMAGE],
   },
@@ -26,7 +34,8 @@ export const SHARE = {
 /**
  * A page's own description, in search results and when shared. Next replaces
  * a parent's openGraph and twitter instead of merging them, so each page
- * repeats the layout's base. The title goes through the layout's template.
+ * repeats the layout's base. The page's title goes through the layout's
+ * template; the share title is the same full title.
  */
 export function pageMetadata({
   path,
@@ -38,10 +47,11 @@ export function pageMetadata({
   title: string | { absolute: string };
   description: string;
 }): Metadata {
+  const full = typeof title === "string" ? pageTitle(title) : title.absolute;
   return {
     description,
     alternates: { canonical: path },
-    openGraph: { ...SHARE.openGraph, url: path, title, description },
-    twitter: { ...SHARE.twitter, title, description },
+    openGraph: { ...SHARE.openGraph, url: path, title: full, description },
+    twitter: { ...SHARE.twitter, title: full, description },
   };
 }
