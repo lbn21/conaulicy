@@ -1,6 +1,6 @@
 # Performance budgets
 
-`web/scripts/check-perf.mjs` (Lighthouse) is a **manual check**, not part of pull request CI (task 75c): run it before bigger UI changes (layout, fonts, scripts, the search). On GitHub: `gh workflow run ci.yml --ref <branch>` (or Actions → CI → Run workflow) runs only the `perf` job, step "Performance (Lighthouse budgets)", against its own build of the app with its own throwaway Postgres and the CI fixture. Locally: `npm run check:perf` (build included) or `node scripts/check-perf.mjs` after `next build`. `PERF_OUT=file.json` saves the numbers. The deterministic checks stay in every PR's CI: First-load JS budget and Fonts (no layout shift).
+`web/scripts/check-perf.mjs` (Lighthouse) is a **manual check**, not part of pull request CI (task 75c): run it before bigger UI changes (layout, fonts, scripts, the search). On GitHub: `gh workflow run ci.yml --ref <branch>` (or Actions → CI → Run workflow) runs only the `perf` job, step "Performance (Lighthouse budgets)", against its own build of the app with its own throwaway Postgres and the CI fixture. `PERF_OUT=file.json` saves the numbers. The deterministic checks stay in every PR's CI: First-load JS budget and Fonts (no layout shift).
 
 ## Profile
 
