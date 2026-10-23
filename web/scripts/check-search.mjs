@@ -11,10 +11,10 @@
 // street by it, or asks for it (also without JS). Picking a suggestion (a
 // tap, or ArrowDown and Enter) only fills the field and closes the list, as
 // GOV.UK's default; „Szukaj” or the next Enter submits the form, and
-// /szukaj opens the picked place. The search form works without JS (one
-// place: its page; several: /szukaj lists them), and with JS, Enter with no
-// suggestion submits it. Run after `next build`; needs Playwright's
-// Chromium.
+// /szukaj opens the picked place, also with a house number typed after it.
+// The search form works without JS (one place: its page; several: /szukaj
+// lists them), and with JS, Enter with no suggestion submits it. Run after
+// `next build`; needs Playwright's Chromium.
 import { chromium } from "playwright";
 import { startServer } from "./lib/server.mjs";
 
@@ -350,6 +350,32 @@ try {
       .catch(() => check(false, `${how}, Szukaj: at ${pick.url()}`));
     await pick.close();
   }
+
+  // A house number typed after a pick stays in the field (the library only
+  // searches again, never overriding it) and reaches the place's page.
+  const typed = await browser.newPage({
+    viewport: { width: 360, height: 800 },
+  });
+  await typed.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+  await typed.locator("#adres").click();
+  const field = typed.getByRole("combobox");
+  await field.pressSequentially("rynek");
+  await typed
+    .locator('[role="option"]:not([aria-disabled])', { hasText: "Rynek" })
+    .first()
+    .click();
+  await field.pressSequentially(" 5");
+  await typed.waitForTimeout(500);
+  const value = await field.inputValue();
+  check(
+    value === "ul. Rynek, Lubaczów 5",
+    `number typed after a pick: field reads "${value}"`,
+  );
+  await typed.getByRole("button", { name: "Szukaj" }).click();
+  await typed
+    .waitForURL(`${server.origin}/adres/0972447-19253?nr=5`, { timeout: 5000 })
+    .catch(() => check(false, `number typed after a pick: at ${typed.url()}`));
+  await typed.close();
 
   // Enter with no suggestion (none found) submits the form, as without JS.
   const enter = await browser.newPage({
