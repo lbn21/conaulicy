@@ -7,13 +7,12 @@ import {
   gte,
   inArray,
   isNull,
-  like,
   notExists,
   notInArray,
   or,
   type SQL,
 } from "drizzle-orm";
-import { type AnyPgColumn, alias } from "drizzle-orm/pg-core";
+import { alias } from "drizzle-orm/pg-core";
 import { unstable_cache } from "next/cache";
 import { todayInWarsaw } from "@/lib/dates";
 import {
@@ -25,7 +24,7 @@ import {
   zoneMembers,
   zones,
 } from "@/lib/db";
-import { houseNumber, readings } from "@/lib/house";
+import { houseNumber } from "@/lib/house";
 import {
   gminaShortName,
   hasZone,
@@ -40,10 +39,10 @@ import {
 } from "@/lib/places";
 import {
   byLabel,
-  SEARCH_LIMIT,
+  type Matcher,
+  matcher,
   type SearchHit,
   type SearchIndex,
-  searchTerms,
 } from "@/lib/search";
 
 // Every read goes through Next's data cache, tagged DATASET: a traffic spike
@@ -123,9 +122,6 @@ const SUBTYPE_ORDER = [
   "opony",
   "tekstylia",
 ];
-
-const matchAll = (column: AnyPgColumn, terms: string[]) =>
-  and(...terms.map((term) => like(column, `%${term}%`)));
 
 // A locality is a place of its own only when it has no streets (a village);
 // otherwise its streets are the places.
@@ -218,36 +214,13 @@ const hits = (places: Place[], limit: number): SearchHit[] =>
     .sort(byLabel)
     .slice(0, limit);
 
-const searchCached = unstable_cache(
-  async (terms: string[]): Promise<SearchHit[]> => {
-    const [streetRows, villageRows] = await Promise.all([
-      streetPlaces(and(listed, matchAll(streets.search, terms)), SEARCH_LIMIT),
-      villagePlaces(matchAll(localities.search, terms), SEARCH_LIMIT),
-    ]);
-    return hits(
-      [...streetRows.map(streetPlace), ...villageRows.map(villagePlace)],
-      SEARCH_LIMIT,
-    );
-  },
-  ["search"],
-  CACHE,
-);
-
 /**
- * At most 8 places matching every word of q. The fallback when the search
- * field cannot load the index.
+ * At most 8 places for q, ranked as the search field ranks them (the same
+ * matcher over the same index). The fallback when the field cannot load
+ * the index.
  */
 export async function search(q: string): Promise<SearchHit[]> {
-  // As findPlaces in lib/search.ts: the first reading that finds anything.
-  for (const { text, nr } of readings(q)) {
-    const terms = searchTerms(text);
-    if (terms.length === 0) continue;
-    const found = await searchCached(terms);
-    if (found.length > 0) {
-      return nr ? found.map((hit) => ({ ...hit, nr })) : found;
-    }
-  }
-  return [];
+  return (await searchMatcher())(q).hits;
 }
 
 /**
@@ -305,6 +278,18 @@ export const searchIndex = unstable_cache(
   ["search-index"],
   CACHE,
 );
+
+// The matcher for the current index, prepared once per index version.
+let prepared: { version: string; match: Matcher } | null = null;
+
+/** lib/search.ts matcher over searchIndex, for /api/search and /szukaj. */
+export async function searchMatcher(): Promise<Matcher> {
+  const { version, places } = await searchIndex();
+  if (prepared?.version !== version) {
+    prepared = { version, match: matcher(places) };
+  }
+  return prepared.match;
+}
 
 /** Where the search field loads the current index from. */
 export async function searchIndexUrl(): Promise<string> {
