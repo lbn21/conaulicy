@@ -109,6 +109,6 @@ Measured on page 1 (and page 2 for items 5–6) of both addresses: ink, pt, 288 
 | 5 footer: baseline steps | 17.75, 17.0 | **17.5, 17.5** |
 | 5 footer: bottom margin | 29.5 | **28.25** |
 | 6 page 2: intro / list item / wrapped line steps | 20.5 / 19.5 / 18.5 | **20.5 / 20.5 / 20.5** |
-| warning "!" centre offset dx / dy (600 dpi) | −0.12 / 0.00 | −0.12 / 0.00 (unchanged) |
+| warning "!" centre offset dx / dy (600 dpi) | −0.12 / −0.12 | −0.12 / 0.00 (one 600-dpi pixel at most) |
 
 Page 1 band: 178.5 pt (unchanged for ul. Adama Mickiewicza; 178.25 for ul. 3-go Maja). Page 2 band: 110.5–111. A synthetic full year is still 6 pages. The after-PNGs and icon close-ups in `docs/tasks/task-79/` are re-rendered from this commit.
