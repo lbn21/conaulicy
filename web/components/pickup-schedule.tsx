@@ -124,16 +124,19 @@ function PutOutBy({ day }: { day: PickupDay }) {
   );
 }
 
-/** The next pickup, set apart as GOV.UK inset text, with the big date. */
+/**
+ * The next pickup, with the big date. Screen readers hear "Najbliższy
+ * odbiór:" and the date in words; the big figures are for the eye only.
+ */
 function NextPickup({ day, today }: { day: PickupDay; today: string }) {
   const relative = relativeWord(day.date, today);
   const face = dayFace(day.date);
   return (
-    <div className="govuk-inset-text">
+    <div className="govuk-!-margin-bottom-6">
       <h3 className="govuk-heading-s govuk-!-margin-bottom-3">
         <time dateTime={day.date}>
           <span className="govuk-visually-hidden">
-            {spokenDay(day.date, today)}
+            Najbliższy odbiór: {spokenDay(day.date, today)}
           </span>
           <span aria-hidden="true">
             <span className="govuk-!-display-block govuk-!-font-size-27">
