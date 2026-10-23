@@ -22,7 +22,8 @@
 // (tests the vision passes).
 //
 // Env: IMPORT_DATABASE_URL (or DATABASE_URL_UNPOOLED / DATABASE_URL);
-// CURSOR_API_KEY (vision passes, Actions only); REVALIDATE_SECRET; GH_TOKEN
+// CURSOR_API_KEY (vision passes, Actions only); REVALIDATE_SECRET (site:
+// site.url, or SITE_URL); GH_TOKEN
 // (issues, review PRs); AWS credentials (archive); ACTIONS_RUN_URL. Tests:
 // IMPORT_CONFIG (another config file), IMPORT_NOW (the clock), ARCHIVE_DIR
 // (instead of S3), ISSUES_FILE and REVIEWS_FILE (instead of GitHub),
@@ -31,6 +32,8 @@ import { randomUUID } from "node:crypto";
 import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { todayInWarsaw } from "../../../lib/dates.ts";
+import { databaseUrl } from "../../lib/local-db.ts";
+import { revalidate } from "../../lib/revalidate.ts";
 import { DOMAINS } from "../domains.ts";
 import { archive } from "./archive.ts";
 import { archiveKey, loadConfig, type Source } from "./config.ts";
@@ -69,20 +72,6 @@ const archivedKeys = new Map(
   config.archived.map((a) => [a.sha256, archiveKey(a)]),
 );
 const shortHash = (text: string) => sha256(text).slice(0, 8);
-
-async function revalidate() {
-  const secret = process.env.REVALIDATE_SECRET;
-  if (!secret)
-    return console.log(
-      "Revalidate skipped (no REVALIDATE_SECRET): pages refresh within an hour.",
-    );
-  const response = await fetch(new URL("/api/revalidate", config.site.url), {
-    method: "POST",
-    headers: { Authorization: `Bearer ${secret}` },
-  });
-  if (!response.ok) throw new Error(`revalidate: HTTP ${response.status}`);
-  console.log(`Revalidate ok: ${await response.text()}`);
-}
 
 /** Detect via the source's detector; the watched pages if its API is down. */
 async function detect(source: Source): Promise<{
@@ -175,10 +164,7 @@ if (extractOnly) {
 
 // ------------------------------------------------------------------ database
 
-const url =
-  process.env.IMPORT_DATABASE_URL ||
-  process.env.DATABASE_URL_UNPOOLED ||
-  process.env.DATABASE_URL;
+const url = databaseUrl();
 if (!url) throw new Error("IMPORT_DATABASE_URL is not set.");
 // Opened on demand and closed during extraction (./db.ts).
 const db = new Db(url, { readOnly });
@@ -493,7 +479,7 @@ async function importSource(source: Source): Promise<Outcome> {
           runUrl ? `\nRun: ${runUrl}` : "",
         ].join("\n"),
       );
-    if (refresh && !dryRun) await revalidate();
+    if (refresh && !dryRun) await revalidate(config.site.url);
     return {
       status: "needs_review",
       ...base,
@@ -503,7 +489,7 @@ async function importSource(source: Source): Promise<Outcome> {
   }
   if (added + removed + changed === 0) {
     for (const w of work) await settle(w.file, w.digest);
-    if (refresh && !dryRun) await revalidate();
+    if (refresh && !dryRun) await revalidate(config.site.url);
     return { status: "no_change", ...base, batchId: null, error: null };
   }
   if (dryRun) {
@@ -530,7 +516,7 @@ async function importSource(source: Source): Promise<Outcome> {
   console.log(
     `\nApplied as batch ${batchId} (undo: npm run import:revert -- ${batchId}).`,
   );
-  await revalidate();
+  await revalidate(config.site.url);
   return { status: "applied", ...base, batchId, error: null };
 }
 
