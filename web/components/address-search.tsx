@@ -189,9 +189,8 @@ export function AddressSearch({
         id: INPUT_ID,
         source,
         name: "q",
-        // The server's text, as the library's own value: never handed over
-        // a second time below. Its first option is that text, so the input
-        // event below replaces it with real results.
+        // The server's text, as the library's own value: never appended a
+        // second time below, where its search runs on it.
         defaultValue: value,
         // govuk-input--error survives the takeover (hintClasses, the
         // autoselect hint's field, follows inputClasses).
@@ -225,13 +224,20 @@ export function AddressSearch({
       // its render), so hand over the typed text only after that render.
       // Keys pressed meanwhile are already in the new field: keep them too.
       // It searches on the input event, as for typing.
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      // Unchanged server text keeps the library's select-all on focus.
-      if (typed !== value) {
-        const text = typed + input.value.slice(value.length);
-        input.value = text;
-        input.setSelectionRange(text.length, text.length);
+      const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+      await tick();
+      const text =
+        typed === value ? value : typed + input.value.slice(value.length);
+      if (value) {
+        // The library starts with defaultValue as its only option and
+        // searches only when its text changes: empty it first (one render),
+        // so the input event below lists real places, not the bare text.
+        input.value = "";
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        await tick();
       }
+      input.value = text;
+      input.setSelectionRange(text.length, text.length);
       input.dispatchEvent(new Event("input", { bubbles: true }));
     }
 

@@ -410,6 +410,7 @@ try {
   await prefilled.waitFor();
   const options = again.locator('[role="option"]:not([aria-disabled])');
   await options
+    .filter({ hasText: "Asnyka" })
     .first()
     .waitFor({ timeout: 5000 })
     .catch(() => check(false, "/szukaj?q=adama: no suggestions on focus"));
