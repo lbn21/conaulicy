@@ -28,9 +28,9 @@ Each approved run:
 3. Apply.
 4. Run the dry run again: it must show 0 changes.
 
-Still forbidden: a local `next build`, `next start`, `next dev` or `npm run check:*`, or anything else that reads `web/.env.local` (production).
+An approved run reads production's URL from `web/.env.local` through the npm scripts (`npm run db:migrate`, `db:import`, `db:redirect`); nothing else may read that file: a local `next build`, `next start`, `next dev` or `npm run check:*` stays forbidden.
 
-Don't use `vercel env run` (Vercel CLI 64.5): it hands the command back to its own parser, so `vercel env run -e production -- node -e …` started a `vercel deploy` of the working tree (rejected only by luck). Use `web/.env.local` instead.
+Never use `vercel env run` (Vercel CLI 64.5): it hands the command back to its own parser, so `vercel env run -e production -- node -e …` started a `vercel deploy` of the working tree (rejected only by luck). Use `web/.env.local` instead.
 
 ## Places and zones
 
@@ -63,7 +63,7 @@ npm run db:migrate      # reads web/.env.local (Neon main)
 
 The code may also ship first when it tolerates the old schema, as for `0002_teryt_names` (task 67): merge (the site never reads the new columns, and a missing `place_redirects` means no redirects); then, after a backup, `db:migrate` and a data reload with `npm run db:import -- --from <etl out> --teryt ../.cache/sources/teryt/<day> --apply --yes-production` (`npm run sources:pull` fetches the TERYT files), which fills `nazwa_1` and `nazwa_2`. Both follow "Writing to production" above: by an agent only with Jakub's approval for that run.
 
-Applied to production: `0002_teryt_names` on 2026-10-23 at about 10:06 UTC; the TERYT reload filled `nazwa_1` for 276 streets and `nazwa_2` for 82.
+Applied to production on 2026-10-23: `0002_teryt_names` at 10:06 UTC (11:06 UK time); the TERYT reload at 10:07 UTC filled `nazwa_1` for 276 streets and `nazwa_2` for 82; the dry run after it showed 0 changes. The 276 include 3 streets in no zone, which the search index leaves out (273 there).
 
 ## Testing data changes without touching production
 
