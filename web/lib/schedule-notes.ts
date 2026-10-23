@@ -1,5 +1,6 @@
-// What the street page and its PDF say about a place's dates, kept in one
-// place so the two cannot drift. Pure, so the unit tests need no database.
+// What the street page, its PDF and the calendar say about a place's dates,
+// kept in one place so they cannot drift. Pure, so the unit tests need no
+// database.
 import type { PickupDay, PlaceView } from "@/lib/schedule";
 
 /**
@@ -10,6 +11,23 @@ import type { PickupDay, PlaceView } from "@/lib/schedule";
 export function hasUpcoming(days: PickupDay[], today: string): boolean {
   return days.some((day) => day.date >= today);
 }
+
+/**
+ * When to put the bins out, on the page, in the PDF and in the calendar:
+ * `time` is the data's hour ("06:00"), shown without its leading zero.
+ */
+export function putOutNote(time: string): string {
+  return `Wystaw pojemniki do ${time.replace(/^0/, "")} w dniu odbioru.`;
+}
+
+/** In the footer, the calendar and the PDF: we are not the gmina. */
+export const DISCLAIMER =
+  "Nie jesteśmy urzędem – obowiązuje harmonogram gminy.";
+
+/** When a place's schedule has ended: the heading, then what comes next. */
+export const NO_MORE_DATES = "Nie mamy jeszcze kolejnych terminów";
+export const NO_MORE_DATES_NEXT =
+  "Dodamy je, gdy tylko gmina ogłosi nowy harmonogram.";
 
 /** Shown on the page and printed in the PDF while a place is not verified. */
 export const UNVERIFIED_NOTE =

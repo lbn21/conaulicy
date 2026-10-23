@@ -1,8 +1,9 @@
 import { longDate } from "@/lib/date-labels";
-import { addDays } from "@/lib/dates";
-import { cacheControl } from "@/lib/gate";
+import { addDays, WARSAW } from "@/lib/dates";
+import { datasetHeaders } from "@/lib/gate";
 import { NOINDEX } from "@/lib/indexing";
-import { DATASET, getZone } from "@/lib/schedule";
+import { getZone } from "@/lib/schedule";
+import { DISCLAIMER, putOutNote } from "@/lib/schedule-notes";
 
 const encoder = new TextEncoder();
 
@@ -58,17 +59,15 @@ export async function GET(
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeText(`Wywóz śmieci – ${zone.name}`)}`,
-    "X-WR-TIMEZONE:Europe/Warsaw",
+    `X-WR-TIMEZONE:${WARSAW}`,
   ];
 
   for (const event of zone.events) {
     const putOutBy = event.payload?.putOutBy;
     const description = [
-      typeof putOutBy === "string"
-        ? `Wystaw przed posesję do ${putOutBy.replace(/^0/, "")}.`
-        : null,
+      typeof putOutBy === "string" ? putOutNote(putOutBy) : null,
       `Źródło: ${event.sourceUrl} (stan na ${longDate(event.checkedAt)})`,
-      "Nie jesteśmy urzędem – obowiązuje harmonogram gminy.",
+      DISCLAIMER,
     ]
       .filter(Boolean)
       .join("\n");
@@ -93,11 +92,7 @@ export async function GET(
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
       "Content-Disposition": `inline; filename="${filename}"`,
-      "Cache-Control": cacheControl(
-        "public, s-maxage=3600, stale-while-revalidate=86400",
-      ),
-      // So an import's POST /api/revalidate deletes the CDN copy too.
-      "Vercel-Cache-Tag": DATASET,
+      ...datasetHeaders(),
       ...NOINDEX,
     },
   });

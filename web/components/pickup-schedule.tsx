@@ -3,6 +3,11 @@
 import { useSyncExternalStore } from "react";
 import { absoluteDay, dayFace, relativeWord, todayInWarsaw } from "@/lib/dates";
 import {
+  NO_MORE_DATES,
+  NO_MORE_DATES_NEXT,
+  putOutNote,
+} from "@/lib/schedule-notes";
+import {
   BIN,
   BIN_HEIGHT,
   BIN_WIDTH,
@@ -32,10 +37,6 @@ function subscribe(onChange: () => void): () => void {
     clearInterval(timer);
     document.removeEventListener("visibilitychange", onChange);
   };
-}
-
-function hour(time: string): string {
-  return time.replace(/^0/, "");
 }
 
 function spokenDay(iso: string, today: string): string {
@@ -119,7 +120,7 @@ function PutOutBy({ day }: { day: PickupDay }) {
   if (!putOutBy) return null;
   return (
     <p className="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0">
-      Wystaw przed posesję do godziny {hour(putOutBy)}.
+      {putOutNote(putOutBy)}
     </p>
   );
 }
@@ -196,10 +197,7 @@ export function PickupSchedule({
 
   if (visible.length === 0) {
     return (
-      <p className="govuk-body">
-        Nie mamy jeszcze kolejnych terminów. Dopiszemy je, gdy pojawi się nowy
-        harmonogram.
-      </p>
+      <p className="govuk-body">{`${NO_MORE_DATES}. ${NO_MORE_DATES_NEXT}`}</p>
     );
   }
 

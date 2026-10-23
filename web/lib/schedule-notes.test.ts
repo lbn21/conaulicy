@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   hasUpcoming,
   placeDescription,
+  putOutNote,
   UNVERIFIED_NOTE,
 } from "./schedule-notes.ts";
 
@@ -30,6 +31,17 @@ test("today and later count as upcoming", () => {
   const days = [day("2026-12-28"), day("2026-12-30")];
   assert.equal(hasUpcoming(days, "2026-12-30"), true);
   assert.equal(hasUpcoming(days, "2026-12-01"), true);
+});
+
+test("the put-out note gives the data's hour without a leading zero", () => {
+  assert.equal(putOutNote("06:00"), "Wystaw pojemniki do 6:00 w dniu odbioru.");
+  assert.equal(putOutNote("6:00"), "Wystaw pojemniki do 6:00 w dniu odbioru.");
+  // Another hour in another zone.
+  assert.equal(putOutNote("07:30"), "Wystaw pojemniki do 7:30 w dniu odbioru.");
+  assert.equal(
+    putOutNote("10:00"),
+    "Wystaw pojemniki do 10:00 w dniu odbioru.",
+  );
 });
 
 test("the unverified note sends people to the gmina's schedule", () => {

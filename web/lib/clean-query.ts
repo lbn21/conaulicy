@@ -5,8 +5,15 @@
 // own paths, the revalidate hook, unknown paths) is never touched: Next.js
 // links its icons with a cache-busting query.
 
+import { STATIC_PAGES } from "./static-pages.ts";
+
+// The home page and the static pages: /, /ulice, …
+const PAGES = new RegExp(
+  `^\\/(?:${STATIC_PAGES.map(({ path }) => path.slice(1)).join("|")})?$`,
+);
+
 const ROUTES: [RegExp, string[]][] = [
-  [/^\/(?:ulice|dostepnosc|prywatnosc|o-projekcie)?$/, []],
+  [PAGES, []],
   [/^\/szukaj$/, ["q"]],
   [/^\/adres\/[^/]+\/?$/, ["nr"]],
   [/^\/adres\/[^/]+\/nr(?:\/[^/]+)+$/, []],
@@ -15,6 +22,7 @@ const ROUTES: [RegExp, string[]][] = [
   [/^\/ics\/[^/]+$/, []],
   [/^\/api\/search$/, ["q"]],
   [/^\/api\/search-index\/[^/]+$/, []],
+  [/^\/api\/place-redirects$/, []],
 ];
 
 /**

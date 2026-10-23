@@ -10,6 +10,8 @@ import { movedPath, scheduleName } from "@/lib/places";
 import { getPlace, type PlaceView, placeRedirect } from "@/lib/schedule";
 import {
   hasUpcoming,
+  NO_MORE_DATES,
+  NO_MORE_DATES_NEXT,
   placeDescription,
   UNVERIFIED_NOTE,
 } from "@/lib/schedule-notes";
@@ -232,11 +234,10 @@ export async function PlaceMain({
           // and no calendar file, as both would be empty.
           <section aria-labelledby="ended-heading" className="govuk-inset-text">
             <h2 id="ended-heading" className="govuk-heading-m">
-              Kolejnych terminów jeszcze nie mamy
+              {NO_MORE_DATES}
             </h2>
             <p className="govuk-body">
-              Dodamy je, gdy tylko gmina ogłosi nowy harmonogram. Do tego czasu
-              sprawdź odbiory w harmonogramie gminy.
+              {`${NO_MORE_DATES_NEXT} Do tego czasu sprawdź odbiory w harmonogramie gminy.`}
             </p>
             {place.schedulePage && (
               <p className="govuk-body">

@@ -1,6 +1,6 @@
 # Colour and type tokens
 
-Light only, as GOV.UK. Values: `design/tokens.css`. Contrast check: `node design/contrast.mjs`.
+Light only, as GOV.UK. Values: `design/tokens.css`; the bin colours the site uses are in `web/app/tokens.css`, which the contrast check reads. Contrast check: `node design/contrast.mjs`.
 
 ## Rationale
 - **GOV.UK Frontend as-is, including its palette; only the brand-blue roles, the typeface and the logo are ours** (`docs/govuk-audit.md`). The full palette, with every group and step, is in `docs/brand.md`.
@@ -20,6 +20,7 @@ Light only, as GOV.UK. Values: `design/tokens.css`. Contrast check: `node design
 | `waste-zmieszane` / `-fg` / `-border` | `#111111` / `#ffffff` / `#111111` | mixed waste, black bin |
 | `waste-papier` / `-fg` | `#1f63c7` / `#ffffff` | paper |
 | `waste-plastik-metale` / `-fg` / `-border` | `#f2c200` / `#161b24` / `#7d6200` | plastic and metal, yellow bin |
+| `waste-plastik-metale-print` | `#5c4800` | the PDF's outline of the plastic and metal mark |
 | `waste-szklo` / `-fg` | `#1e7f4f` / `#ffffff` | glass |
 | `waste-bio` / `-fg` | `#7a4b2a` / `#ffffff` | bio |
 | `waste-popiol` / `-fg` | `#5c6370` / `#ffffff` | ash, grey bag |
@@ -36,7 +37,7 @@ The swatches follow the bins and bags people already have at the gate.
 - Zmieszane, black containers and bags: Regulamin utrzymania czystości i porządku Gminy Miejskiej Lubaczów, uchwała nr 101/X/2024, § 3.
 - Popiół, grey bags (szare worki): UM Lubaczów, od lipca, as reported by [Business Insider](https://businessinsider.com.pl/wiadomosci/nowy-szary-worek-na-smieci-ruszaja-tez-kontrole/fgzpxpc). The article does not give a year.
 
-Metale i tworzywa is a clear yellow `#f2c200` (1.68:1 against the white page), so the bin draws a dark `#7d6200` outline and shading (5.80:1). Labels next to the bins stay in the normal text colour. Text on every swatch is at least 4.5:1.
+Metale i tworzywa is a clear yellow `#f2c200` (1.68:1 against the white page), so the bin draws a dark `#7d6200` outline and shading (5.80:1). The printed PDF outlines its small diamond mark in the darker `#5c4800` (`--waste-plastik-metale-print`, 8.82:1 on white paper). Labels next to the bins stay in the normal text colour. Text on every swatch is at least 4.5:1.
 
 The rare fractions follow the colours of the Miasto Lubaczów schedule table; the regulation does not assign them bins. Opony is a light grey `#a3aab5` (2.34:1) with a `#4a5160` outline (7.96:1). Tekstylia keeps the rose that gabaryty had before; gabaryty is now orange, distinct from the amber accent and the bio brown.
 
@@ -47,7 +48,7 @@ Computed by `node design/contrast.mjs` (WCAG 2.x, sRGB relative luminance), ligh
 - borders and the surface border are decorative dividers, never the only cue;
 - light bin fills are carried by their outline.
 
-The script exits 1 if a required pair fails. Pairs that reach AAA (text, 7:1+): body text, secondary text, link hover, active links, focus text, the button hover, the secondary button, surface text, header text, and the zmieszane, plastik-metale, bio, elektro and opony labels.
+The script exits 1 if a required pair fails. Pairs that reach AAA (text, 7:1+): body text, secondary text, link hover, active links, focus text, the button hover, the secondary button, surface text, header text. Bin labels sit next to the bins in the text colour, so the `-fg` tokens have no pair on the site. Print outlines (`-print`) are "ui" pairs against white paper.
 
 | Pair | Ratio | AA | AAA |
 | --- | ---: | --- | --- |
@@ -77,16 +78,6 @@ The script exits 1 if a required pair fails. Pairs that reach AAA (text, 7:1+): 
 | focus vs body-background | 1.35 | n/a (see note) | N/A |
 | border vs body-background | 1.57 | n/a (see note) | N/A |
 | surface-border vs surface-background | 2.02 | n/a (see note) | N/A |
-| waste-zmieszane-fg on waste-zmieszane | 18.88 | pass | pass |
-| waste-papier-fg on waste-papier | 5.73 | pass | fail |
-| waste-plastik-metale-fg on waste-plastik-metale | 10.27 | pass | pass |
-| waste-szklo-fg on waste-szklo | 5.00 | pass | fail |
-| waste-bio-fg on waste-bio | 7.32 | pass | pass |
-| waste-popiol-fg on waste-popiol | 6.05 | pass | fail |
-| waste-gabaryty-fg on waste-gabaryty | 5.18 | pass | fail |
-| waste-elektro-fg on waste-elektro | 10.36 | pass | pass |
-| waste-opony-fg on waste-opony | 7.38 | pass | pass |
-| waste-tekstylia-fg on waste-tekstylia | 6.27 | pass | fail |
 | waste-zmieszane-border vs body-background | 18.88 | pass | N/A |
 | waste-zmieszane vs body-background | 18.88 | n/a (see note) | N/A |
 | waste-papier vs body-background | 5.73 | pass | N/A |
@@ -100,3 +91,4 @@ The script exits 1 if a required pair fails. Pairs that reach AAA (text, 7:1+): 
 | waste-opony-border vs body-background | 7.96 | pass | N/A |
 | waste-opony vs body-background | 2.34 | n/a (see note) | N/A |
 | waste-tekstylia vs body-background | 6.27 | pass | N/A |
+| waste-plastik-metale-print vs body-background | 8.82 | pass | N/A |

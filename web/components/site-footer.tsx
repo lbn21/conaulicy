@@ -1,5 +1,7 @@
 import { FEATURES } from "@/lib/config.generated";
 import { PLATE, PLATE_WIDTH, RIM, RIM_WIDTH, UL } from "@/lib/logo";
+import { DISCLAIMER } from "@/lib/schedule-notes";
+import { STATIC_PAGES } from "@/lib/static-pages";
 
 // Our own footer markup with GOV.UK's footer classes, laid out as the GOV.UK
 // footer: logo, navigation and section break (once there is enough to
@@ -26,13 +28,6 @@ const NAVIGATION_SHOWN =
   SECTIONS.length > 0 &&
   (SHOW_NAVIGATION ||
     SECTIONS.reduce((links, section) => links + section.items.length, 0) >= 2);
-
-const META = [
-  { href: "/ulice", text: "Wszystkie ulice i wsie" },
-  { href: "/dostepnosc", text: "Dostępność" },
-  { href: "/prywatnosc", text: "Prywatność" },
-  { href: "/o-projekcie", text: "O projekcie" },
-];
 
 /** The "ul." plate in one colour (the text colour), where GOV.UK has its crown. */
 function FooterPlate() {
@@ -98,12 +93,12 @@ export function SiteFooter() {
             <div className="govuk-footer__meta-item govuk-footer__meta-item--grow">
               <h2 className="govuk-visually-hidden">Linki pomocnicze</h2>
               <ul className="govuk-footer__inline-list">
-                {META.map((item) => (
+                {STATIC_PAGES.map((item) => (
                   <li
-                    key={item.href}
+                    key={item.path}
                     className="govuk-footer__inline-list-item"
                   >
-                    <a className="govuk-footer__link" href={item.href}>
+                    <a className="govuk-footer__link" href={item.path}>
                       {item.text}
                     </a>
                   </li>
@@ -112,7 +107,7 @@ export function SiteFooter() {
               <div className="govuk-footer__meta-custom">
                 Zrobił Jakub Marciniszyn dla mieszkańców Lubaczowa.
                 <br />
-                Nie jesteśmy urzędem – obowiązuje harmonogram gminy.
+                {DISCLAIMER}
               </div>
               <span className="govuk-footer__licence-description">
                 Teksty na tej stronie są dostępne na licencji{" "}

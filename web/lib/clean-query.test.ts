@@ -46,6 +46,7 @@ test("the other cacheable routes take no parameters", () => {
   assert.equal(clean("/o-projekcie?x=1"), "");
   assert.equal(clean("/ics/Z?x=1"), "");
   assert.equal(clean("/api/search-index/abc?x=1"), "");
+  assert.equal(clean("/api/place-redirects?x=1"), "");
   assert.equal(clean("/adres/X/numer?nr=1"), "");
   assert.equal(clean("/adres/X/nr/12?nr=1"), "");
   assert.equal(clean("/adres/X/nr/12?x=1"), "");
@@ -68,6 +69,7 @@ test("no query, nothing to do", () => {
   assert.equal(clean("/"), null);
   assert.equal(clean("/adres/X"), null);
   assert.equal(clean("/api/search"), null);
+  assert.equal(clean("/api/place-redirects"), null);
 });
 
 test("internal paths are never touched", () => {

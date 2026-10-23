@@ -21,7 +21,11 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { inflateSync } from "node:zlib";
-import { UNVERIFIED_NOTE } from "../lib/schedule-notes.ts";
+import {
+  DISCLAIMER,
+  NO_MORE_DATES,
+  UNVERIFIED_NOTE,
+} from "../lib/schedule-notes.ts";
 import { finish, startServer } from "./lib/server.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
@@ -166,8 +170,8 @@ try {
       `${c.name}: no text-only version`,
     );
     check(
-      text.includes("Serwis nieoficjalny"),
-      `${c.name}: no "Serwis nieoficjalny" line`,
+      text.replace(/\s+/g, " ").includes(DISCLAIMER),
+      `${c.name}: no "${DISCLAIMER}" line`,
     );
     check(text.includes("Źródło:"), `${c.name}: no source line`);
     check(
@@ -192,10 +196,7 @@ try {
     !ended.includes("harmonogram.pdf") && !ended.includes('href="/ics/'),
     "schedule ended: the page still offers the PDF or the calendar file",
   );
-  check(
-    ended.includes("Kolejnych terminów jeszcze nie mamy"),
-    "schedule ended: no notice on the page",
-  );
+  check(ended.includes(NO_MORE_DATES), "schedule ended: no notice on the page");
   console.log("ok    schedule ended: page without PDF or calendar file");
 
   for (const p of TAGGED) {

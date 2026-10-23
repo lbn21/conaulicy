@@ -44,6 +44,8 @@
   --waste-papier: #1f63c7;
   --waste-plastik-metale: #f2c200;
   --waste-plastik-metale-border: #7d6200;
+  /* The PDF's outline: darker, for small marks on paper. */
+  --waste-plastik-metale-print: #5c4800;
   --waste-szklo: #1e7f4f;
   --waste-bio: #7a4b2a;
   --waste-popiol: #5c6370;
