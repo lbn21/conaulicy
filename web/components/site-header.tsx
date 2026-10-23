@@ -9,10 +9,17 @@ import {
   WORDMARK,
 } from "@/lib/logo";
 
+// GOV.UK header's logotype height (components/header/_mixin.scss); the width
+// keeps the logo's aspect ratio, about 169.
+const HEIGHT = 30;
+const WIDTH = Math.round((HEIGHT * LOGO_WIDTH) / LOGO_HEIGHT);
+
 // The GOV.UK Generic header (never the GOV.UK header or crown) with our
 // "ul." plate. On its black bar the plate is the logo's dark-background
 // lockup: amber plate, light wordmark (docs/brand.md). Markup as the
-// component's own template: only the logo goes in the homepage link.
+// component's own template: only the logo goes in the homepage link. Sized
+// and placed as the GOV.UK header's logo (app/site.scss), so the hover
+// underline clears the "y" by 6px as on GOV.UK.
 export function SiteHeader() {
   return (
     <header className="govuk-template__header">
@@ -22,8 +29,8 @@ export function SiteHeader() {
             <a href="/" className="govuk-generic-header__homepage-link">
               <svg
                 aria-hidden="true"
-                width="180"
-                height="32"
+                width={WIDTH}
+                height={HEIGHT}
                 viewBox={`0 0 ${LOGO_WIDTH} ${LOGO_HEIGHT}`}
                 className="app-logo"
               >
