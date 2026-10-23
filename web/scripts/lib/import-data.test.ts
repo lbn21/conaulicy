@@ -6,8 +6,10 @@ import {
   stripPrefix,
   transform,
   validate,
+  withTeryt,
 } from "./import-data.ts";
 import { FIXTURE_IDS, fixture } from "./import-fixture.ts";
+import { parseUlic } from "./teryt.ts";
 
 const TODAY = "2026-10-19";
 const { etl } = fixture(TODAY, "http://127.0.0.1:1");
@@ -133,4 +135,49 @@ test("production is the integration's Neon endpoint", () => {
     describeTarget("postgres://ci:ci@localhost:5432/x", {}).production,
     false,
   );
+});
+
+// As eTERYT serves it: BOM, semicolons, CRLF.
+const ULIC = parseUlic(
+  [
+    "\uFEFFWOJ;POW;GMI;RODZ_GMI;SYM;SYM_UL;CECHA;NAZWA_1;NAZWA_2;STAN_NA",
+    "18;09;01;1;0972447;00470;ul.;Asnyka;Adama;2026-10-16",
+    "18;09;01;1;0972447;23434;ul.;Ustronna;;2026-10-16",
+    "18;09;01;1;0972447;90100;rondo;Rondo Testowe;;2026-10-16",
+    "18;09;01;1;0972447;90101;os.;Osiedle Testowe;;2026-10-16",
+  ].join("\r\n"),
+);
+
+test("street names and types come from TERYT ULIC", () => {
+  const named = withTeryt(etl, ULIC);
+  assert.deepEqual(named.errors, []);
+  assert.deepEqual(named.warnings, []);
+  const asnyka = named.etl.streets.find((s) => s.teryt === "00470");
+  assert.equal(asnyka?.nazwa1, "Asnyka");
+  assert.equal(asnyka?.nazwa2, "Adama");
+  const { rows } = transform(named.etl, checked);
+  const row = rows.streets.find((s) => s.id === "0972447-00470");
+  assert.equal(row?.name, "Adama Asnyka");
+  assert.equal(row?.nazwa1, "Asnyka");
+
+  // The ETL's own spelling loses to TERYT's, with a warning.
+  const typo = structuredClone(etl);
+  typo.streets[0].name = "Adama Asnika";
+  typo.streets[0].prefix = "al.";
+  const fixed = withTeryt(typo, ULIC);
+  assert.match(fixed.warnings.join("\n"), /Asnika.*TERYT/);
+  const { rows: fixedRows } = transform(fixed.etl, checked);
+  assert.equal(fixedRows.streets[0].name, "Adama Asnyka");
+  assert.equal(fixedRows.streets[0].prefix, "ul.");
+
+  // A street TERYT does not have is an error.
+  const missing = withTeryt(etl, ULIC.slice(1));
+  assert.match(missing.errors.join("\n"), /00470.*not in TERYT ULIC/);
+});
+
+test("without TERYT fields the ETL's name stays (before the migration)", () => {
+  const { rows } = transform(etl, checked);
+  const row = rows.streets.find((s) => s.id === "0972447-00470");
+  assert.equal(row?.name, "Adama Asnyka");
+  assert.equal(row?.nazwa1, null);
 });

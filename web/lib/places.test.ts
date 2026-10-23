@@ -4,11 +4,13 @@ import {
   hasZone,
   isSplitStreet,
   localitySearchLabel,
+  movedPath,
   pickZone,
   placeList,
   scheduleName,
   streetLabel,
   streetName,
+  terytName,
   villageLabel,
 } from "./places.ts";
 
@@ -195,4 +197,34 @@ test("/ulice lists the town by letter in Polish order, villages with their stree
     },
     { id: "10", label: "Szczutków (gm. Lubaczów)", streets: [] },
   ]);
+});
+
+test("a street's name in TERYT's order: NAZWA_2, then NAZWA_1", () => {
+  assert.equal(terytName("Asnyka", "Adama"), "Adama Asnyka");
+  assert.equal(terytName("Rynek", null), "Rynek");
+  assert.equal(
+    streetName("os.", terytName("Osiedle Mickiewicza", null)),
+    "Osiedle Mickiewicza",
+  );
+});
+
+test("a moved place: every address under the old id, query kept", () => {
+  const move = (path: string) =>
+    movedPath(path, "0972447-99999", "0972447-00470");
+  assert.equal(move("/adres/0972447-99999"), "/adres/0972447-00470");
+  assert.equal(
+    move("/adres/0972447-99999?nr=7/22"),
+    "/adres/0972447-00470?nr=7/22",
+  );
+  assert.equal(
+    move("/adres/0972447-99999/harmonogram.pdf?nr=12"),
+    "/adres/0972447-00470/harmonogram.pdf?nr=12",
+  );
+  assert.equal(
+    move("/adres/0972447-99999/numer"),
+    "/adres/0972447-00470/numer",
+  );
+  // Only that id: never a longer one, nor another page.
+  assert.equal(move("/adres/0972447-999990"), null);
+  assert.equal(move("/ulice"), null);
 });

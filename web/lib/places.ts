@@ -95,6 +95,26 @@ export function streetLabel(street: {
   return `${streetName(street.prefix, street.name)}, ${street.locality}`;
 }
 
+/**
+ * A moved place's path (place_redirects): /adres/<oldId> and everything
+ * under it (/harmonogram.pdf, /nr/…, /numer), query included, on newId.
+ * Null for any other path.
+ */
+export function movedPath(
+  path: string,
+  oldId: string,
+  newId: string,
+): string | null {
+  const old = `/adres/${encodeURIComponent(oldId)}`;
+  if (
+    path !== old &&
+    !path.startsWith(`${old}/`) &&
+    !path.startsWith(`${old}?`)
+  )
+    return null;
+  return `/adres/${encodeURIComponent(newId)}${path.slice(old.length)}`;
+}
+
 /** Not offered in search (nobody lives there); a direct link still works. */
 export const UNLISTED_PREFIXES = ["rondo", "skwer"];
 

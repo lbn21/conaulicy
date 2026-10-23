@@ -5,7 +5,7 @@
 // Dates come from simple rules, for the 12 months starting with the current
 // one; nothing here is a real schedule.
 //
-// Covers: a city street from the old fixture URL (ul. Adama Asnyka), streets
+// Covers: a renamed street's old id (place_redirects), a city street from the old fixture URL (ul. Adama Asnyka), streets
 // with diacritics, a street in no zone, a street whose schedule has ended
 // (only past dates), a village with streets, villages without, one month
 // with 6 pickup days and holiday-shifted dates, and the home page's examples
@@ -18,12 +18,13 @@ import {
   gminy,
   localities,
   meta,
+  placeRedirects,
   streets,
   zoneMembers,
   zones,
 } from "../lib/db/schema.ts";
 import { normalize } from "../lib/normalize.ts";
-import { localitySearchLabel, streetLabel } from "../lib/places.ts";
+import { localitySearchLabel, streetLabel, terytName } from "../lib/places.ts";
 import { GMINA_SCHEDULE_PAGES } from "./lib/gmina-pages.ts";
 import { localDatabaseUrl } from "./lib/local-db.ts";
 
@@ -52,20 +53,30 @@ const LOCALITIES = [
   { id: "0606375", gminaId: "1809042", name: "Szczutków", kind: "wies" },
 ] as const;
 
-// SYM_UL 9xxxx are made up.
+// [SIMC, SYM_UL, NAZWA_1, NAZWA_2], as TERYT ULIC; SYM_UL 9xxxx are made up.
 const STREETS = [
-  ["0972447", "00470", "Adama Asnyka"],
-  ["0972447", "20291", "Juliusza Słowackiego"],
-  ["0972447", "12740", "Adama Mickiewicza"],
-  ["0972447", "19253", "Rynek"],
-  ["0972447", "16264", "Józefa Piłsudskiego"],
-  ["0972447", "90004", "Tadeusza Kościuszki"],
-  ["0972447", "90005", "Stefana Żeromskiego"],
-  ["0972447", "23434", "Ustronna"],
-  ["0972447", "90009", "Wrzosowa"],
-  ["0606234", "90007", "Polna"],
-  ["0606234", "90008", "Leśna"],
+  ["0972447", "00470", "Asnyka", "Adama"],
+  ["0972447", "20291", "Słowackiego", "Juliusza"],
+  ["0972447", "12740", "Mickiewicza", "Adama"],
+  ["0972447", "19253", "Rynek", null],
+  ["0972447", "16264", "Piłsudskiego", "Józefa"],
+  ["0972447", "90004", "Kościuszki", "Tadeusza"],
+  ["0972447", "90005", "Żeromskiego", "Stefana"],
+  ["0972447", "23434", "Ustronna", null],
+  ["0972447", "90009", "Wrzosowa", null],
+  ["0606234", "90007", "Polna", null],
+  ["0606234", "90008", "Leśna", null],
 ] as const;
+
+// The CI fixture is the only place a redirect is made without review: it
+// is made-up data (scripts/check-query.mjs checks the 308s).
+const REDIRECTS = [
+  {
+    oldId: "0972447-99999",
+    newId: "0972447-00470",
+    reason: "CI fixture: a made-up rename",
+  },
+];
 
 type Rule = {
   /** 1 = Monday … 6 = Saturday, as Date.getUTCDay(). */
@@ -327,14 +338,17 @@ async function main() {
       }),
     ),
   }));
-  const streetRows = STREETS.map(([localityId, sym, name]) => {
+  const streetRows = STREETS.map(([localityId, sym, nazwa1, nazwa2]) => {
     const locality = LOCALITIES.find((l) => l.id === localityId);
+    const name = terytName(nazwa1, nazwa2);
     return {
       id: `${localityId}-${sym}`,
       localityId,
       teryt: sym,
       prefix: "ul.",
       name,
+      nazwa1,
+      nazwa2,
       search: normalize(
         streetLabel({ prefix: "ul.", name, locality: locality?.name ?? "" }),
       ),
@@ -372,6 +386,7 @@ async function main() {
 
   await db.transaction(async (tx) => {
     for (const table of [
+      placeRedirects,
       events,
       zoneMembers,
       zones,
@@ -396,6 +411,8 @@ async function main() {
         ZONES.flatMap((z) => z.members.map((m) => ({ zoneId: z.id, ...m }))),
       );
     await tx.insert(events).values(eventRows);
+    // A renamed street's old page (made up): it must answer 308 to the new.
+    await tx.insert(placeRedirects).values(REDIRECTS);
   });
 
   const shifted = eventRows.filter((e) => e.shiftedFrom);

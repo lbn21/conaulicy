@@ -1,4 +1,5 @@
-// npm run db:import -- --from <dir> [--approvals <yaml>] [--apply]
+// npm run db:import -- --from <dir> [--teryt <dir>] [--approvals <yaml>]
+//                       [--apply]
 //
 // Loads the ETL output (docs/import-plan.md section 3). Without --apply it is
 // a dry run: validate, check the sources, print the diff against the
@@ -6,13 +7,17 @@
 // and rows missing from the input deleted. Then the site's cache is
 // revalidated and one address page is checked.
 //
+// --teryt: the archived TERYT ULIC files (ULIC_*.csv, npm run sources:pull,
+// e.g. ../.cache/sources/teryt/2026-10-18): every street's CECHA, NAZWA_1
+// and NAZWA_2 are taken from them, so its name is TERYT's (CLAUDE.md).
+// Without it the ETL's names are used, with a warning.
 // Options: --offline (dry run only: skip downloading the sources),
 // --allow-deletes (more than 10% of a table may go), --yes-production.
 // Env: DATABASE_URL_UNPOOLED or DATABASE_URL; optional SITE_URL,
 // REVALIDATE_SECRET, SITE_BASIC_AUTH, VERCEL_AUTOMATION_BYPASS_SECRET.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { getTableColumns, inArray, sql } from "drizzle-orm";
@@ -36,7 +41,9 @@ import {
   type Rows,
   transform,
   validate,
+  withTeryt,
 } from "./lib/import-data.ts";
+import { parseUlic } from "./lib/teryt.ts";
 
 /** The address that must keep working (printed QR codes link to it). */
 const SMOKE_PLACE = "0972447-00470";
@@ -46,6 +53,7 @@ const EXAMPLES = 3;
 const { values: args } = parseArgs({
   options: {
     from: { type: "string" },
+    teryt: { type: "string" },
     approvals: { type: "string" },
     apply: { type: "boolean", default: false },
     offline: { type: "boolean", default: false },
@@ -267,8 +275,23 @@ async function main() {
   if (args.apply && target.production && !args["yes-production"])
     fail("This is the production database. Add --yes-production to write.");
 
-  const etl = readEtl(args.from);
+  let etl = readEtl(args.from);
   const errors = validate(etl);
+  if (args.teryt) {
+    const dir = args.teryt;
+    const ulic = readdirSync(dir)
+      .filter((file) => /^ULIC_.*\.csv$/i.test(file))
+      .flatMap((file) => parseUlic(readFileSync(join(dir, file), "utf8")));
+    if (ulic.length === 0) fail(`No ULIC_*.csv in ${dir}.`);
+    const named = withTeryt(etl, ulic);
+    etl = named.etl;
+    errors.push(...named.errors);
+    for (const w of named.warnings) console.log(`TERYT: ${w}`);
+  } else {
+    console.log(
+      "TERYT: no --teryt, street names are the ETL's (not checked against ULIC).",
+    );
+  }
   if (errors.length > 0) {
     fail(
       `Invalid dataset (${errors.length}):\n${errors.slice(0, 20).join("\n")}`,
