@@ -8,8 +8,11 @@
 // /szukaj with a field named q and a submit button, and /szukaj answers it:
 // one place redirects (308, never stored) to its page with the house number,
 // several are listed, none says what to try, an empty q is GOV.UK's error.
+// A suggestion's text, as a pick leaves it in the field, opens its own
+// place: every label in /api/search-index, and some with a house number.
 //
 // Runs against `next start` on the current build and the CI fixture.
+import { withHouseNumber } from "../lib/house.ts";
 import { startServer } from "./lib/server.mjs";
 
 const STREET = "/adres/0972447-00470";
@@ -37,6 +40,19 @@ const CASES = [
   ["GET", "/robots.txt?x=1", 200],
   ["GET", "/szukaj?q=Rynek", 308, "/adres/0972447-19253"],
   ["GET", "/szukaj?q=asnyka%2012", 308, "/adres/0972447-00470?nr=12"],
+  [
+    "GET",
+    `/szukaj?q=${encodeURIComponent("ul. Rynek, Lubaczów")}`,
+    308,
+    "/adres/0972447-19253",
+  ],
+  // A house number where the field puts it, or typed after a pick.
+  ...[
+    ["ul. Rynek 5, Lubaczów", "/adres/0972447-19253?nr=5"],
+    ["ul. Rynek, Lubaczów 5", "/adres/0972447-19253?nr=5"],
+    ["ul. Adama Asnyka 12, Lubaczów", "/adres/0972447-00470?nr=12"],
+    ["ul. Adama Asnyka, Lubaczów 12", "/adres/0972447-00470?nr=12"],
+  ].map(([q, to]) => ["GET", `/szukaj?q=${encodeURIComponent(q)}`, 308, to]),
   ["GET", "/szukaj?q=adama", 200],
   ["GET", "/szukaj?q=xyzqq", 200],
   ["GET", "/szukaj?q=", 200],
@@ -96,6 +112,28 @@ try {
     else failures.push(`/: no <link> to /${name}?…`);
   }
 
+  const indexUrl = /\/api\/search-index\/[a-z0-9]+/.exec(home)?.[0];
+  const places = indexUrl
+    ? await (await fetch(`${server.origin}${indexUrl}`)).json()
+    : [];
+  if (places.length === 0) failures.push("/: no search index");
+  for (const [i, [id, label]] of places.entries()) {
+    const href = `/adres/${encodeURIComponent(id)}`;
+    CASES.push(["GET", `/szukaj?q=${encodeURIComponent(label)}`, 308, href]);
+    // Every third with a house number, as the field writes it or as typed
+    // after a pick.
+    if (i % 3 === 0) {
+      for (const text of [withHouseNumber(label, "7a"), `${label} 7a`]) {
+        CASES.push([
+          "GET",
+          `/szukaj?q=${encodeURIComponent(text)}`,
+          308,
+          `${href}?nr=7a`,
+        ]);
+      }
+    }
+  }
+
   const form = /<form[^>]*>[\s\S]*?<\/form>/.exec(home)?.[0] ?? "";
   const tag = /^<form[^>]*>/.exec(form)?.[0] ?? "";
   for (const part of [
@@ -112,6 +150,11 @@ try {
     ).text();
     for (const part of parts) {
       if (!html.includes(part)) failures.push(`/szukaj?q=${q}: no ${part}`);
+    }
+    // Metadata in <head>, never streamed into <body> (htmlLimitedBots).
+    const head = html.slice(0, html.indexOf("</head>"));
+    if (!head.includes("<title>") || !head.includes('name="robots"')) {
+      failures.push(`/szukaj?q=${q}: <title> or robots meta not in <head>`);
     }
   }
   const one = await fetch(`${server.origin}/szukaj?q=Rynek`, {

@@ -8,7 +8,6 @@ import {
   findPlaces,
   type Matcher,
   matcher,
-  placeHref,
   SEARCH_ID,
   type SearchHit,
   type SearchIndex,
@@ -45,7 +44,7 @@ function escapeHtml(text: string): string {
     .replaceAll('"', "&quot;");
 }
 
-// What accessible-autocomplete hands to the templates and onConfirm: our
+// What accessible-autocomplete hands to the templates: our
 // results, or a plain string (its options may be strings, e.g. it seeds
 // them with defaultValue, which this field does not use).
 type Option = SearchHit | string | undefined;
@@ -62,9 +61,14 @@ function optionText(option: Option): string {
  * its documented options only. It and the index of every place load on first
  * focus, not with the page; then each keystroke is matched on the device
  * ("Asnyka 12" carries the house number to ?nr=). If the index cannot load,
- * settled queries go to /api/search. Choosing a suggestion opens its page;
- * Enter with no suggestion highlighted (none found, still loading, list
- * closed) submits the form, as without JS.
+ * settled queries go to /api/search. As GOV.UK's default (no onConfirm),
+ * choosing a suggestion (tap, click, or arrows and Enter) only fills the
+ * field with its text and closes the list; „Szukaj”, or Enter with the list
+ * closed, submits the form, and /szukaj opens the place whose text it is.
+ * With autoselect the first suggestion is highlighted, so Enter with the
+ * list open picks it and the next Enter submits; with none (none found,
+ * still loading) Enter submits at once. confirmOnBlur stays off: leaving the
+ * field keeps what was typed rather than the highlighted suggestion.
  */
 export function AddressSearch({ indexUrl }: { indexUrl: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -172,11 +176,6 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
         templates: {
           inputValue: optionText,
           suggestion: (option: Option) => escapeHtml(optionText(option)),
-        },
-        onConfirm: (option: Option) => {
-          if (option && typeof option !== "string") {
-            window.location.assign(placeHref(option));
-          }
         },
         tNoResults: () => NOTES[note],
         tStatusNoResults: () => NOTES[note],
