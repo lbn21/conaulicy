@@ -3,9 +3,25 @@
 // Capped by scripts/check-own-css.mjs.
 @use "sass:map";
 @use "settings" as *;
+@use "govuk-frontend/dist/govuk/components/generic-header/mixin" as generic-header;
 
-// Our "ul." plate in the Generic header. Placed by the component's own rules
-// (vertical-align: top), so the hover underline sits below it.
+// Our "ul." plate in the Generic header, with the GOV.UK header's logo
+// geometry (govuk-frontend components/header/_mixin.scss): the logo
+// container's 16/12 padding, and the logo 30px tall (site-header.tsx), lifted
+// 3px as .govuk-header__logotype, so the 3px hover underline of the shared
+// link-styles sits 6px below it. The px are GOV.UK's magic numbers, allowed
+// one by one in scripts/check-own-css.mjs.
+.govuk-generic-header__logo {
+  @include generic-header.logo-styles($padding-top: 16px, $padding-bottom: 12px);
+}
+
+.app-logo {
+  position: relative;
+  top: -3px;
+  margin-bottom: 2px;
+  vertical-align: top;
+}
+
 .app-logo__plate {
   fill: map.get($app-latarnia, "plate");
 }

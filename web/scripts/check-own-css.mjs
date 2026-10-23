@@ -3,7 +3,8 @@
 // equivalent for. Fails when:
 // - a stylesheet appears outside the allowed list;
 // - site.scss passes 1 KB gzip compiled (the hard cap) or 80 lines of code
-//   (blank and comment-only lines are not counted), or uses a raw colour or px;
+//   (blank and comment-only lines are not counted), or uses a raw colour or px
+//   (except the exact declarations in RAW_PX, GOV.UK's own magic numbers);
 // - a page uses govuk-button--inverse (its hover and shadow are GOV.UK brand
 //   blue, see check-govuk-assets.mjs);
 // - a govuk-tag has no colour modifier (the default tag is GOV.UK brand blue);
@@ -35,12 +36,22 @@ const HOOK_ONLY = new Map([
     "govuk-generic-header__container",
     "only its --full-width modifier is styled",
   ],
-  ["app-logo", "only its __plate and __wordmark children are styled"],
   [
     "govuk-frontend-supported",
     "template.njk's JS support hook on body, no rule in our components",
   ],
 ]);
+// The only raw px in site.scss: the GOV.UK header's logo geometry, copied
+// from govuk-frontend's components/header/_mixin.scss, which writes them as
+// magic px. Each must appear exactly as here, once.
+const RAW_PX = [
+  // .govuk-header__logo: logo-styles($padding-top: 16px, $padding-bottom: 14px - 2px)
+  "logo-styles($padding-top: 16px, $padding-bottom: 12px)",
+  // .govuk-header__logotype: top: -3px
+  "top: -3px;",
+  // .govuk-header__logotype: margin-bottom: $logo-bottom-margin (2px)
+  "margin-bottom: 2px;",
+];
 const MAX_LINES = 80;
 const MAX_GZIP = 1000;
 
@@ -83,7 +94,15 @@ const lines = site
   .filter((line) => line.trim() && !line.trim().startsWith("//")).length;
 if (lines > MAX_LINES)
   failures.push(`app/site.scss: ${lines} lines (max ${MAX_LINES})`);
-const code = site.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+let code = site.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+for (const declaration of RAW_PX) {
+  const count = code.split(declaration).length - 1;
+  if (count !== 1)
+    failures.push(
+      `app/site.scss: RAW_PX "${declaration}" appears ${count} times (expected once)`,
+    );
+  code = code.replace(declaration, "");
+}
 for (const match of code.matchAll(
   /#[0-9a-f]{3,8}\b|\b\d*\.?\d+px\b|\brgba?\(|\bhsla?\(/gi,
 )) {
