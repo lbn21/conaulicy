@@ -65,15 +65,22 @@ const TABLE_W = (CONTENT_W - COLUMN_GAP * (COLUMNS - 1)) / COLUMNS;
 /** The site's type scale at its physical size: CSS px × 0.75 = pt. */
 const px = (n: number) => n * 0.75;
 
-// GOV.UK Frontend's palette, as on the site; the plate on dark from
-// app/_palette.scss.
+// Atkinson Hyperlegible Next's vertical metrics, in em. PDFKit sets a line
+// from the top of its ascender (0.984), so the cap height (0.668) starts
+// below y and descenders end about 0.2 below the baseline. The bands pad to
+// this ink, not to the line box.
+const LINE = 0.984 + 0.316;
+const CAP_TOP = 0.984 - 0.668;
+const INK_BOTTOM = 0.984 + 0.2;
+
+// GOV.UK Frontend's palette, as on the site.
 const BLACK = "#0b0c0c";
 const WHITE = "#ffffff";
 const SECONDARY_TEXT = "#484949";
 const BORDER = "#cecece";
 const PANEL = "#f3f3f3";
-const ERROR = "#ca3535";
-const PLATE_ON_DARK = "#ffb547";
+// govuk-colour("red") in govuk-frontend 6.5.1, also its error colour.
+const RED = "#ca3535";
 // Darker than the site's --waste-plastik-metale-border: small marks on paper
 // need a stronger outline (app/tokens.css --waste-plastik-metale-print).
 const PLASTIK_METALE_PRINT = "#5c4800";
@@ -220,15 +227,16 @@ function drawQr(
 }
 
 /**
- * The plate and wordmark on dark, as in the site header: the wordmark's
- * x-height centred on the plate.
+ * The plate and wordmark on dark, as in the site header: a white plate, the
+ * "ul." and rim cut out to the black, and the wordmark's x-height centred on
+ * the plate.
  */
 function drawLogo(doc: PDFKit.PDFDocument, x: number, y: number, h: number) {
   doc
     .save()
     .translate(x, y)
     .scale(h / LOGO_HEIGHT);
-  doc.path(PLATE).fillColor(PLATE_ON_DARK).fill();
+  doc.path(PLATE).fillColor(WHITE).fill();
   doc.path(UL).fillColor(BLACK).fill();
   doc.path(RIM).lineWidth(RIM_WIDTH).strokeColor(BLACK).stroke();
   doc.translate(0, HEADER_WORDMARK_SHIFT);
@@ -344,8 +352,11 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const putOut = putOutBy ? putOutNote(putOutBy) : null;
   const title = withHouseNumber(place.name, place.nr);
   const dayLine = usual ? `Twój dzień odbioru: ${usual}` : null;
-  const warningText =
-    "Terminy mogą się zmienić. Gdyby coś się nie zgadzało, rację ma harmonogram gminy.";
+  // The unverified note ends with the same advice, so then it is said once,
+  // after the reason for it.
+  const warningText = place.verified
+    ? "Terminy mogą się zmienić. Gdyby coś się nie zgadzało, rację ma harmonogram gminy."
+    : "Terminy mogą się zmienić.";
 
   const doc = new PDFDocument({
     size: "A4",
@@ -485,10 +496,8 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       draw: (x: number, cy: number) =>
         drawMark(doc, tone, x + keyMark / 2, cy, keyMark),
     })),
-    ...(hasOdd
-      ? [{ label: `Inny dzień niż ${usual}`, draw: cell(BLACK) }]
-      : []),
-    ...(hasMoved ? [{ label: "Termin przesunięty", draw: cell(ERROR) }] : []),
+    ...(hasOdd ? [{ label: `Inny dzień niż ${usual}`, draw: cell(RED) }] : []),
+    ...(hasMoved ? [{ label: "Termin przesunięty", draw: cell(RED) }] : []),
   ];
   doc.font("bold").fontSize(keySize + 1);
   const keyStart = MARGIN + doc.widthOfString("Oznaczenia") + 14;
@@ -551,82 +560,98 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   };
 
   // ------------------------------------------------------------ bands
+  // Both bands pad their content by MARGIN on all four sides, measured to the
+  // ink, and draw the plate at the same size.
+  const logoH = 24;
+  const logoGap = 14;
   const kicker = `${place.area} · Harmonogram odbioru odpadów`;
   const qrSize = 92;
   const qrX = PAGE_W - MARGIN - qrSize - 6;
   const bandTextW = qrX - 6 - 24 - MARGIN;
+  const kickerTop = MARGIN + logoH + logoGap;
+  const titleTop = kickerTop + 20;
   const titleSize = fitSize(doc, "bold", title, bandTextW, px(36), px(24));
   doc.font("bold").fontSize(titleSize);
   const titleH = doc.heightOfString(title, { width: bandTextW });
-  const bandH = Math.max(146, 76 + titleH + (dayLine ? 40 : 14));
+  const dayTop = titleTop + titleH + 6;
+  const wordsBottom = dayLine
+    ? dayTop + px(19) * INK_BOTTOM
+    : titleTop + titleH - titleSize * (LINE - INK_BOTTOM);
+  const qrBottom = MARGIN + qrSize + 12;
+  const scanBottom = qrBottom + 8 + small * (INK_BOTTOM - CAP_TOP);
+  const bandH = Math.max(wordsBottom, scanBottom) + MARGIN;
 
   /** Page 1: black band, plate, place, usual day and the QR code. */
   const drawBand = () => {
     artifact(doc, () => {
       doc.rect(0, 0, PAGE_W, bandH).fillColor(BLACK).fill();
-      drawLogo(doc, MARGIN, 18, 24);
+      drawLogo(doc, MARGIN, MARGIN, logoH);
       doc
-        .rect(qrX - 6, 18, qrSize + 12, qrSize + 12)
+        .rect(qrX - 6, MARGIN, qrSize + 12, qrSize + 12)
         .fillColor(WHITE)
         .fill();
-      drawQr(doc, url, qrX, 24, qrSize);
+      drawQr(doc, url, qrX, MARGIN + 6, qrSize);
     });
     tag(root, "P", () => {
       doc
         .font("regular")
         .fontSize(fitSize(doc, "regular", kicker, bandTextW, px(19), 9))
         .fillColor(WHITE)
-        .text(kicker, MARGIN, 56, { lineBreak: false });
+        .text(kicker, MARGIN, kickerTop, { lineBreak: false });
     });
     tag(root, "H1", () => {
       doc
         .font("bold")
         .fontSize(titleSize)
         .fillColor(WHITE)
-        .text(title, MARGIN, 76, { width: bandTextW });
+        .text(title, MARGIN, titleTop, { width: bandTextW });
     });
-    const dayTop = doc.y + 6;
     if (dayLine) {
       tag(root, "P", () => {
         doc
           .font("bold")
           .fontSize(px(19))
-          .fillColor(PLATE_ON_DARK)
+          .fillColor(WHITE)
           .text(dayLine, MARGIN, dayTop, { lineBreak: false });
       });
     }
+    // On the bottom padding, under the QR code.
     tag(root, "P", () => {
       doc
         .font("regular")
         .fontSize(small)
         .fillColor(WHITE)
-        .text("Zeskanuj: aktualne terminy", PAGE_W - MARGIN - 170, 128, {
-          width: 170,
-          align: "right",
-          lineBreak: false,
-          link: url,
-        });
+        .text(
+          "Zeskanuj: aktualne terminy",
+          PAGE_W - MARGIN - 170,
+          bandH - MARGIN - small * INK_BOTTOM,
+          { width: 170, align: "right", lineBreak: false, link: url },
+        );
     });
     return bandH;
   };
 
   /** Later pages: a compact black band with the plate and the place. */
+  const compactH = MARGIN + logoH + logoGap + px(19) * INK_BOTTOM + MARGIN;
   const compactBand = (
     what: string,
     parent: PDFKit.PDFStructureElement | null,
   ) => {
-    const h = 68;
     const text = `${title} · ${what}`;
     const plate = () => {
-      doc.rect(0, 0, PAGE_W, h).fillColor(BLACK).fill();
-      drawLogo(doc, MARGIN, 14, 20);
+      doc.rect(0, 0, PAGE_W, compactH).fillColor(BLACK).fill();
+      drawLogo(doc, MARGIN, MARGIN, logoH);
     };
+    // On the bottom padding, also when a long name sets it smaller.
+    const size = fitSize(doc, "bold", text, CONTENT_W, px(19), 9);
     const words = () => {
       doc
         .font("bold")
-        .fontSize(fitSize(doc, "bold", text, CONTENT_W, px(19), 9))
+        .fontSize(size)
         .fillColor(WHITE)
-        .text(text, MARGIN, 42, { lineBreak: false });
+        .text(text, MARGIN, compactH - MARGIN - size * INK_BOTTOM, {
+          lineBreak: false,
+        });
     };
     // A repeated band is decoration as a whole.
     if (parent) {
@@ -638,7 +663,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         words();
       });
     }
-    return h;
+    return compactH;
   };
 
   // ------------------------------------------------------------ panel
@@ -793,15 +818,17 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     for (const day of days) {
       const h = lines(day) * rowH;
       const from = moved(day);
-      const marked = from ? ERROR : odd(day) ? BLACK : null;
+      const marked = from || odd(day);
       const n = String(Number(day.date.slice(8)));
       const text = usual && !marked ? n : `${n} ${weekdayShort(day.date)}`;
       const top = rowTop;
+      // The red hugs its text, so the marks keep their usual distance.
+      const textW = doc.font("bold").fontSize(cellText).widthOfString(text);
       artifact(doc, () => {
         if (marked) {
           doc
-            .rect(x, top + 2, dateW - 2, rowH - 4)
-            .fillColor(marked)
+            .rect(x, top + 2, textW + 6, rowH - 4)
+            .fillColor(RED)
             .fill();
         }
         doc
@@ -853,8 +880,8 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   }
   // Lay out first: the key names the page where the text version starts,
   // and the "not announced yet" line goes below the calendar only if it fits.
-  // Below the compact band (68 high) on later calendar pages.
-  const CONTINUED_TOP = 68 + 22;
+  // Below the compact band on later calendar pages.
+  const CONTINUED_TOP = compactH + 22;
   const layout = (laterInPanel: boolean) => {
     const breaks: number[] = [];
     let y = bandH + panelH(panelNotes(laterInPanel)) + 18;
@@ -977,23 +1004,27 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     doc.addPage();
     y = compactBand("wersja tekstowa, ciąg dalszy", null) + 18;
   };
-  const listSize = px(16);
-  const headSize = px(19);
+  // GOV.UK's scale, as on the site: month headings heading-m, the rest body.
+  const listSize = px(19);
+  const headSize = px(24);
 
   // Chronological: months with dates in full, gaps collapsed into one line.
   let gap: string[] = [];
   const flushGap = (last: boolean) => {
     if (gap.length === 0) return;
-    const text = `${emptyRange(gap)}: ${last ? LATER : "terminy jeszcze nieogłoszone."}`;
+    const range = `${emptyRange(gap)}: `;
+    const text = last ? LATER : "terminy jeszcze nieogłoszone.";
     gap = [];
-    ensure(headSize * 2);
+    ensure(listSize * 2);
     const top = y;
     tag(root, "P", () => {
       doc
         .font("bold")
-        .fontSize(headSize)
+        .fontSize(listSize)
         .fillColor(BLACK)
-        .text(text, MARGIN, top, { width: CONTENT_W });
+        .text(range, MARGIN, top, { width: CONTENT_W, continued: true })
+        .font("regular")
+        .text(text);
     });
     y = doc.y + 8;
   };
