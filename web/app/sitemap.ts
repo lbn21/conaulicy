@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/config.generated";
 import { indexable } from "@/lib/indexing";
 import { searchIndex } from "@/lib/schedule";
+import { STATIC_PAGES } from "@/lib/static-pages";
 
 // Rendered at build from the cached search index (no DB read of its own; the
 // build reads it for the home page anyway), kept on the CDN, refreshed hourly
@@ -9,7 +10,7 @@ import { searchIndex } from "@/lib/schedule";
 // through the index's `dataset` tag.
 export const revalidate = 3600;
 
-const PAGES = ["/", "/ulice", "/dostepnosc", "/prywatnosc", "/o-projekcie"];
+const PAGES = ["/", ...STATIC_PAGES.map(({ path }) => path)];
 
 // One URL per place, as its canonical link (components/place-page.tsx):
 // never the /nr/ or /numer variants, PDFs or calendars, and no place we have

@@ -5,7 +5,7 @@ import QRCode from "qrcode";
 import { SITE_URL } from "@/lib/config.generated";
 import { longDate, monthTitle, weekdayShort } from "@/lib/date-labels";
 import { absoluteDay } from "@/lib/dates";
-import { cacheControl } from "@/lib/gate";
+import { datasetHeaders } from "@/lib/gate";
 import { withHouseNumber } from "@/lib/house";
 import { NOINDEX } from "@/lib/indexing";
 import {
@@ -20,15 +20,19 @@ import {
 import { normalize } from "@/lib/normalize";
 import { movedPath } from "@/lib/places";
 import {
-  DATASET,
   getPlace,
   type Pickup,
   type PickupDay,
   type PlaceView,
   placeRedirect,
 } from "@/lib/schedule";
-import { hasUpcoming, UNVERIFIED_NOTE } from "@/lib/schedule-notes";
-import { TOKEN, tones } from "@/lib/waste-bin";
+import {
+  DISCLAIMER,
+  hasUpcoming,
+  putOutNote,
+  UNVERIFIED_NOTE,
+} from "@/lib/schedule-notes";
+import { FRACTIONS, TOKEN, tones } from "@/lib/waste-bin";
 
 export const runtime = "nodejs";
 
@@ -69,6 +73,9 @@ const BORDER = "#cecece";
 const PANEL = "#f3f3f3";
 const ERROR = "#ca3535";
 const PLATE_ON_DARK = "#ffb547";
+// Darker than the site's --waste-plastik-metale-border: small marks on paper
+// need a stronger outline (app/tokens.css --waste-plastik-metale-print).
+const PLASTIK_METALE_PRINT = "#5c4800";
 
 // ---------------------------------------------------------------- marks
 
@@ -86,7 +93,11 @@ const MARKS: Record<string, Mark | string> = {
   popiol: { shape: "ring", fill: "#5c6370" },
   bio: { shape: "square", fill: "#7a4b2a" },
   papier: { shape: "triangle", fill: "#1f63c7" },
-  "plastik-metale": { shape: "diamond", fill: "#f2c200", stroke: "#5c4800" },
+  "plastik-metale": {
+    shape: "diamond",
+    fill: "#f2c200",
+    stroke: PLASTIK_METALE_PRINT,
+  },
   szklo: { shape: "star", fill: "#1e7f4f" },
   gabaryty: "G",
   elektro: "E",
@@ -94,35 +105,13 @@ const MARKS: Record<string, Mark | string> = {
   tekstylia: "T",
 };
 
-/** The key's order, as the site lists fractions. */
-const KEY_ORDER = [
-  "zmieszane",
-  "popiol",
-  "bio",
-  "papier",
-  "tworzywa",
-  "tworzywa_metale",
-  "szklo",
-  "wielkogabarytowe",
-  "elektro",
-  "opony",
-  "tekstylia",
-];
+/** The key's order, as the site lists fractions; the key holds tones only. */
+const KEY_ORDER = FRACTIONS.map(({ subtype }) => subtype);
 
 /** Fallback names for a tone shown in the key on its own. */
-const TONE_LABEL: Record<string, string> = {
-  zmieszane: "Zmieszane",
-  popiol: "Popiół",
-  bio: "Bio",
-  papier: "Papier",
-  tworzywa: "Tworzywa sztuczne",
-  tworzywa_metale: "Tworzywa sztuczne i metale",
-  szklo: "Szkło",
-  wielkogabarytowe: "Wielkogabarytowe",
-  elektro: "Elektryczne i elektroniczne",
-  opony: "Zużyte opony",
-  tekstylia: "Odzież i tekstylia",
-};
+const TONE_LABEL: Record<string, string> = Object.fromEntries(
+  FRACTIONS.map(({ subtype, label }) => [subtype, label]),
+);
 
 function drawMark(
   doc: PDFKit.PDFDocument,
@@ -351,9 +340,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const putOutBy = inWindow
     .flatMap((day) => day.pickups)
     .find((p) => p.putOutBy)?.putOutBy;
-  const putOut = putOutBy
-    ? `Wystaw pojemniki do ${putOutBy.replace(/^0/, "")} w dniu odbioru.`
-    : null;
+  const putOut = putOutBy ? putOutNote(putOutBy) : null;
   const title = withHouseNumber(place.name, place.nr);
   const dayLine = usual ? `Twój dzień odbioru: ${usual}` : null;
   const warningText =
@@ -405,7 +392,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       : "";
     return { text: `Źródło: ${source.label}${checked}`, url: source.url };
   });
-  const closing = "Serwis nieoficjalny – obowiązuje harmonogram gminy.";
+  const closing = DISCLAIMER;
   const small = px(16);
   // A URL never breaks: its own line, smaller if it must.
   const urlSize = (text: string) =>
@@ -1078,8 +1065,7 @@ export async function GET(
       status: 308,
       headers: {
         Location: moved,
-        "Cache-Control": cacheControl("public, s-maxage=3600"),
-        "Vercel-Cache-Tag": DATASET,
+        ...datasetHeaders("public, s-maxage=3600"),
       },
     });
   }
@@ -1088,8 +1074,7 @@ export async function GET(
       status: 404,
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": cacheControl("public, s-maxage=3600"),
-        "Vercel-Cache-Tag": DATASET,
+        ...datasetHeaders("public, s-maxage=3600"),
         ...NOINDEX,
       },
     });
@@ -1104,11 +1089,7 @@ export async function GET(
       "Content-Type": "application/pdf",
       // With a house number: in the file name too.
       "Content-Disposition": `inline; filename="harmonogram-${slug(withHouseNumber(place.label, place.nr))}.pdf"`,
-      "Cache-Control": cacheControl(
-        "public, s-maxage=3600, stale-while-revalidate=86400",
-      ),
-      // So an import's POST /api/revalidate deletes the CDN copy too.
-      "Vercel-Cache-Tag": DATASET,
+      ...datasetHeaders(),
       ...NOINDEX,
     },
   });

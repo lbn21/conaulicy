@@ -1,26 +1,34 @@
 #!/usr/bin/env node
-// WCAG 2.x contrast check for the Latarnia token set (design/tokens.css).
+// WCAG 2.x contrast check for the site's palette: GOV.UK's with the Latarnia
+// group, and the bin colours from web/app/tokens.css.
 // Usage: node design/contrast.mjs
 
-const WASTE = [
-  "zmieszane",
-  "papier",
-  "plastik-metale",
-  "szklo",
-  "bio",
-  "popiol",
-  "gabaryty",
-  "elektro",
-  "opony",
-  "tekstylia",
-];
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
-// Fractions drawn with an outline token. The outline carries the non-text
-// contrast: light yellow and light grey fills fade into the white page.
-const OUTLINED = ["zmieszane", "plastik-metale", "opony"];
+// The bin colours as the site has them: every --waste-* custom property in
+// web/app/tokens.css. A fraction with a colour -border token is drawn with
+// that outline, which carries the non-text contrast (light yellow and light
+// grey fills fade into the white page).
+const TOKENS = path.join(import.meta.dirname, "../web/app/tokens.css");
+const waste = Object.fromEntries(
+  [
+    ...readFileSync(TOKENS, "utf8").matchAll(
+      /--(waste-[a-z-]+):\s*(#[0-9a-f]{6})\s*;/gi,
+    ),
+  ].map(([, name, hex]) => [name, hex.toLowerCase()]),
+);
+const WASTE = Object.keys(waste)
+  .filter((name) => !/-(border|print)$/.test(name))
+  .map((name) => name.slice("waste-".length));
+const OUTLINED = WASTE.filter((w) => `waste-${w}-border` in waste);
+const PRINT = Object.keys(waste).filter((name) => name.endsWith("-print"));
+
 // Light only, as GOV.UK. GOV.UK Frontend 6.5.1's palette (functional colours
 // and the colours its components use), with the brand-blue roles replaced by
-// the Latarnia group (web/app/_palette.scss); then the bin colours.
+// the Latarnia group. Kept here, not parsed: the Latarnia steps are computed
+// by Sass in web/app/_palette.scss (and set in web/app/_settings.scss), and
+// the rest are GOV.UK Frontend's own values.
 const palette = {
   text: "#0b0c0c",
   "secondary-text": "#484949",
@@ -47,30 +55,9 @@ const palette = {
   "secondary-button": "#f3f3f3",
   "header-background": "#0b0c0c",
   "logo-plate": "#ffb547",
-    "waste-zmieszane": "#111111",
-    "waste-zmieszane-fg": "#ffffff",
-    "waste-zmieszane-border": "#111111",
-    "waste-papier": "#1f63c7",
-    "waste-papier-fg": "#ffffff",
-    "waste-plastik-metale": "#f2c200",
-    "waste-plastik-metale-fg": "#161b24",
-    "waste-plastik-metale-border": "#7d6200",
-    "waste-szklo": "#1e7f4f",
-    "waste-szklo-fg": "#ffffff",
-    "waste-bio": "#7a4b2a",
-    "waste-bio-fg": "#ffffff",
-    "waste-popiol": "#5c6370",
-    "waste-popiol-fg": "#ffffff",
-    "waste-gabaryty": "#c2410c",
-    "waste-gabaryty-fg": "#ffffff",
-    "waste-elektro": "#1e3a8a",
-    "waste-elektro-fg": "#ffffff",
-    "waste-opony": "#a3aab5",
-    "waste-opony-fg": "#161b24",
-    "waste-opony-border": "#4a5160",
-    "waste-tekstylia": "#a8336a",
-    "waste-tekstylia-fg": "#ffffff",
+  ...waste,
 };
+
 function channel(c) {
   const s = c / 255;
   return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
@@ -122,9 +109,6 @@ function requiredPairs() {
     ["surface-border", "surface-background", "info"],
   ];
   for (const w of WASTE) {
-    pairs.push([`waste-${w}-fg`, `waste-${w}`, "text"]);
-  }
-  for (const w of WASTE) {
     if (OUTLINED.includes(w)) {
       pairs.push([`waste-${w}-border`, "body-background", "ui"]);
       pairs.push([`waste-${w}`, "body-background", "info"]);
@@ -132,6 +116,8 @@ function requiredPairs() {
       pairs.push([`waste-${w}`, "body-background", "ui"]);
     }
   }
+  // Print outlines (the PDF's marks), on white paper.
+  for (const name of PRINT) pairs.push([name, "body-background", "ui"]);
   return pairs;
 }
 

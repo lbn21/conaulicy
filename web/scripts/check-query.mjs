@@ -49,6 +49,8 @@ const CASES = [
   ["GET", `${STREET}/harmonogram.pdf?x=1`, 308, `${STREET}/harmonogram.pdf`],
   ["GET", "/api/search?q=asn", 200],
   ["GET", "/api/search?q=asn&x=1", 308, "/api/search?q=asn"],
+  ["GET", "/api/place-redirects", 200],
+  ["GET", "/api/place-redirects?x=1", 308, "/api/place-redirects"],
   ["GET", "/?fbclid=1", 308, "/"],
   ["HEAD", "/ulice?utm_source=fb", 308, "/ulice"],
   ["POST", "/api/revalidate?x=1", 401],

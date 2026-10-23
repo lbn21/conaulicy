@@ -45,6 +45,7 @@ import {
   type SearchHit,
   type SearchIndex,
 } from "@/lib/search";
+import { FRACTIONS } from "@/lib/waste-bin";
 
 // Every read goes through Next's data cache, tagged DATASET: a traffic spike
 // hits the cache, not Neon. After an import, POST /api/revalidate purges the
@@ -111,20 +112,7 @@ export type PlaceView = {
   verified: boolean;
 };
 
-const SUBTYPE_ORDER = [
-  "zmieszane",
-  "zmieszane_i_bio",
-  "popiol",
-  "bio",
-  "papier",
-  "tworzywa",
-  "tworzywa_metale",
-  "szklo",
-  "wielkogabarytowe",
-  "elektro",
-  "opony",
-  "tekstylia",
-];
+const SUBTYPE_ORDER = FRACTIONS.map(({ subtype }) => subtype);
 
 // A locality is a place of its own only when it has no streets (a village);
 // otherwise its streets are the places.
