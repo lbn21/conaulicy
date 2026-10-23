@@ -5,6 +5,7 @@ import { indexable } from "@/lib/indexing";
 import { searchIndex } from "@/lib/schedule";
 import {
   addresses,
+  exactPlace,
   findPlaces,
   matcher,
   placeHref,
@@ -12,10 +13,11 @@ import {
 } from "@/lib/search";
 import { pageMetadata } from "@/lib/share";
 
-// The home page's search form without JS (and Enter with no suggestion
-// highlighted): the same matching as the search field (lib/search.ts, over
-// the cached index), every result instead of 8. One place: straight to its
-// page; several: a list; none: what to try next. Rendered per request, so
+// The home page's search form, with or without JS. A picked suggestion's
+// text (the field's value after a pick) opens its place; anything else gets
+// the same matching as the search field (lib/search.ts, over the cached
+// index), every result instead of 8. One place: straight to its page;
+// several: a list; none: what to try next. Rendered per request, so
 // never cached by the CDN; never indexed (next.config.ts sends the header).
 
 const INPUT_ID = "adres";
@@ -39,6 +41,8 @@ async function outcome(
     .slice(0, 100);
   if (!q) return { kind: "empty" };
   const { places } = await searchIndex();
+  const exact = exactPlace(places, q);
+  if (exact) return { kind: "one", hit: exact };
   const hits = findPlaces(matcher(places, Number.POSITIVE_INFINITY), q);
   if (hits.length === 0) return { kind: "none", q };
   if (hits.length === 1) return { kind: "one", hit: hits[0] };

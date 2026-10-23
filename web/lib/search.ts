@@ -2,7 +2,7 @@
 // (client, over the index from /api/search-index). Every place's search text
 // is normalize(label), as the importer stores it in the database.
 
-import { readings } from "./house.ts";
+import { houseNumber, readings, withHouseNumber } from "./house.ts";
 import { normalize } from "./normalize.ts";
 
 export type SearchHit = {
@@ -69,6 +69,32 @@ export function findPlaces(match: Matcher, q: string): SearchHit[] {
     if (hits.length > 0) return nr ? hits.map((hit) => ({ ...hit, nr })) : hits;
   }
   return [];
+}
+
+/**
+ * The place whose suggestion text q is (the field holds it after a pick):
+ * its label, or its label with a house number where the field puts one
+ * ("ul. Adama Asnyka 12, Lubaczów"), compared as search compares (case,
+ * Polish letters, punctuation, spaces). Null when no label, or more than
+ * one, reads so: then the search proper decides.
+ */
+export function exactPlace(index: SearchIndex, q: string): SearchHit | null {
+  const wanted = normalize(q);
+  const numbers = new Set(
+    // Words as the label separates them: "Asnyka 12, Lubaczów".
+    q.split(/[\s,()]+/).flatMap((word) => houseNumber(word) ?? []),
+  );
+  for (const nr of [null, ...numbers]) {
+    const found = index.filter(
+      ([, label]) => normalize(withHouseNumber(label, nr)) === wanted,
+    );
+    if (found.length === 1) {
+      const [[id, label]] = found;
+      return nr ? { id, label, nr } : { id, label };
+    }
+    if (found.length > 1) return null;
+  }
+  return null;
 }
 
 /** Where a hit links to: the place, and its house number if given. */

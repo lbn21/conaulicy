@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { withHouseNumber } from "./house.ts";
 import {
+  exactPlace,
   findPlaces,
   matcher,
   placeHref,
@@ -67,4 +69,64 @@ test("a house number rides along with the place", () => {
     "/adres/s1?nr=7/22",
   );
   assert.equal(placeHref({ id: "s1", label: "" }), "/adres/s1");
+});
+
+// Real labels, among them ones whose words all appear in another label, so
+// the search proper finds several places for them.
+const PLACES: SearchIndex = [
+  ["0605909", "Basznia (Basznia Dolna, gm. Lubaczów)"],
+  ["0605950", "Basznia Górna (gm. Lubaczów)"],
+  ["0605890", "Basznia Dolna (gm. Lubaczów)"],
+  ["0605921", "Lubasy (Basznia Dolna, gm. Lubaczów)"],
+  ["0605967", "Dąbrowa (Basznia Górna, gm. Lubaczów)"],
+  ["0606010", "Dąbrowa (gm. Lubaczów)"],
+  ["0605890-20431", "ul. Jana III Sobieskiego, Basznia Dolna"],
+  ["0605890-10898", "ul. Leśna, Basznia Dolna"],
+  ["0972447-00470", "ul. Adama Asnyka, Lubaczów"],
+  ["0972447-19253", "ul. Rynek, Lubaczów"],
+  ["0972447-90010", "ul. 3 Maja, Lubaczów"],
+];
+
+test("every suggestion's text opens its own place", () => {
+  for (const [id, label] of PLACES) {
+    assert.deepEqual(exactPlace(PLACES, label), { id, label }, label);
+    for (const nr of ["12", "7a", "7/22"]) {
+      const text = withHouseNumber(label, nr);
+      assert.deepEqual(exactPlace(PLACES, text), { id, label, nr }, text);
+    }
+  }
+  assert.ok(findPlaces(matcher(PLACES, Infinity), PLACES[0][1]).length > 1);
+});
+
+test("the text as search compares it: case, Polish letters, spaces", () => {
+  assert.deepEqual(
+    exactPlace(PLACES, "  BASZNIA  (basznia dolna gm lubaczow"),
+    {
+      id: "0605909",
+      label: "Basznia (Basznia Dolna, gm. Lubaczów)",
+    },
+  );
+  assert.deepEqual(exactPlace(PLACES, "ul. Adama Asnyka 12A, Lubaczów"), {
+    id: "0972447-00470",
+    label: "ul. Adama Asnyka, Lubaczów",
+    nr: "12a",
+  });
+});
+
+test("anything else is left to the search proper", () => {
+  for (const q of [
+    "Basznia",
+    "Asnyka",
+    "Asnyka 12",
+    "ul. Adama Asnyka, Lubaczów, 12",
+    "12 ul. Adama Asnyka, Lubaczów",
+    "ul. Adama Asnyka 12 14, Lubaczów",
+  ]) {
+    assert.equal(exactPlace(PLACES, q), null, q);
+  }
+  const twice: SearchIndex = [
+    ["a", "Wola (gm. Lubaczów)"],
+    ["b", "Wola (gm. Lubaczów)"],
+  ];
+  assert.equal(exactPlace(twice, "Wola (gm. Lubaczów)"), null);
 });
