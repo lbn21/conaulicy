@@ -97,12 +97,14 @@ try {
   }
 
   const form = /<form[^>]*>[\s\S]*?<\/form>/.exec(home)?.[0] ?? "";
+  const tag = /^<form[^>]*>/.exec(form)?.[0] ?? "";
   for (const part of [
-    '<form method="get" action="/szukaj">',
-    'name="q"',
-    '<button type="submit" class="govuk-button"',
+    /\smethod="get"/.test(tag),
+    /\saction="\/szukaj"/.test(tag),
+    form.includes('name="q"'),
+    form.includes('<button type="submit" class="govuk-button"'),
   ]) {
-    if (!form.includes(part)) failures.push(`/: search form without ${part}`);
+    if (!part) failures.push(`/: search form ${JSON.stringify(form)}`);
   }
   for (const [q, parts] of SEARCH) {
     const html = await (
