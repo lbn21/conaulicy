@@ -193,16 +193,7 @@ try {
       redirect: "manual",
     });
     await response.arrayBuffer();
-    // Next.js 16.4 repeats the same Location on a redirect from a page
-    // reached through a rewrite (/adres/<id>?nr=…): it replays the cached
-    // render's headers with appendHeader. Browsers accept identical copies
-    // (Chromium rejects only differing ones), so those count as one;
-    // different values still fail.
-    const locations = [
-      ...new Set((response.headers.get("location") ?? "").split(", ")),
-    ].filter(Boolean);
-    const location =
-      locations.length === 1 ? locations[0] : locations.join(", ") || null;
+    const location = response.headers.get("location");
     const at = location && new URL(location, server.origin);
     const got =
       at &&
