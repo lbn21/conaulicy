@@ -8,7 +8,10 @@
 //   blue, see check-govuk-assets.mjs);
 // - a govuk-tag has no colour modifier (the default tag is GOV.UK brand blue);
 // - anything of Tailwind comes back: a package, a config, a directive in a
-//   stylesheet, or a utility class (any class not govuk-, app- or js-).
+//   stylesheet, or a utility class (any class not govuk-, app- or js-);
+// - a page uses a govuk- or app- class that no rule in the compiled CSS
+//   (govuk.scss, site.scss, tokens.css) styles: a GOV.UK component missing
+//   from govuk.scss, or a typo. Hook-only classes are in HOOK_ONLY.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
@@ -23,6 +26,20 @@ const ALLOWED = new Set([
   "app/site.scss",
   // The font fallback and the bin colours (no GOV.UK setting for either).
   "app/tokens.css",
+]);
+// Classes in the markup that are hooks, with no rule of their own.
+const HOOK_ONLY = new Map([
+  ["govuk-template__header", "template.njk hook, unstyled in GOV.UK Frontend"],
+  ["govuk-template__footer", "template.njk hook, unstyled in GOV.UK Frontend"],
+  [
+    "govuk-generic-header__container",
+    "only its --full-width modifier is styled",
+  ],
+  ["app-logo", "only its __plate and __wordmark children are styled"],
+  [
+    "govuk-frontend-supported",
+    "template.njk's JS support hook on body, no rule in our components",
+  ],
 ]);
 const MAX_LINES = 80;
 const MAX_GZIP = 1000;
@@ -82,9 +99,46 @@ const gzip = gzipSync(css, { level: 9 }).length;
 if (gzip > MAX_GZIP)
   failures.push(`app/site.scss: ${gzip} B gzip compiled (max ${MAX_GZIP})`);
 
+// Every class selector the site's CSS defines.
+const styled = new Set();
+for (const file of ["app/govuk.scss", "app/site.scss", "app/tokens.css"]) {
+  const out = file.endsWith(".css")
+    ? readFileSync(path.join(ROOT, file), "utf8")
+    : compile(path.join(ROOT, file), {
+        loadPaths: [path.join(ROOT, "node_modules")],
+        quietDeps: true,
+        silenceDeprecations: ["import"],
+      }).css;
+  const rules = out
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/"[^"]*"|'[^']*'|url\([^)]*\)/g, "");
+  for (const [, name] of rules.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g))
+    styled.add(name);
+}
+
 let tailwind = 0;
+const unstyled = [];
 for (const file of files.filter((f) => /\.tsx$/.test(f))) {
   const source = readFileSync(path.join(ROOT, file), "utf8");
+  // govuk- and app- classes in any string or template literal of the pages:
+  // className itself, and class strings held in variables or conditionals.
+  // Comments, imports and data-module values are not classes.
+  if (/^(app|components)\//.test(file)) {
+    const strings = source
+      .replace(/\/\*[\s\S]*?\*\/|(^|\s)\/\/.*$/gm, "$1")
+      .replace(/\bfrom\s+"[^"]*"|data-module="[^"]*"/g, "");
+    const used = new Set();
+    for (const [literal] of strings.matchAll(/"[^"\n]*"|'[^'\n]*'|`[^`]*`/g)) {
+      for (const [name] of literal.matchAll(
+        /(?<![\w/@.-])(?:govuk|app)-[a-z0-9_-]*[a-z0-9]/g,
+      ))
+        used.add(name);
+    }
+    for (const name of used) {
+      if (!styled.has(name) && !HOOK_ONLY.has(name))
+        unstyled.push(`${file}: .${name} has no rule in the CSS`);
+    }
+  }
   for (const [, quoted, template] of source.matchAll(
     /className=(?:"([^"]*)"|\{`([^`]*)`\})/g,
   )) {
@@ -105,6 +159,11 @@ for (const file of files.filter((f) => /\.tsx$/.test(f))) {
 if (tailwind > 0) {
   failures.push(`${tailwind} Tailwind classes: use GOV.UK classes`);
 }
+failures.push(...unstyled);
+for (const name of HOOK_ONLY.keys()) {
+  if (styled.has(name))
+    failures.push(`HOOK_ONLY: .${name} is styled now, remove it from the list`);
+}
 const packageJson = JSON.parse(
   readFileSync(path.join(ROOT, "package.json"), "utf8"),
 );
@@ -114,7 +173,7 @@ for (const dep of Object.keys(deps).filter((d) => /tailwind|postcss/.test(d))) {
 }
 
 console.log(
-  `Own CSS: app/site.scss ${lines} lines of code, ${gzip} B gzip compiled; ${tailwind} Tailwind classes.`,
+  `Own CSS: app/site.scss ${lines} lines of code, ${gzip} B gzip compiled; ${tailwind} Tailwind classes; ${styled.size} classes styled, ${unstyled.length} used without a rule.`,
 );
 if (failures.length > 0) {
   console.error(failures.map((f) => `FAIL  ${f}`).join("\n"));
