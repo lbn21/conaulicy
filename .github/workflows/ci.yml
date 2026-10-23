@@ -42,20 +42,40 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Before npm ci: with Java on PATH, vnu-jar's postinstall does not
-      # download its own runtime.
+      # Before npm ci (on a node_modules cache miss): with Java on PATH,
+      # vnu-jar's postinstall does not download its own runtime.
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: "21"
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node
         with:
           node-version: "24"
-          cache: npm
-          cache-dependency-path: web/package-lock.json
 
-      - run: npm ci
+      # node_modules cached whole, exactly as npm ci left it: an exact key and
+      # no restore-keys, so a hit is never partial or stale, and npm ci runs
+      # only on a miss. Saved right after npm ci, before any step can write
+      # into it.
+      - name: Runner image version
+        id: runner
+        run: echo "image=$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: node-modules
+        with:
+          path: web/node_modules
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-${{ steps.runner.outputs.image }}-node${{ steps.node.outputs.node-version }}-${{ hashFiles('web/package-lock.json') }}
+
+      - if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - if: steps.node-modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: web/node_modules
+          key: ${{ steps.node-modules.outputs.cache-primary-key }}
 
       - name: Biome
         run: npx biome ci
@@ -221,19 +241,36 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # As in the web job: npm ci runs vnu-jar's postinstall.
+      # As in the web job: npm ci (on a miss) runs vnu-jar's postinstall.
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: "21"
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node
         with:
           node-version: "24"
-          cache: npm
-          cache-dependency-path: web/package-lock.json
 
-      - run: npm ci
+      # node_modules cached as in the web job.
+      - name: Runner image version
+        id: runner
+        run: echo "image=$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: node-modules
+        with:
+          path: web/node_modules
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-${{ steps.runner.outputs.image }}-node${{ steps.node.outputs.node-version }}-${{ hashFiles('web/package-lock.json') }}
+
+      - if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - if: steps.node-modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: web/node_modules
+          key: ${{ steps.node-modules.outputs.cache-primary-key }}
 
       - name: Database (migrate + seed)
         run: npm run db:migrate && npm run db:ci-fixture
