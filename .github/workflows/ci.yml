@@ -3,6 +3,9 @@ name: CI
 on:
   # No paths filter: `web` is a required check, so it must report on every PR.
   pull_request:
+  # Fills the main cache that every PR can read (PR caches stay in their PR).
+  push:
+    branches: [main]
   # Lighthouse (job perf) only, on demand: gh workflow run ci.yml --ref <branch>
   workflow_dispatch:
 
