@@ -5,7 +5,7 @@
 // the 28px jump of the search section on / at 1280px scored only 0.0071.)
 // Run after `next build`; needs Playwright's Chromium.
 import { chromium } from "playwright";
-import { startServer } from "./lib/server.mjs";
+import { finish, startServer } from "./lib/server.mjs";
 
 const PAGES = ["/", "/adres/0972447-00470"];
 const WIDTHS = [360, 1280];
@@ -81,10 +81,7 @@ try {
 }
 
 console.log(results.join("\n"));
-if (failures.length > 0) {
-  console.log(failures.map((f) => `FAIL  ${f}`).join("\n"));
-  process.exit(1);
-}
-console.log(`Fonts: no layout shift when they arrive late (limit ${LIMIT}).`);
-// The server's output pipes would otherwise keep Node alive (as in check-a11y).
-process.exit(0);
+finish(
+  failures,
+  `Fonts: no layout shift when they arrive late (limit ${LIMIT}).`,
+);

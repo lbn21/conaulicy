@@ -8,7 +8,7 @@
 // title the same, and the share name conaulicy.pl.
 //
 // Runs against `next start` on the current build.
-import { ROUTES, startServer } from "./lib/server.mjs";
+import { finish, ROUTES, startServer } from "./lib/server.mjs";
 
 const SITE = "https://conaulicy.pl";
 const STATIC = ["/", "/ulice", "/dostepnosc", "/prywatnosc", "/o-projekcie"];
@@ -129,12 +129,7 @@ try {
   server.stop();
 }
 
-if (failures.length > 0) {
-  console.log(failures.map((f) => `FAIL  ${f}`).join("\n"));
-  process.exit(1);
-}
-console.log(
+finish(
+  failures,
   `Metadata: ${ROUTES.length} pages titled "<H1> – conaulicy.pl"; ${titles.size} with their own title and description.`,
 );
-// The server's output pipes would otherwise keep Node alive (as in check-a11y).
-process.exit(0);

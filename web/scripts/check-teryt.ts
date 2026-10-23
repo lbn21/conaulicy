@@ -35,6 +35,7 @@ import { loadConfig } from "./import/core/config.ts";
 import { Db } from "./import/core/db.ts";
 import { sha256 } from "./import/core/hash.ts";
 import { Issues } from "./import/core/issues.ts";
+import { databaseUrl } from "./lib/local-db.ts";
 import {
   changesTable,
   type Ours,
@@ -141,10 +142,7 @@ async function download(): Promise<Files> {
 
 /** Our places from the database, read-only. */
 async function oursFromDb(): Promise<Ours> {
-  const url =
-    process.env.IMPORT_DATABASE_URL ||
-    process.env.DATABASE_URL_UNPOOLED ||
-    process.env.DATABASE_URL;
+  const url = databaseUrl();
   if (!url) throw new Error("No database URL: pass --ours <dir> or set one.");
   const db = new Db(url, { readOnly: true });
   try {

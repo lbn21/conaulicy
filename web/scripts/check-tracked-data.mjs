@@ -6,6 +6,7 @@
 // code (scripts/lib/import-fixture.ts, scripts/ci-fixture.ts).
 import { execFileSync } from "node:child_process";
 import path from "node:path";
+import { finish } from "./lib/server.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "../..");
 const DOCS_DATA_ALLOWED = new Set([
@@ -35,17 +36,10 @@ const failures = tracked.filter((file) =>
     : DATA_EXTENSION.test(file) && !ALLOWED.some((rule) => rule.test(file)),
 );
 
-if (failures.length > 0) {
-  console.log(
-    failures
-      .map(
-        (f) =>
-          `FAIL  ${f}: a data file in git (archive it in S3, see docs/data/sources.md)`,
-      )
-      .join("\n"),
-  );
-  process.exit(1);
-}
-console.log(
+finish(
+  failures.map(
+    (f) =>
+      `${f}: a data file in git (archive it in S3, see docs/data/sources.md)`,
+  ),
   `Tracked data: none (${tracked.length} files checked; sources are in S3, docs/data/sources.md).`,
 );

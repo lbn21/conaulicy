@@ -21,7 +21,7 @@
 //
 // Runs against `next start` on the current build and the CI fixture.
 import { withHouseNumber } from "../lib/house.ts";
-import { startServer } from "./lib/server.mjs";
+import { finish, startServer } from "./lib/server.mjs";
 
 const escapeHtml = (text) =>
   text
@@ -288,12 +288,7 @@ try {
   server.stop();
 }
 
-if (failures.length > 0) {
-  console.log(failures.map((f) => `FAIL  ${f}`).join("\n"));
-  process.exit(1);
-}
-console.log(
+finish(
+  failures,
   `Query parameters: ${CASES.length} cases; unknown ones redirect to the clean URL, allowed ones and assets served.`,
 );
-// The server's output pipes would otherwise keep Node alive (as in check-a11y).
-process.exit(0);

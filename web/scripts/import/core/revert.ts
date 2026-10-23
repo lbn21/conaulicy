@@ -7,10 +7,12 @@
 // event was changed again since the batch (revert the later batch first).
 //
 // Env: IMPORT_DATABASE_URL (or DATABASE_URL_UNPOOLED / DATABASE_URL);
-// optional REVALIDATE_SECRET to refresh the site (etl/sources.yaml site.url).
+// optional REVALIDATE_SECRET to refresh the site (etl/sources.yaml site.url,
+// or SITE_URL), VERCEL_AUTOMATION_BYPASS_SECRET.
 import { randomUUID } from "node:crypto";
 import { parseArgs } from "node:util";
-import { loadConfig } from "./config.ts";
+import { databaseUrl } from "../../lib/local-db.ts";
+import { revalidate } from "../../lib/revalidate.ts";
 import { Db } from "./db.ts";
 import { diffEvents, type EventRow } from "./events.ts";
 import { EVENT_FIELDS, type Op, writeChange } from "./events-db.ts";
@@ -29,10 +31,7 @@ const fail = (message: string): never => {
   process.exit(1);
 };
 
-const url =
-  process.env.IMPORT_DATABASE_URL ||
-  process.env.DATABASE_URL_UNPOOLED ||
-  process.env.DATABASE_URL;
+const url = databaseUrl();
 if (!url) fail("IMPORT_DATABASE_URL is not set.");
 const db = new Db(url as string);
 
@@ -120,14 +119,4 @@ console.log(
   `Reverted batch ${batchId}: ${changes.length} changes (${undoId}).`,
 );
 
-const site = loadConfig().site.url;
-const secret = process.env.REVALIDATE_SECRET;
-if (secret) {
-  const response = await fetch(new URL("/api/revalidate", site), {
-    method: "POST",
-    headers: { Authorization: `Bearer ${secret}` },
-  });
-  console.log(`Revalidate: HTTP ${response.status}`);
-} else {
-  console.log("Revalidate skipped: cached pages refresh within an hour.");
-}
+await revalidate();

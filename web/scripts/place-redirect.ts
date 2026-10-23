@@ -12,11 +12,14 @@
 // one any more (the import has replaced it); the old id has no redirect yet
 // and is no redirect's target (no chains).
 //
-// Env: DATABASE_URL_UNPOOLED or DATABASE_URL; optional REVALIDATE_SECRET and
-// SITE_URL (then the site's cache is purged, as after an import).
+// Env: IMPORT_DATABASE_URL, DATABASE_URL_UNPOOLED or DATABASE_URL; optional
+// REVALIDATE_SECRET (then the site's cache is purged, as after an import;
+// site: etl/sources.yaml site.url, or SITE_URL), VERCEL_AUTOMATION_BYPASS_SECRET.
 import { parseArgs } from "node:util";
 import pg from "pg";
 import { describeTarget } from "./lib/import-data.ts";
+import { databaseUrl } from "./lib/local-db.ts";
+import { revalidate } from "./lib/revalidate.ts";
 
 const { values: args } = parseArgs({
   options: {
@@ -38,7 +41,7 @@ if (!from || !to || !reason)
   fail(
     'Usage: npm run db:redirect -- --from <old id> --to <new id> --reason "<why>" [--apply]',
   );
-const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
+const url = databaseUrl();
 if (!url) fail("DATABASE_URL_UNPOOLED or DATABASE_URL is not set.");
 const target = describeTarget(url, process.env);
 console.log(
@@ -78,17 +81,7 @@ try {
       [from, to, reason],
     );
     console.log("Written.");
-    const secret = process.env.REVALIDATE_SECRET;
-    const site = process.env.SITE_URL;
-    if (secret && site) {
-      const response = await fetch(new URL("/api/revalidate", site), {
-        method: "POST",
-        headers: { Authorization: `Bearer ${secret}` },
-      });
-      console.log(`Revalidate: HTTP ${response.status}`);
-    } else {
-      console.log("Revalidate skipped: the redirect works within an hour.");
-    }
+    await revalidate();
   }
 } finally {
   await client.end();

@@ -10,7 +10,7 @@
 // current build.
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { startServer } from "./lib/server.mjs";
+import { finish, startServer } from "./lib/server.mjs";
 
 const collator = new Intl.Collator("pl");
 const LINK = /<a href="\/adres\/([^"]+)" class="govuk-link">([^<]+)<\/a>/g;
@@ -118,10 +118,4 @@ try {
   server.stop();
 }
 
-if (failures.length > 0) {
-  console.log(failures.map((f) => `FAIL  ${f}`).join("\n"));
-  process.exit(1);
-}
-console.log("/ulice: every place once, Polish order, no JS of its own.");
-// The server's output pipes would otherwise keep Node alive (as in check-a11y).
-process.exit(0);
+finish(failures, "/ulice: every place once, Polish order, no JS of its own.");

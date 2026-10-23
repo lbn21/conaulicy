@@ -25,6 +25,7 @@ import {
 } from "../lib/db/schema.ts";
 import { normalize } from "../lib/normalize.ts";
 import { localitySearchLabel, streetLabel, terytName } from "../lib/places.ts";
+import { polishHolidays } from "./import/waste/lib.ts";
 import { GMINA_SCHEDULE_PAGES } from "./lib/gmina-pages.ts";
 import { localDatabaseUrl } from "./lib/local-db.ts";
 
@@ -197,55 +198,12 @@ function weekdayOf(iso: string): number {
   return new Date(`${iso}T12:00:00Z`).getUTCDay();
 }
 
-function easter(year: number): string {
-  // Anonymous Gregorian algorithm.
-  const a = year % 19;
-  const b = Math.floor(year / 100);
-  const c = year % 100;
-  const d = Math.floor(b / 4);
-  const e = b % 4;
-  const f = Math.floor((b + 8) / 25);
-  const g = Math.floor((b - f + 1) / 3);
-  const h = (19 * a + b - d - g + 15) % 30;
-  const i = Math.floor(c / 4);
-  const k = c % 4;
-  const l = (32 + 2 * e + 2 * i - h - k) % 7;
-  const m = Math.floor((a + 11 * h + 22 * l) / 451);
-  const month = Math.floor((h + l - 7 * m + 114) / 31);
-  const day = ((h + l - 7 * m + 114) % 31) + 1;
-  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-}
-
-/** Polish public holidays (ustawa o dniach wolnych od pracy). */
-function holidays(year: number): Set<string> {
-  const fixed = [
-    "01-01",
-    "01-06",
-    "05-01",
-    "05-03",
-    "08-15",
-    "11-01",
-    "11-11",
-    "12-24",
-    "12-25",
-    "12-26",
-  ].map((md) => `${year}-${md}`);
-  const sunday = easter(year);
-  return new Set([
-    ...fixed,
-    sunday,
-    addDays(sunday, 1),
-    addDays(sunday, 49),
-    addDays(sunday, 60),
-  ]);
-}
-
 const HOLIDAYS = new Set<string>();
 
 function isHoliday(iso: string): boolean {
   const year = Number(iso.slice(0, 4));
   if (![...HOLIDAYS].some((d) => d.startsWith(`${year}-`))) {
-    for (const d of holidays(year)) HOLIDAYS.add(d);
+    for (const d of polishHolidays(year)) HOLIDAYS.add(d);
   }
   return HOLIDAYS.has(iso);
 }

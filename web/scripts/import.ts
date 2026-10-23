@@ -13,8 +13,9 @@
 // Without it the ETL's names are used, with a warning.
 // Options: --offline (dry run only: skip downloading the sources),
 // --allow-deletes (more than 10% of a table may go), --yes-production.
-// Env: DATABASE_URL_UNPOOLED or DATABASE_URL; optional SITE_URL,
-// REVALIDATE_SECRET, SITE_BASIC_AUTH, VERCEL_AUTOMATION_BYPASS_SECRET.
+// Env: IMPORT_DATABASE_URL, DATABASE_URL_UNPOOLED or DATABASE_URL; optional
+// REVALIDATE_SECRET (site: etl/sources.yaml site.url, or SITE_URL), SITE_URL
+// (also the smoke check), SITE_BASIC_AUTH, VERCEL_AUTOMATION_BYPASS_SECRET.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
@@ -43,6 +44,8 @@ import {
   validate,
   withTeryt,
 } from "./lib/import-data.ts";
+import { databaseUrl } from "./lib/local-db.ts";
+import { revalidate } from "./lib/revalidate.ts";
 import { parseUlic } from "./lib/teryt.ts";
 
 /** The address that must keep working (printed QR codes link to it). */
@@ -242,35 +245,13 @@ async function smokeCheck(rows: Rows, today: string) {
   );
 }
 
-async function revalidate() {
-  const site = process.env.SITE_URL;
-  const secret = process.env.REVALIDATE_SECRET;
-  if (!site || !secret) {
-    console.log(
-      "Revalidate skipped: SITE_URL or REVALIDATE_SECRET is not set. Cached pages refresh within an hour.",
-    );
-    return;
-  }
-  const headers: Record<string, string> = { Authorization: `Bearer ${secret}` };
-  if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET)
-    headers["x-vercel-protection-bypass"] =
-      process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-  const response = await fetch(new URL("/api/revalidate", site), {
-    method: "POST",
-    headers,
-  });
-  if (!response.ok)
-    fail(`Revalidate FAILED: HTTP ${response.status}. The data is imported.`);
-  console.log(`Revalidate ok: ${await response.text()}`);
-}
-
 type Table = PgTable & { id: AnyPgColumn };
 
 async function main() {
   if (!args.from) fail("Usage: npm run db:import -- --from <dir> [--apply]");
   if (args.apply && args.offline)
     fail("--offline is for dry runs only: --apply needs checked sources.");
-  const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
+  const url = databaseUrl();
   if (!url) fail("DATABASE_URL is not set.");
 
   const target = describeTarget(url, process.env);
@@ -463,7 +444,11 @@ async function main() {
     `\nImported: ${rows.events.length} events, ${rows.zones.length} zones, ${rows.streets.length} streets, ${rows.localities.length} localities.`,
   );
 
-  await revalidate();
+  try {
+    await revalidate();
+  } catch (error) {
+    fail(`${(error as Error).message} The data is imported.`);
+  }
   await smokeCheck(rows, today);
 }
 

@@ -10,7 +10,7 @@ import { writeFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import lighthouse from "lighthouse";
 import { chromium } from "playwright";
-import { startServer } from "./lib/server.mjs";
+import { finish, startServer } from "./lib/server.mjs";
 
 const PAGES = [
   { path: "/", name: "home" },
@@ -161,12 +161,7 @@ try {
 if (process.env.PERF_OUT) {
   writeFileSync(process.env.PERF_OUT, `${JSON.stringify(results, null, 2)}\n`);
 }
-if (failures.length > 0) {
-  console.log(failures.map((f) => `FAIL  ${f}`).join("\n"));
-  process.exit(1);
-}
-console.log(
+finish(
+  failures,
   `Performance: within budget (medians: LCP ≤ ${BUDGET.lcp} ms, TBT ≤ ${BUDGET.tbt} ms, CLS < ${BUDGET.cls}, HTML ≤ ${BUDGET.html / 1000} KB gz, ≤ ${BUDGET.fonts} preloaded fonts, keystroke ≤ ${BUDGET.keystroke} ms).`,
 );
-// The server's output pipes would otherwise keep Node alive (as in check-a11y).
-process.exit(0);

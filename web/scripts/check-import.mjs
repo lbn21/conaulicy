@@ -14,7 +14,7 @@ import { todayInWarsaw } from "../lib/dates.ts";
 import { eventId } from "./lib/import-data.ts";
 import { FIXTURE_IDS, fixture } from "./lib/import-fixture.ts";
 import { localDatabaseUrl } from "./lib/local-db.ts";
-import { startServer } from "./lib/server.mjs";
+import { finish, startServer } from "./lib/server.mjs";
 
 const failures = [];
 const check = (ok, message) => {
@@ -41,8 +41,12 @@ const write = (data) => {
 };
 write(etl);
 
-process.env.REVALIDATE_SECRET = "check-import";
+// The server gets the secret; an import run only with SITE_URL, so no run
+// ever revalidates etl/sources.yaml's site.url (production).
+const REVALIDATE_SECRET = "check-import";
+process.env.REVALIDATE_SECRET = REVALIDATE_SECRET;
 const server = await startServer(3304);
+delete process.env.REVALIDATE_SECRET;
 
 // Async, so the event loop notices when the server closes an idle socket.
 const exec = (command, args, env = {}) =>
@@ -109,7 +113,7 @@ try {
     ["--apply"],
     0,
     /Imported: 12 events[\s\S]*Revalidate ok[\s\S]*Smoke check ok/,
-    { SITE_URL: server.origin },
+    { SITE_URL: server.origin, REVALIDATE_SECRET },
   );
   await expectRun("re-run", [], 0, /events\s+\+0\s+−0\s+~0/);
 
@@ -218,10 +222,4 @@ try {
   rmSync(dir, { recursive: true, force: true });
 }
 
-if (failures.length > 0) {
-  console.log(failures.map((f) => `FAIL  ${f}`).join("\n"));
-  process.exit(1);
-}
-console.log("Importer: dry run, apply, update and guards ok.");
-// The server's output pipes would otherwise keep Node alive (as in check-a11y).
-process.exit(0);
+finish(failures, "Importer: dry run, apply, update and guards ok.");
