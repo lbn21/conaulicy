@@ -8,6 +8,9 @@
 // /szukaj with a field named q and a submit button, and /szukaj answers it:
 // one place redirects (308, never stored) to its page with the house number,
 // several are listed, none says what to try, an empty q is GOV.UK's error.
+// /szukaj's field is the home page's (components/address-search.tsx): the
+// same <search> markup, holding what was searched for, or GOV.UK's error
+// markup for an empty q.
 // A suggestion's text, as a pick leaves it in the field, opens its own
 // place: every label in /api/search-index, and some with a house number.
 //
@@ -19,6 +22,13 @@
 // Runs against `next start` on the current build and the CI fixture.
 import { withHouseNumber } from "../lib/house.ts";
 import { startServer } from "./lib/server.mjs";
+
+const escapeHtml = (text) =>
+  text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 
 const STREET = "/adres/0972447-00470";
 const SPLIT = "/adres/0972447-90004";
@@ -162,10 +172,49 @@ try {
   ]) {
     if (!part) failures.push(`/: search form ${JSON.stringify(form)}`);
   }
+  // The field without JS: the placeholder input, before the library.
+  const field = (html) => /<input[^>]*\sname="q"[^>]*>/.exec(html)?.[0] ?? "";
+  const attr = (tag, name) =>
+    new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1] ?? null;
+  const search = (html) =>
+    /<search[^>]*>[\s\S]*?<\/search>/.exec(html)?.[0] ?? "";
   for (const [q, parts] of SEARCH) {
     const html = await (
       await fetch(`${server.origin}/szukaj?q=${encodeURIComponent(q)}`)
     ).text();
+    const input = field(html);
+    const error = q === "";
+    const want = {
+      value: escapeHtml(q),
+      error: error,
+      describedBy: error ? "adres-hint adres-error" : "adres-hint",
+    };
+    const got = {
+      value: attr(input, "value"),
+      error: /govuk-input--error/.test(attr(input, "class") ?? ""),
+      describedBy: attr(input, "aria-describedby"),
+    };
+    if (JSON.stringify(got) !== JSON.stringify(want)) {
+      failures.push(
+        `/szukaj?q=${q}: field ${JSON.stringify(got)}, want ${JSON.stringify(want)}`,
+      );
+    }
+    const group = /govuk-form-group--error/.test(search(html));
+    const message = html.includes(
+      '<p id="adres-error" class="govuk-error-message"><span class="govuk-visually-hidden">Błąd:</span> ',
+    );
+    // GOV.UK's order: label, hint, error message, field.
+    const at = ['id="adres-hint"', 'id="adres-error"', 'name="q"'].map((part) =>
+      search(html).indexOf(part),
+    );
+    if (error && !(at[0] < at[1] && at[1] < at[2])) {
+      failures.push(`/szukaj?q=: hint, error, field out of order ${at}`);
+    }
+    if (group !== error || message !== error) {
+      failures.push(
+        `/szukaj?q=${q}: error group ${group}, error message ${message}, want ${error}`,
+      );
+    }
     for (const part of parts) {
       if (!html.includes(part)) failures.push(`/szukaj?q=${q}: no ${part}`);
     }
@@ -174,6 +223,14 @@ try {
     if (!head.includes("<title>") || !head.includes('name="robots"')) {
       failures.push(`/szukaj?q=${q}: <title> or robots meta not in <head>`);
     }
+  }
+  // One field: /szukaj's form is the home page's, but for its value.
+  const adama = await (await fetch(`${server.origin}/szukaj?q=adama`)).text();
+  const blank = (html) => search(html).replace(/\svalue="[^"]*"/, ' value=""');
+  if (!search(home) || blank(adama) !== blank(home)) {
+    failures.push(
+      `/szukaj?q=adama: search form differs from /\n  / ${search(home)}\n  /szukaj ${search(adama)}`,
+    );
   }
   const one = await fetch(`${server.origin}/szukaj?q=Rynek`, {
     redirect: "manual",
