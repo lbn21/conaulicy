@@ -1,17 +1,8 @@
 name: CI
 
 on:
+  # No paths filter: `web` is a required check, so it must report on every PR.
   pull_request:
-    # No CI for a PR that changes only prose or review data; the last
-    # matching pattern wins. Still checked: docs/data/sources.md (generated,
-    # config:check), etl/review/approvals.yaml (read by the import checks), and
-    # every other file (a data file anywhere fails check-tracked-data).
-    paths:
-      - "**"
-      - "!**.md"
-      - "docs/data/sources.md"
-      - "!etl/review/**"
-      - "etl/review/approvals.yaml"
   # Lighthouse (job perf) only, on demand: gh workflow run ci.yml --ref <branch>
   workflow_dispatch:
 
