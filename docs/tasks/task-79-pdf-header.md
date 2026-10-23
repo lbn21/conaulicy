@@ -22,7 +22,7 @@ Since task 78 the site header is GOV.UK's black Generic header with a **white** 
 - The same logo size (24 pt) in both bands.
 - Page 1: logo and QR box at the top padding; caption under the QR box; band height from whichever column ends lower. "Twój dzień odbioru" in white bold.
 - Later pages: the text line anchored to the bottom padding; continued calendar pages start below the new band height.
-- "Inny dzień" cell: GOV.UK red `#ca3535` (`govuk-colour("red")`, 6.5.1); the highlight hugs its text with equal inner padding, so its gap to the marks matches the other rows.
+- "Inny dzień" cell: GOV.UK red `#ca3535` (`govuk-colour("red")`, 6.5.1); the highlight hugs its text with equal inner padding, so it keeps clear of the marks (see Result).
 - Warning: proposal below.
 - Text version: GOV.UK's scale: month headings `heading-m` (24 px), list items and every other line `body` (19 px); the "2027:" line as on page 1: bold year, regular text.
 
