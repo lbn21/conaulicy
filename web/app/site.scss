@@ -1,18 +1,21 @@
 // The only own CSS (docs/govuk-audit.md): what GOV.UK has no equivalent for.
 // GOV.UK Sass functions and mixins only; no raw colours or px.
 // Capped by scripts/check-own-css.mjs.
-@use "sass:map";
 @use "settings" as *;
 @use "govuk-frontend/dist/govuk/components/generic-header/mixin" as generic-header;
 
 // Our "ul." plate in the Generic header, with the GOV.UK header's logo
-// geometry (govuk-frontend components/header/_mixin.scss): the logo
-// container's 16/12 padding, and the logo 30px tall (site-header.tsx), lifted
-// 3px as .govuk-header__logotype, so the 3px hover underline of the shared
-// link-styles sits 6px below it. The px are GOV.UK's magic numbers, allowed
-// one by one in scripts/check-own-css.mjs.
+// geometry (govuk-frontend components/header/_mixin.scss): the logo 30px tall
+// (site-header.tsx), lifted 3px as .govuk-header__logotype, so the 3px hover
+// underline of the shared link-styles sits 6px below it. Deviation from
+// GOV.UK's magic numbers (Jakub's decision): GOV.UK's padding 16/12 sits its
+// airy crown high, 13px above and 18px below in the 61px bar, which a solid
+// plate does not carry. 19/10 centres the plate exactly, 16px above and 16px
+// below (the 1px transparent border included), in a bar 1px taller (62px);
+// in 61px the 31px around the 30px plate cannot split evenly. The px are
+// allowed one by one in scripts/check-own-css.mjs.
 .govuk-generic-header__logo {
-  @include generic-header.logo-styles($padding-top: 16px, $padding-bottom: 12px);
+  @include generic-header.logo-styles($padding-top: 19px, $padding-bottom: 10px);
 }
 
 .app-logo {
@@ -22,17 +25,28 @@
   vertical-align: top;
 }
 
-// The plate's fill is one custom property, amber by default. On focus GOV.UK's
-// link-styles paint the link focus yellow with focus-text black (the
-// wordmark's currentColor); the plate takes that colour too, so the cut-out
-// "ul." and rim show focus yellow in a black plate, as GOV.UK's logo goes
-// all black on focus. :focus, as in link-styles.
+// The plate's fill is one custom property: GOV.UK white on the Generic
+// header's black, as GOV.UK's white crown, so the cut-out "ul." and rim show
+// the header's black. On focus GOV.UK's link-styles paint the link focus
+// yellow with focus-text black (the wordmark's currentColor); the plate takes
+// that colour too, so the cut-out "ul." and rim show focus yellow in a black
+// plate, as GOV.UK's logo goes all black on focus. :focus, as in link-styles.
 .app-logo__plate {
-  fill: var(--app-logo-plate, #{map.get($app-latarnia, "plate")});
+  fill: var(--app-logo-plate, #{govuk-colour("white")});
 }
 
+// The focus box is the link's inline content area, set by the font (Atkinson
+// at 30px), not by the logo: 4px of yellow above the plate (2 of them the
+// box-shadow), 7px below, none at the sides. Padding on focus only evens it to
+// 7px all round the plate's box, which is the logo's optical frame: the
+// wordmark's x-height is centred on the plate (below) and its "y" stays
+// inside, so the wordmark's own ink box is not used. Inline padding leaves the
+// line box alone and the negative margin cancels the left one, so the logo
+// does not move.
 .govuk-generic-header__homepage-link:focus {
   --app-logo-plate: currentColor;
+  margin-left: -7px;
+  padding: 3px 7px 0;
 }
 
 // In the header the wordmark's x-height is centred on the plate: 1.4 of the

@@ -45,12 +45,17 @@ const HOOK_ONLY = new Map([
 // from govuk-frontend's components/header/_mixin.scss, which writes them as
 // magic px. Each must appear exactly as here, once.
 const RAW_PX = [
-  // .govuk-header__logo: logo-styles($padding-top: 16px, $padding-bottom: 14px - 2px)
-  "logo-styles($padding-top: 16px, $padding-bottom: 12px)",
+  // .govuk-header__logo: logo-styles($padding-top: 16px, $padding-bottom: 14px - 2px),
+  // changed to 19/10 to centre our plate exactly, bar 1px taller (task 78, a deviation)
+  "logo-styles($padding-top: 19px, $padding-bottom: 10px)",
   // .govuk-header__logotype: top: -3px
   "top: -3px;",
   // .govuk-header__logotype: margin-bottom: $logo-bottom-margin (2px)
   "margin-bottom: 2px;",
+  // Ours, not GOV.UK's (task 78): the focused logo's even 7px of yellow round
+  // the plate, measured against Atkinson's content area at 30px.
+  "margin-left: -7px;",
+  "padding: 3px 7px 0;",
 ];
 const MAX_LINES = 80;
 const MAX_GZIP = 1000;
