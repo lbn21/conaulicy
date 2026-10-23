@@ -9,6 +9,13 @@ const nextConfig: NextConfig = {
   // shared Turbopack client runtime; bundling works today only because the
   // route never loads a standard font.
   serverExternalPackages: ["pdfkit"],
+  // Metadata always in <head>: on pages rendered per request (/szukaj),
+  // Next.js otherwise streams it for all but its list of bots, and tags
+  // resolved after the shell (a cold search index) land in <body>. Every
+  // user agent counts as "HTML-limited", the documented way to turn
+  // streaming metadata off. Prerendered pages are unaffected; /szukaj's
+  // body awaits the same data, so it costs no time.
+  htmlLimitedBots: /.*/,
   // The PDF route reads the TTF fonts with fs at runtime.
   outputFileTracingIncludes: {
     "/adres/[id]/harmonogram.pdf": ["./assets/fonts/*.ttf"],

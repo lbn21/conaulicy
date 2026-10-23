@@ -151,6 +151,11 @@ try {
     for (const part of parts) {
       if (!html.includes(part)) failures.push(`/szukaj?q=${q}: no ${part}`);
     }
+    // Metadata in <head>, never streamed into <body> (htmlLimitedBots).
+    const head = html.slice(0, html.indexOf("</head>"));
+    if (!head.includes("<title>") || !head.includes('name="robots"')) {
+      failures.push(`/szukaj?q=${q}: <title> or robots meta not in <head>`);
+    }
   }
   const one = await fetch(`${server.origin}/szukaj?q=Rynek`, {
     redirect: "manual",
