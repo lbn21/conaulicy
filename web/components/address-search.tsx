@@ -5,7 +5,6 @@ import { useEffect, useRef } from "react";
 import { withHouseNumber } from "@/lib/house";
 import {
   addresses,
-  findPlaces,
   type Matcher,
   matcher,
   SEARCH_ID,
@@ -133,7 +132,7 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
       }
       if (match) {
         note = "none";
-        populate(findPlaces(match, q));
+        populate(match(q).hits);
         return;
       }
       try {

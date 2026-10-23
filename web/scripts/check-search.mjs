@@ -12,10 +12,12 @@
 // tap, or ArrowDown and Enter) only fills the field and closes the list, as
 // GOV.UK's default; „Szukaj” or the next Enter submits the form, and
 // /szukaj opens the picked place, also with a house number typed after it.
-// The search form works without JS (one place: its page; several: /szukaj
-// lists them), and with JS, Enter with no suggestion submits it. Run after
+// The search form works without JS (one clearly best place: its page;
+// otherwise /szukaj lists them), and with JS, Enter with no suggestion
+// submits it. /szukaj, /api/search and lib/search.ts rank alike. Run after
 // `next build`; needs Playwright's Chromium.
 import { chromium } from "playwright";
+import { matcher, placeHref } from "../lib/search.ts";
 import { startServer } from "./lib/server.mjs";
 
 const WIDTHS = [360, 1280];
@@ -392,6 +394,48 @@ try {
     .waitForURL(`${server.origin}/szukaj?q=xyzqq`, { timeout: 5000 })
     .catch(() => check(false, `Enter with no results: at ${enter.url()}`));
   await enter.close();
+
+  // The same search everywhere: for each query, /szukaj's redirect (or its
+  // first result), /api/search's first place and lib/search.ts's over the
+  // served index all point at the same place and number.
+  const home = await (await fetch(`${server.origin}/`)).text();
+  const [indexPath] = home.match(/\/api\/search-index\/[0-9a-f]{16}/) ?? [];
+  const index = await (await fetch(`${server.origin}${indexPath}`)).json();
+  const match = matcher(index);
+  for (const query of [
+    "rynek",
+    "Rynk",
+    "adama",
+    "Asnyka 12",
+    "ul. Rynek 5, Lubaczów",
+    "kosciuszki 7A",
+    "slowac",
+    "lesna lisie jamy",
+    "dabrowa",
+    "xyzqq",
+  ]) {
+    const q = encodeURIComponent(query);
+    const [shared] = match(query).hits;
+    const [api] = await (
+      await fetch(`${server.origin}/api/search?q=${q}`)
+    ).json();
+    const res = await fetch(`${server.origin}/szukaj?q=${q}`, {
+      redirect: "manual",
+    });
+    const location = res.headers.get("location");
+    const target = location
+      ? decodeURI(
+          new URL(location, server.origin).href.slice(server.origin.length),
+        )
+      : ((await res.text()).match(
+          /<main[\s\S]*?<ul class="govuk-list[^"]*">\s*<li><a href="([^"]+)"/,
+        )?.[1] ?? null);
+    const hrefs = [shared, api].map((hit) => (hit ? placeHref(hit) : null));
+    check(
+      hrefs[0] === hrefs[1] && hrefs[0] === target,
+      `same search "${query}": module ${hrefs[0]}, /api/search ${hrefs[1]}, /szukaj ${target}`,
+    );
+  }
 
   // A split street without a number asks for it, with no JS at all.
   const plain = await browser.newContext({ javaScriptEnabled: false });

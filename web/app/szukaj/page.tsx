@@ -2,23 +2,17 @@ import type { Metadata } from "next";
 import { permanentRedirect } from "next/navigation";
 import { withHouseNumber } from "@/lib/house";
 import { indexable } from "@/lib/indexing";
-import { searchIndex } from "@/lib/schedule";
-import {
-  addresses,
-  exactPlace,
-  findPlaces,
-  matcher,
-  placeHref,
-  type SearchHit,
-} from "@/lib/search";
+import { searchIndex, searchMatcher } from "@/lib/schedule";
+import { addresses, exactPlace, placeHref, type SearchHit } from "@/lib/search";
 import { pageMetadata } from "@/lib/share";
 
 // The home page's search form, with or without JS. A picked suggestion's
 // text (the field's value after a pick) opens its place; anything else gets
-// the same matching as the search field (lib/search.ts, over the cached
-// index), every result instead of 8. One place: straight to its page;
-// several: a list; none: what to try next. Rendered per request, so
-// never cached by the CDN; never indexed (next.config.ts sends the header).
+// the same ranked search as the search field (lib/search.ts, over the cached
+// index), every result instead of 8. One clearly best place: straight to its
+// page; otherwise the ranked list; none: what to try next. Rendered per
+// request, so never cached by the CDN; never indexed (next.config.ts sends
+// the header).
 
 const INPUT_ID = "adres";
 const HINT =
@@ -43,9 +37,9 @@ async function outcome(
   const { places } = await searchIndex();
   const exact = exactPlace(places, q);
   if (exact) return { kind: "one", hit: exact };
-  const hits = findPlaces(matcher(places, Number.POSITIVE_INFINITY), q);
+  const { hits, clear } = (await searchMatcher())(q, Number.POSITIVE_INFINITY);
   if (hits.length === 0) return { kind: "none", q };
-  if (hits.length === 1) return { kind: "one", hit: hits[0] };
+  if (clear) return { kind: "one", hit: hits[0] };
   return { kind: "many", q, hits };
 }
 

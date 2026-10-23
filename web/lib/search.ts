@@ -1,8 +1,12 @@
-// Address search, shared by /api/search (server) and the search field
-// (client, over the index from /api/search-index). Every place's search text
-// is normalize(label), as the importer stores it in the database.
+// Address search, the same everywhere: the search field (on the device, over
+// the index from /api/search-index), /api/search and /szukaj (on the server,
+// over the same index), so one query gives the same ranked places in all
+// three. uFuzzy (@leeoniya/ufuzzy) forgives a typo; around it, a Polish layer
+// reads the query (house number, postcode, "ul.", abbreviations, word
+// endings) and ranks the places.
 
-import { houseNumber, readings, withHouseNumber } from "./house.ts";
+import uFuzzy from "@leeoniya/ufuzzy";
+import { houseNumber, withHouseNumber } from "./house.ts";
 import { normalize } from "./normalize.ts";
 
 export type SearchHit = {
@@ -21,54 +25,256 @@ export const SEARCH_ID = "szukaj";
 /** At most this many places in the list. */
 export const SEARCH_LIMIT = 8;
 
-// "ul. Asnyka" and "ulica Asnyka" find the same street.
-const IGNORED_TERMS = new Set(["ul", "ulica"]);
+// "ul. Asnyka" and "ulica Asnyka" find the same street; the word only hints
+// that a street is meant (rather than an osiedle).
+const STREET_WORDS = new Set(["ul", "ulica"]);
+
+// One spelling per word, for labels and queries alike.
+const SYNONYMS: Record<string, string> = {
+  os: "osiedle",
+  al: "aleja",
+  trzeciego: "3",
+  swietej: "sw",
+  swietego: "sw",
+  gen: "generala",
+};
+
+function canonical(text: string): string[] {
+  return normalize(text)
+    .replace(/\b3 go\b/g, "3")
+    .replace(/\bchopin/g, "szopen")
+    .split(" ")
+    .filter((word) => word && !STREET_WORDS.has(word))
+    .map((word) => SYNONYMS[word] ?? word);
+}
 
 /** The words to match; none when q is empty or only "ul." / "ulica". */
 export function searchTerms(q: string): string[] {
-  return normalize(q)
-    .split(" ")
-    .filter((term) => term && !IGNORED_TERMS.has(term));
+  return canonical(q.replace(POSTCODE, " "));
+}
+
+const POSTCODE = /\b\d\d-\d\d\d\b/g;
+
+// How well a query word matches a place, best first. A place's rank is its
+// worst word, then the sum of all.
+const EXACT = 0;
+const PREFIX = 1;
+const INFIX = 2;
+const INFLECTED = 3;
+const TYPO = 4;
+const TWO_TYPOS = 5;
+
+// One substitution, transposition, insertion or deletion inside a word.
+const fuzzy = new uFuzzy({
+  intraMode: 1,
+  intraIns: 1,
+  intraSub: 1,
+  intraTrn: 1,
+  intraDel: 1,
+});
+
+type Place = {
+  hit: SearchHit;
+  text: string;
+  words: string[];
+  /** A part of a village: "Kamienna (Opaka, gm. Lubaczów)". */
+  part: boolean;
+  osiedle: boolean;
+  /** How many places share its town or village, after the comma. */
+  size: number;
+};
+
+/** "rynku" → "rynk": a Polish ending off, for words of 4+ letters. */
+const stem = (term: string) =>
+  term.length >= 4 && /[aeiuy]$/.test(term) ? term.slice(0, -1) : null;
+
+// Optimal string alignment distance, capped: whether a and b are at most
+// `max` edits apart.
+function near(a: string, b: string, max: number): boolean {
+  if (Math.abs(a.length - b.length) > max) return false;
+  let prev2: number[] = [];
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        row[j] = Math.min(row[j], prev2[j - 2] + 1);
+      }
+    }
+    if (Math.min(...row) > max) return false;
+    prev2 = prev;
+    prev = row;
+  }
+  return prev[b.length] <= max;
+}
+
+/**
+ * Matching tier of each query word, per place: exact word, word prefix,
+ * inside a word (3+ letters), with its ending off, then the fallbacks: one
+ * typo (uFuzzy, 4+ letters), two typos (7+ letters). A single letter only
+ * starts a word; a number is only a whole word ("3" in "3-go Maja").
+ */
+function tiers(places: Place[], terms: string[], pass: number): number[][] {
+  const haystack = places.map((place) => place.text);
+  return terms.map((term) => {
+    const word = /^\d+$/.test(term) ? null : term;
+    const root = word && stem(word);
+    const typos =
+      pass >= 1 && word && word.length >= 4
+        ? new Set([
+            ...(fuzzy.filter(haystack, word) ?? []),
+            ...((root && fuzzy.filter(haystack, root)) ?? []),
+          ])
+        : null;
+    return places.map(({ text, words }, i) => {
+      if (words.includes(term)) return EXACT;
+      if (!word) return -1;
+      if (words.some((w) => w.startsWith(word))) return PREFIX;
+      if (word.length === 1) return -1;
+      if (word.length >= 3 && text.includes(word)) return INFIX;
+      if (root && words.some((w) => w.startsWith(root))) return INFLECTED;
+      if (typos?.has(i)) return TYPO;
+      if (
+        pass >= 2 &&
+        word.length >= 7 &&
+        words.some((w) => near(word, w.slice(0, word.length + 2), 2))
+      ) {
+        return TWO_TYPOS;
+      }
+      return -1;
+    });
+  });
+}
+
+type Ranked = { place: Place; key: number[]; first: boolean };
+
+/** Lower is better: worst word, sum of words, an osiedle for "ul.". */
+function compareKeys(a: number[], b: number[]): number {
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] - b[i];
+  return 0;
+}
+
+function rank(places: Place[], terms: string[], street: boolean): Ranked[] {
+  const query = terms.join(" ");
+  // The fallbacks run only when the stricter passes find nothing.
+  for (const pass of [0, 1, 2]) {
+    const found = tiers(places, terms, pass);
+    const ranked: Ranked[] = [];
+    places.forEach((place, i) => {
+      const own = found.map((term) => term[i]);
+      if (own.some((tier) => tier < 0)) return;
+      ranked.push({
+        place,
+        key: [
+          Math.max(...own),
+          own.reduce((sum, tier) => sum + tier, 0),
+          street && place.osiedle ? 1 : 0,
+        ],
+        first: place.text.startsWith(query),
+      });
+    });
+    if (ranked.length > 0) {
+      return ranked.sort(
+        (a, b) =>
+          compareKeys(a.key, b.key) ||
+          Number(a.place.part) - Number(b.place.part) ||
+          Number(b.first) - Number(a.first) ||
+          b.place.size - a.place.size ||
+          a.place.hit.label.length - b.place.hit.label.length ||
+          byLabel(a.place.hit, b.place.hit),
+      );
+    }
+  }
+  return [];
+}
+
+type Reading = { text: string; nr: string | null };
+
+/**
+ * Ways to read a query: as typed (street names with digits: "3 Maja"), or
+ * with one of its house numbers taken out, wherever it stands ("Asnyka 12",
+ * "12 Asnyka", "ul. Rynek 5, Lubaczów"). Postcodes are dropped.
+ */
+function readings(q: string): Reading[] {
+  const words = q
+    .replace(POSTCODE, " ")
+    .split(/[\s,;]+/)
+    .filter(Boolean);
+  const result: Reading[] = [{ text: words.join(" "), nr: null }];
+  for (let i = words.length - 1; i >= 0; i--) {
+    const nr = houseNumber(words[i]);
+    if (nr && words.length > 1) {
+      const text = words.filter((_, j) => j !== i).join(" ");
+      result.push({ text, nr });
+    }
+  }
+  return result;
+}
+
+export type Found = {
+  hits: SearchHit[];
+  /** The first place is clearly the best (or the only) match. */
+  clear: boolean;
+};
+
+export type Matcher = (q: string, limit?: number) => Found;
+
+/**
+ * Prepares every label once; the matcher then runs on each keystroke. It
+ * reads q every way (readings) and keeps the reading whose best place
+ * matches best; on a tie, the earliest (as typed, then the last number). At
+ * most `limit` places: the search field lists 8, /szukaj every one.
+ */
+export function matcher(index: SearchIndex): Matcher {
+  const area = (label: string) =>
+    label.includes("(") ? "" : label.slice(label.lastIndexOf(",") + 1);
+  const sizes = new Map<string, number>();
+  for (const [, label] of index) {
+    sizes.set(area(label), (sizes.get(area(label)) ?? 0) + 1);
+  }
+  const places: Place[] = index.map(([id, label]) => {
+    const words = canonical(label);
+    return {
+      hit: { id, label },
+      text: words.join(" "),
+      words,
+      part: /\(.+,/.test(label),
+      osiedle: words[0] === "osiedle",
+      size: area(label) ? (sizes.get(area(label)) ?? 0) : 0,
+    };
+  });
+  return (q, limit = SEARCH_LIMIT) => {
+    let best: { ranked: Ranked[]; nr: string | null } | null = null;
+    for (const { text, nr } of readings(q)) {
+      const terms = searchTerms(text);
+      if (terms.length === 0) continue;
+      const street = normalize(text)
+        .split(" ")
+        .some((word) => STREET_WORDS.has(word));
+      const ranked = rank(places, terms, street);
+      if (
+        ranked.length > 0 &&
+        (!best || compareKeys(ranked[0].key, best.ranked[0].key) < 0)
+      ) {
+        best = { ranked, nr };
+      }
+    }
+    if (!best) return { hits: [], clear: false };
+    const { ranked, nr } = best;
+    return {
+      hits: ranked
+        .slice(0, limit)
+        .map(({ place }) => (nr ? { ...place.hit, nr } : place.hit)),
+      clear:
+        ranked.length === 1 || compareKeys(ranked[0].key, ranked[1].key) < 0,
+    };
+  };
 }
 
 export function byLabel(a: SearchHit, b: SearchHit): number {
   return a.label.localeCompare(b.label, "pl");
-}
-
-export type Matcher = (terms: string[]) => SearchHit[];
-
-/**
- * Normalizes every label once; the matcher then runs on each keystroke. At
- * most `limit` places: the search field lists 8, /szukaj every one.
- */
-export function matcher(
-  index: SearchIndex,
-  limit: number = SEARCH_LIMIT,
-): Matcher {
-  const places = index.map(([id, label]) => ({
-    hit: { id, label },
-    search: normalize(label),
-  }));
-  return (terms) =>
-    terms.length === 0
-      ? []
-      : places
-          .filter(({ search }) => terms.every((term) => search.includes(term)))
-          .map(({ hit }) => hit)
-          .sort(byLabel)
-          .slice(0, limit);
-}
-
-/**
- * Places for q, with the house number if it has one: the first reading of q
- * (lib/house.ts) that finds anything.
- */
-export function findPlaces(match: Matcher, q: string): SearchHit[] {
-  for (const { text, nr } of readings(q)) {
-    const hits = match(searchTerms(text));
-    if (hits.length > 0) return nr ? hits.map((hit) => ({ ...hit, nr })) : hits;
-  }
-  return [];
 }
 
 /**
