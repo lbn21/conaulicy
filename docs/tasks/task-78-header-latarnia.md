@@ -6,7 +6,7 @@ Draft PR, Vercel Preview only. Not merged, not marked ready, until Jakub decides
 
 - **The header bar stays GOV.UK's default black Generic header.** We tried the Latarnia brand colour (#9a5700) and dropped it.
 - **The plate is GOV.UK white** (`govuk-colour("white")`), as GOV.UK's white crown. The cut-out "ul." and rim show the header's black. The amber `plate` value stays in `_palette.scss`, and the PDF keeps its own amber.
-- **The plate is centred in the bar:** logo container padding 18/10 instead of GOV.UK's 16/12. This is a deviation from GOV.UK's magic numbers.
+- **The plate is centred in the bar:** logo container padding 19/10 instead of GOV.UK's 16/12, and the bar 1px taller (62px). This is a deviation from GOV.UK's magic numbers.
 - **The focus box is an even 7px round the plate.** It uses focus-only padding, a deviation from GOV.UK's link-styles.
 - Jakub accepts that GOV.UK's black focus bar is invisible on black, as on GOV.UK's own black header. The yellow box is the indicator (14.55:1 on black).
 
@@ -27,19 +27,21 @@ Measured in headless Chromium, 375 and 1280 (same at both), CSS px:
 ## Change (`web/app/site.scss`)
 
 1. `.app-logo__plate` fill: `govuk-colour("white")` instead of the amber `plate`. `@use "sass:map"` is dropped, as the plate was its only use.
-2. `.govuk-generic-header__logo`: `logo-styles($padding-top: 18px, $padding-bottom: 10px)`. The sum is the same, so the bar is the same height. The logo, its `top: -3px` lift, the wordmark's centring, the hover underline and the focus box all move down 2px together.
+2. `.govuk-generic-header__logo`: `logo-styles($padding-top: 19px, $padding-bottom: 10px)`. The bar is 1px taller (62px). The logo, its `top: -3px` lift, the wordmark's centring, the hover underline and the focus box all move down 3px together.
 3. `.govuk-generic-header__homepage-link:focus`: `padding: 3px 7px 0; margin-left: -7px`. Inline padding leaves the line box alone, and the negative margin cancels the left padding, so the logo does not move on focus.
 
-`scripts/check-own-css.mjs`: `RAW_PX` takes the 18/10 padding and the two focus declarations.
+Comments this PR had made wrong are fixed: `components/site-header.tsx` (white plate, centred in the bar) and `app/_palette.scss` (amber for dark bars such as the PDF's only).
+
+`scripts/check-own-css.mjs`: `RAW_PX` takes the 19/10 padding and the two focus declarations.
 
 ## Measurements
 
 | | bar | above plate | below plate (incl. 1px transparent border) | focus box top / bottom / left / right | hover underline below plate |
 |---|---|---|---|---|---|
 | production (16/12) | 61 | 13 | 18 | 4 / 7 / 0.1 / 0.5 | 7 |
-| this PR (18/10) | 61 | 15 | 16 | 7 / 7 / 7.1 / 7.5 | 7 |
+| this PR (19/10) | 62 | 16 | 16 | 7 / 7 / 7.1 / 7.5 | 7 |
 
-An exact split is not possible: a 61px bar minus a 30px plate leaves 31px. Chromium snaps the SVG to whole pixels, so 18.5/9.5 renders as 16/15. 15/16 leaves the plate half a pixel above centre. An exact split needs a 60 or 62px bar (padding 18/9 or 18/11).
+18/11, the pair asked for, measured 15 above and 17 below: the extra pixel all goes below the plate. 19/10 gives exactly 16 above and 16 below in a 62px bar. In device pixels that is 16/16 at 1×, 32/32 at 2× and 48/48 at 3×, with crisp plate edges.
 
 ## Contrast (WCAG 2.2)
 
@@ -55,7 +57,7 @@ An exact split is not possible: a 61px bar minus a 30px plate leaves 31px. Chrom
 ## Acceptance
 
 - Black Generic header as GOV.UK's default, white plate with the "ul." and rim in black.
-- Plate centred in the 61px bar, 15 above and 16 below (was 13 / 18), bar height unchanged.
+- Plate exactly centred: 16 above and 16 below (was 13 / 18), bar 62px (was 61).
 - Focused, an even 7px of yellow round the plate, and the logo does not move. Hover underline unchanged, 7px below the plate.
 - `check-own-css`, `biome check` and CI green. Vercel Preview built.
 - Screenshots (production against this branch's CSS on production, 375 and 1280; normal, hover, focus, focus close-up) in `docs/tasks/task-78/` and the PR.

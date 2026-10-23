@@ -10,12 +10,12 @@
 // underline of the shared link-styles sits 6px below it. Deviation from
 // GOV.UK's magic numbers (Jakub's decision): GOV.UK's padding 16/12 sits its
 // airy crown high, 13px above and 18px below in the 61px bar, which a solid
-// plate does not carry. 18/10 (the same sum, so the same bar) centres the
-// plate: 15px above, 16px below with the 1px transparent border. 31px cannot
-// split evenly, and Chromium snaps the SVG to whole pixels. The px are
+// plate does not carry. 19/10 centres the plate exactly, 16px above and 16px
+// below (the 1px transparent border included), in a bar 1px taller (62px);
+// in 61px the 31px around the 30px plate cannot split evenly. The px are
 // allowed one by one in scripts/check-own-css.mjs.
 .govuk-generic-header__logo {
-  @include generic-header.logo-styles($padding-top: 18px, $padding-bottom: 10px);
+  @include generic-header.logo-styles($padding-top: 19px, $padding-bottom: 10px);
 }
 
 .app-logo {

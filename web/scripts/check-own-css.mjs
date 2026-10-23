@@ -46,8 +46,8 @@ const HOOK_ONLY = new Map([
 // magic px. Each must appear exactly as here, once.
 const RAW_PX = [
   // .govuk-header__logo: logo-styles($padding-top: 16px, $padding-bottom: 14px - 2px),
-  // rebalanced to 18/10, same sum, to centre our plate (task 78, a deviation)
-  "logo-styles($padding-top: 18px, $padding-bottom: 10px)",
+  // changed to 19/10 to centre our plate exactly, bar 1px taller (task 78, a deviation)
+  "logo-styles($padding-top: 19px, $padding-bottom: 10px)",
   // .govuk-header__logotype: top: -3px
   "top: -3px;",
   // .govuk-header__logotype: margin-bottom: $logo-bottom-margin (2px)
