@@ -50,6 +50,7 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 - Search: a compact street and village index cached in the browser (`/api/search-index/<hash>`, immutable, loaded on first focus), with `/api/search` as the fallback. Without JS the home page's form submits to `/szukaj` (noindex, rendered per request). No rate limit (no Vercel WAF); unknown query parameters are redirected to the clean URL, so the CDN cache holds. The schedules themselves never ship to the client.
 - ICS feeds are cacheable (`s-maxage=3600, stale-while-revalidate=86400`, `text/calendar; charset=utf-8`).
 - The data model is a generic "event at a location", so other event types can be added. See `docs/database.md`.
+- **TERYT (GUS ULIC/SIMC) is the single source of truth for place and street names and types, for every gmina; names from gmina PDFs/schedules are mapped TO TERYT, never the other way.** The import workflow checks TERYT and opens a review issue on any difference (`web/scripts/check-teryt.ts`); a renamed street's old page id redirects only after review (`place_redirects`, `docs/database.md`).
 - **Hard rule:** every data item shown on the site or in the PDF keeps a visible link to its original source and the date it was last checked (`source.url`, `source.checkedAt`). No source, no display.
 
 ## Forbidden

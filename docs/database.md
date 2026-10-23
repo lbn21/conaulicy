@@ -23,6 +23,18 @@ Don't use `vercel env run` (Vercel CLI 64.5): it hands the command back to its o
 
 A zone (`waste:miasto-s1` … `waste:gmina-s5`) links places to events. A village part (`czesc_wsi`) without a zone entry of its own takes its parent village's zone (`pickZone`, `web/lib/places.ts`). A street in no zone has no sector: the site says the data is missing and never guesses.
 
+## TERYT names and renamed streets
+
+Street names come from TERYT ULIC (`docs/data/DATA-INVENTORY.md` section 7): `streets.prefix` is CECHA, `streets.nazwa_1` and `streets.nazwa_2` are NAZWA_1 and NAZWA_2 (null until an import with `--teryt` fills them), and `streets.name` is NAZWA_2 + NAZWA_1, what the pages show. The site reads only `prefix` and `name`, so it works with or without the two columns.
+
+A renamed street gets a new SYM_UL, so a new page id. `place_redirects (old_id, new_id, reason, created_at)` keeps the old address: `/adres/<old_id>` and everything under it answer 308 to the same path on `new_id`, query kept; a missing table means no redirects. Rows are written **only** by the reviewed step, never by an import or a workflow: after the TERYT check's issue has been reviewed and the rename imported,
+
+```sh
+cd web
+npm run db:redirect -- --from <old id> --to <new id> --reason "TERYT rename, issue #N"           # dry run
+npm run db:redirect -- --from <old id> --to <new id> --reason "TERYT rename, issue #N" --apply --yes-production
+```
+
 ## Import tables
 
 The unattended import (docs/import.md) adds `import_runs` (one row per source per run), `import_changes` (every change by batch, for `npm run import:revert`), `source_files` (every source file by SHA-256, with its S3 key) and `source_pages` (watched pages' link hashes). It connects as the Neon role `conaulicy_import`, which can only read places and zones, write `events` and `gminy.schedule_url`, and write those four tables.
@@ -35,6 +47,8 @@ Migrations only add what the code about to be deployed needs, and run before tha
 cd web
 npm run db:migrate      # reads web/.env.local (Neon main)
 ```
+
+The code may also ship first when it tolerates the old schema, as for `0002_teryt_names` (task 67): merge (the site never reads the new columns, and a missing `place_redirects` means no redirects); then Jakub backs up, runs `db:migrate`, and reloads the data with `npm run db:import -- --from <etl out> --teryt ../.cache/sources/teryt/<day> --apply --yes-production` (`npm run sources:pull` fetches the TERYT files), which fills `nazwa_1` and `nazwa_2`. Agents never run either on production.
 
 ## Testing data changes without touching production
 
