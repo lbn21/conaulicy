@@ -43,6 +43,10 @@ export default function AccessibilityPage() {
                 Rodzaj odpadów poznasz po nazwie, nie tylko po kolorze. W PDF do
                 druku każdy rodzaj ma też swój kształt.
               </li>
+              <li>
+                Wyszukiwarka adresów działa też bez JavaScriptu: wpisz ulicę
+                albo wieś i wybierz „Szukaj”.
+              </li>
             </ul>
           </section>
 
@@ -70,10 +74,6 @@ export default function AccessibilityPage() {
               <li>
                 PDF do druku ma oznaczoną strukturę, ale nie przeszedł jeszcze
                 osobnego testu dostępności PDF.
-              </li>
-              <li>
-                Wyszukiwarka adresów potrzebuje JavaScriptu. Bez niego działają
-                przykładowe adresy na stronie głównej.
               </li>
               <li>
                 Oryginalne harmonogramy gminy to często obrazki. Przepisujemy je

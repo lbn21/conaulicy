@@ -39,7 +39,15 @@ const nextConfig: NextConfig = {
   // to flip indexing (see lib/indexing.ts; pages rendered on demand read it
   // at runtime, which on Vercel sees the same values).
   async headers() {
-    if (indexable()) return [];
+    // Search results are never search results (also meta robots).
+    if (indexable()) {
+      return [
+        {
+          source: "/szukaj",
+          headers: [{ key: "X-Robots-Tag", value: "noindex" }],
+        },
+      ];
+    }
     return [
       {
         source: "/:path*",

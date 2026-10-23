@@ -1,0 +1,184 @@
+import type { Metadata } from "next";
+import { permanentRedirect } from "next/navigation";
+import { withHouseNumber } from "@/lib/house";
+import { indexable } from "@/lib/indexing";
+import { searchIndex } from "@/lib/schedule";
+import {
+  addresses,
+  findPlaces,
+  matcher,
+  placeHref,
+  type SearchHit,
+} from "@/lib/search";
+import { pageMetadata } from "@/lib/share";
+
+// The home page's search form without JS (and Enter with no suggestion
+// highlighted): the same matching as the search field (lib/search.ts, over
+// the cached index), every result instead of 8. One place: straight to its
+// page; several: a list; none: what to try next. Rendered per request, so
+// never cached by the CDN; never indexed (next.config.ts sends the header).
+
+const INPUT_ID = "adres";
+const HINT =
+  "Na przykład Asnyka 12 albo Lisie Jamy – polskie znaki nie są potrzebne";
+const EMPTY_ERROR = "Wpisz nazwę ulicy albo wsi";
+
+type Outcome =
+  | { kind: "empty" }
+  | { kind: "none"; q: string }
+  | { kind: "one"; hit: SearchHit }
+  | { kind: "many"; q: string; hits: SearchHit[] };
+
+async function outcome(
+  searchParams: PageProps<"/szukaj">["searchParams"],
+): Promise<Outcome> {
+  const raw = (await searchParams).q;
+  const q = (typeof raw === "string" ? raw : "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 100);
+  if (!q) return { kind: "empty" };
+  const { places } = await searchIndex();
+  const hits = findPlaces(matcher(places, Number.POSITIVE_INFINITY), q);
+  if (hits.length === 0) return { kind: "none", q };
+  if (hits.length === 1) return { kind: "one", hit: hits[0] };
+  return { kind: "many", q, hits };
+}
+
+const H1 = {
+  empty: "Wyszukaj adres",
+  none: "Brak wyników",
+  many: "Wyniki wyszukiwania",
+} as const;
+
+export async function generateMetadata({
+  searchParams,
+}: PageProps<"/szukaj">): Promise<Metadata> {
+  const result = await outcome(searchParams);
+  const h1 = result.kind === "one" ? H1.many : H1[result.kind];
+  // GOV.UK: "Error: " first in the title, so screen readers hear it first.
+  const title = result.kind === "empty" ? `Błąd: ${h1}` : h1;
+  return {
+    title,
+    ...pageMetadata({
+      path: "/szukaj",
+      title,
+      description: "Wyniki wyszukiwania ulicy albo wsi w gminie Lubaczów.",
+    }),
+    robots: { index: false, follow: indexable() },
+  };
+}
+
+/** The home page's field as a plain form, filled with what was typed. */
+function SearchForm({ value, error }: { value: string; error: string | null }) {
+  return (
+    <form method="get" action="/szukaj" noValidate>
+      <div
+        className={
+          error
+            ? "govuk-form-group govuk-form-group--error"
+            : "govuk-form-group"
+        }
+      >
+        <label htmlFor={INPUT_ID} className="govuk-label govuk-label--m">
+          Ulica albo wieś
+        </label>
+        <div id={`${INPUT_ID}-hint`} className="govuk-hint">
+          {HINT}
+        </div>
+        {error && (
+          <p id={`${INPUT_ID}-error`} className="govuk-error-message">
+            <span className="govuk-visually-hidden">Błąd:</span> {error}
+          </p>
+        )}
+        <input
+          id={INPUT_ID}
+          name="q"
+          type="text"
+          autoComplete="off"
+          defaultValue={value}
+          aria-describedby={
+            error ? `${INPUT_ID}-hint ${INPUT_ID}-error` : `${INPUT_ID}-hint`
+          }
+          className={error ? "govuk-input govuk-input--error" : "govuk-input"}
+        />
+      </div>
+      <button type="submit" className="govuk-button" data-module="govuk-button">
+        Szukaj
+      </button>
+    </form>
+  );
+}
+
+export default async function SearchPage({
+  searchParams,
+}: PageProps<"/szukaj">) {
+  const result = await outcome(searchParams);
+  // Keeps the house number: "Asnyka 12" → /adres/…?nr=12. Next.js
+  // redirects from a page with 307 or 308 only; 308, as the brief allows.
+  if (result.kind === "one") permanentRedirect(placeHref(result.hit));
+
+  return (
+    <div className="govuk-grid-row">
+      <div className="govuk-grid-column-two-thirds">
+        {result.kind === "empty" && (
+          <div
+            className="govuk-error-summary"
+            data-module="govuk-error-summary"
+          >
+            <div role="alert">
+              <h2 className="govuk-error-summary__title">Jest problem</h2>
+              <div className="govuk-error-summary__body">
+                <ul className="govuk-list govuk-error-summary__list">
+                  <li>
+                    <a href={`#${INPUT_ID}`}>{EMPTY_ERROR}</a>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+        <h1 className="govuk-heading-l">{H1[result.kind]}</h1>
+
+        {result.kind === "many" && (
+          <>
+            <p className="govuk-body">
+              {`Dla „${result.q}” znaleźliśmy ${addresses(result.hits.length)}. Wybierz swój.`}
+            </p>
+            <ul className="govuk-list govuk-!-margin-bottom-8">
+              {result.hits.map((hit) => (
+                <li key={hit.id}>
+                  <a href={placeHref(hit)} className="govuk-link">
+                    {withHouseNumber(hit.label, hit.nr ?? null)}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
+        {result.kind === "none" && (
+          <>
+            <p className="govuk-body">{`Nie znaleźliśmy „${result.q}”.`}</p>
+            <p className="govuk-body">Możesz:</p>
+            <ul className="govuk-list govuk-list--bullet">
+              <li>sprawdzić, czy nazwa jest dobrze napisana</li>
+              <li>wpisać samą nazwę ulicy, na przykład Asnyka</li>
+              <li>
+                znaleźć swój adres na liście{" "}
+                <a href="/ulice" className="govuk-link">
+                  Wszystkie ulice i wsie
+                </a>
+              </li>
+            </ul>
+          </>
+        )}
+
+        <SearchForm
+          value={result.kind === "empty" ? "" : result.q}
+          error={result.kind === "empty" ? EMPTY_ERROR : null}
+        />
+      </div>
+    </div>
+  );
+}

@@ -4,6 +4,7 @@ import "accessible-autocomplete/dist/accessible-autocomplete.min.css";
 import { useEffect, useRef } from "react";
 import { withHouseNumber } from "@/lib/house";
 import {
+  addresses,
   findPlaces,
   type Matcher,
   matcher,
@@ -23,8 +24,9 @@ const HINT =
   "Na przykład Asnyka 12 albo Lisie Jamy – polskie znaki nie są potrzebne";
 
 // The same field accessible-autocomplete renders (its classes, GOV.UK's
-// govuk-input), so nothing moves when it takes over on first focus.
-const PLACEHOLDER = `<div class="autocomplete__wrapper"><input id="${INPUT_ID}" type="text" class="autocomplete__input autocomplete__input--default govuk-input" autocomplete="off" aria-describedby="${HINT_ID}"></div>`;
+// govuk-input), so nothing moves when it takes over on first focus. Named q,
+// as the library's field, so the form works before and without it.
+const PLACEHOLDER = `<div class="autocomplete__wrapper"><input id="${INPUT_ID}" name="q" type="text" class="autocomplete__input autocomplete__input--default govuk-input" autocomplete="off" aria-describedby="${HINT_ID}"></div>`;
 
 type Note = "hint" | "loading" | "error" | "none";
 
@@ -34,14 +36,6 @@ const NOTES: Record<Note, string> = {
   error: "Błąd: coś nie zadziałało po naszej stronie. Spróbuj za chwilę.",
   none: "Brak wyników. Nie mamy jeszcze tej ulicy ani wsi – sprawdź przykładowe adresy poniżej.",
 };
-
-function addresses(n: number): string {
-  if (n === 1) return "1 adres";
-  const tens = n % 100;
-  const ones = n % 10;
-  if (ones >= 2 && ones <= 4 && (tens < 12 || tens > 14)) return `${n} adresy`;
-  return `${n} adresów`;
-}
 
 function escapeHtml(text: string): string {
   return text
@@ -63,11 +57,14 @@ function optionText(option: Option): string {
 }
 
 /**
- * The address search: alphagov accessible-autocomplete, unmodified, set up
- * through its documented options only. It and the index of every place load
- * on first focus, not with the page; then each keystroke is matched on the
- * device ("Asnyka 12" carries the house number to ?nr=). If the index cannot
- * load, settled queries go to /api/search.
+ * The address search: a plain GET form to /szukaj, which works without JS,
+ * enhanced with alphagov accessible-autocomplete, unmodified, set up through
+ * its documented options only. It and the index of every place load on first
+ * focus, not with the page; then each keystroke is matched on the device
+ * ("Asnyka 12" carries the house number to ?nr=). If the index cannot load,
+ * settled queries go to /api/search. Choosing a suggestion opens its page;
+ * Enter with no suggestion highlighted (none found, still loading, list
+ * closed) submits the form, as without JS.
  */
 export function AddressSearch({ indexUrl }: { indexUrl: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -166,7 +163,7 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
         element: container,
         id: INPUT_ID,
         source,
-        name: "",
+        name: "q",
         inputClasses: "govuk-input",
         menuAttributes: { "aria-labelledby": LABEL_ID },
         displayMenu: "overlay",
@@ -214,25 +211,34 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
 
   return (
     <search id={SEARCH_ID} className="app-search">
-      <div className="govuk-form-group">
-        <label
-          id={LABEL_ID}
-          htmlFor={INPUT_ID}
-          className="govuk-label govuk-label--m"
-        >
-          Ulica albo wieś
-        </label>
-        <div id={HINT_ID} className="govuk-hint">
-          {HINT}
+      <form method="get" action="/szukaj">
+        <div className="govuk-form-group">
+          <label
+            id={LABEL_ID}
+            htmlFor={INPUT_ID}
+            className="govuk-label govuk-label--m"
+          >
+            Ulica albo wieś
+          </label>
+          <div id={HINT_ID} className="govuk-hint">
+            {HINT}
+          </div>
+          <div
+            ref={containerRef}
+            // accessible-autocomplete owns this element's children after first
+            // focus; React never touches them.
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: a static field, replaced by accessible-autocomplete
+            dangerouslySetInnerHTML={{ __html: PLACEHOLDER }}
+          />
         </div>
-        <div
-          ref={containerRef}
-          // accessible-autocomplete owns this element's children after first
-          // focus; React never touches them.
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: a static field, replaced by accessible-autocomplete
-          dangerouslySetInnerHTML={{ __html: PLACEHOLDER }}
-        />
-      </div>
+        <button
+          type="submit"
+          className="govuk-button"
+          data-module="govuk-button"
+        >
+          Szukaj
+        </button>
+      </form>
     </search>
   );
 }

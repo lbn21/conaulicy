@@ -7,6 +7,7 @@
 
 const ROUTES: [RegExp, string[]][] = [
   [/^\/(?:ulice|dostepnosc|prywatnosc|o-projekcie)?$/, []],
+  [/^\/szukaj$/, ["q"]],
   [/^\/adres\/[^/]+\/?$/, ["nr"]],
   [/^\/adres\/[^/]+\/nr(?:\/[^/]+)+$/, []],
   [/^\/adres\/[^/]+\/numer$/, []],
