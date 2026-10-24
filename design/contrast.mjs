@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// WCAG 2.x contrast check for the site's palette: GOV.UK's with the Latarnia
+// WCAG 2.x contrast check for the site's palette: GOV.UK's with the Wiśnia
 // group, and every colour token in web/app/tokens.css. CI runs it (the web
 // job's "Contrast" step). It exits 1 if a required pair fails, or if a colour
 // token is in no text or UI pair and not in NOT_CHECKED with its reason.
@@ -57,41 +57,41 @@ const PRINT = Object.keys(tokens).filter((name) =>
 
 // Light only, as GOV.UK. GOV.UK Frontend 6.5.1's palette (functional colours
 // and the colours its components use), with the brand-blue roles replaced by
-// the Latarnia group. Kept here, not parsed: the Latarnia steps are computed
+// the Wiśnia group. Kept here, not parsed: the Wiśnia steps are computed
 // by Sass in web/app/_palette.scss (and set in web/app/_settings.scss), and
 // the rest are GOV.UK Frontend's own values.
 const govuk = {
   text: "#0b0c0c",
   "secondary-text": "#484949",
   "inverse-text": "#ffffff",
-  brand: "#9a5700",
-  link: "#8b4e00",
-  "link-hover": "#4d2c00",
-  "link-visited": "#8b4e00",
+  brand: "#6d2048",
+  link: "#621d41",
+  "link-hover": "#371024",
+  "link-visited": "#621d41",
   "link-active": "#0b0c0c",
   border: "#cecece",
   "input-border": "#0b0c0c",
-  "template-background": "#faf7f2",
+  "template-background": "#f8f4f6",
   "body-background": "#ffffff",
   focus: "#ffdd00",
   "focus-text": "#0b0c0c",
   error: "#ca3535",
   success: "#0f7a52",
   hover: "#cecece",
-  "surface-background": "#faf7f2",
+  "surface-background": "#f8f4f6",
   "surface-text": "#0b0c0c",
-  "surface-border": "#cdab80",
+  "surface-border": "#b690a4",
   button: "#0f7a52",
   "button-hover": "#0b5c3e",
   "secondary-button": "#f3f3f3",
-  // The header bar: Latarnia shade-50, not the Generic header's black
+  // The header bar: Wiśnia shade-50, not the Generic header's black
   // ($app-header-colour in web/app/site.scss, task 88).
-  "header-background": "#4d2c00",
-  // The header plate: GOV.UK white on the header's brown (site.scss).
+  "header-background": "#371024",
+  // The header plate: GOV.UK white on the header's cherry (site.scss).
   "logo-plate": "#ffffff",
   // The plate on light backgrounds (footer, icons, share card): the header's
   // colour, PLATE_COLOUR in web/lib/logo.ts (task 88), with white "ul." cut out.
-  "logo-plate-light": "#4d2c00",
+  "logo-plate-light": "#371024",
   // The plate on keyboard focus: currentColor, i.e. focus-text (app/site.scss).
   "logo-plate-focus": "#0b0c0c",
 };
@@ -194,7 +194,7 @@ function requiredPairs() {
     ["logo-plate-light", "body-background", "ui"],
     ["logo-plate-light", "surface-background", "ui"],
     // The focus box on the header: no black bar under it (task 88), so the
-    // yellow carries it against the brown bar on its own.
+    // yellow carries it against the cherry bar on its own.
     ["focus", "header-background", "ui"],
     ["focus", "body-background", "info"],
     ["border", "body-background", "info"],

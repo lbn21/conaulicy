@@ -16,7 +16,7 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 
 - **GOV.UK Frontend CSS and JS and alphagov accessible-autocomplete are used unchanged**: markup, class names, sizes, spacing, typography, focus, links, buttons, forms and the page template exactly as the [GOV.UK Design System](https://design-system.service.gov.uk/) and govuk-frontend's templates.
 - **Only these are ours**, because GOV.UK forbids other sites to copy them:
-  - the brand colours: the Latarnia group takes GOV.UK's brand-blue roles; the rest of GOV.UK's palette is used as-is (except visited links, below);
+  - the brand colours: the Wiśnia group takes GOV.UK's brand-blue roles; the rest of GOV.UK's palette is used as-is (except visited links, below);
   - the typeface: Atkinson Hyperlegible Next, self-hosted, 400/700; never GDS Transport;
   - the logo: the "ul." plate in the GOV.UK Generic header and, in one colour, in the footer: our own footer markup with `govuk-footer` classes, never the GOV.UK footer component; never the crown, the crest, the GOV.UK logotype, the OGL, a Crown copyright line or the GOV.UK header.
 - **Exceptions** (brand blue hard-coded upstream, no setting; `check-own-css` and `check-govuk-assets` enforce both):

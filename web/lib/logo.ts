@@ -4,7 +4,7 @@
 import { THEME_COLOR } from "./theme.ts";
 
 // The plate's colour on light backgrounds (footer, icons, share card): the
-// header's colour, Latarnia shade-50 (Jakub's decision, task 88). In the
+// header's colour, Wiśnia shade-50 (Jakub's decision, task 88). In the
 // header it is white instead. docs/logo/source/ship_a.mjs reads it too
 // (hence the relative .ts import, which plain Node resolves).
 export const PLATE_COLOUR = THEME_COLOR;

@@ -20,10 +20,10 @@
 // centres GOV.UK's 4px focus bar, 6px above and 6px below, and the hover bar
 // (below). The px are allowed one by one in scripts/check-own-css.mjs.
 // Deviation from the Generic header's black bar (Jakub's decision, task 88):
-// the Latarnia group's darkest step, as GOV.UK's header takes its brand
+// the Wiśnia group's darkest step, as GOV.UK's header takes its brand
 // colour; THEME_COLOR in lib/theme.ts and the PDF's band follow it. Screen
 // only, so GOV.UK's print rule still clears it.
-$app-header-colour: map.get($app-latarnia, "shade-50");
+$app-header-colour: map.get($app-wisnia, "shade-50");
 
 @media screen {
   .govuk-generic-header {
@@ -42,8 +42,8 @@ $app-header-colour: map.get($app-latarnia, "shade-50");
 }
 
 // The plate's fill is one custom property: GOV.UK white on the header's
-// brown, as GOV.UK's white crown, so the cut-out "ul." and rim show the
-// header's brown. On focus GOV.UK's link-styles paint the link focus
+// cherry, as GOV.UK's white crown, so the cut-out "ul." and rim show the
+// header's cherry. On focus GOV.UK's link-styles paint the link focus
 // yellow with focus-text black (the wordmark's currentColor); the plate takes
 // that colour too, so the cut-out "ul." and rim show focus yellow in a black
 // plate, as GOV.UK's logo goes all black on focus. :focus, as in link-styles.
@@ -105,7 +105,7 @@ $app-header-colour: map.get($app-latarnia, "shade-50");
 // inherit GOV.UK's), so they get GOV.UK's, as the field; sizes stay the
 // library's. And it paints the highlighted suggestion in GOV.UK's brand blue,
 // which sites off GOV.UK must not use. Here it takes the brand role (the
-// Latarnia group) instead. Outside forced-colours mode only, so its
+// Wiśnia group) instead. Outside forced-colours mode only, so its
 // system-colour rule still applies there. check-govuk-assets checks this
 // override is present.
 .app-search,

@@ -16,16 +16,16 @@
   // No GOV.UK images (crown, crest): their URLs compile to `none`.
   $govuk-image-url-function: meta.get-function("no-image", $module: "assets"),
   // GOV.UK's palette stays; the roles GOV.UK derives from its brand blue
-  // take the same steps of the Latarnia group instead. Visited links have no
+  // take the same steps of the Wiśnia group instead. Visited links have no
   // colour of their own: link-visited is the link colour, as GOV.UK's links
   // without a visited state.
   $govuk-functional-colours: (
-    brand: map.get($app-latarnia, "primary"),
-    link: map.get($app-latarnia, "shade-10"),
-    link-visited: map.get($app-latarnia, "shade-10"),
-    link-hover: map.get($app-latarnia, "shade-50"),
-    template-background: map.get($app-latarnia, "tint-95"),
-    surface-background: map.get($app-latarnia, "tint-95"),
-    surface-border: map.get($app-latarnia, "tint-50")
+    brand: map.get($app-wisnia, "primary"),
+    link: map.get($app-wisnia, "shade-10"),
+    link-visited: map.get($app-wisnia, "shade-10"),
+    link-hover: map.get($app-wisnia, "shade-50"),
+    template-background: map.get($app-wisnia, "tint-95"),
+    surface-background: map.get($app-wisnia, "tint-95"),
+    surface-border: map.get($app-wisnia, "tint-50")
   )
 );

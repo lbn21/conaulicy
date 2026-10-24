@@ -99,8 +99,8 @@ def svg(w, h, body, defs="", title="conaulicy", extra=""):
     )
 
 
-# Light: Latarnia shade-50, the header's colour (task 88; was the primary #9A5700).
-AMBER = {"dark": "#FFB547", "light": "#4D2C00"}
+# Light: Wiśnia shade-50, the header's colour (tasks 88 and 92; Latarnia #4D2C00 before).
+AMBER = {"dark": "#FFB547", "light": "#371024"}
 INK = {"dark": "#E9EDF2", "light": "#161B24"}
 BG = {"dark": "#10141D", "light": "#F5F7FA"}
 ENAMEL_INK = "#0F1419"
@@ -221,7 +221,7 @@ def favicon(px):
     d, b, c = run(BOLD, "ul.", size, round(x * 2) / 2, baseline, UL_KERN)
     style = (
         "<style>.p{fill:#FFB547}.t{fill:#10141D}"
-        "@media (prefers-color-scheme:light){.p{fill:#4D2C00}.t{fill:#FFF}}</style>"
+        "@media (prefers-color-scheme:light){.p{fill:#371024}.t{fill:#FFF}}</style>"
     )
     body = (
         style
@@ -373,10 +373,10 @@ def og_image():
 
 
 # Share-card colours. Light (shipped since task 26, light-only site): GOV.UK
-# text and secondary text; plate and tagline Latarnia shade-50 (task 88). Dark: the
+# text and secondary text; plate and tagline Wiśnia shade-50 (task 88). Dark: the
 # task-23 card, kept for the archive.
 OG = {
-    "light": dict(bg="#FFFFFF", plate="#4D2C00", title="#0B0C0C", lines="#4D2C00", small="#484949"),
+    "light": dict(bg="#FFFFFF", plate="#371024", title="#0B0C0C", lines="#371024", small="#484949"),
     "dark": dict(bg=BG["dark"], plate=AMBER["dark"], title=INK["dark"], lines=AMBER["dark"], small="#B4BCC8"),
 }
 
