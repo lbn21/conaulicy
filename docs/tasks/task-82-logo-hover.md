@@ -1,6 +1,6 @@
 # Task 82: the logo's hover and focus bars, centred under the plate
 
-Draft PR, one branch (`ui/82-logo-hover`): `web/app/site.scss`, `web/scripts/check-own-css.mjs`, `docs/logo/README.md` (one sentence) and this brief, plus crops in `docs/tasks/task-82/`. No drive-by changes, no database, no `next build/start/dev` locally.
+Draft PR #112, one branch (`ui/82-logo-hover`): `web/app/site.scss`, `web/scripts/check-own-css.mjs`, `docs/logo/README.md` (one sentence) and this brief, plus crops in `docs/tasks/task-82/`. No drive-by changes, no database, no `next build/start/dev` locally.
 
 ## Goal
 
@@ -29,13 +29,13 @@ Both bars hang from the bottom of the link's **inline content area**. Atkinson H
 
 - Move the line 1 px up and lower the logo 1 px, so the plate stays where it is: `logo-styles(18px, 11px)` and `.app-logo { top: -2px }`. The content area then ends 6 px below the plate, the 4 px focus bar is centred (6 / 6), and the bar is still 62 px tall.
 - Focus padding becomes `padding: 1px 6px 0; margin-left: -6px`: 6 px of yellow on every side of the plate's box, as task 78 did with 7 px.
-- Hover is left at GOV.UK's 3 px and needs no rule of its own. Its top now matches the focus bar's top (y 52): 6 px above, 7 px below. The other choice (a 4 px hover bar, identical to the focus bar) is measured below for Jakub.
+- **Jakub's decision:** the hover bar becomes 4 px, identical to the focus bar (6 / 6), with `margin-bottom: -4px; border-bottom-width: 4px` on `:hover, :active`. This deviates from GOV.UK's 3 px. Only the width is set, so GOV.UK's `border: 0` on `:focus` still removes the bar on hover+focus.
 
 ## Acceptance
 
 - Measured in headless Chromium at DPR 4, 375 and 1280 px wide, on production (`conaulicy.pl`) with this branch's declarations injected. The Vercel preview needs a Vercel login, so headless Chromium cannot open it. Ink is the box of pixels of a colour class (white, focus yellow, header black). The black focus bar is measured in a second pass with the header's background set to grey, because black on black has no ink.
 - Focus bar: 6 above and 6 below. Yellow box: even, within ±0.25 px against the plate's box (top and bottom are exact).
-- Hover bar: 3 px, top at the focus bar's top. A 6.5 / 6.5 split is not possible in Chrome (see root cause).
+- Hover bar: 4 px, at the focus bar's place (52–56), 6 above and 6 below.
 - The plate's top is the same in normal, hover, focus and hover+focus (y 16), and the header stays 62 px.
 - `RAW_PX` in `check-own-css` is updated, and CI is green.
 
@@ -43,13 +43,12 @@ Both bars hang from the bottom of the link's **inline content area**. Atkinson H
 
 All values in CSS px (DPR 4, 0.25 px raster steps). The values are the same at 375 and 1280 (at 1280 every x is +145).
 
-### Hover bar (3 px, white)
+### Hover bar (white)
 
 | | plate ink bottom | bar | above | below |
 |---|---|---|---|---|
-| before (production) | 46 | 53–56 | 7 | 6 |
-| after (this PR) | 46 | 52–55 | **6** | **7** |
-| option: 4 px hover bar | 46 | 52–56 | **6** | **6** |
+| before (production, 3 px) | 46 | 53–56 | 7 | 6 |
+| after (this PR, 4 px) | 46 | 52–56 | **6** | **6** |
 
 ### Focus (yellow box and the 4 px black bar)
 
@@ -58,7 +57,7 @@ All values in CSS px (DPR 4, 0.25 px raster steps). The values are the same at 3
 | before | 8–191 × 9–53 | 7 / 7 / 7 / 7 | 7.10 / 7.54 | 53–57 | 7 / 5 |
 | after | 9–190 × 10–52 | **6 / 6 / 6 / 6** | 6.10 / 6.54 | 52–56 | **6 / 6** |
 
-- Hover+focus is identical to focus, before and after, because GOV.UK's `:focus` removes the hover border.
+- Hover+focus is identical to focus, before and after, because GOV.UK's `:focus` removes the hover border. So the bar is the same 52–56 in hover, focus and hover+focus.
 - "Ink" here means the logo's path bounding boxes: x 15.10 to 183.46 in the svg box, which runs from 15 to 184. The logo's own ink sits 0.10 px in from the box's left edge and 0.54 px from its right edge. A 5.5 px right padding would even that out, but Chrome paints it as 6 px (whole-pixel snapping), so the box is even against the plate's box, as in task 78.
 
 ### No layout shift
@@ -73,6 +72,5 @@ In `docs/tasks/task-82/`, for widths 375 and 1280:
 
 - `before-<width>-<state>.png`
 - `after-<width>-<state>.png`
-- `option-4px-<width>-hover.png`
 
 `<state>` is one of `normal`, `hover`, `focus` and `hoverfocus`.

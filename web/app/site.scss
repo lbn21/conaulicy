@@ -14,10 +14,8 @@
 // taller (62px). The hover and focus bars hang from the font's content area
 // (Atkinson at 30px), not from the logo, so the line sits 1px higher and the
 // lift is 2px, not 3px: the content area ends 6px below the plate, which
-// centres GOV.UK's 4px focus bar, 6px above and 6px below. GOV.UK's 3px hover
-// bar takes the same top, 6px above and 7px below: 6.5 needs half a pixel,
-// and Chrome paints an inline box on whole pixels. The px are allowed one by
-// one in scripts/check-own-css.mjs.
+// centres GOV.UK's 4px focus bar, 6px above and 6px below, and the hover bar
+// (below). The px are allowed one by one in scripts/check-own-css.mjs.
 .govuk-generic-header__logo {
   @include generic-header.logo-styles($padding-top: 18px, $padding-bottom: 11px);
 }
@@ -37,6 +35,16 @@
 // plate, as GOV.UK's logo goes all black on focus. :focus, as in link-styles.
 .app-logo__plate {
   fill: var(--app-logo-plate, #{govuk-colour("white")});
+}
+
+// Deviation from GOV.UK's 3px hover bar (Jakub's decision, task 82): 4px, the
+// focus bar's place and thickness, so it is centred under the plate too; a
+// centred 3px bar needs half a pixel, which Chrome does not paint. Width only,
+// so GOV.UK's border: 0 on focus still removes it.
+.govuk-generic-header__homepage-link:hover,
+.govuk-generic-header__homepage-link:active {
+  margin-bottom: -4px;
+  border-bottom-width: 4px;
 }
 
 // The focus box is the link's inline content area, set by the font (Atkinson

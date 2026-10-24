@@ -58,6 +58,10 @@ const RAW_PX = [
   // round the plate, measured against Atkinson's content area at 30px.
   "margin-left: -6px;",
   "padding: 1px 6px 0;",
+  // .govuk-generic-header__homepage-link:hover: 3px bar, made 4px as the focus
+  // bar, centred under the plate (task 82, Jakub's decision)
+  "margin-bottom: -4px;",
+  "border-bottom-width: 4px;",
 ];
 const MAX_LINES = 80;
 const MAX_GZIP = 1000;
