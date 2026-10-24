@@ -103,9 +103,9 @@ Structure and percentages from [GOV.UK colour](https://design-system.service.gov
 | `secondary-text` | #484949 | GOV.UK (black tint-25) |
 | `inverse-text` | #ffffff | GOV.UK (white) |
 | `brand` | **#6d2048** | wiśnia primary |
-| `link` | **#621d41** | wiśnia shade-10 |
+| `link` | **#8a4d6d** | wiśnia tint-20 |
 | `link-hover` | **#371024** | wiśnia shade-50 |
-| `link-visited` | **#621d41** | wiśnia shade-10, the link colour |
+| `link-visited` | **#8a4d6d** | wiśnia tint-20, the link colour |
 | `link-active` | #0b0c0c | GOV.UK (black) |
 | `border` | #cecece | GOV.UK (black tint-80) |
 | `input-border` | #0b0c0c | GOV.UK (black) |
@@ -132,8 +132,8 @@ WCAG 2.x, computed by `node design/contrast.mjs`, which CI runs on every pull re
 | text on template-background | 17.97 | AAA |
 | secondary-text on body-background | 9.03 | AAA |
 | inverse-text on brand | 10.77 | AAA |
-| link on body-background | 11.85 | AAA |
-| link on surface-background | 10.87 | AAA |
+| link on body-background | 6.24 | AA |
+| link on surface-background | 5.73 | AA |
 | link-hover on body-background | 16.64 | AAA |
 | link-active on body-background | 19.59 | AAA |
 | input-border vs body-background | 19.59 | UI pass |
@@ -155,7 +155,7 @@ WCAG 2.x, computed by `node design/contrast.mjs`, which CI runs on every pull re
 | logo plate on light (white "ul." on it; on body-background) | 16.64 | UI pass |
 | logo plate on the footer (tint-95) | 15.26 | UI pass |
 | focus yellow vs the header #371024 (no focus bar in the header) | 12.36 | UI pass |
-| link vs body text #0b0c0c (links are always underlined, so colour is not the only cue) | 1.65 | below the 3:1 of WCAG technique G183; GOV.UK's blue is 3.22 |
+| link vs body text #0b0c0c (links are also always underlined) | 3.14 | meets the 3:1 of WCAG technique G183 (GOV.UK's blue: 3.22) |
 | logo plate on focus (focus-text #0b0c0c) vs focus yellow | 14.55 | UI pass |
 
 ## Typography

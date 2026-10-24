@@ -20,7 +20,13 @@ const STEPS = {
   "shade-25": ["#000000", 25],
   "shade-50": ["#000000", 50],
 } as const;
-export type Step = "primary" | keyof typeof STEPS;
+type GovukStep = "primary" | keyof typeof STEPS;
+// Ours, not GOV.UK's, with the same method: the link colour (Jakub's
+// decision, task 92): 3.14 : 1 against body text, where shade-10 was 1.65.
+const OUR_STEPS = {
+  "tint-20": ["#ffffff", 20],
+} as const;
+export type Step = GovukStep | keyof typeof OUR_STEPS;
 
 const channels = (hex: string) =>
   [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
@@ -38,18 +44,28 @@ export function mix(withHex: string, baseHex: string, weight: number): string {
     .join("")}`;
 }
 
+const mixAll = (primary: string, steps: object) =>
+  Object.fromEntries(
+    Object.entries(steps).map(([step, [withHex, weight]]) => [
+      step,
+      mix(withHex, primary, weight),
+    ]),
+  );
+
 /** A group of steps from a primary, as GOV.UK's palette groups. */
-export function group(primary: string): Record<Step, string> {
-  const steps = { primary } as Record<Step, string>;
-  for (const [step, [withHex, weight]] of Object.entries(STEPS))
-    steps[step as Step] = mix(withHex, primary, weight);
-  return steps;
+export function group(primary: string): Record<GovukStep, string> {
+  return { primary, ...mixAll(primary, STEPS) } as Record<GovukStep, string>;
 }
 
-export const PALETTE = group(PRIMARY);
+// Our group in GOV.UK's steps (docs/brand.md's palette table), and all steps.
+export const GROUP = group(PRIMARY);
+export const PALETTE = {
+  ...GROUP,
+  ...mixAll(PRIMARY, OUR_STEPS),
+} as Record<Step, string>;
 
 // The step links take: the one line to change for another link colour.
-export const LINK_STEP: Step = "shade-10";
+export const LINK_STEP: Step = "tint-20";
 
 // The roles GOV.UK derives from its brand blue, in our steps. Visited links
 // have no colour of their own: link-visited is the link colour (Jakub's

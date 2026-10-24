@@ -10,7 +10,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { PALETTE, PLATE, ROLE_STEPS, ROLES } from "../lib/palette.ts";
+import { GROUP, PALETTE, PLATE, ROLE_STEPS, ROLES } from "../lib/palette.ts";
 
 const fix = process.argv.includes("--fix");
 const REPO = path.resolve(import.meta.dirname, "../..");
@@ -41,7 +41,7 @@ const SPELLED = {
     text
       .replace(
         /^(\| \*\*wiśnia\*\* [^|]*\|).*$/m,
-        `$1 ${Object.values(PALETTE).join(" | ")} |`,
+        `$1 ${Object.values(GROUP).join(" | ")} |`,
       )
       .replace(
         new RegExp(

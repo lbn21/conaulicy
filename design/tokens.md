@@ -49,7 +49,7 @@ Computed by `node design/contrast.mjs` (WCAG 2.x, sRGB relative luminance), ligh
 - borders and the surface border are decorative dividers, never the only cue;
 - light bin fills are carried by their outline.
 
-The script exits 1 if a required pair fails. Pairs that reach AAA (text, 7:1+): body text, secondary text, links, link hover, active links, white on brand, focus text, the button hover, the secondary button, surface text, header text. Bin labels sit next to the bins in the text colour, so the `-fg` tokens have no pair on the site. Print outlines (`-print`) are "ui" pairs against white paper.
+The script exits 1 if a required pair fails. Pairs that reach AAA (text, 7:1+): body text, secondary text, link hover, active links, white on brand, focus text, the button hover, the secondary button, surface text, header text. Bin labels sit next to the bins in the text colour, so the `-fg` tokens have no pair on the site. Print outlines (`-print`) are "ui" pairs against white paper.
 
 | Pair | Ratio | AA | AAA |
 | --- | ---: | --- | --- |
@@ -58,9 +58,9 @@ The script exits 1 if a required pair fails. Pairs that reach AAA (text, 7:1+): 
 | secondary-text on body-background | 9.03 | pass | pass |
 | secondary-text on template-background | 8.29 | pass | pass |
 | inverse-text on brand | 10.77 | pass | pass |
-| link on body-background | 11.85 | pass | pass |
-| link on template-background | 10.87 | pass | pass |
-| link on surface-background | 10.87 | pass | pass |
+| link on body-background | 6.24 | pass | fail |
+| link on template-background | 5.73 | pass | fail |
+| link on surface-background | 5.73 | pass | fail |
 | link-hover on body-background | 16.64 | pass | pass |
 | link-active on body-background | 19.59 | pass | pass |
 | focus-text on focus | 14.55 | pass | pass |
