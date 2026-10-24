@@ -13,7 +13,7 @@ The site uses **GOV.UK Frontend as-is, including its palette**. Only three thing
 | **Favicons** | [`a-favicon.svg`](logo/a-favicon.svg) (32 px), [`a-favicon-16.svg`](logo/a-favicon-16.svg) (16 px) | Browser tab, app icons: separate pixel-snapped drawings |
 
 - "ul." and the rim are **cut out** of the plate (an SVG mask), so the background shows through them.
-- **Header:** the GOV.UK **Generic header** (`govuk-generic-header`), markup as its template, with only our logo in `govuk-generic-header__homepage-link`. The place name is in the page content, not the header. Never the GOV.UK header, the crown or the GOV.UK logotype. The header rules in `web/app/site.scss` are the plate colour (white; black on focus), the logo's geometry (30 px tall, padding 18/11, `top: -2px`: the plate centred in the 62 px bar, 16 px above and below), GOV.UK's hover and focus bars made 4 px and centred under the plate, an even 6 px focus box round the plate, and the wordmark's x-height centred on the plate (see [`docs/logo/README.md`](logo/README.md)).
+- **Header:** the GOV.UK **Generic header** (`govuk-generic-header`), markup as its template, with only our logo in `govuk-generic-header__homepage-link`. The place name is in the page content, not the header. Never the GOV.UK header, the crown or the GOV.UK logotype. The header rules in `web/app/site.scss` are the bar's colour (Latarnia shade-50 `#4d2c00`, not the Generic header's black: Jakub's decision, task 88), the plate colour (white; black on focus), the logo's geometry (30 px tall, padding 18/11, `top: -2px`: the plate centred in the 62 px bar, 16 px above and below), GOV.UK's hover bar made 4 px and centred under the plate, GOV.UK's focus bar in the header's colour so it does not show (the yellow box with the black plate carries the focus, 9.31 : 1 on the brown), an even 6 px focus box round the plate, and the wordmark's x-height centred on the plate (see [`docs/logo/README.md`](logo/README.md)).
 - **Footer:** our own markup with `govuk-footer` classes, laid out as the GOV.UK footer (`web/components/site-footer.tsx`): the „ul.” plate in one colour (text colour) where GOV.UK has its crown; navigation from a config of live features, shown (with its section break) only once it has two or more links; meta links (Dostępność, Prywatność, O projekcie); „Zrobił Jakub Marciniszyn dla mieszkańców Lubaczowa.” and „Nie jesteśmy urzędem”; our texts under CC BY 4.0 and the schedules' source; „© 2026 conaulicy.pl” as plain text. Never the GOV.UK footer component, the crown, the crest (`$govuk-image-url-function` compiles GOV.UK image URLs to `none`), the Open Government Licence or a Crown copyright line. The code licences (GOV.UK Frontend, MIT; Atkinson Hyperlegible Next, SIL OFL) are credited on /dostepnosc, „Z czego zbudowana jest strona”.
 - **Enamel version** ([`a-hero-*.svg`](logo/a-hero-dark.svg), [`a-og-enamel.svg`](logo/a-og-enamel.svg), [`a-pdf-corner.svg`](logo/a-pdf-corner.svg)): only for large decorative pieces such as a poster, and never in the header, favicon, app icons or at small sizes.
 
@@ -21,12 +21,12 @@ The site uses **GOV.UK Frontend as-is, including its palette**. Only three thing
 
 | Place | File |
 |---|---|
-| Header | `web/components/site-header.tsx`: inline SVG (paths in `web/lib/logo.ts`); plate GOV.UK white (`govuk-colour("white")` in `app/site.scss`) on the Generic header's black; wordmark `currentColor` (white on the black bar); on focus, a black plate with the "ul." in focus yellow (the plate takes `currentColor`, GOV.UK's focus-text) |
+| Header | `web/components/site-header.tsx`: inline SVG (paths in `web/lib/logo.ts`); plate GOV.UK white (`govuk-colour("white")` in `app/site.scss`) on the brown bar (`$app-header-colour`, Latarnia shade-50 `#4d2c00`), the "ul." and rim cut out to the brown; wordmark `currentColor` (white); on focus, a black plate with the "ul." in focus yellow (the plate takes `currentColor`, GOV.UK's focus-text) |
 | Tab icon | `web/app/icon.svg` and `web/app/favicon.ico` (16 from `a-favicon-16.svg`, 32 from `a-favicon.svg`): the `#9a5700` plate with white “ul.”, transparent around it |
 | Apple | `web/app/apple-icon.png` (180): the 32-px favicon on a full-bleed white tile; iOS rounds it |
 | PWA | `web/public/icon-192.png`, `icon-512.png` (white tile, rounded corners) and `icon-maskable-512.png` (full-bleed white, plate inside the central 80 % circle), listed in `web/app/manifest.ts` |
 | Share card | `web/public/og.png` (1200 × 630): the flat `#9a5700` plate, rim and “ul.” cut out, on white, in the `openGraph` and `twitter` metadata |
-| PDF | The black band at the top of each page, as in the site header (white plate, wordmark x-height centred on the plate), drawn as vector paths from `web/lib/logo.ts` |
+| PDF | The brown band (`THEME_COLOR`, `#4d2c00`) at the top of each page, as in the site header (white plate, wordmark x-height centred on the plate), drawn as vector paths from `web/lib/logo.ts` |
 
 ## Clear space and minimum size
 
@@ -63,7 +63,7 @@ The unit is **P**, a quarter of the plate height (34 units → P = 8.5; 7.5 px i
 - **Exceptions** (brand blue hard-coded upstream, with no setting; enforced by `check-own-css` and `check-govuk-assets`):
   - `.govuk-button--inverse`: may appear in the CSS output, never in markup.
   - accessible-autocomplete's highlighted option: the colour stays in its unchanged CSS; `site.scss` repaints it with the brand role (`#9a5700`, white text), so the blue is never rendered.
-- **Logo colours:** the plate is `#9a5700` on light and GOV.UK white on the black header (19.59 : 1); the wordmark is the text colour. On focus the header plate is focus-text black on focus yellow (14.55 : 1).
+- **Logo colours:** the plate is `#9a5700` on light and GOV.UK white on the brown header `#4d2c00` (12.53 : 1); the wordmark is the text colour on light and white in the header. The header, `theme-color` and the web app manifest's `theme_color` are Latarnia shade-50 `#4d2c00` (`THEME_COLOR` in `web/lib/theme.ts`). On focus the header plate is focus-text black on focus yellow (14.55 : 1).
 - **Bin colours** are real-world colours for the bin markers only, never for the logo. Defined in `web/app/tokens.css`; rationale in `design/tokens.md`.
 - **PDF fraction marks:** the printable PDF marks each fraction with a shape in its bin colour, so it reads in black-and-white print and for colour-blind readers: zmieszane ● circle, popiół ○ ring, bio ■ square, papier ▲ triangle, tworzywa ◆ diamond (dark outline), szkło ★ star; rare fractions a letter in an outlined square (G wielkogabarytowe, E elektro, O opony, T tekstylia). The website keeps its bin icons.
 
@@ -143,8 +143,9 @@ WCAG 2.x, computed by `node design/contrast.mjs`, which CI runs on every pull re
 | surface-border vs surface-background | 2.02 | decorative; never the only cue |
 | border vs body-background | 1.57 | decorative divider (GOV.UK default); never the only cue |
 | brand vs body-background | 5.62 | UI pass |
-| Generic header text on black | 19.59 | AAA |
-| logo plate white #ffffff on the black header | 19.59 | UI pass |
+| Generic header text (white) on the header #4d2c00 | 12.53 | AAA |
+| logo plate white #ffffff on the header #4d2c00 | 12.53 | UI pass |
+| focus yellow vs the header #4d2c00 (no focus bar in the header) | 9.31 | UI pass |
 | logo plate on focus (focus-text #0b0c0c) vs focus yellow | 14.55 | UI pass |
 
 ## Typography

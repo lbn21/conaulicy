@@ -15,9 +15,9 @@ const HEIGHT = 30;
 const WIDTH = Math.round((HEIGHT * LOGO_WIDTH) / LOGO_HEIGHT);
 
 // The GOV.UK Generic header (never the GOV.UK header or crown) with our
-// "ul." plate. On its black bar the plate is white, as GOV.UK's white crown,
-// with the "ul." and rim cut out to the black, and a light wordmark. On focus,
-// a black plate with the "ul." in focus yellow (app/site.scss). Markup as the
+// "ul." plate. On its brown bar (app/site.scss) the plate is white, as GOV.UK's
+// white crown, with the "ul." and rim cut out to the brown, and a white
+// wordmark. On focus, a black plate with the "ul." in focus yellow (app/site.scss). Markup as the
 // component's own template: only the logo goes in the homepage link. Sized as
 // the GOV.UK header's logo and centred in the bar (app/site.scss), so the
 // hover underline clears the "y" by 6px as on GOV.UK.

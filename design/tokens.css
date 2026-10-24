@@ -86,7 +86,10 @@
   --govuk-surface-text: #0b0c0c;
   --govuk-surface-border: #cdab80; /* latarnia tint-50 */
 
-  /* The logo plate on the Generic header's black bar: GOV.UK white
+  /* The header bar: latarnia shade-50, not the Generic header's black
+     ($app-header-colour in web/app/site.scss, task 88). */
+  --header-background: #4d2c00;
+  /* The logo plate on the brown header bar: GOV.UK white
      (govuk-colour("white") in web/app/site.scss). */
   --logo-plate: #ffffff;
 
