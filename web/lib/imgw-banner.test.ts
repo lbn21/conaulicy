@@ -50,7 +50,7 @@ test("the banner covers our one powiat", () => {
   assert.deepEqual([...POWIATS], [POWIAT]);
 });
 
-test("one warning in force: title, tag, until when, details, footer", () => {
+test("one warning in force: title, tag, until when, source, details, footer", () => {
   const now = at("2026-10-25T14:00:00+01:00");
   assert.deepEqual(banner(copy("2026-10-25T13:52:10+01:00"), now), {
     title: "Ostrzeżenie IMGW",
@@ -66,6 +66,7 @@ test("one warning in force: title, tag, until when, details, footer", () => {
         details: WIND,
       },
     ],
+    source: "Źródło: IMGW-PIB",
     footer: `Dotyczy całego powiatu lubaczowskiego. Stan na 13:52. ${SOURCE}`,
   });
 });

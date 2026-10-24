@@ -96,6 +96,17 @@ export const HEADER = PALETTE["shade-50"];
 /** @alias */
 export const PLATE = HEADER;
 
+// IMGW's warning levels 1-3 (Jakub's decision, task 98): the solid colours
+// IMGW's own warnings map paints them (lvlToColorOsmet in
+// shared.imgw.pl/web-components/ostrzezenia-meteo-hydro/ostrzezenia-meteo-hydro.js),
+// for the banner's tags (app/site.scss), not GOV.UK's pale tag tints. Not
+// brand colours, so check-palette lets them stand outside docs/brand.md.
+export const WARNING_LEVELS = {
+  "warning-level-1": "#ffbe00",
+  "warning-level-2": "#ff5a00",
+  "warning-level-3": "#d60000",
+} as const;
+
 /** The colours above as Sass, for app/_palette.scss. */
 export function paletteScss(): string {
   const map = (entries: Record<string, string>) =>
@@ -108,6 +119,7 @@ export function paletteScss(): string {
     `$app-palette: ${map(PALETTE)};`,
     `$app-roles: ${map(ROLES)};`,
     `$app-header: ${HEADER};`,
+    ...Object.entries(WARNING_LEVELS).map(([k, v]) => `$app-${k}: ${v};`),
     "",
   ].join("\n");
 }

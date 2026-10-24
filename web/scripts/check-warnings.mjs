@@ -4,13 +4,14 @@
 // - each state on one address page, a server per state: GOV.UK's markup
 //   (role="region", aria-labelledby, no role="alert", no button), the title,
 //   one tag per warning with its level and colour, highest first, the time,
-//   probability and footer sentences, the stale line, placed before the h1
-//   in the two-thirds column; axe at 375 and 1280 px;
+//   the visible source line, the probability and footer sentences, the stale
+//   line, placed before the h1 in the two-thirds column; axe at 375 and 1280 px;
 // - a level-3 warning on the home page and /ulice (placement before the h1);
 // - stale (the copy kept from an earlier 10-minute slot), too old (3 hours)
 //   and a failing IMGW: the server's clock runs ahead (lib/fake-clock.mjs);
 // - three warnings: keyboard focus on the link, 320 px and 200% zoom with no
-//   horizontal scroll, the tags' and title's contrast, the banner's paddings.
+//   horizontal scroll, the tags' fills (IMGW's level colours, lib/palette.ts)
+//   and contrast, the title's contrast, the banner's paddings.
 // Each state's pages are dropped from the ISR cache first, so they render
 // with that server's setting. With SCREENSHOT_DIR, saves <width>-<state>.png
 // (DPR 2) and one contact sheet per width. Run after `next build`.
@@ -26,6 +27,7 @@ import path from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "playwright";
 import { IMGW_ATTRIBUTION } from "../lib/imgw-warnings.ts";
+import { WARNING_LEVELS } from "../lib/palette.ts";
 import { finish, ROUTES, startServer } from "./lib/server.mjs";
 
 const ADDRESS = "/adres/0972447-00470";
@@ -198,7 +200,11 @@ function readBanner() {
       a.className,
       a.target,
     ]),
-    footer: b.querySelector(".govuk-body-s")?.textContent,
+    source: b.querySelector(
+      ".govuk-notification-banner__content > p.govuk-body-s",
+    )?.textContent,
+    footer: b.querySelector(".govuk-details__text > .govuk-body-s")
+      ?.textContent,
     alerts:
       b.querySelectorAll('[role="alert"]').length +
       (b.getAttribute("role") === "alert" ? 1 : 0),
@@ -234,6 +240,7 @@ function expectBanner(label, state, seen) {
     fail(`${seen.list} list items for ${n} warnings`);
   const content = [
     n > 1 ? "UL.govuk-list" : "P.govuk-body",
+    "P.govuk-body-s",
     "DETAILS.govuk-details",
   ];
   if (seen.content.join() !== content.join())
@@ -281,6 +288,7 @@ function expectBanner(label, state, seen) {
     ])
   )
     fail(`links ${links}`);
+  if (seen.source !== "Źródło: IMGW-PIB") fail(`source „${seen.source}”`);
   if (!footer(!!state.stale).test(seen.footer)) fail(`footer „${seen.footer}”`);
 }
 
@@ -389,6 +397,12 @@ async function deepChecks(browser, origin) {
       4.5,
     ]),
     ...colours.tags.map(([cls, , bg]) => [
+      `${cls.split("--")[1]} tag background vs banner content background`,
+      bg,
+      colours.content,
+      0,
+    ]),
+    ...colours.tags.map(([cls, , bg]) => [
       `${cls.split("--")[1]} tag background vs banner border (brand)`,
       bg,
       colours.border,
@@ -411,6 +425,15 @@ async function deepChecks(browser, origin) {
     );
     if (min && r < min)
       failures.push(`contrast: ${name} ${r.toFixed(2)} < ${min}`);
+  }
+  // The tags' fills are IMGW's level colours (WARNING_LEVELS).
+  const rgb = (hex) =>
+    `rgb(${[1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16)).join(", ")})`;
+  for (const [cls, , bg] of colours.tags) {
+    const level = Object.keys(COLOUR).find((l) => cls.includes(COLOUR[l]));
+    const want = rgb(WARNING_LEVELS[`warning-level-${level}`]);
+    if (bg !== want)
+      failures.push(`tag ${cls}: background ${bg}, want ${want} (IMGW)`);
   }
   const [ht, hr, hb, hl] = colours.header_pad;
   const [ct, cr, cb, cl] = colours.content_pad;

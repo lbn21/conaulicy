@@ -101,6 +101,7 @@ export async function ImgwBanner() {
                 <Line warning={shown.warnings[0]} />
               </p>
             )}
+            <p className="govuk-body-s">{shown.source}</p>
             <details className="govuk-details">
               <summary className="govuk-details__summary">
                 <span className="govuk-details__summary-text">

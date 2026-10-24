@@ -41,6 +41,8 @@ export type Banner = {
   /** The details' summary. */
   more: string;
   warnings: BannerWarning[];
+  /** Visible, before the details: the source, short (in full in the footer). */
+  source: string;
   footer: string;
 };
 
@@ -89,6 +91,7 @@ export function banner(
       ...times(warning, now),
       details: `Prawdopodobieństwo: ${warning.probability}%. ${warning.text}`,
     })),
+    source: "Źródło: IMGW-PIB",
     footer: [
       "Dotyczy całego powiatu lubaczowskiego.",
       `Stan na ${clockTime(fetchedAt)}.`,
