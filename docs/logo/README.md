@@ -58,7 +58,6 @@ See `debug/a-centring-overlay.png`, which shows plate centre lines, ink box and 
 **Rebuild.** Needs `fonttools` and `uharfbuzz`:
 1. `python docs/logo/source/make_logo_a.py <out>`
 2. `npx svgo@4.1.0 --config docs/logo/source/svgo.config.mjs -f <out> -o <opt>`
-3. `node docs/logo/source/render_a.mjs <opt> <out>/a-centring-overlay.svg <png out>`
 
 ## The three original options (task 20)
 
