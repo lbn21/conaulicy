@@ -40,3 +40,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# drawn from lib/palette.ts by scripts/brand-assets.ts
+/app/_palette.scss
+/app/icon.svg
+/app/favicon.ico
+/app/apple-icon.png
+/public/icon-192.png
+/public/icon-512.png
+/public/icon-maskable-512.png
+/public/og.png
+/.brand-assets-key

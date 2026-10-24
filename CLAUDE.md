@@ -16,13 +16,13 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 
 - **GOV.UK Frontend CSS and JS and alphagov accessible-autocomplete are used unchanged**: markup, class names, sizes, spacing, typography, focus, links, buttons, forms and the page template exactly as the [GOV.UK Design System](https://design-system.service.gov.uk/) and govuk-frontend's templates.
 - **Only these are ours**, because GOV.UK forbids other sites to copy them:
-  - the brand colours: the Latarnia group takes GOV.UK's brand-blue roles; the rest of GOV.UK's palette is used as-is (except visited links, below);
+  - the brand colours: our group, set only in `web/lib/palette.ts` (generated assets are drawn from it at build time, `docs/brand.md`), takes GOV.UK's brand-blue roles; the rest of GOV.UK's palette is used as-is (except visited links, below);
   - the typeface: Atkinson Hyperlegible Next, self-hosted, 400/700; never GDS Transport;
   - the logo: the "ul." plate in the GOV.UK Generic header and, in one colour, in the footer: our own footer markup with `govuk-footer` classes, never the GOV.UK footer component; never the crown, the crest, the GOV.UK logotype, the OGL, a Crown copyright line or the GOV.UK header.
 - **Exceptions** (brand blue hard-coded upstream, no setting; `check-own-css` and `check-govuk-assets` enforce both):
   - `.govuk-button--inverse`: may appear in the CSS output, never in markup.
   - accessible-autocomplete's highlighted option (`.autocomplete__option--focused` / `:hover`): stays in its CSS, and `site.scss` overrides the colour with the brand role, so it is never rendered.
-- **Deviation (Jakub's decision):** visited links have no colour of their own: `link-visited` is the link colour, set in `web/app/_settings.scss`, as GOV.UK's links without a visited state. No per-link modifier classes for it.
+- **Deviation (Jakub's decision):** visited links have no colour of their own: `link-visited` is the link colour, set in `web/lib/palette.ts` (`ROLE_STEPS`), as GOV.UK's links without a visited state. No per-link modifier classes for it.
 - **Light theme only.**
 - Any other deviation needs Jakub's approval and a reason in the PR.
 - **Own CSS:** only `web/app/site.scss`, for what GOV.UK has no equivalent for (logo plate, bin markers, search suggestions). GOV.UK Sass functions and mixins only, no raw hex or px; capped at 1 KB gzip and 80 lines of code. `web/app/tokens.css` holds only the font's metric-matched fallback and the bin colours.

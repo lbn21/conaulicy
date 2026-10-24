@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import { SITE_URL } from "./lib/config.generated";
 import { NR_QUERY } from "./lib/house";
 import { indexable } from "./lib/indexing";
+import { writeBrandAssets } from "./scripts/brand-assets";
 
 const nextConfig: NextConfig = {
   // PDFKit reads its own data files from __dirname, so it must stay a real
@@ -82,4 +83,10 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// The palette's Sass, icons and share card (not in git), before Next.js reads
+// app/ and public/; redrawn only when the palette or its generator changed
+// (scripts/brand-assets.ts).
+export default async function config(): Promise<NextConfig> {
+  await writeBrandAssets();
+  return nextConfig;
+}

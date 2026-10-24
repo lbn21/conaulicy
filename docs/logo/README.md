@@ -35,8 +35,8 @@ See `debug/a-centring-overlay.png`, which shows plate centre lines, ink box and 
 - **Size:** the mark is much larger than before. The old plate was 28 px tall with a 20 px wordmark.
 
 **Favicons.** These are separate designs, pixel-snapped: plate edges and baselines on whole pixels, x-height a whole number of pixels.
-- **`a-favicon-16.svg`:** 16-px grid, x-height 5 px.
-- **`a-favicon.svg`:** 32-px grid, x-height 10 px. It switches colour with `prefers-color-scheme`.
+- **`a-favicon-16.svg`** (now `web/lib/brand/favicon-16.svg`): 16-px grid, x-height 5 px.
+- **`a-favicon.svg`** (now `web/lib/brand/favicon-32.svg`): 32-px grid, x-height 10 px. As generated it switched colour with `prefers-color-scheme`; the shipped templates are light only, the plate `currentColor`.
 - **PNGs:** `a-icon-16/32/180/512.png` and `a-icon-maskable-512.png` (mark inside the 80 % safe circle).
 
 **Realistic hero** (`a-hero-dark.svg`, `a-hero-light.svg`). Enamelled steel, same geometry, pure SVG: gradients and filters, no raster.
@@ -97,11 +97,13 @@ All three avoid the blue-and-white MSI street sign, the city's herb and any offi
 
 ## Shipped (task 23)
 
-`node docs/logo/source/ship_a.mjs` builds the web files from the SVGs here. The plate's colour on light backgrounds is `PLATE_COLOUR` in `web/lib/logo.ts`, `#4d2c00` since task 88 (the header's colour; `#9A5700` before): the favicons take it in `light()`, and the script fails if the share card's plate or tagline is another colour. `make_logo_a.py` writes `#4D2C00` for the light plate and the card's tagline; the light SVGs here were updated to match (colour values only, as it cannot run without fontTools here).
+`web/scripts/brand-assets.ts` builds the web files at build time (task 92; `source/ship_a.mjs` wrote committed copies before), from the templates in `web/lib/brand/`: `favicon-32.svg` and `favicon-16.svg` (were `a-favicon.svg`, `a-favicon-16.svg` here) and `og.svg` (was `og-1200x630.svg`), with the plate as `currentColor`, painted `PLATE` from `web/lib/palette.ts`. `make_logo_a.py` reads `PLATE` from that file too; after re-running it, copy those three into `web/lib/brand/` with the plate's fill as `currentColor`. The light SVGs here (`a-logo-light.svg`, `a-mark-light.svg`) keep the colour in the file, for download: `node web/scripts/check-palette.mjs --fix` repaints them, and CI fails if they differ.
 - `web/app/favicon.ico` (16 + 32 from the two favicon drawings);
 - `web/app/icon.svg`, `web/app/apple-icon.png`;
 - `web/public/icon-{192,512}.png`, `icon-maskable-512.png`;
-- `web/public/og.png` and `og-1200x630.png`: the flat plate on white, from `og_flat("light")` in `make_logo_a.py` (task 26, light-only site). The task-23 night card is `a-og-dark.*`.
-- `web/app/icon.svg`: `a-favicon.svg` with its light colours and no colour-scheme query.
+- `web/public/og.png`: the flat plate on white, from `og_flat("light")` in `make_logo_a.py` (task 26, light-only site). The task-23 night card is `a-og-dark.*`.
+- `web/app/icon.svg`: `favicon-32.svg` painted, with no colour-scheme query.
+
+None of these is in git (task 92).
 
 The header and PDF paths live in `web/lib/logo.ts`, copied from `a-logo-mono.svg`.

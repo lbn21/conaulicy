@@ -11,6 +11,7 @@ Writes SVGs plus measure.json (centring numbers for the debug overlay).
 """
 import json
 import os
+import subprocess
 import sys
 
 import uharfbuzz as hb
@@ -99,8 +100,15 @@ def svg(w, h, body, defs="", title="conaulicy", extra=""):
     )
 
 
-# Light: Latarnia shade-50, the header's colour (task 88; was the primary #9A5700).
-AMBER = {"dark": "#FFB547", "light": "#4D2C00"}
+# Light: the plate's colour, PLATE in web/lib/palette.ts (the header's colour,
+# task 88), read from it with Node.
+PLATE = subprocess.run(
+    ["node", "--input-type=module", "-e",
+     "import { PLATE } from './web/lib/palette.ts'; process.stdout.write(PLATE)"],
+    cwd=os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../.."),
+    check=True, capture_output=True, text=True,
+).stdout
+AMBER = {"dark": "#FFB547", "light": PLATE}
 INK = {"dark": "#E9EDF2", "light": "#161B24"}
 BG = {"dark": "#10141D", "light": "#F5F7FA"}
 ENAMEL_INK = "#0F1419"
@@ -221,7 +229,7 @@ def favicon(px):
     d, b, c = run(BOLD, "ul.", size, round(x * 2) / 2, baseline, UL_KERN)
     style = (
         "<style>.p{fill:#FFB547}.t{fill:#10141D}"
-        "@media (prefers-color-scheme:light){.p{fill:#4D2C00}.t{fill:#FFF}}</style>"
+        "@media (prefers-color-scheme:light){.p{fill:" + PLATE + "}.t{fill:#FFF}}</style>"
     )
     body = (
         style
@@ -373,10 +381,10 @@ def og_image():
 
 
 # Share-card colours. Light (shipped since task 26, light-only site): GOV.UK
-# text and secondary text; plate and tagline Latarnia shade-50 (task 88). Dark: the
+# text and secondary text; plate and tagline Wiśnia shade-50 (task 88). Dark: the
 # task-23 card, kept for the archive.
 OG = {
-    "light": dict(bg="#FFFFFF", plate="#4D2C00", title="#0B0C0C", lines="#4D2C00", small="#484949"),
+    "light": dict(bg="#FFFFFF", plate=PLATE, title="#0B0C0C", lines=PLATE, small="#484949"),
     "dark": dict(bg=BG["dark"], plate=AMBER["dark"], title=INK["dark"], lines=AMBER["dark"], small="#B4BCC8"),
 }
 

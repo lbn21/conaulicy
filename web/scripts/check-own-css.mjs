@@ -17,11 +17,13 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
 import { compile } from "sass";
+import { writeBrandAssets } from "./brand-assets.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const ALLOWED = new Set([
   "app/govuk.scss",
   "app/_settings.scss",
+  // Generated from lib/palette.ts, not in git.
   "app/_palette.scss",
   "app/_assets.scss",
   "app/site.scss",
@@ -130,6 +132,8 @@ for (const match of code.matchAll(
     `app/site.scss: raw value ${match[0]} (use GOV.UK Sass functions)`,
   );
 }
+// The Sass @uses the palette generated from lib/palette.ts (as next build).
+await writeBrandAssets();
 const css = compile(path.join(ROOT, "app/site.scss"), {
   loadPaths: [path.join(ROOT, "node_modules")],
   style: "compressed",

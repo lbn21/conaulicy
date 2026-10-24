@@ -4,14 +4,14 @@ Light only, as GOV.UK. Values: `design/tokens.css`; the bin colours the site use
 
 ## Rationale
 - **GOV.UK Frontend as-is, including its palette; only the brand-blue roles, the typeface and the logo are ours** (`docs/govuk-audit.md`). The full palette, with every group and step, is in `docs/brand.md`.
-- **The Latarnia group** replaces GOV.UK's brand blue. It is computed from `#9a5700` with GOV.UK's own tint/shade percentages (`web/app/_palette.scss`). Brand is its primary, links are shade-10 `#8b4e00`, link hover is shade-50 `#4d2c00`, and the template and surface backgrounds are tint-95 `#faf7f2`. Visited links have no colour of their own: `link-visited` is the link colour.
+- **Our brand group** (Wiśnia) replaces GOV.UK's brand blue. It is computed from `PRIMARY` with GOV.UK's own tint/shade percentages, and its roles are named, in `web/lib/palette.ts`, the only place its values are set (`docs/brand.md`, Changing the palette). Brand is its primary, links are `LINK_STEP`, link hover is shade-50, and the template and surface backgrounds are tint-95. Visited links have no colour of their own: `link-visited` is the link colour.
 - **Everything else is GOV.UK's:**
   - text `#0b0c0c`, secondary text `#484949`;
   - yellow focus `#ffdd00` with black `#0b0c0c`;
   - error `#ca3535`, success and buttons green `#0f7a52`;
   - borders `#cecece`, input borders black.
-- **The header bar** is the Latarnia shade-50 `#4d2c00` (Jakub's decision, task 88), not the Generic header's black; `theme-color` and the PDF band follow it. Its GOV.UK focus bar takes the same colour, so the yellow focus box (9.31:1 on the brown) carries the focus on its own.
-- **The logo plate** is GOV.UK white on the brown header bar, as GOV.UK's white crown. On light backgrounds (footer, icons, share card) it is the header's `#4d2c00` (task 88; it was `#9a5700`), with white "ul." cut out; only the plate changed, links and buttons keep the Latarnia steps.
+- **The header bar** is shade-50, `HEADER` (Jakub's decision, task 88), not the Generic header's black; `theme-color` and the PDF band follow it. Its GOV.UK focus bar takes the same colour, so the yellow focus box (12.36:1 on the cherry) carries the focus on its own.
+- **The logo plate** is GOV.UK white on the cherry header bar, as GOV.UK's white crown. On light backgrounds (footer, icons, share card) it is the header's colour, `PLATE` (task 88), with white "ul." cut out.
 - **Typography:** Atkinson Hyperlegible Next, self-hosted, weights 400 and 700, instead of GDS Transport (which GOV.UK reserves for its own services).
 - **Waste colours** are fills, each with a `-fg` for the label text on that fill. Papier is blue, szkło green, metale i tworzywa yellow, bio brown, zmieszane black, popiół grey. The rare fractions each have their own colour, as in the Miasto Lubaczów schedule table: gabaryty orange, elektro navy, opony mid grey, tekstylia rose. The label next to every bin names the fraction, so colour is never the only cue.
 
@@ -49,19 +49,19 @@ Computed by `node design/contrast.mjs` (WCAG 2.x, sRGB relative luminance), ligh
 - borders and the surface border are decorative dividers, never the only cue;
 - light bin fills are carried by their outline.
 
-The script exits 1 if a required pair fails. Pairs that reach AAA (text, 7:1+): body text, secondary text, link hover, active links, focus text, the button hover, the secondary button, surface text, header text. Bin labels sit next to the bins in the text colour, so the `-fg` tokens have no pair on the site. Print outlines (`-print`) are "ui" pairs against white paper.
+The script exits 1 if a required pair fails. Pairs that reach AAA (text, 7:1+): body text, secondary text, link hover, active links, white on brand, focus text, the button hover, the secondary button, surface text, header text. Bin labels sit next to the bins in the text colour, so the `-fg` tokens have no pair on the site. Print outlines (`-print`) are "ui" pairs against white paper.
 
 | Pair | Ratio | AA | AAA |
 | --- | ---: | --- | --- |
 | text on body-background | 19.59 | pass | pass |
-| text on template-background | 18.33 | pass | pass |
+| text on template-background | 17.97 | pass | pass |
 | secondary-text on body-background | 9.03 | pass | pass |
-| secondary-text on template-background | 8.45 | pass | pass |
-| inverse-text on brand | 5.62 | pass | fail |
-| link on body-background | 6.59 | pass | fail |
-| link on template-background | 6.17 | pass | fail |
-| link on surface-background | 6.17 | pass | fail |
-| link-hover on body-background | 12.53 | pass | pass |
+| secondary-text on template-background | 8.29 | pass | pass |
+| inverse-text on brand | 10.77 | pass | pass |
+| link on body-background | 6.24 | pass | fail |
+| link on template-background | 5.73 | pass | fail |
+| link on surface-background | 5.73 | pass | fail |
+| link-hover on body-background | 16.64 | pass | pass |
 | link-active on body-background | 19.59 | pass | pass |
 | focus-text on focus | 14.55 | pass | pass |
 | error on body-background | 5.16 | pass | fail |
@@ -70,20 +70,20 @@ The script exits 1 if a required pair fails. Pairs that reach AAA (text, 7:1+): 
 | inverse-text on button-hover | 8.03 | pass | pass |
 | inverse-text on error | 5.16 | pass | fail |
 | text on secondary-button | 17.65 | pass | pass |
-| surface-text on surface-background | 18.33 | pass | pass |
-| inverse-text on header-background | 12.53 | pass | pass |
+| surface-text on surface-background | 17.97 | pass | pass |
+| inverse-text on header-background | 16.64 | pass | pass |
 | input-border vs body-background | 19.59 | pass | N/A |
 | focus vs focus-text | 14.55 | pass | N/A |
-| brand vs body-background | 5.62 | pass | N/A |
-| logo-plate vs header-background | 12.53 | pass | N/A |
+| brand vs body-background | 10.77 | pass | N/A |
+| logo-plate vs header-background | 16.64 | pass | N/A |
 | logo-plate-focus vs focus | 14.55 | pass | N/A |
-| focus vs header-background | 9.31 | pass | N/A |
-| inverse-text vs logo-plate-light | 12.53 | pass | N/A |
-| logo-plate-light vs body-background | 12.53 | pass | N/A |
-| logo-plate-light vs surface-background | 11.73 | pass | N/A |
+| inverse-text vs logo-plate-light | 16.64 | pass | N/A |
+| logo-plate-light vs body-background | 16.64 | pass | N/A |
+| logo-plate-light vs surface-background | 15.26 | pass | N/A |
+| focus vs header-background | 12.36 | pass | N/A |
 | focus vs body-background | 1.35 | n/a (see note) | N/A |
 | border vs body-background | 1.57 | n/a (see note) | N/A |
-| surface-border vs surface-background | 2.02 | n/a (see note) | N/A |
+| surface-border vs surface-background | 2.56 | n/a (see note) | N/A |
 | waste-zmieszane-border vs body-background | 18.88 | pass | N/A |
 | waste-zmieszane vs body-background | 18.88 | n/a (see note) | N/A |
 | waste-papier vs body-background | 5.73 | pass | N/A |

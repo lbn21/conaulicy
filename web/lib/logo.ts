@@ -1,13 +1,12 @@
 // The flat "ul." plate logo (docs/brand.md), outlined paths from
 // docs/logo/a-logo-mono.svg: plate, rim and "ul." are cut out of the plate;
 // the wordmark sits on the baseline of "ul.". Units: the plate is 34 high.
-import { THEME_COLOR } from "./theme.ts";
+import { PLATE as PLATE_PALETTE } from "./palette.ts";
 
-// The plate's colour on light backgrounds (footer, icons, share card): the
-// header's colour, Latarnia shade-50 (Jakub's decision, task 88). In the
-// header it is white instead. docs/logo/source/ship_a.mjs reads it too
-// (hence the relative .ts import, which plain Node resolves).
-export const PLATE_COLOUR = THEME_COLOR;
+// The plate's colour on light backgrounds (footer, icons, share card): PLATE
+// in lib/palette.ts, the header's colour. In the header it is white instead.
+// Plain Node scripts import this file too (hence the relative .ts import).
+export const PLATE_COLOUR = PLATE_PALETTE;
 export const LOGO_WIDTH = 191.31;
 export const LOGO_HEIGHT = 34;
 // In headers (the site's and the PDF's) the wordmark sits this much lower,

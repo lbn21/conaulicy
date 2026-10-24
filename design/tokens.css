@@ -63,33 +63,25 @@
 :root {
   color-scheme: light;
 
-  /* GOV.UK functional colours (govuk-frontend 6.5.1). Latarnia replaces
-     the brand-blue roles: brand, link, link-hover, template/surface. */
+  /* GOV.UK functional colours (govuk-frontend 6.5.1). Our brand group
+     takes the brand-blue roles (brand, link, link-visited, link-hover,
+     template-background, surface-background, surface-border) and the
+     header bar: their values are only in web/lib/palette.ts. */
   --govuk-text: #0b0c0c;
   --govuk-secondary-text: #484949;
   --govuk-inverse-text: #ffffff;
-  --govuk-brand: #9a5700; /* latarnia primary */
-  --govuk-link: #8b4e00; /* latarnia shade-10 */
-  --govuk-link-hover: #4d2c00; /* latarnia shade-50 */
-  --govuk-link-visited: #8b4e00; /* the link colour: no visited colour */
   --govuk-link-active: #0b0c0c;
   --govuk-border: #cecece;
   --govuk-input-border: #0b0c0c;
-  --govuk-template-background: #faf7f2; /* latarnia tint-95 */
   --govuk-body-background: #ffffff;
   --govuk-focus: #ffdd00;
   --govuk-focus-text: #0b0c0c;
   --govuk-error: #ca3535;
   --govuk-success: #0f7a52;
   --govuk-hover: #cecece;
-  --govuk-surface-background: #faf7f2; /* latarnia tint-95 */
   --govuk-surface-text: #0b0c0c;
-  --govuk-surface-border: #cdab80; /* latarnia tint-50 */
 
-  /* The header bar: latarnia shade-50, not the Generic header's black
-     ($app-header-colour in web/app/site.scss, task 88). */
-  --header-background: #4d2c00;
-  /* The logo plate on the brown header bar: GOV.UK white
+  /* The logo plate on the cherry header bar: GOV.UK white
      (govuk-colour("white") in web/app/site.scss). */
   --logo-plate: #ffffff;
 
