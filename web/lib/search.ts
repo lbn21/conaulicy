@@ -130,7 +130,9 @@ function near(a: string, b: string, max: number): boolean {
  * Matching tier of each query word, per place: exact word, word prefix,
  * inside a word (3+ letters), with its ending off, then the fallbacks: one
  * typo (uFuzzy, 4+ letters), two typos (7+ letters). A single letter only
- * starts a word; a number is only a whole word ("3" in "3-go Maja").
+ * starts a word, and never counts as a whole one: an initial ("A." in
+ * "Hetmana A. M. Sieniawskiego") ranks no higher than "Akacjowa" for "a". A
+ * number is only a whole word ("3" in "3-go Maja").
  */
 function tiers(places: Place[], terms: string[], pass: number): number[][] {
   const haystack = places.map((place) => place.text);
@@ -145,7 +147,7 @@ function tiers(places: Place[], terms: string[], pass: number): number[][] {
           ])
         : null;
     return places.map(({ text, words }, i) => {
-      if (words.includes(term)) return EXACT;
+      if (words.includes(term)) return word?.length === 1 ? PREFIX : EXACT;
       if (!word) return -1;
       if (words.some((w) => w.startsWith(word))) return PREFIX;
       if (word.length === 1) return -1;
@@ -253,9 +255,16 @@ function identity(label: string, type: string): string {
   return label.slice(label.lastIndexOf(",") + 2);
 }
 
+// Fewer letters than this ("a", "as") are too little to pick one place by,
+// however its match ranks: /szukaj lists the places instead.
+const CLEAR_MIN = 3;
+
 export type Found = {
   hits: SearchHit[];
-  /** The first place is clearly the best (or the only) match. */
+  /**
+   * The first place is clearly the best (or the only) match, for a query of
+   * at least CLEAR_MIN letters and digits (normalized, "ul." left out).
+   */
   clear: boolean;
 };
 
@@ -287,7 +296,8 @@ export function matcher(index: SearchIndex): Matcher {
     };
   });
   return (q, limit = SEARCH_LIMIT) => {
-    let best: { ranked: Ranked[]; nr: string | null } | null = null;
+    let best: { ranked: Ranked[]; nr: string | null; terms: string[] } | null =
+      null;
     for (const { text, nr } of readings(q)) {
       const terms = searchTerms(text);
       if (terms.length === 0) continue;
@@ -299,17 +309,18 @@ export function matcher(index: SearchIndex): Matcher {
         ranked.length > 0 &&
         (!best || compareKeys(ranked[0].key, best.ranked[0].key) < 0)
       ) {
-        best = { ranked, nr };
+        best = { ranked, nr, terms };
       }
     }
     if (!best) return { hits: [], clear: false };
-    const { ranked, nr } = best;
+    const { ranked, nr, terms } = best;
     return {
       hits: ranked
         .slice(0, limit)
         .map(({ place }) => (nr ? { ...place.hit, nr } : place.hit)),
       clear:
-        ranked.length === 1 || compareKeys(ranked[0].key, ranked[1].key) < 0,
+        terms.join("").length >= CLEAR_MIN &&
+        (ranked.length === 1 || compareKeys(ranked[0].key, ranked[1].key) < 0),
     };
   };
 }

@@ -72,6 +72,10 @@ const CASES = [
     ["ul. Adama Asnyka, Lubaczów 12", "/adres/0972447-00470?nr=12"],
   ].map(([q, to]) => ["GET", `/szukaj?q=${encodeURIComponent(q)}`, 308, to]),
   ["GET", "/szukaj?q=adama", 200],
+  // Under 3 letters, a list, never one place (lib/search.ts CLEAR_MIN).
+  ["GET", "/szukaj?q=a", 200],
+  ["GET", "/szukaj?q=as", 200],
+  ["GET", "/szukaj?q=asn", 308, "/adres/0972447-00470"],
   ["GET", "/szukaj?q=xyzqq", 200],
   ["GET", "/szukaj?q=", 200],
   ["GET", "/szukaj?q=Rynek&utm_source=x", 308, "/szukaj?q=Rynek"],
