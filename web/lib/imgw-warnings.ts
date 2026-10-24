@@ -1,6 +1,6 @@
 // IMGW meteo warnings for a powiat: fetch, parse and the last good copy.
 // Format, area coding, times and terms: docs/data/imgw.md. No Next.js
-// imports, so the unit tests run it as is; app/api/warnings/route.ts adds
+// imports, so the unit tests run it as is; components/imgw-banner.tsx adds
 // the data cache.
 import { GMINA_SCHEDULE_PAGES } from "./config.generated.ts";
 import { isoWithOffset, warsawToIso } from "./dates.ts";
@@ -8,19 +8,13 @@ import { isoWithOffset, warsawToIso } from "./dates.ts";
 /** The official endpoint (danepubliczne.imgw.pl, IMGW-PIB's public API). */
 export const IMGW_URL = "https://danepubliczne.imgw.pl/api/data/warningsmeteo";
 
-/** IMGW-PIB's terms, §5: both sentences, wherever the data is shown. */
-export const IMGW_ATTRIBUTION = [
-  "Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy.",
-  "Dane Instytutu Meteorologii i Gospodarki Wodnej – Państwowego Instytutu Badawczego zostały przetworzone.",
-];
-
 const TIMEOUT_MS = 5000;
 
 /** A fresh copy is fetched at most once per this many seconds. */
 export const REFRESH_SECONDS = 600;
 
-/** How many earlier copies a failed fetch may fall back to: one hour. */
-const KEEP = 6;
+/** How many earlier copies a failed fetch may fall back to: three hours. */
+const KEEP = 18;
 
 /** How long the data cache keeps each copy (the current one and KEEP more). */
 export const KEEP_SECONDS = (KEEP + 1) * REFRESH_SECONDS;
@@ -170,7 +164,7 @@ export async function upstream(
 
 /**
  * The current copy (slot = REFRESH_SECONDS), or if it cannot be fetched the
- * newest copy kept from the last hour (stale), or null. `read` returns the
+ * newest copy kept from the last three hours (stale), or null. `read` returns the
  * slot's cached copy or calls `load` to make it, and throws if that throws.
  */
 export async function latest(
@@ -184,10 +178,12 @@ export async function latest(
   } catch (error) {
     console.warn(`IMGW warnings: fetch failed (${(error as Error).message})`);
   }
-  const kept = () => Promise.reject(new Error("no copy"));
-  for (let earlier = slot - 1; earlier >= slot - KEEP; earlier--) {
-    const feed = await read(earlier, kept).catch(() => null);
-    if (feed) return { feed, stale: true };
-  }
-  return null;
+  const none = () => Promise.reject(new Error("no copy"));
+  const kept = await Promise.all(
+    Array.from({ length: KEEP }, (_, i) =>
+      read(slot - 1 - i, none).catch(() => null),
+    ),
+  );
+  const feed = kept.find((copy) => copy !== null);
+  return feed ? { feed, stale: true } : null;
 }
