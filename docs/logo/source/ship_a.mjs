@@ -5,7 +5,13 @@ import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { LOGO_HEIGHT, UL, UL_SHIFT, UL_TRANSFORM } from "../../../web/lib/logo.ts";
+import {
+  LOGO_HEIGHT,
+  PLATE_COLOUR,
+  UL,
+  UL_SHIFT,
+  UL_TRANSFORM,
+} from "../../../web/lib/logo.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const logo = path.join(here, "..");
@@ -33,19 +39,27 @@ const FAVICON_PLATE = { "a-favicon.svg": 26, "a-favicon-16.svg": 12 };
 // half its descenders, 204.5-495.5 (centre 350), so it moves 35 px up. Its ink
 // was 193-499 (centre 346). Font sizes, line spacing and x stay.
 const OG_TEXT_SHIFT = -35;
+// The card's plate and tagline are PLATE_COLOUR (task 88); fails if the SVG
+// from make_logo_a.py does not have it.
+const ogPlate = (svg) =>
+  replaceOnce(
+    replaceOnce(svg, `<path fill="${PLATE_COLOUR}" d="M9.5 0`, `<path fill="${PLATE_COLOUR}" d="M9.5 0`),
+    `<path fill="${PLATE_COLOUR}" d="m583.93`,
+    `<path fill="${PLATE_COLOUR}" d="m583.93`,
+  );
 const ogSvg = () =>
   replaceOnce(
-    replaceOnce(svgText("og-1200x630.svg"), `<path d="${UL}"/>`, `<path d="${UL}" transform="${UL_TRANSFORM}"/>`),
+    replaceOnce(ogPlate(svgText("og-1200x630.svg")), `<path d="${UL}"/>`, `<path d="${UL}" transform="${UL_TRANSFORM}"/>`),
     /(<path fill="#0b0c0c"[\s\S]*)<\/svg>$/,
     `<g transform="translate(0 ${OG_TEXT_SHIFT})">$1</g></svg>`,
   );
 const uri = (s) => `data:image/svg+xml;base64,${Buffer.from(s).toString("base64")}`;
 // A favicon in the light colours (the site is light only, task 26): the
-// #9A5700 plate with white "ul.", without the colour-scheme query.
+// PLATE_COLOUR plate with white "ul.", without the colour-scheme query.
 const light = (name) =>
   ulShift(svgText(name), FAVICON_PLATE[name]).replace(
     /<style>[\s\S]*?<\/style>/,
-    "<style>.p{fill:#9A5700}.t{fill:#FFF}</style>",
+    `<style>.p{fill:${PLATE_COLOUR}}.t{fill:#FFF}</style>`,
   );
 // The app tiles are white, the page background (BACKGROUND_COLOR in web/lib/theme.ts).
 const TILE = "#ffffff";

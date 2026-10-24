@@ -97,7 +97,7 @@ All three avoid the blue-and-white MSI street sign, the city's herb and any offi
 
 ## Shipped (task 23)
 
-`node docs/logo/source/ship_a.mjs` builds the web files from the SVGs here:
+`node docs/logo/source/ship_a.mjs` builds the web files from the SVGs here. The plate's colour on light backgrounds is `PLATE_COLOUR` in `web/lib/logo.ts`, `#4d2c00` since task 88 (the header's colour; `#9A5700` before): the favicons take it in `light()`, and the script fails if the share card's plate or tagline is another colour. `make_logo_a.py` writes `#4D2C00` for the light plate and the card's tagline; the light SVGs here were updated to match (colour values only, as it cannot run without fontTools here).
 - `web/app/favicon.ico` (16 + 32 from the two favicon drawings);
 - `web/app/icon.svg`, `web/app/apple-icon.png`;
 - `web/public/icon-{192,512}.png`, `icon-maskable-512.png`;

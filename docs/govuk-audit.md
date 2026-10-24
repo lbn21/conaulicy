@@ -140,7 +140,7 @@ $app-latarnia: ( /* the amber group below */ );
 - **Second exception, approved by Jakub (task 27, step 5c):** alphagov accessible-autocomplete's unchanged CSS paints the highlighted and hovered suggestion in `#1d70b8` (`.autocomplete__option--focused,.autocomplete__option:hover`).
   - `site.scss` overrides only that rule's colours with the brand role (`govuk-functional-colour(brand)`, white text), outside forced-colours mode, so the blue is never rendered.
   - `check-govuk-assets.mjs` allows `#1d70b8` only in that exact rule and fails unless the override ships.
-- **`theme-color`:** `#9a5700`, the brand (latarnia primary), as GOV.UK's template uses its brand colour.
+- **`theme-color`:** `#4d2c00`, the header's colour (latarnia shade-50, task 88), as GOV.UK's template uses its header colour.
 
 **Autocomplete: alphagov `accessible-autocomplete` vs our combobox, restyled with GOV.UK classes**
 
@@ -215,7 +215,7 @@ The GOV.UK footer carries the crown and "© Crown copyright" (https://design-sys
 
 Source: [GOV.UK colour](https://design-system.service.gov.uk/styles/colour/) and `govuk-frontend` 6.5.1 [`settings/_colours-palette--internal.scss`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/settings/_colours-palette--internal.scss).
 
-**Method:** GOV.UK's steps are the primary colour mixed with white (tints) or black (shades) at fixed percentages. Checked: mixing `#1d70b8` this way reproduces GOV.UK's blue group exactly. The Latarnia group applies the same percentages to our accent `#9a5700`, and has a shade-10 like blue. The logo plate is outside the palette: `#9a5700` on light, GOV.UK white on the brown (`#4d2c00`) Generic header and the PDF's brown band (tasks 78, 79 and 88).
+**Method:** GOV.UK's steps are the primary colour mixed with white (tints) or black (shades) at fixed percentages. Checked: mixing `#1d70b8` this way reproduces GOV.UK's blue group exactly. The Latarnia group applies the same percentages to our accent `#9a5700`, and has a shade-10 like blue. The logo plate is outside the palette: `#4d2c00` (latarnia shade-50) on light (task 88; `#9a5700` before), GOV.UK white on the brown (`#4d2c00`) Generic header and the PDF's brown band (tasks 78, 79 and 88).
 
 | Group | primary | tint-25 | tint-50 | tint-80 | tint-95 | shade-10 | shade-25 | shade-50 |
 |---|---|---|---|---|---|---|---|---|

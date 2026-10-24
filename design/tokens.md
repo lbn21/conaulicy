@@ -11,7 +11,7 @@ Light only, as GOV.UK. Values: `design/tokens.css`; the bin colours the site use
   - error `#ca3535`, success and buttons green `#0f7a52`;
   - borders `#cecece`, input borders black.
 - **The header bar** is the Latarnia shade-50 `#4d2c00` (Jakub's decision, task 88), not the Generic header's black; `theme-color` and the PDF band follow it. Its GOV.UK focus bar takes the same colour, so the yellow focus box (9.31:1 on the brown) carries the focus on its own.
-- **The logo plate** is GOV.UK white on the brown header bar, as GOV.UK's white crown.
+- **The logo plate** is GOV.UK white on the brown header bar, as GOV.UK's white crown. On light backgrounds (footer, icons, share card) it is the header's `#4d2c00` (task 88; it was `#9a5700`), with white "ul." cut out; only the plate changed, links and buttons keep the Latarnia steps.
 - **Typography:** Atkinson Hyperlegible Next, self-hosted, weights 400 and 700, instead of GDS Transport (which GOV.UK reserves for its own services).
 - **Waste colours** are fills, each with a `-fg` for the label text on that fill. Papier is blue, szkło green, metale i tworzywa yellow, bio brown, zmieszane black, popiół grey. The rare fractions each have their own colour, as in the Miasto Lubaczów schedule table: gabaryty orange, elektro navy, opony mid grey, tekstylia rose. The label next to every bin names the fraction, so colour is never the only cue.
 
@@ -78,6 +78,9 @@ The script exits 1 if a required pair fails. Pairs that reach AAA (text, 7:1+): 
 | logo-plate vs header-background | 12.53 | pass | N/A |
 | logo-plate-focus vs focus | 14.55 | pass | N/A |
 | focus vs header-background | 9.31 | pass | N/A |
+| inverse-text vs logo-plate-light | 12.53 | pass | N/A |
+| logo-plate-light vs body-background | 12.53 | pass | N/A |
+| logo-plate-light vs surface-background | 11.73 | pass | N/A |
 | focus vs body-background | 1.35 | n/a (see note) | N/A |
 | border vs body-background | 1.57 | n/a (see note) | N/A |
 | surface-border vs surface-background | 2.02 | n/a (see note) | N/A |

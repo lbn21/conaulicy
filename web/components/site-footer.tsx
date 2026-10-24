@@ -1,6 +1,7 @@
 import { FEATURES } from "@/lib/config.generated";
 import {
   PLATE,
+  PLATE_COLOUR,
   PLATE_WIDTH,
   RIM,
   RIM_WIDTH,
@@ -36,7 +37,7 @@ const NAVIGATION_SHOWN =
   (SHOW_NAVIGATION ||
     SECTIONS.reduce((links, section) => links + section.items.length, 0) >= 2);
 
-/** The "ul." plate in one colour (the text colour), where GOV.UK has its crown. */
+/** The "ul." plate in one colour (PLATE_COLOUR), where GOV.UK has its crown. */
 function FooterPlate() {
   return (
     <svg
@@ -59,7 +60,7 @@ function FooterPlate() {
         <path fill="none" stroke="#000" strokeWidth={RIM_WIDTH} d={RIM} />
         <path d={UL} transform={UL_TRANSFORM} />
       </mask>
-      <path fill="currentColor" mask="url(#footer-plate)" d={PLATE} />
+      <path fill={PLATE_COLOUR} mask="url(#footer-plate)" d={PLATE} />
     </svg>
   );
 }
