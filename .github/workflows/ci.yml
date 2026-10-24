@@ -84,6 +84,13 @@ jobs:
       - name: "Brand assets (from lib/palette.ts: skipped, restored or drawn)"
         run: node scripts/brand-assets.ts
 
+      # After the brand assets: knip loads next.config.ts, which writes them.
+      - name: "Unused code (knip: files, exports, dependencies)"
+        run: npm run check:unused
+
+      - name: "Duplicate code (jscpd: no clone of 50+ tokens)"
+        run: npm run check:dupes
+
       - name: "Palette (one source: no brand colour outside lib/palette.ts)"
         run: node scripts/check-palette.mjs
 
