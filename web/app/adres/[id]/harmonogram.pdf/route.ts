@@ -9,7 +9,6 @@ import { datasetHeaders } from "@/lib/gate";
 import { withHouseNumber } from "@/lib/house";
 import { NOINDEX } from "@/lib/indexing";
 import {
-  HEADER_WORDMARK_SHIFT,
   LOGO_HEIGHT,
   PLATE,
   RIM,
@@ -237,8 +236,8 @@ function drawQr(
 
 /**
  * The plate and wordmark on the band, as in the site header: a white plate,
- * the "ul." and rim cut out to the band's brown, and the wordmark's x-height centred on
- * the plate.
+ * the "ul." and rim cut out to the band's brown, and the wordmark centred
+ * optically on the plate, as in the logo files.
  */
 function drawLogo(doc: PDFKit.PDFDocument, x: number, y: number, h: number) {
   doc
@@ -249,7 +248,6 @@ function drawLogo(doc: PDFKit.PDFDocument, x: number, y: number, h: number) {
   doc.save().translate(0, UL_SHIFT).path(UL).fillColor(HEADER).fill();
   doc.restore();
   doc.path(RIM).lineWidth(RIM_WIDTH).strokeColor(HEADER).stroke();
-  doc.translate(0, HEADER_WORDMARK_SHIFT);
   doc.path(WORDMARK).fillColor(WHITE).fill();
   doc.restore();
 }

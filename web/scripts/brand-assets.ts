@@ -85,8 +85,9 @@ function faviconSvg(size: 16 | 32): string {
 // The share card's text block, centred optically on the plate (task 88): the
 // plate's ink is y 145-485 (centre 315); the text is measured from the first
 // line's x-height minus half its ascenders to the last line's baseline plus
-// half its descenders, 204.5-495.5 (centre 350), so it moves 35 px up.
-const OG_TEXT_SHIFT = -35;
+// half its descenders, 201-495.3 (centre 348.1, with the name 6.5 % larger
+// in task 93), so it moves 33 px up (whole px).
+const OG_TEXT_SHIFT = -33;
 const ogSvg = () =>
   painted(
     replaceOnce(

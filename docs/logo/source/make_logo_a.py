@@ -170,6 +170,26 @@ def plate_paths(g, x=0.0, y=0.0):
 WORD_KERN = {0: 6, 5: -6, 7: -4}
 
 
+def word_geometry(H=34.0):
+    """Task 93, variant (c') of task 91: "conaulicy" at the largest size at
+    which, with its x-height centred on the plate, the "i" dot stays inside
+    the plate (flush with its top), 6.5 % larger than the first rule (plate =
+    1.6 x cap height): plate / "l" 1.42 (was 1.51, GOV.UK's crown / caps 1.36).
+    Placed by optical centring, as the share card's text (task 88): the
+    x-height counts fully, the ink above it (the "i" dot) and below the
+    baseline (the "y") by half."""
+    _, dot, _ = run(BOLD, "i", 1, 0, 0)
+    size = (H / 2) / (-dot[1] - BOLD.xh / 2)
+    _, b, _ = run(BOLD, "conaulicy", size, 0, 0, WORD_KERN)
+    xh = BOLD.xh * size
+    top, bottom = (b[1] - xh) / 2, b[3] / 2  # optical box, baseline at 0
+    return dict(size=size, baseline=H / 2 - (top + bottom) / 2,
+                scale=size / (H / (1.6 * BOLD.cap)))
+
+
+WORD = word_geometry()
+
+
 def flat_plate(g, colour, uid, x=0.0, y=0.0, ul_d=None):
     """Filled plate, rim and "ul." knocked out (mask), at (x, y)."""
     outer, rim = plate_paths(g, x, y)
@@ -185,19 +205,19 @@ def flat_plate(g, colour, uid, x=0.0, y=0.0, ul_d=None):
 
 
 def lockup(mode, uid="a"):
-    """Plate + conaulicy. Plate height = 1.6 × the wordmark's cap height;
-    the wordmark sits on the baseline of "ul." on the plate."""
+    """Plate + conaulicy, sized and centred optically on the plate (WORD).
+    The same placement as in the site and PDF headers."""
     plate = "currentColor" if mode == "mono" else AMBER[mode]
     ink = "currentColor" if mode == "mono" else INK[mode]
     g = G
-    word_size = g["H"] / (1.6 * BOLD.cap)
+    word_size, baseline = WORD["size"], WORD["baseline"]
     gap = 0.34 * g["H"]
     mask, plate_el = flat_plate(g, plate, f"{uid}k")
-    d, b, _ = run(BOLD, "conaulicy", word_size, g["W"] + gap, UL_BASE, WORD_KERN)
+    d, b, _ = run(BOLD, "conaulicy", word_size, g["W"] + gap, baseline, WORD_KERN)
     width = b[2] + 0.5
     return svg(width, g["H"], plate_el + f'<path fill="{ink}" d="{d}"/>', defs=mask), dict(
-        word_size=word_size, gap=gap, word_baseline=UL_BASE,
-        word_xheight_centre=UL_BASE - word_size * BOLD.xh / 2, width=width)
+        word_size=word_size, gap=gap, word_baseline=baseline, word_bounds=b,
+        word_xheight_centre=baseline - word_size * BOLD.xh / 2, width=width)
 
 
 def mark_only(mode, uid="am"):
@@ -400,7 +420,8 @@ def og_flat(mode="light"):
     px, py = 92, (h - H) / 2
     mask, plate = flat_plate(g, c["plate"], "og", 0, 0)
     tx = px + W + 70
-    d1, _, _ = run(BOLD, "conaulicy.pl", 92, tx, 262, WORD_KERN)
+    # The name grows with the wordmark (task 93), on the same baseline.
+    d1, _, _ = run(BOLD, "conaulicy.pl", 92 * WORD["scale"], tx, 262, WORD_KERN)
     d2, _, _ = run(REGULAR, "Wywozy śmieci", 52, tx, 350)
     d3, _, _ = run(REGULAR, "przy Twojej ulicy.", 52, tx, 416)
     d4, _, _ = run(REGULAR, "Lubaczów i gmina", 34, tx, 492)
