@@ -5,7 +5,7 @@ import { HOME_EXAMPLES } from "@/lib/examples";
 import { LANG } from "@/lib/locale";
 import { examplePlaces, searchIndexUrl } from "@/lib/schedule";
 import { placeHref } from "@/lib/search";
-import { HOME_TITLE, pageMetadata, SITE_NAME } from "@/lib/share";
+import { HOME_H1, HOME_TITLE, pageMetadata, SITE_NAME } from "@/lib/share";
 import { ALL_PLACES } from "@/lib/static-pages";
 
 export const metadata: Metadata = pageMetadata({
@@ -42,7 +42,7 @@ export default async function Home() {
         dangerouslySetInnerHTML={{ __html: WEBSITE }}
       />
       <div className="govuk-grid-column-two-thirds">
-        <h1 className="govuk-heading-xl">Sprawdź dzień wywozu śmieci</h1>
+        <h1 className="govuk-heading-xl">{HOME_H1}</h1>
         <p className="govuk-body-l">Dla Lubaczowa i wsi w gminie Lubaczów.</p>
 
         <div className="govuk-!-margin-bottom-8">

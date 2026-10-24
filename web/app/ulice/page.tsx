@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import type { ListedPlace } from "@/lib/places";
+import { type ListedPlace, placePath } from "@/lib/places";
 import { searchIndex } from "@/lib/schedule";
-import { placePath } from "@/lib/search";
 import { pageMetadata } from "@/lib/share";
 import { ALL_PLACES } from "@/lib/static-pages";
 

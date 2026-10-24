@@ -2,6 +2,7 @@ import { PlateMask } from "@/components/plate-mask";
 import { FEATURES } from "@/lib/config.generated";
 import { LOGO_HEIGHT, PLATE, PLATE_COLOUR, PLATE_WIDTH } from "@/lib/logo";
 import { DISCLAIMER } from "@/lib/schedule-notes";
+import { SITE_NAME } from "@/lib/share";
 import { STATIC_PAGES } from "@/lib/static-pages";
 
 // Our own footer markup with GOV.UK's footer classes, laid out as the GOV.UK
@@ -24,6 +25,9 @@ const NAVIGATION = FEATURES.map(({ section, links }) => ({
 }));
 
 const SHOW_NAVIGATION = false;
+
+// The year the site and its texts were first published.
+const COPYRIGHT_YEAR = 2026;
 const SECTIONS = NAVIGATION.filter((section) => section.items.length > 0);
 const NAVIGATION_SHOWN =
   SECTIONS.length > 0 &&
@@ -112,7 +116,7 @@ export function SiteFooter() {
                 gminy Lubaczów.
               </span>
             </div>
-            <div className="govuk-footer__meta-item">© 2026 conaulicy.pl</div>
+            <div className="govuk-footer__meta-item">{`© ${COPYRIGHT_YEAR} ${SITE_NAME}`}</div>
           </div>
         </div>
       </div>

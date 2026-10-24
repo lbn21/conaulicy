@@ -9,7 +9,7 @@ import uFuzzy from "@leeoniya/ufuzzy";
 import { houseNumber, withHouseNumber } from "./house.ts";
 import { LANG } from "./locale.ts";
 import { normalize } from "./normalize.ts";
-import { CECHA_WORDS } from "./places.ts";
+import { CECHA_WORDS, placePath } from "./places.ts";
 
 export type SearchHit = {
   id: string;
@@ -360,13 +360,6 @@ export function exactPlace(index: SearchIndex, q: string): SearchHit | null {
     if (found.length > 1) return null;
   }
   return null;
-}
-
-/** A place's page, and its house number if given. */
-export function placePath(id: string, nr?: string | null): string {
-  const path = `/adres/${encodeURIComponent(id)}`;
-  // A valid number is only digits, a-z and "/", all fine in a query.
-  return nr ? `${path}?nr=${nr}` : path;
 }
 
 /** Where a hit links to: the place, and its house number if given. */

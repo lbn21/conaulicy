@@ -7,7 +7,7 @@ import { PickupSchedule } from "@/components/pickup-schedule";
 import { longDate } from "@/lib/date-labels";
 import { withHouseNumber } from "@/lib/house";
 import { indexable } from "@/lib/indexing";
-import { scheduleName } from "@/lib/places";
+import { placePath, scheduleName } from "@/lib/places";
 import { getPlace, movedTarget, type PlaceView } from "@/lib/schedule";
 import {
   hasUpcoming,
@@ -16,7 +16,6 @@ import {
   placeDescription,
   UNVERIFIED_NOTE,
 } from "@/lib/schedule-notes";
-import { placePath } from "@/lib/search";
 import { pageMetadata } from "@/lib/share";
 
 // The street or village page, for /adres/[id] and, with a house number,
@@ -25,18 +24,37 @@ import { pageMetadata } from "@/lib/share";
 // /adres/[id]/numer (proxy.ts), which a split street answers with an error.
 // Canonical is always /adres/[id].
 
-// Where a page without dates sends people, before the gmina's own schedule.
-const UNTIL_THEN = "Do tego czasu sprawdź odbiory w harmonogramie gminy.";
-
-/** A link to the gmina's own schedule page, when we know it. */
-function GminaScheduleLink({ place }: { place: PlaceView }) {
-  if (!place.schedulePage) return null;
+/**
+ * A place without dates to show: why, then the gmina's own schedule (linked
+ * when we know its page).
+ */
+function NoDates({
+  id,
+  heading,
+  text,
+  place,
+}: {
+  id: string;
+  heading: string;
+  text: string;
+  place: PlaceView;
+}) {
   return (
-    <p className="govuk-body">
-      <a href={place.schedulePage} className="govuk-link">
-        {`Otwórz ${scheduleName(place.gmina)}`}
-      </a>
-    </p>
+    <section aria-labelledby={id} className="govuk-inset-text">
+      <h2 id={id} className="govuk-heading-m">
+        {heading}
+      </h2>
+      <p className="govuk-body">
+        {`${text} Do tego czasu sprawdź odbiory w harmonogramie gminy.`}
+      </p>
+      {place.schedulePage && (
+        <p className="govuk-body">
+          <a href={place.schedulePage} className="govuk-link">
+            {`Otwórz ${scheduleName(place.gmina)}`}
+          </a>
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -204,29 +222,25 @@ export async function PlaceMain({
         {place.askNumber ? (
           <HouseNumberQuestion place={place} error={error} />
         ) : place.zoneId === null ? (
-          <section aria-labelledby="empty-heading" className="govuk-inset-text">
-            <h2 id="empty-heading" className="govuk-heading-m">
-              {place.kind === "ulica"
+          <NoDates
+            id="empty-heading"
+            heading={
+              place.kind === "ulica"
                 ? "Tej ulicy jeszcze nie mamy"
-                : "Tej wsi jeszcze nie mamy"}
-            </h2>
-            <p className="govuk-body">
-              {`Harmonogramu tu nie zgadujemy. ${UNTIL_THEN}`}
-            </p>
-            <GminaScheduleLink place={place} />
-          </section>
+                : "Tej wsi jeszcze nie mamy"
+            }
+            text="Harmonogramu tu nie zgadujemy."
+            place={place}
+          />
         ) : !hasUpcoming(place.days, place.today) ? (
           // The schedule has ended and the next one is not in yet: no PDF
           // and no calendar file, as both would be empty.
-          <section aria-labelledby="ended-heading" className="govuk-inset-text">
-            <h2 id="ended-heading" className="govuk-heading-m">
-              {NO_MORE_DATES}
-            </h2>
-            <p className="govuk-body">
-              {`${NO_MORE_DATES_NEXT} ${UNTIL_THEN}`}
-            </p>
-            <GminaScheduleLink place={place} />
-          </section>
+          <NoDates
+            id="ended-heading"
+            heading={NO_MORE_DATES}
+            text={NO_MORE_DATES_NEXT}
+            place={place}
+          />
         ) : (
           <>
             {/* GOV.UK's link button: a link that looks and works like a
