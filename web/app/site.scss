@@ -68,10 +68,10 @@ $app-header-colour: $app-header;
 // at 30px), not by the logo: 5px of yellow above the plate (2 of them the
 // box-shadow), 6px below, none at the sides. Padding on focus only evens it to
 // 6px all round the plate's box, which is the logo's optical frame: the
-// wordmark's x-height is centred on the plate (below) and its "y" stays
-// inside, so the wordmark's own ink box is not used. Inline padding leaves the
-// line box alone and the negative margin cancels the left one, so the logo
-// does not move.
+// wordmark is centred on the plate optically (lib/logo.ts) and its "i" dot
+// and "y" stay inside, so the wordmark's own ink box is not used. Inline
+// padding leaves the line box alone and the negative margin cancels the left
+// one, so the logo does not move.
 .govuk-generic-header__homepage-link:focus {
   --app-logo-plate: currentColor;
   margin-left: -6px;
@@ -79,14 +79,6 @@ $app-header-colour: $app-header;
     0 -2px govuk-functional-colour(focus),
     0 4px $app-header-colour;
   padding: 1px 6px 0;
-}
-
-// In the header the wordmark's x-height is centred on the plate: 1.4 of the
-// logo's 34 units lower than in the logo files (HEADER_WORDMARK_SHIFT in
-// lib/logo.ts, which the PDF header uses too; docs/logo/README.md). A
-// percentage of the SVG's viewBox, so nothing else moves.
-.app-logo__wordmark {
-  transform: translateY(4.12%);
 }
 
 // Deviation from GOV.UK's warning-text icon (task 83): its line-height 29px

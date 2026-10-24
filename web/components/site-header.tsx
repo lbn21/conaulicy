@@ -11,7 +11,7 @@ import {
 } from "@/lib/logo";
 
 // GOV.UK header's logotype height (components/header/_mixin.scss); the width
-// keeps the logo's aspect ratio, about 169.
+// keeps the logo's aspect ratio: 177, a whole px (make_logo_a.py).
 const HEIGHT = 30;
 const WIDTH = Math.round((HEIGHT * LOGO_WIDTH) / LOGO_HEIGHT);
 
@@ -58,11 +58,7 @@ export function SiteHeader() {
                   mask="url(#logo-plate)"
                   d={PLATE}
                 />
-                <path
-                  className="app-logo__wordmark"
-                  fill="currentColor"
-                  d={WORDMARK}
-                />
+                <path fill="currentColor" d={WORDMARK} />
               </svg>
               <span className="govuk-visually-hidden">
                 conaulicy.pl – strona główna
