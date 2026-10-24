@@ -19,8 +19,5 @@ $app-latarnia: (
   "tint-95": _mix(#ffffff, 95%),
   "shade-10": _mix(#000000, 10%),
   "shade-25": _mix(#000000, 25%),
-  "shade-50": _mix(#000000, 50%),
-  // The amber logo plate for dark bars such as the PDF's; the site header's
-  // plate is white (site.scss).
-  "plate": #ffb547
+  "shade-50": _mix(#000000, 50%)
 );

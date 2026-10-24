@@ -6,10 +6,12 @@
 
 // Our "ul." plate in the Generic header, with the GOV.UK header's logo
 // geometry (govuk-frontend components/header/_mixin.scss): the logo 30px tall
-// (site-header.tsx), lifted off the line as .govuk-header__logotype.
-// Deviation from GOV.UK's magic numbers (Jakub's decision): GOV.UK's padding
-// 16/12 sits its airy crown high, 13px above and 18px below in the 61px bar,
-// which a solid plate does not carry. 18/11 centres the plate exactly, 16px
+// (site-header.tsx), lifted off the line as .govuk-header__logotype (its
+// vertical-align: top comes from the Generic header's homepage-link > *).
+// Deviation from GOV.UK's magic numbers (Jakub's decision): the GOV.UK
+// header's padding 16/12 (the Generic header's default is 15/15) sits its airy
+// crown high, 13px above and 18px below in the 61px bar, which a solid plate
+// does not carry. 18/11 centres the plate exactly, 16px
 // above and 16px below (the 1px transparent border included), in a bar 1px
 // taller (62px). The hover and focus bars hang from the font's content area
 // (Atkinson at 30px), not from the logo, so the line sits 1px higher and the
@@ -24,7 +26,6 @@
   position: relative;
   top: -2px;
   margin-bottom: 2px;
-  vertical-align: top;
 }
 
 // The plate's fill is one custom property: GOV.UK white on the Generic

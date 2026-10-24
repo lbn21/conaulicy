@@ -33,6 +33,7 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 - Mobile-first: design for 360px, then scale up. Must work at 200% text zoom.
 - WCAG 2.2 AA minimum.
 - Links never open in a new tab (PDF and source links included).
+- **Pixel perfect:** paddings, margins and icon/glyph placement are symmetric and equal wherever reasonably possible: on the site, in the PDF, OG images and any new UI. Verified by measuring ink from screenshots (DPR 2-4, about ±0.5 px), with before/after numbers in every UI brief and PR. Where GOV.UK is deliberately asymmetric, flag it instead of silently keeping or changing it (accepted exception: the footer keeps GOV.UK's spacing).
 - One thing per page: no second search box. „Zmień adres” (GOV.UK "Change" pattern) returns to the home page's search, empty, with no forced focus (native browser behaviour).
 - Copy is warm, plain, everyday Polish; follow the [GOV.UK style guide](https://www.gov.uk/guidance/style-guide/a-to-z) in spirit. No gesture-only interactions and no icons without labels.
 - No third-party requests (fonts, scripts, images).
