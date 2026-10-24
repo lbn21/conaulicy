@@ -26,7 +26,7 @@ export type Detection = {
   unrecognised: string[];
   via: "api" | "page";
 };
-export type Detector = (source: Source, net: Http) => Promise<Detection>;
+type Detector = (source: Source, net: Http) => Promise<Detection>;
 
 /** One file's events, for one zone (a location in the shared events table). */
 export type Extracted = {

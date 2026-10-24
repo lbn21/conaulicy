@@ -4,7 +4,9 @@
 // it out, which are checked against the palette instead:
 // - docs/brand.md: the group's row in the palette table and the roles' rows;
 // - docs/logo/a-logo-light.svg, a-mark-light.svg: the plate, for download.
-// With --fix it rewrites those to the palette. History (docs/tasks,
+// With --fix it rewrites those to the palette. And no raw hex at all in the
+// site's code (web/app, components, lib) outside its colour homes: palette.ts,
+// govuk-colours.ts and waste-colours.ts. History (docs/tasks,
 // docs/reports) may quote old values. The generated files are not in git.
 //   node scripts/check-palette.mjs [--fix]
 import { execFileSync } from "node:child_process";
@@ -55,6 +57,19 @@ const SPELLED = {
       ),
 };
 
+// The site's code, where every colour comes from a colour home. Allowed: the
+// mask's luminance (white shows, black cuts out), and the test that checks
+// GOV.UK's own blue group.
+const CODE = /^web\/(app|components|lib)\/.*\.(ts|tsx|mjs|css|scss)$/;
+const COLOUR_HOMES = new Set([
+  SOURCE,
+  "web/lib/govuk-colours.ts",
+  "web/lib/waste-colours.ts",
+  "web/components/plate-mask.tsx",
+  "web/lib/palette.test.ts",
+]);
+const RAW_HEX = /#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})(?![0-9a-z])/gi;
+
 const files = execFileSync(
   "git",
   ["ls-files", "--cached", "--others", "--exclude-standard"],
@@ -79,11 +94,19 @@ for (const file of files) {
     }
     continue;
   }
-  for (const [i, line] of text.split("\n").entries())
+  const code = CODE.test(file) && !COLOUR_HOMES.has(file);
+  for (const [i, line] of text.split("\n").entries()) {
     for (const match of line.matchAll(BRAND))
       failures.push(
         `${file}:${i + 1}: brand colour ${match[0]} (read it from ${SOURCE})`,
       );
+    if (code)
+      for (const match of line.matchAll(RAW_HEX))
+        if (!hexes.has(match[0].toLowerCase()))
+          failures.push(
+            `${file}:${i + 1}: raw colour ${match[0]} (read it from a colour home: lib/palette.ts, govuk-colours.ts, waste-colours.ts)`,
+          );
+  }
 }
 
 if (failures.length) {
@@ -91,5 +114,5 @@ if (failures.length) {
   process.exit(1);
 }
 console.log(
-  `Palette: ${files.length} files, no brand colour outside ${SOURCE}; ${Object.keys(SPELLED).length} files that spell it out match${fix ? " (fixed)" : ""}.`,
+  `Palette: ${files.length} files, no brand colour outside ${SOURCE}, no raw colour in the code outside its colour homes; ${Object.keys(SPELLED).length} files that spell it out match${fix ? " (fixed)" : ""}.`,
 );

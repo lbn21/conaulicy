@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { ContactLink } from "@/components/contact-link";
 import { pageMetadata } from "@/lib/share";
+import { PRIVACY } from "@/lib/static-pages";
 
 export const metadata: Metadata = pageMetadata({
-  path: "/prywatnosc",
-  title: "Prywatność",
+  path: PRIVACY.path,
+  title: PRIVACY.text,
   description:
     "Bez ciasteczek, kont i reklam. Nie wiemy, kim jesteś, i nie chcemy wiedzieć. Krótko o tym, co liczymy i co zapisuje serwer.",
 });
@@ -12,7 +14,7 @@ export default function PrivacyPage() {
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
-        <h1 className="govuk-heading-l">Prywatność</h1>
+        <h1 className="govuk-heading-l">{PRIVACY.text}</h1>
         <p className="govuk-body-l">
           Krótko: nie wiemy, kim jesteś, i nie chcemy wiedzieć. Strona ma tylko
           powiedzieć, kiedy wystawić śmieci.
@@ -82,9 +84,7 @@ export default function PrivacyPage() {
               na adres:
             </p>
             <p className="govuk-body">
-              <a href="mailto:kontakt@conaulicy.pl" className="govuk-link">
-                kontakt@conaulicy.pl
-              </a>
+              <ContactLink />
             </p>
           </section>
         </div>

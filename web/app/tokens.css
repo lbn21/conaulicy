@@ -1,9 +1,7 @@
 /*
-  The two things GOV.UK Frontend has no setting for: the typeface's
-  metric-matched fallback and the real bin colours (drawn by the bin markers,
-  .app-bin in site.scss). Contrast is verified by `node design/contrast.mjs`,
-  run in CI: every colour token here must be in a text or UI pair it checks,
-  or listed in its NOT_CHECKED with the reason.
+  What GOV.UK Frontend has no setting for: the typeface's metric-matched
+  fallback. The bin colours are generated from lib/waste-colours.ts
+  (app/waste-colours.css).
 */
 
 /*
@@ -38,23 +36,4 @@
   ascent-override: 100.62%;
   descent-override: 32.31%;
   line-gap-override: 0%;
-}
-
-:root {
-  --waste-zmieszane: #111111;
-  --waste-zmieszane-border: #111111;
-  --waste-papier: #1f63c7;
-  --waste-plastik-metale: #f2c200;
-  --waste-plastik-metale-border: #7d6200;
-  /* The PDF's outline: darker, for small marks on paper. */
-  --waste-plastik-metale-print: #5c4800;
-  --waste-szklo: #1e7f4f;
-  --waste-bio: #7a4b2a;
-  --waste-popiol: #5c6370;
-  --waste-gabaryty: #c2410c;
-  --waste-elektro: #1e3a8a;
-  --waste-elektro-border: transparent;
-  --waste-opony: #a3aab5;
-  --waste-opony-border: #4a5160;
-  --waste-tekstylia: #a8336a;
 }

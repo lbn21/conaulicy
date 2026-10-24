@@ -18,7 +18,7 @@ export const FRACTIONS: ReadonlyArray<{ subtype: string; label: string }> = [
   { subtype: "tekstylia", label: "Odzież i tekstylia" },
 ];
 
-/** Waste subtype → colour token name (app/tokens.css, --waste-{token}). */
+/** Waste subtype → colour token name (lib/waste-colours.ts, --waste-{token}). */
 export const TOKEN: Record<string, string> = {
   zmieszane: "zmieszane",
   popiol: "popiol",

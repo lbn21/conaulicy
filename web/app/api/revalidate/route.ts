@@ -1,4 +1,5 @@
 import { revalidateTag } from "next/cache";
+import { NO_STORE } from "@/lib/headers";
 import { DATASET } from "@/lib/schedule";
 import { sameSecret } from "@/lib/secret";
 
@@ -19,12 +20,9 @@ export function POST(request: Request) {
   if (!secret || !sameSecret(given, `Bearer ${secret}`)) {
     return new Response("Unauthorized", {
       status: 401,
-      headers: { "Cache-Control": "no-store" },
+      headers: NO_STORE,
     });
   }
   revalidateTag(DATASET, { expire: 0 });
-  return Response.json(
-    { revalidated: [DATASET] },
-    { headers: { "Cache-Control": "no-store" } },
-  );
+  return Response.json({ revalidated: [DATASET] }, { headers: NO_STORE });
 }

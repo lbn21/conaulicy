@@ -21,7 +21,7 @@
 //
 // Runs against `next start` on the current build and the CI fixture.
 import { withHouseNumber } from "../lib/house.ts";
-import { finish, startServer } from "./lib/server.mjs";
+import { finish, searchIndexOf, startServer } from "./lib/server.mjs";
 
 const escapeHtml = (text) =>
   text
@@ -146,10 +146,7 @@ try {
     else failures.push(`/: no <link> to /${name}?…`);
   }
 
-  const indexUrl = /\/api\/search-index\/[a-z0-9]+/.exec(home)?.[0];
-  const places = indexUrl
-    ? await (await fetch(`${server.origin}${indexUrl}`)).json()
-    : [];
+  const { places } = await searchIndexOf(server.origin, home);
   if (places.length === 0) failures.push("/: no search index");
   for (const [i, [id, label]] of places.entries()) {
     const href = `/adres/${encodeURIComponent(id)}`;

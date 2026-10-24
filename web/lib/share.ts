@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
-// Built by docs/logo/source/ship_a.mjs. A static file, not opengraph-image.png:
-// the file convention splits a shared client chunk (+0.3 KB first-load JS).
+// Drawn by scripts/brand-assets.ts (from lib/brand/og.svg). A static file,
+// not opengraph-image.png: the file convention splits a shared client chunk
+// (+0.3 KB first-load JS).
 const SHARE_IMAGE = {
   url: "/og.png",
   width: 1200,
@@ -13,12 +14,15 @@ const SHARE_IMAGE = {
 export const SITE_NAME = "conaulicy.pl";
 
 /** GOV.UK's title: the page's H1, then the service. */
-export function pageTitle(h1: string): string {
+function pageTitle(h1: string): string {
   return `${h1} – ${SITE_NAME}`;
 }
 
+/** The home page's H1, and the link back to it from a missing page. */
+export const HOME_H1 = "Sprawdź dzień wywozu śmieci";
+
 /** The home page's title, and every page's without one of its own. */
-export const HOME_TITLE = pageTitle("Sprawdź dzień wywozu śmieci");
+export const HOME_TITLE = pageTitle(HOME_H1);
 
 /** The layout's share metadata: every page's image, name and language. */
 export const SHARE = {

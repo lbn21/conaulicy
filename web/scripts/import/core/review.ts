@@ -9,12 +9,13 @@
 // force-updates only import-review/* branches. REVIEWS_FILE replaces GitHub
 // in tests; IMPORT_REVIEW_DIR replaces etl/review (where merged files are read).
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import type { Source } from "./config.ts";
 import type { Found } from "./domain.ts";
+import { loadList, saveList } from "./file-list.ts";
 import { sha256 } from "./hash.ts";
 import type { Http } from "./http.ts";
 import { ROOT } from "./paths.ts";
@@ -102,16 +103,6 @@ export class Reviews {
     this.#http = http;
   }
 
-  #load(): Stored[] {
-    return this.#file && existsSync(this.#file)
-      ? JSON.parse(readFileSync(this.#file, "utf8"))
-      : [];
-  }
-
-  #save(all: Stored[]) {
-    if (this.#file) writeFileSync(this.#file, JSON.stringify(all, null, 1));
-  }
-
   #git(args: string[], input?: string, env = {}) {
     return execFileSync("git", args, {
       encoding: "utf8",
@@ -127,7 +118,7 @@ export class Reviews {
   /** Every PR from this review's branch, newest first. */
   #prs(branch: string): Pr[] {
     if (this.#file)
-      return this.#load()
+      return loadList<Stored>(this.#file)
         .filter((p) => p.branch === branch)
         .reverse();
     if (!this.#gh) return [];
@@ -262,13 +253,13 @@ export class Reviews {
     ].join("\n");
 
     if (this.#file) {
-      const all = this.#load();
+      const all = loadList<Stored>(this.#file);
       const stored = current && all.find((p) => p.number === current.number);
       const reviewed = { [reviewedFile(key)]: req.reviewed };
       if (stored) {
         Object.assign(stored, { title, body, sha256: req.digest });
         if (!keep) stored.files = reviewed;
-        this.#save(all);
+        saveList(this.#file, all);
         return stored.url;
       }
       const number = all.length + 1;
@@ -283,7 +274,7 @@ export class Reviews {
         body,
         files: reviewed,
       });
-      this.#save(all);
+      saveList(this.#file, all);
       return url;
     }
     if (!this.#gh) {
@@ -344,10 +335,10 @@ export class Reviews {
     const { open } = this.status(sourceId, fileName, digest);
     if (!open || open.sha256 === digest) return;
     if (this.#file) {
-      const all = this.#load();
+      const all = loadList<Stored>(this.#file);
       const stored = all.find((p) => p.number === open.number);
       if (stored) stored.state = "closed";
-      this.#save(all);
+      saveList(this.#file, all);
     } else if (this.#gh)
       this.#run(["pr", "close", String(open.number), "--comment", note]);
     console.log(`Review PR closed (superseded): ${open.url}`);

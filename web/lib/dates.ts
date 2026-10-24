@@ -1,3 +1,5 @@
+import { LOCALE } from "./locale.ts";
+
 export const WARSAW = "Europe/Warsaw";
 
 // Making an Intl.DateTimeFormat is slow (locale data), and a schedule page
@@ -7,7 +9,7 @@ let isoDay: Intl.DateTimeFormat | undefined;
 let polishDay: Intl.DateTimeFormat | undefined;
 
 function polishDayParts(iso: string) {
-  polishDay ??= new Intl.DateTimeFormat("pl-PL", {
+  polishDay ??= new Intl.DateTimeFormat(LOCALE, {
     timeZone: WARSAW,
     weekday: "long",
     day: "numeric",
@@ -45,9 +47,8 @@ export function warsawNoon(iso: string): Date {
 
 /** Absolute label, safe to render on a static page. Example: "poniedziałek, 26 października". */
 export function absoluteDay(iso: string): string {
-  const parts = polishDayParts(iso);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
-  return `${get("weekday")}, ${get("day")} ${get("month")}`;
+  const { weekday, day, month } = dayFace(iso);
+  return `${weekday}, ${day} ${month}`;
 }
 
 export type DayFace = {

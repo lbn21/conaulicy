@@ -20,7 +20,7 @@ import {
 import { GMINA_SCHEDULE_PAGES } from "./gmina-pages.ts";
 import { type UlicRow, ulicName } from "./teryt.ts";
 
-export type EtlSource = {
+type EtlSource = {
   doc: string;
   kind: string;
   url: string;
@@ -374,4 +374,26 @@ export function describeTarget(
       ? `local Postgres (${host})`
       : "Postgres at a non-Neon host (masked)";
   return { label, production };
+}
+
+/** A CLI's error: the message on stderr, exit 1. */
+export function fail(message: string): never {
+  console.error(`\n${message}`);
+  process.exit(1);
+}
+
+/**
+ * Says which database a CLI writes to and in which mode, and stops before
+ * writing to production without --yes-production.
+ */
+export function guardTarget(
+  url: string,
+  args: { apply: boolean; "yes-production": boolean },
+): void {
+  const target = describeTarget(url, process.env);
+  console.log(
+    `Target: ${target.label}${target.production ? ", PRODUCTION" : ""}. Mode: ${args.apply ? "APPLY" : "dry run"}.`,
+  );
+  if (args.apply && target.production && !args["yes-production"])
+    fail("This is the production database. Add --yes-production to write.");
 }

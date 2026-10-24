@@ -2,7 +2,7 @@
 // (a hidden marker in the body), never a duplicate, closed automatically by
 // the first healthy run. ISSUES_FILE replaces GitHub in tests.
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { loadList, saveList } from "./file-list.ts";
 
 type Stored = {
   number: number;
@@ -23,20 +23,10 @@ export class Issues {
   #gh = !this.#file && Boolean(process.env.GH_TOKEN);
   #open: Array<{ number: number; key: string }> | null = null;
 
-  #load(): Stored[] {
-    return this.#file && existsSync(this.#file)
-      ? JSON.parse(readFileSync(this.#file, "utf8"))
-      : [];
-  }
-
-  #save(all: Stored[]) {
-    if (this.#file) writeFileSync(this.#file, JSON.stringify(all, null, 1));
-  }
-
   #openIssues(): Array<{ number: number; key: string }> {
     if (this.#open) return this.#open;
     if (this.#file)
-      this.#open = this.#load()
+      this.#open = loadList<Stored>(this.#file)
         .filter((i) => i.state === "open")
         .map(({ number, key }) => ({ number, key }));
     else if (this.#gh) {
@@ -75,7 +65,7 @@ export class Issues {
     }
     const text = `${body}\n\n${marker(key)}`;
     if (this.#file) {
-      const all = this.#load();
+      const all = loadList<Stored>(this.#file);
       const number = all.length + 1;
       all.push({
         number,
@@ -85,7 +75,7 @@ export class Issues {
         state: "open",
         comments: [],
       });
-      this.#save(all);
+      saveList(this.#file, all);
       this.#open?.push({ number, key });
     } else if (this.#gh) {
       execFileSync(
@@ -102,13 +92,13 @@ export class Issues {
       if (!issue.key.startsWith(prefix) || this.#raised.has(issue.key))
         continue;
       if (this.#file) {
-        const all = this.#load();
+        const all = loadList<Stored>(this.#file);
         const stored = all.find((i) => i.number === issue.number);
         if (stored) {
           stored.state = "closed";
           stored.comments.push(note);
         }
-        this.#save(all);
+        saveList(this.#file, all);
       } else if (this.#gh)
         execFileSync(
           "gh",

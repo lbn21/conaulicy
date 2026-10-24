@@ -4,6 +4,7 @@
 
 import type { Locality } from "./data-model.ts";
 import { type HouseRange, inRange, isPartial } from "./house.ts";
+import { LANG } from "./locale.ts";
 
 export function gminaShortName(name: string): string {
   return name.replace(/\s*\(.*\)$/, "");
@@ -95,6 +96,13 @@ export function streetLabel(street: {
   return `${streetName(street.prefix, street.name)}, ${street.locality}`;
 }
 
+/** A place's page, and its house number if given. */
+export function placePath(id: string, nr?: string | null): string {
+  const path = `/adres/${encodeURIComponent(id)}`;
+  // A valid number is only digits, a-z and "/", all fine in a query.
+  return nr ? `${path}?nr=${nr}` : path;
+}
+
 /**
  * A moved place's path (place_redirects): /adres/<oldId> and everything
  * under it (/harmonogram.pdf, /nr/…, /numer), query included, on newId.
@@ -105,14 +113,14 @@ export function movedPath(
   oldId: string,
   newId: string,
 ): string | null {
-  const old = `/adres/${encodeURIComponent(oldId)}`;
+  const old = placePath(oldId);
   if (
     path !== old &&
     !path.startsWith(`${old}/`) &&
     !path.startsWith(`${old}?`)
   )
     return null;
-  return `/adres/${encodeURIComponent(newId)}${path.slice(old.length)}`;
+  return `${placePath(newId)}${path.slice(old.length)}`;
 }
 
 /** Not offered in search (nobody lives there); a direct link still works. */
@@ -203,11 +211,11 @@ export type PlaceList = {
   villages: Array<{ id: string | null; label: string; streets: ListedPlace[] }>;
 };
 
-const collator = new Intl.Collator("pl");
+const collator = new Intl.Collator(LANG);
 
 /** "A", "Ł", "Ż"; streets named from a number ("3 Maja") under "0–9". */
 function letterOf(name: string): string {
-  const letter = name.charAt(0).toLocaleUpperCase("pl");
+  const letter = name.charAt(0).toLocaleUpperCase(LANG);
   return /\d/.test(letter) ? "0–9" : letter;
 }
 

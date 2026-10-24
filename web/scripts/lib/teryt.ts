@@ -72,7 +72,7 @@ export function parseSimc(text: string): SimcRow[] {
 export const ulicName = (row: UlicRow) => terytName(row.nazwa1, row.nazwa2);
 
 /** Our street, as the database holds it (or as built from TERYT files). */
-export type OurStreet = {
+type OurStreet = {
   /** SIMC of its locality and its SYM_UL. */
   simc: string;
   symUl: string;
@@ -81,7 +81,7 @@ export type OurStreet = {
   name: string;
 };
 
-export type OurLocality = {
+type OurLocality = {
   terc: string;
   simc: string;
   name: string;

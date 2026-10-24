@@ -1,5 +1,6 @@
 // Writes everything that takes the palette's colours (lib/palette.ts) and is
-// not code: the Sass palette (app/_palette.scss), the tab icons
+// not code: the Sass palette (app/_palette.scss), the bin colours
+// (app/waste-colours.css, from lib/waste-colours.ts), the tab icons
 // (app/icon.svg, app/favicon.ico), the app icons (app/apple-icon.png,
 // public/icon-*.png) and the share card (public/og.png). None is in git.
 //   node scripts/brand-assets.ts
@@ -31,19 +32,24 @@ import { ImageResponse } from "next/og.js";
 import { createElement as h } from "react";
 import {
   LOGO_HEIGHT,
+  PLATE,
   PLATE_COLOUR,
+  RIM,
   UL,
   UL_SHIFT,
   UL_TRANSFORM,
 } from "../lib/logo.ts";
 import { paletteScss } from "../lib/palette.ts";
 import { BACKGROUND_COLOR } from "../lib/theme.ts";
+import { wasteColoursCss } from "../lib/waste-colours.ts";
 
 const ROOT = path.join(import.meta.dirname, "..");
 export const INPUTS = [
   "lib/palette.ts",
   "lib/logo.ts",
   "lib/theme.ts",
+  "lib/govuk-colours.ts",
+  "lib/waste-colours.ts",
   "lib/brand/favicon-16.svg",
   "lib/brand/favicon-32.svg",
   "lib/brand/og.svg",
@@ -88,11 +94,21 @@ function faviconSvg(size: 16 | 32): string {
 // half its descenders, 201-495.3 (centre 348.1, with the name 6.5 % larger
 // in task 93), so it moves 33 px up (whole px).
 const OG_TEXT_SHIFT = -33;
+// Its plate and rim are copies of lib/logo.ts's paths, checked here.
+function ogTemplate(): string {
+  const svg = svgText("og.svg");
+  for (const d of [PLATE, RIM])
+    if (!svg.includes(` d="${d}"`))
+      throw new Error(
+        "lib/brand/og.svg: plate or rim differs from lib/logo.ts",
+      );
+  return svg;
+}
 const ogSvg = () =>
   painted(
     replaceOnce(
       replaceOnce(
-        svgText("og.svg"),
+        ogTemplate(),
         `<path d="${UL}"/>`,
         `<path d="${UL}" transform="${UL_TRANSFORM}"/>`,
       ),
@@ -163,6 +179,7 @@ function ico(images: [number, Buffer][]): Buffer {
 // Each output, by its path in web/, and how it is drawn.
 const OUTPUTS: Record<string, () => Promise<Buffer | string>> = {
   "app/_palette.scss": async () => paletteScss(),
+  "app/waste-colours.css": async () => wasteColoursCss(),
   "app/icon.svg": async () => faviconSvg(32),
   "app/favicon.ico": async () =>
     ico([

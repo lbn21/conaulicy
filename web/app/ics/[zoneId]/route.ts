@@ -1,6 +1,7 @@
 import { longDate } from "@/lib/date-labels";
 import { addDays, WARSAW } from "@/lib/dates";
 import { datasetHeaders } from "@/lib/gate";
+import { TEXT_PLAIN } from "@/lib/headers";
 import { NOINDEX } from "@/lib/indexing";
 import { getZone } from "@/lib/schedule";
 import { DISCLAIMER, putOutNote } from "@/lib/schedule-notes";
@@ -47,7 +48,7 @@ export async function GET(
   if (!zone) {
     return new Response("Nie znamy takiego harmonogramu.", {
       status: 404,
-      headers: { "Content-Type": "text/plain; charset=utf-8", ...NOINDEX },
+      headers: { ...TEXT_PLAIN, ...NOINDEX },
     });
   }
 

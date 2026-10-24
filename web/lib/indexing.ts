@@ -10,3 +10,7 @@ export function indexable(
 // Files that are never search results (street PDFs, calendars), indexable
 // site or not.
 export const NOINDEX = { "X-Robots-Tag": "noindex" };
+
+// Every response of a build that is not indexable (next.config.ts), and
+// everything while gated (proxy.ts).
+export const NOINDEX_NOFOLLOW = { "X-Robots-Tag": "noindex, nofollow" };

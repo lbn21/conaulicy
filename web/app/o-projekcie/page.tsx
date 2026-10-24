@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/share";
+import { ABOUT, ACCESSIBILITY, PRIVACY } from "@/lib/static-pages";
 
 export const metadata: Metadata = pageMetadata({
-  path: "/o-projekcie",
-  title: "O projekcie",
+  path: ABOUT.path,
+  title: ABOUT.text,
   description:
     "Darmowa, niekomercyjna strona dla mieszkańców Lubaczowa i okolicznych wsi. Skąd bierzemy terminy wywozu śmieci i dlaczego rację ma zawsze harmonogram gminy.",
 });
@@ -12,7 +13,7 @@ export default function AboutPage() {
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
-        <h1 className="govuk-heading-l">O projekcie</h1>
+        <h1 className="govuk-heading-l">{ABOUT.text}</h1>
         <p className="govuk-body-l">
           conaulicy.pl to prosta strona dla Lubaczowa i okolicznych wsi:
           wpisujesz ulicę albo wieś i od razu widzisz, kiedy przyjedzie
@@ -34,12 +35,12 @@ export default function AboutPage() {
         </p>
         <p className="govuk-body">
           Jak dbamy o Twoją prywatność, opisujemy w zakładce{" "}
-          <a href="/prywatnosc" className="govuk-link">
-            Prywatność
+          <a href={PRIVACY.path} className="govuk-link">
+            {PRIVACY.text}
           </a>
           , a o wygodę korzystania – w zakładce{" "}
-          <a href="/dostepnosc" className="govuk-link">
-            Dostępność
+          <a href={ACCESSIBILITY.path} className="govuk-link">
+            {ACCESSIBILITY.text}
           </a>
           .
         </p>

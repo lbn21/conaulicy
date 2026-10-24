@@ -41,8 +41,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# drawn from lib/palette.ts by scripts/brand-assets.ts
+# drawn from lib/palette.ts (and lib/waste-colours.ts) by scripts/brand-assets.ts
 /app/_palette.scss
+/app/waste-colours.css
 /app/icon.svg
 /app/favicon.ico
 /app/apple-icon.png

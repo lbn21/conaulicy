@@ -37,8 +37,9 @@ import {
 } from "../lib/db/schema.ts";
 import {
   type Approval,
-  describeTarget,
   type Etl,
+  fail,
+  guardTarget,
   type Rows,
   transform,
   validate,
@@ -64,11 +65,6 @@ const { values: args } = parseArgs({
     "yes-production": { type: "boolean", default: false },
   },
 });
-
-function fail(message: string): never {
-  console.error(`\n${message}`);
-  process.exit(1);
-}
 
 function readEtl(dir: string): Etl {
   const read = (name: string) =>
@@ -254,12 +250,7 @@ async function main() {
   const url = databaseUrl();
   if (!url) fail("DATABASE_URL is not set.");
 
-  const target = describeTarget(url, process.env);
-  console.log(
-    `Target: ${target.label}${target.production ? ", PRODUCTION" : ""}. Mode: ${args.apply ? "APPLY" : "dry run"}.`,
-  );
-  if (args.apply && target.production && !args["yes-production"])
-    fail("This is the production database. Add --yes-production to write.");
+  guardTarget(url, args);
 
   let etl = readEtl(args.from);
   const errors = validate(etl);

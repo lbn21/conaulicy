@@ -54,7 +54,7 @@ import { FRACTIONS } from "@/lib/waste-bin";
 export const DATASET = "dataset";
 const CACHE = { tags: [DATASET], revalidate: 3600 };
 
-export type ZoneEvent = typeof events.$inferSelect;
+type ZoneEvent = typeof events.$inferSelect;
 
 type Place = {
   id: string;
@@ -83,7 +83,7 @@ export type Pickup = {
 
 export type PickupDay = { date: string; pickups: Pickup[] };
 
-export type SourceView = {
+type SourceView = {
   /** Human label, e.g. "Sektor 1, październik–grudzień 2026". */
   label: string;
   url: string | null;
@@ -315,7 +315,7 @@ export const movedPlaces = unstable_cache(
 );
 
 /** The id a renamed place moved to, or null. */
-export async function placeRedirect(id: string): Promise<string | null> {
+async function placeRedirect(id: string): Promise<string | null> {
   return (await movedPlaces())[id] ?? null;
 }
 

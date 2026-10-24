@@ -6,8 +6,11 @@ import { SITE_URL } from "@/lib/config.generated";
 import { longDate, monthTitle, weekdayShort } from "@/lib/date-labels";
 import { absoluteDay } from "@/lib/dates";
 import { datasetHeaders } from "@/lib/gate";
+import { GOVUK_COLOUR, GOVUK_FUNCTIONAL } from "@/lib/govuk-colours";
+import { TEXT_PLAIN } from "@/lib/headers";
 import { withHouseNumber } from "@/lib/house";
 import { NOINDEX } from "@/lib/indexing";
+import { LOCALE } from "@/lib/locale";
 import {
   LOGO_HEIGHT,
   PLATE,
@@ -19,6 +22,7 @@ import {
 } from "@/lib/logo";
 import { normalize } from "@/lib/normalize";
 import { type Block, flow, type Spot } from "@/lib/pdf-flow";
+import { placePath } from "@/lib/places";
 import {
   getPlace,
   movedTarget,
@@ -32,10 +36,10 @@ import {
   putOutNote,
   UNVERIFIED_NOTE,
 } from "@/lib/schedule-notes";
-import { placePath } from "@/lib/search";
 import { SITE_NAME } from "@/lib/share";
 import { THEME_COLOR } from "@/lib/theme";
 import { FRACTIONS, TOKEN, tones } from "@/lib/waste-bin";
+import { WASTE_COLOURS as WASTE } from "@/lib/waste-colours";
 
 export const runtime = "nodejs";
 
@@ -76,24 +80,21 @@ const LINE = ASCENT + 0.316;
 const CAP = 0.668;
 const CAP_TOP = ASCENT - CAP;
 
-// GOV.UK Frontend's palette, as on the site.
-const BLACK = "#0b0c0c";
-const WHITE = "#ffffff";
-const SECONDARY_TEXT = "#484949";
-const BORDER = "#cecece";
-const PANEL = "#f3f3f3";
-// govuk-colour("red") in govuk-frontend 6.5.1, also its error colour.
-const RED = "#ca3535";
-// Darker than the site's --waste-plastik-metale-border: small marks on paper
-// need a stronger outline (app/tokens.css --waste-plastik-metale-print).
-const PLASTIK_METALE_PRINT = "#5c4800";
+// GOV.UK Frontend's palette, as on the site (lib/govuk-colours.ts).
+const BLACK = GOVUK_FUNCTIONAL.text;
+const WHITE = GOVUK_COLOUR.white;
+const SECONDARY_TEXT = GOVUK_FUNCTIONAL["secondary-text"];
+const BORDER = GOVUK_FUNCTIONAL.border;
+const PANEL = GOVUK_COLOUR["black-tint-95"];
+// govuk-colour("red"), also GOV.UK's error colour.
+const RED = GOVUK_COLOUR.red;
 // The bands take the site header's colour (lib/theme.ts).
 const HEADER = THEME_COLOR;
 
 // ---------------------------------------------------------------- marks
 
 // One shape per fraction, so the calendar reads in black-and-white print and
-// for colour-blind readers; the colour is the real bin colour (app/tokens.css)
+// for colour-blind readers; the colour is the real bin colour (lib/waste-colours.ts)
 // on top. Rare fractions are a letter in an outlined square. The website
 // keeps its bin icons.
 type Mark = {
@@ -102,16 +103,17 @@ type Mark = {
   stroke?: string;
 };
 const MARKS: Record<string, Mark | string> = {
-  zmieszane: { shape: "circle", fill: "#111111" },
-  popiol: { shape: "ring", fill: "#5c6370" },
-  bio: { shape: "square", fill: "#7a4b2a" },
-  papier: { shape: "triangle", fill: "#1f63c7" },
+  zmieszane: { shape: "circle", fill: WASTE.zmieszane },
+  popiol: { shape: "ring", fill: WASTE.popiol },
+  bio: { shape: "square", fill: WASTE.bio },
+  papier: { shape: "triangle", fill: WASTE.papier },
+  // Outlined darker than the site's -border: small marks on paper need it.
   "plastik-metale": {
     shape: "diamond",
-    fill: "#f2c200",
-    stroke: PLASTIK_METALE_PRINT,
+    fill: WASTE["plastik-metale"],
+    stroke: WASTE["plastik-metale-print"],
   },
-  szklo: { shape: "star", fill: "#1e7f4f" },
+  szklo: { shape: "star", fill: WASTE.szklo },
   gabaryty: "G",
   elektro: "E",
   opony: "O",
@@ -422,7 +424,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     pdfVersion: "1.7",
     // Tagged, but no PDF/UA claim (subset) until it passes veraPDF.
     tagged: true,
-    lang: "pl-PL",
+    lang: LOCALE,
     displayTitle: true,
     font: REGULAR as unknown as string,
     info: {
@@ -599,8 +601,9 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       keySize * ASCENT + inkOf("regular", keySize, item.label).below,
       keyMid + keyMark * (item.swatch ? 0.75 : 0.6),
     );
+  const keyHeading = "Oznaczenia";
   doc.font("bold").fontSize(keySize);
-  const keyStart = MARGIN + doc.widthOfString("Oznaczenia") + keyItemGap;
+  const keyStart = MARGIN + doc.widthOfString(keyHeading) + keyItemGap;
 
   /** The key for the months on one page, laid out above the note. */
   const keyFor = (keys: string[]) => {
@@ -666,7 +669,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         .font("bold")
         .fontSize(keySize)
         .fillColor(BLACK)
-        .text("Oznaczenia", MARGIN, keyTop, { lineBreak: false });
+        .text(keyHeading, MARGIN, keyTop, { lineBreak: false });
     });
     const list = parent ? doc.struct("L") : null;
     if (parent && list) parent.add(list);
@@ -767,17 +770,23 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       });
     }
     // On the shared baseline, under the QR code.
+    const scanWidth = 170;
     tag(root, "P", () => {
       doc
         .font("regular")
         .fontSize(small)
         .fillColor(WHITE)
-        .text(scan, PAGE_W - MARGIN - 170, bandBaseline - small * ASCENT, {
-          width: 170,
-          align: "right",
-          lineBreak: false,
-          link: url,
-        });
+        .text(
+          scan,
+          PAGE_W - MARGIN - scanWidth,
+          bandBaseline - small * ASCENT,
+          {
+            width: scanWidth,
+            align: "right",
+            lineBreak: false,
+            link: url,
+          },
+        );
     });
     return bandH;
   };
@@ -1327,6 +1336,9 @@ function slug(text: string): string {
   return normalize(text).replaceAll(" ", "-");
 }
 
+// A redirect or a 404: an hour at the CDN, without stale-while-revalidate.
+const NO_STALE = "public, s-maxage=3600";
+
 export async function GET(
   request: Request,
   ctx: { params: Promise<{ id: string }> },
@@ -1341,7 +1353,7 @@ export async function GET(
       status: 308,
       headers: {
         Location: moved,
-        ...datasetHeaders("public, s-maxage=3600"),
+        ...datasetHeaders(NO_STALE),
       },
     });
   }
@@ -1349,8 +1361,8 @@ export async function GET(
     return new Response("Nie mamy harmonogramu dla tego adresu.", {
       status: 404,
       headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        ...datasetHeaders("public, s-maxage=3600"),
+        ...TEXT_PLAIN,
+        ...datasetHeaders(NO_STALE),
         ...NOINDEX,
       },
     });

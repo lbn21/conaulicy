@@ -11,13 +11,7 @@
 // revalidate purges their CDN copies. Run after `next build`; needs
 // poppler-utils (pdfinfo, pdffonts, pdftotext).
 import { execFileSync } from "node:child_process";
-import {
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { inflateSync } from "node:zlib";
@@ -26,6 +20,7 @@ import {
   NO_MORE_DATES,
   UNVERIFIED_NOTE,
 } from "../lib/schedule-notes.ts";
+import { notSource, walk } from "./lib/files.mjs";
 import { finish, startServer } from "./lib/server.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
@@ -81,18 +76,10 @@ function pdfSource(bytes) {
 }
 
 // No example data in anything that ships.
-function walk(dir, out = []) {
-  for (const name of readdirSync(dir)) {
-    if (name === "node_modules" || name.startsWith(".")) continue;
-    const full = path.join(dir, name);
-    if (statSync(full).isDirectory()) walk(full, out);
-    else if (/\.(ts|tsx|mjs)$/.test(name)) out.push(full);
-  }
-  return out;
-}
-for (const file of ["app", "components", "lib"].flatMap((d) =>
-  walk(path.join(ROOT, d)),
-)) {
+const sources = ["app", "components", "lib"]
+  .flatMap((d) => walk(path.join(ROOT, d), notSource))
+  .filter((file) => /\.(ts|tsx|mjs)$/.test(file));
+for (const file of sources) {
   check(
     !SAMPLE.test(readFileSync(file, "utf8")),
     `${path.relative(ROOT, file)}: example ("PRZYKŁADOWE DANE") content`,

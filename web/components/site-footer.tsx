@@ -1,14 +1,8 @@
+import { PlateMask } from "@/components/plate-mask";
 import { FEATURES } from "@/lib/config.generated";
-import {
-  PLATE,
-  PLATE_COLOUR,
-  PLATE_WIDTH,
-  RIM,
-  RIM_WIDTH,
-  UL,
-  UL_TRANSFORM,
-} from "@/lib/logo";
+import { LOGO_HEIGHT, PLATE, PLATE_COLOUR, PLATE_WIDTH } from "@/lib/logo";
 import { DISCLAIMER } from "@/lib/schedule-notes";
+import { SITE_NAME } from "@/lib/share";
 import { STATIC_PAGES } from "@/lib/static-pages";
 
 // Our own footer markup with GOV.UK's footer classes, laid out as the GOV.UK
@@ -31,6 +25,9 @@ const NAVIGATION = FEATURES.map(({ section, links }) => ({
 }));
 
 const SHOW_NAVIGATION = false;
+
+// The year the site and its texts were first published.
+const COPYRIGHT_YEAR = 2026;
 const SECTIONS = NAVIGATION.filter((section) => section.items.length > 0);
 const NAVIGATION_SHOWN =
   SECTIONS.length > 0 &&
@@ -46,20 +43,9 @@ function FooterPlate() {
       className="govuk-!-margin-bottom-5"
       width="37"
       height="30"
-      viewBox={`0 0 ${PLATE_WIDTH} 34`}
+      viewBox={`0 0 ${PLATE_WIDTH} ${LOGO_HEIGHT}`}
     >
-      <mask
-        id="footer-plate"
-        maskUnits="userSpaceOnUse"
-        x="0"
-        y="0"
-        width={PLATE_WIDTH}
-        height="34"
-      >
-        <path fill="#fff" d={PLATE} />
-        <path fill="none" stroke="#000" strokeWidth={RIM_WIDTH} d={RIM} />
-        <path d={UL} transform={UL_TRANSFORM} />
-      </mask>
+      <PlateMask id="footer-plate" />
       <path fill={PLATE_COLOUR} mask="url(#footer-plate)" d={PLATE} />
     </svg>
   );
@@ -130,7 +116,7 @@ export function SiteFooter() {
                 gminy Lubaczów.
               </span>
             </div>
-            <div className="govuk-footer__meta-item">© 2026 conaulicy.pl</div>
+            <div className="govuk-footer__meta-item">{`© ${COPYRIGHT_YEAR} ${SITE_NAME}`}</div>
           </div>
         </div>
       </div>

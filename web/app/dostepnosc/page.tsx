@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { ContactLink } from "@/components/contact-link";
 import { pageMetadata } from "@/lib/share";
+import { ACCESSIBILITY } from "@/lib/static-pages";
 
 export const metadata: Metadata = pageMetadata({
-  path: "/dostepnosc",
-  title: "Dostępność",
+  path: ACCESSIBILITY.path,
+  title: ACCESSIBILITY.text,
   description:
     "Chcemy, żeby z conaulicy.pl wygodnie korzystał każdy: duży tekst, mocny kontrast, obsługa klawiaturą. Co już sprawdzamy, a czego jeszcze nie.",
 });
@@ -12,7 +14,7 @@ export default function AccessibilityPage() {
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
-        <h1 className="govuk-heading-l">Dostępność</h1>
+        <h1 className="govuk-heading-l">{ACCESSIBILITY.text}</h1>
         <p className="govuk-body-l">
           Chcemy, żeby z tej strony wygodnie korzystał każdy: osoby starsze,
           słabiej widzące, korzystające z czytnika ekranu albo tylko z
@@ -86,9 +88,7 @@ export default function AccessibilityPage() {
               pomaga.
             </p>
             <p className="govuk-body">
-              <a href="mailto:kontakt@conaulicy.pl" className="govuk-link">
-                kontakt@conaulicy.pl
-              </a>
+              <ContactLink />
             </p>
           </section>
 

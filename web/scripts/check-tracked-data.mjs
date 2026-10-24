@@ -16,7 +16,7 @@ const DOCS_DATA_ALLOWED = new Set([
 const DATA_EXTENSION = /\.(pdf|jpe?g|json|csv|xml|html?)$/i;
 const ALLOWED = [
   /^web\/package(-lock)?\.json$/,
-  /^web\/(tsconfig|biome|vercel)\.json$/,
+  /^web\/(tsconfig|biome|vercel|knip)\.json$/,
   /^web\/drizzle\/meta\/[^/]+\.json$/,
   /^\.cursor\/cli\.json$/,
   /^etl\/sources\.schema\.json$/,

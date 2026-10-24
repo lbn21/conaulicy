@@ -10,7 +10,7 @@
 // current build.
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { finish, startServer } from "./lib/server.mjs";
+import { finish, searchIndexOf, startServer } from "./lib/server.mjs";
 
 const collator = new Intl.Collator("pl");
 const LINK = /<a href="\/adres\/([^"]+)" class="govuk-link">([^<]+)<\/a>/g;
@@ -25,10 +25,7 @@ const failures = [];
 
 try {
   const home = await (await fetch(`${server.origin}/`)).text();
-  const indexUrl = /\/api\/search-index\/[\da-f]{16}/.exec(home)?.[0];
-  const places = indexUrl
-    ? await (await fetch(`${server.origin}${indexUrl}`)).json()
-    : [];
+  const { places } = await searchIndexOf(server.origin, home);
   if (places.length === 0) failures.push("/: no search index");
   if (!/<a href="\/ulice" class="govuk-link">/.test(home)) {
     failures.push("/: no link to /ulice");

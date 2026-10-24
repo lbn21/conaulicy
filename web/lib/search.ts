@@ -7,8 +7,9 @@
 
 import uFuzzy from "@leeoniya/ufuzzy";
 import { houseNumber, withHouseNumber } from "./house.ts";
+import { LANG } from "./locale.ts";
 import { normalize } from "./normalize.ts";
-import { CECHA_WORDS } from "./places.ts";
+import { CECHA_WORDS, placePath } from "./places.ts";
 
 export type SearchHit = {
   id: string;
@@ -27,8 +28,11 @@ export type SearchIndex = Array<[id: string, label: string, type: string]>;
 /** Id of the home page's search element. */
 export const SEARCH_ID = "szukaj";
 
+/** A query is cut to this many characters (/szukaj and /api/search). */
+export const MAX_QUERY_LENGTH = 100;
+
 /** At most this many places in the list. */
-export const SEARCH_LIMIT = 8;
+const SEARCH_LIMIT = 8;
 
 const STREET = "ul.";
 
@@ -259,7 +263,7 @@ function identity(label: string, type: string): string {
 // however its match ranks: /szukaj lists the places instead.
 const CLEAR_MIN = 3;
 
-export type Found = {
+type Found = {
   hits: SearchHit[];
   /**
    * The first place is clearly the best (or the only) match, for a query of
@@ -326,7 +330,7 @@ export function matcher(index: SearchIndex): Matcher {
 }
 
 export function byLabel(a: SearchHit, b: SearchHit): number {
-  return a.label.localeCompare(b.label, "pl");
+  return a.label.localeCompare(b.label, LANG);
 }
 
 /**
@@ -356,13 +360,6 @@ export function exactPlace(index: SearchIndex, q: string): SearchHit | null {
     if (found.length > 1) return null;
   }
   return null;
-}
-
-/** A place's page, and its house number if given. */
-export function placePath(id: string, nr?: string | null): string {
-  const path = `/adres/${encodeURIComponent(id)}`;
-  // A valid number is only digits, a-z and "/", all fine in a query.
-  return nr ? `${path}?nr=${nr}` : path;
 }
 
 /** Where a hit links to: the place, and its house number if given. */

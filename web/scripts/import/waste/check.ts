@@ -26,7 +26,7 @@ import {
 } from "./lib.ts";
 
 /** domains.waste in etl/sources.yaml. */
-export type WasteSettings = {
+type WasteSettings = {
   coverageMinDays: number;
   validate: ValidationRules & { counts: { minMonths: number } };
 };

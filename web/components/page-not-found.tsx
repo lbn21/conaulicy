@@ -1,3 +1,6 @@
+import { ContactLink } from "@/components/contact-link";
+import { HOME_H1 } from "@/lib/share";
+
 /** Its H1 and title (GOV.UK: "Page not found"). */
 export const NOT_FOUND_TITLE = "Nie znaleziono strony";
 
@@ -19,14 +22,11 @@ export function PageNotFound() {
         </p>
         <p className="govuk-body">
           Jeśli adres jest poprawny albo kliknięto link lub przycisk, napisz do
-          nas:{" "}
-          <a href="mailto:kontakt@conaulicy.pl" className="govuk-link">
-            kontakt@conaulicy.pl
-          </a>
+          nas: <ContactLink />
         </p>
         <p className="govuk-body">
           <a href="/" className="govuk-link">
-            Sprawdź dzień wywozu śmieci
+            {HOME_H1}
           </a>
         </p>
       </div>

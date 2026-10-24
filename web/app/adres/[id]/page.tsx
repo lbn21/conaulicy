@@ -3,7 +3,7 @@ import {
   placeMetadata,
   redirectIfMoved,
 } from "@/components/place-page";
-import { placePath } from "@/lib/search";
+import { placePath } from "@/lib/places";
 
 // Rendered on first visit, then served from the cache like a static page.
 // Regenerate every 10 minutes, so the static HTML drops past pickups and its
