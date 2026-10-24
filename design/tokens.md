@@ -10,7 +10,7 @@ Light only, as GOV.UK. Values: `design/tokens.css`; the bin colours the site use
   - yellow focus `#ffdd00` with black `#0b0c0c`;
   - error `#ca3535`, success and buttons green `#0f7a52`;
   - borders `#cecece`, input borders black.
-- **The logo plate** stays `#ffb547` on the Generic header's black bar.
+- **The logo plate** is GOV.UK white on the Generic header's black bar, as GOV.UK's white crown.
 - **Typography:** Atkinson Hyperlegible Next, self-hosted, weights 400 and 700, instead of GDS Transport (which GOV.UK reserves for its own services).
 - **Waste colours** are fills, each with a `-fg` for the label text on that fill. Papier is blue, szkło green, metale i tworzywa yellow, bio brown, zmieszane black, popiół grey. The rare fractions each have their own colour, as in the Miasto Lubaczów schedule table: gabaryty orange, elektro navy, opony mid grey, tekstylia rose. The label next to every bin names the fraction, so colour is never the only cue.
 

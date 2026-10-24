@@ -114,6 +114,9 @@ jobs:
       - name: Search popup (no layout shift, combobox keys)
         run: node scripts/check-search.mjs
 
+      - name: "Geometry (header bars, focus box, warning icon: exact px)"
+        run: node scripts/check-geometry.mjs
+
       - name: Home examples (each has upcoming pickups)
         run: node scripts/check-examples.mjs
 
