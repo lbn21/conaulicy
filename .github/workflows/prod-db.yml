@@ -1,0 +1,147 @@
+# Production database writes (docs/tasks/task-77-prod-db-workflow.md): never
+# from a laptop. Started by hand on main, approved by Jakub (environment
+# prod-db), and only after a Neon backup branch of the default (production)
+# branch exists. Fixed choices only, no free-text input.
+name: prod-db
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "backup-only: a Neon backup branch, nothing else; migrate: backup, then npm run db:migrate"
+        type: choice
+        options: [backup-only, migrate]
+        default: backup-only
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prod-db
+  cancel-in-progress: false
+
+jobs:
+  prod-db:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: prod-db
+    defaults:
+      run:
+        # bash -eo pipefail: a failing curl inside a pipe fails the step.
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # Before the backup, so a broken install never leaves a pointless one.
+      - name: Install
+        if: inputs.task != 'backup-only'
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+
+      # A Neon branch is an instant copy-on-write snapshot of its parent
+      # (no compute is created). The apply step below runs only if this
+      # step succeeded.
+      - name: Backup (Neon branch of the default branch)
+        id: backup
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          api="https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID"
+          neon() { curl -sS --fail-with-body -H "Authorization: Bearer $NEON_API_KEY" -H "Accept: application/json" "$@"; }
+
+          branches=$(neon --retry 3 "$api/branches?limit=100")
+          parent=$(jq -er '[.branches[] | select(.default)] | if length == 1 then .[0].id else error("expected exactly one default branch") end' <<<"$branches")
+          endpoints=$(neon --retry 3 "$api/branches/$parent/endpoints" | jq -r '[.endpoints[].id] | join(" ")')
+
+          # No --retry on the POST: a retried create could make a second branch.
+          name="backup-$(date -u +%Y%m%d-%H%M)-run$RUN_ID"
+          body=$(jq -n --arg name "$name" --arg parent "$parent" '{branch: {name: $name, parent_id: $parent}}')
+          created=$(neon -X POST -H "Content-Type: application/json" -d "$body" "$api/branches")
+          id=$(jq -er '.branch.id' <<<"$created")
+
+          for op in $(jq -r '.operations[].id' <<<"$created"); do
+            status=""
+            for _ in $(seq 60); do
+              status=$(neon --retry 3 "$api/operations/$op" | jq -r '.operation.status')
+              case "$status" in
+                finished | skipped) break ;;
+                failed | error | cancelling | cancelled)
+                  echo "::error::Backup branch $name: operation $op $status"
+                  exit 1 ;;
+              esac
+              sleep 5
+            done
+            if [ "$status" != finished ] && [ "$status" != skipped ]; then
+              echo "::error::Backup branch $name: operation $op still $status after 5 minutes"
+              exit 1
+            fi
+          done
+
+          echo "Backup branch $name ($id), from the default branch $parent."
+          echo "Backup branch \`$name\` ($id), from the default branch $parent." >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "name=$name"
+            echo "id=$id"
+            echo "endpoints=$endpoints"
+          } >> "$GITHUB_OUTPUT"
+
+      # Keep the 3 newest backup-* branches (Neon free plan: 10 branches per
+      # project). Never the default branch, a protected one, the backup just
+      # made, or any branch not named backup-*.
+      - name: Retention (keep the 3 newest backups)
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          NEW_ID: ${{ steps.backup.outputs.id }}
+        run: |
+          api="https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID"
+          neon() { curl -sS --fail-with-body -H "Authorization: Bearer $NEON_API_KEY" -H "Accept: application/json" "$@"; }
+
+          branches=$(neon --retry 3 "$api/branches?limit=100")
+          backups=$(jq -c '[.branches[]
+            | select((.name | startswith("backup-")) and (.default | not) and (.protected | not))]
+            | sort_by(.created_at) | reverse' <<<"$branches")
+          if ! jq -e --arg new "$NEW_ID" '.[:3] | any(.id == $new)' <<<"$backups" > /dev/null; then
+            echo "::error::The new backup is not among the 3 newest; deleting nothing."
+            exit 1
+          fi
+          old=$(jq -r --arg new "$NEW_ID" '.[3:][] | select(.id != $new) | "\(.id) \(.name)"' <<<"$backups")
+          if [ -z "$old" ]; then
+            echo "No old backups to delete."
+            exit 0
+          fi
+          while read -r id name; do
+            case "$name" in backup-*) ;; *) echo "::error::Refusing to delete $name"; exit 1 ;; esac
+            neon -X DELETE "$api/branches/$id" > /dev/null
+            echo "Deleted old backup $name ($id)."
+          done <<<"$old"
+
+      # The production URL only here. It must be the direct (unpooled)
+      # connection string of the default branch, as the owner role (DDL).
+      - name: Migrate
+        if: inputs.task == 'migrate'
+        working-directory: web
+        env:
+          DATABASE_URL_UNPOOLED: ${{ secrets.PROD_DATABASE_URL }}
+          DEFAULT_ENDPOINTS: ${{ steps.backup.outputs.endpoints }}
+          BACKUP: ${{ steps.backup.outputs.name }}
+        run: |
+          # The backup must cover the database written to.
+          endpoint=$(node -e 'console.log(new URL(process.env.DATABASE_URL_UNPOOLED).hostname.split(".")[0].replace(/-pooler$/, ""))')
+          if [ -z "$endpoint" ] || [[ " $DEFAULT_ENDPOINTS " != *" $endpoint "* ]]; then
+            echo "::error::PROD_DATABASE_URL is not an endpoint of the default branch; nothing applied."
+            exit 1
+          fi
+          echo "Target: Neon endpoint $endpoint (default branch). Backup: $BACKUP."
+          npm run db:migrate
