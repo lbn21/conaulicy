@@ -13,7 +13,7 @@ const SHARE_IMAGE = {
 export const SITE_NAME = "conaulicy.pl";
 
 /** GOV.UK's title: the page's H1, then the service. */
-export function pageTitle(h1: string): string {
+function pageTitle(h1: string): string {
   return `${h1} – ${SITE_NAME}`;
 }
 

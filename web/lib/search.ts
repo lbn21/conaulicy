@@ -28,7 +28,7 @@ export type SearchIndex = Array<[id: string, label: string, type: string]>;
 export const SEARCH_ID = "szukaj";
 
 /** At most this many places in the list. */
-export const SEARCH_LIMIT = 8;
+const SEARCH_LIMIT = 8;
 
 const STREET = "ul.";
 
@@ -259,7 +259,7 @@ function identity(label: string, type: string): string {
 // however its match ranks: /szukaj lists the places instead.
 const CLEAR_MIN = 3;
 
-export type Found = {
+type Found = {
   hits: SearchHit[];
   /**
    * The first place is clearly the best (or the only) match, for a query of

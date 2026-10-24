@@ -20,7 +20,7 @@ import {
 import { GMINA_SCHEDULE_PAGES } from "./gmina-pages.ts";
 import { type UlicRow, ulicName } from "./teryt.ts";
 
-export type EtlSource = {
+type EtlSource = {
   doc: string;
   kind: string;
   url: string;

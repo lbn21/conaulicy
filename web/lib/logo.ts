@@ -28,7 +28,7 @@ export const UL =
 // B, the centroid centred (-0.90 px), are 1 px up; C, the ink box centred
 // (+0.90 px), is 1 px down. Shots: ~/t88-shots/optical/. Jakub picks.
 const UL_SHIFTS = { current: 0, A: -1, B: -1, C: 1 };
-export const UL_VARIANT: keyof typeof UL_SHIFTS = "C";
+const UL_VARIANT: keyof typeof UL_SHIFTS = "C";
 export const UL_SHIFT = (UL_SHIFTS[UL_VARIANT] * LOGO_HEIGHT) / 30;
 export const UL_TRANSFORM = `translate(0 ${UL_SHIFT})`;
 export const WORDMARK =

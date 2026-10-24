@@ -32,7 +32,7 @@ const channels = (hex: string) =>
   [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
 
 /** Sass's color.mix($with, $base, $weight), rounded to a hex as Sass prints it. */
-export function mix(withHex: string, baseHex: string, weight: number): string {
+function mix(withHex: string, baseHex: string, weight: number): string {
   const a = channels(withHex);
   const b = channels(baseHex);
   return `#${a
@@ -65,7 +65,7 @@ export const PALETTE = {
 } as Record<Step, string>;
 
 // The step links take: the one line to change for another link colour.
-export const LINK_STEP: Step = "tint-20";
+const LINK_STEP: Step = "tint-20";
 
 // The roles GOV.UK derives from its brand blue, in our steps. Visited links
 // have no colour of their own: link-visited is the link colour (Jakub's
@@ -88,7 +88,9 @@ export const ROLES = Object.fromEntries(
 // browser's theme-color and the PDF's band are the same colour.
 export const HEADER = PALETTE["shade-50"];
 // The "ul." plate on light backgrounds (footer, icons, share card): the
-// header's colour. In the header it is GOV.UK white.
+// header's colour. In the header it is GOV.UK white. A role of its own, so
+// knip allows the second name (@alias).
+/** @alias */
 export const PLATE = HEADER;
 
 /** The colours above as Sass, for app/_palette.scss. */
