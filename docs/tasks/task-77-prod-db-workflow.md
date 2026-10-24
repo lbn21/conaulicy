@@ -4,7 +4,7 @@ Requested by Jakub, 23 Oct 2026. One PR, not merged by the agent. It adds only `
 
 ## Goal
 
-Production migrations and imports never run from a laptop. They run only through a manually started GitHub workflow, in the GitHub environment `production` (Jakub as required reviewer), after an automatic backup.
+Production migrations and imports never run from a laptop. They run only through a manually started GitHub workflow, in the GitHub environment `prod-db` (Jakub as required reviewer), after an automatic backup.
 
 ## What it can run
 
@@ -22,7 +22,7 @@ Left out, on purpose:
 ## Design
 
 - **Trigger:** `workflow_dispatch` only. The job runs only when `github.ref` is `refs/heads/main`, and the environment's branch rule says the same.
-- **Approval:** `environment: production`. Its secrets reach the job only after Jakub approves the run.
+- **Approval:** `environment: prod-db`. Its secrets reach the job only after Jakub approves the run.
 - **Permissions:** `contents: read`; checkout without persisted credentials.
 - **Concurrency:** group `prod-db`, never cancelled in progress (a half-run migration is worse than a queued one). Timeout 15 minutes.
 - **Actions:** checkout and setup-node pinned by full SHA, the same versions and Node setup as `ci.yml`. `npm ci` runs before the backup, so a broken install never leaves a pointless backup.
@@ -37,7 +37,7 @@ Left out, on purpose:
 
 GitHub, per [Managing environments for deployment](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments). Environments with required reviewers are available because the repository is public.
 
-1. Repository **Settings → Environments → New environment**, named `production`.
+1. Repository **Settings → Environments → New environment**, named `prod-db`.
 2. **Required reviewers:** add yourself.
 3. **Prevent self-review:** leave it **off**. You are both the only reviewer and the person who starts the run; with it on, nobody could approve.
 4. Untick **Allow administrators to bypass configured protection rules**.

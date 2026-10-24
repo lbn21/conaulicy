@@ -1,6 +1,6 @@
 # Production database writes (docs/tasks/task-77-prod-db-workflow.md): never
 # from a laptop. Started by hand on main, approved by Jakub (environment
-# production), and only after a Neon backup branch of the default (production)
+# prod-db), and only after a Neon backup branch of the default (production)
 # branch exists. Fixed choices only, no free-text input.
 name: prod-db
 
@@ -25,7 +25,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment: production
+    environment: prod-db
     defaults:
       run:
         # bash -eo pipefail: a failing curl inside a pipe fails the step.
