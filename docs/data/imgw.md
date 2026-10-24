@@ -59,12 +59,11 @@ The regulamin §5 requires, wherever the data is used, the source sentence, and 
 
 No public endpoint (task 98: `/api/warnings` was removed). The root layout renders `ImgwBanner`, a Server Component, at the top of `<main>` on every page: GOV.UK's notification banner (neutral, `role="region"`, `aria-labelledby`, govuk-frontend 6.5.1's markup) in a two-thirds column, before the page's own row, so before its h1 (and its caption, error summary or JSON-LD, where a page has them). No client JS. The brand colour is our palette's (Wiśnia).
 
-Warnings are powiat-wide, so every page shows the same banner (powiat `1809`, `POWIAT` in `lib/imgw-banner.ts`). Those in force or to come, highest level first, then by start; one banner, with a list when there are several:
+Warnings are powiat-wide, so every page shows the same banner (powiat `1809`, `POWIAT` in `lib/imgw-banner.ts`). Those in force or to come, highest level first, then by start; one banner, compact (task 98: 163 px at 375 px for one warning, 273 px for three):
 
 - title „Ostrzeżenie IMGW” / „Ostrzeżenia IMGW”;
-- per warning: the event, a tag „Stopień N z 3” (yellow, orange, red: the text says the level too), „Obowiązuje teraz, do niedzieli 25 października, 19:00.” or „Od niedzieli 25 października, 13:00 do 19:00.” (the end's day too when it ends another day), then „Prawdopodobieństwo: 75%.” and `tresc` verbatim;
-- the link „Szczegóły i mapa na meteo.imgw.pl”;
-- the footer: „Dotyczy całego powiatu lubaczowskiego. Stan na HH:MM.”, „Nowszych danych nie udało się pobrać.” when the copy is stale, and IMGW's two attribution sentences.
+- visible, one line per warning (a list when there are several): the event, a tag „Stopień N z 3” (yellow, orange, red: the text says the level too) and „do niedzieli 25 października, 19:00” (in force) or „od niedzieli 25 października, 13:00” (to come);
+- then GOV.UK's details (native `<details>`, closed, no JS), „Szczegóły ostrzeżenia” / „Szczegóły ostrzeżeń”, holding per warning (headed „Silny wiatr – Stopień N z 3” when there are several) „Obowiązuje teraz, do niedzieli 25 października, 19:00.” or „Od niedzieli 25 października, 13:00 do 19:00.” (the end's day too when it ends another day), „Prawdopodobieństwo: 75%.” and `tresc` verbatim; then the link „Szczegóły i mapa na meteo.imgw.pl” and the footer: „Dotyczy całego powiatu lubaczowskiego. Stan na HH:MM.”, „Nowszych danych nie udało się pobrać.” when the copy is stale, and IMGW's two attribution sentences.
 
 Nothing at all (no "no warnings" text) when there is no warning, the newest copy is 3 hours old or older, or anything fails; the failure is logged. No dismiss button, no `role="alert"`.
 

@@ -54,12 +54,14 @@ test("one warning in force: title, tag, until when, details, footer", () => {
   const now = at("2026-10-25T14:00:00+01:00");
   assert.deepEqual(banner(copy("2026-10-25T13:52:10+01:00"), now), {
     title: "Ostrzeżenie IMGW",
+    more: "Szczegóły ostrzeżenia",
     warnings: [
       {
         id: "Sk20261024094213061",
         event: "Silny wiatr",
         tag: "govuk-tag govuk-tag--yellow",
         level: "Stopień 1 z 3",
+        short: "do niedzieli 25 października, 19:00",
         when: "Obowiązuje teraz, do niedzieli 25 października, 19:00.",
         details: WIND,
       },
@@ -73,6 +75,7 @@ test("to come: from when to when, the end's day only if another day", () => {
   const [same] =
     banner(copy("2026-10-24T19:55:00+02:00"), evening)?.warnings ?? [];
   assert.equal(same.when, "Od niedzieli 25 października, 13:00 do 19:00.");
+  assert.equal(same.short, "od niedzieli 25 października, 13:00");
   const night = extra("n", "3", "2026-10-25 22:00:00", "2026-10-26 07:00:00");
   const [cross] =
     banner(copy("2026-10-24T19:55:00+02:00", night), evening)?.warnings ?? [];
@@ -92,19 +95,22 @@ test("several warnings: one banner, plural title, highest level first", () => {
   ];
   const shown = banner(copy("2026-10-25T13:50:00+01:00", items), now);
   assert.equal(shown?.title, "Ostrzeżenia IMGW");
+  assert.equal(shown?.more, "Szczegóły ostrzeżeń");
   assert.deepEqual(
-    shown?.warnings.map((w) => [w.id, w.tag, w.level, w.when]),
+    shown?.warnings.map((w) => [w.id, w.tag, w.level, w.short, w.when]),
     [
       [
         "three",
         "govuk-tag govuk-tag--red",
         "Stopień 3 z 3",
+        "od niedzieli 25 października, 16:00",
         "Od niedzieli 25 października, 16:00 do 20:00.",
       ],
       [
         "two",
         "govuk-tag govuk-tag--orange",
         "Stopień 2 z 3",
+        "do niedzieli 25 października, 21:00",
         "Obowiązuje teraz, do niedzieli 25 października, 21:00.",
       ],
     ],

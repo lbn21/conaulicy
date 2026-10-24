@@ -29,28 +29,39 @@ type BannerWarning = {
   /** The tag's classes. */
   tag: string;
   level: string;
+  /** Visible, after the tag: "do niedzieli 25 października, 2:00". */
+  short: string;
+  /** In the details: the full time sentence. */
   when: string;
   details: string;
 };
 
 export type Banner = {
   title: string;
+  /** The details' summary. */
+  more: string;
   warnings: BannerWarning[];
   footer: string;
 };
 
+const at = (time: number) => `${dayGenitive(time)}, ${clockTime(time)}`;
+
 /**
- * In force: "Obowiązuje teraz, do niedzieli 25 października, 19:00." To come:
- * "Od niedzieli 25 października, 13:00 do 19:00.", with the end's day too if
- * it ends on another day.
+ * In force: "do niedzieli 25 października, 19:00" and "Obowiązuje teraz, do
+ * niedzieli 25 października, 19:00." To come: "od niedzieli 25 października,
+ * 13:00" and "Od niedzieli 25 października, 13:00 do 19:00.", with the end's
+ * day too if it ends on another day.
  */
-function when({ validFrom, validTo }: Warning, now: number): string {
+function times({ validFrom, validTo }: Warning, now: number) {
   const from = Date.parse(validFrom);
   const to = Date.parse(validTo);
-  const end = `${dayGenitive(to)}, ${clockTime(to)}`;
-  if (from <= now) return `Obowiązuje teraz, do ${end}.`;
+  if (from <= now)
+    return { short: `do ${at(to)}`, when: `Obowiązuje teraz, do ${at(to)}.` };
   const sameDay = warsawDay(from) === warsawDay(to);
-  return `Od ${dayGenitive(from)}, ${clockTime(from)} do ${sameDay ? clockTime(to) : end}.`;
+  return {
+    short: `od ${at(from)}`,
+    when: `Od ${at(from)} do ${sameDay ? clockTime(to) : at(to)}.`,
+  };
 }
 
 /**
@@ -68,12 +79,14 @@ export function banner(
   if (warnings.length === 0) return null;
   return {
     title: warnings.length === 1 ? "Ostrzeżenie IMGW" : "Ostrzeżenia IMGW",
+    more:
+      warnings.length === 1 ? "Szczegóły ostrzeżenia" : "Szczegóły ostrzeżeń",
     warnings: warnings.map((warning) => ({
       id: warning.id,
       event: warning.event,
       tag: TAG[warning.level],
       level: `Stopień ${warning.level} z 3`,
-      when: when(warning, now),
+      ...times(warning, now),
       details: `Prawdopodobieństwo: ${warning.probability}%. ${warning.text}`,
     })),
     footer: [

@@ -40,13 +40,15 @@ const SHOTS = process.env.SCREENSHOT_DIR;
 // (20 minutes ahead).
 const KEPT = `mock:1809?level=2&failAfter=${new Date(Date.now() + 10 * MINUTE).toISOString()}`;
 
-// levels: the tags expected, in order; upcoming: which items are to come.
+// levels: the tags expected, in order; upcoming: which items are to come;
+// opened: also checked and shot with the details open.
 const STATES = [
   ...[1, 2, 3].flatMap((level) => [
     {
       name: `l${level}-active`,
       url: `mock:1809?level=${level}`,
       levels: [level],
+      opened: level === 3,
     },
     {
       name: `l${level}-upcoming`,
@@ -60,6 +62,7 @@ const STATES = [
     name: "three-l1-l2-l3",
     url: "mock:1809?level=1&also=2,3",
     levels: [3, 2, 1],
+    opened: true,
   },
   {
     name: "cross-day-upcoming",
@@ -89,6 +92,8 @@ const DAY =
 const TIME = "\\d{1,2}:\\d{2}";
 const ACTIVE = new RegExp(`^Obowiązuje teraz, do ${DAY}, ${TIME}\\.$`, "u");
 const SAME_DAY = new RegExp(`^Od ${DAY}, ${TIME} do ${TIME}\\.$`, "u");
+const SHORT_TO = new RegExp(`^do ${DAY}, ${TIME}$`, "u");
+const SHORT_FROM = new RegExp(`^od ${DAY}, ${TIME}$`, "u");
 const CROSS_DAY = new RegExp(`^Od ${DAY}, ${TIME} do ${DAY}, ${TIME}\\.$`, "u");
 const footer = (stale) =>
   new RegExp(
@@ -131,6 +136,7 @@ function readBanner() {
   const row = b.closest(".govuk-grid-row");
   return {
     count: banners.length,
+    height: b.getBoundingClientRect().height,
     role: b.getAttribute("role"),
     titleTag: title?.tagName,
     title: title?.textContent.trim(),
@@ -158,16 +164,34 @@ function readBanner() {
     list: b.querySelectorAll(
       ":scope .govuk-notification-banner__content > ul.govuk-list > li",
     ).length,
-    items: [...b.querySelectorAll(".govuk-notification-banner__heading")].map(
-      (h) => ({
-        tagName: h.tagName,
-        event: h.firstChild?.textContent.trim(),
-        tag: h.querySelector(".govuk-tag")?.textContent,
-        tagClass: h.querySelector(".govuk-tag")?.className,
-        when: h.nextElementSibling?.textContent,
-        details: h.nextElementSibling?.nextElementSibling?.textContent,
-      }),
+    // The content: the visible lines (a paragraph, or a list), then the
+    // details.
+    content: [
+      ...b.querySelector(".govuk-notification-banner__content").children,
+    ].map((el) => `${el.tagName}.${el.className}`),
+    lines: [
+      ...b.querySelectorAll(
+        ".govuk-notification-banner__content > p.govuk-body, .govuk-notification-banner__content > ul > li",
+      ),
+    ].map((line) => {
+      const [event, tag] = line.querySelectorAll("strong");
+      return {
+        event: event?.textContent,
+        tag: tag?.textContent,
+        tagClass: tag?.className,
+        short: line.lastChild?.textContent.trim(),
+      };
+    }),
+    open: b.querySelector("details.govuk-details")?.open,
+    summary: b
+      .querySelector(".govuk-details__summary-text")
+      ?.textContent.trim(),
+    headings: [...b.querySelectorAll(".govuk-details__text > h3")].map(
+      (h) => h.textContent,
     ),
+    sentences: [
+      ...b.querySelectorAll(".govuk-details__text > p.govuk-body:not(:has(a))"),
+    ].map((p) => p.textContent),
     link: [...b.querySelectorAll("a")].map((a) => [
       a.getAttribute("href"),
       a.textContent,
@@ -208,25 +232,41 @@ function expectBanner(label, state, seen) {
     );
   if (seen.list !== (n > 1 ? n : 0))
     fail(`${seen.list} list items for ${n} warnings`);
-  const levels = seen.items.map((item) =>
-    Number(/Stopień (\d) z 3/.exec(item.tag)?.[1]),
+  const content = [
+    n > 1 ? "UL.govuk-list" : "P.govuk-body",
+    "DETAILS.govuk-details",
+  ];
+  if (seen.content.join() !== content.join())
+    fail(`content ${seen.content}, want ${content}`);
+  if (seen.open !== false) fail("details not closed");
+  if (
+    seen.summary !== (n === 1 ? "Szczegóły ostrzeżenia" : "Szczegóły ostrzeżeń")
+  )
+    fail(`summary „${seen.summary}”`);
+  const levels = seen.lines.map((line) =>
+    Number(/^Stopień (\d) z 3$/.exec(line.tag)?.[1]),
   );
   if (levels.join() !== state.levels.join())
     fail(`levels ${levels}, want ${state.levels}`);
-  seen.items.forEach((item, i) => {
+  const headings =
+    n > 1 ? levels.map((l) => `Silny wiatr – Stopień ${l} z 3`) : [];
+  if (seen.headings.join("|") !== headings.join("|"))
+    fail(`details headings ${seen.headings}`);
+  if (seen.sentences.length !== 2 * n)
+    fail(`${seen.sentences.length} sentences in the details for ${n}`);
+  seen.lines.forEach((line, i) => {
     const level = state.levels[i];
-    if (item.tagName !== "H3") fail(`item ${i}: heading ${item.tagName}`);
-    if (item.event !== "Silny wiatr") fail(`item ${i}: event ${item.event}`);
-    if (item.tagClass !== `govuk-tag ${COLOUR[level]}`)
-      fail(`item ${i}: tag ${item.tagClass}`);
-    const when = !state.upcoming?.[i]
-      ? ACTIVE
-      : state.crossDay
-        ? CROSS_DAY
-        : SAME_DAY;
-    if (!when.test(item.when)) fail(`item ${i}: time „${item.when}”`);
-    if (!/^Prawdopodobieństwo: \d{1,3}%\. Prognozuje się /.test(item.details))
-      fail(`item ${i}: details „${item.details}”`);
+    const upcoming = state.upcoming?.[i];
+    if (line.event !== "Silny wiatr") fail(`line ${i}: event ${line.event}`);
+    if (line.tagClass !== `govuk-tag ${COLOUR[level]}`)
+      fail(`line ${i}: tag ${line.tagClass}`);
+    if (!(upcoming ? SHORT_FROM : SHORT_TO).test(line.short))
+      fail(`line ${i}: time „${line.short}”`);
+    const when = !upcoming ? ACTIVE : state.crossDay ? CROSS_DAY : SAME_DAY;
+    const [sentence, details] = seen.sentences.slice(2 * i, 2 * i + 2);
+    if (!when.test(sentence)) fail(`warning ${i}: time „${sentence}”`);
+    if (!/^Prawdopodobieństwo: \d{1,3}%\. Prognozuje się /.test(details))
+      fail(`warning ${i}: details „${details}”`);
   });
   const links = JSON.stringify(seen.link);
   if (
@@ -266,36 +306,55 @@ async function deepChecks(browser, origin) {
     viewport: { width: 1280, height: 900 },
   });
   await page.goto(origin + ADDRESS);
-  let focused = null;
-  for (let i = 0; i < 40 && !focused; i++) {
-    await page.keyboard.press("Tab");
-    focused = await page.evaluate(() => {
-      const a = document.activeElement;
-      if (!a?.matches(".govuk-notification-banner__link")) return null;
-      const s = getComputedStyle(a);
-      return {
-        background: s.backgroundColor,
-        shadow: s.boxShadow,
-        colour: s.color,
-      };
-    });
-  }
-  if (!focused) failures.push("focus: Tab never reached the banner link");
-  else if (
-    focused.background !== "rgb(255, 221, 0)" ||
-    focused.shadow === "none"
-  )
-    failures.push(
-      `focus: link not in GOV.UK's focus style ${JSON.stringify(focused)}`,
-    );
-  else
-    console.log(
-      `ok    focus on the link: background ${focused.background}, text ${focused.colour}, box-shadow ${focused.shadow}`,
-    );
-  if (focused && SHOTS) {
-    const file = path.join(SHOTS, "1280-focus-link.png");
-    await page.locator(".govuk-notification-banner").screenshot({ path: file });
-    shots.push([1280, "focus-link", file]);
+  // Tab to the summary (keyboard only), open it with Enter, Tab to the link.
+  for (const [what, selector] of [
+    ["summary", ".govuk-details__summary"],
+    ["link", ".govuk-notification-banner__link"],
+  ]) {
+    let focused = null;
+    for (let i = 0; i < 40 && !focused; i++) {
+      await page.keyboard.press("Tab");
+      focused = await page.evaluate((sel) => {
+        const el = document.activeElement;
+        if (!el?.matches(sel)) return null;
+        // GOV.UK's focus style: the summary's on its text span.
+        const s = getComputedStyle(
+          el.querySelector(".govuk-details__summary-text") ?? el,
+        );
+        const own = getComputedStyle(el);
+        return {
+          background: [s.backgroundColor, own.backgroundColor].find(
+            (c) => c === "rgb(255, 221, 0)",
+          ),
+          shadow: [s.boxShadow, own.boxShadow].find((c) => c !== "none"),
+          outline: own.outlineStyle,
+        };
+      }, selector);
+    }
+    if (!focused) failures.push(`focus: Tab never reached the ${what}`);
+    else if (!focused.background || !focused.shadow)
+      failures.push(
+        `focus: ${what} not in GOV.UK's focus style ${JSON.stringify(focused)}`,
+      );
+    else
+      console.log(
+        `ok    focus on the ${what}: background ${focused.background}, box-shadow ${focused.shadow}`,
+      );
+    if (focused && SHOTS) {
+      const file = path.join(SHOTS, `1280-focus-${what}.png`);
+      await page
+        .locator(".govuk-notification-banner")
+        .screenshot({ path: file });
+      shots.push([1280, `focus-${what}`, file]);
+    }
+    if (what === "summary") {
+      await page.keyboard.press("Enter");
+      const open = await page.evaluate(
+        () => document.querySelector(".govuk-notification-banner details").open,
+      );
+      if (!open)
+        failures.push("keyboard: Enter on the summary does not open it");
+    }
   }
 
   const colours = await page.evaluate(() => {
@@ -405,7 +464,12 @@ async function visit(browser, origin, state, pagePath, name) {
     const label = `${state.name} ${pagePath} [${width}px]`;
     if (response?.status() !== 200)
       failures.push(`${label}: HTTP ${response?.status()}`);
-    expectBanner(label, state, await page.evaluate(readBanner));
+    const seen = await page.evaluate(readBanner);
+    expectBanner(label, state, seen);
+    if (seen && width === 375)
+      console.log(
+        `height ${state.name} ${pagePath} [375px]: ${seen.height} px`,
+      );
     const { violations } = await new AxeBuilder({ page })
       .withTags(TAGS)
       .include(".govuk-notification-banner, main h1")
@@ -416,6 +480,25 @@ async function visit(browser, origin, state, pagePath, name) {
       const file = path.join(SHOTS, `${width}-${name}.png`);
       await page.screenshot({ path: file, fullPage: true });
       shots.push([width, name, file]);
+    }
+    if (state.opened && !state.pages) {
+      await page.click(".govuk-details__summary");
+      const open = await page.evaluate(
+        () => document.querySelector(".govuk-notification-banner details").open,
+      );
+      if (!open)
+        failures.push(`${label}: the summary does not open the details`);
+      const opened = await new AxeBuilder({ page })
+        .withTags(TAGS)
+        .include(".govuk-notification-banner")
+        .analyze();
+      for (const v of opened.violations)
+        failures.push(`${label} (open): axe ${v.id}: ${v.help}`);
+      if (SHOTS) {
+        const file = path.join(SHOTS, `${width}-${name}-open.png`);
+        await page.screenshot({ path: file, fullPage: true });
+        shots.push([width, `${name}-open`, file]);
+      }
     }
     await context.close();
   }

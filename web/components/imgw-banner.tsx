@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { Fragment } from "react";
 import { type Banner, banner } from "@/lib/imgw-banner";
 import {
   type Feed,
@@ -39,23 +40,24 @@ async function current(now: number): Promise<Banner | null> {
   return banner(await latest(now, reader(url), load), now);
 }
 
-function Item({ warning }: { warning: Banner["warnings"][number] }) {
+type Shown = Banner["warnings"][number];
+
+// What shows above the fold: the event, its level and until (or from) when.
+function Line({ warning }: { warning: Shown }) {
   return (
     <>
-      <h3 className="govuk-notification-banner__heading">
-        {warning.event} <strong className={warning.tag}>{warning.level}</strong>
-      </h3>
-      <p className="govuk-body">{warning.when}</p>
-      <p className="govuk-body">{warning.details}</p>
+      <strong>{warning.event}</strong>{" "}
+      <strong className={warning.tag}>{warning.level}</strong> {warning.short}
     </>
   );
 }
 
 // IMGW's meteo warnings for the powiat (docs/data/imgw.md), on every page
 // above its h1 (app/layout.tsx): GOV.UK's notification banner, neutral, as
-// govuk-frontend 6.5.1's template. Server-rendered, no client JS (its
-// data-module is not initialised: GOV.UK's script only focuses role="alert"
-// banners). Nothing at all when there is no warning, the newest copy is 3
+// govuk-frontend 6.5.1's template. Compact: one line per warning, the rest
+// in GOV.UK's details (native <details>, closed). Server-rendered, no client
+// JS (its data-module is not initialised: GOV.UK's script only focuses
+// role="alert" banners). Nothing at all when there is no warning, the newest copy is 3
 // hours old or older, or anything fails: never an error on every page.
 export async function ImgwBanner() {
   const now = Date.now();
@@ -66,7 +68,7 @@ export async function ImgwBanner() {
     console.warn(`IMGW banner: not shown (${(error as Error).message})`);
   }
   if (!shown) return null;
-  const [first, ...more] = shown.warnings;
+  const several = shown.warnings.length > 1;
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
@@ -86,26 +88,49 @@ export async function ImgwBanner() {
             </h2>
           </div>
           <div className="govuk-notification-banner__content">
-            {more.length === 0 ? (
-              <Item warning={first} />
-            ) : (
+            {several ? (
               <ul className="govuk-list">
                 {shown.warnings.map((warning) => (
                   <li key={warning.id}>
-                    <Item warning={warning} />
+                    <Line warning={warning} />
                   </li>
                 ))}
               </ul>
+            ) : (
+              <p className="govuk-body">
+                <Line warning={shown.warnings[0]} />
+              </p>
             )}
-            <p className="govuk-body">
-              <a
-                className="govuk-notification-banner__link"
-                href="https://meteo.imgw.pl/"
-              >
-                Szczegóły i mapa na meteo.imgw.pl
-              </a>
-            </p>
-            <p className="govuk-body-s">{shown.footer}</p>
+            <details className="govuk-details">
+              <summary className="govuk-details__summary">
+                <span className="govuk-details__summary-text">
+                  {shown.more}
+                </span>
+              </summary>
+              <div className="govuk-details__text">
+                {shown.warnings.map((warning) => (
+                  <Fragment key={warning.id}>
+                    {/* Several: which warning the sentences below belong to. */}
+                    {several && (
+                      <h3 className="govuk-heading-s">
+                        {warning.event} – {warning.level}
+                      </h3>
+                    )}
+                    <p className="govuk-body">{warning.when}</p>
+                    <p className="govuk-body">{warning.details}</p>
+                  </Fragment>
+                ))}
+                <p className="govuk-body">
+                  <a
+                    className="govuk-notification-banner__link"
+                    href="https://meteo.imgw.pl/"
+                  >
+                    Szczegóły i mapa na meteo.imgw.pl
+                  </a>
+                </p>
+                <p className="govuk-body-s">{shown.footer}</p>
+              </div>
+            </details>
           </div>
         </div>
       </div>
