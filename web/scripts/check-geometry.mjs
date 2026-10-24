@@ -25,8 +25,9 @@ const FOCUS_BAR = HOVER_BAR;
 // The yellow focus box's frame round the plate's box, on all sides (task 82).
 const FOCUS_FRAME = 6;
 // The "!"'s ink gaps to the circle, with line-height 28px: Chrome moves text
-// in whole px, so 0.69px high is the closest to centred it allows (task 83).
-const BANG_GAPS = { top: 6.94, bottom: 7.63 };
+// in whole px, so about 0.7px high is the closest to centred it allows (task 83).
+// As measured on the CI runner (macOS reads 6.94 / 7.63).
+const BANG_GAPS = { top: 6.98, bottom: 7.74 };
 // Ink is measured, not computed (the brief's ±0.5px).
 const INK_TOLERANCE = 0.5;
 
