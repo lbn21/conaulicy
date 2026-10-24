@@ -31,4 +31,43 @@ The bin icon beside each fraction's name on the street page sits visibly low. Ce
 
 ## Result
 
-_To be filled in._
+### Geometry (viewBox units, 1×)
+
+| | left | right | top | bottom |
+|---|---|---|---|---|
+| before | 1.5 | 2 | 6 | 1 |
+| after | 1.75 | 1.75 | 3.5 | 3.5 |
+| after, outlined (stroke 1.2) | 1.15 | 1.15 | 2.9 | 2.9 |
+
+The ink stays 24.5 × 33 units, so the icon is the same size.
+
+### Measured on the page (px)
+
+Headless Chromium, DPR 4, `/adres/0972447-29830` with every `<details>` open. Ink is the box of pixels that differ from the page background inside the svg's box. The label is 19 px Atkinson Hyperlegible Next; its baseline comes from a zero-size inline-block probe in the `<li>`, and x-height and cap height from canvas `measureText("x"/"H")`. Offset = ink centre − label centre, so + means the icon is low.
+
+**Before** is production (`conaulicy.pl`). **After** is the same production page with each bin's shape attributes set to this branch's `BIN` values, which is exactly what `WasteMark` renders now. The Vercel preview needs a Vercel login, so headless Chromium cannot open it.
+
+| width | size | bin | ink L / R / T / B, before | after | vs x-height centre, before → after | vs cap-height centre, before → after |
+|---|---|---|---|---|---|---|
+| 375 | 48 | bio | 2 / 2.5 / 7 / 1 | 2.25 / 2.25 / 4 / 4 | +2.99 → **−0.01** | +4.63 → +1.63 |
+| 375 | 40 | zmieszane (outlined) | 0.75 / 1.25 / 5.25 / 0.25 | 1 / 1 / 2.75 / 2.75 | +2.49 → **−0.01** | +4.13 → +1.63 |
+| 375 | 40 | popiół | 1.5 / 2 / 6 / 1 | 1.75 / 1.75 / 3.5 / 3.5 | +2.49 → **−0.01** | +4.13 → +1.63 |
+| 375 | 40 | bio | 1.5 / 2 / 6 / 1 | 1.75 / 1.75 / 3.5 / 3.5 | +2.49 → **−0.01** | +4.13 → +1.63 |
+| 375 | 40 | papier | 1.5 / 2 / 6 / 1 | 1.75 / 1.75 / 3.5 / 3.5 | +2.49 → **−0.01** | +4.13 → +1.63 |
+| 375 | 40 | plastik-metale (outlined) | 0.75 / 1.25 / 5.25 / 0.25 | 1 / 1 / 2.75 / 2.75 | +2.49 → **−0.01** | +4.13 → +1.63 |
+| 375 | 40 | szkło | 1.5 / 2 / 6 / 1 | 1.75 / 1.75 / 3.5 / 3.5 | +2.49 → **−0.01** | +4.13 → +1.63 |
+| 1280 | 48 | bio | 2 / 2.5 / 7 / 1 | 2.25 / 2.25 / 4 / 4 | +2.99 → **−0.01** | +4.63 → +1.63 |
+| 1280 | 40 | zmieszane (outlined) | 0.75 / 1.25 / 5.25 / 0.25 | 1 / 1 / 2.75 / 2.75 | +2.49 → **−0.01** | +4.13 → +1.63 |
+| 1280 | 40 | popiół | 1.5 / 2 / 6 / 1 | 1.75 / 1.75 / 3.5 / 3.5 | +2.49 → **−0.01** | +4.13 → +1.63 |
+| 1280 | 40 | bio | 1.5 / 2 / 6 / 1 | 1.75 / 1.75 / 3.5 / 3.5 | +2.49 → **−0.01** | +4.13 → +1.63 |
+| 1280 | 40 | papier | 2 / 1.5 / 6 / 1 | 2.25 / 1.25 / 3.5 / 3.5 | +2.49 → **−0.01** | +4.13 → +1.63 |
+| 1280 | 40 | plastik-metale (outlined) | 1.25 / 0.75 / 5.25 / 0.25 | 1.5 / 0.5 / 2.75 / 2.75 | +2.49 → **−0.01** | +4.13 → +1.63 |
+| 1280 | 40 | szkło | 2 / 1.5 / 6 / 1 | 2.25 / 1.25 / 3.5 / 3.5 | +2.49 → **−0.01** | +4.13 → +1.63 |
+
+- Rows measure to 0.25 px, the DPR 4 raster step. 48 px icons draw at a scale of 1.2 (the 34 px width leaves 0.2 px on each side).
+- **Box centring alone was enough.** The svg's box centre was already −0.01 px from the label's x-height centre, before and after, so only the artwork was off. No CSS change.
+- **Cap height:** the ink centre is now 1.63 px below the label's cap-height centre at both sizes. That gap is half the difference between cap height and x-height; `vertical-align: middle` aims at the x-height.
+- **1280 lower list (papier, plastik-metale, szkło), 0.5 px left/right:** those svg boxes start at x = 386.5 px, and Chrome paints them on a whole CSS pixel. The offset is the same 0.5 px before and after, and the artwork itself is symmetric.
+- **No layout shift:** page height is unchanged (2754 px at 375, 2374 px at 1280, every `<details>` open), and so are the svg width, height and viewBox. `aria-hidden` is unchanged.
+
+Crops (`<li>`, DPR 4): `docs/tasks/task-80/before-<width>-<size>-<bin>.png` and `after-…`.
