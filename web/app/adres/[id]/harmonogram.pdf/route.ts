@@ -19,6 +19,7 @@ import {
   WORDMARK,
 } from "@/lib/logo";
 import { normalize } from "@/lib/normalize";
+import { type Block, flow, type Spot } from "@/lib/pdf-flow";
 import {
   getPlace,
   movedTarget,
@@ -142,12 +143,15 @@ function drawMark(
       .lineWidth(s * 0.09)
       .strokeColor(BLACK)
       .stroke();
+    // Centred by its ink, as the dates are: equal space on every side.
+    const size = s * 0.8;
+    const ink = inkOf("bold", size, mark);
+    const top = cy + (ink.above - ink.below) / 2 - size * ASCENT;
     doc
       .font("bold")
-      .fontSize(s * 0.8)
-      .fillColor(BLACK);
-    const tw = doc.widthOfString(mark);
-    doc.text(mark, cx - tw / 2, cy - s * 0.45, { lineBreak: false });
+      .fontSize(size)
+      .fillColor(BLACK)
+      .text(mark, cx - (ink.left + ink.right) / 2, top, { lineBreak: false });
     doc.restore();
     return;
   }
@@ -271,7 +275,10 @@ type InkFont = {
     font: {
       unitsPerEm: number;
       layout(text: string): {
-        glyphs: Array<{ bbox: { minY: number; maxY: number } }>;
+        glyphs: Array<{
+          bbox: { minX: number; maxX: number; minY: number; maxY: number };
+        }>;
+        positions: Array<{ xAdvance: number }>;
       };
     };
   };
@@ -285,21 +292,31 @@ measurer.registerFont("bold", BOLD);
 
 /**
  * How far a text's ink reaches above and below its baseline, in pt, from its
- * glyphs' boxes. PDFKit keeps an embedded font's fontkit font as _font.font.
- * For a wrapped paragraph it covers every line.
+ * glyphs' boxes, and from its start to its first and last ink. PDFKit keeps
+ * an embedded font's fontkit font as _font.font. For a wrapped paragraph
+ * above and below cover every line.
  */
 function inkOf(
   font: string,
   size: number,
   text: string,
-): { above: number; below: number } {
+): { above: number; below: number; left: number; right: number } {
   measurer.font(font);
   const { font: face } = (measurer as unknown as InkFont)._font;
-  const boxes = face.layout(text).glyphs.map((glyph) => glyph.bbox);
+  const run = face.layout(text);
+  const boxes = run.glyphs.map((glyph) => glyph.bbox);
   const scale = size / face.unitsPerEm;
+  let x = 0;
+  const xs = run.glyphs.map((glyph, i) => {
+    const at = [x + glyph.bbox.minX, x + glyph.bbox.maxX];
+    x += run.positions[i].xAdvance;
+    return at;
+  });
   return {
     above: Math.max(0, ...boxes.map((box) => box.maxY)) * scale,
     below: -Math.min(0, ...boxes.map((box) => box.minY)) * scale,
+    left: Math.min(...xs.map(([l]) => l)) * scale,
+    right: Math.max(...xs.map(([, r]) => r)) * scale,
   };
 }
 
@@ -387,8 +404,6 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const usual = usualWeekday(inWindow);
   const odd = (day: PickupDay) =>
     usual !== null && weekdayName(day.date) !== usual;
-  const hasMoved = inWindow.some((day) => moved(day));
-  const hasOdd = inWindow.some((day) => !moved(day) && odd(day));
   const putOutBy = inWindow
     .flatMap((day) => day.pickups)
     .find((p) => p.putOutBy)?.putOutBy;
@@ -540,60 +555,30 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const footerArtifact = () => artifact(doc, () => drawFooter(null));
 
   // ------------------------------------------------------------ key
-  // Only what this PDF shows: its fractions, then the date markings.
-  const keyMark = 13;
-  const keySize = px(19);
-  const keyLine = keySize * 1.9;
-  const keyTones: Array<{ tone: string; label: string }> = [];
-  for (const pickup of inWindow.flatMap((day) => day.pickups)) {
-    for (const tone of tones(pickup.subtype)) {
-      if (keyTones.some((k) => k.tone === tone)) continue;
-      keyTones.push({
-        tone,
-        label:
-          pickup.subtype === tone
-            ? pickup.label
-            : (TONE_LABEL[tone] ?? pickup.label),
-      });
-    }
-  }
-  keyTones.sort(
-    (a, b) => KEY_ORDER.indexOf(a.tone) - KEY_ORDER.indexOf(b.tone),
-  );
-  type KeyItem = { label: string; draw: (x: number, cy: number) => void };
-  // As wide as a mark, so every label is as far from its swatch.
-  const cell = (colour: string) => (x: number, cy: number) => {
-    doc
-      .rect(x, cy - keyMark * 0.75, keyMark, keyMark * 1.5)
-      .fillColor(colour)
-      .fill();
+  // Each calendar page explains only what it shows: its fractions, then its
+  // date markings. Labels at the footer's size, marks centred on their cap
+  // height, one ruleGap from the last row's ink to the note's.
+  const keyMark = 11;
+  const keySize = small;
+  const keyLine = 19;
+  const keyLabelGap = 4;
+  const keyItemGap = 12;
+  type KeyItem = {
+    label: string;
+    draw: (x: number, cy: number) => void;
+    swatch?: boolean;
   };
-  const keyItems: KeyItem[] = [
-    ...keyTones.map(({ tone, label }) => ({
-      label,
-      draw: (x: number, cy: number) =>
-        drawMark(doc, tone, x + keyMark / 2, cy, keyMark),
-    })),
-    ...(hasOdd ? [{ label: `Inny dzień niż ${usual}`, draw: cell(RED) }] : []),
-    ...(hasMoved ? [{ label: "Termin przesunięty", draw: cell(RED) }] : []),
-  ];
-  doc.font("bold").fontSize(keySize + 1);
-  const keyStart = MARGIN + doc.widthOfString("Oznaczenia") + 14;
-  let kx = keyStart;
-  let keyRow = 0;
-  const keyPlaced = keyItems.map((item) => {
-    doc.font("regular").fontSize(keySize);
-    const w = keyMark + 5 + doc.widthOfString(item.label);
-    if (kx > keyStart && kx + w > PAGE_W - MARGIN) {
-      kx = keyStart;
-      keyRow++;
-    }
-    const placed = { ...item, x: kx, row: keyRow };
-    kx += w + 16;
-    return placed;
+  // As wide as a mark, so every label is as far from its swatch.
+  const cell = (label: string, colour: string): KeyItem => ({
+    label,
+    swatch: true,
+    draw: (x, cy) => {
+      doc
+        .rect(x, cy - keyMark * 0.75, keyMark, keyMark * 1.5)
+        .fillColor(colour)
+        .fill();
+    },
   });
-  const keyNoteH = small * 1.6;
-  const keyH = (keyRow + 1) * keyLine + keyNoteH;
   const keyNote = (page: number) =>
     `Wersja tekstowa (bez kolorów i znaków) na stronie ${page}.`;
   // The note's ink ends ruleGap above the divider (a page number has no
@@ -604,24 +589,92 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     ruleGap -
     inkOf("bold", small, keyNote(0)).below -
     small * ASCENT;
-  const keyTop = keyNoteTop - (keyH - keyNoteH + 4);
+  const keyNoteInk =
+    keyNoteTop + small * ASCENT - inkOf("bold", small, keyNote(0)).above;
+  // Marks and swatches are centred on the labels' cap height.
+  const keyMid = keySize * (ASCENT - CAP / 2);
+  // How far an item's ink reaches below its row's top: its label's
+  // descenders, a swatch, or a mark (the outlined diamond reaches lowest,
+  // 0.6 of its size).
+  const keyInk = (item: KeyItem) =>
+    Math.max(
+      keySize * ASCENT + inkOf("regular", keySize, item.label).below,
+      keyMid + keyMark * (item.swatch ? 0.75 : 0.6),
+    );
+  doc.font("bold").fontSize(keySize);
+  const keyStart = MARGIN + doc.widthOfString("Oznaczenia") + keyItemGap;
+
+  /** The key for the months on one page, laid out above the note. */
+  const keyFor = (keys: string[]) => {
+    const days = keys.flatMap((key) => byMonth.get(key) ?? []);
+    const keyTones: Array<{ tone: string; label: string }> = [];
+    for (const pickup of days.flatMap((day) => day.pickups)) {
+      for (const tone of tones(pickup.subtype)) {
+        if (keyTones.some((k) => k.tone === tone)) continue;
+        keyTones.push({
+          tone,
+          label:
+            pickup.subtype === tone
+              ? pickup.label
+              : (TONE_LABEL[tone] ?? pickup.label),
+        });
+      }
+    }
+    keyTones.sort(
+      (a, b) => KEY_ORDER.indexOf(a.tone) - KEY_ORDER.indexOf(b.tone),
+    );
+    const items: KeyItem[] = [
+      ...keyTones.map(({ tone, label }) => ({
+        label,
+        draw: (x: number, cy: number) =>
+          drawMark(doc, tone, x + keyMark / 2, cy, keyMark),
+      })),
+      ...(days.some((day) => !moved(day) && odd(day))
+        ? [cell(`Inny dzień niż ${usual}`, RED)]
+        : []),
+      ...(days.some((day) => moved(day))
+        ? [cell("Termin przesunięty", RED)]
+        : []),
+    ];
+    let kx = keyStart;
+    let row = 0;
+    const placed = items.map((item) => {
+      doc.font("regular").fontSize(keySize);
+      const w = keyMark + keyLabelGap + doc.widthOfString(item.label);
+      if (kx > keyStart && kx + w > PAGE_W - MARGIN) {
+        kx = keyStart;
+        row++;
+      }
+      const at = { ...item, x: kx, row };
+      kx += w + keyItemGap;
+      return at;
+    });
+    const lastInk = Math.max(
+      ...placed.filter((item) => item.row === row).map(keyInk),
+    );
+    const top = keyNoteInk - ruleGap - lastInk - row * keyLine;
+    return { placed, rows: row + 1, top };
+  };
+  type Key = ReturnType<typeof keyFor>;
 
   const drawKey = (
     parent: PDFKit.PDFStructureElement | null,
     textPage: number,
+    key: Key,
   ) => {
+    const keyTop = key.top;
     tag(parent, "H2", () => {
       doc
         .font("bold")
-        .fontSize(keySize + 1)
+        .fontSize(keySize)
         .fillColor(BLACK)
         .text("Oznaczenia", MARGIN, keyTop, { lineBreak: false });
     });
     const list = parent ? doc.struct("L") : null;
     if (parent && list) parent.add(list);
-    for (const item of keyPlaced) {
+    for (const item of key.placed) {
       const top = keyTop + item.row * keyLine;
-      const mark = () => item.draw(item.x, top + keySize * 0.62);
+      const mark = () => item.draw(item.x, top + keyMid);
       if (parent) artifact(doc, mark);
       else mark();
       tag(list, "LI", () => {
@@ -629,7 +682,9 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
           .font("regular")
           .fontSize(keySize)
           .fillColor(BLACK)
-          .text(item.label, item.x + keyMark + 5, top, { lineBreak: false });
+          .text(item.label, item.x + keyMark + keyLabelGap, top, {
+            lineBreak: false,
+          });
       });
     }
     list?.end();
@@ -1014,15 +1069,20 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const CONTINUED_TOP = compactH + 22;
   const layout = (laterInPanel: boolean) => {
     const breaks: number[] = [];
+    // Each page's months, for its key.
+    const pages: string[][] = [[]];
     let y = bandH + panelH(panelNotes(laterInPanel)) + 18;
     let year = "";
     rows.forEach((row, i) => {
       const need = tableH(row) + yearH;
+      const keyTop = keyFor([...(pages.at(-1) ?? []), ...row]).top;
       if (y + need > keyTop - 12 && i > 0) {
         breaks.push(i);
+        pages.push([]);
         y = CONTINUED_TOP;
         year = "";
       }
+      pages.at(-1)?.push(...row);
       if (row[0].slice(0, 4) !== year) {
         year = row[0].slice(0, 4);
         y += yearH;
@@ -1030,8 +1090,10 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       y += tableH(row) + 16;
     });
     const laterFits =
-      !later || laterInPanel || y + noteH(later, CONTENT_W) <= keyTop - 8;
-    return { breaks, laterFits };
+      !later ||
+      laterInPanel ||
+      y + noteH(later, CONTENT_W) <= keyFor(pages.at(-1) ?? []).top - 8;
+    return { breaks, laterFits, keys: pages.map(keyFor) };
   };
   let laterInPanel = false;
   let plan = layout(false);
@@ -1048,8 +1110,8 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const yearsTagged = new Set<string>();
   rows.forEach((row, i) => {
     if (pageBreaks.includes(i)) {
-      if (page === 1) drawKey(root, textPage);
-      else artifact(doc, () => drawKey(null, textPage));
+      if (page === 1) drawKey(root, textPage, plan.keys[0]);
+      else artifact(doc, () => drawKey(null, textPage, plan.keys[page - 1]));
       footerArtifact();
       doc.addPage();
       page++;
@@ -1090,8 +1152,8 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     y += tableH(row) + 16;
   });
   if (later && !laterInPanel) drawNote(later, MARGIN, y, CONTENT_W);
-  if (page === 1) drawKey(root, textPage);
-  else artifact(doc, () => drawKey(null, textPage));
+  if (page === 1) drawKey(root, textPage, plan.keys[0]);
+  else artifact(doc, () => drawKey(null, textPage, plan.keys[page - 1]));
   footerArtifact();
 
   // ------------------------------------------------------------ text version
@@ -1131,42 +1193,27 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   });
   y += linkSize * LINE + bodyGap + 10;
 
-  const ensure = (height: number) => {
-    if (y + height <= textBottom) return;
-    footerArtifact();
-    doc.addPage();
-    y = compactBand("wersja tekstowa, ciąg dalszy", null) + 18;
-  };
   // GOV.UK's scale, as on the site: month headings heading-m, the rest body.
   const listSize = px(19);
   const headSize = px(24);
 
   // Chronological: months with dates in full, gaps collapsed into one line.
+  // Months before the first date (e.g. the rest of this month, with no
+  // pickups left) are simply skipped.
+  type Entry =
+    | { kind: "gap"; range: string; text: string }
+    | { kind: "month"; title: string; items: string[] };
+  const entries: Entry[] = [];
   let gap: string[] = [];
   const flushGap = (last: boolean) => {
     if (gap.length === 0) return;
-    const range = `${emptyRange(gap)}: `;
-    const text = last ? LATER : "terminy jeszcze nieogłoszone.";
-    gap = [];
-    ensure(listSize * 2);
-    const top = y;
-    tag(root, "P", () => {
-      doc
-        .font("bold")
-        .fontSize(listSize)
-        .fillColor(BLACK)
-        .text(range, MARGIN, top, {
-          width: CONTENT_W,
-          lineGap: bodyGap,
-          continued: true,
-        })
-        .font("regular")
-        .text(text);
+    entries.push({
+      kind: "gap",
+      range: `${emptyRange(gap)}: `,
+      text: last ? LATER : "terminy jeszcze nieogłoszone.",
     });
-    y = doc.y + 8 - bodyGap;
+    gap = [];
   };
-  // Months before the first date (e.g. the rest of this month, with no
-  // pickups left) are simply skipped.
   for (const key of months.slice(months.indexOf(printed[0]))) {
     const days = byMonth.get(key);
     if (!days) {
@@ -1174,29 +1221,89 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       continue;
     }
     flushGap(false);
-    ensure(headSize * 1.5 + (listSize * 1.2 + 1) * Math.min(days.length, 2));
+    entries.push({
+      kind: "month",
+      title: monthTitle(`${key}-01`),
+      items: days.map((day) => `${spoken(day)} – ${label(day.pickups)}`),
+    });
+  }
+  flushGap(true);
+
+  // Measured first, so a month is never split across pages (lib/pdf-flow).
+  const itemH = (text: string) => {
+    doc.font("regular").fontSize(listSize);
+    return doc.heightOfString(text, {
+      width: CONTENT_W - 12,
+      lineGap: bodyGap,
+    });
+  };
+  const blocks: Block[] = entries.map((entry) => {
+    if (entry.kind === "gap") {
+      doc.font("bold").fontSize(listSize);
+      const h = doc.heightOfString(entry.range + entry.text, {
+        width: CONTENT_W,
+        lineGap: bodyGap,
+      });
+      return { head: h, lines: [], gap: 8 - bodyGap };
+    }
+    doc.font("bold").fontSize(headSize);
+    const head = doc.heightOfString(entry.title, { width: CONTENT_W }) + 3;
+    return { head, lines: entry.items.map(itemH), gap: 6 };
+  });
+  const continuedTop = compactH + 18;
+  const placed = flow(blocks, y, continuedTop, textBottom);
+  let textPageNow = 0;
+  const toPage = (spot: Spot) => {
+    while (textPageNow < spot.page) {
+      footerArtifact();
+      doc.addPage();
+      compactBand("wersja tekstowa, ciąg dalszy", null);
+      textPageNow++;
+    }
+    return spot.y;
+  };
+  entries.forEach((entry, i) => {
+    const at = placed[i];
+    if (entry.kind === "gap") {
+      const top = toPage(at.head);
+      tag(root, "P", () => {
+        doc
+          .font("bold")
+          .fontSize(listSize)
+          .fillColor(BLACK)
+          .text(entry.range, MARGIN, top, {
+            width: CONTENT_W,
+            lineGap: bodyGap,
+            continued: true,
+          })
+          .font("regular")
+          .text(entry.text);
+      });
+      return;
+    }
     const section = doc.struct("Sect");
     root.add(section);
-    const headTop = y;
-    tag(section, "H2", () => {
+    const heading = (text: string, top: number) => () => {
       doc
         .font("bold")
         .fontSize(headSize)
         .fillColor(BLACK)
-        .text(monthTitle(`${key}-01`), MARGIN, headTop, { width: CONTENT_W });
-    });
-    y = doc.y + 3;
+        .text(text, MARGIN, top, { width: CONTENT_W });
+    };
+    tag(section, "H2", heading(entry.title, toPage(at.head)));
     const list = doc.struct("L");
     section.add(list);
-    for (const day of days) {
-      const text = `${spoken(day)} – ${label(day.pickups)}`;
-      doc.font("regular").fontSize(listSize);
-      const h = doc.heightOfString(text, {
-        width: CONTENT_W - 12,
-        lineGap: bodyGap,
-      });
-      ensure(h);
-      const top = y;
+    let continued = 0;
+    entry.items.forEach((text, j) => {
+      const spot = at.lines[j];
+      // A month longer than a page: its heading again, as decoration.
+      const repeat = at.continued[continued];
+      if (repeat && repeat.page === spot.page) {
+        continued++;
+        const top = toPage(repeat);
+        artifact(doc, heading(`${entry.title} (ciąg dalszy)`, top));
+      }
+      const top = toPage(spot);
       tag(list, "LI", () => {
         doc
           .font("regular")
@@ -1207,13 +1314,10 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
             lineGap: bodyGap,
           });
       });
-      y = doc.y;
-    }
+    });
     list.end();
     section.end();
-    y += 6;
-  }
-  flushGap(true);
+  });
   drawFooter(root);
 
   root.end();
