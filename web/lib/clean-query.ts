@@ -21,7 +21,6 @@ const ROUTES: [RegExp, string[]][] = [
   [/^\/adres\/[^/]+\/harmonogram\.pdf$/, ["nr"]],
   [/^\/ics\/[^/]+$/, []],
   [/^\/api\/search$/, ["q"]],
-  [/^\/api\/warnings$/, ["teryt"]],
   [/^\/api\/search-index\/[^/]+$/, []],
   [/^\/api\/place-redirects$/, []],
 ];
