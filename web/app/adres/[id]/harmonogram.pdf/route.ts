@@ -15,6 +15,7 @@ import {
   RIM,
   RIM_WIDTH,
   UL,
+  UL_SHIFT,
   WORDMARK,
 } from "@/lib/logo";
 import { normalize } from "@/lib/normalize";
@@ -241,7 +242,8 @@ function drawLogo(doc: PDFKit.PDFDocument, x: number, y: number, h: number) {
     .translate(x, y)
     .scale(h / LOGO_HEIGHT);
   doc.path(PLATE).fillColor(WHITE).fill();
-  doc.path(UL).fillColor(HEADER).fill();
+  doc.save().translate(0, UL_SHIFT).path(UL).fillColor(HEADER).fill();
+  doc.restore();
   doc.path(RIM).lineWidth(RIM_WIDTH).strokeColor(HEADER).stroke();
   doc.translate(0, HEADER_WORDMARK_SHIFT);
   doc.path(WORDMARK).fillColor(WHITE).fill();

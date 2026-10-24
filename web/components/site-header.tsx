@@ -6,6 +6,7 @@ import {
   RIM,
   RIM_WIDTH,
   UL,
+  UL_TRANSFORM,
   WORDMARK,
 } from "@/lib/logo";
 
@@ -50,7 +51,7 @@ export function SiteHeader() {
                     strokeWidth={RIM_WIDTH}
                     d={RIM}
                   />
-                  <path d={UL} />
+                  <path d={UL} transform={UL_TRANSFORM} />
                 </mask>
                 <path
                   className="app-logo__plate"

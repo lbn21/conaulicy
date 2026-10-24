@@ -1,5 +1,12 @@
 import { FEATURES } from "@/lib/config.generated";
-import { PLATE, PLATE_WIDTH, RIM, RIM_WIDTH, UL } from "@/lib/logo";
+import {
+  PLATE,
+  PLATE_WIDTH,
+  RIM,
+  RIM_WIDTH,
+  UL,
+  UL_TRANSFORM,
+} from "@/lib/logo";
 import { DISCLAIMER } from "@/lib/schedule-notes";
 import { STATIC_PAGES } from "@/lib/static-pages";
 
@@ -50,7 +57,7 @@ function FooterPlate() {
       >
         <path fill="#fff" d={PLATE} />
         <path fill="none" stroke="#000" strokeWidth={RIM_WIDTH} d={RIM} />
-        <path d={UL} />
+        <path d={UL} transform={UL_TRANSFORM} />
       </mask>
       <path fill="currentColor" mask="url(#footer-plate)" d={PLATE} />
     </svg>

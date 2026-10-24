@@ -5,6 +5,7 @@ import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { LOGO_HEIGHT, UL, UL_SHIFT, UL_TRANSFORM } from "../../../web/lib/logo.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const logo = path.join(here, "..");
@@ -12,11 +13,37 @@ const web = path.join(here, "../../../web");
 const { chromium } = createRequire(path.join(web, "package.json"))("playwright");
 
 const svgText = (name) => readFileSync(path.join(logo, name), "utf8");
+const replaceOnce = (text, from, to) => {
+  if (!(typeof from === "string" ? text.includes(from) : from.test(text))) throw new Error(`not found: ${String(from).slice(0, 40)}`);
+  return text.replace(from, to);
+};
+
+// "ul." moved UL_SHIFT plate units down from the SVGs' placement (task 88,
+// UL_VARIANT in web/lib/logo.ts), as on the site and in the PDF. The favicons
+// have their own pixel-fitted "ul.", so they move by whole px only (the plate
+// is 26 px tall in the 32-px favicon, 12 in the 16-px one), or not at all.
+const ulShift = (svg, plateHeight) => {
+  const px = Math.round((UL_SHIFT * plateHeight) / LOGO_HEIGHT);
+  return px === 0 ? svg : replaceOnce(svg, '" class="t"', `" class="t" transform="translate(0 ${px})"`);
+};
+const FAVICON_PLATE = { "a-favicon.svg": 26, "a-favicon-16.svg": 12 };
+// The share card's text block, centred optically on the plate (task 88): the
+// plate's ink is y 145-485 (centre 315); the text is measured from the first
+// line's x-height minus half its ascenders to the last line's baseline plus
+// half its descenders, 204.5-495.5 (centre 350), so it moves 35 px up. Its ink
+// was 193-499 (centre 346). Font sizes, line spacing and x stay.
+const OG_TEXT_SHIFT = -35;
+const ogSvg = () =>
+  replaceOnce(
+    replaceOnce(svgText("og-1200x630.svg"), `<path d="${UL}"/>`, `<path d="${UL}" transform="${UL_TRANSFORM}"/>`),
+    /(<path fill="#0b0c0c"[\s\S]*)<\/svg>$/,
+    `<g transform="translate(0 ${OG_TEXT_SHIFT})">$1</g></svg>`,
+  );
 const uri = (s) => `data:image/svg+xml;base64,${Buffer.from(s).toString("base64")}`;
 // A favicon in the light colours (the site is light only, task 26): the
 // #9A5700 plate with white "ul.", without the colour-scheme query.
 const light = (name) =>
-  svgText(name).replace(
+  ulShift(svgText(name), FAVICON_PLATE[name]).replace(
     /<style>[\s\S]*?<\/style>/,
     "<style>.p{fill:#9A5700}.t{fill:#FFF}</style>",
   );
@@ -79,7 +106,7 @@ writeFileSync(path.join(pub, "icon-192.png"), await tile(192, 0.74, 0.22));
 writeFileSync(path.join(pub, "icon-512.png"), await tile(512, 0.74, 0.22));
 writeFileSync(path.join(pub, "icon-maskable-512.png"), await tile(512, 0.6, 0));
 
-const og = await png(img(uri(svgText("og-1200x630.svg")), 1200), [1200, 630], false);
+const og = await png(img(uri(ogSvg()), 1200), [1200, 630], false);
 writeFileSync(path.join(logo, "og-1200x630.png"), og);
 writeFileSync(path.join(pub, "og.png"), og);
 
