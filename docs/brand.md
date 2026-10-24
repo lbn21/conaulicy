@@ -22,10 +22,10 @@ The site uses **GOV.UK Frontend as-is, including its palette**. Only three thing
 | Place | File |
 |---|---|
 | Header | `web/components/site-header.tsx`: inline SVG (paths in `web/lib/logo.ts`); plate GOV.UK white (`govuk-colour("white")` in `app/site.scss`) on the Generic header's black; wordmark `currentColor` (white on the black bar); on focus, a black plate with the "ul." in focus yellow (the plate takes `currentColor`, GOV.UK's focus-text) |
-| Tab icon | `web/app/icon.svg` (light colours) and `web/app/favicon.ico` (16 + 32, night tile) |
-| Apple | `web/app/apple-icon.png` (180, full-bleed night tile; iOS rounds it) |
-| PWA | `web/public/icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, listed in `web/app/manifest.ts` |
-| Share card | `web/public/og.png` (1200 × 630, flat plate on white), in the `openGraph` and `twitter` metadata |
+| Tab icon | `web/app/icon.svg` and `web/app/favicon.ico` (16 from `a-favicon-16.svg`, 32 from `a-favicon.svg`): the `#9a5700` plate with white “ul.”, transparent around it |
+| Apple | `web/app/apple-icon.png` (180): the 32-px favicon on a full-bleed white tile; iOS rounds it |
+| PWA | `web/public/icon-192.png`, `icon-512.png` (white tile, rounded corners) and `icon-maskable-512.png` (full-bleed white, plate inside the central 80 % circle), listed in `web/app/manifest.ts` |
+| Share card | `web/public/og.png` (1200 × 630): the flat `#9a5700` plate, rim and “ul.” cut out, on white, in the `openGraph` and `twitter` metadata |
 | PDF | The black band at the top of each page, as in the site header (white plate, wordmark x-height centred on the plate), drawn as vector paths from `web/lib/logo.ts` |
 
 ## Clear space and minimum size
@@ -53,7 +53,7 @@ The unit is **P**, a quarter of the plate height (34 units → P = 8.5; 7.5 px i
 - Add effects to the flat mark: no shadow, gradient, glow, outline or bevel. Depth belongs only to the enamel backlog version.
 - Retype “ul.” or “conaulicy” in a font. Always use the outlined paths, which carry the optical centring and kerning.
 - Show the plate without its letters.
-- Put the mark in a box, circle or badge. The app icons' night tile is the only exception.
+- Put the mark in a box, circle or badge. The app icons' white tile is the only exception: launchers need an opaque square.
 - Add the city's herb or a blue-and-white street-sign look next to it. This is not an official service.
 
 ## Colour
