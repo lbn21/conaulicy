@@ -1,8 +1,9 @@
-// Server-only date labels for the street page and the PDF. Kept out of
-// lib/dates.ts, which the client bundle imports.
+// Server-only date labels for the street page, the PDF and the IMGW banner.
+// Kept out of lib/dates.ts, which the client bundle imports. Relative
+// imports, so the unit tests can load it (scripts/lib/server-only.mjs).
 import "server-only";
-import { WARSAW, warsawNoon } from "@/lib/dates";
-import { LOCALE } from "@/lib/locale";
+import { todayInWarsaw, WARSAW, warsawNoon } from "./dates.ts";
+import { LOCALE } from "./locale.ts";
 
 /** Full date with year, safe to render on a static page. Example: "18 października 2026". */
 export function longDate(iso: string): string {
@@ -33,4 +34,40 @@ export function monthTitle(iso: string): string {
 /** Short weekday without the dot. Example: "czw". */
 export function weekdayShort(iso: string): string {
   return part(iso, "weekday", { weekday: "short" }).replace(".", "");
+}
+
+// "do niedzieli", "od poniedziałku": the weekday in the genitive, Sunday first.
+const WEEKDAY_GENITIVE = [
+  "niedzieli",
+  "poniedziałku",
+  "wtorku",
+  "środy",
+  "czwartku",
+  "piątku",
+  "soboty",
+];
+
+/** An instant's day in Warsaw, after "od"/"do". Example: "niedzieli 25 października". */
+export function dayGenitive(at: number): string {
+  const weekday = WEEKDAY_GENITIVE[warsawNoon(warsawDay(at)).getUTCDay()];
+  const date = new Intl.DateTimeFormat(LOCALE, {
+    timeZone: WARSAW,
+    day: "numeric",
+    month: "long",
+  }).format(at);
+  return `${weekday} ${date}`;
+}
+
+/** An instant's Warsaw date. Example: "2026-10-25". */
+export function warsawDay(at: number): string {
+  return todayInWarsaw(new Date(at));
+}
+
+/** Warsaw clock time. Example: "7:05". */
+export function clockTime(at: number): string {
+  return new Intl.DateTimeFormat(LOCALE, {
+    timeZone: WARSAW,
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(at);
 }

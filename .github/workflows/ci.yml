@@ -42,8 +42,8 @@ jobs:
           --health-retries 20
     env:
       DATABASE_URL: postgres://ci:ci@localhost:5432/conaulicy
-      # The built site never asks IMGW: /api/warnings answers from the
-      # fixtures (web/lib/imgw-mock.ts, docs/data/imgw.md).
+      # The built site never asks IMGW: the banner reads the fixtures
+      # (web/lib/imgw-mock.ts, docs/data/imgw.md).
       IMGW_WARNINGS_URL: mock:none
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -207,6 +207,25 @@ jobs:
       - name: "Query parameters (unknown ones redirect to the clean URL)"
         run: node scripts/check-query.mjs
 
+      # Every banner state from the mock, each page re-rendered by a server
+      # with that state's setting; at the end the pages are dropped again, so
+      # the checks below render them with mock:none.
+      - name: "IMGW banner (every state: markup, axe, focus, zoom, contrast)"
+        run: node scripts/check-warnings.mjs
+        env:
+          SCREENSHOT_DIR: ${{ runner.temp }}/imgw-banner-screenshots
+
+      # For the reviewer: every banner state at 375 px and 1280 px, and a
+      # contact sheet per width.
+      - name: Screenshots of the IMGW banner
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: imgw-banner-screenshots
+          path: ${{ runner.temp }}/imgw-banner-screenshots
+          if-no-files-found: ignore
+          retention-days: 14
+
       # A second, production-like build (lib/indexing.ts). The normal build is
       # set aside and put back, because the importer checks below serve pages
       # from it. Moved, not copied: .next/cache holds the pages the checks
@@ -256,8 +275,8 @@ jobs:
           --health-retries 20
     env:
       DATABASE_URL: postgres://ci:ci@localhost:5432/conaulicy
-      # The built site never asks IMGW: /api/warnings answers from the
-      # fixtures (web/lib/imgw-mock.ts, docs/data/imgw.md).
+      # The built site never asks IMGW: the banner reads the fixtures
+      # (web/lib/imgw-mock.ts, docs/data/imgw.md).
       IMGW_WARNINGS_URL: mock:none
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

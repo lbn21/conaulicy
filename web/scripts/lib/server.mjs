@@ -26,15 +26,29 @@ export const ROUTES = [
   { path: "/adres/9999999", name: "unknown-place", status: 404 },
 ];
 
-export async function startServer(port = 3300) {
+export async function startServer(port = 3300, extraEnv = {}) {
   // The pre-launch gate must be off, or every page is a 401. Empty, not
   // unset: Next's .env loading never overrides a set variable, so a local
   // .env.local cannot turn it back on.
-  const env = { ...process.env, PORT: String(port), SITE_BASIC_AUTH: "" };
+  const env = {
+    ...process.env,
+    PORT: String(port),
+    SITE_BASIC_AUTH: "",
+    ...extraEnv,
+  };
+  // Its own process group, so stop() also ends the server npx started.
   const child = spawn("npx", ["next", "start", "-p", String(port)], {
     env,
     stdio: ["ignore", "pipe", "pipe"],
+    detached: true,
   });
+  const exited = new Promise((resolve) => child.on("exit", resolve));
+  const stop = () => {
+    try {
+      process.kill(-child.pid, "SIGTERM");
+    } catch {}
+    return exited;
+  };
   let log = "";
   child.stdout.on("data", (chunk) => {
     log += chunk;
@@ -47,15 +61,12 @@ export async function startServer(port = 3300) {
   for (let attempt = 0; attempt < 60; attempt++) {
     try {
       await fetch(origin);
-      return {
-        origin,
-        stop: () => child.kill("SIGTERM"),
-      };
+      return { origin, stop, log: () => log };
     } catch {
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
   }
-  child.kill("SIGTERM");
+  await stop();
   throw new Error(`next start did not answer on ${origin}.\n${log}`);
 }
 
