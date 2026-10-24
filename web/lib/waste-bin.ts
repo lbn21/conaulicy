@@ -51,16 +51,20 @@ export function tones(subtype: string): string[] {
 export const BIN_WIDTH = 28;
 export const BIN_HEIGHT = 40;
 
+// The ink (handle top to wheel bottom, handle left to lid right) is centred in
+// the viewBox: 3.5 above and below, 1.75 either side, so `vertical-align:
+// middle` centres the drawing, not just its box.
+
 /** Percent of the fill colour kept when mixing with black for shading. */
 export const BIN = {
-  handle: { x: 1.5, y: 6, width: 7, height: 3, rx: 1.5, shade: 60 },
-  body: "M5.5 12h19l-2.3 22.3a2 2 0 0 1-2 1.7H8.6a2 2 0 0 1-2-1.7z",
-  rim: { d: "M5.7 13.5h18.6l.2-1.5h-19z", shade: 78 },
+  handle: { x: 1.75, y: 3.5, width: 7, height: 3, rx: 1.5, shade: 60 },
+  body: "M5.75 9.5h19l-2.3 22.3a2 2 0 0 1-2 1.7H8.85a2 2 0 0 1-2-1.7z",
+  rim: { d: "M5.95 11h18.6l.2-1.5h-19z", shade: 78 },
   lid: {
-    d: "M4 9.5A2.5 2.5 0 0 1 6.5 7h17A2.5 2.5 0 0 1 26 9.5V12H4z",
+    d: "M4.25 7A2.5 2.5 0 0 1 6.75 4.5h17A2.5 2.5 0 0 1 26.25 7V9.5H4.25z",
     shade: 82,
   },
-  foot: { x: 17, y: 35, width: 4, height: 3.5, rx: 1, shade: 60 },
-  wheel: { cx: 9, cy: 34.5, r: 4.5, shade: 45 },
-  hub: { cx: 9, cy: 34.5, r: 1.6 },
+  foot: { x: 17.25, y: 32.5, width: 4, height: 3.5, rx: 1, shade: 60 },
+  wheel: { cx: 9.25, cy: 32, r: 4.5, shade: 45 },
+  hub: { cx: 9.25, cy: 32, r: 1.6 },
 } as const;
