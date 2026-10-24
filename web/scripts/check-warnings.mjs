@@ -25,6 +25,7 @@ import {
 import path from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "playwright";
+import { IMGW_ATTRIBUTION } from "../lib/imgw-warnings.ts";
 import { finish, ROUTES, startServer } from "./lib/server.mjs";
 
 const ADDRESS = "/adres/0972447-00470";
@@ -34,8 +35,10 @@ const MINUTE = 60_000;
 const CLOCK = path.resolve(import.meta.dirname, "lib/fake-clock.mjs");
 const SHOTS = process.env.SCREENSHOT_DIR;
 
-// Kept by the stale states: fetched at the real time, failing from a minute on.
-const KEPT = `mock:1809?level=2&failAfter=${new Date(Date.now() + MINUTE).toISOString()}`;
+// Kept by the stale states: fetched at the real time (the states before it
+// take minutes), failing from 10 minutes on, before the stale server's clock
+// (20 minutes ahead).
+const KEPT = `mock:1809?level=2&failAfter=${new Date(Date.now() + 10 * MINUTE).toISOString()}`;
 
 // levels: the tags expected, in order; upcoming: which items are to come.
 const STATES = [
@@ -89,7 +92,7 @@ const SAME_DAY = new RegExp(`^Od ${DAY}, ${TIME} do ${TIME}\\.$`, "u");
 const CROSS_DAY = new RegExp(`^Od ${DAY}, ${TIME} do ${DAY}, ${TIME}\\.$`, "u");
 const footer = (stale) =>
   new RegExp(
-    `^Dotyczy całego powiatu lubaczowskiego\\. Stan na ${TIME}\\.${stale ? " Nowszych danych nie udało się pobrać\\." : ""} Źródłem pochodzenia danych jest IMGW-PIB; dane zostały przetworzone\\.$`,
+    `^Dotyczy całego powiatu lubaczowskiego\\. Stan na ${TIME}\\.${stale ? " Nowszych danych nie udało się pobrać\\." : ""} ${IMGW_ATTRIBUTION.join(" ").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
     "u",
   );
 const COLOUR = {

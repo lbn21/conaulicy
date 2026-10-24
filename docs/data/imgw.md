@@ -49,9 +49,11 @@ IMGW issues warnings, changes (ZMIANA) and cancellations (ODWOŁANIE), but the J
 
 ## Terms: attribution
 
-The regulamin §5 requires, wherever the data is used, the source sentence, and for processed data also the processing sentence. We filter and convert times, so both. The banner's footer says them in one sentence (Jakub's wording, task 98):
+The regulamin §5 requires, wherever the data is used, the source sentence, and for processed data also the processing sentence. We filter and convert times, so both. They live in `IMGW_ATTRIBUTION` (`lib/imgw-warnings.ts`), and the banner's footer ends with both, verbatim:
 
-> Źródłem pochodzenia danych jest IMGW-PIB; dane zostały przetworzone.
+> Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy.
+>
+> Dane Instytutu Meteorologii i Gospodarki Wodnej – Państwowego Instytutu Badawczego zostały przetworzone.
 
 ## The banner
 
@@ -62,7 +64,7 @@ Warnings are powiat-wide, so every page shows the same banner (powiat `1809`, `P
 - title „Ostrzeżenie IMGW” / „Ostrzeżenia IMGW”;
 - per warning: the event, a tag „Stopień N z 3” (yellow, orange, red: the text says the level too), „Obowiązuje teraz, do niedzieli 25 października, 19:00.” or „Od niedzieli 25 października, 13:00 do 19:00.” (the end's day too when it ends another day), then „Prawdopodobieństwo: 75%.” and `tresc` verbatim;
 - the link „Szczegóły i mapa na meteo.imgw.pl”;
-- the footer: „Dotyczy całego powiatu lubaczowskiego. Stan na HH:MM.”, „Nowszych danych nie udało się pobrać.” when the copy is stale, and the source sentence.
+- the footer: „Dotyczy całego powiatu lubaczowskiego. Stan na HH:MM.”, „Nowszych danych nie udało się pobrać.” when the copy is stale, and IMGW's two attribution sentences.
 
 Nothing at all (no "no warnings" text) when there is no warning, the newest copy is 3 hours old or older, or anything fails; the failure is logged. No dismiss button, no `role="alert"`.
 

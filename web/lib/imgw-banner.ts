@@ -2,7 +2,12 @@
 // notification banner): a function of the copy of the feed and the time, so
 // the unit tests read every state. docs/data/imgw.md.
 import { clockTime, dayGenitive, warsawDay } from "./date-labels.ts";
-import { type Feed, forPowiat, type Warning } from "./imgw-warnings.ts";
+import {
+  type Feed,
+  forPowiat,
+  IMGW_ATTRIBUTION,
+  type Warning,
+} from "./imgw-warnings.ts";
 
 /** The powiat every page's banner covers (lubaczowski; all our gminas lie in it). */
 export const POWIAT = "1809";
@@ -75,8 +80,7 @@ export function banner(
       "Dotyczy całego powiatu lubaczowskiego.",
       `Stan na ${clockTime(fetchedAt)}.`,
       ...(found.stale ? ["Nowszych danych nie udało się pobrać."] : []),
-      // IMGW-PIB's terms, §5: the source, and that the data was processed.
-      "Źródłem pochodzenia danych jest IMGW-PIB; dane zostały przetworzone.",
+      ...IMGW_ATTRIBUTION,
     ].join(" "),
   };
 }

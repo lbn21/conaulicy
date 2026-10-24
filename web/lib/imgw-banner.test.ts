@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { banner, POWIAT } from "./imgw-banner.ts";
 import { derived1809, REAL_2026_10_24 } from "./imgw-fixture.ts";
-import { type Feed, POWIATS, parseFeed } from "./imgw-warnings.ts";
+import {
+  type Feed,
+  IMGW_ATTRIBUTION,
+  POWIATS,
+  parseFeed,
+} from "./imgw-warnings.ts";
 
 const HOUR = 3_600_000;
 const quiet = () => {};
@@ -11,8 +16,7 @@ const at = (iso: string) => Date.parse(iso);
 // The derived 1809 warning (not real): level 1, 75%, 25 Oct 13:00-19:00.
 const WIND =
   "Prawdopodobieństwo: 75%. Prognozuje się wystąpienie dość silnego wiatru o średniej prędkości do 35 km/h, w porywach do 75 km/h, z południa.";
-const SOURCE =
-  "Źródłem pochodzenia danych jest IMGW-PIB; dane zostały przetworzone.";
+const SOURCE = IMGW_ATTRIBUTION.join(" ");
 
 const copy = (fetchedAt: string, items = parseFeed(derived1809(), quiet)) => ({
   feed: { fetchedAt, items } satisfies Feed,
