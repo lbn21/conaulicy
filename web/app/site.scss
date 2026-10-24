@@ -6,21 +6,23 @@
 
 // Our "ul." plate in the Generic header, with the GOV.UK header's logo
 // geometry (govuk-frontend components/header/_mixin.scss): the logo 30px tall
-// (site-header.tsx), lifted 3px as .govuk-header__logotype, so the 3px hover
-// underline of the shared link-styles sits 6px below it. Deviation from
-// GOV.UK's magic numbers (Jakub's decision): GOV.UK's padding 16/12 sits its
-// airy crown high, 13px above and 18px below in the 61px bar, which a solid
-// plate does not carry. 19/10 centres the plate exactly, 16px above and 16px
-// below (the 1px transparent border included), in a bar 1px taller (62px);
-// in 61px the 31px around the 30px plate cannot split evenly. The px are
-// allowed one by one in scripts/check-own-css.mjs.
+// (site-header.tsx), lifted off the line as .govuk-header__logotype.
+// Deviation from GOV.UK's magic numbers (Jakub's decision): GOV.UK's padding
+// 16/12 sits its airy crown high, 13px above and 18px below in the 61px bar,
+// which a solid plate does not carry. 18/11 centres the plate exactly, 16px
+// above and 16px below (the 1px transparent border included), in a bar 1px
+// taller (62px). The hover and focus bars hang from the font's content area
+// (Atkinson at 30px), not from the logo, so the line sits 1px higher and the
+// lift is 2px, not 3px: the content area ends 6px below the plate, which
+// centres GOV.UK's 4px focus bar, 6px above and 6px below, and the hover bar
+// (below). The px are allowed one by one in scripts/check-own-css.mjs.
 .govuk-generic-header__logo {
-  @include generic-header.logo-styles($padding-top: 19px, $padding-bottom: 10px);
+  @include generic-header.logo-styles($padding-top: 18px, $padding-bottom: 11px);
 }
 
 .app-logo {
   position: relative;
-  top: -3px;
+  top: -2px;
   margin-bottom: 2px;
   vertical-align: top;
 }
@@ -35,18 +37,28 @@
   fill: var(--app-logo-plate, #{govuk-colour("white")});
 }
 
+// Deviation from GOV.UK's 3px hover bar (Jakub's decision, task 82): 4px, the
+// focus bar's place and thickness, so it is centred under the plate too; a
+// centred 3px bar needs half a pixel, which Chrome does not paint. Width only,
+// so GOV.UK's border: 0 on focus still removes it.
+.govuk-generic-header__homepage-link:hover,
+.govuk-generic-header__homepage-link:active {
+  margin-bottom: -4px;
+  border-bottom-width: 4px;
+}
+
 // The focus box is the link's inline content area, set by the font (Atkinson
-// at 30px), not by the logo: 4px of yellow above the plate (2 of them the
-// box-shadow), 7px below, none at the sides. Padding on focus only evens it to
-// 7px all round the plate's box, which is the logo's optical frame: the
+// at 30px), not by the logo: 5px of yellow above the plate (2 of them the
+// box-shadow), 6px below, none at the sides. Padding on focus only evens it to
+// 6px all round the plate's box, which is the logo's optical frame: the
 // wordmark's x-height is centred on the plate (below) and its "y" stays
 // inside, so the wordmark's own ink box is not used. Inline padding leaves the
 // line box alone and the negative margin cancels the left one, so the logo
 // does not move.
 .govuk-generic-header__homepage-link:focus {
   --app-logo-plate: currentColor;
-  margin-left: -7px;
-  padding: 3px 7px 0;
+  margin-left: -6px;
+  padding: 1px 6px 0;
 }
 
 // In the header the wordmark's x-height is centred on the plate: 1.4 of the

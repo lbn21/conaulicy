@@ -46,16 +46,22 @@ const HOOK_ONLY = new Map([
 // magic px. Each must appear exactly as here, once.
 const RAW_PX = [
   // .govuk-header__logo: logo-styles($padding-top: 16px, $padding-bottom: 14px - 2px),
-  // changed to 19/10 to centre our plate exactly, bar 1px taller (task 78, a deviation)
-  "logo-styles($padding-top: 19px, $padding-bottom: 10px)",
-  // .govuk-header__logotype: top: -3px
-  "top: -3px;",
+  // changed to 18/11 to centre our plate exactly, bar 1px taller (tasks 78 and 82,
+  // a deviation)
+  "logo-styles($padding-top: 18px, $padding-bottom: 11px)",
+  // .govuk-header__logotype: top: -3px, changed to -2px with the line 1px higher,
+  // so the focus bar is centred under the plate (task 82, a deviation)
+  "top: -2px;",
   // .govuk-header__logotype: margin-bottom: $logo-bottom-margin (2px)
   "margin-bottom: 2px;",
-  // Ours, not GOV.UK's (task 78): the focused logo's even 7px of yellow round
-  // the plate, measured against Atkinson's content area at 30px.
-  "margin-left: -7px;",
-  "padding: 3px 7px 0;",
+  // Ours, not GOV.UK's (tasks 78 and 82): the focused logo's even 6px of yellow
+  // round the plate, measured against Atkinson's content area at 30px.
+  "margin-left: -6px;",
+  "padding: 1px 6px 0;",
+  // .govuk-generic-header__homepage-link:hover: 3px bar, made 4px as the focus
+  // bar, centred under the plate (task 82, Jakub's decision)
+  "margin-bottom: -4px;",
+  "border-bottom-width: 4px;",
 ];
 const MAX_LINES = 80;
 const MAX_GZIP = 1000;
