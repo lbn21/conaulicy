@@ -67,7 +67,7 @@ Applied to production on 2026-10-23: `0002_teryt_names` at 10:06 UTC (11:06 UK t
 
 ## Testing data changes without touching production
 
-Use a throwaway local Postgres (Docker `postgres:18`) with `DATABASE_URL` and `DATABASE_URL_UNPOOLED` pointing at it, then `db:migrate`, `db:ci-fixture` and `db:import`, exactly as CI does (`scripts/check-import.mjs`).
+Use the local database: `npm run db:local` (`web/docker-compose.yml`, Postgres 18 on 127.0.0.1) runs the migrations and the CI fixture, with every database variable set to its fixed local URL, so `.env.local` cannot redirect it. Then `db:import` with `DATABASE_URL` and `DATABASE_URL_UNPOOLED` set to `postgres://ci:ci@127.0.0.1:5432/conaulicy`, exactly as CI does (`scripts/check-import.mjs`). No real or production data is ever copied locally (Jakub's decision, 24 Oct 2026).
 
 ## If a separate preview database is wanted later
 

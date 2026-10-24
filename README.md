@@ -26,15 +26,15 @@ Zasady projektu: [CLAUDE.md](CLAUDE.md). Więcej o samej aplikacji: [web/README.
 
 ## Uruchomienie lokalnie
 
-Potrzebujesz Node 24 i własnej, lokalnej bazy Postgres (np. z Dockera). Nigdy nie podłączaj się do bazy produkcyjnej.
+Potrzebujesz Node 24 i Dockera. Lokalnie używasz wyłącznie bazy z `npm run db:local`: Postgres 18 na 127.0.0.1 ze zmyślonymi danymi, tymi samymi co w CI. Prawdziwe ani produkcyjne dane nigdy nie trafiają na Twój komputer.
 
 ```sh
 cd web
 npm ci
-cp .env.example .env.local   # wpisz adres swojej lokalnej bazy w DATABASE_URL i DATABASE_URL_UNPOOLED
-npm run db:migrate           # tworzy tabele
-npm run db:ci-fixture        # wgrywa zmyślone dane testowe (działa tylko na lokalnej bazie)
-npm run dev
+npm run db:local          # uruchamia bazę, tworzy tabele i wgrywa zmyślone dane; można powtarzać
+npm run db:local:reset    # od zera (usuwa wolumen)
+npm run db:local:stop     # zatrzymuje bazę
+DATABASE_URL=postgres://ci:ci@127.0.0.1:5432/conaulicy npm run dev
 ```
 
 Lista zmiennych środowiskowych z krótkim opisem jest w [web/.env.example](web/.env.example). Więcej o bazie i testowaniu zmian w danych: [docs/database.md](docs/database.md#testing-data-changes-without-touching-production). Import harmonogramów: [docs/import.md](docs/import.md).
