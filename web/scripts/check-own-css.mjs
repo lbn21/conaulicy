@@ -41,9 +41,10 @@ const HOOK_ONLY = new Map([
     "template.njk's JS support hook on body, no rule in our components",
   ],
 ]);
-// The only raw px in site.scss: the GOV.UK header's logo geometry, copied
-// from govuk-frontend's components/header/_mixin.scss, which writes them as
-// magic px. Each must appear exactly as here, once.
+// The only raw px in site.scss: the GOV.UK header's logo geometry and the
+// warning-text icon's, copied from govuk-frontend's components/header and
+// components/warning-text _mixin.scss, which write them as magic px. Each
+// must appear exactly as here, once.
 const RAW_PX = [
   // .govuk-header__logo: logo-styles($padding-top: 16px, $padding-bottom: 14px - 2px),
   // changed to 18/11 to centre our plate exactly, bar 1px taller (tasks 78 and 82,
@@ -62,6 +63,9 @@ const RAW_PX = [
   // bar, centred under the plate (task 82, Jakub's decision)
   "margin-bottom: -4px;",
   "border-bottom-width: 4px;",
+  // .govuk-warning-text__icon: line-height: 29px, made 28px so Atkinson's "!"
+  // sits 1px higher, nearer the circle's centre (task 83, a deviation)
+  "line-height: 28px;",
 ];
 const MAX_LINES = 80;
 const MAX_GZIP = 1000;

@@ -69,6 +69,16 @@
   transform: translateY(4.12%);
 }
 
+// Deviation from GOV.UK's warning-text icon (task 83): its line-height 29px
+// centres GDS Transport's "!" in the 35px circle, but Atkinson's taller ascent
+// (984 of 1300 units) sits it 0.65px low: 8 above and 6.65 below. Chrome draws
+// text on whole CSS px, so the "!" moves 1px at a time; 28px lifts it 1px, to
+// 7 above and 7.65 below, the closest Chrome allows. The circle keeps its size
+// and place (GOV.UK's min-height). Allowed in scripts/check-own-css.mjs.
+.govuk-warning-text__icon {
+  line-height: 28px;
+}
+
 // The street search: alphagov accessible-autocomplete with its own CSS,
 // unchanged, plus two things. Its rows set no font family (on GOV.UK they
 // inherit GOV.UK's), so they get GOV.UK's, as the field; sizes stay the
