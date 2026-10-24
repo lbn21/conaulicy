@@ -7,6 +7,7 @@
 // ink is in 0.25px device pixels (DPR 4), within INK_TOLERANCE. Run after
 // `next build`; needs Playwright's Chromium.
 import { chromium } from "playwright";
+import { HEADER } from "../lib/palette.ts";
 import { finish, startServer } from "./lib/server.mjs";
 
 const WIDTHS = [375, 1280];
@@ -20,8 +21,9 @@ const PLATE_GAP = 16;
 // The hover bar, 4px instead of GOV.UK's 3px, 6px below the plate and 6px
 // above the bar's bottom (task 82, Jakub's decision).
 const HOVER_BAR = { top: 52, bottom: 56 };
-// The header bar's colour, Wiśnia shade-50 (task 88; THEME_COLOR in lib/theme.ts).
-const HEADER_COLOUR = "rgb(55, 16, 36)";
+// The header bar's colour (HEADER in lib/palette.ts, task 88), as Chrome
+// computes it.
+const HEADER_COLOUR = `rgb(${[1, 3, 5].map((i) => Number.parseInt(HEADER.slice(i, i + 2), 16)).join(", ")})`;
 // GOV.UK's 4px focus bar, at the hover bar's place (task 82), in the header's
 // colour so it does not show (task 88).
 const FOCUS_BAR = HOVER_BAR;
@@ -64,7 +66,7 @@ const measureHeader = (page) =>
     };
     const link = document.querySelector(".govuk-generic-header__homepage-link");
     const style = getComputedStyle(link);
-    // "rgb(255, 221, 0) 0px -2px 0px 0px, rgb(55, 16, 36) 0px 4px 0px 0px"
+    // "rgb(255, 221, 0) 0px -2px 0px 0px, <HEADER_COLOUR> 0px 4px 0px 0px"
     const shadows = style.boxShadow
       .split(/,(?![^(]*\))/)
       .filter((s) => s.trim() !== "none")

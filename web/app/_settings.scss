@@ -3,7 +3,6 @@
 // frontend.design-system.service.gov.uk). Shared by govuk.scss and site.scss.
 // Only what GOV.UK forbids us to copy is ours: the brand-blue group, the
 // typeface and the logo (docs/govuk-audit.md).
-@use "sass:map";
 @use "sass:meta";
 @use "assets";
 @use "palette" as *;
@@ -16,16 +15,6 @@
   // No GOV.UK images (crown, crest): their URLs compile to `none`.
   $govuk-image-url-function: meta.get-function("no-image", $module: "assets"),
   // GOV.UK's palette stays; the roles GOV.UK derives from its brand blue
-  // take the same steps of the Wiśnia group instead. Visited links have no
-  // colour of their own: link-visited is the link colour, as GOV.UK's links
-  // without a visited state.
-  $govuk-functional-colours: (
-    brand: map.get($app-wisnia, "primary"),
-    link: map.get($app-wisnia, "shade-10"),
-    link-visited: map.get($app-wisnia, "shade-10"),
-    link-hover: map.get($app-wisnia, "shade-50"),
-    template-background: map.get($app-wisnia, "tint-95"),
-    surface-background: map.get($app-wisnia, "tint-95"),
-    surface-border: map.get($app-wisnia, "tint-50")
-  )
+  // take our steps instead (ROLES in lib/palette.ts).
+  $govuk-functional-colours: $app-roles
 );

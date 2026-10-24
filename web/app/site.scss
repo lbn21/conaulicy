@@ -1,7 +1,6 @@
 // The only own CSS (docs/govuk-audit.md): what GOV.UK has no equivalent for.
 // GOV.UK Sass functions and mixins only; no raw colours or px.
 // Capped by scripts/check-own-css.mjs.
-@use "sass:map";
 @use "settings" as *;
 @use "govuk-frontend/dist/govuk/components/generic-header/mixin" as generic-header;
 
@@ -20,10 +19,10 @@
 // centres GOV.UK's 4px focus bar, 6px above and 6px below, and the hover bar
 // (below). The px are allowed one by one in scripts/check-own-css.mjs.
 // Deviation from the Generic header's black bar (Jakub's decision, task 88):
-// the Wiśnia group's darkest step, as GOV.UK's header takes its brand
-// colour; THEME_COLOR in lib/theme.ts and the PDF's band follow it. Screen
-// only, so GOV.UK's print rule still clears it.
-$app-header-colour: map.get($app-wisnia, "shade-50");
+// the brand group's darkest step, as GOV.UK's header takes its brand
+// colour (HEADER in lib/palette.ts, as theme-color and the PDF's band).
+// Screen only, so GOV.UK's print rule still clears it.
+$app-header-colour: $app-header;
 
 @media screen {
   .govuk-generic-header {
@@ -104,8 +103,8 @@ $app-header-colour: map.get($app-wisnia, "shade-50");
 // unchanged, plus two things. Its rows set no font family (on GOV.UK they
 // inherit GOV.UK's), so they get GOV.UK's, as the field; sizes stay the
 // library's. And it paints the highlighted suggestion in GOV.UK's brand blue,
-// which sites off GOV.UK must not use. Here it takes the brand role (the
-// Wiśnia group) instead. Outside forced-colours mode only, so its
+// which sites off GOV.UK must not use. Here it takes the brand role (ROLES
+// in lib/palette.ts) instead. Outside forced-colours mode only, so its
 // system-colour rule still applies there. check-govuk-assets checks this
 // override is present.
 .app-search,

@@ -72,6 +72,21 @@ jobs:
       - name: "Config (etl/sources.yaml: schema, nothing derived drifted)"
         run: npm run config:check
 
+      # The palette's generated files (scripts/brand-assets.ts, not in git):
+      # restored from this cache when the palette and its generator are
+      # unchanged, drawn (and cached) only when they changed. The script hashes
+      # the same files and the Next.js version.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: web/.next/cache/brand-assets
+          key: brand-assets-${{ hashFiles('web/lib/palette.ts', 'web/lib/logo.ts', 'web/lib/theme.ts', 'web/lib/brand/*.svg', 'web/scripts/brand-assets.ts', 'web/package-lock.json') }}
+
+      - name: "Brand assets (from lib/palette.ts: skipped, restored or drawn)"
+        run: node scripts/brand-assets.ts
+
+      - name: "Palette (one source: no brand colour outside lib/palette.ts)"
+        run: node scripts/check-palette.mjs
+
       - name: Own CSS (GOV.UK classes only, site.scss capped)
         run: node scripts/check-own-css.mjs
 
@@ -240,6 +255,15 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - run: npm ci
+
+      # The palette's generated files (scripts/brand-assets.ts, not in git):
+      # restored from this cache when the palette and its generator are
+      # unchanged, drawn (and cached) only when they changed. The script hashes
+      # the same files and the Next.js version.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: web/.next/cache/brand-assets
+          key: brand-assets-${{ hashFiles('web/lib/palette.ts', 'web/lib/logo.ts', 'web/lib/theme.ts', 'web/lib/brand/*.svg', 'web/scripts/brand-assets.ts', 'web/package-lock.json') }}
 
       - name: Database (migrate + seed)
         run: npm run db:migrate && npm run db:ci-fixture

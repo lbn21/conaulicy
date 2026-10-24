@@ -4,14 +4,14 @@ Light only, as GOV.UK. Values: `design/tokens.css`; the bin colours the site use
 
 ## Rationale
 - **GOV.UK Frontend as-is, including its palette; only the brand-blue roles, the typeface and the logo are ours** (`docs/govuk-audit.md`). The full palette, with every group and step, is in `docs/brand.md`.
-- **The Wiśnia group** replaces GOV.UK's brand blue. It is computed from `#6d2048` with GOV.UK's own tint/shade percentages (`web/app/_palette.scss`). Brand is its primary, links are shade-10 `#621d41`, link hover is shade-50 `#371024`, and the template and surface backgrounds are tint-95 `#f8f4f6`. Visited links have no colour of their own: `link-visited` is the link colour.
+- **Our brand group** (Wiśnia) replaces GOV.UK's brand blue. It is computed from `PRIMARY` with GOV.UK's own tint/shade percentages, and its roles are named, in `web/lib/palette.ts`, the only place its values are set (`docs/brand.md`, Changing the palette). Brand is its primary, links are `LINK_STEP`, link hover is shade-50, and the template and surface backgrounds are tint-95. Visited links have no colour of their own: `link-visited` is the link colour.
 - **Everything else is GOV.UK's:**
   - text `#0b0c0c`, secondary text `#484949`;
   - yellow focus `#ffdd00` with black `#0b0c0c`;
   - error `#ca3535`, success and buttons green `#0f7a52`;
   - borders `#cecece`, input borders black.
-- **The header bar** is the Wiśnia shade-50 `#371024` (Jakub's decision, task 88), not the Generic header's black; `theme-color` and the PDF band follow it. Its GOV.UK focus bar takes the same colour, so the yellow focus box (12.36:1 on the cherry) carries the focus on its own.
-- **The logo plate** is GOV.UK white on the cherry header bar, as GOV.UK's white crown. On light backgrounds (footer, icons, share card) it is the header's `#371024` (task 88; Wiśnia since task 92, Latarnia `#4d2c00` before), with white "ul." cut out; only the plate changed, links and buttons keep the Wiśnia steps.
+- **The header bar** is shade-50, `HEADER` (Jakub's decision, task 88), not the Generic header's black; `theme-color` and the PDF band follow it. Its GOV.UK focus bar takes the same colour, so the yellow focus box (12.36:1 on the cherry) carries the focus on its own.
+- **The logo plate** is GOV.UK white on the cherry header bar, as GOV.UK's white crown. On light backgrounds (footer, icons, share card) it is the header's colour, `PLATE` (task 88), with white "ul." cut out.
 - **Typography:** Atkinson Hyperlegible Next, self-hosted, weights 400 and 700, instead of GDS Transport (which GOV.UK reserves for its own services).
 - **Waste colours** are fills, each with a `-fg` for the label text on that fill. Papier is blue, szkło green, metale i tworzywa yellow, bio brown, zmieszane black, popiół grey. The rare fractions each have their own colour, as in the Miasto Lubaczów schedule table: gabaryty orange, elektro navy, opony mid grey, tekstylia rose. The label next to every bin names the fraction, so colour is never the only cue.
 

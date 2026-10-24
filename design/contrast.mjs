@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-// WCAG 2.x contrast check for the site's palette: GOV.UK's with the Wiśnia
-// group, and every colour token in web/app/tokens.css. CI runs it (the web
+// WCAG 2.x contrast check for the site's palette: GOV.UK's with our brand
+// group (web/lib/palette.ts), and every colour token in web/app/tokens.css. CI runs it (the web
 // job's "Contrast" step). It exits 1 if a required pair fails, or if a colour
 // token is in no text or UI pair and not in NOT_CHECKED with its reason.
 // Usage: node design/contrast.mjs
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { HEADER, PLATE, ROLES } from "../web/lib/palette.ts";
 
 // Every custom property in web/app/tokens.css whose value is a colour: a hex,
 // a colour function, a var() or a single keyword (a named colour, transparent,
@@ -57,41 +58,34 @@ const PRINT = Object.keys(tokens).filter((name) =>
 
 // Light only, as GOV.UK. GOV.UK Frontend 6.5.1's palette (functional colours
 // and the colours its components use), with the brand-blue roles replaced by
-// the Wiśnia group. Kept here, not parsed: the Wiśnia steps are computed
-// by Sass in web/app/_palette.scss (and set in web/app/_settings.scss), and
-// the rest are GOV.UK Frontend's own values.
+// our roles (ROLES in web/lib/palette.ts, which the Sass reads too). The rest
+// are GOV.UK Frontend's own values, kept here, not parsed.
 const govuk = {
+  ...ROLES,
   text: "#0b0c0c",
   "secondary-text": "#484949",
   "inverse-text": "#ffffff",
-  brand: "#6d2048",
-  link: "#621d41",
-  "link-hover": "#371024",
-  "link-visited": "#621d41",
   "link-active": "#0b0c0c",
   border: "#cecece",
   "input-border": "#0b0c0c",
-  "template-background": "#f8f4f6",
   "body-background": "#ffffff",
   focus: "#ffdd00",
   "focus-text": "#0b0c0c",
   error: "#ca3535",
   success: "#0f7a52",
   hover: "#cecece",
-  "surface-background": "#f8f4f6",
   "surface-text": "#0b0c0c",
-  "surface-border": "#b690a4",
   button: "#0f7a52",
   "button-hover": "#0b5c3e",
   "secondary-button": "#f3f3f3",
-  // The header bar: Wiśnia shade-50, not the Generic header's black
-  // ($app-header-colour in web/app/site.scss, task 88).
-  "header-background": "#371024",
+  // The header bar: the brand group's shade-50, not the Generic header's
+  // black (HEADER in web/lib/palette.ts, task 88).
+  "header-background": HEADER,
   // The header plate: GOV.UK white on the header's cherry (site.scss).
   "logo-plate": "#ffffff",
   // The plate on light backgrounds (footer, icons, share card): the header's
-  // colour, PLATE_COLOUR in web/lib/logo.ts (task 88), with white "ul." cut out.
-  "logo-plate-light": "#371024",
+  // colour, PLATE in web/lib/palette.ts (task 88), with white "ul." cut out.
+  "logo-plate-light": PLATE,
   // The plate on keyboard focus: currentColor, i.e. focus-text (app/site.scss).
   "logo-plate-focus": "#0b0c0c",
 };
