@@ -79,7 +79,7 @@ jobs:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: web/.next/cache/brand-assets
-          key: brand-assets-${{ hashFiles('web/lib/palette.ts', 'web/lib/logo.ts', 'web/lib/theme.ts', 'web/lib/brand/*.svg', 'web/scripts/brand-assets.ts', 'web/package-lock.json') }}
+          key: brand-assets-${{ hashFiles('web/lib/palette.ts', 'web/lib/logo.ts', 'web/lib/theme.ts', 'web/lib/govuk-colours.ts', 'web/lib/waste-colours.ts', 'web/lib/brand/*.svg', 'web/scripts/brand-assets.ts', 'web/package-lock.json') }}
 
       - name: "Brand assets (from lib/palette.ts: skipped, restored or drawn)"
         run: node scripts/brand-assets.ts
@@ -277,7 +277,7 @@ jobs:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: web/.next/cache/brand-assets
-          key: brand-assets-${{ hashFiles('web/lib/palette.ts', 'web/lib/logo.ts', 'web/lib/theme.ts', 'web/lib/brand/*.svg', 'web/scripts/brand-assets.ts', 'web/package-lock.json') }}
+          key: brand-assets-${{ hashFiles('web/lib/palette.ts', 'web/lib/logo.ts', 'web/lib/theme.ts', 'web/lib/govuk-colours.ts', 'web/lib/waste-colours.ts', 'web/lib/brand/*.svg', 'web/scripts/brand-assets.ts', 'web/package-lock.json') }}
 
       - name: Database (migrate + seed)
         run: npm run db:migrate && npm run db:ci-fixture

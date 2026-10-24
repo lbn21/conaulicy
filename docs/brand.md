@@ -65,7 +65,7 @@ The unit is **P**, a quarter of the plate height (34 units → P = 8.5; 7.5 px i
   - `.govuk-button--inverse`: may appear in the CSS output, never in markup.
   - accessible-autocomplete's highlighted option: the colour stays in its unchanged CSS; `site.scss` repaints it with the brand role (`PRIMARY`, white text), so the blue is never rendered.
 - **Logo colours:** the plate is `PLATE`, the header's shade-50, on light backgrounds (Jakub's decision, task 88): footer, tab icon, favicons, app icons, share card and the light logo files. One constant, `PLATE` in `web/lib/palette.ts`. White "ul." on it is 16.64 : 1, and it is 16.64 : 1 on white and 15.26 : 1 on the footer's tint-95. In the header the plate is GOV.UK white on the cherry header (16.64 : 1); the wordmark is the text colour on light and white in the header. The header, `theme-color` and the web app manifest's `theme_color` are `HEADER` (`THEME_COLOR` in `web/lib/theme.ts`). On focus the header plate is focus-text black on focus yellow (14.55 : 1).
-- **Bin colours** are real-world colours for the bin markers only, never for the logo. Defined in `web/app/tokens.css`; rationale in `design/tokens.md`.
+- **Bin colours** are real-world colours for the bin markers only, never for the logo. Defined in `web/lib/waste-colours.ts` (the site's `--waste-*` custom properties are generated from it, as is the PDF's); rationale in `design/tokens.md`.
 - **PDF fraction marks:** the printable PDF marks each fraction with a shape in its bin colour, so it reads in black-and-white print and for colour-blind readers: zmieszane ● circle, popiół ○ ring, bio ■ square, papier ▲ triangle, tworzywa ◆ diamond (dark outline), szkło ★ star; rare fractions a letter in an outlined square (G wielkogabarytowe, E elektro, O opony, T tekstylia). The website keeps its bin icons.
 
 ### Changing the palette
@@ -124,7 +124,7 @@ Visited links have no colour of their own: `link-visited` is the link colour (`R
 
 ### Contrast
 
-WCAG 2.x, computed by `node design/contrast.mjs`, which CI runs on every pull request (the web job's "Contrast" step). It exits 1 if a required pair fails, or if a colour token in `web/app/tokens.css` is in no text or UI pair and not in its `NOT_CHECKED` list with the reason (today: the outlined fills, whose `-border` outline carries the contrast, and the transparent `--waste-elektro-border`). Text needs 4.5 : 1 and UI components 3 : 1.
+WCAG 2.x, computed by `node design/contrast.mjs`, which CI runs on every pull request (the web job's "Contrast" step). It exits 1 if a required pair fails, or if a bin colour in `web/lib/waste-colours.ts` is in no text or UI pair and not in its `NOT_CHECKED` list with the reason (today: the outlined fills, whose `-border` outline carries the contrast, and the transparent `--waste-elektro-border`). Text needs 4.5 : 1 and UI components 3 : 1.
 
 | Pair | Ratio | Result |
 |---|---:|---|

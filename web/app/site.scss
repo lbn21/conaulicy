@@ -117,7 +117,7 @@ $app-header-colour: $app-header;
   }
 }
 
-// Bin markers: the real bin colours (bin tokens in tokens.css), which GOV.UK's
+// Bin markers: the real bin colours (lib/waste-colours.ts), which GOV.UK's
 // tags cannot carry, beside each fraction's name. A fraction without a bin
 // colour gets a neutral grey.
 .app-bin {

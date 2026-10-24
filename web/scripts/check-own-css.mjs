@@ -28,8 +28,10 @@ const ALLOWED = new Set([
   "app/_palette.scss",
   "app/_assets.scss",
   "app/site.scss",
-  // The font fallback and the bin colours (no GOV.UK setting for either).
+  // The font fallback (no GOV.UK setting for it).
   "app/tokens.css",
+  // The bin colours, generated from lib/waste-colours.ts, not in git.
+  "app/waste-colours.css",
 ]);
 // Classes in the markup that are hooks, with no rule of their own.
 const HOOK_ONLY = new Map([

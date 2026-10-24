@@ -1,34 +1,22 @@
 #!/usr/bin/env node
 // WCAG 2.x contrast check for the site's palette: GOV.UK's with our brand
-// group (web/lib/palette.ts), and every colour token in web/app/tokens.css. CI runs it (the web
+// group (web/lib/palette.ts), and every bin colour (web/lib/waste-colours.ts). CI runs it (the web
 // job's "Contrast" step). It exits 1 if a required pair fails, or if a colour
 // token is in no text or UI pair and not in NOT_CHECKED with its reason.
 // Usage: node design/contrast.mjs
 
-import { readFileSync } from "node:fs";
-import path from "node:path";
+import { GOVUK_COLOUR, GOVUK_FUNCTIONAL } from "../web/lib/govuk-colours.ts";
 import { HEADER, PLATE, ROLES } from "../web/lib/palette.ts";
+import { WASTE_COLOURS } from "../web/lib/waste-colours.ts";
 
-// Every custom property in web/app/tokens.css whose value is a colour: a hex,
-// a colour function, a var() or a single keyword (a named colour, transparent,
-// currentColor). Comments are skipped, so a commented-out token is not one.
-const TOKENS = path.join(import.meta.dirname, "../web/app/tokens.css");
-const COLOUR_VALUE =
-  /^(#[0-9a-f]+|(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix|light-dark|var)\(.*\)|[a-z]+)$/is;
+// The bin colours, by their custom property's name (--waste-*).
 const problems = [];
-const tokens = {};
-for (const [, name, raw] of readFileSync(TOKENS, "utf8")
-  .replace(/\/\*[\s\S]*?\*\//g, "")
-  .matchAll(/--([\w-]+)\s*:\s*([^;}]+)/g)) {
-  const value = raw.trim();
-  if (!COLOUR_VALUE.test(value)) continue;
-  if (name in tokens)
-    problems.push(`--${name} is declared twice in tokens.css`);
-  tokens[name] = value;
-}
+const tokens = Object.fromEntries(
+  Object.entries(WASTE_COLOURS).map(([name, value]) => [`waste-${name}`, value]),
+);
 
 // Colour tokens in no text or UI pair, each with why it needs none. Stale
-// entries fail: one now in a checked pair, or one gone from tokens.css.
+// entries fail: one now in a checked pair, or one gone from lib/waste-colours.ts.
 const NOT_CHECKED = new Map([
   [
     "waste-elektro-border",
@@ -59,35 +47,20 @@ const PRINT = Object.keys(tokens).filter((name) =>
 // Light only, as GOV.UK. GOV.UK Frontend 6.5.1's palette (functional colours
 // and the colours its components use), with the brand-blue roles replaced by
 // our roles (ROLES in web/lib/palette.ts, which the Sass reads too). The rest
-// are GOV.UK Frontend's own values, kept here, not parsed.
+// are GOV.UK Frontend's own (web/lib/govuk-colours.ts).
 const govuk = {
   ...ROLES,
-  text: "#0b0c0c",
-  "secondary-text": "#484949",
-  "inverse-text": "#ffffff",
-  "link-active": "#0b0c0c",
-  border: "#cecece",
-  "input-border": "#0b0c0c",
-  "body-background": "#ffffff",
-  focus: "#ffdd00",
-  "focus-text": "#0b0c0c",
-  error: "#ca3535",
-  success: "#0f7a52",
-  hover: "#cecece",
-  "surface-text": "#0b0c0c",
-  button: "#0f7a52",
-  "button-hover": "#0b5c3e",
-  "secondary-button": "#f3f3f3",
+  ...GOVUK_FUNCTIONAL,
   // The header bar: the brand group's shade-50, not the Generic header's
   // black (HEADER in web/lib/palette.ts, task 88).
   "header-background": HEADER,
   // The header plate: GOV.UK white on the header's cherry (site.scss).
-  "logo-plate": "#ffffff",
+  "logo-plate": GOVUK_COLOUR.white,
   // The plate on light backgrounds (footer, icons, share card): the header's
   // colour, PLATE in web/lib/palette.ts (task 88), with white "ul." cut out.
   "logo-plate-light": PLATE,
   // The plate on keyboard focus: currentColor, i.e. focus-text (app/site.scss).
-  "logo-plate-focus": "#0b0c0c",
+  "logo-plate-focus": GOVUK_FUNCTIONAL["focus-text"],
 };
 for (const name of Object.keys(tokens)) {
   if (name in govuk) problems.push(`--${name} shadows GOV.UK's ${name} here`);
@@ -248,12 +221,12 @@ for (const name of names) {
 for (const name of NOT_CHECKED.keys()) {
   if (!(name in tokens))
     problems.push(
-      `NOT_CHECKED: --${name} is not a colour token in tokens.css, remove it from the list`,
+      `NOT_CHECKED: --${name} is not a bin colour in lib/waste-colours.ts, remove it from the list`,
     );
 }
 const inPairs = names.filter((name) => checked.has(name)).length;
 console.log(
-  `\nColour tokens in tokens.css: ${names.length}; ${inPairs} in text or UI pairs, ${NOT_CHECKED.size} in NOT_CHECKED.`,
+  `\nBin colours: ${names.length}; ${inPairs} in text or UI pairs, ${NOT_CHECKED.size} in NOT_CHECKED.`,
 );
 for (const problem of problems) console.error(problem);
 if (failures > 0)

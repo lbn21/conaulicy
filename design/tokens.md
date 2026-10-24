@@ -1,6 +1,6 @@
 # Colour and type tokens
 
-Light only, as GOV.UK. Values: `design/tokens.css`; the bin colours the site uses are in `web/app/tokens.css`, which the contrast check reads. Contrast check: `node design/contrast.mjs`.
+Light only, as GOV.UK. Values: our brand group in `web/lib/palette.ts`, GOV.UK's own colours in `web/lib/govuk-colours.ts`, and the bin colours in `web/lib/waste-colours.ts`, which the site's CSS, the PDF and the contrast check read. Contrast check: `node design/contrast.mjs`.
 
 ## Rationale
 - **GOV.UK Frontend as-is, including its palette; only the brand-blue roles, the typeface and the logo are ours** (`docs/govuk-audit.md`). The full palette, with every group and step, is in `docs/brand.md`.
@@ -13,22 +13,22 @@ Light only, as GOV.UK. Values: `design/tokens.css`; the bin colours the site use
 - **The header bar** is shade-50, `HEADER` (Jakub's decision, task 88), not the Generic header's black; `theme-color` and the PDF band follow it. Its GOV.UK focus bar takes the same colour, so the yellow focus box (12.36:1 on the cherry) carries the focus on its own.
 - **The logo plate** is GOV.UK white on the cherry header bar, as GOV.UK's white crown. On light backgrounds (footer, icons, share card) it is the header's colour, `PLATE` (task 88), with white "ul." cut out.
 - **Typography:** Atkinson Hyperlegible Next, self-hosted, weights 400 and 700, instead of GDS Transport (which GOV.UK reserves for its own services).
-- **Waste colours** are fills, each with a `-fg` for the label text on that fill. Papier is blue, szkło green, metale i tworzywa yellow, bio brown, zmieszane black, popiół grey. The rare fractions each have their own colour, as in the Miasto Lubaczów schedule table: gabaryty orange, elektro navy, opony mid grey, tekstylia rose. The label next to every bin names the fraction, so colour is never the only cue.
+- **Waste colours** are fills; the label next to each bin is in the text colour. Papier is blue, szkło green, metale i tworzywa yellow, bio brown, zmieszane black, popiół grey. The rare fractions each have their own colour, as in the Miasto Lubaczów schedule table: gabaryty orange, elektro navy, opony mid grey, tekstylia rose. The label next to every bin names the fraction, so colour is never the only cue.
 
 ## Bin colours
 | Token | Hex | Role |
 | --- | --- | --- |
-| `waste-zmieszane` / `-fg` / `-border` | `#111111` / `#ffffff` / `#111111` | mixed waste, black bin |
-| `waste-papier` / `-fg` | `#1f63c7` / `#ffffff` | paper |
-| `waste-plastik-metale` / `-fg` / `-border` | `#f2c200` / `#161b24` / `#7d6200` | plastic and metal, yellow bin |
+| `waste-zmieszane` / `-border` | `#111111` / `#111111` | mixed waste, black bin |
+| `waste-papier` | `#1f63c7` | paper |
+| `waste-plastik-metale` / `-border` | `#f2c200` / `#7d6200` | plastic and metal, yellow bin |
 | `waste-plastik-metale-print` | `#5c4800` | the PDF's outline of the plastic and metal mark |
-| `waste-szklo` / `-fg` | `#1e7f4f` / `#ffffff` | glass |
-| `waste-bio` / `-fg` | `#7a4b2a` / `#ffffff` | bio |
-| `waste-popiol` / `-fg` | `#5c6370` / `#ffffff` | ash, grey bag |
-| `waste-gabaryty` / `-fg` | `#c2410c` / `#ffffff` | bulky waste (wielkogabarytowe) |
-| `waste-elektro` / `-fg` / `-border` | `#1e3a8a` / `#ffffff` / `transparent` | electrical and electronic |
-| `waste-opony` / `-fg` / `-border` | `#a3aab5` / `#161b24` / `#4a5160` | used tyres |
-| `waste-tekstylia` / `-fg` | `#a8336a` / `#ffffff` | clothes and textiles |
+| `waste-szklo` | `#1e7f4f` | glass |
+| `waste-bio` | `#7a4b2a` | bio |
+| `waste-popiol` | `#5c6370` | ash, grey bag |
+| `waste-gabaryty` | `#c2410c` | bulky waste (wielkogabarytowe) |
+| `waste-elektro` / `-border` | `#1e3a8a` / `transparent` | electrical and electronic |
+| `waste-opony` / `-border` | `#a3aab5` / `#4a5160` | used tyres |
+| `waste-tekstylia` | `#a8336a` | clothes and textiles |
 
 ## Kolory pojemników
 
@@ -49,7 +49,7 @@ Computed by `node design/contrast.mjs` (WCAG 2.x, sRGB relative luminance), ligh
 - borders and the surface border are decorative dividers, never the only cue;
 - light bin fills are carried by their outline.
 
-The script exits 1 if a required pair fails. Pairs that reach AAA (text, 7:1+): body text, secondary text, link hover, active links, white on brand, focus text, the button hover, the secondary button, surface text, header text. Bin labels sit next to the bins in the text colour, so the `-fg` tokens have no pair on the site. Print outlines (`-print`) are "ui" pairs against white paper.
+The script exits 1 if a required pair fails. Pairs that reach AAA (text, 7:1+): body text, secondary text, link hover, active links, white on brand, focus text, the button hover, the secondary button, surface text, header text. Bin labels sit next to the bins in the text colour. Print outlines (`-print`) are "ui" pairs against white paper.
 
 | Pair | Ratio | AA | AAA |
 | --- | ---: | --- | --- |

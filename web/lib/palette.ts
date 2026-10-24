@@ -8,23 +8,26 @@
 
 export const PRIMARY = "#6d2048";
 
+const WHITE = "#ffffff";
+const BLACK = "#000000";
+
 // GOV.UK's method: the primary mixed with white (tints) or black (shades) at
 // GOV.UK's percentages. Mixing #1d70b8 this way gives GOV.UK's blue group
 // exactly (lib/palette.test.ts).
 const STEPS = {
-  "tint-25": ["#ffffff", 25],
-  "tint-50": ["#ffffff", 50],
-  "tint-80": ["#ffffff", 80],
-  "tint-95": ["#ffffff", 95],
-  "shade-10": ["#000000", 10],
-  "shade-25": ["#000000", 25],
-  "shade-50": ["#000000", 50],
+  "tint-25": [WHITE, 25],
+  "tint-50": [WHITE, 50],
+  "tint-80": [WHITE, 80],
+  "tint-95": [WHITE, 95],
+  "shade-10": [BLACK, 10],
+  "shade-25": [BLACK, 25],
+  "shade-50": [BLACK, 50],
 } as const;
 type GovukStep = "primary" | keyof typeof STEPS;
 // Ours, not GOV.UK's, with the same method: the link colour (Jakub's
 // decision, task 92): 3.14 : 1 against body text, where shade-10 was 1.65.
 const OUR_STEPS = {
-  "tint-20": ["#ffffff", 20],
+  "tint-20": [WHITE, 20],
 } as const;
 export type Step = GovukStep | keyof typeof OUR_STEPS;
 

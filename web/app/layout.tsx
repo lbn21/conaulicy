@@ -10,6 +10,7 @@ import { HOME_TITLE, SHARE, SITE_NAME } from "@/lib/share";
 import { THEME_COLOR } from "@/lib/theme";
 import { atkinson } from "./fonts";
 import "./tokens.css";
+import "./waste-colours.css";
 import "./govuk.scss";
 import "./site.scss";
 
