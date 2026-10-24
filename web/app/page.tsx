@@ -10,7 +10,7 @@ export const metadata: Metadata = pageMetadata({
   path: "/",
   title: { absolute: HOME_TITLE },
   description:
-    "Kiedy śmieciarka przyjedzie na Twoją ulicę w Lubaczowie i gminie? Terminy do kalendarza w telefonie i do wydruku.",
+    "Kiedy śmieciarka przyjedzie na Twoją ulicę w Lubaczowie albo do wsi w gminie? Terminy do kalendarza w telefonie i do wydruku.",
 });
 
 // For search engines: the site's name. No SearchAction: the results page
