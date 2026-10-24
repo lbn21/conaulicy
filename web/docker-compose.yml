@@ -1,0 +1,22 @@
+# The one local database (npm run db:local, scripts/db-local.ts): Postgres
+# with the CI fixture only, as in CI (.github/workflows/ci.yml). Reachable
+# from this machine only. Never real or production data.
+name: conaulicy-local
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ci
+      POSTGRES_PASSWORD: ci
+      POSTGRES_DB: conaulicy
+    ports:
+      - 127.0.0.1:5432:5432
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "ci", "-d", "conaulicy"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+volumes:
+  pgdata:
