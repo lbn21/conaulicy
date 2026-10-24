@@ -23,7 +23,7 @@ Everything else is on one "later" line.
   - GOV.UK's own palette and functional colours are kept: yellow focus, green button, red error, green success, black/grey text and borders, white.
   - Only the **brand-blue group** is replaced, by a Latarnia amber/brown group computed with GOV.UK's tint/shade method. It feeds brand, link, link hover, template and surface background, and surface border.
   - Visited links have no colour of their own: `link-visited` is the link colour (D5).
-- **Typeface and logo:** Atkinson Hyperlegible Next instead of GDS Transport. Our "ul." plate in the GOV.UK **Generic header** (its default black bar, so the dark-background lockup). Our own footer markup with `govuk-footer` classes, the plate in the crown's place.
+- **Typeface and logo:** Atkinson Hyperlegible Next instead of GDS Transport. Our "ul." plate in the GOV.UK **Generic header** (its bar in Latarnia shade-50 `#4d2c00` instead of its default black, task 88, so the dark-background lockup). Our own footer markup with `govuk-footer` classes, the plate in the crown's place.
 - **Light only, Polish copy.** Dark mode was dropped on 2026-10-20 to follow GOV.UK, which is light only: no toggle, no `prefers-color-scheme: dark` styles, no theme script.
 - **Everything else is exactly GOV.UK:**
   - 40 px controls, `:focus` styling;
@@ -127,7 +127,7 @@ $app-latarnia: ( /* the amber group below */ );
 );
 ```
 
-- **Nothing else is overridden:** the green button, yellow focus, red error and black Generic header are GOV.UK's own defaults.
+- **Nothing else is overridden:** the green button, yellow focus, red error are GOV.UK's own defaults. The Generic header's black bar was, until task 88 made it Latarnia shade-50 `#4d2c00` (Jakub's decision).
 - **Blue leftovers:** the compiled CSS was checked for brand-blue values. Two rules still contain them:
   - the **default `govuk-tag`**, which hard-codes a blue tint and shade;
   - the **inverse button**, which hard-codes blue.
@@ -140,7 +140,7 @@ $app-latarnia: ( /* the amber group below */ );
 - **Second exception, approved by Jakub (task 27, step 5c):** alphagov accessible-autocomplete's unchanged CSS paints the highlighted and hovered suggestion in `#1d70b8` (`.autocomplete__option--focused,.autocomplete__option:hover`).
   - `site.scss` overrides only that rule's colours with the brand role (`govuk-functional-colour(brand)`, white text), outside forced-colours mode, so the blue is never rendered.
   - `check-govuk-assets.mjs` allows `#1d70b8` only in that exact rule and fails unless the override ships.
-- **`theme-color`:** `#9a5700`, the brand (latarnia primary), as GOV.UK's template uses its brand colour.
+- **`theme-color`:** `#4d2c00`, the header's colour (latarnia shade-50, task 88), as GOV.UK's template uses its header colour.
 
 **Autocomplete: alphagov `accessible-autocomplete` vs our combobox, restyled with GOV.UK classes**
 
@@ -215,7 +215,7 @@ The GOV.UK footer carries the crown and "© Crown copyright" (https://design-sys
 
 Source: [GOV.UK colour](https://design-system.service.gov.uk/styles/colour/) and `govuk-frontend` 6.5.1 [`settings/_colours-palette--internal.scss`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/settings/_colours-palette--internal.scss).
 
-**Method:** GOV.UK's steps are the primary colour mixed with white (tints) or black (shades) at fixed percentages. Checked: mixing `#1d70b8` this way reproduces GOV.UK's blue group exactly. The Latarnia group applies the same percentages to our accent `#9a5700`, and has a shade-10 like blue. The logo plate is outside the palette: `#9a5700` on light, GOV.UK white on the black Generic header and the PDF's black band (tasks 78 and 79).
+**Method:** GOV.UK's steps are the primary colour mixed with white (tints) or black (shades) at fixed percentages. Checked: mixing `#1d70b8` this way reproduces GOV.UK's blue group exactly. The Latarnia group applies the same percentages to our accent `#9a5700`, and has a shade-10 like blue. The logo plate is outside the palette: `#4d2c00` (latarnia shade-50) on light (task 88; `#9a5700` before), GOV.UK white on the brown (`#4d2c00`) Generic header and the PDF's brown band (tasks 78, 79 and 88).
 
 | Group | primary | tint-25 | tint-50 | tint-80 | tint-95 | shade-10 | shade-25 | shade-50 |
 |---|---|---|---|---|---|---|---|---|
@@ -289,8 +289,8 @@ These ratios use the WCAG 2.x formula of `design/contrast.mjs`. They are **all n
 | surface-border vs surface-background | 2.02 | decorative (GOV.UK's blue tint-50 is too); never the only cue |
 | border vs body-background | 1.57 | decorative divider (GOV.UK default); never the only cue |
 | brand vs body-background | 5.62 | UI pass |
-| Generic header text on black | 19.59 | AAA |
-| logo plate white #ffffff on the black header | 19.59 | UI pass |
+| Generic header text (white) on #4d2c00 | 12.53 | AAA |
+| logo plate white #ffffff on the header #4d2c00 | 12.53 | UI pass |
 
 ## Audit table
 

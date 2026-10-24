@@ -20,6 +20,8 @@ Jakub picked **A “Tabliczka”** (task 20), refined in task 22 (below). The **
 - **Padding:** 5.4 from the rim to the ink box on all four sides, before the optical shift.
 
 **Optical centring.** "ul." is placed halfway between bounding-box centring and mass centring. The mass centroid is computed from the outlines (area-weighted, fontTools `StatisticsPen`). The light period and the thin ascender of "l" otherwise make the word look too far left and too low. The result is a shift of 0.84 right and 1.02 up.
+
+**Vertical optical centring, task 88.** In the 30 px header, the "ul." above sat 3.81 px below the rim's inner edge and 5.57 px above it at the bottom (ink, measured from pixels), and Jakub saw it as too high. Measured in plate units inside the rim (3.85–30.15, centre 17): the ink box is 8.23–23.73 (centre 15.98), the x-height zone 12.8–23.47 (centre 18.13) and the area centroid 18.02. The centroid sits low because the u's bowl and the period carry most of the ink, so centring it (B) or the x-height zone (A) moves "ul." up, away from what Jakub saw; only centring the ink box (C) moves it down. Each variant rounds to one whole px in the 30 px header (34/30 units), so "ul." keeps its pixel grid: A and B are 1 px up, C 1 px down. C ships: 4.81 px above and 4.57 px below. One constant switches it everywhere (header, footer, PDF, favicons, app icons, OG card): `UL_VARIANT` in `web/lib/logo.ts`, read by `source/ship_a.mjs`. The 32 px favicon moves by whole px (1 px for C), and the 16 px one stays put (0.4 px rounds to 0).
 - **Pads to the rim, by ink box:** left 6.24, right 4.56, top 4.38, bottom 6.42. They look equal because the right side is only a period and the top only one stem.
 - **Previous A:** left 10.29, right 9.09, top 3.74, bottom 8.94, so it sat visibly high.
 
@@ -95,7 +97,7 @@ All three avoid the blue-and-white MSI street sign, the city's herb and any offi
 
 ## Shipped (task 23)
 
-`node docs/logo/source/ship_a.mjs` builds the web files from the SVGs here:
+`node docs/logo/source/ship_a.mjs` builds the web files from the SVGs here. The plate's colour on light backgrounds is `PLATE_COLOUR` in `web/lib/logo.ts`, `#4d2c00` since task 88 (the header's colour; `#9A5700` before): the favicons take it in `light()`, and the script fails if the share card's plate or tagline is another colour. `make_logo_a.py` writes `#4D2C00` for the light plate and the card's tagline; the light SVGs here were updated to match (colour values only, as it cannot run without fontTools here).
 - `web/app/favicon.ico` (16 + 32 from the two favicon drawings);
 - `web/app/icon.svg`, `web/app/apple-icon.png`;
 - `web/public/icon-{192,512}.png`, `icon-maskable-512.png`;

@@ -15,6 +15,7 @@ import {
   RIM,
   RIM_WIDTH,
   UL,
+  UL_SHIFT,
   WORDMARK,
 } from "@/lib/logo";
 import { normalize } from "@/lib/normalize";
@@ -33,6 +34,7 @@ import {
 } from "@/lib/schedule-notes";
 import { placePath } from "@/lib/search";
 import { SITE_NAME } from "@/lib/share";
+import { THEME_COLOR } from "@/lib/theme";
 import { FRACTIONS, TOKEN, tones } from "@/lib/waste-bin";
 
 export const runtime = "nodejs";
@@ -50,7 +52,7 @@ const BOLD = readFileSync(
 );
 
 // A4 portrait in points, 10 mm margins. The calendar pages follow the site:
-// the black header band with the "ul." plate, GOV.UK Warning text, GOV.UK
+// the brown header band with the "ul." plate, GOV.UK Warning text, GOV.UK
 // tables (three months per row) and the site's type scale. The last pages
 // are a text-only version, for black-and-white and colour-blind use.
 const PAGE_W = 595.28;
@@ -85,6 +87,8 @@ const RED = "#ca3535";
 // Darker than the site's --waste-plastik-metale-border: small marks on paper
 // need a stronger outline (app/tokens.css --waste-plastik-metale-print).
 const PLASTIK_METALE_PRINT = "#5c4800";
+// The bands take the site header's colour (lib/theme.ts).
+const HEADER = THEME_COLOR;
 
 // ---------------------------------------------------------------- marks
 
@@ -228,8 +232,8 @@ function drawQr(
 }
 
 /**
- * The plate and wordmark on dark, as in the site header: a white plate, the
- * "ul." and rim cut out to the black, and the wordmark's x-height centred on
+ * The plate and wordmark on the band, as in the site header: a white plate,
+ * the "ul." and rim cut out to the band's brown, and the wordmark's x-height centred on
  * the plate.
  */
 function drawLogo(doc: PDFKit.PDFDocument, x: number, y: number, h: number) {
@@ -238,8 +242,9 @@ function drawLogo(doc: PDFKit.PDFDocument, x: number, y: number, h: number) {
     .translate(x, y)
     .scale(h / LOGO_HEIGHT);
   doc.path(PLATE).fillColor(WHITE).fill();
-  doc.path(UL).fillColor(BLACK).fill();
-  doc.path(RIM).lineWidth(RIM_WIDTH).strokeColor(BLACK).stroke();
+  doc.save().translate(0, UL_SHIFT).path(UL).fillColor(HEADER).fill();
+  doc.restore();
+  doc.path(RIM).lineWidth(RIM_WIDTH).strokeColor(HEADER).stroke();
   doc.translate(0, HEADER_WORDMARK_SHIFT);
   doc.path(WORDMARK).fillColor(WHITE).fill();
   doc.restore();
@@ -672,10 +677,10 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const bandH = Math.max(baseline + baseInk, dayLine ? 0 : titleInk) + MARGIN;
   const bandBaseline = bandH - MARGIN - baseInk;
 
-  /** Page 1: black band, plate, place, usual day and the QR code. */
+  /** Page 1: brown band, plate, place, usual day and the QR code. */
   const drawBand = () => {
     artifact(doc, () => {
-      doc.rect(0, 0, PAGE_W, bandH).fillColor(BLACK).fill();
+      doc.rect(0, 0, PAGE_W, bandH).fillColor(HEADER).fill();
       drawLogo(doc, MARGIN, MARGIN, logoH);
       doc
         .rect(qrX - 6, MARGIN, qrSize + 12, qrSize + 12)
@@ -724,7 +729,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     return bandH;
   };
 
-  /** Later pages: a compact black band with the plate and the place. */
+  /** Later pages: a compact brown band with the plate and the place. */
   const compactH =
     MARGIN +
     logoH +
@@ -738,7 +743,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   ) => {
     const text = `${title} · ${what}`;
     const plate = () => {
-      doc.rect(0, 0, PAGE_W, compactH).fillColor(BLACK).fill();
+      doc.rect(0, 0, PAGE_W, compactH).fillColor(HEADER).fill();
       drawLogo(doc, MARGIN, MARGIN, logoH);
     };
     // On the bottom padding, also when a long name sets it smaller.

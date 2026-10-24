@@ -1,6 +1,6 @@
 // Checks the header's and the warning icon's pixel geometry numerically, so
 // the pixel-perfect work of tasks 78-84 cannot regress unnoticed: on the home
-// page and a street page, at 375px and 1280px, the bar's height and the
+// page and a street page, at 375px and 1280px, the bar's height, colour and the
 // plate's gaps, the hover and focus bars' place, the focus box's frame, and
 // the warning icon's "!" in its circle (ink, measured as in task 83). Boxes
 // come from getBoundingClientRect and computed styles, and must be exact;
@@ -20,7 +20,10 @@ const PLATE_GAP = 16;
 // The hover bar, 4px instead of GOV.UK's 3px, 6px below the plate and 6px
 // above the bar's bottom (task 82, Jakub's decision).
 const HOVER_BAR = { top: 52, bottom: 56 };
-// GOV.UK's 4px black focus bar, at the hover bar's place (task 82).
+// The header bar's colour, Latarnia shade-50 (task 88; THEME_COLOR in lib/theme.ts).
+const HEADER_COLOUR = "rgb(77, 44, 0)";
+// GOV.UK's 4px focus bar, at the hover bar's place (task 82), in the header's
+// colour so it does not show (task 88).
 const FOCUS_BAR = HOVER_BAR;
 // The yellow focus box's frame round the plate's box, on all sides (task 82).
 const FOCUS_FRAME = 6;
@@ -61,7 +64,7 @@ const measureHeader = (page) =>
     };
     const link = document.querySelector(".govuk-generic-header__homepage-link");
     const style = getComputedStyle(link);
-    // "rgb(255, 221, 0) 0px -2px 0px 0px, rgb(11, 12, 12) 0px 4px 0px 0px"
+    // "rgb(255, 221, 0) 0px -2px 0px 0px, rgb(77, 44, 0) 0px 4px 0px 0px"
     const shadows = style.boxShadow
       .split(/,(?![^(]*\))/)
       .filter((s) => s.trim() !== "none")
@@ -76,6 +79,9 @@ const measureHeader = (page) =>
       link: box(".govuk-generic-header__homepage-link"),
       borderBottom: parseFloat(style.borderBottomWidth),
       background: style.backgroundColor,
+      headerBackground: getComputedStyle(
+        document.querySelector(".govuk-generic-header"),
+      ).backgroundColor,
       shadows,
       active: document.activeElement === link,
     };
@@ -153,6 +159,7 @@ try {
       await page.evaluate(() => document.fonts.ready);
 
       const normal = await measureHeader(page);
+      exact(`${label} header colour`, normal.headerBackground, HEADER_COLOUR);
       exact(
         `${label} header height`,
         normal.header.bottom - normal.header.top,
@@ -192,16 +199,17 @@ try {
       const focus = await measureHeader(page);
       exact(`${label} homepage link focused by Tab`, focus.active, true);
       const yellow = focus.shadows.find((s) => s.color === focus.background);
-      const black = focus.shadows.find((s) => s.color !== focus.background);
+      const bar = focus.shadows.find((s) => s.color !== focus.background);
+      exact(`${label} focus bar colour`, bar?.color, HEADER_COLOUR);
       exact(
         `${label} focus bar thickness`,
-        black?.y,
+        bar?.y,
         FOCUS_BAR.bottom - FOCUS_BAR.top,
       );
       exact(`${label} focus bar top`, focus.link.bottom, FOCUS_BAR.top);
       exact(
         `${label} focus bar bottom`,
-        focus.link.bottom + (black?.y ?? 0),
+        focus.link.bottom + (bar?.y ?? 0),
         FOCUS_BAR.bottom,
       );
       const yellowTop = focus.link.top + Math.min(0, yellow?.y ?? 0);

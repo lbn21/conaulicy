@@ -1,6 +1,7 @@
 // The only own CSS (docs/govuk-audit.md): what GOV.UK has no equivalent for.
 // GOV.UK Sass functions and mixins only; no raw colours or px.
 // Capped by scripts/check-own-css.mjs.
+@use "sass:map";
 @use "settings" as *;
 @use "govuk-frontend/dist/govuk/components/generic-header/mixin" as generic-header;
 
@@ -18,6 +19,18 @@
 // lift is 2px, not 3px: the content area ends 6px below the plate, which
 // centres GOV.UK's 4px focus bar, 6px above and 6px below, and the hover bar
 // (below). The px are allowed one by one in scripts/check-own-css.mjs.
+// Deviation from the Generic header's black bar (Jakub's decision, task 88):
+// the Latarnia group's darkest step, as GOV.UK's header takes its brand
+// colour; THEME_COLOR in lib/theme.ts and the PDF's band follow it. Screen
+// only, so GOV.UK's print rule still clears it.
+$app-header-colour: map.get($app-latarnia, "shade-50");
+
+@media screen {
+  .govuk-generic-header {
+    background: $app-header-colour;
+  }
+}
+
 .govuk-generic-header__logo {
   @include generic-header.logo-styles($padding-top: 18px, $padding-bottom: 11px);
 }
@@ -28,9 +41,9 @@
   margin-bottom: 2px;
 }
 
-// The plate's fill is one custom property: GOV.UK white on the Generic
-// header's black, as GOV.UK's white crown, so the cut-out "ul." and rim show
-// the header's black. On focus GOV.UK's link-styles paint the link focus
+// The plate's fill is one custom property: GOV.UK white on the header's
+// brown, as GOV.UK's white crown, so the cut-out "ul." and rim show the
+// header's brown. On focus GOV.UK's link-styles paint the link focus
 // yellow with focus-text black (the wordmark's currentColor); the plate takes
 // that colour too, so the cut-out "ul." and rim show focus yellow in a black
 // plate, as GOV.UK's logo goes all black on focus. :focus, as in link-styles.
@@ -48,6 +61,10 @@
   border-bottom-width: 4px;
 }
 
+// GOV.UK's focus bar below the yellow box (focus-text black) takes the
+// header's colour, so it does not show (task 88): the yellow box with the
+// black plate carries the focus on its own. The yellow shadow above stays.
+//
 // The focus box is the link's inline content area, set by the font (Atkinson
 // at 30px), not by the logo: 5px of yellow above the plate (2 of them the
 // box-shadow), 6px below, none at the sides. Padding on focus only evens it to
@@ -59,6 +76,9 @@
 .govuk-generic-header__homepage-link:focus {
   --app-logo-plate: currentColor;
   margin-left: -6px;
+  box-shadow:
+    0 -2px govuk-functional-colour(focus),
+    0 4px $app-header-colour;
   padding: 1px 6px 0;
 }
 

@@ -84,9 +84,14 @@ const govuk = {
   button: "#0f7a52",
   "button-hover": "#0b5c3e",
   "secondary-button": "#f3f3f3",
-  "header-background": "#0b0c0c",
-  // The header plate: GOV.UK white on the Generic header's black (site.scss).
+  // The header bar: Latarnia shade-50, not the Generic header's black
+  // ($app-header-colour in web/app/site.scss, task 88).
+  "header-background": "#4d2c00",
+  // The header plate: GOV.UK white on the header's brown (site.scss).
   "logo-plate": "#ffffff",
+  // The plate on light backgrounds (footer, icons, share card): the header's
+  // colour, PLATE_COLOUR in web/lib/logo.ts (task 88), with white "ul." cut out.
+  "logo-plate-light": "#4d2c00",
   // The plate on keyboard focus: currentColor, i.e. focus-text (app/site.scss).
   "logo-plate-focus": "#0b0c0c",
 };
@@ -185,6 +190,12 @@ function requiredPairs() {
     ["brand", "body-background", "ui"],
     ["logo-plate", "header-background", "ui"],
     ["logo-plate-focus", "focus", "ui"],
+    ["inverse-text", "logo-plate-light", "ui"],
+    ["logo-plate-light", "body-background", "ui"],
+    ["logo-plate-light", "surface-background", "ui"],
+    // The focus box on the header: no black bar under it (task 88), so the
+    // yellow carries it against the brown bar on its own.
+    ["focus", "header-background", "ui"],
     ["focus", "body-background", "info"],
     ["border", "body-background", "info"],
     ["surface-border", "surface-background", "info"],

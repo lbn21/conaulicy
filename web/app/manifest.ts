@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { SITE_NAME } from "@/lib/share";
 import { BACKGROUND_COLOR, THEME_COLOR } from "@/lib/theme";
 
-// Icons: the flat #9a5700 "ul." plate on a white tile (docs/brand.md, docs/logo/source/ship_a.mjs).
+// Icons: the flat #4d2c00 (PLATE_COLOUR) "ul." plate on a white tile (docs/brand.md, docs/logo/source/ship_a.mjs).
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: `${SITE_NAME} – wywóz śmieci w Lubaczowie i gminie`,

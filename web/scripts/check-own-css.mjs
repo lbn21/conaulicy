@@ -59,6 +59,11 @@ const RAW_PX = [
   // round the plate, measured against Atkinson's content area at 30px.
   "margin-left: -6px;",
   "padding: 1px 6px 0;",
+  // govuk-focused-text (helpers/_focused.scss): box-shadow 0 -2px focus,
+  // 0 4px focus-text, with the bar in the header's colour so it does not
+  // show (task 88, Jakub's decision)
+  "0 -2px govuk-functional-colour(focus),",
+  "0 4px $app-header-colour;",
   // .govuk-generic-header__homepage-link:hover: 3px bar, made 4px as the focus
   // bar, centred under the plate (task 82, Jakub's decision)
   "margin-bottom: -4px;",
