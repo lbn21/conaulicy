@@ -129,6 +129,13 @@ jobs:
       - name: Search popup (no layout shift, combobox keys)
         run: node scripts/check-search.mjs
 
+      # WebKit needs system libraries the runner lacks, hence --with-deps.
+      - name: Install WebKit for the iPhone check
+        run: npx playwright install --with-deps webkit
+
+      - name: "iOS focus (WebKit, iPhone: a tap focuses the final field)"
+        run: node scripts/check-ios-focus.mjs
+
       - name: "Geometry (header bars, focus box, warning icon: exact px)"
         run: node scripts/check-geometry.mjs
 
