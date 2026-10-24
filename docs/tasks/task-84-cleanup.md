@@ -12,10 +12,11 @@ Draft PR, one branch (`chore/84-cleanup`). No rendering change, no database, no 
    - `docs/govuk-audit.md`: the logo plate's colours, the contrast row, the own-CSS rule ("no px" except `RAW_PX`), the logo item's geometry, and the warning-text icon (task 83) added to the own-CSS list.
    - Grepped `docs/` (not `docs/tasks/`) for amber plate, `#ffb547`, 19/10, 16/12, 7 px focus box, 3 px hover bar, 32 px header. Left as they are, because they are still true: `docs/logo/README.md`'s enamel hero (backlog) and its logo-variant proposals, and the kickoff report (history).
 5. **`CLAUDE.md`:** a standing "Pixel perfect" rule under UI rules.
+6. **Contrast check (added, approved by Jakub):** `design/contrast.mjs` (CI's "Contrast" step) and `design/tokens.css` (documentation of the tokens) now give the logo plate as GOV.UK white `#ffffff` on the Generic header's black, not the old amber `#ffb547`. Nothing else in either file changes. `node design/contrast.mjs` passes (exit 0). Its rows match the docs: `logo-plate vs header-background` **19.59** (`brand.md` and `govuk-audit.md`: "logo plate white #ffffff on the black header | 19.59") and `logo-plate-focus vs focus` **14.55** (`brand.md`). `contrast.mjs` reads `web/app/tokens.css`, not `design/tokens.css`, so the plate value lives only in its own `govuk` map.
 
-## Not changed (outside this task's list)
+## Not changed
 
-`design/tokens.css` (`--logo-plate: #ffb547`) and `design/contrast.mjs` (`"logo-plate": "#ffb547"`, run in CI) still check the old amber plate against the header. The white plate passes easily (19.59 : 1), but the check describes the old header. That needs a follow-up task.
+`design/tokens.md` line 13 still says "The logo plate stays `#ffb547` on the Generic header's black bar". That is outside the two files approved here, so it needs Jakub's go-ahead.
 
 ## Proof that rendering does not change
 

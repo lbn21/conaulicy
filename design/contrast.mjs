@@ -85,7 +85,8 @@ const govuk = {
   "button-hover": "#0b5c3e",
   "secondary-button": "#f3f3f3",
   "header-background": "#0b0c0c",
-  "logo-plate": "#ffb547",
+  // The header plate: GOV.UK white on the Generic header's black (site.scss).
+  "logo-plate": "#ffffff",
   // The plate on keyboard focus: currentColor, i.e. focus-text (app/site.scss).
   "logo-plate-focus": "#0b0c0c",
 };
