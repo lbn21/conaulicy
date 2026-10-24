@@ -215,7 +215,7 @@ The GOV.UK footer carries the crown and "© Crown copyright" (https://design-sys
 
 Source: [GOV.UK colour](https://design-system.service.gov.uk/styles/colour/) and `govuk-frontend` 6.5.1 [`settings/_colours-palette--internal.scss`](https://github.com/alphagov/govuk-frontend/blob/v6.5.1/packages/govuk-frontend/src/govuk/settings/_colours-palette--internal.scss).
 
-**Method:** GOV.UK's steps are the primary colour mixed with white (tints) or black (shades) at fixed percentages. Checked: mixing `#1d70b8` this way reproduces GOV.UK's blue group exactly. The Latarnia group applies the same percentages to our accent `#9a5700`, and has a shade-10 like blue. The logo plate's amber `#ffb547` is unchanged and outside the palette.
+**Method:** GOV.UK's steps are the primary colour mixed with white (tints) or black (shades) at fixed percentages. Checked: mixing `#1d70b8` this way reproduces GOV.UK's blue group exactly. The Latarnia group applies the same percentages to our accent `#9a5700`, and has a shade-10 like blue. The logo plate is outside the palette: `#9a5700` on light, GOV.UK white on the black Generic header and the PDF's black band (tasks 78 and 79).
 
 | Group | primary | tint-25 | tint-50 | tint-80 | tint-95 | shade-10 | shade-25 | shade-50 |
 |---|---|---|---|---|---|---|---|---|
@@ -290,7 +290,7 @@ These ratios use the WCAG 2.x formula of `design/contrast.mjs`. They are **all n
 | border vs body-background | 1.57 | decorative divider (GOV.UK default); never the only cue |
 | brand vs body-background | 5.62 | UI pass |
 | Generic header text on black | 19.59 | AAA |
-| logo plate amber #ffb547 on the black header | 11.15 | UI pass |
+| logo plate white #ffffff on the black header | 19.59 | UI pass |
 
 ## Audit table
 
@@ -382,10 +382,11 @@ Light only is not a deviation: GOV.UK is light only. Any further deviation needs
 
 ## Own CSS: `web/app/site.scss` only
 
-**Allowed:** only what GOV.UK has no equivalent for, written with GOV.UK Sass functions and mixins (`govuk-spacing()`, `govuk-colour()` / `govuk-functional-colour()`, `govuk-font()`, `govuk-media-query()`, `govuk-focused-*`). No raw hex, no px.
-1. **Logo:** the "ul." plate inside `govuk-generic-header__homepage-link` (size and alignment).
+**Allowed:** only what GOV.UK has no equivalent for, written with GOV.UK Sass functions and mixins (`govuk-spacing()`, `govuk-colour()` / `govuk-functional-colour()`, `govuk-font()`, `govuk-media-query()`, `govuk-focused-*`). No raw hex, no px, except the exact declarations in `check-own-css`'s `RAW_PX`.
+1. **Logo:** the "ul." plate inside `govuk-generic-header__homepage-link`: white, 30 px tall, the GOV.UK header's logo geometry with padding 18/11 and `top: -2px` (the plate centred, 16 px above and below, in a 62 px bar), GOV.UK's hover and focus bars both 4 px and centred under the plate, and an even 6 px focus box round it (tasks 78 and 82).
 2. **Bin markers:** the waste-colour markers next to each fraction. The bin colours are real-world colours, so they're the only colours defined outside the GOV.UK palette (as Sass variables in this file).
 3. **Search suggestions:** the dropdown list under the `govuk-input`, with the highlighted row in the GOV.UK focus colours.
+4. **Warning-text icon:** `line-height: 28px` instead of GOV.UK's 29 px, so Atkinson's "!" sits 1 px higher, nearer the circle's centre (task 83).
 
 **Everything else uses GOV.UK:**
 - **Pickups:** the next pickup is a `govuk-summary-list` (date → fractions) under a `govuk-heading-m`; fractions are text plus the bin marker.
