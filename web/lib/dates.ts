@@ -76,3 +76,60 @@ export function relativeWord(
   if (iso === addDays(today, 1)) return "jutro";
   return null;
 }
+
+let offsetName: Intl.DateTimeFormat | undefined;
+
+/** Warsaw's UTC offset at an instant, in minutes (60 or 120). */
+function warsawOffset(at: number): number {
+  offsetName ??= new Intl.DateTimeFormat("en-US", {
+    timeZone: WARSAW,
+    timeZoneName: "longOffset",
+  });
+  const name =
+    offsetName.formatToParts(at).find((p) => p.type === "timeZoneName")
+      ?.value ?? "";
+  const match = /^GMT([+-])(\d{2}):(\d{2})$/.exec(name);
+  if (!match) return 0;
+  const minutes = Number(match[2]) * 60 + Number(match[3]);
+  return match[1] === "-" ? -minutes : minutes;
+}
+
+const WALL_TIME = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/;
+
+/**
+ * Warsaw wall time without a zone ("2026-10-25 08:00:00") as ISO 8601 with
+ * its offset ("2026-10-25T08:00:00+01:00"); null if it is not a real date
+ * and time. In the hour that happens twice (the last Sunday of October,
+ * 02:00-02:59) "earlier" takes the first, summer-time one and "later" the
+ * second; a time skipped in March moves forward an hour either way.
+ */
+export function warsawToIso(
+  wall: string,
+  pick: "earlier" | "later" = "earlier",
+): string | null {
+  const match = WALL_TIME.exec(wall);
+  if (!match) return null;
+  const [y, mo, d, h, mi, s = "00"] = match.slice(1);
+  const asUtc = Date.UTC(+y, +mo - 1, +d, +h, +mi, +s);
+  if (
+    new Date(asUtc).toISOString().slice(0, 19) !==
+    `${y}-${mo}-${d}T${h}:${mi}:${s}`
+  )
+    return null;
+  const fits = [120, 60].filter(
+    (offset) => warsawOffset(asUtc - offset * 60_000) === offset,
+  );
+  const offset = (pick === "later" ? fits.at(-1) : fits[0]) ?? 60;
+  return isoWithOffset(asUtc - offset * 60_000);
+}
+
+/** An instant as Warsaw ISO 8601 with its offset. */
+export function isoWithOffset(at: number): string {
+  const offset = warsawOffset(at);
+  const local = new Date(at + offset * 60_000).toISOString().slice(0, 19);
+  const sign = offset < 0 ? "-" : "+";
+  const abs = Math.abs(offset);
+  const hh = String(Math.floor(abs / 60)).padStart(2, "0");
+  const mm = String(abs % 60).padStart(2, "0");
+  return `${local}${sign}${hh}:${mm}`;
+}
