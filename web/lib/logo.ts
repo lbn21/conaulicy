@@ -8,7 +8,7 @@ import { PLATE as PLATE_PALETTE } from "./palette.ts";
 // in lib/palette.ts, the header's colour. In the header it is white instead.
 // Plain Node scripts import this file too (hence the relative .ts import).
 export const PLATE_COLOUR = PLATE_PALETTE;
-export const LOGO_WIDTH = 200.22;
+export const LOGO_WIDTH = 200.6;
 export const LOGO_HEIGHT = 34;
 export const PLATE_WIDTH = 41.32;
 export const PLATE =

@@ -10,6 +10,7 @@ Usage: python make_logo_a.py OUT_DIR   (needs fonttools, uharfbuzz)
 Writes SVGs plus measure.json (centring numbers for the debug overlay).
 """
 import json
+import math
 import os
 import subprocess
 import sys
@@ -214,7 +215,9 @@ def lockup(mode, uid="a"):
     gap = 0.34 * g["H"]
     mask, plate_el = flat_plate(g, plate, f"{uid}k")
     d, b, _ = run(BOLD, "conaulicy", word_size, g["W"] + gap, baseline, WORD_KERN)
-    width = b[2] + 0.5
+    # At least 0.5 past the ink, rounded up to whole px of the 30 px header,
+    # so the header's SVG box is the logo's and the plate starts on a whole px.
+    width = math.ceil((b[2] + 0.5) * 30 / g["H"]) * g["H"] / 30
     return svg(width, g["H"], plate_el + f'<path fill="{ink}" d="{d}"/>', defs=mask), dict(
         word_size=word_size, gap=gap, word_baseline=baseline, word_bounds=b,
         word_xheight_centre=baseline - word_size * BOLD.xh / 2, width=width)

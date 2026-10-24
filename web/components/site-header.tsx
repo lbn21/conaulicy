@@ -11,7 +11,7 @@ import {
 } from "@/lib/logo";
 
 // GOV.UK header's logotype height (components/header/_mixin.scss); the width
-// keeps the logo's aspect ratio, about 177.
+// keeps the logo's aspect ratio: 177, a whole px (make_logo_a.py).
 const HEIGHT = 30;
 const WIDTH = Math.round((HEIGHT * LOGO_WIDTH) / LOGO_HEIGHT);
 
