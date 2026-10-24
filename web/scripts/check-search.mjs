@@ -1,5 +1,5 @@
 // Checks the address search (alphagov accessible-autocomplete, which takes
-// over the field on first focus) on the home page at 360px and 1280px: the
+// over the field once the page is idle) on the home page at 360px and 1280px: the
 // result popup overlays the page (nothing below the field moves while it loads,
 // lists results, says "Brak wyników" or closes), follows the APG combobox
 // keyboard model, and its rows use the field's font family and size.
@@ -101,7 +101,6 @@ try {
         `${label} ${state}: option font ${row}, field ${field}`,
       );
     };
-    // The field is a plain input until first focus loads the library.
     await page.locator("#adres").click();
     const input = page.getByRole("combobox");
     const listbox = page.getByRole("listbox");
@@ -643,10 +642,11 @@ try {
     .catch(() => check(false, "fallback: /api/search did not answer"));
   await fallback.close();
 
-  // Typing straight after focus, before accessible-autocomplete has loaded,
-  // on Slow 4G + 4× CPU (as check-perf): no page error, the field stays,
-  // nothing typed is lost and the results appear. At 0 ms per key typing
-  // must end before the library mounts, so that path is really covered.
+  // Typing straight after load, before accessible-autocomplete has loaded
+  // (it does once the page is idle), on Slow 4G + 4× CPU (as check-perf): no
+  // page error, the field stays, nothing typed is lost and the results
+  // appear. At 0 ms per key typing must end before the library mounts, so
+  // that path is really covered.
   for (const delay of [0, 60, 150]) {
     const context = await browser.newContext({
       viewport: { width: 360, height: 800 },
@@ -654,7 +654,6 @@ try {
     const early = await context.newPage();
     const errors = [];
     early.on("pageerror", (error) => errors.push(error.message));
-    await early.goto(`${server.origin}/`, { waitUntil: "networkidle" });
     const cdp = await context.newCDPSession(early);
     await cdp.send("Network.emulateNetworkConditions", {
       offline: false,
@@ -663,6 +662,7 @@ try {
       uploadThroughput: (675 * 1024) / 8,
     });
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    await early.goto(`${server.origin}/`, { waitUntil: "commit" });
     const field = early.locator("#adres");
     await field.click();
     await field.pressSequentially("asnyka", { delay });

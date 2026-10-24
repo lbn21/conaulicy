@@ -40,8 +40,8 @@ function escapeHtml(text: string): string {
 }
 
 // The same field accessible-autocomplete renders (its classes, GOV.UK's
-// govuk-input), so nothing moves when it takes over on first focus. Named q,
-// as the library's field, so the form works before and without it.
+// govuk-input), so nothing moves when it takes over after load. Named q, as
+// the library's field, so the form works before and without it.
 function placeholder(
   value: string,
   inputClasses: string,
@@ -65,8 +65,11 @@ function optionText(option: Option): string {
 /**
  * The address search: a plain GET form to /szukaj, which works without JS,
  * enhanced with alphagov accessible-autocomplete, unmodified, set up through
- * its documented options only. It and the index of every place load on first
- * focus, not with the page; then each keystroke is matched on the device
+ * its documented options only. It loads once the page is idle, so the field
+ * a user taps is already its own: iOS opens the keyboard only for focus given
+ * in the tap itself, never for focus moved to a new field after an async
+ * import. The index of every place loads on first focus, not with the page;
+ * then each keystroke is matched on the device
  * ("Asnyka 12" carries the house number to ?nr=). If the index cannot load,
  * settled queries go to /api/search. As GOV.UK's default (no onConfirm),
  * choosing a suggestion (tap, click, or arrows and Enter) only fills the
@@ -96,7 +99,7 @@ export function AddressSearch({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    let started = false;
+    let cancelled = false;
     let note: Note = "none";
     let latest = "";
 
@@ -169,16 +172,14 @@ export function AddressSearch({
     }
 
     async function start() {
-      if (started) return;
-      started = true;
       const { default: accessibleAutocomplete } = await import(
         "accessible-autocomplete"
       );
       const old = container?.querySelector("input");
-      if (!container || !old) return;
+      if (cancelled || !container || !old) return;
       // Text in the field when the library loaded (the server's value on
       // /szukaj, or what was typed meanwhile), and whether the field had
-      // focus.
+      // focus (a tap before the page was idle).
       const typed = old.value;
       const focused = document.activeElement === old;
       // Render next to the placeholder and move focus to the new field in the
@@ -235,11 +236,14 @@ export function AddressSearch({
       input.dispatchEvent(new Event("input", { bubbles: true }));
     }
 
-    function onFocus() {
-      void start();
-    }
-    container.addEventListener("focusin", onFocus);
-    return () => container.removeEventListener("focusin", onFocus);
+    // Safari has no requestIdleCallback.
+    const idle = window.requestIdleCallback
+      ? window.requestIdleCallback(() => void start(), { timeout: 2000 })
+      : window.setTimeout(() => void start(), 200);
+    return () => {
+      cancelled = true;
+      (window.cancelIdleCallback ?? window.clearTimeout)(idle);
+    };
   }, [indexUrl, error, inputClasses]);
 
   return (
@@ -269,8 +273,8 @@ export function AddressSearch({
           )}
           <div
             ref={containerRef}
-            // accessible-autocomplete owns this element's children after first
-            // focus; React never touches them.
+            // accessible-autocomplete owns this element's children once the
+            // page is idle; React never touches them.
             // biome-ignore lint/security/noDangerouslySetInnerHtml: a static field (value escaped), replaced by accessible-autocomplete
             dangerouslySetInnerHTML={{
               __html: placeholder(value, inputClasses, Boolean(error)),

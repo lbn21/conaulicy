@@ -203,6 +203,30 @@ test("clear only when the first place matches better than the rest", () => {
   assert.equal(match("adama").clear, false);
 });
 
+// /szukaj opens one place only when clear (task 95): never for "a" (once
+// ul. Hetmana A. M. Sieniawskiego, on its initial) or "as".
+test("clear needs 3+ letters; an initial alone never wins", () => {
+  const top = (q: string) => match(q).hits[0]?.label;
+  for (const q of ["a", "A.", "a 12", "as"]) {
+    assert.equal(match(q).clear, false, q);
+  }
+  assert.notEqual(top("a"), "ul. Hetmana A. M. Sieniawskiego, Lubaczów");
+  assert.ok(match("a").hits.length > 1);
+  assert.equal(match("asn").clear, true);
+  assert.equal(top("asn"), "ul. Adama Asnyka, Lubaczów");
+  assert.equal(match("3 maja").clear, true);
+  assert.equal(top("3 maja"), "ul. 3-go Maja, Lubaczów");
+  assert.equal(match("mickewicza").clear, false);
+  assert.equal(top("mickewicza"), "ul. Adama Mickiewicza, Lubaczów");
+  assert.equal(match("basnia").clear, false);
+  assert.ok(match("basnia").hits.length > 1);
+  // A whole initial still narrows a longer query.
+  assert.equal(
+    top("a sieniawskiego"),
+    "ul. Hetmana A. M. Sieniawskiego, Lubaczów",
+  );
+});
+
 test("under 5 ms per query on the 330 places", () => {
   const queries = [...battery, ...heldOut].map(([q]) => q).concat(junk);
   const fresh = matcher(PLACES);
