@@ -1,6 +1,6 @@
 # IMGW meteo warnings
 
-What the site reads from IMGW-PIB and how (task 97). Code: `web/lib/imgw-warnings.ts`, `web/app/api/warnings/route.ts`; fixtures: `web/lib/imgw-fixture.ts`; dev mock: `web/lib/imgw-mock.ts`. Hydro warnings are out of scope (no powiat code, `DATA-INVENTORY.md` §5).
+What the site reads from IMGW-PIB and how (task 97) and the banner that shows it (task 98). Code: `web/lib/imgw-warnings.ts` (feed), `web/lib/imgw-banner.ts` (what the banner says), `web/components/imgw-banner.tsx` (the banner and its data cache); fixtures: `web/lib/imgw-fixture.ts`; dev mock: `web/lib/imgw-mock.ts`. Hydro warnings are out of scope (no powiat code, `DATA-INVENTORY.md` §5).
 
 ## Endpoint
 
@@ -49,53 +49,26 @@ IMGW issues warnings, changes (ZMIANA) and cancellations (ODWOŁANIE), but the J
 
 ## Terms: attribution
 
-The regulamin §5 requires, wherever the data is used, the source sentence, and for processed data also the processing sentence. We filter and convert times, so both. They live in `IMGW_ATTRIBUTION` and every `/api/warnings` answer carries them:
+The regulamin §5 requires, wherever the data is used, the source sentence, and for processed data also the processing sentence. We filter and convert times, so both. The banner's footer says them in one sentence (Jakub's wording, task 98):
 
-> Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy.
->
-> Dane Instytutu Meteorologii i Gospodarki Wodnej – Państwowego Instytutu Badawczego zostały przetworzone.
+> Źródłem pochodzenia danych jest IMGW-PIB; dane zostały przetworzone.
 
-## `GET /api/warnings?teryt=1809`
+## The banner
 
-`teryt` must be one of our powiats, else `400` (JSON). Any other query parameter is redirected away (`lib/clean-query.ts`).
+No public endpoint (task 98: `/api/warnings` was removed). The root layout renders `ImgwBanner`, a Server Component, at the top of `<main>` on every page: GOV.UK's notification banner (neutral, `role="region"`, `aria-labelledby`, govuk-frontend 6.5.1's markup) in a two-thirds column, before the page's own row, so before its h1 (and its caption, error summary or JSON-LD, where a page has them). No client JS. The brand colour is our palette's (Wiśnia).
 
-```json
-{
-  "state": "ok",
-  "teryt": "1809",
-  "fetchedAt": "2026-10-24T20:40:12+02:00",
-  "stale": false,
-  "warnings": [
-    {
-      "id": "Sk20261024094213061",
-      "event": "Silny wiatr",
-      "level": 1,
-      "probability": 75,
-      "validFrom": "2026-10-25T13:00:00+01:00",
-      "validTo": "2026-10-25T19:00:00+01:00",
-      "text": "Prognozuje się …",
-      "office": "Centralne Biuro Prognoz Meteorologicznych w Warszawie",
-      "published": "2026-10-24T11:42:00+02:00"
-    }
-  ],
-  "source": {
-    "url": "https://danepubliczne.imgw.pl/api/data/warningsmeteo",
-    "attribution": ["Źródłem pochodzenia danych …", "Dane … zostały przetworzone."]
-  }
-}
-```
+Warnings are powiat-wide, so every page shows the same banner (powiat `1809`, `POWIAT` in `lib/imgw-banner.ts`). Those in force or to come, highest level first, then by start; one banner, with a list when there are several:
 
-Warnings are those in force or to come, highest level first, then by start.
+- title „Ostrzeżenie IMGW” / „Ostrzeżenia IMGW”;
+- per warning: the event, a tag „Stopień N z 3” (yellow, orange, red: the text says the level too), „Obowiązuje teraz, do niedzieli 25 października, 19:00.” or „Od niedzieli 25 października, 13:00 do 19:00.” (the end's day too when it ends another day), then „Prawdopodobieństwo: 75%.” and `tresc` verbatim;
+- the link „Szczegóły i mapa na meteo.imgw.pl”;
+- the footer: „Dotyczy całego powiatu lubaczowskiego. Stan na HH:MM.”, „Nowszych danych nie udało się pobrać.” when the copy is stale, and the source sentence.
 
-| `state` | HTTP | `stale` | `warnings` | `Cache-Control` |
-|---|---|---|---|---|
-| `ok`: fetched in this 10-minute slot | 200 | false | list (maybe empty) | `public, s-maxage=600, stale-while-revalidate=3600` |
-| `stale`: IMGW failed; the newest copy from the last hour | 200 | true | list | `public, s-maxage=60` |
-| `unavailable`: IMGW failed and no copy from the last hour | 503 | false | `null` | `public, s-maxage=60` |
+Nothing at all (no "no warnings" text) when there is no warning, the newest copy is 3 hours old or older, or anything fails; the failure is logged. No dismiss button, no `role="alert"`.
 
-While the pre-launch gate is on, every answer is `private, no-store` (`lib/gate.ts`).
+**Rendering.** Pages stay static/ISR: the root layout sets `revalidate = 600`, so every page is regenerated at most every 10 minutes (/ulice was 3600, the static pages had none). A warning that ends is dropped at the next render.
 
-**Caching and last good.** Each copy of the whole feed is kept in Next.js's data cache, which every function instance shares, under its 10-minute slot (`unstable_cache`, kept 70 minutes). The first request in a slot fetches IMGW (5 s timeout); the rest read the copy, so IMGW sees at most about one request per 10 minutes. If the fetch fails, the route reads the previous six slots, newest first, without fetching, and serves the first copy it finds as `stale`. Nothing is in memory, so a cold instance falls back the same way.
+**Caching and last good.** Each copy of the whole feed is kept in Next.js's data cache, which every function instance shares, under its upstream and 10-minute slot (`unstable_cache`, kept 3 h 10 min). The first render in a slot fetches IMGW (5 s timeout); the rest read the copy, so IMGW sees at most about one request per 10 minutes. If the fetch fails, the previous 18 slots (3 hours) are read, without fetching, and the newest copy found is shown as stale; a copy 3 hours old or older is never shown. After a failure an instance leaves IMGW alone for a minute, so pages rendered per request (/szukaj) do not each wait for the timeout. A failing or slow IMGW never fails a build or a render.
 
 ## Configuration and the dev mock
 
@@ -108,9 +81,11 @@ While the pre-launch gate is on, every answer is `private, no-store` (`lib/gate.
 | `mock:1809` | **derived, not real**: the 24 Oct feed with `1809` added to its podkarpackie warning, moved so it began an hour ago (level 1) |
 | `mock:1809?level=3` | the same at level 1, 2 or 3 |
 | `mock:1809?start=upcoming` | the same, starting in three hours |
+| `mock:1809?start=night` | the same, starting at the next 22:00 at least two hours ahead (ends 4:00 the next day) |
+| `mock:1809?also=2` / `also=2,3` | one or two more 1809 warnings at those levels, also derived: two other items of the 24 Oct feed, moved with ours |
 | `…&fail=500` / `fail=html` / `fail=timeout` | a broken upstream (HTTP 500, an HTML page, no answer) |
 | `…&failAfter=2026-10-24T21:00:00Z` | the normal answer until then, then `fail` (500 by default) |
 
-Locally: put `IMGW_WARNINGS_URL=mock:1809?level=2` in `web/.env.local` (and the `db:local` settings), restart `next dev`. On a preview: add the variable for that branch only (`vercel env add IMGW_WARNINGS_URL preview <branch> --scope gdzie-zamieszkac`), then redeploy; remove it afterwards. CI sets `mock:none`, so the built site never asks IMGW. Unit tests cannot reach the network at all (`web/scripts/lib/no-network.mjs`, loaded by `npm test`).
+Locally: put `IMGW_WARNINGS_URL=mock:1809?level=2` in `web/.env.local` (and the `db:local` settings), restart `next dev`. On a preview: add the variable for that branch only (`vercel env add IMGW_WARNINGS_URL preview <branch> --scope gdzie-zamieszkac`), then redeploy; remove it afterwards. CI sets `mock:none`, so the built site never asks IMGW; `web/scripts/check-warnings.mjs` then checks every banner state on the built site, one server per state (a fake clock, `scripts/lib/fake-clock.mjs`, ages a kept copy for the stale states). Unit tests cannot reach the network at all (`web/scripts/lib/no-network.mjs`, loaded by `npm test`).
 
 **Never in production.** When `VERCEL_ENV` is `production` (Vercel sets it on every production function), `upstream()` ignores a `mock:` value, logs it, and uses the official endpoint. The mock module is loaded only after that check, and itself refuses to answer in production. There is no mock route or URL to reach. Both are covered by unit tests (`upstream: … the mock is refused in production`, `the mock … never in production`).
