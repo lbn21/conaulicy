@@ -3,10 +3,11 @@ import type { ListedPlace } from "@/lib/places";
 import { searchIndex } from "@/lib/schedule";
 import { placePath } from "@/lib/search";
 import { pageMetadata } from "@/lib/share";
+import { ALL_PLACES } from "@/lib/static-pages";
 
 export const metadata: Metadata = pageMetadata({
-  path: "/ulice",
-  title: "Wszystkie ulice i wsie",
+  path: ALL_PLACES.path,
+  title: ALL_PLACES.text,
   description:
     "Wszystkie ulice Lubaczowa i wsie gminy Lubaczów w jednym miejscu. Wybierz swoją i sprawdź, kiedy przyjedzie śmieciarka.",
 });
@@ -38,7 +39,7 @@ export default async function AllPlacesPage() {
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
-        <h1 className="govuk-heading-l">Wszystkie ulice i wsie</h1>
+        <h1 className="govuk-heading-l">{ALL_PLACES.text}</h1>
         <p className="govuk-body-l">
           Wybierz swoją ulicę albo wieś, żeby zobaczyć terminy wywozu śmieci.
         </p>

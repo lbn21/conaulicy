@@ -1,4 +1,5 @@
 import { cacheControl } from "@/lib/gate";
+import { NO_STORE } from "@/lib/headers";
 import { searchIndex } from "@/lib/schedule";
 
 // The search field's index (lib/schedule.ts searchIndex). The URL carries a
@@ -15,7 +16,7 @@ export async function GET(
   if (version !== index.version) {
     return Response.json([], {
       status: 404,
-      headers: { "Cache-Control": "no-store" },
+      headers: NO_STORE,
     });
   }
   return Response.json(index.places, {

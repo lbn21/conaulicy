@@ -13,11 +13,12 @@
 // - a page uses a govuk- or app- class that no rule in the compiled CSS
 //   (govuk.scss, site.scss, tokens.css) styles: a GOV.UK component missing
 //   from govuk.scss, or a typo. Hook-only classes are in HOOK_ONLY.
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
 import { compile } from "sass";
 import { writeBrandAssets } from "./brand-assets.ts";
+import { notSource, walk } from "./lib/files.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const ALLOWED = new Set([
@@ -79,16 +80,7 @@ const MAX_GZIP = 1000;
 
 const failures = [];
 
-function walk(dir, out = []) {
-  for (const name of readdirSync(dir)) {
-    if (name === "node_modules" || name.startsWith(".")) continue;
-    const full = path.join(dir, name);
-    if (statSync(full).isDirectory()) walk(full, out);
-    else out.push(path.relative(ROOT, full));
-  }
-  return out;
-}
-const files = walk(ROOT);
+const files = walk(ROOT, notSource).map((f) => path.relative(ROOT, f));
 
 for (const file of files.filter((f) => /\.(css|scss|sass)$/.test(f))) {
   if (!ALLOWED.has(file))

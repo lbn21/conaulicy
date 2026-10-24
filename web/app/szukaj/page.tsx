@@ -5,8 +5,15 @@ import { ErrorSummary } from "@/components/error-summary";
 import { withHouseNumber } from "@/lib/house";
 import { indexable } from "@/lib/indexing";
 import { searchIndex, searchIndexUrl, searchMatcher } from "@/lib/schedule";
-import { addresses, exactPlace, placeHref, type SearchHit } from "@/lib/search";
+import {
+  addresses,
+  exactPlace,
+  MAX_QUERY_LENGTH,
+  placeHref,
+  type SearchHit,
+} from "@/lib/search";
 import { pageMetadata } from "@/lib/share";
+import { ALL_PLACES } from "@/lib/static-pages";
 
 // The home page's search form, with or without JS, and above the results
 // the same field (components/address-search.tsx), filled with what was
@@ -32,7 +39,7 @@ async function outcome(
   const q = (typeof raw === "string" ? raw : "")
     .trim()
     .replace(/\s+/g, " ")
-    .slice(0, 100);
+    .slice(0, MAX_QUERY_LENGTH);
   if (!q) return { kind: "empty" };
   const { places } = await searchIndex();
   const exact = exactPlace(places, q);
@@ -117,8 +124,8 @@ export default async function SearchPage({
               <li>wpisać samą nazwę ulicy, na przykład Asnyka</li>
               <li>
                 znaleźć swój adres na liście{" "}
-                <a href="/ulice" className="govuk-link">
-                  Wszystkie ulice i wsie
+                <a href={ALL_PLACES.path} className="govuk-link">
+                  {ALL_PLACES.text}
                 </a>
               </li>
             </ul>

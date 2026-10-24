@@ -4,7 +4,9 @@ import {
   NextResponse,
 } from "next/server";
 import { cleanQuery } from "@/lib/clean-query";
+import { PRIVATE_NO_STORE, TEXT_PLAIN } from "@/lib/headers";
 import { NR_QUERY } from "@/lib/house";
+import { NOINDEX_NOFOLLOW } from "@/lib/indexing";
 import { movedPath } from "@/lib/places";
 import { sameSecret } from "@/lib/secret";
 
@@ -27,8 +29,8 @@ function authorized(header: string | null, expected: string): boolean {
 // already safe (see above), but routes send public s-maxage headers, which
 // would let a proxy between the visitor and Vercel keep an authorized copy.
 const GATED_HEADERS = {
-  "X-Robots-Tag": "noindex, nofollow",
-  "Cache-Control": "private, no-store",
+  ...NOINDEX_NOFOLLOW,
+  "Cache-Control": PRIVATE_NO_STORE,
 };
 
 const ADDRESS = /^\/adres\/([^/]+)\/?$/;
@@ -130,7 +132,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     return new NextResponse("User-agent: *\nDisallow: /\n", {
       headers: {
         ...GATED_HEADERS,
-        "Content-Type": "text/plain; charset=utf-8",
+        ...TEXT_PLAIN,
       },
     });
   }
@@ -141,7 +143,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
       headers: {
         ...GATED_HEADERS,
         "WWW-Authenticate": 'Basic realm="conaulicy", charset="UTF-8"',
-        "Content-Type": "text/plain; charset=utf-8",
+        ...TEXT_PLAIN,
       },
     });
   }

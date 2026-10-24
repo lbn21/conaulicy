@@ -69,3 +69,12 @@ export function finish(failures, summary) {
   console.log(summary);
   process.exit(0);
 }
+
+// The search field's index that a home page's HTML links
+// (/api/search-index/<hash>): its URL, and its [id, label, type] rows, none
+// when the page links no index.
+export async function searchIndexOf(origin, home) {
+  const url = /\/api\/search-index\/[\da-f]+/.exec(home)?.[0];
+  const places = url ? await (await fetch(`${origin}${url}`)).json() : [];
+  return { url, places };
+}

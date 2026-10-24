@@ -6,8 +6,10 @@ import { SITE_URL } from "@/lib/config.generated";
 import { longDate, monthTitle, weekdayShort } from "@/lib/date-labels";
 import { absoluteDay } from "@/lib/dates";
 import { datasetHeaders } from "@/lib/gate";
+import { TEXT_PLAIN } from "@/lib/headers";
 import { withHouseNumber } from "@/lib/house";
 import { NOINDEX } from "@/lib/indexing";
+import { LOCALE } from "@/lib/locale";
 import {
   LOGO_HEIGHT,
   PLATE,
@@ -422,7 +424,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     pdfVersion: "1.7",
     // Tagged, but no PDF/UA claim (subset) until it passes veraPDF.
     tagged: true,
-    lang: "pl-PL",
+    lang: LOCALE,
     displayTitle: true,
     font: REGULAR as unknown as string,
     info: {
@@ -599,8 +601,9 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       keySize * ASCENT + inkOf("regular", keySize, item.label).below,
       keyMid + keyMark * (item.swatch ? 0.75 : 0.6),
     );
+  const keyHeading = "Oznaczenia";
   doc.font("bold").fontSize(keySize);
-  const keyStart = MARGIN + doc.widthOfString("Oznaczenia") + keyItemGap;
+  const keyStart = MARGIN + doc.widthOfString(keyHeading) + keyItemGap;
 
   /** The key for the months on one page, laid out above the note. */
   const keyFor = (keys: string[]) => {
@@ -666,7 +669,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         .font("bold")
         .fontSize(keySize)
         .fillColor(BLACK)
-        .text("Oznaczenia", MARGIN, keyTop, { lineBreak: false });
+        .text(keyHeading, MARGIN, keyTop, { lineBreak: false });
     });
     const list = parent ? doc.struct("L") : null;
     if (parent && list) parent.add(list);
@@ -767,17 +770,23 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       });
     }
     // On the shared baseline, under the QR code.
+    const scanWidth = 170;
     tag(root, "P", () => {
       doc
         .font("regular")
         .fontSize(small)
         .fillColor(WHITE)
-        .text(scan, PAGE_W - MARGIN - 170, bandBaseline - small * ASCENT, {
-          width: 170,
-          align: "right",
-          lineBreak: false,
-          link: url,
-        });
+        .text(
+          scan,
+          PAGE_W - MARGIN - scanWidth,
+          bandBaseline - small * ASCENT,
+          {
+            width: scanWidth,
+            align: "right",
+            lineBreak: false,
+            link: url,
+          },
+        );
     });
     return bandH;
   };
@@ -1327,6 +1336,9 @@ function slug(text: string): string {
   return normalize(text).replaceAll(" ", "-");
 }
 
+// A redirect or a 404: an hour at the CDN, without stale-while-revalidate.
+const NO_STALE = "public, s-maxage=3600";
+
 export async function GET(
   request: Request,
   ctx: { params: Promise<{ id: string }> },
@@ -1341,7 +1353,7 @@ export async function GET(
       status: 308,
       headers: {
         Location: moved,
-        ...datasetHeaders("public, s-maxage=3600"),
+        ...datasetHeaders(NO_STALE),
       },
     });
   }
@@ -1349,8 +1361,8 @@ export async function GET(
     return new Response("Nie mamy harmonogramu dla tego adresu.", {
       status: 404,
       headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        ...datasetHeaders("public, s-maxage=3600"),
+        ...TEXT_PLAIN,
+        ...datasetHeaders(NO_STALE),
         ...NOINDEX,
       },
     });

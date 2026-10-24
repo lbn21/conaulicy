@@ -1,3 +1,4 @@
+import { PRIVATE_NO_STORE } from "@/lib/headers";
 import { DATASET } from "@/lib/schedule";
 
 // Pre-launch Basic Auth gate (see proxy.ts). While it is on, nothing may be
@@ -8,7 +9,7 @@ function gated(): boolean {
 }
 
 export function cacheControl(publicValue: string): string {
-  return gated() ? "private, no-store" : publicValue;
+  return gated() ? PRIVATE_NO_STORE : publicValue;
 }
 
 /**

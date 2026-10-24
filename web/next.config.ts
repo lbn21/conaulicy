@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 import { SITE_URL } from "./lib/config.generated";
+import { headerList } from "./lib/headers";
 import { NR_QUERY } from "./lib/house";
-import { indexable } from "./lib/indexing";
+import { indexable, NOINDEX, NOINDEX_NOFOLLOW } from "./lib/indexing";
 import { writeBrandAssets } from "./scripts/brand-assets";
 
 const nextConfig: NextConfig = {
@@ -52,19 +53,14 @@ const nextConfig: NextConfig = {
       return [
         {
           source: "/szukaj",
-          headers: [{ key: "X-Robots-Tag", value: "noindex" }],
+          headers: headerList(NOINDEX),
         },
       ];
     }
     return [
       {
         source: "/:path*",
-        headers: [
-          {
-            key: "X-Robots-Tag",
-            value: "noindex, nofollow",
-          },
-        ],
+        headers: headerList(NOINDEX_NOFOLLOW),
       },
     ];
   },

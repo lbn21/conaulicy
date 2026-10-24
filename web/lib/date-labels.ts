@@ -2,10 +2,11 @@
 // lib/dates.ts, which the client bundle imports.
 import "server-only";
 import { WARSAW, warsawNoon } from "@/lib/dates";
+import { LOCALE } from "@/lib/locale";
 
 /** Full date with year, safe to render on a static page. Example: "18 października 2026". */
 export function longDate(iso: string): string {
-  return new Intl.DateTimeFormat("pl-PL", {
+  return new Intl.DateTimeFormat(LOCALE, {
     timeZone: WARSAW,
     day: "numeric",
     month: "long",
@@ -17,7 +18,7 @@ export function longDate(iso: string): string {
 
 function part(iso: string, type: string, options: Intl.DateTimeFormatOptions) {
   return (
-    new Intl.DateTimeFormat("pl-PL", { timeZone: WARSAW, ...options })
+    new Intl.DateTimeFormat(LOCALE, { timeZone: WARSAW, ...options })
       .formatToParts(warsawNoon(iso))
       .find((p) => p.type === type)?.value ?? ""
   );

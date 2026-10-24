@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { WebAnalytics } from "@/components/web-analytics";
 import { SITE_URL } from "@/lib/config.generated";
 import { indexable } from "@/lib/indexing";
+import { LANG } from "@/lib/locale";
 import { HOME_TITLE, SHARE, SITE_NAME } from "@/lib/share";
 import { THEME_COLOR } from "@/lib/theme";
 import { atkinson } from "./fonts";
@@ -41,7 +42,7 @@ const supportScript = `document.body.className += ' js-enabled' + ('noModule' in
 // The GOV.UK page template (design-system.service.gov.uk/styles/page-template).
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pl" className={`govuk-template ${atkinson.variable}`}>
+    <html lang={LANG} className={`govuk-template ${atkinson.variable}`}>
       {/* The snippet adds classes to <body> before React hydrates. */}
       <body className="govuk-template__body" suppressHydrationWarning>
         <script

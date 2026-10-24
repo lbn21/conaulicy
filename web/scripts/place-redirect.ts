@@ -17,7 +17,7 @@
 // site: etl/sources.yaml site.url, or SITE_URL), VERCEL_AUTOMATION_BYPASS_SECRET.
 import { parseArgs } from "node:util";
 import pg from "pg";
-import { describeTarget } from "./lib/import-data.ts";
+import { fail, guardTarget } from "./lib/import-data.ts";
 import { databaseUrl } from "./lib/local-db.ts";
 import { revalidate } from "./lib/revalidate.ts";
 
@@ -31,11 +31,6 @@ const { values: args } = parseArgs({
   },
 });
 
-function fail(message: string): never {
-  console.error(`\n${message}`);
-  process.exit(1);
-}
-
 const { from, to, reason } = args;
 if (!from || !to || !reason)
   fail(
@@ -43,12 +38,7 @@ if (!from || !to || !reason)
   );
 const url = databaseUrl();
 if (!url) fail("DATABASE_URL_UNPOOLED or DATABASE_URL is not set.");
-const target = describeTarget(url, process.env);
-console.log(
-  `Target: ${target.label}${target.production ? ", PRODUCTION" : ""}. Mode: ${args.apply ? "APPLY" : "dry run"}.`,
-);
-if (args.apply && target.production && !args["yes-production"])
-  fail("This is the production database. Add --yes-production to write.");
+guardTarget(url, args);
 
 const client = new pg.Client({ connectionString: url });
 await client.connect();

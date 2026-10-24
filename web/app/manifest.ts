@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { LANG } from "@/lib/locale";
 import { SITE_NAME } from "@/lib/share";
 import { BACKGROUND_COLOR, THEME_COLOR } from "@/lib/theme";
 
@@ -8,7 +9,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: `${SITE_NAME} – wywóz śmieci w Lubaczowie i gminie`,
     short_name: SITE_NAME,
-    lang: "pl",
+    lang: LANG,
     start_url: "/",
     display: "standalone",
     background_color: BACKGROUND_COLOR,

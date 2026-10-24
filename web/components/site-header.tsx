@@ -1,14 +1,5 @@
-import {
-  LOGO_HEIGHT,
-  LOGO_WIDTH,
-  PLATE,
-  PLATE_WIDTH,
-  RIM,
-  RIM_WIDTH,
-  UL,
-  UL_TRANSFORM,
-  WORDMARK,
-} from "@/lib/logo";
+import { PlateMask } from "@/components/plate-mask";
+import { LOGO_HEIGHT, LOGO_WIDTH, PLATE, WORDMARK } from "@/lib/logo";
 
 // GOV.UK header's logotype height (components/header/_mixin.scss); the width
 // keeps the logo's aspect ratio: 177, a whole px (make_logo_a.py).
@@ -36,23 +27,7 @@ export function SiteHeader() {
                 viewBox={`0 0 ${LOGO_WIDTH} ${LOGO_HEIGHT}`}
                 className="app-logo"
               >
-                <mask
-                  id="logo-plate"
-                  maskUnits="userSpaceOnUse"
-                  x="0"
-                  y="0"
-                  width={PLATE_WIDTH}
-                  height={LOGO_HEIGHT}
-                >
-                  <path fill="#fff" d={PLATE} />
-                  <path
-                    fill="none"
-                    stroke="#000"
-                    strokeWidth={RIM_WIDTH}
-                    d={RIM}
-                  />
-                  <path d={UL} transform={UL_TRANSFORM} />
-                </mask>
+                <PlateMask id="logo-plate" />
                 <path
                   className="app-logo__plate"
                   mask="url(#logo-plate)"

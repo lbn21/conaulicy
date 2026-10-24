@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { AddressSearch } from "@/components/address-search";
 import { SITE_URL } from "@/lib/config.generated";
 import { HOME_EXAMPLES } from "@/lib/examples";
+import { LANG } from "@/lib/locale";
 import { examplePlaces, searchIndexUrl } from "@/lib/schedule";
 import { placeHref } from "@/lib/search";
 import { HOME_TITLE, pageMetadata, SITE_NAME } from "@/lib/share";
+import { ALL_PLACES } from "@/lib/static-pages";
 
 export const metadata: Metadata = pageMetadata({
   path: "/",
@@ -20,7 +22,7 @@ const WEBSITE = JSON.stringify({
   "@type": "WebSite",
   name: SITE_NAME,
   url: `${SITE_URL}/`,
-  inLanguage: "pl",
+  inLanguage: LANG,
 });
 
 export default async function Home() {
@@ -68,7 +70,7 @@ export default async function Home() {
             ))}
           </ul>
           <p className="govuk-body">
-            <a href="/ulice" className="govuk-link">
+            <a href={ALL_PLACES.path} className="govuk-link">
               Zobacz wszystkie ulice i wsie
             </a>
           </p>

@@ -1,13 +1,6 @@
+import { PlateMask } from "@/components/plate-mask";
 import { FEATURES } from "@/lib/config.generated";
-import {
-  PLATE,
-  PLATE_COLOUR,
-  PLATE_WIDTH,
-  RIM,
-  RIM_WIDTH,
-  UL,
-  UL_TRANSFORM,
-} from "@/lib/logo";
+import { LOGO_HEIGHT, PLATE, PLATE_COLOUR, PLATE_WIDTH } from "@/lib/logo";
 import { DISCLAIMER } from "@/lib/schedule-notes";
 import { STATIC_PAGES } from "@/lib/static-pages";
 
@@ -46,20 +39,9 @@ function FooterPlate() {
       className="govuk-!-margin-bottom-5"
       width="37"
       height="30"
-      viewBox={`0 0 ${PLATE_WIDTH} 34`}
+      viewBox={`0 0 ${PLATE_WIDTH} ${LOGO_HEIGHT}`}
     >
-      <mask
-        id="footer-plate"
-        maskUnits="userSpaceOnUse"
-        x="0"
-        y="0"
-        width={PLATE_WIDTH}
-        height="34"
-      >
-        <path fill="#fff" d={PLATE} />
-        <path fill="none" stroke="#000" strokeWidth={RIM_WIDTH} d={RIM} />
-        <path d={UL} transform={UL_TRANSFORM} />
-      </mask>
+      <PlateMask id="footer-plate" />
       <path fill={PLATE_COLOUR} mask="url(#footer-plate)" d={PLATE} />
     </svg>
   );

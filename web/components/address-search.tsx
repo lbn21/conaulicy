@@ -3,6 +3,7 @@
 import "accessible-autocomplete/dist/accessible-autocomplete.min.css";
 import { useEffect, useRef } from "react";
 import { withHouseNumber } from "@/lib/house";
+import { whenIdle } from "@/lib/idle";
 import {
   addresses,
   type Matcher,
@@ -236,13 +237,10 @@ export function AddressSearch({
       input.dispatchEvent(new Event("input", { bubbles: true }));
     }
 
-    // Safari has no requestIdleCallback.
-    const idle = window.requestIdleCallback
-      ? window.requestIdleCallback(() => void start(), { timeout: 2000 })
-      : window.setTimeout(() => void start(), 200);
+    const cancelIdle = whenIdle(() => void start(), 2000, 200);
     return () => {
       cancelled = true;
-      (window.cancelIdleCallback ?? window.clearTimeout)(idle);
+      cancelIdle();
     };
   }, [indexUrl, error, inputClasses]);
 

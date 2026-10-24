@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { whenIdle } from "@/lib/idle";
 
 // Vercel Web Analytics: anonymous page views and two events, no cookies
 // (see /prywatnosc). Production deployments only; the library and its script
@@ -39,18 +40,16 @@ function onClick(event: MouseEvent) {
 export function WebAnalytics({ enabled }: { enabled: boolean }) {
   useEffect(() => {
     if (!enabled) return;
-    let idle = 0;
+    let cancelIdle = () => {};
     const later = () => {
-      idle = window.requestIdleCallback
-        ? window.requestIdleCallback(() => void start(), { timeout: 5000 })
-        : window.setTimeout(() => void start(), 2000);
+      cancelIdle = whenIdle(() => void start(), 5000, 2000);
     };
     if (document.readyState === "complete") later();
     else window.addEventListener("load", later, { once: true });
     document.addEventListener("click", onClick);
     return () => {
       window.removeEventListener("load", later);
-      window.cancelIdleCallback?.(idle);
+      cancelIdle();
       document.removeEventListener("click", onClick);
     };
   }, [enabled]);

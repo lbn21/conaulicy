@@ -19,7 +19,7 @@
 // Runs against `next start` on the current build and the CI fixture.
 import { readFileSync } from "node:fs";
 import { request } from "node:http";
-import { finish, ROUTES, startServer } from "./lib/server.mjs";
+import { finish, ROUTES, searchIndexOf, startServer } from "./lib/server.mjs";
 
 const mode = process.argv
   .find((arg) => arg.startsWith("--expect="))
@@ -270,10 +270,7 @@ try {
   if (index) {
     // The places, from the index the running app links on the home page.
     const home = await (await fetch(`${server.origin}/`)).text();
-    const indexUrl = /\/api\/search-index\/[\da-f]{16}/.exec(home)?.[0];
-    const places = indexUrl
-      ? await (await fetch(`${server.origin}${indexUrl}`)).json()
-      : [];
+    const { places } = await searchIndexOf(server.origin, home);
     if (places.length === 0) failures.push("/: no search index");
     // Places without data: /ulice marks them, the sitemap leaves them out.
     const ulice = await (await fetch(`${server.origin}/ulice`)).text();

@@ -14,7 +14,7 @@ import { todayInWarsaw } from "../lib/dates.ts";
 import { eventId } from "./lib/import-data.ts";
 import { FIXTURE_IDS, fixture } from "./lib/import-fixture.ts";
 import { localDatabaseUrl } from "./lib/local-db.ts";
-import { finish, startServer } from "./lib/server.mjs";
+import { finish, searchIndexOf, startServer } from "./lib/server.mjs";
 
 const failures = [];
 const check = (ok, message) => {
@@ -156,10 +156,10 @@ try {
   );
   // The search field's index holds the same places as /api/search.
   const home = await page("/");
-  const indexUrl = home.text.match(/\/api\/search-index\/[0-9a-f]+/)?.[0];
-  const index = indexUrl
-    ? await (await fetch(`${server.origin}${indexUrl}`)).json()
-    : [];
+  const { url: indexUrl, places: index } = await searchIndexOf(
+    server.origin,
+    home.text,
+  );
   const labels = index.map(([, label]) => label);
   check(
     labels.includes("Dąbrowa (Basznia Górna, gm. Lubaczów)") &&

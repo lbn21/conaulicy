@@ -7,6 +7,7 @@
 
 import uFuzzy from "@leeoniya/ufuzzy";
 import { houseNumber, withHouseNumber } from "./house.ts";
+import { LANG } from "./locale.ts";
 import { normalize } from "./normalize.ts";
 import { CECHA_WORDS } from "./places.ts";
 
@@ -26,6 +27,9 @@ export type SearchIndex = Array<[id: string, label: string, type: string]>;
 
 /** Id of the home page's search element. */
 export const SEARCH_ID = "szukaj";
+
+/** A query is cut to this many characters (/szukaj and /api/search). */
+export const MAX_QUERY_LENGTH = 100;
 
 /** At most this many places in the list. */
 const SEARCH_LIMIT = 8;
@@ -326,7 +330,7 @@ export function matcher(index: SearchIndex): Matcher {
 }
 
 export function byLabel(a: SearchHit, b: SearchHit): number {
-  return a.label.localeCompare(b.label, "pl");
+  return a.label.localeCompare(b.label, LANG);
 }
 
 /**

@@ -4,6 +4,7 @@
 
 import type { Locality } from "./data-model.ts";
 import { type HouseRange, inRange, isPartial } from "./house.ts";
+import { LANG } from "./locale.ts";
 
 export function gminaShortName(name: string): string {
   return name.replace(/\s*\(.*\)$/, "");
@@ -203,11 +204,11 @@ export type PlaceList = {
   villages: Array<{ id: string | null; label: string; streets: ListedPlace[] }>;
 };
 
-const collator = new Intl.Collator("pl");
+const collator = new Intl.Collator(LANG);
 
 /** "A", "Ł", "Ż"; streets named from a number ("3 Maja") under "0–9". */
 function letterOf(name: string): string {
-  const letter = name.charAt(0).toLocaleUpperCase("pl");
+  const letter = name.charAt(0).toLocaleUpperCase(LANG);
   return /\d/.test(letter) ? "0–9" : letter;
 }
 

@@ -25,6 +25,21 @@ import { pageMetadata } from "@/lib/share";
 // /adres/[id]/numer (proxy.ts), which a split street answers with an error.
 // Canonical is always /adres/[id].
 
+// Where a page without dates sends people, before the gmina's own schedule.
+const UNTIL_THEN = "Do tego czasu sprawdź odbiory w harmonogramie gminy.";
+
+/** A link to the gmina's own schedule page, when we know it. */
+function GminaScheduleLink({ place }: { place: PlaceView }) {
+  if (!place.schedulePage) return null;
+  return (
+    <p className="govuk-body">
+      <a href={place.schedulePage} className="govuk-link">
+        {`Otwórz ${scheduleName(place.gmina)}`}
+      </a>
+    </p>
+  );
+}
+
 /**
  * The house-number error on a split street (GOV.UK validation pattern), or
  * null: a number no part of the street has, or no usable number at all.
@@ -196,16 +211,9 @@ export async function PlaceMain({
                 : "Tej wsi jeszcze nie mamy"}
             </h2>
             <p className="govuk-body">
-              Harmonogramu tu nie zgadujemy. Do tego czasu sprawdź odbiory w
-              harmonogramie gminy.
+              {`Harmonogramu tu nie zgadujemy. ${UNTIL_THEN}`}
             </p>
-            {place.schedulePage && (
-              <p className="govuk-body">
-                <a href={place.schedulePage} className="govuk-link">
-                  {`Otwórz ${scheduleName(place.gmina)}`}
-                </a>
-              </p>
-            )}
+            <GminaScheduleLink place={place} />
           </section>
         ) : !hasUpcoming(place.days, place.today) ? (
           // The schedule has ended and the next one is not in yet: no PDF
@@ -215,15 +223,9 @@ export async function PlaceMain({
               {NO_MORE_DATES}
             </h2>
             <p className="govuk-body">
-              {`${NO_MORE_DATES_NEXT} Do tego czasu sprawdź odbiory w harmonogramie gminy.`}
+              {`${NO_MORE_DATES_NEXT} ${UNTIL_THEN}`}
             </p>
-            {place.schedulePage && (
-              <p className="govuk-body">
-                <a href={place.schedulePage} className="govuk-link">
-                  {`Otwórz ${scheduleName(place.gmina)}`}
-                </a>
-              </p>
-            )}
+            <GminaScheduleLink place={place} />
           </section>
         ) : (
           <>
