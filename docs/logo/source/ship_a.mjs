@@ -13,9 +13,15 @@ const { chromium } = createRequire(path.join(web, "package.json"))("playwright")
 
 const svgText = (name) => readFileSync(path.join(logo, name), "utf8");
 const uri = (s) => `data:image/svg+xml;base64,${Buffer.from(s).toString("base64")}`;
-// A favicon frozen to the dark colours: PNG and ICO have no media queries.
-const dark = (name) => uri(svgText(name).replace(/@media[^{]*\{([\s\S]*?\})\}/, ""));
-const NIGHT = "#10141d";
+// A favicon in the light colours (the site is light only, task 26): the
+// #9A5700 plate with white "ul.", without the colour-scheme query.
+const light = (name) =>
+  svgText(name).replace(
+    /<style>[\s\S]*?<\/style>/,
+    "<style>.p{fill:#9A5700}.t{fill:#FFF}</style>",
+  );
+// The app tiles are white, the page background (BACKGROUND_COLOR in web/lib/theme.ts).
+const TILE = "#ffffff";
 
 const browser = await chromium.launch();
 
@@ -28,11 +34,11 @@ async function png(html, size, transparent) {
 }
 
 const img = (src, width) => `<img src="${src}" width="${width}" style="display:block">`;
-// The 32-px favicon on a night tile; radius 0 = full bleed (Apple rounds the
+// The 32-px favicon on a white tile; radius 0 = full bleed (Apple rounds the
 // corners itself; maskable icons are cut by the launcher, mark in the 80 % circle).
 const tile = (size, scale, radius) =>
   png(
-    `<div style="width:${size}px;height:${size}px;background:${NIGHT};border-radius:${size * radius}px;display:grid;place-items:center">${img(dark("a-favicon.svg"), size * scale)}</div>`,
+    `<div style="width:${size}px;height:${size}px;background:${TILE};border-radius:${size * radius}px;display:grid;place-items:center">${img(uri(light("a-favicon.svg")), size * scale)}</div>`,
     [size, size],
     radius > 0,
   );
@@ -63,19 +69,11 @@ mkdirSync(pub, { recursive: true });
 writeFileSync(
   path.join(app, "favicon.ico"),
   ico([
-    [16, await png(img(dark("a-favicon-16.svg"), 16), [16, 16], true)],
-    [32, await png(img(dark("a-favicon.svg"), 32), [32, 32], true)],
+    [16, await png(img(uri(light("a-favicon-16.svg")), 16), [16, 16], true)],
+    [32, await png(img(uri(light("a-favicon.svg")), 32), [32, 32], true)],
   ]),
 );
-// The site is light only (task 26): the tab icon keeps the light colours and
-// drops the colour-scheme query. PNG and ICO stay on the night tile.
-writeFileSync(
-  path.join(app, "icon.svg"),
-  svgText("a-favicon.svg").replace(
-    /<style>[\s\S]*?<\/style>/,
-    "<style>.p{fill:#9A5700}.t{fill:#FFF}</style>",
-  ),
-);
+writeFileSync(path.join(app, "icon.svg"), light("a-favicon.svg"));
 writeFileSync(path.join(app, "apple-icon.png"), await tile(180, 0.74, 0));
 writeFileSync(path.join(pub, "icon-192.png"), await tile(192, 0.74, 0.22));
 writeFileSync(path.join(pub, "icon-512.png"), await tile(512, 0.74, 0.22));
