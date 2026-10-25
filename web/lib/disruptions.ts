@@ -23,7 +23,7 @@ export type DisruptionScope =
   | { type: "unknown" };
 
 /** A locality or a street, by our ids (TERYT: SIMC, SIMC-SYM_UL). */
-export type DisruptionPlace = {
+type DisruptionPlace = {
   localityId: string;
   streetId: string | null;
 };

@@ -1,78 +1,20 @@
-// Deterministic checks of what the model read from a ZUK post (lib/zuk-ai.ts)
-// against the post's own text. Pure. Every value must be in the text: the
-// day and month (or inside an "od D.M do D.M" range), the weekday if
-// written, the times, the place phrase; and the place phrase must not leave
-// out a street, house numbers or "w części" that the text gives with it.
-// From that phrase, not from the model, come the house numbers and the
-// hamlet. Any doubt is a reason: a day or time drops the post to a Notice,
-// a place drops only that item (lib/zuk.ts).
+// The repo's own checks of a ZUK item, on top of the place gate
+// (lib/zuk-resolve.ts, which checks the day is written): stricter, so they
+// stay. Pure. The day near the post's dates, the times in the text, a
+// night span; with no note, the place written once on its own, nothing
+// left out that the text adds to it (house numbers, "w części", a
+// bracket); and the houses (the scope) read from the note. Any doubt is a
+// reason: a day or time drops the post to a Notice, a place drops only that
+// item (lib/zuk.ts).
 
 import { addDays } from "./dates.ts";
 import type { DisruptionScope } from "./disruptions.ts";
 import { normalize } from "./normalize.ts";
 import type { AiItem } from "./zuk-ai.ts";
 
-const WEEKDAYS = [
-  "niedziela",
-  "poniedziałek",
-  "wtorek",
-  "środa",
-  "czwartek",
-  "piątek",
-  "sobota",
-];
-
 /** Lower case, one kind of dash and space: what the guards compare. */
 function normText(text: string): string {
   return text.replace(/[–—−]/g, "-").replace(/\s+/g, " ").toLowerCase().trim();
-}
-
-function realDate(iso: string): boolean {
-  const d = new Date(`${iso}T12:00:00Z`);
-  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === iso;
-}
-
-/**
- * Null if the day and month are in the text (in that year, if it gives
- * one) with the right weekday where one is written, or inside an
- * "od D.M(.Y) do D.M(.Y)" range; else the reason.
- */
-export function checkDate(iso: string, text: string): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso) || !realDate(iso))
-    return `no such date ${iso}`;
-  const [y, m, d] = iso.split("-").map(Number);
-  const t = normText(text);
-  const literal = new RegExp(
-    `(?<!\\d)0?${d}\\.0?${m}(?:\\.(\\d{4}))?(?!\\d)`,
-    "g",
-  );
-  let found = false;
-  for (const hit of t.matchAll(literal)) {
-    if (hit[1] && Number(hit[1]) !== y) continue;
-    found = true;
-    const after = t.slice(hit.index + hit[0].length);
-    const named = /^\s*r?\.?\s*\(\s*([^)\s]+)\s*\)/.exec(after)?.[1];
-    if (named && WEEKDAYS.includes(named)) {
-      const weekday = WEEKDAYS[new Date(`${iso}T12:00:00Z`).getUTCDay()];
-      if (named !== weekday)
-        return `${iso} is a ${weekday}, text says ${named}`;
-    }
-  }
-  if (found) return null;
-  const DM = String.raw`(\d{1,2})\.(\d{1,2})(?:\.(\d{4}))?`;
-  const range = new RegExp(
-    `od\\s+${DM}\\s*r?\\.?\\s*(?:\\([^)]*\\))?\\s*do\\s+${DM}`,
-    "g",
-  );
-  for (const r of t.matchAll(range)) {
-    const at = (dd: string, mm: string, yy: string | undefined) =>
-      `${yy ?? y}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
-    const from = at(r[1], r[2], r[3]);
-    const to = at(r[4], r[5], r[6]);
-    if (!realDate(from) || !realDate(to) || to > addDays(from, 31)) continue;
-    if (from <= iso && iso <= to) return null;
-  }
-  return `${d}.${m} not in the text`;
 }
 
 /** The time ("08:00") is in the text as "8:00", "08:00" or "8.00". */
@@ -95,7 +37,6 @@ const validTime = (t: string) =>
 const QUALIFIER =
   /^(?:(?:i\s+)?od\s+(?:nr\.?|numer\p{L}*)?\s*\d+(?![\d:.]\d)|nr\.?\s*\d|numer|w\s+częś|ul\.|ulic|os\.|al\.|\((?![^)]*\d)([^)]*)\))/u;
 const PART_BEFORE = /w\s+częś\p{L}*(?:\s+miejscowości)?\s*$/u;
-const STREET_WORD = /(?<!\p{L})(?:ul\.|ulica|ulice)(?!\p{L})/u;
 
 function occurrences(haystack: string, needle: string): number[] {
   const at: number[] = [];
@@ -111,19 +52,22 @@ function occurrences(haystack: string, needle: string): number[] {
 /**
  * Null if every place in the text that `verbatim` names is the whole of
  * it: no house numbers, street, "w części" or bracket left out. A qualified
- * occurrence is fine only inside another item's longer phrase, or when the
- * qualifier starts another item's phrase ("Bałaje, ul. Przemysłowa
- * (Lubaczów)"). At least one occurrence must be plain.
+ * occurrence is fine only when its qualifier is another item's note of the
+ * same place (`claimed`), or when it starts another place's phrase
+ * (`others`: "Bałaje, ul. Przemysłowa (Lubaczów)"). At least one
+ * occurrence must be plain.
  */
 export function checkOmission(
   verbatim: string,
   locality: string,
   others: string[],
+  claimed: string[],
   text: string,
 ): string | null {
   const t = normText(text);
   const v = normText(verbatim);
   const rest = others.map(normText).filter((o) => o !== v);
+  const notes = claimed.map(normText);
   let plain = false;
   for (const p of occurrences(t, v)) {
     const e = p + v.length;
@@ -141,12 +85,11 @@ export function checkOmission(
       plain = true;
       continue;
     }
-    const inside = rest.some(
-      (o) =>
-        o.length > v.length &&
-        occurrences(t, o).some((s) => s <= p && s + o.length >= e),
+    // The qualifier right before or after it is another item's note.
+    const owned = notes.some((n) =>
+      occurrences(t, n).some((s) => s >= p - n.length - 3 && s <= q),
     );
-    if (!inside) return `"${verbatim}" leaves out what the text adds to it`;
+    if (!owned) return `"${verbatim}" leaves out what the text adds to it`;
   }
   return plain ? null : `"${verbatim}" not named on its own`;
 }
@@ -159,34 +102,17 @@ const SINGLE = /(?:nr\.?|numer)\s*(\d{1,4}[a-z]?)(?![\d])/gu;
 const HAMLET = /\(\s*przysiół\p{L}*\s+([^)]+?)\s*\)/u;
 
 /**
- * Houses and hamlet from the place phrase: what follows the street (or the
- * locality). Anything there we do not read is a reason.
+ * Houses and hamlet from the item's note (one literal piece of the post,
+ * lib/zuk-resolve.ts): house ranges or numbers, "(przysiółek X)". No note:
+ * the whole place. Anything else in it ("w części", parity, an unlisted
+ * part's name): part of the place, houses unknown. A range running
+ * backwards, or ranges and numbers mixed, is a reason.
  */
-export function deriveScope(item: AiItem): Derived | string {
-  const v = normText(item.place_verbatim);
-  const loc = normText(item.locality);
-  const at = v.indexOf(loc);
-  if (at < 0)
-    return `locality "${item.locality}" not in "${item.place_verbatim}"`;
-  let tail: string;
-  if (item.street) {
-    const s = normText(item.street);
-    const sAt = v.lastIndexOf(s);
-    if (sAt < 0)
-      return `street "${item.street}" not in "${item.place_verbatim}"`;
-    tail = v.slice(sAt + s.length);
-  } else {
-    if (STREET_WORD.test(v))
-      return `"${item.place_verbatim}" names a street, the item none`;
-    tail = v.slice(at + loc.length);
-  }
-  let partial = /w\s+częś/u.test(v.slice(0, at));
+export function noteScope(note: string | null): Derived | string {
+  if (note === null) return { scope: { type: "whole" }, hamlet: null };
+  let tail = normText(note);
   const hamlet = HAMLET.exec(tail)?.[1] ?? null;
-  tail = tail.replace(HAMLET, " ").replace(`(${loc})`, " ");
-  if (item.note) {
-    partial = true;
-    tail = tail.replace(normText(item.note), " ");
-  }
+  tail = tail.replace(HAMLET, " ");
   const ranges = [...tail.matchAll(RANGE)].map((r) => ({
     from: r[1],
     to: r[2],
@@ -195,23 +121,21 @@ export function deriveScope(item: AiItem): Derived | string {
   const numbers = [...tail.matchAll(SINGLE)].map((r) => r[1]);
   tail = tail.replace(SINGLE, " ");
   const residue = tail
-    .replace(/(?<!\p{L})(?:numery|i|oraz|w\s+części)(?!\p{L})/gu, " ")
+    .replace(/(?<!\p{L})(?:numery|i|oraz)(?!\p{L})/gu, " ")
     .replace(/[\s,:;.()-]+/g, "");
-  if (residue) return `cannot read "${residue}" in "${item.place_verbatim}"`;
   if (
     ranges.some((r) => Number.parseInt(r.from, 10) > Number.parseInt(r.to, 10))
   )
-    return `a house range runs backwards in "${item.place_verbatim}"`;
+    return `a house range runs backwards in "${note}"`;
   if (ranges.length > 0 && numbers.length > 0)
-    return `ranges and numbers in "${item.place_verbatim}"`;
-  const scope: DisruptionScope =
-    ranges.length > 0
+    return `ranges and numbers in "${note}"`;
+  const scope: DisruptionScope = residue
+    ? { type: "unknown" }
+    : ranges.length > 0
       ? { type: "ranges", ranges }
       : numbers.length > 0
         ? { type: "numbers", numbers }
-        : partial
-          ? { type: "unknown" }
-          : { type: "whole" };
+        : { type: "whole" };
   return { scope, hamlet };
 }
 
@@ -222,13 +146,9 @@ export type When = {
   endEstimated: boolean;
 };
 
-export type Checked = Derived & When;
-
 type ItemContext = {
   /** The post's title and body. */
   text: string;
-  /** Every item's place phrase. */
-  others: string[];
   publishedAt: string;
   updatedAt: string;
 };
@@ -240,8 +160,6 @@ type ItemContext = {
  */
 export function checkWhen(item: AiItem, context: ItemContext): When | string {
   const { text } = context;
-  const date = checkDate(item.date, text);
-  if (date) return date;
   if (
     item.date < addDays(context.publishedAt.slice(0, 10), -1) ||
     item.date > addDays(context.updatedAt.slice(0, 10), 31)
@@ -270,37 +188,4 @@ export function checkWhen(item: AiItem, context: ItemContext): When | string {
       (item.kind === "emergency" ||
         /przewidywan\p{L}*\s+wznowien/u.test(normText(text))),
   };
-}
-
-/** The item's place phrase: literal, nothing left out, read to the end. */
-export function checkPlace(
-  item: AiItem,
-  context: Pick<ItemContext, "text" | "others">,
-): Derived | string {
-  const t = normText(context.text);
-  if (!t.includes(normText(item.place_verbatim)))
-    return `"${item.place_verbatim}" not in the text`;
-  if (item.note && !t.includes(normText(item.note)))
-    return `note "${item.note}" not in the text`;
-  const derived = deriveScope(item);
-  if (typeof derived === "string") return derived;
-  const omission = checkOmission(
-    item.place_verbatim,
-    item.locality,
-    context.others,
-    context.text,
-  );
-  return omission ?? derived;
-}
-
-/** Every guard on one item of a post: its day and times, then its place. */
-export function checkItem(
-  item: AiItem,
-  context: ItemContext,
-): Checked | string {
-  const when = checkWhen(item, context);
-  if (typeof when === "string") return when;
-  const place = checkPlace(item, context);
-  if (typeof place === "string") return place;
-  return { ...place, ...when };
 }

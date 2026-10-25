@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { test } from "node:test";
 import { systemPrompt } from "./sources/gmina-lubaczow/prompt.ts";
 import { costUsd, parseAiResult, readWithAi, ZUK_MODEL } from "./zuk-ai.ts";
@@ -48,7 +49,9 @@ test("request: grok-4.7, reasoning low, temperature 0, strict schema", async () 
   assert.equal(body.temperature, 0);
   assert.equal(body.response_format.json_schema.strict, true);
   const item = body.response_format.json_schema.schema.properties.items.items;
-  assert.ok(item.required.includes("place_verbatim"));
+  assert.ok(item.required.includes("locality_verbatim"));
+  assert.ok(item.required.includes("street_verbatim"));
+  assert.ok(!("place_verbatim" in item.properties));
   assert.ok(item.required.includes("note"));
   assert.ok(!("houses" in item.properties));
   assert.equal(body.messages[0].role, "system");
@@ -94,14 +97,22 @@ test("schema check: every field, with its type", () => {
     delete item[key];
     return JSON.stringify({ ...good, items: [item] });
   };
-  for (const key of ["date", "place_verbatim", "note", "kind", "locality"])
+  for (const key of [
+    "date",
+    "locality_verbatim",
+    "street_verbatim",
+    "note",
+    "kind",
+    "locality",
+  ])
     assert.equal(parseAiResult(drop(key)), null, key);
   const bad = (over: object) =>
     JSON.stringify({ ...good, items: [{ ...good.items[0], ...over }] });
   assert.equal(parseAiResult(bad({ start: "8:00" })), null);
   assert.equal(parseAiResult(bad({ date: "26.10.2026" })), null);
   assert.equal(parseAiResult(bad({ kind: "revoked" })), null);
-  assert.equal(parseAiResult(bad({ place_verbatim: " " })), null);
+  assert.equal(parseAiResult(bad({ locality_verbatim: " " })), null);
+  assert.equal(parseAiResult(bad({ street_verbatim: "" })), null);
   assert.equal(parseAiResult('{"items": []}'), null);
 });
 
@@ -126,6 +137,21 @@ test("schema check: post_type and quality_status, the quality item kind", () => 
     items: [{ ...good.items[0], start: null, end: null, kind: "quality" }],
   };
   assert.deepEqual(parseAiResult(JSON.stringify(quality)), quality);
+});
+
+test("request: the schema is schema-v31.json, as is", async () => {
+  const { calls, fetcher } = xai(200, JSON.stringify(reading(39865)));
+  await readWithAi(INPUT, SYSTEM, "test-key", fetcher);
+  const { json_schema } = JSON.parse(
+    calls[0].init.body as string,
+  ).response_format;
+  // SHA-256 of the handoff's schema-v31.json, parsed and written compact.
+  assert.equal(
+    createHash("sha256")
+      .update(JSON.stringify(json_schema.schema))
+      .digest("hex"),
+    "d8e2f8a27eaec5f985cbad93d286c8f239c2241ef83c0beae060b798606ff649",
+  );
 });
 
 test("request: post_type and quality_status required, quality items allowed", async () => {

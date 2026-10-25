@@ -1,13 +1,15 @@
 // The prompt for posts of the gmina Lubaczów's site (lib/zuk-ai.ts reads
-// with it): what a post is (post_type), the rules for its items, then a
-// context of our own places (systemPrompt). With the rules and context
-// grok-4.7 scored 330/330 place-days on 24 hand-checked posts, 0 wrong
-// (A/B test, 25 Oct 2026, reasoning low, temp. 0); the post_type section
-// is Jakub's (X8, 25 Oct 2026).
+// with it), v3.1: the rules (what a post is, post_type, Jakub's X8 text;
+// the item and place-name rules, every example name invented), then a
+// context of our own places built from the TERYT snapshot (systemPrompt):
+// the town, villages, village parts and every street per locality. The
+// rules are a fixed prefix, the context last. Measured offline on 263 real
+// posts (task 114b): 263/263 classified, 0 wrong places.
 
 import type { ZukPlaces } from "../../zuk-resolve.ts";
 
-const SYSTEM = `You read posts from the website of gmina Lubaczów (Poland). Most are not about water. First decide post_type from the whole post, then extract items only for water posts.
+/** rules-v31.txt, byte for byte (8,029 bytes, no trailing newline). */
+const RULES = `You read posts from the website of gmina Lubaczów (Poland). Most are not about water. First decide post_type from the whole post, then extract items only for water posts.
 
 post_type:
 - "water_outage": the post announces or reports an interruption or limitation of the public water supply: planned works ("przerwa w dostawie wody", "wyłączenie wody"), a failure ("awaria sieci wodociągowej", "brak wody", "spadek ciśnienia"), or an update, extension or change of dates of such an interruption ("aktualizacja", "wydłużenie", "zmiana terminu"). The supplier may be named in any form ("ZUK", "Zakład Usług Komunalnych", "Zakładu Usług Komunalnych w Mokrzycy", "Wójt Gminy") or not at all.
@@ -29,33 +31,45 @@ Examples (title -> post_type):
 Rules:
 - One item per (day, locality, street). If a locality lists several streets, emit one item per street, repeating the locality.
 - A multi-day notice gets one item per day per place. A night span (e.g. 'w nocy z 21.12 na 22.12, 22:00-5:00') is ONE item dated on the first day, start 22:00, end 05:00.
-- 'ul.'/'ulica' after a comma belongs to the locality before it: 'Młodów, ul. Pilipy' = locality Młodów, street Pilipy. Never drop a street, house range or 'w części' qualifier.
-- place_verbatim is copied exactly from the text, the shortest phrase that contains the locality and this item's street, plus its house numbers, '(przysiółek …)' or other bracket if any: 'Młodów – ul. Warszawska, Rzeczna' for the street Rzeczna, 'ul. Przemysłowa (Lubaczów)', 'w części miejscowości Bałaje'.
-- note: a qualifier that narrows the place ('w części miejscowości', 'gospodarstwa zasilane z SUW Mokrzyca'), copied exactly; otherwise null.
-- Copy locality and street verbatim from the text (keep Polish diacritics). Never add places, dates or times that are not in the text. If something is unclear, leave it out.
+- 'ul.'/'ulica' after a comma belongs to the locality before it: 'Przykładów, ul. Próbna' = locality Przykładów, street Próbna. Never drop a street, house range or 'w części' qualifier.
+- Never add places, dates or times that are not in the text. If something is unclear, leave it out.
 - kind is 'emergency' for a failure (awaria), else 'planned'. For an estimated restore ('przewidywane wznowienie do godz. 19.00') use that time as end.
-- Use the publish date only to resolve a year if missing. Do not guess.`;
+- Use the publish date only to resolve a year if missing. Do not guess.
+- For water_quality: one item per affected place; date = day the warning starts (or the publish date if the text says it applies now), start/end null, kind "quality". For "lifted": items name the places where the warning ends, date = day it ends.
+- For post_type "other": items = [].
 
-const PLACE_RULES = `Place-name rules (they override 'copy locality verbatim' only for the locality field):
-- locality is the town or village the text names, written exactly as in the list above. Change only case, spacing, dashes or a missing diacritic; never pick a different place.
-- A name not on the list that is attached to a listed village ('Załuże–Podłęże', 'Załuże (Podłęże)'): locality = that village ('Załuże'), note = the unlisted name exactly as written ('Podłęże'). Never invent where an unlisted name lies.
-- 'X (przysiółek Y)' or 'X ... (przysiółek Y)': locality = the village X; keep the bracket in place_verbatim. Example: 'Basznia Górna od nr 121 do nr 144 (przysiółek Dąbrowa)' -> locality 'Basznia Górna'.
-- A bare name that is both a village and a village part (e.g. 'Dąbrowa') is the village.
+Place fields of an item (v3). The names below are invented examples, not real places:
+- locality: the canonical name from the context list at the end (nominative, exactly as listed), even when the post inflects it: 'w Przykładowie' -> 'Przykładów'. For a village part whose name is listed more than once, write it with its village exactly as listed, e.g. 'Górki (Wzorowo)'.
+- locality_verbatim: the exact substring of the post that names this item's locality, as written (it may be inflected): 'Przykładowie'. Only the name itself, without 'w', 'miejscowości', 'ul.' or numbers. If the post also writes this locality exactly as in the context list anywhere (title or text), copy that exact form instead of an inflected one: post 'w Przykładowie … Przykładów' -> 'Przykładów'.
+- street: the canonical street name from the context list for that locality (the full name as listed): written 'ul. Nowakowskiego', listed 'Jana Nowakowskiego' -> 'Jana Nowakowskiego'; written 'os. Testowe', listed 'Osiedle Testowe' -> 'Osiedle Testowe'. If the street is not on the list for that locality, write the street name as it appears in the post, without 'ul.'. null when the whole locality is meant.
+- street_verbatim: the exact substring of the post that names the street, as written, with its type word if the post has one: 'ul. Nowakowskiego', 'os. Testowe', 'Wzorcowa'. null when street is null. Never include house numbers.
+- When a locality is named once above or before a list of streets ('w miejscowości Przykładów:' followed by lines '- ul. Wzorcowa – …', '- ul. Próbna – …', or 'Przykładów ulice: Wzorcowa, Próbna'), every item of that list gets that locality, and locality_verbatim is that one mention.
+- 'os. X' or 'osiedle X' after a comma belongs to the locality before it, as a street: 'Przykładów, os. Testowe' -> locality 'Przykładów', street 'Osiedle Testowe', street_verbatim 'os. Testowe'. Never widen it to the whole village and never use it as a locality.
+- street is the name only, never house numbers. Any limitation within a street or a locality (house ranges, odd or even numbers, 'od numeru', 'w części', specific buildings, households supplied from a given station) MUST go into note, copied in the post's wording: '- ul. Przykładowa – numery nieparzyste od 1 do 15' -> street 'Przykładowa', street_verbatim 'ul. Przykładowa', note 'numery nieparzyste od 1 do 15'; 'w części miejscowości Wzorowo' -> locality 'Wzorowo', note 'w części miejscowości'; 'Wzorowo od nr 10 do nr 20' -> note 'od nr 10 do nr 20'. Otherwise note is null.
+- note is ONE continuous piece of the post, copied character for character: never join separate pieces, never add, drop or reorder words. It contains only this item's limitation and never names any other place, listed or not: 'części miejscowości Wzorowo od numeru 5 do numeru 9 i Zalesie Nowe od numeru 1' -> for Wzorowo note 'od numeru 5 do numeru 9' (Zalesie Nowe is a different place, not part of the note). The only names allowed in note are the unlisted part name and the '(przysiółek …)' bracket described in the place-name rules.
+
+Place-name rules (the names in the examples are invented):
+- locality is the town or village the text names, written exactly as in the context list. Change only case, spacing, dashes or a missing diacritic; never pick a different place.
+- A name not on the list that is attached to a listed village ('Wzorowo–Zagórze', 'Wzorowo (Zagórze)'): locality = that village ('Wzorowo'), note = the unlisted name exactly as written ('Zagórze'). Never invent where an unlisted name lies.
+- 'X (przysiółek Y)' or 'X ... (przysiółek Y)': locality = the village X; keep the bracket in note. Example: 'Przykładów od nr 10 do nr 20 (przysiółek Górki)' -> locality 'Przykładów', note 'od nr 10 do nr 20 (przysiółek Górki)'.
+- A bare name that is both a village and a village part (e.g. 'Górki', listed as a village and as a part of another village) is the village.
 - A village part named on its own, without its village: locality = the part's name.
-- 'Młodów, ul. Pilipy' / 'Młodów ul. Pilipy' is the street Pilipy in Młodów: locality 'Młodów', street 'Pilipy'.
-- street, place_verbatim and note are always copied exactly from the text, never normalized. Never output ids or places not in the text.`;
+- 'Przykładów, ul. Próbna' / 'Przykładów ul. Próbna' is the street Próbna in Przykładów: locality 'Przykładów', street 'Próbna'.
+- locality_verbatim, street_verbatim and note are always copied exactly from the text, never normalized. Never output ids or places not in the text.`;
 
-// Code-point order, so the prompt is byte-for-byte the same for the same
+// Code-unit order, so the prompt is byte-for-byte the same for the same
 // places (a cacheable prefix).
 const sorted = (names: string[]) => [...names].sort();
+const byCode = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
- * The system prompt: the rules, then our localities (town, villages, village
- * parts with their village; no streets, which made the readings worse), then
- * the place-name rules. Built from the places the resolver uses, so it
- * follows the data.
+ * The context: the town, villages, village parts with their village, names
+ * used more than once, then the streets of each locality that has any (the
+ * town first, then by name and id), each by its TERYT name (NAZWA_2
+ * NAZWA_1, never the CECHA). Throws if a locality with streets shares its
+ * name: its line would not say which one.
  */
-export function systemPrompt(places: ZukPlaces): string {
+function context(places: ZukPlaces): string {
   const byId = new Map(places.localities.map((l) => [l.id, l]));
   const names = (kind: string) =>
     sorted(
@@ -75,13 +89,37 @@ export function systemPrompt(places: ZukPlaces): string {
   const twice = sorted(
     [...seen].filter(([, n]) => n > 1).map(([name]) => name),
   );
-  return `${SYSTEM}
-
-Context: the places in our database. ZUK Mokrzyca supplies water to the villages of gmina Lubaczów and to some streets of the town Lubaczów.
+  const streets = new Map<string, string[]>();
+  for (const s of places.streets)
+    streets.set(s.localityId, [...(streets.get(s.localityId) ?? []), s.name]);
+  const order = [...streets.keys()]
+    .map((id) => {
+      const l = byId.get(id);
+      if (!l) throw new Error(`streets of an unknown locality ${id}`);
+      return l;
+    })
+    .sort(
+      (a, b) =>
+        Number(a.kind !== "miasto") - Number(b.kind !== "miasto") ||
+        byCode(a.name, b.name) ||
+        byCode(a.id, b.id),
+    );
+  for (const l of order)
+    if ((seen.get(l.name) ?? 0) > 1)
+      throw new Error(`streets of a shared name: ${l.name}`);
+  const lines = order.map(
+    (l) => `${l.name}: ${sorted(streets.get(l.id) ?? []).join(", ")}`,
+  );
+  return `Context: the places in our database (TERYT). ZUK Mokrzyca supplies water to the villages of gmina Lubaczów and to some streets of the town Lubaczów.
 Town (miasto): ${names("miasto")}
 Villages (wieś): ${names("wies")}
 Village parts (część wsi, przysiółek), each with its village: ${parts}
 Names used more than once: ${twice.join(", ")}.
-${PLACE_RULES}
-`;
+Streets, by locality (canonical TERYT names; a locality not listed here has no streets in TERYT):
+${lines.join("\n")}`;
+}
+
+/** The system prompt: the rules, then the context of `places`. */
+export function systemPrompt(places: ZukPlaces): string {
+  return `${RULES}\n\n${context(places)}\n`;
 }

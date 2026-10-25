@@ -107,9 +107,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ACTIONS_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-      # lib/zuk-places.generated.ts (the ZUK resolver's tests on all our
-      # places) must still be what the archived TERYT files give: this job
-      # alone can read the archive, PR CI cannot.
+      # lib/zuk-places.generated.ts (what the ZUK prompt and gate read, in
+      # production and CI) must still be what the archived TERYT files
+      # give: this job alone can read the archive, PR CI cannot.
       - name: ZUK places snapshot
         if: ${{ !cancelled() && inputs.mode == 'apply' }}
         working-directory: web

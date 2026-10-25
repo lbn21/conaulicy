@@ -146,7 +146,7 @@ test("first run: every new post read, at most four, the rest next run", async ()
   assert.equal(summary.aiCalls, 4);
   assert.equal(w.writes.length, 1);
   const file = saved(w);
-  assert.equal(file.version, 2);
+  assert.equal(file.version, 3);
   assert.equal(file.checkedAt, EARLIER.toISOString());
   assert.equal(file.generatedAt, EARLIER.toISOString());
   // No keyword gate: the fox post is stored too.
@@ -205,16 +205,18 @@ test("items over: itemCount keeps what was read", async () => {
   assert.ok((over?.itemCount ?? 0) > 0);
 });
 
-test("a version 1 file: every post read again", async () => {
-  const w = world();
-  await runZuk(deps(w));
-  const old = JSON.parse(w.file ?? "");
-  w.file = JSON.stringify({ ...old, version: 1 });
-  w.aiCalls = [];
-  w.now = new Date(NOW.getTime() + 60_000);
-  await runZuk(deps(w));
-  assert.deepEqual(w.aiCalls, [39885, FOX]);
-  assert.equal(saved(w).version, 2);
+test("a version 1 or 2 file: every post read again", async () => {
+  for (const version of [1, 2]) {
+    const w = world();
+    await runZuk(deps(w));
+    const old = JSON.parse(w.file ?? "");
+    w.file = JSON.stringify({ ...old, version });
+    w.aiCalls = [];
+    w.now = new Date(NOW.getTime() + 60_000);
+    await runZuk(deps(w));
+    assert.deepEqual(w.aiCalls, [39885, FOX], String(version));
+    assert.equal(saved(w).version, 3);
+  }
 });
 
 test("unchanged posts: no model call, no places query, results kept", async () => {
@@ -381,7 +383,8 @@ const qualityItem = (locality: string, date = "2026-10-24") => ({
   end: null,
   locality,
   street: null,
-  place_verbatim: locality,
+  locality_verbatim: locality,
+  street_verbatim: null,
   note: null,
   kind: "quality" as const,
 });
@@ -438,7 +441,7 @@ test("post_type water_quality: no place passing the gate, no places", async () =
   assert.ok(w.logs.some((l) => l.zuk === "ai" && l.places === 0));
 });
 
-test("post_type water_quality: a day not in the text is not kept", async () => {
+test("post_type water_quality: a day not in the text drops that place", async () => {
   const w = world({
     posts: [QUALITY],
     readings: {
@@ -451,8 +454,14 @@ test("post_type water_quality: a day not in the text is not kept", async () => {
   await runZuk(deps(w));
   const post = byId(w, NEW);
   assert.equal(post?.qualityStatus, "lifted");
-  assert.equal(post?.places?.length, 1);
-  assert.equal(post?.places?.[0].date, null);
+  assert.deepEqual(post?.places, []);
+  assert.ok(
+    w.logs.some(
+      (l) =>
+        l.zuk === "ai" &&
+        JSON.stringify(l.dropped) === '["item 1: 30.10 not in text"]',
+    ),
+  );
 });
 
 test("keywords and the model disagree: logged, the model decides", async () => {

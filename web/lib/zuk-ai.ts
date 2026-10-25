@@ -24,13 +24,15 @@ export type AiItem = {
   /** HH:MM or null. */
   start: string | null;
   end: string | null;
-  /** As written: "Lubaczów", "Załuże–Podłęże". */
+  /** Our name from the prompt's list: "Lubaczów", "Dąbrowa (Basznia Górna)". */
   locality: string;
-  /** As written, without "ul.": "Pilipy"; null for the whole locality. */
+  /** The post's own words for it, exactly: "Lubaczów". */
+  locality_verbatim: string;
+  /** Our street name from the list ("Jana III Sobieskiego"); null if none. */
   street: string | null;
-  /** The exact phrase naming this place: "Młodów, ul. Pilipy". */
-  place_verbatim: string;
-  /** The text's own qualifier: "w części miejscowości", or null. */
+  /** The post's own words for it: "ul. Sobieskiego"; null if no street. */
+  street_verbatim: string | null;
+  /** The place's limitation, one exact quote: "od nr 104 do nr 110". */
   note: string | null;
   /** "quality" for a water_quality post's places. */
   kind: "planned" | "emergency" | "quality";
@@ -61,11 +63,7 @@ export type AiReading = {
   latencyMs: number;
 };
 
-const nullable = (type: string, description: string) => ({
-  type: [type, "null"],
-  description,
-});
-
+/** schema-v31.json (task 114b), as is. */
 const SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -87,8 +85,6 @@ const SCHEMA = {
     },
     items: {
       type: "array",
-      description:
-        "[] for other. For water_quality: one item per affected place; date = day the warning starts (or the publish date if the text says it applies now), start/end null, kind 'quality'; for 'lifted', the places where the warning ends, date = day it ends.",
       items: {
         type: "object",
         additionalProperties: false,
@@ -97,8 +93,9 @@ const SCHEMA = {
           "start",
           "end",
           "locality",
+          "locality_verbatim",
           "street",
-          "place_verbatim",
+          "street_verbatim",
           "note",
           "kind",
         ],
@@ -108,29 +105,43 @@ const SCHEMA = {
             format: "date",
             description: "day the interruption starts, YYYY-MM-DD",
           },
-          start: nullable("string", "HH:MM, null if not stated"),
-          end: nullable(
-            "string",
-            "HH:MM, null if not stated; may be on the next day for night spans",
-          ),
+          start: {
+            type: ["string", "null"],
+            description: "HH:MM, null if not stated",
+          },
+          end: {
+            type: ["string", "null"],
+            description:
+              "HH:MM, null if not stated; may be on the next day for night spans",
+          },
           locality: {
             type: "string",
-            description: "locality name copied exactly as written in the text",
+            description: "canonical locality name from the context list",
           },
-          street: nullable(
-            "string",
-            "street name copied exactly as written, without 'ul.'; null if the whole locality",
-          ),
-          place_verbatim: {
+          locality_verbatim: {
             type: "string",
             description:
-              "the shortest exact substring of the text naming this place: from the locality through this item's street, with its house numbers and qualifiers, e.g. 'Młodów, ul. Pilipy', 'Opaka od nr 104 do nr 110'",
+              "exact substring of the post naming the locality as written, may be inflected",
           },
-          note: nullable(
-            "string",
-            "a qualifier of the place copied exactly, e.g. 'w części miejscowości', 'gospodarstwa zasilane z SUW Mokrzyca'; null if none",
-          ),
-          kind: { type: "string", enum: ["planned", "emergency", "quality"] },
+          street: {
+            type: ["string", "null"],
+            description:
+              "canonical street name from the context list for that locality (as written if not listed); null if the whole locality",
+          },
+          street_verbatim: {
+            type: ["string", "null"],
+            description:
+              "exact substring of the post naming the street, e.g. 'ul. Polna', 'os. Testowe'; no house numbers; null if street is null",
+          },
+          note: {
+            type: ["string", "null"],
+            description:
+              "the place's limitation as ONE continuous exact quote from the post (house ranges, 'w części miejscowości', unlisted part name, '(przysiółek …)'); never another place; null if none",
+          },
+          kind: {
+            type: "string",
+            enum: ["planned", "emergency", "quality"],
+          },
         },
       },
     },
@@ -160,8 +171,9 @@ function isItem(v: unknown): v is AiItem {
     isTime(i.start) &&
     isTime(i.end) &&
     isText(i.locality) &&
+    isText(i.locality_verbatim) &&
     orNull(i.street) &&
-    isText(i.place_verbatim) &&
+    orNull(i.street_verbatim) &&
     orNull(i.note) &&
     (i.kind === "planned" || i.kind === "emergency" || i.kind === "quality")
   );

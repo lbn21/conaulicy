@@ -3,7 +3,7 @@
 // Pure, so the tests run it as is.
 //
 // {
-//   version: 2,
+//   version: 3,
 //   generatedAt,  // ISO: when `posts` last changed
 //   checkedAt,    // ISO: the last successful read of the gmina's posts
 //   posts: [{
@@ -25,10 +25,12 @@
 //   }]
 // }
 //
-// Version 1 (no itemCount, no item label) is still read: the pages show it
-// as it is, and the cron reads every post again. Version 2 files written
-// before the model's post_type (task 114) hold only keyword-filtered posts: read
-// as they are, those posts kept, the others new to the cron and read.
+// Older versions are still read: the pages show them as they are, and the
+// cron reads every post again. Version 1: no itemCount, no item label.
+// Version 2: read with the v1 prompt and gate (place_verbatim); its first
+// files hold only keyword-filtered posts. Version 3 (task 114b): the v3.1
+// prompt and gate, `where` the post's own street or locality and the
+// houses in `note`.
 
 import { todayInWarsaw } from "./dates.ts";
 import type { Disruption, Notice } from "./disruptions.ts";
@@ -36,7 +38,7 @@ import { current, noticeUntil, SOURCE_NAME, type WarningPlace } from "./zuk.ts";
 import type { AiUsage } from "./zuk-ai.ts";
 
 export const ZUK_PATHNAME = "zuk/disruptions.json";
-export const ZUK_FILE_VERSION = 2;
+export const ZUK_FILE_VERSION = 3;
 
 /** Older than this, the data may be out of date: show the source link. */
 export const STALE_MS = 60 * 60_000;
@@ -80,7 +82,7 @@ export type StoredPost = {
 };
 
 export type ZukFile = {
-  version: typeof ZUK_FILE_VERSION | 1;
+  version: typeof ZUK_FILE_VERSION | 2 | 1;
   generatedAt: string;
   checkedAt: string;
   posts: StoredPost[];
@@ -90,7 +92,7 @@ export type ZukFile = {
 export function parseZukFile(body: string): ZukFile | null {
   try {
     const file = JSON.parse(body) as ZukFile;
-    return (file?.version === ZUK_FILE_VERSION || file?.version === 1) &&
+    return [ZUK_FILE_VERSION, 2, 1].includes(file?.version) &&
       typeof file.checkedAt === "string" &&
       Array.isArray(file.posts)
       ? file
