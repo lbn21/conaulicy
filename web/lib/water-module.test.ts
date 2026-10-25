@@ -5,6 +5,7 @@ import type { Disruption } from "./disruptions.ts";
 import { type Alert, alertSlot, checkedLine } from "./hub.ts";
 import type { PlaceView } from "./schedule.ts";
 import {
+  KROWICA_RANGE,
   mockFile,
   POST_39885,
   storedPost,
@@ -143,14 +144,7 @@ test("matching: a village part takes its own cuts, not its village's", () => {
 });
 
 test("matching: house numbers in a village with streets, the village and every street, any nr", () => {
-  // Krowica Sama's numbering runs on across its streets (zuk.ts).
-  const krowica = cut({
-    place: { localityId: "0606180", streetId: null },
-    label: { locality: "Krowica Sama", parent: null, street: null },
-    where: "Krowica Sama od nr 10 do nr 50",
-    scope: { type: "ranges", ranges: [{ from: "10", to: "50" }] },
-    note: "od nr 10 do nr 50",
-  });
+  const krowica = cut(KROWICA_RANGE);
   assert.equal(
     matches({ localityId: "0606180", streetId: null }, krowica),
     true,

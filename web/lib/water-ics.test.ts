@@ -3,7 +3,13 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import type { Disruption } from "./disruptions.ts";
 import type { PlaceView } from "./schedule.ts";
-import { POST_39885, storedPost, testPlace, zukFile } from "./water-fixture.ts";
+import {
+  KROWICA_RANGE,
+  POST_39885,
+  storedPost,
+  testPlace,
+  zukFile,
+} from "./water-fixture.ts";
 import {
   calendarCuts,
   waterCalendar,
@@ -198,11 +204,7 @@ test("house numbers in a village with streets: the village's UID, the range as w
   const krowica: Disruption = {
     ...base,
     uid: "zuk-39885-2026-10-26-0606180",
-    place: { localityId: "0606180", streetId: null },
-    label: { locality: "Krowica Sama", parent: null, street: null },
-    where: "Krowica Sama od nr 10 do nr 50",
-    scope: { type: "ranges", ranges: [{ from: "10", to: "50" }] },
-    note: "od nr 10 do nr 50",
+    ...KROWICA_RANGE,
   };
   // From a street page of the village: the same event.
   const osiedle = {
