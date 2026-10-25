@@ -1,7 +1,6 @@
 // What the weather module (lib/modules.ts) says on the address page: IMGW's
 // warnings for the powiat, filtered as the banner (lib/imgw-banner.ts), from
 // the same copy of the feed. Pure, so the unit tests read every state.
-import { clockTime, longDate, warsawDay } from "./date-labels.ts";
 import type { Alert, Part, SummaryRow } from "./hub.ts";
 import { type Banner, banner, fresh, IMGW_PAGE } from "./imgw-banner.ts";
 import type { Feed } from "./imgw-warnings.ts";
@@ -57,13 +56,11 @@ export function weatherSummary(data: Weather): SummaryRow[] | null {
   ];
 }
 
-/** „Źródło”: IMGW's page, when the copy was fetched, and if it is stale. */
+/** „Źródło”: IMGW's page, and if the copy is stale. */
 export function weatherSources(data: Weather): Part[][] {
-  const at = data.fetchedAt;
   return [
     [
       { href: IMGW_PAGE, text: SHORT },
-      `, sprawdzono ${longDate(warsawDay(at))}, ${clockTime(at)}`,
       ...(data.stale ? [". Nowszych danych nie udało się pobrać"] : []),
     ],
   ];

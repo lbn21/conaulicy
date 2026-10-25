@@ -11,16 +11,16 @@
 //   first (h3 „Śmieci”, „Szczegóły – śmieci” to /smieci, ?nr= kept), its
 //   rows (Najbliższy odbiór with an absolute date, Pojemniki, Źródło), no
 //   calendar, PDF or IMGW banner, „Bez zapowiedzi” with the weather and its
-//   source; „Ostatnio sprawdziliśmy” (the latest import that read the
-//   sources) under the card's last source and after the weather's line
-//   (IMGW's fetchedAt); headings h1 → h2 → h3 with no skips; the fixture's dates are
+//   source; „Ostatnio sprawdziliśmy” (the day events.checkedAt, no time)
+//   under the card's last source and after the weather's line (IMGW's
+//   fetchedAt, with its time), each module's one freshness text; headings h1 → h2 → h3 with no skips; the fixture's dates are
 //   unverified: one short „Uwaga” sentence linking the gmina's schedule,
 //   while /smieci keeps the full note;
 // - a split street without a number: the card asks for it, linking /smieci;
 //   with one, the card has its date; an unknown number keeps the street
 //   page's error (GOV.UK's validation pattern);
-// - /smieci: caption, h1 „Odbiór śmieci”, the checked line, the calendar
-//   and the PDF;
+// - /smieci: caption, h1 „Odbiór śmieci”, the checked line (its one
+//   freshness text), the calendar and the PDF;
 // - a house number on a street with one schedule: both pages say, right
 //   under the h1, that it changes nothing; never on a split street, a
 //   village or without a number;
@@ -49,9 +49,12 @@ const MLODOW_STREET = "/adres/0606286-24550";
 const VILLAGE_PART = "/adres/0606300";
 const BARE_VILLAGE_PART = "/adres/0606027";
 const MAIN = /<main[\s\S]*<\/main>/;
-// The CI fixture's latest import that read the sources (failed, blocked,
-// dry runs and undos after it are not checks): the waste module's line.
-const WASTE_CHECKED = "Ostatnio sprawdziliśmy: 20 października, 6:12";
+// The waste module's line: the CI fixture's events.checkedAt, the day it
+// was made (a day, so no time).
+const WASTE_CHECKED = String.raw`Ostatnio sprawdziliśmy: \d{1,2} \p{L}+`;
+// Freshness texts besides that line (tasks 118-120: one per module).
+const FRESHNESS = /Ostatnio sprawdziliśmy|sprawdzono|Stan na/g;
+const freshness = (html) => html.match(FRESHNESS)?.length ?? 0;
 const DATE = String.raw`\p{L}+, \d{1,2} \p{L}+`;
 const NOTE = sharedNumberNote({
   kind: "ulica",
@@ -202,7 +205,7 @@ try {
     )
       fail(path, "no „Bez zapowiedzi” line for the water");
     if (
-      !/<\/p><p class="govuk-body">Pogoda: brak ostrzeżeń IMGW\. Źródło: <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">IMGW-PIB<\/a>, sprawdzono /.test(
+      !/<\/p><p class="govuk-body">Pogoda: brak ostrzeżeń IMGW\. Źródło: <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">IMGW-PIB<\/a>\.(?:<!-- -->)? Ostatnio sprawdziliśmy: /.test(
         hub,
       )
     )
@@ -215,13 +218,16 @@ try {
         "su",
       ).test(hub)
     )
-      fail(path, `no „${WASTE_CHECKED}” under the waste card's source`);
+      fail(path, "no day-only checked line under the waste card's source");
     if (
       !/<p class="govuk-body">Pogoda: brak ostrzeżeń IMGW\.(?:(?!<\/p>).)* Ostatnio sprawdziliśmy: \d{1,2} \p{L}+, \d{1,2}:\d{2}\.<\/p>/su.test(
         hub,
       )
     )
       fail(path, "no checked line after the weather");
+    // Waste's and the weather's lines; the water has no file in CI.
+    if (freshness(hub) !== 2)
+      fail(path, `${freshness(hub)} freshness texts, not one per module`);
     if (
       !/<dt class="govuk-summary-list__key">Uwaga<\/dt><dd class="govuk-summary-list__value">Daty odczytaliśmy automatycznie, sprawdź je w <a href="https:\/\/[^"]+" class="govuk-link">harmonogramie gminy<\/a>\.<\/dd>/.test(
         hub,
@@ -257,8 +263,10 @@ try {
       fail(waste, "no calendar or PDF");
     if (!sub.main.includes('id="pickups-heading"')) fail(waste, "no pickups");
     if (!sub.main.includes(UNVERIFIED_NOTE)) fail(waste, "no unverified note");
-    if (!sub.main.includes(`>${WASTE_CHECKED}</p>`))
-      fail(waste, `no „${WASTE_CHECKED}”`);
+    if (!new RegExp(`>${WASTE_CHECKED}</p>`, "u").test(sub.main))
+      fail(waste, "no day-only checked line");
+    if (freshness(sub.main) !== 1)
+      fail(waste, `${freshness(sub.main)} freshness texts, not one`);
     if (/govuk-notification-banner/.test(sub.main))
       fail(waste, "the IMGW banner");
     headingsInOrder(waste, sub.main);

@@ -1,4 +1,4 @@
-import { checkedLine } from "@/lib/hub";
+import { type Checked, checkedLine } from "@/lib/hub";
 
 /**
  * When a module last checked its source (Module.checkedAt), in one place
@@ -10,7 +10,7 @@ export function CheckedLine({
   as: Tag = "p",
   className = "",
 }: {
-  at: Date | null;
+  at: Checked;
   as?: "p" | "span";
   className?: string;
 }) {

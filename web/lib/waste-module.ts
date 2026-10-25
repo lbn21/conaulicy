@@ -2,9 +2,8 @@
 // page, from today's street page data (PlaceView, unchanged). Pure, so the
 // unit tests need no database.
 import type { PlaceView } from "@/lib/schedule";
-import { longDate } from "./date-labels.ts";
 import { absoluteDay } from "./dates.ts";
-import type { Part, SummaryRow } from "./hub.ts";
+import type { Checked, Part, SummaryRow } from "./hub.ts";
 import { placePath, scheduleName } from "./places.ts";
 import {
   hasUpcoming,
@@ -102,17 +101,20 @@ export function wasteSummary(place: PlaceView): SummaryRow[] {
   return rows;
 }
 
-/** One „Źródło” row per source: its link, its part, when it was checked. */
+/** One „Źródło” row per source: its link and its part. */
 export function wasteSources(place: PlaceView): Part[][] {
   const name = scheduleName(place.gmina);
   return place.sources.map((source) => [
     source.url ? { href: source.url, text: name } : name,
     `, ${source.label}`,
-    ...(source.checkedAt ? [`, sprawdzono ${longDate(source.checkedAt)}`] : []),
   ]);
 }
 
-/** When the import last read the sources: „Ostatnio sprawdziliśmy …”. */
-export function wasteChecked(place: PlaceView): Date | null {
-  return place.importedAt ? new Date(place.importedAt) : null;
+/**
+ * The day we last compared the place's sources with the originals
+ * (events.checkedAt), the oldest of several: „Ostatnio sprawdziliśmy …”.
+ */
+export function wasteChecked(place: PlaceView): Checked {
+  const days = place.sources.flatMap((s) => (s.checkedAt ? [s.checkedAt] : []));
+  return days.toSorted()[0] ?? null;
 }

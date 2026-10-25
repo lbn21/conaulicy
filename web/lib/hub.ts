@@ -2,6 +2,7 @@
 // what a module gives it, and the alert slot's rules. Pure, so the unit
 // tests read it.
 import { clockTime, dayMonth } from "./date-labels.ts";
+import { warsawNoon } from "./dates.ts";
 
 /** A link; `hidden` follows its text for screen readers only. */
 type Link = { href: string; text: string; hidden?: string };
@@ -57,11 +58,20 @@ export function warningCount(n: number): string {
 }
 
 /**
- * When a module last checked its source, in Polish time, absolute: "Ostatnio
- * sprawdziliśmy: 25 października, 14:20". null: nothing to say.
+ * When a module last checked its source (Module.checkedAt): an instant, or
+ * a day ("2026-10-23") when the source keeps no time.
  */
-export function checkedLine(at: Date | null): string | null {
+export type Checked = Date | string | null;
+
+/**
+ * When a module last checked its source, in Polish time, absolute: "Ostatnio
+ * sprawdziliśmy: 25 października, 14:20", or "… 23 października" for a day.
+ * null: nothing to say.
+ */
+export function checkedLine(at: Checked): string | null {
   if (!at) return null;
+  if (typeof at === "string")
+    return `Ostatnio sprawdziliśmy: ${dayMonth(warsawNoon(at).getTime())}`;
   const ms = at.getTime();
   return `Ostatnio sprawdziliśmy: ${dayMonth(ms)}, ${clockTime(ms)}`;
 }
