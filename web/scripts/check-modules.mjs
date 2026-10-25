@@ -11,7 +11,8 @@
 //   first (h3 „Śmieci”, „Szczegóły – śmieci” to /smieci, ?nr= kept), its
 //   rows (Najbliższy odbiór with an absolute date, Pojemniki, Źródło), no
 //   calendar, PDF or IMGW banner, „Bez zapowiedzi” with the weather and its
-//   source; „Ostatnio sprawdziliśmy” (the day events.checkedAt, no time)
+//   source; „Ostatnio sprawdziliśmy” (the fixture has no source_files rows,
+//   so the day events.checkedAt, no time)
 //   under the card's last source and after the weather's line (IMGW's
 //   fetchedAt, with its time), each module's one freshness text; headings h1 → h2 → h3 with no skips; the fixture's dates are
 //   unverified: one short „Uwaga” sentence linking the gmina's schedule,
@@ -49,8 +50,8 @@ const MLODOW_STREET = "/adres/0606286-24550";
 const VILLAGE_PART = "/adres/0606300";
 const BARE_VILLAGE_PART = "/adres/0606027";
 const MAIN = /<main[\s\S]*<\/main>/;
-// The waste module's line: the CI fixture's events.checkedAt, the day it
-// was made (a day, so no time).
+// The waste module's line: the CI fixture has no source_files rows, so
+// events.checkedAt, the day it was made (a day, so no time).
 const WASTE_CHECKED = String.raw`Ostatnio sprawdziliśmy: \d{1,2} \p{L}+`;
 // Freshness texts besides that line (tasks 118-120: one per module).
 const FRESHNESS = /Ostatnio sprawdziliśmy|sprawdzono|Stan na/g;

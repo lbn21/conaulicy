@@ -5,6 +5,7 @@ import {
   asc,
   eq,
   exists,
+  getTableColumns,
   gte,
   inArray,
   isNull,
@@ -23,6 +24,7 @@ import {
   gminy,
   localities,
   placeRedirects,
+  sourceFiles,
   streets,
   zoneMembers,
   zones,
@@ -49,6 +51,7 @@ import {
   type SearchIndex,
 } from "@/lib/search";
 import { FRACTIONS } from "@/lib/waste-bin";
+import { sourcesOf } from "@/lib/waste-module";
 
 // Every read goes through Next's data cache, tagged DATASET: a traffic spike
 // hits the cache, not Neon. After an import, POST /api/revalidate purges the
@@ -56,7 +59,10 @@ import { FRACTIONS } from "@/lib/waste-bin";
 export const DATASET = "dataset";
 const CACHE = { tags: [DATASET], revalidate: 3600 };
 
-type ZoneEvent = typeof events.$inferSelect;
+type ZoneEvent = typeof events.$inferSelect & {
+  /** source_files.lastSeenAt of the event's file; null: no such row. */
+  seenAt: string | null;
+};
 
 type Place = {
   id: string;
@@ -91,11 +97,18 @@ export type Pickup = {
 
 export type PickupDay = { date: string; pickups: Pickup[] };
 
-type SourceView = {
+export type SourceView = {
   /** Human label, e.g. "Sektor 1, październik–grudzień 2026". */
   label: string;
   url: string | null;
+  /** events.checkedAt: an ISO day. */
   checkedAt: string | null;
+  /**
+   * When an import last saw the source's file(s) (source_files.lastSeenAt,
+   * the oldest of several); null when one of them has no such row (files
+   * imported before the unattended import).
+   */
+  seenAt: string | null;
 };
 
 export type PlaceView = {
@@ -415,24 +428,12 @@ function bySubtype(a: ZoneEvent, b: ZoneEvent): number {
 
 async function zoneEvents(zoneId: string, from: string) {
   const rows = await db()
-    .select()
+    .select({ ...getTableColumns(events), seenAt: sourceFiles.lastSeenAt })
     .from(events)
+    .leftJoin(sourceFiles, eq(sourceFiles.sha256, events.sourceSha256))
     .where(and(eq(events.zoneId, zoneId), gte(events.start, from)))
     .orderBy(asc(events.start));
   return rows.sort((a, b) => a.start.localeCompare(b.start) || bySubtype(a, b));
-}
-
-function sourcesOf(rows: ZoneEvent[]): SourceView[] {
-  const byDoc = new Map<string, SourceView>();
-  for (const row of rows) {
-    if (byDoc.has(row.sourceDoc)) continue;
-    byDoc.set(row.sourceDoc, {
-      label: row.sourceRef ?? row.sourceDoc,
-      url: row.sourceUrl,
-      checkedAt: row.checkedAt,
-    });
-  }
-  return [...byDoc.values()];
 }
 
 // Keyed by the Warsaw day, so past pickups drop out at midnight.
@@ -492,9 +493,9 @@ const placeCached = unstable_cache(
       verified: upcoming.every((e) => e.verified),
     };
   },
-  // v3: task 118 added importedAt, task 120 dropped it again (unused in
-  // older v3 entries); v2 entries lack localityId and streetId (task 117).
-  ["place-v3"],
+  // v4: sources' seenAt (task 121); v3: task 118 added importedAt, task
+  // 120 dropped it again; v2 entries lack localityId and streetId (task 117).
+  ["place-v4"],
   CACHE,
 );
 
