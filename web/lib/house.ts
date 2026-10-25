@@ -70,3 +70,12 @@ export function inRange(nr: string, range: HouseRange): boolean {
   if (to && compare(house, to) > 0) return false;
   return true;
 }
+
+/**
+ * A house number as the address register (PRG, lib/prg.ts) writes it:
+ * trimmed, letters upper case ("10a" → "10A"), a slash form kept
+ * ("116/1-3"); empty → null.
+ */
+export function prgNumber(raw: string): string | null {
+  return raw.trim().toUpperCase() || null;
+}
