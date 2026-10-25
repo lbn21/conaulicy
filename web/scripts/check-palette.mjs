@@ -59,7 +59,8 @@ const SPELLED = {
 
 // The site's code, where every colour comes from a colour home. Allowed: the
 // mask's luminance (white shows, black cuts out), and the test that checks
-// GOV.UK's own blue group.
+// GOV.UK's own blue group. "&#8211;" is an HTML character reference, not a
+// colour.
 const CODE = /^web\/(app|components|lib)\/.*\.(ts|tsx|mjs|css|scss)$/;
 const COLOUR_HOMES = new Set([
   SOURCE,
@@ -68,7 +69,8 @@ const COLOUR_HOMES = new Set([
   "web/components/plate-mask.tsx",
   "web/lib/palette.test.ts",
 ]);
-const RAW_HEX = /#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})(?![0-9a-z])/gi;
+const RAW_HEX =
+  /(?<!&)#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})(?![0-9a-z])/gi;
 
 const files = execFileSync(
   "git",
