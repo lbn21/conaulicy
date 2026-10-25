@@ -63,10 +63,16 @@ function detailsHref({ module }: Loaded, place: PlaceView): string {
   return `${placePath(place.id)}/${module.id}${place.nr ? `?nr=${place.nr}` : ""}`;
 }
 
+// An alert slot's line; those after the first keep a gap (GOV.UK's
+// spacing scale), so two warnings read as two.
+const LINE = "govuk-!-display-block";
+const NEXT_LINE = `${LINE} govuk-!-margin-top-2`;
+
 /**
  * GOV.UK's warning text, once for all modules: a line each, inside its one
  * <strong> (a list cannot go there), the count for screen readers first.
  */
+
 function AlertSlot({
   alerts,
 }: {
@@ -85,10 +91,10 @@ function AlertSlot({
             ? `Uwaga, ${warningCount(alerts.length)}.`
             : "Uwaga."}
         </span>
-        {shown.map(({ alert, title }) => (
+        {shown.map(({ alert, title }, i) => (
           <span
             key={`${title} ${alert.from} ${alert.text}`}
-            className="govuk-!-display-block"
+            className={i > 0 ? NEXT_LINE : LINE}
           >
             {`${title}: ${alert.text} `}
             <a href={alert.href} className="govuk-link">
@@ -101,7 +107,7 @@ function AlertSlot({
           </span>
         ))}
         {more > 0 && (
-          <span className="govuk-!-display-block">
+          <span className={NEXT_LINE}>
             <a href="#co-cie-czeka" className="govuk-link">
               {`I jeszcze ${warningCount(more)}`}
             </a>

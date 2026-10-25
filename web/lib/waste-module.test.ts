@@ -59,6 +59,26 @@ test("no put-out row without a time; a note while unverified", () => {
   assert.deepEqual(rows[0], ["Najbliższy odbiór", ["wtorek, 27 października"]]);
 });
 
+test("unverified: one short sentence, the gmina's schedule linked", () => {
+  const note = (overrides: Partial<PlaceView>) =>
+    wasteSummary(place({ verified: false, ...overrides })).at(-1);
+  const page = "https://example.org/harmonogram";
+  const pdf = "https://example.org/a.pdf";
+  const sentence = (link: string | { href: string; text: string }) => [
+    "Uwaga",
+    ["Daty odczytaliśmy automatycznie, sprawdź je w ", link, "."],
+  ];
+  assert.deepEqual(
+    note({ schedulePage: page }),
+    sentence({ href: page, text: "harmonogramie gminy" }),
+  );
+  assert.deepEqual(
+    note({ sources: [{ label: "Sektor 1", url: pdf, checkedAt: null }] }),
+    sentence({ href: pdf, text: "harmonogramie gminy" }),
+  );
+  assert.deepEqual(note({}), sentence("harmonogramie gminy"));
+});
+
 test("a split street without a number links the waste subpage's question", () => {
   const rows = wasteSummary(place({ askNumber: true, zoneId: null }));
   assert.deepEqual(rows, [

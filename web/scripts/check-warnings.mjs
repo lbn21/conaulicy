@@ -3,8 +3,9 @@
 // - mock:none (the build's own setting in CI): no banner on any route, no
 //   alert on the address page;
 // - never the banner on an address page or its waste subpage: their alert
-//   slot (components/hub.tsx) for one warning, three (two lines, then
-//   „I jeszcze 1 ostrzeżenie”), and IMGW failing (no weather at all);
+//   slot (components/hub.tsx) for one warning, two (a gap between the
+//   lines), three (two lines, then „I jeszcze 1 ostrzeżenie”), and IMGW
+//   failing (no weather at all);
 // - each state on one page (/o-projekcie), a server per state: GOV.UK's markup
 //   (role="region", aria-labelledby, no role="alert", no button), the title,
 //   one tag per warning with its level and colour, highest first, the time,
@@ -67,7 +68,12 @@ const STATES = [
       upcoming: [true],
     },
   ]),
-  { name: "two-l2-l3", url: "mock:1809?level=2&also=3", levels: [3, 2] },
+  {
+    name: "two-l2-l3",
+    url: "mock:1809?level=2&also=3",
+    levels: [3, 2],
+    hub: 2,
+  },
   {
     name: "three-l1-l2-l3",
     url: "mock:1809?level=1&also=2,3",
@@ -488,7 +494,8 @@ async function deepChecks(browser, origin) {
 // IMGW failing): never the banner, on it or its waste subpage; the alert
 // slot, one GOV.UK warning text: a line per warning ("Pogoda: …" with an
 // absolute day, „Szczegóły – pogoda” to IMGW, „(IMGW-PIB)”), two at most,
-// then „I jeszcze N …” to the cards; the weather's card after the waste's.
+// then „I jeszcze N …” to the cards, a gap above every line but the first;
+// the weather's card after the waste's.
 // Failing: the page still renders, without the weather.
 async function hubChecks(origin, state) {
   const label = `${state.name} ${HUB}`;
@@ -523,11 +530,14 @@ async function hubChecks(origin, state) {
     else console.log(`ok    ${label}: rendered without the weather`);
     return;
   }
-  const lines = [
+  const spans = [
     ...(slot ?? "").matchAll(
-      /<span class="govuk-!-display-block">([\s\S]*?)<\/span>(?=<span class="govuk-!-display-block">|$)/g,
+      /<span class="(govuk-!-display-block(?: govuk-!-margin-top-2)?)">([\s\S]*?)<\/span>(?=<span class="govuk-!-display-block|$)/g,
     ),
-  ].map(([, line]) => line);
+  ];
+  const lines = spans.map(([, , line]) => line);
+  // Every line after the first keeps a gap from the one above.
+  const gaps = spans.map(([, cls]) => cls.endsWith("margin-top-2"));
   const alerts = lines.filter((line) => line.startsWith("Pogoda: "));
   const more = lines.filter((line) => line.includes('href="#co-cie-czeka"'));
   const hidden = state.hub > 1 ? `Uwaga, ${state.hub} ostrzeżenia.` : "Uwaga.";
@@ -546,12 +556,30 @@ async function hubChecks(origin, state) {
           more.length === 1 && more[0].includes(">I jeszcze 1 ostrzeżenie</a>")
         ) && `overflow ${JSON.stringify(more)}`
       : more.length > 0 && "an overflow link",
+    gaps.some((gap, i) => gap !== i > 0) && `line gaps ${gaps}`,
     cards.join() !== "Śmieci,Pogoda" && `cards ${cards}`,
     hub.includes('id="bez-zapowiedzi-heading"') &&
       "„Bez zapowiedzi” with a warning",
   ].filter(Boolean);
   if (problems.length > 0) failures.push(`${label}: ${problems.join("; ")}`);
   else console.log(`ok    ${label}: alert slot, ${alerts.length} lines`);
+}
+
+// With SCREENSHOT_DIR, the address page at 375 px for the reviewer:
+// 375-hub-<state>.png (outside the banner's contact sheets).
+async function hubShot(browser, origin, name) {
+  if (!SHOTS) return;
+  const context = await browser.newContext({
+    viewport: { width: 375, height: 812 },
+    deviceScaleFactor: 2,
+  });
+  const page = await context.newPage();
+  await page.goto(origin + HUB, { waitUntil: "load" });
+  await page.screenshot({
+    path: path.join(SHOTS, `375-hub-${name}.png`),
+    fullPage: true,
+  });
+  await context.close();
 }
 
 async function visit(browser, origin, state, pagePath, name) {
@@ -663,6 +691,7 @@ try {
       !hub.includes("Pogoda: brak ostrzeżeń IMGW.")
     )
       failures.push(`${HUB}: an alert, or no „Pogoda: brak ostrzeżeń IMGW.”`);
+    await hubShot(browser, plain.origin, "none");
     console.log(
       `ok    ${process.env.IMGW_WARNINGS_URL}: no banner on ${ROUTES.length} routes, no alert on ${HUB}`,
     );
@@ -690,7 +719,10 @@ try {
       }
       if (state.name === "three-l1-l2-l3")
         await deepChecks(browser, server.origin);
-      if (state.hub !== undefined) await hubChecks(server.origin, state);
+      if (state.hub !== undefined) {
+        await hubChecks(server.origin, state);
+        await hubShot(browser, server.origin, state.name);
+      }
     } finally {
       await server.stop();
     }

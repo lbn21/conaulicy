@@ -11,7 +11,6 @@ import {
   NO_MORE_DATES,
   NO_MORE_DATES_NEXT,
   putOutBy,
-  UNVERIFIED_NOTE,
 } from "./schedule-notes.ts";
 
 /** A place we have no pickup data for: the street page's heading. */
@@ -44,6 +43,18 @@ function noDates(place: PlaceView, why: string): Part[] {
           },
         ]
       : []),
+  ];
+}
+
+// Dates not checked yet: one short sentence on the card (the subpage keeps
+// the full UNVERIFIED_NOTE), linking the gmina's schedule when we know it.
+function unverifiedNote(place: PlaceView): Part[] {
+  const href = place.schedulePage ?? place.sources.find((s) => s.url)?.url;
+  const schedule = "harmonogramie gminy";
+  return [
+    "Daty odczytaliśmy automatycznie, sprawdź je w ",
+    href ? { href, text: schedule } : schedule,
+    ".",
   ];
 }
 
@@ -87,7 +98,7 @@ export function wasteSummary(place: PlaceView): SummaryRow[] {
   ];
   const time = next.pickups.find((pickup) => pickup.putOutBy)?.putOutBy;
   if (time) rows.push(["Wystaw", [putOutBy(time)]]);
-  if (!place.verified) rows.push(["Uwaga", [UNVERIFIED_NOTE]]);
+  if (!place.verified) rows.push(["Uwaga", unverifiedNote(place)]);
   return rows;
 }
 
