@@ -25,7 +25,9 @@
 // - a house number on a street with one schedule: both pages say, right
 //   under the h1, that it changes nothing; never on a split street, a
 //   village or without a number;
-// - /woda without a ZUK file: breadcrumbs, h1, the gmina's news, noindex;
+// - /woda without a ZUK file: breadcrumbs, h1, the gmina's news, noindex,
+//   no calendar button; its woda.ics an empty calendar, noindex (an
+//   unknown address's a 404);
 // - the weather has no subpage: /pogoda is a 404 (check-indexing.mjs reads
 //   the whole 404 page).
 //
@@ -195,7 +197,7 @@ try {
         fail(path, `no row ${key}`);
     }
     if (/\b(dziś|jutro|pojutrze)\b/i.test(hub)) fail(path, "a relative date");
-    if (/href="\/ics\/|harmonogram\.pdf|Dodaj do kalendarza/.test(hub))
+    if (/href="\/ics\/|harmonogram\.pdf|woda\.ics|do kalendarza/.test(hub))
       fail(path, "a calendar or PDF link");
     if (/govuk-notification-banner/.test(hub)) fail(path, "the IMGW banner");
     // No ZUK file in CI: water first, with the gmina's news only.
@@ -301,6 +303,25 @@ try {
   if (!/<meta name="robots" content="noindex/.test(water.html))
     fail(waterPath, "not noindex");
   headingsInOrder(waterPath, water.main);
+  // No cut to add: no calendar button; the file is an empty calendar (as a
+  // waste zone with no dates), never a search result.
+  if (/woda\.ics|do kalendarza/.test(water.main))
+    fail(waterPath, "a calendar button without a cut");
+  const icsPath = `${waterPath}.ics?nr=5`;
+  const ics = await fetch(`${server.origin}${icsPath}`);
+  const icsBody = await ics.text();
+  if (
+    ics.status !== 200 ||
+    !ics.headers.get("content-type")?.startsWith("text/calendar") ||
+    !ics.headers.get("x-robots-tag")?.includes("noindex") ||
+    !icsBody.startsWith("BEGIN:VCALENDAR\r\n") ||
+    !icsBody.endsWith("END:VCALENDAR\r\n") ||
+    icsBody.includes("BEGIN:VEVENT")
+  )
+    fail(icsPath, `${ics.status}: not an empty, noindex calendar`);
+  const unknown = await fetch(`${server.origin}/adres/0000000/woda.ics`);
+  if (unknown.status !== 404)
+    fail("/adres/0000000/woda.ics", `${unknown.status}, want 404`);
 
   // A split street: the number first, then its dates; a wrong one keeps the
   // street page's error.

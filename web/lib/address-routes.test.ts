@@ -51,6 +51,7 @@ test("the street page and a module subpage take ?nr=", () => {
   assert.ok(!ADDRESS.test("/adres/0972447-00470/pogoda"));
   assert.ok(!ADDRESS.test("/adres/0972447-00470/numer"));
   assert.ok(!ADDRESS.test("/adres/0972447-00470/harmonogram.pdf"));
+  assert.ok(!ADDRESS.test("/adres/0972447-00470/woda.ics"));
   assert.ok(!ADDRESS.test("/adres"));
 });
 

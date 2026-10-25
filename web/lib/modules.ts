@@ -20,9 +20,9 @@ import type { Alert, Checked, Part, SummaryRow } from "@/lib/hub";
 import { IMGW_PAGE } from "@/lib/imgw-banner";
 import { getPlace, type PlaceView } from "@/lib/schedule";
 import { wasteChecked, wasteSources, wasteSummary } from "@/lib/waste-module";
+import { loadWater } from "@/lib/water-load";
 import {
   type Water,
-  water,
   waterAlerts,
   waterChecked,
   waterNone,
@@ -37,7 +37,6 @@ import {
   weatherSources,
   weatherSummary,
 } from "@/lib/weather-module";
-import { getZukData } from "@/lib/zuk-store";
 
 export type Module<D> = {
   id: ModuleId;
@@ -114,10 +113,7 @@ const woda: Module<Water> = {
   title: "Woda",
   pageTitle: "Przerwy w dostawie wody",
   order: MODULE_IDS.indexOf("woda"),
-  async load(id, nr) {
-    const [place, view] = await Promise.all([getPlace(id, nr), getZukData()]);
-    return place && water(view, place);
-  },
+  load: loadWater,
   alerts: waterAlerts,
   summary: waterSummary,
   none: waterNone,

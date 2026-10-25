@@ -1,0 +1,136 @@
+// The water cuts at an address as a calendar file, /adres/<id>/woda.ics
+// (app/adres/[id]/woda.ics): the /woda page's own data (lib/water-load.ts),
+// so the page and the file never disagree. Only a cut we can put in a
+// calendar goes in: planned, with its day and both its hours. A Notice
+// (a link, no date) never does. Pure, so the unit tests read the file.
+//
+// Each cut keeps its UID across downloads: the post, the place and the day.
+// The file keeps no item index (lib/zuk.ts), and one counted from the
+// cuts left would shift as a day passes; a date change is a new post
+// („aktualizacja dat”) anyway. SEQUENCE is the post's last edit in
+// minutes, so an edited post updates the event in calendars that honour it.
+// Nothing revoked is kept (a doubted post becomes a Notice, lib/zuk-data.ts),
+// so no event goes out cancelled.
+
+import { addDays, WARSAW, warsawToIso } from "./dates.ts";
+import type { Disruption } from "./disruptions.ts";
+import { withHouseNumber } from "./house.ts";
+import {
+  calendarBody,
+  calendarHead,
+  escapeText,
+  icsDate,
+  icsUtc,
+} from "./ics.ts";
+import { normalize } from "./normalize.ts";
+import { hours, scope, type Water } from "./water-module.ts";
+
+const SUMMARY = "Przerwa w dostawie wody";
+
+/** A cut with a confirmed day and hours, planned. */
+type CalendarCut = Disruption & { start: string; end: string };
+
+/** The cuts at the address that go in the calendar, soonest first. */
+export function calendarCuts(data: Water): CalendarCut[] {
+  return data.outages.filter(
+    (cut): cut is CalendarCut =>
+      cut.cause === "planned" && cut.start !== null && cut.end !== null,
+  );
+}
+
+/** "2026-10-27 08:00:00" as "20261027T080000", Warsaw time. */
+const local = (wall: string) =>
+  `${icsDate(wall.slice(0, 10))}T${wall.slice(11, 19).replaceAll(":", "")}`;
+
+/** "zuk-39885-2026-10-27-…" → "39885". */
+const postId = (cut: Disruption) => /^zuk-(\d+)-/.exec(cut.uid)?.[1] ?? "0";
+
+/** Stable across downloads: the post, the place, the day. */
+function cutUid(cut: Disruption): string {
+  const { localityId, streetId } = cut.place;
+  return `woda-${postId(cut)}-${localityId}-${streetId ?? "all"}-${cut.date}@conaulicy.pl`;
+}
+
+/** The post's last edit in minutes since 1970: grows with every edit. */
+function cutSequence(cut: Disruption): number {
+  const at = warsawToIso(cut.updatedAt.replace("T", " "));
+  return at ? Math.floor(Date.parse(at) / 60_000) : 0;
+}
+
+/** 18:00 in Warsaw the day before the cut, in UTC. */
+function alarmAt(cut: Disruption): string {
+  const at = warsawToIso(`${addDays(cut.date, -1)} 18:00:00`) as string;
+  return icsUtc(new Date(at));
+}
+
+// Europe/Warsaw since 1996: CEST from the last Sunday of March, 2:00, to
+// the last Sunday of October, 3:00.
+const VTIMEZONE = [
+  "BEGIN:VTIMEZONE",
+  `TZID:${WARSAW}`,
+  "BEGIN:DAYLIGHT",
+  "TZOFFSETFROM:+0100",
+  "TZOFFSETTO:+0200",
+  "TZNAME:CEST",
+  "DTSTART:19700329T020000",
+  "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU",
+  "END:DAYLIGHT",
+  "BEGIN:STANDARD",
+  "TZOFFSETFROM:+0200",
+  "TZOFFSETTO:+0100",
+  "TZNAME:CET",
+  "DTSTART:19701025T030000",
+  "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU",
+  "END:STANDARD",
+  "END:VTIMEZONE",
+];
+
+const capitalised = (text: string) =>
+  text.charAt(0).toUpperCase() + text.slice(1);
+
+/** The address with the house number as given, split street or not. */
+const address = (data: Water) =>
+  withHouseNumber(data.place.label, data.place.givenNr);
+
+/** The file for the address: every cut in calendarCuts, none if none. */
+export function waterCalendar(data: Water, now: Date): string {
+  const stamp = icsUtc(now);
+  const location = address(data);
+  const lines = [
+    ...calendarHead(SUMMARY, `Przerwy w dostawie wody – ${location}`),
+    `X-WR-TIMEZONE:${WARSAW}`,
+    ...VTIMEZONE,
+  ];
+  for (const cut of calendarCuts(data)) {
+    const description = [
+      `${capitalised(scope(cut))}.`,
+      `Źródło: ${cut.source.url}`,
+      "Daty i godziny odczytaliśmy z komunikatu gminy. Gdyby coś się nie zgadzało, rację ma komunikat.",
+    ].join("\n");
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:${cutUid(cut)}`,
+      `SEQUENCE:${cutSequence(cut)}`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART;TZID=${WARSAW}:${local(cut.start)}`,
+      `DTEND;TZID=${WARSAW}:${local(cut.end)}`,
+      `SUMMARY:${escapeText(SUMMARY)}`,
+      `LOCATION:${escapeText(location)}`,
+      `DESCRIPTION:${escapeText(description)}`,
+      `URL:${cut.source.url}`,
+      "STATUS:CONFIRMED",
+      "BEGIN:VALARM",
+      "ACTION:DISPLAY",
+      `DESCRIPTION:${escapeText(`Jutro przerwa w dostawie wody, ${hours(cut)}`)}`,
+      `TRIGGER;VALUE=DATE-TIME:${alarmAt(cut)}`,
+      "END:VALARM",
+      "END:VEVENT",
+    );
+  }
+  return calendarBody(lines);
+}
+
+/** "woda-ul-zuki-12-lubaczow.ics". */
+export function waterFilename(data: Water): string {
+  return `woda-${normalize(address(data)).replaceAll(" ", "-")}.ics`;
+}
