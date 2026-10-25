@@ -23,7 +23,7 @@ export const SUBPAGE_IDS: readonly ModuleId[] = ["smieci", "woda"];
  * Folders under app/adres/[id]/ that win over app/adres/[id]/[module]/, so no
  * module may be called this.
  */
-export const RESERVED_SEGMENTS = ["nr", "numer", "harmonogram.pdf"];
+export const RESERVED_SEGMENTS = ["nr", "numer", "harmonogram.pdf", "woda.ics"];
 
 export function isModuleId(slug: string): slug is ModuleId {
   return (MODULE_IDS as readonly string[]).includes(slug);

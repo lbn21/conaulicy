@@ -26,6 +26,12 @@ test("a street PDF keeps only nr, re-encoded", () => {
   assert.equal(clean("/adres/X/harmonogram.pdf?nr=7a"), null);
 });
 
+test("a water calendar keeps only nr", () => {
+  assert.equal(clean("/adres/X/woda.ics?nr=7a&utm_source=a"), "?nr=7a");
+  assert.equal(clean("/adres/X/woda.ics?nr=7a"), null);
+  assert.equal(clean("/adres/X/woda.ics?x=1"), "");
+});
+
 test("the search page keeps only q, empty included", () => {
   assert.equal(clean("/szukaj?q=asnyka+12"), null);
   assert.equal(clean("/szukaj?q="), null);

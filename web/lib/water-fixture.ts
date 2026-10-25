@@ -3,6 +3,7 @@
 // real post and its recorded reading (lib/zuk-fixture.ts): for the unit
 // tests and the dev mock (lib/zuk-store.ts, ZUK_MOCK). A fixture, so code
 // (scripts/check-tracked-data.mjs).
+import type { PlaceView } from "./schedule.ts";
 import { mentionedLocalities, readPost } from "./zuk.ts";
 import {
   STALE_MS,
@@ -13,6 +14,30 @@ import {
 import { PLACES, reading, realPosts } from "./zuk-fixture.ts";
 
 export const POST_39885 = 39885;
+
+/** ul. Żuki in Lubaczów, as the pages get it, with `overrides`. */
+export const testPlace = (overrides: Partial<PlaceView> = {}): PlaceView => ({
+  id: "0972447-26555",
+  kind: "ulica",
+  name: "ul. Żuki",
+  label: "ul. Żuki, Lubaczów",
+  area: "Lubaczów",
+  group: "0972447",
+  gmina: "Lubaczów (miasto)",
+  localityId: "0972447",
+  streetId: "0972447-26555",
+  zoneId: null,
+  nr: null,
+  askNumber: false,
+  unknownNr: null,
+  givenNr: null,
+  today: "2026-10-25",
+  schedulePage: null,
+  days: [],
+  sources: [],
+  verified: true,
+  ...overrides,
+});
 
 /** A real post as the file stores it, read when the file was checked. */
 export function storedPost(

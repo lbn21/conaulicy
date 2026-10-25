@@ -4,7 +4,13 @@ import { MODULE_IDS } from "./address-routes.ts";
 import type { Disruption } from "./disruptions.ts";
 import { type Alert, alertSlot, checkedLine } from "./hub.ts";
 import type { PlaceView } from "./schedule.ts";
-import { mockFile, POST_39885, storedPost, zukFile } from "./water-fixture.ts";
+import {
+  mockFile,
+  POST_39885,
+  storedPost,
+  testPlace,
+  zukFile,
+} from "./water-fixture.ts";
 import {
   GMINA_NEWS,
   matches,
@@ -34,28 +40,7 @@ const NOW = new Date("2026-10-25T12:30:00Z");
 const POST_URL =
   "https://www.gminalubaczow.pl/2026/10/23/przerwy-w-dostawie-wody-26-29-10-2026/";
 
-const place = (overrides: Partial<PlaceView>): PlaceView => ({
-  id: "0972447-26555",
-  kind: "ulica",
-  name: "ul. Żuki",
-  label: "ul. Żuki, Lubaczów",
-  area: "Lubaczów",
-  group: "0972447",
-  gmina: "Lubaczów (miasto)",
-  localityId: "0972447",
-  streetId: "0972447-26555",
-  zoneId: null,
-  nr: null,
-  askNumber: false,
-  unknownNr: null,
-  givenNr: null,
-  today: "2026-10-25",
-  schedulePage: null,
-  days: [],
-  sources: [],
-  verified: true,
-  ...overrides,
-});
+const place = testPlace;
 
 const ZUKI = place({});
 const ASNYKA = place({ id: "0972447-00470", streetId: "0972447-00470" });

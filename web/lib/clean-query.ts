@@ -19,6 +19,7 @@ const ROUTES: [RegExp, string[]][] = [
   [ADDRESS, ["nr"]],
   ...ADDRESS_VARIANTS.map((path): [RegExp, string[]] => [path, []]),
   [/^\/adres\/[^/]+\/harmonogram\.pdf$/, ["nr"]],
+  [/^\/adres\/[^/]+\/woda\.ics$/, ["nr"]],
   [/^\/ics\/[^/]+$/, []],
   [/^\/api\/search$/, ["q"]],
   [/^\/api\/search-index\/[^/]+$/, []],
