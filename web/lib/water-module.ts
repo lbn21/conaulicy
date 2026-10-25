@@ -208,6 +208,13 @@ export function waterSummary(data: Water): SummaryRow[] | null {
   return rows;
 }
 
+/**
+ * The subpage's AI-read note (components/subpage-parts.tsx AiReadNote), as
+ * the waste schedule's (lib/schedule-notes.ts UNVERIFIED_NOTE).
+ */
+export const WATER_AI_NOTE =
+  "Te daty i godziny odczytaliśmy automatycznie z komunikatu gminy i nikt ich jeszcze nie sprawdził drugi raz. Gdyby coś się nie zgadzało, rację ma komunikat gminy.";
+
 /** The subpage with no cut here: why, then the gmina's news; else null. */
 export function waterEmpty(data: Water): Part[] | null {
   if (data.outages.length > 0) return null;
@@ -229,7 +236,7 @@ export function waterNone(data: Water): string {
 }
 
 /** The post itself: "Komunikat gminy z 23 października 2026". */
-export function postLink(item: Pick<Disruption, "source" | "publishedAt">) {
+function postLink(item: Pick<Disruption, "source" | "publishedAt">) {
   return {
     href: item.source.url,
     text: `Komunikat gminy z ${longDate(item.publishedAt.slice(0, 10))}`,

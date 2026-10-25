@@ -23,6 +23,7 @@ import {
   icsUtc,
 } from "./ics.ts";
 import { normalize } from "./normalize.ts";
+import { placePath } from "./places.ts";
 import { hours, scope, type Water } from "./water-module.ts";
 
 const SUMMARY = "Przerwa w dostawie wody";
@@ -36,6 +37,16 @@ export function calendarCuts(data: Water): CalendarCut[] {
     (cut): cut is CalendarCut =>
       cut.cause === "planned" && cut.start !== null && cut.end !== null,
   );
+}
+
+/**
+ * The file's link on /woda, with the house number as given; null when no
+ * cut goes in it, so the page shows no button.
+ */
+export function waterCalendarHref(data: Water): string | null {
+  if (calendarCuts(data).length === 0) return null;
+  const nr = data.place.givenNr;
+  return `${placePath(data.place.id)}/woda.ics${nr ? `?nr=${nr}` : ""}`;
 }
 
 /** "2026-10-27 08:00:00" as "20261027T080000", Warsaw time. */
