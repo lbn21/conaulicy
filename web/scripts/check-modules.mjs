@@ -5,7 +5,9 @@
 //   first (h3 „Śmieci”, „Szczegóły – śmieci” to /smieci, ?nr= kept), its
 //   rows (Najbliższy odbiór with an absolute date, Pojemniki, Źródło), no
 //   calendar, PDF or IMGW banner, „Bez zapowiedzi” with the weather and its
-//   source; headings h1 → h2 → h3 with no skips;
+//   source; headings h1 → h2 → h3 with no skips; the fixture's dates are
+//   unverified: one short „Uwaga” sentence linking the gmina's schedule,
+//   while /smieci keeps the full note;
 // - a split street without a number: the card asks for it, linking /smieci;
 //   with one, the card has its date; an unknown number keeps the street
 //   page's error (GOV.UK's validation pattern);
@@ -16,6 +18,7 @@
 //   the whole 404 page).
 //
 // Runs against `next start` on the current build and the CI fixture.
+import { UNVERIFIED_NOTE } from "../lib/schedule-notes.ts";
 import { finish, startServer } from "./lib/server.mjs";
 
 const STREET = "/adres/0972447-00470";
@@ -97,6 +100,13 @@ try {
       )
     )
       fail(path, "no „Bez zapowiedzi” line for the weather");
+    if (
+      !/<dt class="govuk-summary-list__key">Uwaga<\/dt><dd class="govuk-summary-list__value">Daty odczytaliśmy automatycznie, sprawdź je w <a href="https:\/\/[^"]+" class="govuk-link">harmonogramie gminy<\/a>\.<\/dd>/.test(
+        hub,
+      ) ||
+      hub.includes(UNVERIFIED_NOTE)
+    )
+      fail(path, "not the short „Uwaga” sentence");
     headingsInOrder(path, hub);
 
     const sub = await main(waste);
@@ -138,6 +148,7 @@ try {
     )
       fail(waste, "no calendar or PDF");
     if (!sub.main.includes('id="pickups-heading"')) fail(waste, "no pickups");
+    if (!sub.main.includes(UNVERIFIED_NOTE)) fail(waste, "no unverified note");
     if (/govuk-notification-banner/.test(sub.main))
       fail(waste, "the IMGW banner");
     headingsInOrder(waste, sub.main);
