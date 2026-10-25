@@ -3,62 +3,71 @@
 // Pure, so the tests run it as is.
 //
 // {
-//   version: 3,
-//   generatedAt,  // ISO: when `posts` last changed
+//   version: 4,
+//   generatedAt,  // ISO: when `active` or `seen` last changed
 //   checkedAt,    // ISO: the last successful read of the gmina's posts
-//   posts: [{
-//     id, modified, url, title, publishedAt, updatedAt,
+//   active: [{    // the water posts that still matter: all the pages read
+//     id, modified, reader, url, title, publishedAt, updatedAt,
 //     status: "parsed" | "notice",
-//     reason?,            // why a Notice: "past" (not read), or retried
-//                         // next run: "ai-deferred" (the run's cap),
-//                         // "ai-unavailable" (xAI failed or no key);
-//                         // never shown: "not-water" (the model's
-//                         // post_type "other"), "water-quality" (no UI yet)
+//     reason?,            // why a Notice: the post could not be read
+//                         // (shown for 14 days), or "water-quality" (no
+//                         // UI yet, never shown)
 //     past?, change?,     // a report of a past cut; a date-change post
 //     localityIds,        // what a Notice may concern
-//     model?, usage?, costUsd?,  // the reading that produced it
 //     itemCount,          // items read, before those already over went
 //     items: Disruption[] // parsed only; cuts already over are dropped
-//     sourceId?,          // lib/sources: "gmina-lubaczow"
+//     sourceId,           // lib/sources: "gmina-lubaczow"
 //     qualityStatus?, places?  // "water-quality" only: warning or lifted,
 //                         // the places that passed the gate, each its day
+//   }],
+//   seen: [{      // the cron's memory of every other post it decided
+//     id, modified, reader,
+//     reason,     // "not-water" (the model's post_type "other"), "past"
+//                 // (its days or cuts are over), "expired" (a Notice
+//                 // past its 14 days), "ai-unavailable" (retried next run)
 //   }]
 // }
 //
-// Older versions are still read: the pages show them as they are, and the
-// cron reads every post again. Version 1: no itemCount, no item label.
-// Version 2: read with the v1 prompt and gate (place_verbatim); its first
-// files hold only keyword-filtered posts. Version 3 (task 114b): the v3.1
-// prompt and gate, `where` the post's own street or locality and the
-// houses in `note`.
+// A post over the run's model calls is in neither: read on a later run.
+// A post is read again when it is edited, its reading failed, or its
+// `reader` is older than ZUK_READER. A file of an older version (1-3) is
+// no file: the pages show the source link and the cron reads the window
+// afresh. The version is the file's shape; the reader is what read it.
 
 import { todayInWarsaw } from "./dates.ts";
 import type { Disruption, Notice } from "./disruptions.ts";
 import { current, noticeUntil, SOURCE_NAME, type WarningPlace } from "./zuk.ts";
-import type { AiUsage } from "./zuk-ai.ts";
 
 export const ZUK_PATHNAME = "zuk/disruptions.json";
-export const ZUK_FILE_VERSION = 3;
+export const ZUK_FILE_VERSION = 4;
+/**
+ * What reads a post: the prompt, schema and place gate. 3 is v3.1 (task
+ * 114b); raise it when they change, and every post is read again.
+ */
+export const ZUK_READER = 3;
 
 /** Older than this, the data may be out of date: show the source link. */
 export const STALE_MS = 60 * 60_000;
 
-/** A Notice for a post the model could not read; retried every run. */
+/** The model could not read the post (xAI failed or no key): retried. */
 export const AI_UNAVAILABLE = "ai-unavailable";
-/** A Notice for a post over the run's model calls; retried next run. */
+/** Over the run's model calls: not stored, read next run. */
 export const AI_DEFERRED = "ai-deferred";
-/** A Notice for a post whose title's days are all over: never read. */
+/** Its title's days or its cuts are all over. */
 export const PAST = "past";
-/** A Notice for a post the model says is not about water: never shown. */
+/** A Notice past its 14 days (noticeUntil). */
+export const EXPIRED = "expired";
+/** The model says it is not about water: never shown. */
 export const NOT_WATER = "not-water";
-/** A Notice for a water-quality warning: kept, not shown yet. */
+/** A water-quality warning: kept, not shown yet. */
 export const WATER_QUALITY = "water-quality";
 /** Posts the pages never get, not even for a clash or a date change. */
-const HIDDEN = new Set([NOT_WATER, WATER_QUALITY]);
+const HIDDEN = new Set([NOT_WATER, WATER_QUALITY, AI_UNAVAILABLE, AI_DEFERRED]);
 
 export type StoredPost = {
   id: number;
   modified: string;
+  reader: number;
   url: string;
   title: string;
   publishedAt: string;
@@ -68,38 +77,109 @@ export type StoredPost = {
   past?: boolean;
   change?: boolean;
   localityIds: string[];
-  model?: string;
-  usage?: AiUsage;
-  costUsd?: number;
-  /** Absent in version 1. */
-  itemCount?: number;
+  itemCount: number;
   items: Disruption[];
-  /** The source it came from (lib/sources); absent before task 114. */
-  sourceId?: string;
+  /** The source it came from (lib/sources). */
+  sourceId: string;
   /** "water-quality" only. */
   qualityStatus?: "warning" | "lifted" | null;
   places?: WarningPlace[];
 };
 
-export type ZukFile = {
-  version: typeof ZUK_FILE_VERSION | 2 | 1;
-  generatedAt: string;
-  checkedAt: string;
-  posts: StoredPost[];
+/** A post decided and not active: only what the cron needs. */
+export type SeenPost = {
+  id: number;
+  modified: string;
+  reason: string;
+  reader: number;
 };
 
-/** The file, or null if it is not one we wrote. */
+export type ZukFile = {
+  version: typeof ZUK_FILE_VERSION;
+  generatedAt: string;
+  checkedAt: string;
+  active: StoredPost[];
+  seen: SeenPost[];
+};
+
+/** The file, or null if it is not one of this version. */
 export function parseZukFile(body: string): ZukFile | null {
   try {
     const file = JSON.parse(body) as ZukFile;
-    return [ZUK_FILE_VERSION, 2, 1].includes(file?.version) &&
+    return file?.version === ZUK_FILE_VERSION &&
       typeof file.checkedAt === "string" &&
-      Array.isArray(file.posts)
+      Array.isArray(file.active) &&
+      Array.isArray(file.seen)
       ? file
       : null;
   } catch {
     return null;
   }
+}
+
+const seenAs = (post: StoredPost, reason: string): SeenPost => ({
+  id: post.id,
+  modified: post.modified,
+  reason,
+  reader: post.reader,
+});
+
+/** Posts published before `change` with a cut in a locality it touches. */
+const changed = (change: StoredPost, posts: StoredPost[]) => {
+  const localities = new Set([
+    ...change.localityIds,
+    ...change.items.map((d) => d.place.localityId),
+  ]);
+  return posts.filter(
+    (post) =>
+      post.publishedAt < change.publishedAt &&
+      post.items.some((d) => localities.has(d.place.localityId)),
+  );
+};
+
+/**
+ * Where each post goes on `today`: `active` if the pages may still use it
+ * (cuts to come, a Notice within its 14 days, a water-quality warning, a
+ * date-change post doubting an active one), else `seen`. A post over the
+ * run's cap (AI_DEFERRED) goes nowhere.
+ */
+export function settle(
+  posts: Array<StoredPost | SeenPost>,
+  today: string,
+): Pick<ZukFile, "active" | "seen"> {
+  const full = posts
+    .filter((p): p is StoredPost => "status" in p)
+    .map((p) => ({ ...p, items: current(p.items, today) }));
+  const water = (p: StoredPost) =>
+    !HIDDEN.has(p.reason ?? "") && p.reason !== PAST;
+  const live = full.filter(
+    (p) =>
+      p.reason === WATER_QUALITY ||
+      (water(p) &&
+        (p.status === "parsed"
+          ? p.items.length > 0
+          : today < noticeUntil(p.publishedAt))),
+  );
+  const parsed = live.filter((p) => p.status === "parsed");
+  const active: StoredPost[] = [];
+  const seen: SeenPost[] = [];
+  for (const post of posts) {
+    if (!("status" in post)) {
+      seen.push(post);
+      continue;
+    }
+    const p = full.find((f) => f.id === post.id) as StoredPost;
+    if (p.reason === AI_DEFERRED) continue;
+    if (
+      live.includes(p) ||
+      (p.change && water(p) && changed(p, parsed).length > 0)
+    )
+      active.push(p);
+    else if ([NOT_WATER, AI_UNAVAILABLE, PAST].includes(p.reason ?? ""))
+      seen.push(seenAs(p, p.reason as string));
+    else seen.push(seenAs(p, p.status === "parsed" ? PAST : EXPIRED));
+  }
+  return { active, seen };
 }
 
 export type ZukData = {
@@ -134,18 +214,8 @@ function doubted(posts: StoredPost[]): Set<number> {
   for (const byHours of hours.values())
     if (byHours.size > 1)
       for (const ids of byHours.values()) for (const id of ids) out.add(id);
-  for (const change of posts.filter((p) => p.change)) {
-    const touched = new Set([
-      ...change.localityIds,
-      ...change.items.map((d) => d.place.localityId),
-    ]);
-    for (const post of posts)
-      if (
-        post.publishedAt < change.publishedAt &&
-        post.items.some((d) => touched.has(d.place.localityId))
-      )
-        out.add(post.id);
-  }
+  for (const change of posts.filter((p) => p.change))
+    for (const post of changed(change, posts)) out.add(post.id);
   return out;
 }
 
@@ -165,7 +235,7 @@ export function zukView(file: ZukFile | null, now: Date): ZukData {
     url: post.url,
     checkedAt: file.checkedAt,
   });
-  const posts = file.posts
+  const posts = file.active
     .filter((p) => !HIDDEN.has(p.reason ?? ""))
     .map((p) => ({ ...p, items: current(p.items, today) }));
   const doubt = doubted(posts);

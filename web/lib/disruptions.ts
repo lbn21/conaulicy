@@ -55,7 +55,7 @@ export type Disruption = {
   /** The end is the source's estimate ("przewidywane wznowienie"). */
   endEstimated: boolean;
   place: DisruptionPlace;
-  /** Absent only in files of version 1 (lib/zuk-data.ts). */
+  /** Our names for the place (lib/zuk-resolve.ts). */
   label?: DisruptionLabel;
   /** The source's own wording for the place: "Opaka od nr 104 do nr 110". */
   where: string;

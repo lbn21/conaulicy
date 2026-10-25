@@ -6,12 +6,12 @@ import type { ZukPost } from "./zuk.ts";
 import type { AiInput, AiReading, AiResult } from "./zuk-ai.ts";
 import { handleZukCron, runZuk, type ZukCronDeps } from "./zuk-cron.ts";
 import {
-  AI_DEFERRED,
   AI_UNAVAILABLE,
   NOT_WATER,
   PAST,
   parseZukFile,
   WATER_QUALITY,
+  ZUK_READER,
   type ZukFile,
   zukView,
 } from "./zuk-data.ts";
@@ -115,7 +115,9 @@ const saved = (w: World): ZukFile => {
   assert.ok(file, "no file written");
   return file;
 };
-const byId = (w: World, id: number) => saved(w).posts.find((p) => p.id === id);
+const byId = (w: World, id: number) => saved(w).active.find((p) => p.id === id);
+const seenOf = (w: World, id: number) => saved(w).seen.find((p) => p.id === id);
+const ids = (posts: Array<{ id: number }>) => posts.map((p) => p.id);
 
 test("auth: Vercel Cron's bearer secret, nothing else", async () => {
   const w = world();
@@ -146,26 +148,25 @@ test("first run: every new post read, at most four, the rest next run", async ()
   assert.equal(summary.aiCalls, 4);
   assert.equal(w.writes.length, 1);
   const file = saved(w);
-  assert.equal(file.version, 3);
+  assert.equal(file.version, 4);
   assert.equal(file.checkedAt, EARLIER.toISOString());
   assert.equal(file.generatedAt, EARLIER.toISOString());
-  // No keyword gate: the fox post is stored too.
-  assert.deepEqual(
-    file.posts.map((p) => p.id),
-    [39885, 39872, 39865, 39863, 39857, 39855, 39766, FOX],
-  );
-  assert.ok(file.posts.every((p) => p.sourceId === "gmina-lubaczow"));
+  assert.deepEqual(ids(file.active), [39885, 39872, 39865, 39863]);
+  assert.ok(file.active.every((p) => p.sourceId === "gmina-lubaczow"));
+  assert.ok(file.active.every((p) => p.reader === ZUK_READER));
   const first = byId(w, 39885);
   assert.equal(first?.status, "parsed");
-  assert.equal(first?.model, "grok-4.7");
-  assert.equal(first?.costUsd, 0.0038);
+  // The reading's cost is in the log, not the file.
+  assert.equal(first && "costUsd" in first, false);
+  assert.equal(first && "usage" in first, false);
+  assert.ok(w.logs.some((l) => l.zuk === "ai" && l.costUsd === 0.0038));
   assert.ok((first?.items.length ?? 0) > 0);
   assert.equal(first?.itemCount, first?.items.length);
   assert.ok(first?.items.every((d) => d.label));
-  // Over the cap: waits, not a failure of xAI.
-  assert.equal(byId(w, 39857)?.reason, AI_DEFERRED);
-  assert.equal(byId(w, 39857)?.itemCount, 0);
-  assert.ok((byId(w, 39857)?.localityIds.length ?? 0) > 0);
+  // Over the cap: in neither list, not shown, read next run.
+  assert.deepEqual(file.seen, []);
+  assert.equal(byId(w, 39857), undefined);
+  assert.ok(zukView(file, EARLIER).notices.every((n) => n.uid !== "zuk-39857"));
 
   w.aiCalls = [];
   await runZuk(deps(w));
@@ -173,50 +174,83 @@ test("first run: every new post read, at most four, the rest next run", async ()
   assert.equal(byId(w, 39857)?.status, "parsed");
 });
 
-test("past posts: every title day over, stored without a model call", async () => {
+test("past posts: every title day over, seen without a model call", async () => {
   const w = world();
   const summary = await runZuk(deps(w));
   assert.deepEqual(w.aiCalls, [39885, FOX]);
   assert.equal(summary.costUsd, 0.0076);
-  const past = byId(w, 39872);
-  assert.equal(past?.status, "notice");
-  assert.equal(past?.reason, PAST);
-  assert.equal(past?.model, undefined);
-  assert.equal(past?.itemCount, 0);
+  assert.equal(byId(w, 39872), undefined);
+  assert.deepEqual(seenOf(w, 39872), {
+    id: 39872,
+    modified: RECENT[1].modified,
+    reason: PAST,
+    reader: ZUK_READER,
+  });
   // Not read again on the next run.
   w.aiCalls = [];
   await runZuk(deps(w));
   assert.deepEqual(w.aiCalls, []);
 });
 
-test("items over: itemCount keeps what was read", async () => {
+test("cuts all over: the parsed post moves to seen on the next write", async () => {
   const w = world({ now: EARLIER });
   await runZuk(deps(w));
+  assert.equal(byId(w, 39872)?.status, "parsed");
   w.aiCalls = [];
   w.now = NOW;
   await runZuk(deps(w));
   // The deferred posts are over by now (past); the fox post has no title
   // day, so it is read.
   assert.deepEqual(w.aiCalls, [FOX]);
-  // 39872 (22 Oct) is over: its cuts are gone, their count kept.
-  const over = byId(w, 39872);
-  assert.equal(over?.status, "parsed");
-  assert.equal(over?.items.length, 0);
-  assert.ok((over?.itemCount ?? 0) > 0);
+  // 39872 (22 Oct) is over: seen, not read again.
+  assert.equal(byId(w, 39872), undefined);
+  assert.equal(seenOf(w, 39872)?.reason, PAST);
+  assert.deepEqual(ids(saved(w).active), [39885]);
 });
 
-test("a version 1 or 2 file: every post read again", async () => {
-  for (const version of [1, 2]) {
-    const w = world();
-    await runZuk(deps(w));
-    const old = JSON.parse(w.file ?? "");
-    w.file = JSON.stringify({ ...old, version });
+test("a file of an older version: the window read afresh, four a run", async () => {
+  for (const version of [1, 2, 3]) {
+    const w = world({ now: EARLIER });
+    w.file = JSON.stringify({
+      version,
+      generatedAt: EARLIER.toISOString(),
+      checkedAt: EARLIER.toISOString(),
+      posts: [],
+    });
+    const summary = await runZuk(deps(w));
+    assert.equal(summary.aiCalls, 4, String(version));
+    assert.deepEqual(w.aiCalls, [39885, 39872, 39865, 39863]);
+    assert.equal(saved(w).version, 4);
     w.aiCalls = [];
-    w.now = new Date(NOW.getTime() + 60_000);
     await runZuk(deps(w));
-    assert.deepEqual(w.aiCalls, [39885, FOX], String(version));
-    assert.equal(saved(w).version, 3);
+    assert.deepEqual(w.aiCalls, [39857, 39855, 39766, FOX]);
   }
+});
+
+test("an older reader: every post read again, four a run", async () => {
+  const w = world({ now: EARLIER });
+  await runZuk(deps(w));
+  await runZuk(deps(w));
+  w.aiCalls = [];
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, []);
+  const file = saved(w);
+  w.file = JSON.stringify({
+    ...file,
+    active: file.active.map((p) => ({ ...p, reader: ZUK_READER - 1 })),
+    seen: file.seen.map((p) => ({ ...p, reader: ZUK_READER - 1 })),
+  });
+  const summary = await runZuk(deps(w));
+  assert.equal(summary.aiCalls, 4);
+  assert.deepEqual(w.aiCalls, [39885, 39872, 39865, 39863]);
+  // The posts not read yet keep their old reading until their turn.
+  assert.equal(byId(w, 39857)?.reader, ZUK_READER - 1);
+  w.aiCalls = [];
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, [39857, 39855, 39766, FOX]);
+  w.aiCalls = [];
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, []);
 });
 
 test("unchanged posts: no model call, no places query, results kept", async () => {
@@ -263,7 +297,28 @@ test("an edited post is read again", async () => {
   assert.equal(byId(w, 39885)?.modified, "2026-10-24T09:00:00");
 });
 
-test("xAI down: old results kept, new posts Notices, retried later", async () => {
+test("an edited post not read this run: its old reading kept, read later", async () => {
+  const w = world();
+  await runZuk(deps(w));
+  const kept = byId(w, 39885);
+  assert.ok(kept);
+  w.posts = RECENT.map((p) =>
+    p.id === 39885 ? { ...p, modified: "2026-10-24T09:00:00" } : p,
+  );
+  w.aiFails = true;
+  w.aiCalls = [];
+  w.now = new Date(NOW.getTime() + 60_000);
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, [39885]);
+  assert.deepEqual(byId(w, 39885), kept);
+  w.aiFails = false;
+  w.aiCalls = [];
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, [39885]);
+  assert.equal(byId(w, 39885)?.modified, "2026-10-24T09:00:00");
+});
+
+test("xAI down: old results kept, new posts not shown, retried later", async () => {
   const w = world();
   await runZuk(deps(w));
   await runZuk(deps(w));
@@ -276,8 +331,12 @@ test("xAI down: old results kept, new posts Notices, retried later", async () =>
   // One failed call, then no more this run.
   assert.equal(summary.aiCalls, 1);
   assert.deepEqual(w.aiCalls, [NEW]);
-  assert.equal(byId(w, NEW)?.status, "notice");
-  assert.equal(byId(w, NEW)?.reason, AI_UNAVAILABLE);
+  // Stored to be retried, never shown.
+  assert.equal(byId(w, NEW), undefined);
+  assert.equal(seenOf(w, NEW)?.reason, AI_UNAVAILABLE);
+  assert.ok(
+    zukView(saved(w), NOW).notices.every((n) => n.uid !== `zuk-${NEW}`),
+  );
   assert.deepEqual(byId(w, 39885), kept);
 
   w.aiFails = false;
@@ -287,11 +346,13 @@ test("xAI down: old results kept, new posts Notices, retried later", async () =>
   assert.equal(byId(w, NEW)?.status, "parsed");
 });
 
-test("no XAI_API_KEY: new posts are Notices, nothing called", async () => {
+test("no XAI_API_KEY: new posts retried, nothing called", async () => {
   const w = world({ now: EARLIER });
   await runZuk({ ...deps(w), xaiKey: undefined });
   assert.deepEqual(w.aiCalls, []);
-  assert.ok(saved(w).posts.every((p) => p.reason === AI_UNAVAILABLE));
+  assert.deepEqual(saved(w).active, []);
+  assert.equal(saved(w).seen.length, RECENT.length);
+  assert.ok(saved(w).seen.every((p) => p.reason === AI_UNAVAILABLE));
 });
 
 test("the gmina's site down: 502, the old file untouched", async () => {
@@ -320,12 +381,12 @@ test("the gmina's site answers with something else: the same", async () => {
   assert.equal(w.writes.length, 0);
 });
 
-test("WP query: posts of the last 30 days, the fields we read", async () => {
+test("WP query: posts of the last 14 days, the fields we read", async () => {
   const w = world();
   await runZuk(deps(w));
   const url = new URL(w.urls[0]);
   assert.equal(url.origin + url.pathname, WP_POSTS);
-  assert.equal(url.searchParams.get("after"), "2026-09-25T00:00:00");
+  assert.equal(url.searchParams.get("after"), "2026-10-11T00:00:00");
   assert.equal(
     url.searchParams.get("_fields"),
     "id,date,modified,link,title,content",
@@ -345,15 +406,17 @@ test("the file unreadable: the run stops, nothing written", async () => {
   assert.deepEqual(w.urls, []);
 });
 
-test("post_type other: a not-water Notice, never read again, never shown", async () => {
+test("post_type other: seen as not-water, never read again, never shown", async () => {
   const w = world();
   await runZuk(deps(w));
-  const fox = byId(w, FOX);
-  assert.equal(fox?.status, "notice");
-  assert.equal(fox?.reason, NOT_WATER);
-  assert.equal(fox?.itemCount, 0);
-  assert.deepEqual(fox?.items, []);
-  assert.equal(fox?.model, "grok-4.7");
+  assert.equal(byId(w, FOX), undefined);
+  // No title, url, localityIds or items.
+  assert.deepEqual(seenOf(w, FOX), {
+    id: FOX,
+    modified: RECENT[7].modified,
+    reason: NOT_WATER,
+    reader: ZUK_READER,
+  });
   w.aiCalls = [];
   w.now = new Date(NOW.getTime() + 15 * 60_000);
   await runZuk(deps(w));
@@ -488,8 +551,16 @@ test("keywords and the model disagree: logged, the model decides", async () => {
       regex: false,
     },
   ]);
-  assert.equal(byId(w, 39885)?.reason, NOT_WATER);
+  assert.equal(byId(w, 39885), undefined);
+  assert.equal(seenOf(w, 39885)?.reason, NOT_WATER);
   assert.equal(byId(w, FOX)?.reason, WATER_QUALITY);
+  // Not about water: no localityIds anywhere in the file.
+  assert.deepEqual(Object.keys(seenOf(w, 39885) ?? {}).sort(), [
+    "id",
+    "modified",
+    "reader",
+    "reason",
+  ]);
 });
 
 test("keywords and the model agree: nothing logged", async () => {
@@ -508,6 +579,42 @@ test("many new posts: still four model calls a run, the rest deferred", async ()
   const summary = await runZuk(deps(w));
   assert.equal(summary.aiCalls, 4);
   assert.deepEqual(w.aiCalls, [NEW, NEW + 1, NEW + 2, NEW + 3]);
-  const deferred = saved(w).posts.filter((p) => p.reason === AI_DEFERRED);
-  assert.equal(deferred.length, 6);
+  // The six deferred: in neither list, no Notice.
+  assert.deepEqual(ids(saved(w).active), [NEW, NEW + 1, NEW + 2, NEW + 3]);
+  assert.deepEqual(saved(w).seen, []);
+  const view = zukView(saved(w), NOW);
+  assert.deepEqual(view.notices, []);
+});
+
+test("40 posts, one live: a small file, one active", async () => {
+  // 39885 (cuts to come), 30 past posts (copies of 39872) and nine not
+  // about water (copies of the fox post).
+  const copy = (from: ZukPost, n: number) => ({
+    ...from,
+    id: NEW + n,
+    date: `2026-10-${String(1 + (n % 20)).padStart(2, "0")}T${String(n % 24).padStart(2, "0")}:00:00`,
+  });
+  const posts = [
+    RECENT[0],
+    ...Array.from({ length: 30 }, (_, n) => copy(RECENT[1], n)),
+    ...Array.from({ length: 9 }, (_, n) => copy(RECENT[7], 30 + n)),
+  ];
+  assert.equal(posts.length, 40);
+  const readings = Object.fromEntries(
+    posts.slice(31).map((p) => [p.id, reading(FOX)]),
+  );
+  const w = world({ posts, readings });
+  for (let run = 0; run < 3; run++) {
+    await runZuk(deps(w));
+    w.now = new Date(w.now.getTime() + 15 * 60_000);
+  }
+  // 10 posts to read: three runs.
+  assert.equal(w.aiCalls.length, 10);
+  const file = saved(w);
+  assert.deepEqual(ids(file.active), [39885]);
+  assert.equal(file.seen.length, 39);
+  // The live post is most of it (39885: 76 cuts); the rest is a few bytes
+  // a post.
+  const rest = JSON.stringify(file.seen).length;
+  assert.ok(rest < 39 * 80, String(rest));
 });
