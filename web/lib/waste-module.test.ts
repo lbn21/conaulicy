@@ -19,6 +19,8 @@ const place = (overrides: Partial<PlaceView> = {}): PlaceView => ({
   area: "Lubaczów",
   group: "0972447",
   gmina: "Lubaczów (miasto)",
+  localityId: "0972447",
+  streetId: "0972447-00470",
   zoneId: "zone-1",
   nr: null,
   askNumber: false,

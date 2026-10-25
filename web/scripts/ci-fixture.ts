@@ -9,7 +9,8 @@
 // with diacritics, a street in no zone, a street whose schedule has ended
 // (only past dates), villages with streets, villages without, a village
 // part whose village has streets (Pilipy, Młodów) and one whose village has
-// none (Holiki, Dąbrowa), one month
+// none (Holiki, Dąbrowa), the places of the ZUK dev mock's post 39885
+// (lib/water-fixture.ts: ul. Żuki, Załuże; Lisie Jamy above), one month
 // with 6 pickup days and holiday-shifted dates, and the home page's examples
 // (lib/examples.ts) under their real ids.
 import { createHash } from "node:crypto";
@@ -55,6 +56,7 @@ const LOCALITIES = [
   { id: "0606010", gminaId: "1809042", name: "Dąbrowa", kind: "wies" },
   { id: "0606375", gminaId: "1809042", name: "Szczutków", kind: "wies" },
   { id: "0606286", gminaId: "1809042", name: "Młodów", kind: "wies" },
+  { id: "0606464", gminaId: "1809042", name: "Załuże", kind: "wies" },
   {
     id: "0606300",
     gminaId: "1809042",
@@ -82,6 +84,7 @@ const STREETS = [
   ["0972447", "90005", "Żeromskiego", "Stefana"],
   ["0972447", "23434", "Ustronna", null],
   ["0972447", "90009", "Wrzosowa", null],
+  ["0972447", "26555", "Żuki", null],
   ["0606234", "90007", "Polna", null],
   ["0606234", "90008", "Leśna", null],
   ["0606286", "24550", "Wodna", null],
@@ -159,6 +162,7 @@ const ZONES: Array<{
     members: [
       { localityId: "0972447", streetId: "0972447-90004", parity: "odd" },
       { localityId: "0972447", streetId: "0972447-90005" },
+      { localityId: "0972447", streetId: "0972447-26555" },
     ],
     rule: {
       weekday: 2,
@@ -171,8 +175,9 @@ const ZONES: Array<{
   },
   {
     id: "waste:gmina-s1",
-    name: "Lisie Jamy, Dąbrowa, Szczutków i Młodów",
+    name: "Lisie Jamy, Dąbrowa, Szczutków, Młodów i Załuże",
     members: [
+      "0606464",
       "0606234",
       "0606010",
       "0606375",

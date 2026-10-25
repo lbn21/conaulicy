@@ -36,11 +36,32 @@ const cached = unstable_cache(() => readZukFile(false), ["zuk-file"], {
 });
 
 /**
- * ZUK's water cuts and notices for the pages. No file, or one older than an
- * hour: `stale`, so a page shows the source link instead (lib/zuk-data.ts).
- * @public Pages will read it (no UI yet).
+ * `next dev` only: ZUK_MOCK=39885|39885-stale|none serves a fixture file
+ * (lib/water-fixture.ts) instead of the Blob. Any build (Vercel's included)
+ * runs with NODE_ENV=production, so it can never be on there.
+ */
+async function mockView(now: Date): Promise<ZukData | null> {
+  const name = process.env.ZUK_MOCK;
+  if (!name) return null;
+  if (
+    process.env.NODE_ENV !== "development" ||
+    process.env.VERCEL_ENV === "production"
+  ) {
+    console.error("ZUK_MOCK: ignored outside next dev");
+    return null;
+  }
+  const { mockFile } = await import("./water-fixture.ts");
+  const file = mockFile(name, now.getTime());
+  return file === undefined ? null : zukView(file, now);
+}
+
+/**
+ * ZUK's water cuts and notices for the pages (lib/water-module.ts). No
+ * file, or one older than an hour: `stale` (lib/zuk-data.ts).
  */
 export async function getZukData(now = new Date()): Promise<ZukData> {
+  const mock = await mockView(now);
+  if (mock) return mock;
   let body: string | null = null;
   try {
     body = await cached();

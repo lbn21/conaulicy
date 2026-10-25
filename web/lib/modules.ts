@@ -1,4 +1,4 @@
-// The address page's modules: waste and the weather today; water, power and
+// The address page's modules: waste, water and the weather today; power and
 // others later (docs/tasks T102). Each one has a card on the address page
 // (components/hub.tsx), or a line under „Bez zapowiedzi” when it has nothing
 // to show, and a subpage of its own, /adres/<id>/<id of the module>, if it
@@ -9,6 +9,7 @@ import type { Metadata } from "next";
 import type { ComponentType } from "react";
 import { imgwCopy } from "@/components/imgw-banner";
 import { WasteDetails, wasteMetadata } from "@/components/place-page";
+import { WaterDetails, waterMetadata } from "@/components/water-page";
 import {
   isModuleId,
   MODULE_IDS,
@@ -20,12 +21,22 @@ import { IMGW_PAGE } from "@/lib/imgw-banner";
 import { getPlace, type PlaceView } from "@/lib/schedule";
 import { wasteSources, wasteSummary } from "@/lib/waste-module";
 import {
+  type Water,
+  water,
+  waterAlerts,
+  waterChecked,
+  waterNone,
+  waterSources,
+  waterSummary,
+} from "@/lib/water-module";
+import {
   type Weather,
   weather,
   weatherAlerts,
   weatherSources,
   weatherSummary,
 } from "@/lib/weather-module";
+import { getZukData } from "@/lib/zuk-store";
 
 export type Module<D> = {
   id: ModuleId;
@@ -43,9 +54,15 @@ export type Module<D> = {
   /** The card's rows; null: nothing to show („Bez zapowiedzi”). */
   summary(data: D): SummaryRow[] | null;
   /** What „Bez zapowiedzi” says for it, after its title (summary null). */
-  none?: string;
+  none?: string | ((data: D) => string);
   /** Its sources, one „Źródło” each: a link and when it was checked. */
   sources(data: D): Part[][];
+  /**
+   * When we last checked its source: „Ostatnio sprawdziliśmy …” on its card,
+   * its „Bez zapowiedzi” line and its subpage (lib/hub.ts checkedLine).
+   * Left out or null: nothing shown.
+   */
+  checkedAt?(data: D): Date | null;
 } & (
   | {
       /** The subpage's h1. */
@@ -56,8 +73,15 @@ export type Module<D> = {
         nr: string | null,
         missing: boolean,
       ): Promise<Metadata>;
-      /** The subpage body. `missing`: ?nr= came without a usable number. */
-      Details: ComponentType<{ data: D; missing?: boolean }>;
+      /**
+       * The subpage body. `missing`: ?nr= came without a usable number;
+       * `checkedAt`: the module's, for its heading.
+       */
+      Details: ComponentType<{
+        data: D;
+        missing?: boolean;
+        checkedAt?: Date | null;
+      }>;
     }
   | {
       /** No subpage: „Szczegóły” goes to the source's own page. */
@@ -79,6 +103,26 @@ const waste: Module<PlaceView> = {
   sources: wasteSources,
   metadata: wasteMetadata,
   Details: WasteDetails,
+};
+
+// ZUK's planned water cuts at the address, from the ZUK file; no file, or
+// one that failed to load: the gmina's news link only.
+const woda: Module<Water> = {
+  id: "woda",
+  title: "Woda",
+  pageTitle: "Przerwy w dostawie wody",
+  order: MODULE_IDS.indexOf("woda"),
+  async load(id, nr) {
+    const [place, view] = await Promise.all([getPlace(id, nr), getZukData()]);
+    return place && water(view, place);
+  },
+  alerts: waterAlerts,
+  summary: waterSummary,
+  none: waterNone,
+  sources: waterSources,
+  checkedAt: waterChecked,
+  metadata: waterMetadata,
+  Details: WaterDetails,
 };
 
 // IMGW's warnings for the powiat (all our gminas lie in one), as the
@@ -108,6 +152,7 @@ const pogoda: Module<Weather> = {
 // biome-ignore lint/suspicious/noExplicitAny: one registry for every data type
 export const MODULES: { [K in ModuleId]: Module<any> } = {
   smieci: waste,
+  woda,
   pogoda,
 };
 

@@ -21,6 +21,7 @@
 // - a house number on a street with one schedule: both pages say, right
 //   under the h1, that it changes nothing; never on a split street, a
 //   village or without a number;
+// - /woda without a ZUK file: breadcrumbs, h1, the gmina's news, noindex;
 // - the weather has no subpage: /pogoda is a 404 (check-indexing.mjs reads
 //   the whole 404 page).
 //
@@ -187,8 +188,15 @@ try {
     if (/href="\/ics\/|harmonogram\.pdf|Dodaj do kalendarza/.test(hub))
       fail(path, "a calendar or PDF link");
     if (/govuk-notification-banner/.test(hub)) fail(path, "the IMGW banner");
+    // No ZUK file in CI: water first, with the gmina's news only.
     if (
-      !/<h2 id="bez-zapowiedzi-heading"[^>]*>Bez zapowiedzi<\/h2><p class="govuk-body">Pogoda: brak ostrzeżeń IMGW\. Źródło: <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">IMGW-PIB<\/a>, sprawdzono /.test(
+      !/<h2 id="bez-zapowiedzi-heading"[^>]*>Bez zapowiedzi<\/h2><p class="govuk-body">Woda: nie udało się nam sprawdzić komunikatów\. Źródło: <a href="https:\/\/www\.gminalubaczow\.pl\/aktualnosci\/" class="govuk-link">aktualności gminy Lubaczów<\/a>\.<\/p>/.test(
+        hub,
+      )
+    )
+      fail(path, "no „Bez zapowiedzi” line for the water");
+    if (
+      !/<\/p><p class="govuk-body">Pogoda: brak ostrzeżeń IMGW\. Źródło: <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">IMGW-PIB<\/a>, sprawdzono /.test(
         hub,
       )
     )
@@ -238,6 +246,29 @@ try {
     const subTitle = /<title>([^<]*)<\/title>/.exec(sub.html)?.[1] ?? "";
     if (note && /\b12\b/.test(subTitle)) fail(waste, `title ${subTitle}`);
   }
+
+  // /woda without a ZUK file (CI): breadcrumbs, caption and h1, the gmina's
+  // news, no checked line; never a search result.
+  const waterPath = `${STREET}/woda`;
+  const water = await main(waterPath);
+  if (water.status !== 200) fail(waterPath, `${water.status}, want 200`);
+  crumbsAre(waterPath, water.main, [HOME, TOWN, [STREET, "ul. Adama Asnyka"]]);
+  if (
+    !/<span class="govuk-caption-l">[^<]+<\/span><h1 class="govuk-heading-l">Przerwy w dostawie wody<\/h1>/.test(
+      water.main,
+    )
+  )
+    fail(waterPath, "no caption and h1 „Przerwy w dostawie wody”");
+  if (
+    !water.main.includes("Nie udało się nam teraz sprawdzić") ||
+    !water.main.includes('href="https://www.gminalubaczow.pl/aktualnosci/"')
+  )
+    fail(waterPath, "no fallback to the gmina's news");
+  if (water.main.includes("Ostatnio sprawdziliśmy"))
+    fail(waterPath, "a checked line without a file");
+  if (!/<meta name="robots" content="noindex/.test(water.html))
+    fail(waterPath, "not noindex");
+  headingsInOrder(waterPath, water.main);
 
   // A split street: the number first, then its dates; a wrong one keeps the
   // street page's error.
@@ -351,5 +382,5 @@ async function shots(dir) {
 
 finish(
   failures,
-  "Modules: the hub (waste card first, no calendar, weather under „Bez zapowiedzi”) and /smieci (breadcrumbs, h1, calendar, PDF).",
+  "Modules: the hub (waste card first, no calendar, water and weather under „Bez zapowiedzi”), /smieci (breadcrumbs, h1, calendar, PDF) and /woda (fallback).",
 );

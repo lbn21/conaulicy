@@ -1,13 +1,19 @@
-import { Fragment } from "react";
+import { CheckedLine } from "@/components/checked-line";
+import { Parts, textOf } from "@/components/parts";
 import {
   AddressPage,
   numberError,
   PlaceNotFound,
   StreetPage,
 } from "@/components/place-page";
-import { Bins } from "@/components/waste-bins";
 import { MODULE_IDS } from "@/lib/address-routes";
-import { type Alert, alertSlot, type Part, warningCount } from "@/lib/hub";
+import {
+  type Alert,
+  alertSlot,
+  checkedLine,
+  type Part,
+  warningCount,
+} from "@/lib/hub";
 import { IMGW_ATTRIBUTION } from "@/lib/imgw-warnings";
 import { MODULES, type Module } from "@/lib/modules";
 import { placePath } from "@/lib/places";
@@ -22,39 +28,14 @@ import type { PlaceView } from "@/lib/schedule";
 // waste subpage. A split street's number errors keep the street page
 // (StreetPage), GOV.UK's validation pattern.
 
-/** Parts as plain text: a row's key in the list. */
-const textOf = (parts: Part[]) =>
-  parts
-    .map((part) =>
-      typeof part === "string"
-        ? part
-        : "bins" in part
-          ? part.bins.map((bin) => bin.label).join(", ")
-          : part.text,
-    )
-    .join("");
-
-/** A row's or a line's parts as text, links and bins. */
-function Parts({ parts }: { parts: Part[] }) {
-  return parts.map((part, i) => {
-    // A fixed sequence, never reordered; its texts may repeat (" ").
-    const key = `${i}`;
-    if (typeof part === "string") return <Fragment key={key}>{part}</Fragment>;
-    if ("bins" in part) {
-      return <Bins key={key} pickups={part.bins} large={false} />;
-    }
-    return (
-      <a key={key} href={part.href} className="govuk-link">
-        {part.text}
-        {part.hidden && (
-          <span className="govuk-visually-hidden"> {part.hidden}</span>
-        )}
-      </a>
-    );
-  });
-}
-
 type Loaded = { module: Module<unknown>; data: unknown };
+
+const checkedAt = ({ module, data }: Loaded) =>
+  module.checkedAt?.(data) ?? null;
+
+/** What „Bez zapowiedzi” says for a module. */
+const noneText = ({ module, data }: Loaded) =>
+  typeof module.none === "function" ? module.none(data) : module.none;
 
 /** Where a module's „Szczegóły” go: its subpage, or the source's page. */
 function detailsHref({ module }: Loaded, place: PlaceView): string {
@@ -129,6 +110,10 @@ function Card({
   place: PlaceView;
 }) {
   const { module, data } = loaded;
+  const all: Array<[string, Part[]]> = [
+    ...rows,
+    ...module.sources(data).map((parts): [string, Part[]] => ["Źródło", parts]),
+  ];
   return (
     <div className="govuk-summary-card">
       <div className="govuk-summary-card__title-wrapper">
@@ -144,12 +129,7 @@ function Card({
       </div>
       <div className="govuk-summary-card__content">
         <dl className="govuk-summary-list">
-          {[
-            ...rows,
-            ...module
-              .sources(data)
-              .map((parts): [string, Part[]] => ["Źródło", parts]),
-          ].map(([key, value]) => (
+          {all.map(([key, value], i) => (
             <div
               key={`${key}: ${textOf(value)}`}
               className="govuk-summary-list__row"
@@ -157,6 +137,14 @@ function Card({
               <dt className="govuk-summary-list__key">{key}</dt>
               <dd className="govuk-summary-list__value">
                 <Parts parts={value} />
+                {/* Under the last source, so the row keeps GOV.UK's spacing. */}
+                {i === all.length - 1 && (
+                  <CheckedLine
+                    at={checkedAt(loaded)}
+                    as="span"
+                    className="govuk-!-display-block govuk-!-margin-top-1 govuk-!-margin-bottom-0"
+                  />
+                )}
               </dd>
             </div>
           ))}
@@ -228,17 +216,21 @@ export async function HubMain({
           <h2 id="bez-zapowiedzi-heading" className="govuk-heading-s">
             Bez zapowiedzi
           </h2>
-          {quiet.map(({ module, data }) => (
-            <p key={module.id} className="govuk-body">
-              {`${module.title}: ${module.none}. Źródło: `}
-              <Parts
-                parts={module
-                  .sources(data)
-                  .flatMap((parts, i) => (i > 0 ? ["; ", ...parts] : parts))}
-              />
-              .
-            </p>
-          ))}
+          {quiet.map((entry) => {
+            const { module, data } = entry;
+            const checked = checkedLine(checkedAt(entry));
+            return (
+              <p key={module.id} className="govuk-body">
+                {`${module.title}: ${noneText(entry)}. Źródło: `}
+                <Parts
+                  parts={module
+                    .sources(data)
+                    .flatMap((parts, i) => (i > 0 ? ["; ", ...parts] : parts))}
+                />
+                .{checked && ` ${checked}.`}
+              </p>
+            );
+          })}
         </section>
       )}
       {imgw && <p className="govuk-body-s">{IMGW_ATTRIBUTION.join(" ")}</p>}

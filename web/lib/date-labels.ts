@@ -50,12 +50,16 @@ const WEEKDAY_GENITIVE = [
 /** An instant's day in Warsaw, after "od"/"do". Example: "niedzieli 25 października". */
 export function dayGenitive(at: number): string {
   const weekday = WEEKDAY_GENITIVE[warsawNoon(warsawDay(at)).getUTCDay()];
-  const date = new Intl.DateTimeFormat(LOCALE, {
+  return `${weekday} ${dayMonth(at)}`;
+}
+
+/** An instant's Warsaw day and month. Example: "25 października". */
+export function dayMonth(at: number): string {
+  return new Intl.DateTimeFormat(LOCALE, {
     timeZone: WARSAW,
     day: "numeric",
     month: "long",
   }).format(at);
-  return `${weekday} ${date}`;
 }
 
 /** An instant's Warsaw date. Example: "2026-10-25". */

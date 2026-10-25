@@ -558,7 +558,8 @@ async function hubChecks(origin, state) {
       : more.length > 0 && "an overflow link",
     gaps.some((gap, i) => gap !== i > 0) && `line gaps ${gaps}`,
     cards.join() !== "Śmieci,Pogoda" && `cards ${cards}`,
-    hub.includes('id="bez-zapowiedzi-heading"') &&
+    // Water may be there (no ZUK file in CI); the weather never is.
+    /<p class="govuk-body">Pogoda: /.test(hub) &&
       "„Bez zapowiedzi” with a warning",
   ].filter(Boolean);
   if (problems.length > 0) failures.push(`${label}: ${problems.join("; ")}`);
