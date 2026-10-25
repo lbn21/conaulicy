@@ -49,6 +49,9 @@ const VILLAGE_STREET = "/adres/0606234-90007";
 // Młodów's line on /ulice; Holiki, a part of Dąbrowa (no streets), to
 // Dąbrowa's (check-all-places.mjs checks their ids).
 const MLODOW_STREET = "/adres/0606286-24550";
+// Krowica Sama: a village with a street, a place of its own all the same,
+// in the fixture's sektor 2. PRG has nr 40 there (no street), not 9999.
+const STREETED_VILLAGE = "/adres/0606180";
 const VILLAGE_PART = "/adres/0606300";
 const BARE_VILLAGE_PART = "/adres/0606027";
 const MAIN = /<main[\s\S]*<\/main>/;
@@ -59,14 +62,12 @@ const WASTE_CHECKED = String.raw`Ostatnio sprawdziliśmy: \d{1,2} \p{L}+`;
 const FRESHNESS = /Ostatnio sprawdziliśmy|sprawdzono|Stan na/g;
 const freshness = (html) => html.match(FRESHNESS)?.length ?? 0;
 const DATE = String.raw`\p{L}+, \d{1,2} \p{L}+`;
-const NOTE = sharedNumberNote({
-  kind: "ulica",
-  zoneId: "",
-  nr: null,
-  askNumber: false,
-  givenNr: "12",
-});
-// PRG has nr 1-7 at ul. Adama Asnyka (lib/prg.ts), so 12 also gets its hint.
+// PRG has nr 1-7 at ul. Adama Asnyka (lib/prg.ts), so 12 gets its hint
+// first, then the shared schedule without the number again.
+const NOTE = sharedNumberNote(
+  { kind: "ulica", zoneId: "", nr: null, askNumber: false, givenNr: "12" },
+  true,
+);
 const PRG_NOTE =
   "Nie znaleźliśmy nr 12 przy tej ulicy w rejestrze adresów. Sprawdź, czy numer jest dobry.";
 
@@ -137,6 +138,12 @@ try {
     // stays on the way back.
     [`${STREET}?nr=12`, `${STREET}/smieci?nr=12`, TOWN, "ul. Adama Asnyka"],
     [VILLAGE, `${VILLAGE}/smieci`, VILLAGES("Gmina Lubaczów"), "Dąbrowa"],
+    [
+      STREETED_VILLAGE,
+      `${STREETED_VILLAGE}/smieci`,
+      VILLAGES("Gmina Lubaczów"),
+      "Krowica Sama",
+    ],
     [
       VILLAGE_STREET,
       `${VILLAGE_STREET}/smieci`,
@@ -245,7 +252,7 @@ try {
     // The note right under the h1, only for the street with one schedule.
     const note = path === `${STREET}?nr=12`;
     const underH1 = new RegExp(
-      `</h1><p class="govuk-body">${NOTE} ${PRG_NOTE}</p>`,
+      `</h1><p class="govuk-body">${PRG_NOTE} ${NOTE}</p>`,
     );
     if (note !== underH1.test(hub))
       fail(path, note ? "no note under the h1" : "a house-number note");
@@ -379,6 +386,30 @@ try {
     if ((await main(path)).main.includes("Harmonogram jest wspólny"))
       fail(path, "a house-number note");
   }
+
+  // Krowica Sama's own schedule (sektor 2) and its calendar; the address
+  // register knows every number in it, so only a made-up one gets the hint.
+  const streeted = await main(`${STREETED_VILLAGE}/smieci`);
+  if (
+    !streeted.main.includes("Krowica Sama, sektor 2") ||
+    !streeted.main.includes('href="/ics/waste%3Agmina-s2')
+  )
+    fail(`${STREETED_VILLAGE}/smieci`, "not sektor 2 with its calendar");
+  for (const [nr, hint] of [
+    ["40", false],
+    ["9999", true],
+  ]) {
+    const path = `${STREETED_VILLAGE}/nr/${nr}`;
+    const page = await main(path);
+    if (page.status !== 200) fail(path, `${page.status}, want 200`);
+    const has = page.main.includes(
+      `Nie znaleźliśmy nr ${nr} w tej miejscowości w rejestrze adresów.`,
+    );
+    if (has !== hint) fail(path, hint ? "no PRG hint" : "a PRG hint");
+  }
+  // The town is no place of its own.
+  const town = await fetch(`${server.origin}/adres/0972447`);
+  if (town.status !== 404) fail("/adres/0972447", `${town.status}, want 404`);
 
   if (process.env.SCREENSHOT_DIR) await shots(process.env.SCREENSHOT_DIR);
 } finally {

@@ -311,9 +311,8 @@ test("a bare name means a street: anything else yields on a tie", () => {
 });
 
 test("a village before an osiedle in it: size by town or village", () => {
-  // Krowica Sama has a street, so in the real index it is no place of its
-  // own; its osiedle and parts are.
-  assert.ok(labels("Sama")[0].includes("Krowica Sama"));
+  // Krowica Sama has a street, and is a place of its own all the same.
+  assert.equal(labels("Sama")[0], "Krowica Sama (gm. Lubaczów)");
   const village: SearchIndex = [
     ["v", "Krowica Sama (gm. Lubaczów)", "wies"],
     ["o", "Osiedle Wolności, Krowica Sama", "os."],

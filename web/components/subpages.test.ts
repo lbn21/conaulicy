@@ -189,7 +189,7 @@ test("a number PRG has: no note; one it lacks: the note, the schedule as ever", 
   assert.match(
     html,
     new RegExp(
-      `<h1 class="govuk-heading-l">Odbiór śmieci</h1><p class="govuk-body">Harmonogram jest wspólny dla całej ulicy, także dla nr 9999\\. ${PRG_NOTE.replace(".", "\\.")}</p>`,
+      `<h1 class="govuk-heading-l">Odbiór śmieci</h1><p class="govuk-body">${PRG_NOTE.replace(".", "\\.")} Harmonogram jest wspólny dla całej ulicy\\.</p>`,
     ),
   );
   assert.ok(

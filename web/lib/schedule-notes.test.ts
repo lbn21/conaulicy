@@ -122,6 +122,13 @@ test("a number on a street with one schedule is acknowledged", () => {
   );
 });
 
+test("a number the address register lacks is not repeated", () => {
+  assert.equal(
+    sharedNumberNote({ ...asnyka, givenNr: "9999" }, true),
+    "Harmonogram jest wspólny dla całej ulicy.",
+  );
+});
+
 test("no number, no note", () => {
   assert.equal(sharedNumberNote(asnyka), null);
 });

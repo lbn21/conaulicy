@@ -141,6 +141,7 @@ test("pickZone: a split street needs the house number", () => {
 });
 
 test("/ulice lists the town by letter in Polish order, villages with their streets", () => {
+  // Lisie Jamy has streets and is a place too: one line, its streets under it.
   const town = (id: string, name: string, prefix = "ul.") => ({
     id,
     prefix,
@@ -171,6 +172,12 @@ test("/ulice lists the town by letter in Polish order, villages with their stree
     [
       { id: "10", name: "Szczutków", parent: null, gmina: "Lubaczów (gmina)" },
       { id: "11", name: "Dąbrowa", parent: null, gmina: "Lubaczów (gmina)" },
+      {
+        id: "0606234",
+        name: "Lisie Jamy",
+        parent: null,
+        gmina: "Lubaczów (gmina)",
+      },
     ],
   );
   assert.deepEqual(
@@ -193,21 +200,14 @@ test("/ulice lists the town by letter in Polish order, villages with their stree
   assert.equal(list.townId, "0972447");
   assert.equal(localityAnchor("0972447"), "m-0972447");
   assert.deepEqual(list.villages, [
+    { id: "11", label: "Dąbrowa (gm. Lubaczów)", streets: [] },
     {
-      id: "11",
-      localityId: "11",
-      label: "Dąbrowa (gm. Lubaczów)",
-      streets: [],
-    },
-    {
-      id: null,
-      localityId: "0606234",
-      label: "Lisie Jamy",
+      id: "0606234",
+      label: "Lisie Jamy (gm. Lubaczów)",
       streets: [{ id: "9", label: "ul. Polna" }],
     },
     {
       id: "10",
-      localityId: "10",
       label: "Szczutków (gm. Lubaczów)",
       streets: [],
     },

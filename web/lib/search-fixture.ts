@@ -1,5 +1,6 @@
 // The search index as production served it on 23 Oct 2026 (330 places),
-// for the search battery in search.test.ts. Ids are made up; labels and
+// plus the 6 villages with streets that are places since task 127
+// (p331-p336), for the search battery in search.test.ts. Ids are made up; labels and
 // types are real: each street's CECHA from the ULIC file of 2026-10-16, each
 // village or part as localities.kind. A fixture, so code
 // (scripts/check-tracked-data.mjs).
@@ -12,6 +13,7 @@ export const PLACES: SearchIndex = [
   ["p003", "Antoniki (gm. Lubaczów)", "wies"],
   ["p004", "Bałaje (gm. Lubaczów)", "wies"],
   ["p005", "Basznia (Basznia Dolna, gm. Lubaczów)", "czesc_wsi"],
+  ["p331", "Basznia Dolna (gm. Lubaczów)", "wies"],
   ["p006", "Basznia Górna (gm. Lubaczów)", "wies"],
   ["p007", "Blusy (Krowica Sama, gm. Lubaczów)", "czesc_wsi"],
   ["p008", "Boble (Krowica Lasowa, gm. Lubaczów)", "czesc_wsi"],
@@ -25,6 +27,7 @@ export const PLACES: SearchIndex = [
     "czesc_wsi",
   ],
   ["p014", "Czarne (Załuże, gm. Lubaczów)", "czesc_wsi"],
+  ["p332", "Dąbków (gm. Lubaczów)", "wies"],
   ["p015", "Dąbrowa (Basznia Górna, gm. Lubaczów)", "czesc_wsi"],
   ["p016", "Dąbrowa (gm. Lubaczów)", "wies"],
   ["p017", "Flisy (Lisie Jamy, gm. Lubaczów)", "czesc_wsi"],
@@ -33,10 +36,13 @@ export const PLACES: SearchIndex = [
   ["p020", "Hurcze (gm. Lubaczów)", "wies"],
   ["p021", "Huta Kryształowa (gm. Lubaczów)", "wies"],
   ["p022", "Kamienna (Opaka, gm. Lubaczów)", "czesc_wsi"],
+  ["p333", "Karolówka (gm. Lubaczów)", "wies"],
   ["p023", "Kornagi (Dąbrowa, gm. Lubaczów)", "czesc_wsi"],
   ["p024", "Krause (Dąbrowa, gm. Lubaczów)", "czesc_wsi"],
   ["p025", "Krowica Hołodowska (gm. Lubaczów)", "wies"],
   ["p026", "Krowica Lasowa (gm. Lubaczów)", "wies"],
+  ["p334", "Krowica Sama (gm. Lubaczów)", "wies"],
+  ["p335", "Lisie Jamy (gm. Lubaczów)", "wies"],
   ["p027", "Lubasy (Basznia Dolna, gm. Lubaczów)", "czesc_wsi"],
   ["p028", "Malce (Basznia Górna, gm. Lubaczów)", "czesc_wsi"],
   ["p029", "Mądre (Dąbrowa, gm. Lubaczów)", "czesc_wsi"],
@@ -44,6 +50,7 @@ export const PLACES: SearchIndex = [
   ["p031", "Mielniki (Krowica Hołodowska, gm. Lubaczów)", "czesc_wsi"],
   ["p032", "Mielniki (Szczutków, gm. Lubaczów)", "czesc_wsi"],
   ["p033", "Misztale (Lisie Jamy, gm. Lubaczów)", "czesc_wsi"],
+  ["p336", "Młodów (gm. Lubaczów)", "wies"],
   ["p034", "Moczar Duży (Załuże, gm. Lubaczów)", "czesc_wsi"],
   ["p035", "Moczar Mały (Załuże, gm. Lubaczów)", "czesc_wsi"],
   ["p036", "Mokrzyca (gm. Lubaczów)", "wies"],

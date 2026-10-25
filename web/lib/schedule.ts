@@ -9,7 +9,7 @@ import {
   gte,
   inArray,
   isNull,
-  notExists,
+  ne,
   notInArray,
   or,
   type SQL,
@@ -148,27 +148,22 @@ export type PlaceView = {
 
 const SUBTYPE_ORDER = FRACTIONS.map(({ subtype }) => subtype);
 
-// A locality is a place of its own only when it has no streets (a village);
-// otherwise its streets are the places.
-const withoutStreets = () =>
-  notExists(
-    db()
-      .select({ id: streets.id })
-      .from(streets)
-      .where(eq(streets.localityId, localities.id)),
-  );
+const parent = alias(localities, "parent");
+
+// Every village (part) is a place of its own, streets or not; the town is
+// not (it has no zone of its own), its streets are the places.
+const isVillage = (kind: typeof localities.kind | typeof parent.kind) =>
+  ne(kind, "miasto");
 
 // Roundabouts and squares stay out of search and the examples.
 const listed = notInArray(streets.prefix, UNLISTED_PREFIXES);
 
-const parent = alias(localities, "parent");
-
-// A village part's village's streets, all or those matching `where`.
-const parentStreets = (where?: SQL) =>
+// The listed streets of a village part's parent (village or town).
+const parentStreets = () =>
   db()
     .select({ id: streets.id })
     .from(streets)
-    .where(and(eq(streets.localityId, parent.id), where));
+    .where(and(eq(streets.localityId, parent.id), listed));
 
 const streetPlaces = (where: SQL | undefined, limit: number) =>
   db()
@@ -198,11 +193,11 @@ const villagePlaces = (where: SQL | undefined, limit: number) =>
       kind: localities.kind,
       parentId: localities.parentId,
       parent: parent.name,
-      // The village has a line on /ulice: as a place (no streets), or as
-      // the group of its listed streets.
+      // The village has a line on /ulice: as a place (any village), or the
+      // town as the group of its listed streets.
       parentLine: sql<boolean>`${or(
-        notExists(parentStreets()),
-        exists(parentStreets(listed)),
+        isVillage(parent.kind),
+        exists(parentStreets()),
       )}`,
       gmina: gminy.name,
       scheduleUrl: gminy.scheduleUrl,
@@ -210,7 +205,7 @@ const villagePlaces = (where: SQL | undefined, limit: number) =>
     .from(localities)
     .innerJoin(gminy, eq(gminy.id, localities.gminaId))
     .leftJoin(parent, eq(parent.id, localities.parentId))
-    .where(and(withoutStreets(), where))
+    .where(and(isVillage(localities.kind), where))
     .orderBy(asc(localities.search))
     .limit(limit);
 
@@ -320,7 +315,8 @@ export const searchIndex = unstable_cache(
       noData,
     };
   },
-  ["search-index"],
+  // v2: every village is a place, holding its streets on /ulice (task 127).
+  ["search-index-v2"],
   CACHE,
 );
 
@@ -493,9 +489,11 @@ const placeCached = unstable_cache(
       verified: upcoming.every((e) => e.verified),
     };
   },
-  // v4: sources' seenAt (task 121); v3: task 118 added importedAt, task
-  // 120 dropped it again; v2 entries lack localityId and streetId (task 117).
-  ["place-v4"],
+  // v5: villages with streets are places (task 127), older entries say
+  // null; v4: sources' seenAt (task 121); v3: task 118 added importedAt,
+  // task 120 dropped it again; v2 entries lack localityId and streetId
+  // (task 117).
+  ["place-v5"],
   CACHE,
 );
 
