@@ -12,6 +12,7 @@ import {
   streetLabel,
   streetName,
   terytName,
+  titleLabel,
   villageLabel,
 } from "./places.ts";
 
@@ -33,6 +34,19 @@ test("village parts name their village, villages their gmina", () => {
       gmina: "Lubaczów (miasto)",
     }),
     "Lubaczów",
+  );
+});
+
+test("a title names the place's locality, one name in two places apart", () => {
+  assert.equal(titleLabel("ul. Leśna, Lubaczów"), "ul. Leśna, Lubaczów");
+  assert.equal(
+    titleLabel("ul. Leśna, Basznia Dolna"),
+    "ul. Leśna, Basznia Dolna",
+  );
+  assert.equal(titleLabel("Antoniki (gm. Lubaczów)"), "Antoniki, gm. Lubaczów");
+  assert.equal(
+    titleLabel("Dąbrowa (Basznia Górna, gm. Lubaczów)"),
+    "Dąbrowa, Basznia Górna, gm. Lubaczów",
   );
 });
 

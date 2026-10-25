@@ -60,15 +60,14 @@ test("a place's description offers dates only when the page has them", () => {
   };
   assert.equal(
     placeDescription(place),
-    "Terminy wywozu śmieci: ul. Rynek, Lubaczów. Dodaj je do kalendarza w telefonie albo pobierz harmonogram do wydruku.",
+    "Wywóz śmieci, przerwy w dostawie wody i ostrzeżenia IMGW: ul. Rynek, Lubaczów. Najbliższe terminy w jednym miejscu.",
   );
   // A split street: the dates come with the house number.
   assert.match(
     placeDescription({ ...place, zoneId: "x", askNumber: true, days: [] }),
-    /^Terminy wywozu/,
+    /Najbliższe terminy/,
   );
-  const none =
-    /^Wywóz śmieci: ul\. Rynek, Lubaczów\. Terminów jeszcze tu nie mamy/;
+  const none = /: ul\. Rynek, Lubaczów\. Terminów wywozu jeszcze tu nie mamy/;
   assert.match(placeDescription({ ...place, zoneId: null, days: [] }), none);
   assert.match(placeDescription({ ...place, today: "2027-01-02" }), none);
   for (const label of [
@@ -90,7 +89,7 @@ test("the waste subpage's description is its own", () => {
   };
   assert.equal(
     placeDescription(place, "waste"),
-    "Wszystkie terminy wywozu śmieci: ul. Rynek, Lubaczów. Dodaj je do kalendarza albo pobierz harmonogram do wydruku.",
+    "Pełna lista odbiorów śmieci: ul. Rynek, Lubaczów. Wszystkie terminy do kalendarza w telefonie i harmonogram do druku (PDF).",
   );
   for (const variant of [place, { ...place, zoneId: null, days: [] }]) {
     assert.notEqual(

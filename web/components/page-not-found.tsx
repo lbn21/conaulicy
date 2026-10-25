@@ -1,8 +1,20 @@
+import type { Metadata } from "next";
 import { ContactLink } from "@/components/contact-link";
 import { HOME_H1 } from "@/lib/share";
 
 /** Its H1 and title (GOV.UK: "Page not found"). */
-export const NOT_FOUND_TITLE = "Nie znaleziono strony";
+const NOT_FOUND_TITLE = "Nie znaleziono strony";
+
+/**
+ * Every 404's metadata: its title, no description (never the layout's
+ * waste blurb), and Next.js's own noindex as the only robots tag (without
+ * the layout's index/follow tag next to it).
+ */
+export const NOT_FOUND_METADATA: Metadata = {
+  title: NOT_FOUND_TITLE,
+  description: null,
+  robots: null,
+};
 
 /**
  * GOV.UK's page not found pattern

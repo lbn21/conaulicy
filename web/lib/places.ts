@@ -25,6 +25,15 @@ export function villageLabel(village: {
     : `${village.name} (${gmina})`;
 }
 
+/**
+ * A place in page titles, its locality always named, so that the same street
+ * name in two places reads differently in search results: "ul. Leśna,
+ * Lubaczów", "Antoniki, gm. Lubaczów", "Dąbrowa, Basznia Górna, gm. Lubaczów".
+ */
+export function titleLabel(label: string): string {
+  return label.replace(/ \((.*)\)$/, ", $1");
+}
+
 /** What localities.search holds: the town itself, or the village label. */
 export function localitySearchLabel(locality: {
   name: string;

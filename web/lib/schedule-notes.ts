@@ -61,7 +61,8 @@ export const UNVERIFIED_NOTE =
  * The place's description in search results and when shared: its dates and
  * files only when the page offers them (a split street offers them once the
  * house number is in). The label after a colon, so no place name is declined.
- * `waste`: the waste subpage's own (/adres/<id>/smieci), every date.
+ * The address page's is an overview of its modules; `waste`, the waste
+ * subpage's own (/adres/<id>/smieci): the full list, calendar and PDF.
  */
 export function placeDescription(
   place: Pick<PlaceView, "label" | "zoneId" | "askNumber" | "days" | "today">,
@@ -72,10 +73,10 @@ export function placeDescription(
     (place.askNumber || hasUpcoming(place.days, place.today));
   if (page === "waste") {
     return dates
-      ? `Wszystkie terminy wywozu śmieci: ${place.label}. Dodaj je do kalendarza albo pobierz harmonogram do wydruku.`
+      ? `Pełna lista odbiorów śmieci: ${place.label}. Wszystkie terminy do kalendarza w telefonie i harmonogram do druku (PDF).`
       : `Odbiór śmieci: ${place.label}. Terminów jeszcze tu nie mamy – do tego czasu sprawdź harmonogram gminy.`;
   }
   return dates
-    ? `Terminy wywozu śmieci: ${place.label}. Dodaj je do kalendarza w telefonie albo pobierz harmonogram do wydruku.`
-    : `Wywóz śmieci: ${place.label}. Terminów jeszcze tu nie mamy – do tego czasu sprawdź harmonogram gminy.`;
+    ? `Wywóz śmieci, przerwy w dostawie wody i ostrzeżenia IMGW: ${place.label}. Najbliższe terminy w jednym miejscu.`
+    : `Wywóz śmieci, przerwy w dostawie wody i ostrzeżenia IMGW: ${place.label}. Terminów wywozu jeszcze tu nie mamy.`;
 }

@@ -22,7 +22,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { places, noData } = await searchIndex();
   const skip = new Set(noData);
   return [
-    ...PAGES.map((path) => ({ url: `${SITE_URL}${path}` })),
+    // The home page as its canonical link has it (no trailing slash).
+    ...PAGES.map((path) => ({
+      url: path === "/" ? SITE_URL : `${SITE_URL}${path}`,
+    })),
     ...places
       .filter(([id]) => !skip.has(id))
       .flatMap(([id]) => {
