@@ -79,3 +79,18 @@ test("internal paths are never touched", () => {
   assert.equal(clean("/.well-known/security.txt?x=1"), null);
   assert.equal(clean("/api/revalidate?x=1"), null);
 });
+
+test("a module subpage keeps only nr, as the street page", () => {
+  assert.equal(clean("/adres/X/smieci?x=1"), "");
+  assert.equal(clean("/adres/X/smieci?nr=12&x=1"), "?nr=12");
+  assert.equal(clean("/adres/X/smieci?nr=7/22"), null);
+  assert.equal(clean("/adres/X/smieci?nr="), null);
+  assert.equal(clean("/adres/X/smieci/nr/12?x=1"), "");
+  assert.equal(clean("/adres/X/smieci/nr/7/22"), null);
+  assert.equal(clean("/adres/X/smieci/numer?nr=1"), "");
+});
+
+test("an unknown module is not a route of ours", () => {
+  assert.equal(clean("/adres/X/woda?x=1"), null);
+  assert.equal(clean("/adres/X/woda/nr/12?x=1"), null);
+});

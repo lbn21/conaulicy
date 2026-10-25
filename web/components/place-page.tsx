@@ -185,6 +185,15 @@ function HouseNumberQuestion({
   );
 }
 
+/** The 404 page for an unknown place or module (see NotFound). */
+export function PlaceNotFound() {
+  return (
+    <Suspense fallback={<PageNotFound />}>
+      <NotFound />
+    </Suspense>
+  );
+}
+
 export async function PlaceMain({
   id,
   nr,
@@ -196,13 +205,18 @@ export async function PlaceMain({
   missing?: boolean;
 }) {
   const place = await getPlace(id, nr);
-  if (!place) {
-    return (
-      <Suspense fallback={<PageNotFound />}>
-        <NotFound />
-      </Suspense>
-    );
-  }
+  if (!place) return <PlaceNotFound />;
+  return <WasteDetails data={place} missing={missing} />;
+}
+
+/** The waste module's page body (lib/modules.ts): today's street page. */
+export function WasteDetails({
+  data: place,
+  missing = false,
+}: {
+  data: PlaceView;
+  missing?: boolean;
+}) {
   const name = withHouseNumber(place.name, place.nr);
   const error = numberError(place, missing);
 

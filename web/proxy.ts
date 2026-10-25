@@ -3,6 +3,7 @@ import {
   type NextRequest,
   NextResponse,
 } from "next/server";
+import { ADDRESS, numberErrorPath } from "@/lib/address-routes";
 import { cleanQuery } from "@/lib/clean-query";
 import { PRIVATE_NO_STORE, TEXT_PLAIN } from "@/lib/headers";
 import { NR_QUERY } from "@/lib/house";
@@ -33,19 +34,18 @@ const GATED_HEADERS = {
   "Cache-Control": PRIVATE_NO_STORE,
 };
 
-const ADDRESS = /^\/adres\/([^/]+)\/?$/;
 const NR = new RegExp(`^${NR_QUERY}$`);
 
-// A street page asked with ?nr= but no usable house number (empty, or not a
-// number) goes to its own cached page, which shows the GOV.UK error on a
-// split street. Valid numbers are rewritten in next.config.ts; a rewrite's
-// `has` cannot match an empty value, hence here.
+// A street page (or a module subpage) asked with ?nr= but no usable house
+// number (empty, or not a number) goes to its own cached page, which shows
+// the GOV.UK error on a split street. Valid numbers are rewritten in
+// next.config.ts; a rewrite's `has` cannot match an empty value, hence here.
 function missingNumber(request: NextRequest): URL | null {
-  const match = ADDRESS.exec(request.nextUrl.pathname);
+  const path = numberErrorPath(request.nextUrl.pathname);
   const nr = request.nextUrl.searchParams.get("nr");
-  if (!match || nr === null || NR.test(nr)) return null;
+  if (!path || nr === null || NR.test(nr)) return null;
   const url = request.nextUrl.clone();
-  url.pathname = `/adres/${match[1]}/numer`;
+  url.pathname = path;
   url.search = "";
   return url;
 }
@@ -81,21 +81,20 @@ async function movedAddress(
   request: NextRequest,
   event: NextFetchEvent,
 ): Promise<URL | null> {
-  const match = ADDRESS.exec(request.nextUrl.pathname);
-  if (!match || !request.nextUrl.searchParams.has("nr")) return null;
+  const { pathname } = request.nextUrl;
+  if (!ADDRESS.test(pathname) || !request.nextUrl.searchParams.has("nr"))
+    return null;
   if (!moved) await loadMoved(request);
   else if (Date.now() - moved.at > MOVED_TTL)
     event.waitUntil(loadMoved(request));
   let id: string;
   try {
-    id = decodeURIComponent(match[1]);
+    id = decodeURIComponent(pathname.split("/")[2]);
   } catch {
     return null;
   }
   const to = moved?.map[id];
-  const path =
-    to &&
-    movedPath(`${request.nextUrl.pathname}${request.nextUrl.search}`, id, to);
+  const path = to && movedPath(`${pathname}${request.nextUrl.search}`, id, to);
   return path ? new URL(path, request.url) : null;
 }
 

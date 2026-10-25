@@ -8,13 +8,14 @@
 //                     to conaulicy.pl, path and query kept.
 // Both: /sitemap.xml is well-formed; empty unless indexable, else the five
 // static pages (/ulice included) and every place in the search index but
-// those /ulice marks „(brak danych)”, nothing else. PDFs and calendars send
+// those /ulice marks „(brak danych)”, nothing else (no module subpage such
+// as /adres/<id>/smieci, whose canonical is its street page). PDFs and calendars send
 // X-Robots-Tag: noindex; the number-error page (/numer), a place without
 // data and /szukaj have meta robots noindex (/szukaj the header too); the
 // static pages have one canonical link each. 404s (an unknown path, unknown
 // addresses) are whole pages in the raw HTML, no JS needed: status 404, the
 // layout (lang, stylesheet), GOV.UK's "page not found" H1, and one robots
-// meta, noindex.
+// meta, noindex; an unknown module (/adres/<id>/<slug>) too.
 //
 // Runs against `next start` on the current build and the CI fixture.
 import { readFileSync } from "node:fs";
@@ -175,6 +176,19 @@ try {
     }
   }
 
+  // A module subpage canonicalises to its street page until the street
+  // page becomes the hub of modules (lib/modules.ts).
+  for (const name of ["city-street", "village", "split-street"]) {
+    const place = ROUTES.find((route) => route.name === name).path;
+    for (const path of [`${place}/smieci`, `${place}/smieci?nr=7a`]) {
+      const html = await (await fetch(`${server.origin}${path}`)).text();
+      const links = [...html.matchAll(CANONICAL)].map(([, href]) => href);
+      if (links.length !== 1 || links[0] !== `${SITE}${place}`) {
+        failures.push(`${path}: canonical ${JSON.stringify(links)}`);
+      }
+    }
+  }
+
   // Never indexed, links followed once indexable: the number-error page, a
   // place without data, search results (with the header too).
   const noindexWant = index ? "noindex, follow" : "noindex, nofollow";
@@ -206,6 +220,12 @@ try {
     "/adres/9999999",
     "/adres/abc",
     "/adres/0972447-99999",
+    // An unknown module, with and without a number; a module of an unknown
+    // place.
+    "/adres/0972447-00470/nie-ma-takiego-modulu",
+    "/adres/0972447-00470/nie-ma-takiego-modulu/nr/12",
+    "/adres/0972447-00470/nie-ma-takiego-modulu/numer",
+    "/adres/9999999/smieci",
   ]) {
     const response = await fetch(`${server.origin}${path}`);
     const html = await response.text();
@@ -302,7 +322,7 @@ try {
     for (const loc of locs) {
       if (
         !loc.startsWith(`${SITE}/`) ||
-        /\/nr\/|\/numer|\.pdf|\/ics\//.test(loc)
+        /\/nr\/|\/numer|\.pdf|\/ics\/|\/adres\/[^/]+\/[^/]/.test(loc)
       ) {
         failures.push(`/sitemap.xml: ${loc}`);
       }
