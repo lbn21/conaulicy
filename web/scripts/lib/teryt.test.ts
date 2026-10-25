@@ -5,6 +5,7 @@ import {
   oursFromTeryt,
   parseSimc,
   parseUlic,
+  placeRows,
   terytDiff,
 } from "./teryt.ts";
 import { SIMC, TERCS, ULIC } from "./teryt-fixture.ts";
@@ -72,4 +73,21 @@ test("every kind of change, by id; other gminy ignored", () => {
     "0605890-08828 ul. Kolejowa",
   ]);
   assert.match(changesTable(changes), /\| U \| ulica \| `0605890-08827` \|/);
+});
+
+test("place rows: our gminy only, by id, with kind and parent", () => {
+  assert.deepEqual(placeRows(ulic, simc, TERCS), {
+    localities: [
+      "0605890;Basznia Dolna;wies;",
+      "0605921;Lubasy;czesc_wsi;0605890",
+      "0972447;Lubaczów;miasto;",
+    ],
+    streets: [
+      "0605890-08828;0605890;Kolejowa",
+      "0972447-00470;0972447;Adama Asnyka",
+      "0972447-12740;0972447;Adama Mickiewicza",
+      "0972447-12741;0972447;Osiedle Mickiewicza",
+      "0972447-19253;0972447;Rynek",
+    ],
+  });
 });

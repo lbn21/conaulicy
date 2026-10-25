@@ -11,7 +11,8 @@
 //   village a part of that name belongs to; "przysiółek X" without that
 //   village is dropped;
 // - a street only among its locality's streets, the whole name or a unique
-//   end of it ("Sobieskiego" for "Jana III Sobieskiego");
+//   end of it ("Sobieskiego" for "Jana III Sobieskiego"), written as whole
+//   words in the text and in the phrase;
 // - a locality-wide cut is the locality and every street of its own.
 // House ranges never take part in matching; they travel as the scope.
 
@@ -176,6 +177,12 @@ export function resolvePlace(
     });
     if (hits.length !== 1)
       return `${hits.length} streets "${wanted.street}" in ${locality.name}`;
+    // What matched (the whole name or its end) must be written, as whole
+    // words: "Leśna" is not in "ul. Podleśna".
+    if (!names(text, street))
+      return `street "${wanted.street}" not in the text`;
+    if (!names(wanted.phrase, street))
+      return `street "${wanted.street}" not in "${wanted.phrase}"`;
     return { places: [at(hits[0].id, hits[0].name)], scope };
   }
 

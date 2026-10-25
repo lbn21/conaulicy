@@ -3,6 +3,7 @@ import { test } from "node:test";
 import type { DisruptionScope } from "./disruptions.ts";
 import { normalize } from "./normalize.ts";
 import { PLACES } from "./zuk-fixture.ts";
+import { ZUK_PLACES } from "./zuk-places.generated.ts";
 import {
   type Resolved,
   resolvePlace,
@@ -106,6 +107,49 @@ test("street: an end two streets share is dropped, never a pick", () => {
       ),
     ),
     ["1-1"],
+  );
+});
+
+test("street: what matched must be written as whole words, in the text and the phrase", () => {
+  // A street of Młodów the text does not name: dropped, however real.
+  assert.match(
+    resolve(
+      { locality: "Młodów", street: "Warszawska", phrase: "Młodów, ul. Leśna" },
+      "Młodów, ul. Leśna",
+    ) as string,
+    /street "Warszawska" not in the text/,
+  );
+  // In the text, but not in this item's phrase.
+  assert.match(
+    resolve(
+      { locality: "Młodów", street: "Warszawska", phrase: "Młodów, ul. Leśna" },
+      "Młodów, ul. Leśna, Warszawska",
+    ) as string,
+    /street "Warszawska" not in "Młodów, ul. Leśna"/,
+  );
+  // Inside another word: "Leśna" is not "Podleśna".
+  assert.match(
+    resolve(
+      {
+        locality: "Lisie Jamy",
+        street: "Leśna",
+        phrase: "Lisie Jamy, ul. Podleśna",
+      },
+      "Lisie Jamy, ul. Podleśna",
+    ) as string,
+    /street "Leśna" not in the text/,
+  );
+  // The end used for matching is enough: "Sobieskiego".
+  assert.deepEqual(
+    ids(
+      ok(
+        resolve(
+          { locality: "Karolówka", street: "Sobieskiego" },
+          "Karolówka – ul. Sobieskiego od nr 23",
+        ),
+      ),
+    ),
+    ["0606116-20431"],
   );
 });
 
@@ -296,13 +340,17 @@ test("unknown: no fuzzy match ('Podleśna' is not Podlesie)", () => {
   assert.match(resolve({ locality: "Podleśna" }) as string, /no locality/);
 });
 
-test("every name of ours: one place, the one named, or dropped", () => {
-  const byId = new Map(PLACES.localities.map((l) => [l.id, l]));
-  for (const l of PLACES.localities) {
+/**
+ * Every locality, village part and street of `places`, named as ZUK would:
+ * one place, the one named, or dropped; never two places, never another.
+ */
+function everyName(places: ZukPlaces) {
+  const byId = new Map(places.localities.map((l) => [l.id, l]));
+  for (const l of places.localities) {
     const parent = l.parentId ? byId.get(l.parentId)?.name : undefined;
     const phrases = [l.name, ...(parent ? [`${parent} (${l.name})`] : [])];
     for (const phrase of phrases) {
-      const r = resolve({ locality: l.name, phrase });
+      const r = resolve({ locality: l.name, phrase }, phrase, places);
       if (typeof r === "string") continue;
       const localities = new Set(r.places.map((p) => p.localityId));
       assert.equal(localities.size, 1, phrase);
@@ -312,19 +360,64 @@ test("every name of ours: one place, the one named, or dropped", () => {
       if (phrase !== l.name) assert.equal(id, l.id, phrase);
     }
   }
-  for (const s of PLACES.streets) {
+  for (const s of places.streets) {
     const l = byId.get(s.localityId);
-    assert.ok(l);
+    assert.ok(l, s.id);
     const words = s.name.split(" ");
     for (let i = 0; i < words.length; i++) {
       const street = words.slice(i).join(" ");
-      const r = resolve({ locality: l.name, street });
+      const r = resolve({ locality: l.name, street }, undefined, places);
       if (typeof r === "string") {
-        assert.notEqual(i, 0, `${l.name}, ${s.name}: the whole name fails`);
+        // Dropped: only when another street of that locality ends the same
+        // (or its locality's name is ambiguous).
+        assert.match(
+          r,
+          /\d+ streets "|is \d+ localities/,
+          `${l.name}, ${street}: ${r}`,
+        );
         continue;
       }
       // The street itself matches, so a single match is the street.
       assert.deepEqual(ids(r), [s.id], `${l.name}, ${street}`);
     }
   }
+  // A street name given with any locality: that locality's street or none.
+  const streetNames = [...new Set(places.streets.map((s) => s.name))];
+  for (const l of places.localities)
+    for (const street of streetNames) {
+      const r = resolve({ locality: l.name, street }, undefined, places);
+      if (typeof r === "string") continue;
+      assert.equal(r.places.length, 1);
+      const hit = places.streets.find((s) => s.id === r.places[0].streetId);
+      assert.equal(hit?.localityId, r.places[0].localityId, street);
+      assert.equal(
+        normalize(byId.get(hit?.localityId ?? "")?.name ?? ""),
+        normalize(l.name),
+      );
+    }
+}
+
+test("every name of ours (fixture): one place, the one named, or dropped", () => {
+  everyName(PLACES);
+});
+
+test("every name of ours (all our places): one place, the one named, or dropped", () => {
+  everyName(ZUK_PLACES);
+});
+
+test("all our places: the full TERYT list, consistent, the fixture inside it", () => {
+  assert.equal(ZUK_PLACES.localities.length, 69);
+  assert.equal(ZUK_PLACES.streets.length, 276);
+  const ids = new Set(ZUK_PLACES.localities.map((l) => l.id));
+  assert.equal(ids.size, 69);
+  assert.equal(new Set(ZUK_PLACES.streets.map((s) => s.id)).size, 276);
+  for (const l of ZUK_PLACES.localities)
+    if (l.parentId) assert.ok(ids.has(l.parentId), l.id);
+  for (const s of ZUK_PLACES.streets) assert.ok(ids.has(s.localityId), s.id);
+  const key = (x: object) => JSON.stringify(x);
+  const all = new Set(
+    [...ZUK_PLACES.localities, ...ZUK_PLACES.streets].map(key),
+  );
+  for (const x of [...PLACES.localities, ...PLACES.streets])
+    assert.ok(all.has(key(x)), key(x));
 });

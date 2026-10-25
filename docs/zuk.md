@@ -75,8 +75,9 @@ $6/1M out and reasoning) in the function log.
   part Żuki); a name two village parts share, without the village in the
   phrase (Mielniki); "przysiółek X" without X's village; a street not among
   that locality's own, by its whole name or an end of it no other of its
-  streets shares ("Sobieskiego"); house numbers for a village with streets;
-  all of Lubaczów.
+  streets shares ("Sobieskiego"), and what matched not written as whole
+  words in the text and the item's phrase ("Leśna" is not "ul. Podleśna");
+  house numbers for a village with streets; all of Lubaczów.
 
 A name a village and a village part share is the village ("Dąbrowa"),
 unless the phrase names the part's village. A name not on our list attached
@@ -84,3 +85,21 @@ to a village ("Załuże–Podłęże") is that village, only partly: the model
 gives the village as the locality and the name as the note. "(przysiółek X)"
 is the village part X. A village-wide cut covers the village and every
 street of its own, from our data, not its village parts.
+
+## Tests on all our places
+
+`web/lib/zuk-places.generated.ts` holds every locality, village part and
+street TERYT has for our gminy (69 and 276; the database's streets are all
+of them, docs/database.md), so CI checks every one of our names resolves
+to one place, the one named, or is dropped, with no database or network
+(`lib/zuk-resolve.test.ts`). It is built from the TERYT files archived in
+`etl/sources.yaml`. Refresh it whenever those change (a reviewed TERYT
+difference):
+
+```sh
+cd web && npm run sources:pull && npm run zuk:places
+```
+
+`zuk:places` takes the newest archived SIMC and ULIC files from
+`.cache/sources/` and checks their SHA-256 against `etl/sources.yaml`
+(`-- --teryt <dir>` reads another directory).

@@ -2,7 +2,8 @@
 // the whole pipeline (guards, then the resolver). A wrong place must never
 // come out; dropping one is fine. P1-P4, P7, P11, P14 and P15 are the A/B
 // test's probes (25 Oct 2026, task 112); P5, P6, P8-P10, P12, P13 and P16
-// were added with them, as that test's list gave only the ones above.
+// were added with them, as that test's list gave only the ones above; P17
+// and P18 with the street check.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -199,4 +200,39 @@ test("P16: one bad place drops only that place", () => {
     ]),
     ["0606317"],
   );
+});
+
+test("P17: 'ul. Podleśna' read as our street Leśna is dropped", () => {
+  // The phrase guard sees "leśna" inside "podleśna"; the resolver does not.
+  dropped(
+    read("Lisie Jamy, ul. Podleśna", [
+      item("Lisie Jamy", "Leśna", "Lisie Jamy, ul. Podleśna"),
+    ]),
+    /street "Leśna" not in the text/,
+    "P17",
+  );
+});
+
+test("P18: a real street of the locality the text does not name is dropped", () => {
+  const r = readPost(
+    post("Młodów, ul. Leśna"),
+    {
+      is_outage_notice: true,
+      is_past: false,
+      items: [
+        item("Młodów", "Leśna", "Młodów, ul. Leśna"),
+        item("Młodów", "Warszawska", "Młodów, ul. Leśna"),
+      ],
+    },
+    PLACES,
+    CHECKED,
+  );
+  assert.equal(r.status, "parsed");
+  if (r.status !== "parsed") return;
+  assert.deepEqual(
+    r.items.map((d) => d.place.streetId),
+    ["0606286-10898"],
+  );
+  assert.equal(r.dropped.length, 1);
+  assert.match(r.dropped[0], /^item 2: street "Warszawska" not in/);
 });
