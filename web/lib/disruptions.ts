@@ -1,28 +1,25 @@
-// Announced water and power cuts at a place: what a source's notice says,
-// read live (lib/zuk.ts). Two shapes, so that no code path can turn a notice
-// we could not read with certainty into a date: a Disruption has dates we
-// checked against the notice itself, a Notice has none, only the link.
+// Announced water and power cuts at a place: what a source's notice says.
+// Two shapes, so that no code path can turn a notice we could not read with
+// certainty into a date: a Disruption has dates we checked against the
+// notice itself, a Notice has none, only the link. ZUK's water cuts:
+// lib/zuk.ts (read), lib/zuk-store.ts (served).
 
 /** Who announced it, where, and when we last read it (the hard rule). */
-export type DisruptionSource = {
+type DisruptionSource = {
   name: string;
   /** The notice itself. */
   url: string;
-  /** When the caller fetched the notice: ISO 8601. */
+  /** When we last found the notice unchanged: ISO 8601. */
   checkedAt: string;
 };
 
 /** Which houses of the place: as the source states it, never a guess. */
 export type DisruptionScope =
   | { type: "whole" }
-  | {
-      type: "range";
-      from: string;
-      to: string;
-      parity: "even" | "odd" | null;
-    }
+  /** "od nr 1 do 15 i od 16 do 54": both ends included. */
+  | { type: "ranges"; ranges: Array<{ from: string; to: string }> }
   | { type: "numbers"; numbers: string[] }
-  /** The source names the place but not which houses ("część", plots). */
+  /** The source names the place but not which houses ("w części"). */
   | { type: "unknown" };
 
 /** A locality or a street, by our ids (TERYT: SIMC, SIMC-SYM_UL). */
@@ -35,21 +32,24 @@ export type Disruption = {
   /** Stable across re-reads of the same notice: zuk-<postId>-<date>-<place>. */
   uid: string;
   kind: "water" | "power";
-  /** Warsaw wall clock, "2026-10-27 08:00:00", like events.start. */
-  start: string;
-  end: string;
+  cause: "planned" | "emergency";
+  /** Warsaw day the cut starts, "2026-10-27". */
+  date: string;
+  /** Warsaw wall clock, "2026-10-27 08:00:00"; null if the notice has none. */
+  start: string | null;
+  /** Warsaw wall clock, the next day for a night cut; null if none given. */
+  end: string | null;
+  /** The end is the source's estimate ("przewidywane wznowienie"). */
+  endEstimated: boolean;
   place: DisruptionPlace;
   /** The source's own wording for the place: "Opaka od nr 104 do nr 110". */
   where: string;
   scope: DisruptionScope;
-  status: "planned" | "revoked";
-  /** The source's own sentence about the revocation. */
-  revokedNote: string | null;
+  /** The source's own qualifier: "gospodarstwa zasilane z SUW Mokrzyca". */
+  note: string | null;
   /** Warsaw wall clock. */
   publishedAt: string;
   updatedAt: string;
-  /** Grows with every edit of the notice (ICS SEQUENCE). */
-  version: number;
   source: DisruptionSource;
 };
 

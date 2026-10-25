@@ -155,7 +155,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
 }
 
 export const config = {
-  // Everything except hashed build assets (fonts included) and the
-  // revalidate hook (it checks its own secret).
-  matcher: ["/((?!_next/static/|api/revalidate).*)"],
+  // Everything except hashed build assets (fonts included), the revalidate
+  // hook and the cron routes (each checks its own secret).
+  matcher: ["/((?!_next/static/|api/revalidate|api/cron/).*)"],
 };

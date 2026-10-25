@@ -1,0 +1,120 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { costUsd, parseAiResult, readWithAi, ZUK_MODEL } from "./zuk-ai.ts";
+import { reading } from "./zuk-fixture.ts";
+
+const INPUT = {
+  published: "2026-10-20T11:40:25",
+  title: "Przerwa w dostawie wody – 21.10.2026",
+  text: "w dniu: 21.10.2026r. (środa) nastąpi przerwa",
+};
+// xAI's usage for post 39865 (feasibility run, 25 Oct 2026).
+const USAGE = {
+  prompt_tokens: 2158,
+  completion_tokens: 400,
+  total_tokens: 3374,
+  completion_tokens_details: { reasoning_tokens: 816 },
+};
+
+function xai(status: number, content: string) {
+  const calls: Array<{ url: string; init: RequestInit }> = [];
+  const fetcher = (async (url: string | URL, init?: RequestInit) => {
+    calls.push({ url: String(url), init: init ?? {} });
+    return Response.json(
+      {
+        model: ZUK_MODEL,
+        usage: USAGE,
+        choices: [{ message: { content } }],
+      },
+      { status },
+    );
+  }) as typeof fetch;
+  return { calls, fetcher };
+}
+
+test("request: grok-4.7, reasoning low, temperature 0, strict schema", async () => {
+  const { calls, fetcher } = xai(200, JSON.stringify(reading(39865)));
+  await readWithAi(INPUT, "test-key", fetcher);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "https://api.x.ai/v1/chat/completions");
+  const headers = calls[0].init.headers as Record<string, string>;
+  assert.equal(headers.Authorization, "Bearer test-key");
+  const body = JSON.parse(calls[0].init.body as string);
+  assert.equal(body.model, "grok-4.7");
+  assert.equal(body.reasoning_effort, "low");
+  assert.equal(body.temperature, 0);
+  assert.equal(body.response_format.json_schema.strict, true);
+  const item = body.response_format.json_schema.schema.properties.items.items;
+  assert.ok(item.required.includes("place_verbatim"));
+  assert.ok(item.required.includes("note"));
+  assert.ok(!("houses" in item.properties));
+  assert.match(
+    body.messages[1].content,
+    /^Publish date: 2026-10-20T11:40:25\nTitle: Przerwa/,
+  );
+  assert.ok(calls[0].init.signal, "a timeout");
+});
+
+test("reply: the reading, tokens and cost (reasoning billed as output)", async () => {
+  const { fetcher } = xai(200, JSON.stringify(reading(39865)));
+  const read = await readWithAi(INPUT, "test-key", fetcher);
+  assert.deepEqual(read.result, reading(39865));
+  assert.deepEqual(read.usage, {
+    promptTokens: 2158,
+    completionTokens: 400,
+    reasoningTokens: 816,
+  });
+  // 2158 × $2/1M + (400 + 816) × $6/1M.
+  assert.equal(read.costUsd.toFixed(6), "0.011612");
+  assert.equal(read.model, "grok-4.7");
+  assert.ok(read.latencyMs >= 0);
+});
+
+test("reply: an HTTP error or a reply off the schema throws", async () => {
+  await assert.rejects(
+    readWithAi(INPUT, "k", xai(503, "{}").fetcher),
+    /xAI: HTTP 503/,
+  );
+  await assert.rejects(
+    readWithAi(INPUT, "k", xai(200, "not json").fetcher),
+    /not the schema/,
+  );
+});
+
+test("schema check: every field, with its type", () => {
+  const good = reading(39885);
+  assert.deepEqual(parseAiResult(JSON.stringify(good)), good);
+  const drop = (key: string) => {
+    const item: Record<string, unknown> = { ...good.items[0] };
+    delete item[key];
+    return JSON.stringify({ ...good, items: [item] });
+  };
+  for (const key of ["date", "place_verbatim", "note", "kind", "locality"])
+    assert.equal(parseAiResult(drop(key)), null, key);
+  const bad = (over: object) =>
+    JSON.stringify({ ...good, items: [{ ...good.items[0], ...over }] });
+  assert.equal(parseAiResult(bad({ start: "8:00" })), null);
+  assert.equal(parseAiResult(bad({ date: "26.10.2026" })), null);
+  assert.equal(parseAiResult(bad({ kind: "revoked" })), null);
+  assert.equal(parseAiResult(bad({ place_verbatim: " " })), null);
+  assert.equal(parseAiResult('{"items": []}'), null);
+});
+
+test("cost: list price", () => {
+  assert.equal(
+    costUsd({
+      promptTokens: 1_000_000,
+      completionTokens: 0,
+      reasoningTokens: 0,
+    }),
+    2,
+  );
+  assert.equal(
+    costUsd({
+      promptTokens: 0,
+      completionTokens: 500_000,
+      reasoningTokens: 500_000,
+    }),
+    6,
+  );
+});

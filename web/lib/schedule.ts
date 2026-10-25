@@ -47,6 +47,7 @@ import {
   type SearchIndex,
 } from "@/lib/search";
 import { FRACTIONS } from "@/lib/waste-bin";
+import type { ZukPlaces } from "@/lib/zuk-resolve";
 
 // Every read goes through Next's data cache, tagged DATASET: a traffic spike
 // hits the cache, not Neon. After an import, POST /api/revalidate purges the
@@ -319,6 +320,33 @@ export const movedPlaces = unstable_cache(
     }
   },
   ["moved-places"],
+  CACHE,
+);
+
+/** Every locality and street, for ZUK's place resolver (lib/zuk-resolve.ts). */
+export const zukPlaces = unstable_cache(
+  async (): Promise<ZukPlaces> => {
+    const [localityRows, streetRows] = await Promise.all([
+      db()
+        .select({
+          id: localities.id,
+          name: localities.name,
+          kind: localities.kind,
+          parentId: localities.parentId,
+        })
+        .from(localities),
+      db()
+        .select({
+          id: streets.id,
+          localityId: streets.localityId,
+          name: streets.name,
+          nazwa1: streets.nazwa1,
+        })
+        .from(streets),
+    ]);
+    return { localities: localityRows, streets: streetRows };
+  },
+  ["zuk-places"],
   CACHE,
 );
 
