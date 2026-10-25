@@ -9,9 +9,12 @@
 // cuts left would shift as a day passes; a date change is a new post
 // („aktualizacja dat”) anyway. SEQUENCE is the post's last edit in
 // minutes, so an edited post updates the event in calendars that honour it.
-// Nothing revoked is kept (a doubted post becomes a Notice, lib/zuk-data.ts),
-// so no event goes out cancelled.
+// The file is a one-off download, so no event is ever sent as cancelled.
+// Each event and its alarm link instead to the address's /woda page (with
+// ?nr= as given), which always shows the current state. A link-only change
+// does not bump SEQUENCE: it is the post's edit, not ours.
 
+import { SITE_URL } from "./config.generated.ts";
 import { addDays, WARSAW, warsawToIso } from "./dates.ts";
 import type { Disruption } from "./disruptions.ts";
 import { withHouseNumber } from "./house.ts";
@@ -24,7 +27,7 @@ import {
 } from "./ics.ts";
 import { normalize } from "./normalize.ts";
 import { placePath } from "./places.ts";
-import { hours, scope, type Water } from "./water-module.ts";
+import { hours, scope, type Water, waterPath } from "./water-module.ts";
 
 const SUMMARY = "Przerwa w dostawie wody";
 
@@ -112,11 +115,13 @@ export function waterCalendar(data: Water, now: Date): string {
     `X-WR-TIMEZONE:${WARSAW}`,
     ...VTIMEZONE,
   ];
+  const check = `Sprawdź, czy przerwa jest aktualna: ${SITE_URL}${waterPath(data.place)}`;
   for (const cut of calendarCuts(data)) {
     const description = [
       `${capitalised(scope(cut))}.`,
       `Źródło: ${cut.source.url}`,
       "Daty i godziny odczytaliśmy z komunikatu gminy. Gdyby coś się nie zgadzało, rację ma komunikat.",
+      check,
     ].join("\n");
     lines.push(
       "BEGIN:VEVENT",
@@ -132,7 +137,7 @@ export function waterCalendar(data: Water, now: Date): string {
       "STATUS:CONFIRMED",
       "BEGIN:VALARM",
       "ACTION:DISPLAY",
-      `DESCRIPTION:${escapeText(`Jutro przerwa w dostawie wody, ${hours(cut)}`)}`,
+      `DESCRIPTION:${escapeText(`Jutro przerwa w dostawie wody, ${hours(cut)}.\n${check}`)}`,
       `TRIGGER;VALUE=DATE-TIME:${alarmAt(cut)}`,
       "END:VALARM",
       "END:VEVENT",
