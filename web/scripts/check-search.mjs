@@ -319,10 +319,12 @@ try {
   await house.getByRole("combobox").press("Enter");
   await house.waitForURL(`${server.origin}/adres/0972447-90004?nr=7a`);
   const heading = await house.locator("h1").textContent();
-  // The calendar and the PDF are on the waste subpage, its card's
+  // The calendar and the PDF are on the waste subpage, its section's
   // „Szczegóły”, with the number.
   await house
-    .locator(".govuk-summary-card__actions a", { hasText: "Szczegóły" })
+    .locator('section[aria-labelledby="smieci-heading"] a', {
+      hasText: "Szczegóły",
+    })
     .first()
     .click();
   await house.waitForURL(`${server.origin}/adres/0972447-90004/smieci?nr=7a`);

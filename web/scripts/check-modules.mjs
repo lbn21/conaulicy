@@ -7,18 +7,21 @@
 //   any other village's to the villages; a village names its gmina),
 //   /smieci adds the address page; the street page's
 //   error variants keep the hub's;
-// - the hub: no caption (the locality is in its breadcrumbs), h1, „Zmień adres”, h2 „Co Cię czeka”, the waste card
-//   first (h3 „Śmieci”, „Szczegóły – śmieci” to /smieci, ?nr= kept), its
+// - the hub: no caption (the locality is in its breadcrumbs), one h1,
+//   „Zmień adres”, no summary cards: a section per module (task 131), waste
+//   first (h2 „Śmieci”, its „Szczegóły – śmieci” link to /smieci, ?nr= kept,
+//   last in the section), a visible section break between each pair of
+//   sections and none before the first or after the last, its
 //   rows (Najbliższy odbiór with an absolute date, Pojemniki, Źródło), no
 //   calendar, PDF or IMGW banner, „Bez zapowiedzi” with the weather and its
 //   source; „Ostatnio sprawdziliśmy” (the fixture has no source_files rows,
 //   so the day events.checkedAt, no time)
-//   under the card's last source and after the weather's line (IMGW's
-//   fetchedAt, with its time), each module's one freshness text; headings h1 → h2 → h3 with no skips; the fixture's dates are
+//   under the waste list's last source (a row with no border) and after the weather's line (IMGW's
+//   fetchedAt, with its time), each module's one freshness text; headings h1 → h2 with no h3 and no skips; the fixture's dates are
 //   unverified: one short „Uwaga” sentence linking the gmina's schedule,
 //   while /smieci keeps the full note;
-// - a split street without a number: the card asks for it, linking /smieci;
-//   with one, the card has its date; an unknown number keeps the street
+// - a split street without a number: the waste section asks for it,
+//   linking /smieci; with one, it has its date; an unknown number keeps the street
 //   page's error (GOV.UK's validation pattern);
 // - /smieci: caption, h1 „Odbiór śmieci”, the checked line (its one
 //   freshness text), the calendar and the PDF;
@@ -122,11 +125,39 @@ function crumbsAre(path, html, want) {
     );
 }
 
-// The cards' titles, in order.
-const cards = (html) =>
-  [...html.matchAll(/<h3 class="govuk-summary-card__title">([^<]*)</g)].map(
-    ([, title]) => title,
+// The module sections' titles, in order („Bez zapowiedzi” has a hyphen in
+// its id).
+const sections = (html) =>
+  [
+    ...html.matchAll(
+      /<section aria-labelledby="([a-z]+)-heading"><h2 id="\1-heading" class="govuk-heading-l">([^<]*)</g,
+    ),
+  ].map(([, , title]) => title);
+
+const BREAK =
+  '<hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible"/>';
+
+// The hub's outline (task 131): no summary cards, one h1, no h3, the
+// modules in <div id="co-cie-czeka"> (the alert slot's „I jeszcze …”), one
+// visible section break between each pair of sections, none before the
+// first or after the last.
+function hubOutline(path, hub) {
+  if (hub.includes("govuk-summary-card")) fail(path, "a summary card");
+  const h1s = hub.match(/<h1[\s>]/g)?.length ?? 0;
+  if (h1s !== 1) fail(path, `${h1s} h1s, want 1`);
+  if (/<h3[\s>]/.test(hub)) fail(path, "an h3");
+  if (!hub.includes('<div id="co-cie-czeka"><section aria-labelledby="'))
+    fail(path, "the modules not first in #co-cie-czeka");
+  const parts = hub.split(/<section aria-labelledby="[^"]+">/).slice(1);
+  if (parts.length < 2) fail(path, `${parts.length} sections`);
+  const gaps = parts.map((part) =>
+    part.slice(part.lastIndexOf("</section>") + "</section>".length),
   );
+  if (gaps.slice(0, -1).some((gap) => !gap.endsWith(BREAK)))
+    fail(path, `not one section break between sections ${gaps}`);
+  if ((hub.match(/<hr[\s/>]/g)?.length ?? 0) !== parts.length - 1)
+    fail(path, "a section break outside the gaps between sections");
+}
 
 try {
   // [address page, its waste subpage, the hub's breadcrumbs, the address
@@ -185,16 +216,11 @@ try {
     )
       fail(path, "not the breadcrumbs, then the h1 with no caption");
     if (!hub.includes(">Zmień adres<")) fail(path, "no „Zmień adres”");
-    if (
-      !hub.includes(
-        '<h2 id="co-cie-czeka-heading" class="govuk-heading-m">Co Cię czeka</h2>',
-      )
-    )
-      fail(path, "no h2 „Co Cię czeka”");
-    if (cards(hub)[0] !== "Śmieci") fail(path, `cards ${cards(hub)}`);
-    const action = `<a class="govuk-link" href="${links[1]}">Szczegóły<span class="govuk-visually-hidden"> – śmieci</span></a>`;
+    hubOutline(path, hub);
+    if (sections(hub)[0] !== "Śmieci") fail(path, `sections ${sections(hub)}`);
+    const action = `<p class="govuk-body"><a class="govuk-link" href="${links[1]}">Szczegóły<span class="govuk-visually-hidden"> – śmieci</span></a></p></section>`;
     if (!hub.includes(action))
-      fail(path, `no „Szczegóły – śmieci” to ${links[1]}`);
+      fail(path, `no „Szczegóły – śmieci” to ${links[1]} closing its section`);
     if (
       !new RegExp(
         `<dt class="govuk-summary-list__key">Najbliższy odbiór</dt><dd class="govuk-summary-list__value">${DATE}</dd>`,
@@ -223,15 +249,15 @@ try {
       )
     )
       fail(path, "no „Bez zapowiedzi” line for the weather");
-    // The checked line: under the waste card's last source, after the
+    // The checked line: under the waste list's last source (no border), after the
     // weather's „Bez zapowiedzi” line (the copy's fetchedAt).
     if (
       !new RegExp(
-        `<dt class="govuk-summary-list__key">Źródło</dt><dd class="govuk-summary-list__value">(?:(?!</dd>).)*<span class="govuk-hint govuk-!-font-size-16 [^"]*">${WASTE_CHECKED}</span></dd>`,
+        `<div class="govuk-summary-list__row govuk-summary-list__row--no-border"><dt class="govuk-summary-list__key">Źródło</dt><dd class="govuk-summary-list__value">(?:(?!</dd>).)*<span class="govuk-hint govuk-!-font-size-16 [^"]*">${WASTE_CHECKED}</span></dd></div></dl>`,
         "su",
       ).test(hub)
     )
-      fail(path, "no day-only checked line under the waste card's source");
+      fail(path, "no day-only checked line under the waste list's last row");
     if (
       !/<p class="govuk-body">Pogoda: brak ostrzeżeń IMGW\.(?:(?!<\/p>).)* Ostatnio sprawdziliśmy: \d{1,2} \p{L}+, \d{1,2}:\d{2}\.<\/p>/su.test(
         hub,
@@ -338,7 +364,7 @@ try {
   // A split street: the number first, then its dates; a wrong one keeps the
   // street page's error.
   const ask = await main(SPLIT);
-  if (cards(ask.main)[0] !== "Śmieci") fail(SPLIT, "no waste card");
+  if (sections(ask.main)[0] !== "Śmieci") fail(SPLIT, "no waste section");
   if (
     !ask.main.includes(
       `<a href="${SPLIT}/smieci" class="govuk-link">Podaj numer domu</a>`,
@@ -350,7 +376,7 @@ try {
   const wrong = await main(`${SPLIT}?nr=42`);
   if (
     !wrong.main.includes("govuk-error-summary") ||
-    cards(wrong.main).length > 0
+    sections(wrong.main).length > 0
   )
     fail(`${SPLIT}?nr=42`, "not the street page's error");
   crumbsAre(`${SPLIT}?nr=42`, wrong.main, [HOME, TOWN]);
@@ -471,5 +497,5 @@ async function shots(dir) {
 
 finish(
   failures,
-  "Modules: the hub (waste card first, no calendar, water and weather under „Bez zapowiedzi”), /smieci (breadcrumbs, h1, calendar, PDF) and /woda (fallback).",
+  "Modules: the hub (sections, no cards, waste first, no calendar, water and weather under „Bez zapowiedzi”), /smieci (breadcrumbs, h1, calendar, PDF) and /woda (fallback).",
 );

@@ -494,8 +494,8 @@ async function deepChecks(browser, origin) {
 // IMGW failing): never the banner, on it or its waste subpage; the alert
 // slot, one GOV.UK warning text: a line per warning ("Pogoda: …" with an
 // absolute day, „Szczegóły – pogoda” to IMGW, „(IMGW-PIB)”), two at most,
-// then „I jeszcze N …” to the cards, a gap above every line but the first;
-// the weather's card after the waste's.
+// then „I jeszcze N …” to the module sections, a gap above every line but
+// the first; the weather's section after the waste's.
 // Failing: the page still renders, without the weather.
 async function hubChecks(origin, state) {
   const label = `${state.name} ${HUB}`;
@@ -518,8 +518,10 @@ async function hubChecks(origin, state) {
   if (waste.includes("Pogoda: "))
     failures.push(`${state.name} ${HUB}/smieci: an alert slot`);
   const cards = [
-    ...hub.matchAll(/<h3 class="govuk-summary-card__title">([^<]*)</g),
-  ].map(([, title]) => title);
+    ...hub.matchAll(
+      /<section aria-labelledby="([a-z]+)-heading"><h2 id="\1-heading" class="govuk-heading-l">([^<]*)</g,
+    ),
+  ].map(([, , title]) => title);
   const slot =
     /<div class="govuk-warning-text">[\s\S]*?<strong class="govuk-warning-text__text">([\s\S]*?)<\/strong><\/div>/.exec(
       hub,
@@ -540,6 +542,7 @@ async function hubChecks(origin, state) {
   const gaps = spans.map(([, cls]) => cls.endsWith("margin-top-2"));
   const alerts = lines.filter((line) => line.startsWith("Pogoda: "));
   const more = lines.filter((line) => line.includes('href="#co-cie-czeka"'));
+  const target = hub.includes('<div id="co-cie-czeka"><section ');
   const hidden = state.hub > 1 ? `Uwaga, ${state.hub} ostrzeżenia.` : "Uwaga.";
   const line = new RegExp(
     `^Pogoda: Silny wiatr, stopień [1-3] z 3\\. (?:Obowiązuje teraz, do|Od) ${DAY}, ${TIME}.*? <a href="https://meteo\\.imgw\\.pl/" class="govuk-link">Szczegóły<span class="govuk-visually-hidden"> – pogoda</span></a> <span class="govuk-!-font-weight-regular">\\(IMGW-PIB\\)</span>$`,
@@ -557,7 +560,8 @@ async function hubChecks(origin, state) {
         ) && `overflow ${JSON.stringify(more)}`
       : more.length > 0 && "an overflow link",
     gaps.some((gap, i) => gap !== i > 0) && `line gaps ${gaps}`,
-    cards.join() !== "Śmieci,Pogoda" && `cards ${cards}`,
+    cards.join() !== "Śmieci,Pogoda" && `sections ${cards}`,
+    !target && "no #co-cie-czeka around the module sections",
     // Water may be there (no ZUK file in CI); the weather never is.
     /<p class="govuk-body">Pogoda: /.test(hub) &&
       "„Bez zapowiedzi” with a warning",

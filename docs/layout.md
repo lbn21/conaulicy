@@ -38,7 +38,9 @@ Across the whole site the same job always uses the same component and style:
 
 ## The hub, `/adres/<id>`
 
-The hub keeps its own layout (`web/components/hub.tsx`): the shared alert slot under the h1, one summary card per module, „Bez zapowiedzi”, and no calendar button.
+The hub keeps its own layout (`web/components/hub.tsx`): the shared alert slot under the h1, then each module as its own section (h2 `govuk-heading-l`, a summary list, then a „Szczegóły” text link), a visible `govuk-section-break--l` between sections and before „Bez zapowiedzi”; no summary cards on the hub. Then „Bez zapowiedzi” (h2 `govuk-heading-l`), and no calendar button.
+
+Jakub's decision, task 131 (GOV.UK: summary cards are for lists of the same type of thing).
 
 ## Deviations
 
