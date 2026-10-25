@@ -58,7 +58,7 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 
 ## Forbidden
 
-- No manual production deploys. Every merge to `main` deploys to production automatically; `import-review/**` branches never deploy (`web/vercel.json`). Production data also changes, without a deploy, whenever the unattended import runs (`docs/import.md`): daily by Vercel Cron (`/api/cron/import`, 04:00 UTC), or dispatched by hand.
+- No manual production deploys. Every merge to `main` deploys to production automatically; `import-review/**` branches never deploy (`web/vercel.json`). Production data also changes, without a deploy, whenever the unattended import runs (`docs/import.md`): daily by Vercel Cron (`/api/cron/import`, 04:17 UTC), or dispatched by hand.
 - No production database write (`db:migrate`, `db:import --apply`, `db:redirect --apply`) without asking Jakub in chat and getting his explicit approval for that one run; then backup, dry run, apply, 0-change dry run, through the npm scripts, never `vercel env run` ([docs/database.md](docs/database.md#writing-to-production)).
 - No force-push.
 - No changes to Vercel domains, DNS or billing. Never enable paid features.

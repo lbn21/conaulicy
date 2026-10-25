@@ -3,7 +3,7 @@
 Water cuts announced by ZUK Mokrzyca on gminalubaczow.pl, read every 15
 minutes into one JSON file in Vercel Blob. No database writes, no UI yet.
 
-## A run (`GET /api/cron/zuk`, Vercel Cron `*/15 * * * *`)
+## A run (`GET /api/cron/zuk`, Vercel Cron `7,22,37,52 * * * *`)
 
 1. Reads the stored file (`zuk/disruptions.json`, private store `conaulicy-zuk`).
 2. Fetches the gmina's posts of the last 14 days (`/wp-json/wp/v2/posts`,
