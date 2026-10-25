@@ -9,6 +9,7 @@ import { indexable } from "@/lib/indexing";
 import { placePath } from "@/lib/places";
 import { getPlace } from "@/lib/schedule";
 import { pageMetadata } from "@/lib/share";
+import { calendarCuts } from "@/lib/water-ics";
 import {
   hours,
   noticeLink,
@@ -22,8 +23,9 @@ import {
 // The water module's subpage, /adres/<id>/woda (lib/modules.ts), under
 // ModuleMain's breadcrumbs: every planned cut still to come at this
 // address, a day each, with its hours, what is cut and the gmina's post;
-// then posts we could not match to addresses, as links only. Dates are
-// absolute, so a cached copy stays true.
+// then „Dodaj przerwy do kalendarza” when any of them can go in a calendar
+// (lib/water-ics.ts), then posts we could not match to addresses, as links
+// only. Dates are absolute, so a cached copy stays true.
 
 const H1 = "Przerwy w dostawie wody";
 
@@ -107,6 +109,26 @@ export function WaterDetails({
                   ))}
               </section>
             ))}
+            {calendarCuts(data).length > 0 && (
+              <>
+                {/* GOV.UK's link button, as the waste calendar's
+                    (components/place-page.tsx): a file, so a link. */}
+                {/* biome-ignore lint/a11y/useSemanticElements: it navigates to a file, so it stays a link, as GOV.UK documents */}
+                <a
+                  href={`${placePath(data.place.id)}/woda.ics${data.place.nr ? `?nr=${data.place.nr}` : ""}`}
+                  role="button"
+                  draggable="false"
+                  className="govuk-button govuk-button--secondary"
+                  data-module="govuk-button"
+                >
+                  Dodaj przerwy do kalendarza
+                </a>
+                <p className="govuk-body">
+                  Jeśli gmina zmieni godziny, pobierz plik jeszcze raz –
+                  kalendarz poprawi wpis.
+                </p>
+              </>
+            )}
             <p className="govuk-body">
               Daty i godziny odczytaliśmy z komunikatu gminy. Gdyby coś się nie
               zgadzało, rację ma komunikat.
