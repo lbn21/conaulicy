@@ -188,7 +188,7 @@ test("fetch: the feed, and every upstream failure throws", async () => {
   });
 });
 
-test("last good: a failed fetch falls back to the newest slot kept, up to an hour", async () => {
+test("last good: a failed fetch falls back to the newest slot kept, up to three hours", async () => {
   const slotMs = REFRESH_SECONDS * 1000;
   const now = 1000 * slotMs + 5;
   const copy = (at: string): Feed => ({ fetchedAt: at, items: [] });
@@ -213,16 +213,16 @@ test("last good: a failed fetch falls back to the newest slot kept, up to an hou
       feed: copy("fresh"),
       stale: false,
     });
-    // Next slots: IMGW fails, the copy is served as stale for an hour.
+    // Next slots: IMGW fails, the copy is served as stale for three hours.
     assert.deepEqual(await latest(now + slotMs, read, failing), {
       feed: copy("fresh"),
       stale: true,
     });
-    assert.deepEqual(await latest(now + 6 * slotMs, read, failing), {
+    assert.deepEqual(await latest(now + 18 * slotMs, read, failing), {
       feed: copy("fresh"),
       stale: true,
     });
-    assert.equal(await latest(now + 7 * slotMs, read, failing), null);
+    assert.equal(await latest(now + 19 * slotMs, read, failing), null);
     // The look-back never fetches.
     let calls = 0;
     await latest(now + 3 * slotMs, read, () => {
@@ -285,6 +285,32 @@ test("the mock answers from the fixtures, and never in production", async () => 
     now,
   );
   assert.ok(Date.parse(upcoming.validFrom) > now, "to come");
+  const two = forPowiat(
+    (await feed("mock:1809?level=2&also=3")).items,
+    "1809",
+    now,
+  );
+  assert.deepEqual(
+    two.map((w) => w.level),
+    [3, 2],
+  );
+  const three = forPowiat(
+    (await feed("mock:1809?also=2,3")).items,
+    "1809",
+    now,
+  );
+  assert.deepEqual(
+    three.map((w) => w.level),
+    [3, 2, 1],
+  );
+  const [night] = forPowiat(
+    (await feed("mock:1809?start=night")).items,
+    "1809",
+    now,
+  );
+  assert.equal(night.validFrom.slice(11, 16), "22:00");
+  assert.equal(night.validTo.slice(11, 16), "04:00");
+  assert.ok(Date.parse(night.validFrom) - now > 3_600_000, "to come");
   await assert.rejects(feed("mock:1809?fail=500"), /HTTP 500/);
   await assert.rejects(feed("mock:1809?fail=html"), SyntaxError);
   await assert.rejects(feed("mock:nothing"), /HTTP 404/);

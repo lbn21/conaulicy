@@ -125,3 +125,22 @@ $app-header-colour: $app-header;
   margin-right: govuk-spacing(2);
   vertical-align: middle;
 }
+
+// Deviation from GOV.UK's tag tints (Jakub's decision, task 98): the IMGW
+// banner's level tags take the solid colours of IMGW's own warnings map
+// (WARNING_LEVELS in lib/palette.ts), with text black or white for 4.5:1 or
+// more. The banner holds the only tags; each keeps GOV.UK's colour modifier.
+.govuk-tag--yellow {
+  background-color: $app-warning-level-1;
+  color: govuk-functional-colour(text);
+}
+
+.govuk-tag--orange {
+  background-color: $app-warning-level-2;
+  color: govuk-functional-colour(text);
+}
+
+.govuk-tag--red {
+  background-color: $app-warning-level-3;
+  color: govuk-functional-colour(inverse-text);
+}
