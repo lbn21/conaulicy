@@ -38,6 +38,7 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 - One thing per page: no second search box. „Zmień adres” (GOV.UK "Change" pattern) returns to the home page's search, empty, with no forced focus (native browser behaviour).
 - Copy is warm, plain, everyday Polish; follow the [GOV.UK style guide](https://www.gov.uk/guidance/style-guide/a-to-z) in spirit. No gesture-only interactions and no icons without labels.
 - No third-party requests (fonts, scripts, images).
+- **Layout:** every page follows one consistent layout; read [docs/layout.md](docs/layout.md) before any UI change and keep it up to date when a shared component changes.
 
 ## Performance
 
