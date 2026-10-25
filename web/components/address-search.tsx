@@ -63,13 +63,36 @@ function optionText(option: Option): string {
   return withHouseNumber(option.label, option.nr ?? null);
 }
 
+// Save-Data (Chromium's navigator.connection, not in TypeScript's DOM types).
+function saveData(): boolean {
+  const { connection } = navigator as { connection?: { saveData?: boolean } };
+  return connection?.saveData === true;
+}
+
+// Runs `callback` once the page has loaded and is idle; returns what
+// cancels it.
+function afterLoad(callback: () => void): () => void {
+  if (document.readyState === "complete") return whenIdle(callback, 2000, 200);
+  let cancelIdle = () => {};
+  const onLoad = () => {
+    cancelIdle = whenIdle(callback, 2000, 200);
+  };
+  window.addEventListener("load", onLoad, { once: true });
+  return () => {
+    window.removeEventListener("load", onLoad);
+    cancelIdle();
+  };
+}
+
 /**
  * The address search: a plain GET form to /szukaj, which works without JS,
  * enhanced with alphagov accessible-autocomplete, unmodified, set up through
  * its documented options only. It loads once the page is idle, so the field
  * a user taps is already its own: iOS opens the keyboard only for focus given
  * in the tap itself, never for focus moved to a new field after an async
- * import. The index of every place loads on first focus, not with the page;
+ * import. The index of every place loads once, in the background once the
+ * page has loaded and is idle, or on first focus if that comes first (only
+ * then with Save-Data on), so suggestions are ready from the first letter;
  * then each keystroke is matched on the device
  * ("Asnyka 12" carries the house number to ?nr=). If the index cannot load,
  * settled queries go to /api/search. As GOV.UK's default (no onConfirm),
@@ -104,19 +127,28 @@ export function AddressSearch({
     let note: Note = "none";
     let latest = "";
 
+    // One request per page load, whichever comes first: focus, or the page
+    // idle after load (not with Save-Data on). The first stops the other.
+    let fetchIndex = () => {};
     const index: Promise<Matcher> = new Promise((resolve, reject) => {
-      container.addEventListener(
-        "focusin",
-        () =>
-          fetch(indexUrl)
-            .then(async (res) => {
-              if (!res.ok) throw new Error(`HTTP ${res.status}`);
-              resolve(matcher((await res.json()) as SearchIndex));
-            })
-            .catch(reject),
-        { once: true },
-      );
+      fetchIndex = () =>
+        fetch(indexUrl)
+          .then(async (res) => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            resolve(matcher((await res.json()) as SearchIndex));
+          })
+          .catch(reject);
     });
+    const loadIndex = () => {
+      stopIndex();
+      fetchIndex();
+    };
+    container.addEventListener("focusin", loadIndex);
+    const cancelPrefetch = saveData() ? () => {} : afterLoad(loadIndex);
+    function stopIndex() {
+      container?.removeEventListener("focusin", loadIndex);
+      cancelPrefetch();
+    }
     let match: Matcher | null = null;
     let failed = false;
     index.then(
@@ -241,6 +273,7 @@ export function AddressSearch({
     return () => {
       cancelled = true;
       cancelIdle();
+      stopIndex();
     };
   }, [indexUrl, error, inputClasses]);
 
