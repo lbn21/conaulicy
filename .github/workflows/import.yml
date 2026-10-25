@@ -3,8 +3,8 @@
 # applied; anything else becomes an issue, closed by the next clean run,
 # or a review PR for a file a person must look at (docs/import.md).
 # Configured in etl/sources.yaml. Started by workflow_dispatch only: no GitHub
-# schedule (it never fired in this repo); daily runs come from an external
-# trigger (planned) dispatching mode=apply.
+# schedule (it never fired in this repo); daily runs come from Vercel Cron
+# (/api/cron/import, daily 04:00 UTC) dispatching mode=apply.
 name: import
 
 on:

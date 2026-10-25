@@ -1,8 +1,8 @@
 // What the waste module (lib/modules.ts) says about a place on the address
 // page, from today's street page data (PlaceView, unchanged). Pure, so the
 // unit tests need no database.
-import type { PlaceView } from "@/lib/schedule";
-import { absoluteDay } from "./dates.ts";
+import type { PlaceView, SourceView } from "@/lib/schedule";
+import { absoluteDay, todayInWarsaw } from "./dates.ts";
 import type { Checked, Part, SummaryRow } from "./hub.ts";
 import { placePath, scheduleName } from "./places.ts";
 import {
@@ -110,11 +110,56 @@ export function wasteSources(place: PlaceView): Part[][] {
   ]);
 }
 
+/** An upcoming event's source, with its file's source_files.lastSeenAt. */
+type SourceRow = {
+  sourceDoc: string;
+  sourceRef: string | null;
+  sourceUrl: string | null;
+  checkedAt: string;
+  seenAt: string | null;
+};
+
 /**
- * The day we last compared the place's sources with the originals
- * (events.checkedAt), the oldest of several: „Ostatnio sprawdziliśmy …”.
+ * One source per document, in the events' order. Its seenAt is the oldest
+ * of its files'; null when one of them has no source_files row.
+ */
+export function sourcesOf(rows: SourceRow[]): SourceView[] {
+  const byDoc = new Map<string, SourceView & { unseen: boolean }>();
+  for (const row of rows) {
+    const known = byDoc.get(row.sourceDoc);
+    if (!known) {
+      byDoc.set(row.sourceDoc, {
+        label: row.sourceRef ?? row.sourceDoc,
+        url: row.sourceUrl,
+        checkedAt: row.checkedAt,
+        seenAt: row.seenAt,
+        unseen: !row.seenAt,
+      });
+    } else if (!row.seenAt) known.unseen = true;
+    else if (known.seenAt && Date.parse(row.seenAt) < Date.parse(known.seenAt))
+      known.seenAt = row.seenAt;
+  }
+  return [...byDoc.values()].map(({ unseen, ...source }) => ({
+    ...source,
+    seenAt: unseen ? null : source.seenAt,
+  }));
+}
+
+/**
+ * When an import last saw the place's source files (source_files.lastSeenAt,
+ * a time), or, for a source without one, the day we last compared it with
+ * the original (events.checkedAt): the oldest of several, a day counting as
+ * older than any time on that day. „Ostatnio sprawdziliśmy …”.
  */
 export function wasteChecked(place: PlaceView): Checked {
-  const days = place.sources.flatMap((s) => (s.checkedAt ? [s.checkedAt] : []));
-  return days.toSorted()[0] ?? null;
+  let oldest: { key: string; at: Date | string } | null = null;
+  for (const source of place.sources) {
+    const at = source.seenAt ? new Date(source.seenAt) : source.checkedAt;
+    if (!at) continue;
+    // The Warsaw day first, so a day sorts before that day's times.
+    const key =
+      typeof at === "string" ? at : `${todayInWarsaw(at)}T${at.toISOString()}`;
+    if (!oldest || key < oldest.key) oldest = { key, at };
+  }
+  return oldest?.at ?? null;
 }

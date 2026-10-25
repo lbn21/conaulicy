@@ -53,7 +53,7 @@ One PR per source file that needs a person (`core/review.ts`, waste content in `
 - A failed source is retried by the next run.
 - Network calls retry with backoff (`import.retries`).
 
-**Schedule:** there is no GitHub schedule: `schedule` events never fired in this repo (proven 22 Oct 2026). Today the import runs only when dispatched by hand (Actions → import → Run workflow). A daily external trigger is planned (Vercel Cron → `workflow_dispatch`).
+**Schedule:** there is no GitHub schedule: `schedule` events never fired in this repo (proven 22 Oct 2026). Vercel Cron starts it daily at 04:00 UTC: `/api/cron/import` (`web/lib/import-cron.ts`, production only) dispatches `import.yml` with `mode=apply`, using the `IMPORT_DISPATCH_TOKEN` env var. It can still be dispatched by hand (Actions → import → Run workflow).
 
 **How the trigger calls it:**
 - `POST https://api.github.com/repos/lbn21/conaulicy/actions/workflows/import.yml/dispatches`

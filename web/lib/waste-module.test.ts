@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { checkedLine } from "./hub.ts";
 import type { PlaceView } from "./schedule.ts";
 import {
+  sourcesOf,
   wasteChecked,
   wastePath,
   wasteSources,
@@ -41,7 +42,9 @@ const place = (overrides: Partial<PlaceView> = {}): PlaceView => ({
       pickups: [pickup("Zmieszane", "06:00"), pickup("Bio")],
     },
   ],
-  sources: [{ label: "Sektor 1", url: null, checkedAt: "2026-10-20" }],
+  sources: [
+    { label: "Sektor 1", url: null, checkedAt: "2026-10-20", seenAt: null },
+  ],
   verified: true,
   ...overrides,
 });
@@ -83,7 +86,9 @@ test("unverified: one short sentence, the gmina's schedule linked", () => {
     sentence({ href: page, text: "harmonogramie gminy" }),
   );
   assert.deepEqual(
-    note({ sources: [{ label: "Sektor 1", url: pdf, checkedAt: null }] }),
+    note({
+      sources: [{ label: "Sektor 1", url: pdf, checkedAt: null, seenAt: null }],
+    }),
     sentence({ href: pdf, text: "harmonogramie gminy" }),
   );
   assert.deepEqual(note({}), sentence("harmonogramie gminy"));
@@ -125,7 +130,9 @@ test("one source row each: link, part, when checked", () => {
   const url = "https://example.org/a.pdf";
   assert.deepEqual(
     wasteSources(
-      place({ sources: [{ label: "Sektor 2", url, checkedAt: null }] }),
+      place({
+        sources: [{ label: "Sektor 2", url, checkedAt: null, seenAt: null }],
+      }),
     ),
     [
       [
@@ -144,7 +151,7 @@ test("the PDF's QR code and link: the waste subpage, with the number", () => {
   );
 });
 
-test("checked line: the source's events.checkedAt, a day, no time", () => {
+test("checked line: no source_files row: events.checkedAt, a day, no time", () => {
   assert.equal(wasteChecked(place()), "2026-10-20");
   assert.equal(
     checkedLine(wasteChecked(place())),
@@ -161,9 +168,14 @@ test("checked line: the source's events.checkedAt, a day, no time", () => {
 
 test("checked line: the oldest of several sources; none without a date", () => {
   const sources = [
-    { label: "Sektor 1", url: null, checkedAt: "2026-10-23" },
-    { label: "Sektor 1, papier", url: null, checkedAt: "2026-09-30" },
-    { label: "Sektor 1, szkło", url: null, checkedAt: null },
+    { label: "Sektor 1", url: null, checkedAt: "2026-10-23", seenAt: null },
+    {
+      label: "Sektor 1, papier",
+      url: null,
+      checkedAt: "2026-09-30",
+      seenAt: null,
+    },
+    { label: "Sektor 1, szkło", url: null, checkedAt: null, seenAt: null },
   ];
   assert.equal(
     checkedLine(wasteChecked(place({ sources }))),
@@ -171,4 +183,116 @@ test("checked line: the oldest of several sources; none without a date", () => {
   );
   assert.equal(wasteChecked(place({ sources: [sources[2]] })), null);
   assert.equal(wasteChecked(place({ sources: [] })), null);
+});
+
+test("checked line: the import's source_files.lastSeenAt, Warsaw day and time", () => {
+  const sources = [
+    {
+      label: "Sektor 1",
+      url: null,
+      checkedAt: "2026-10-20",
+      seenAt: "2026-10-25T04:03:12.5+00:00",
+    },
+  ];
+  const at = wasteChecked(place({ sources }));
+  assert.ok(at instanceof Date);
+  assert.equal(
+    checkedLine(at),
+    "Ostatnio sprawdziliśmy: 25 października, 5:03",
+  );
+});
+
+test("checked line: the oldest wins, times and days alike", () => {
+  const seen = (seenAt: string | null, checkedAt = "2026-10-01") => ({
+    label: "Sektor",
+    url: null,
+    checkedAt,
+    seenAt,
+  });
+  // Two times: the older one.
+  assert.equal(
+    checkedLine(
+      wasteChecked(
+        place({
+          sources: [seen("2026-10-25T04:03:00Z"), seen("2026-10-24T04:01:00Z")],
+        }),
+      ),
+    ),
+    "Ostatnio sprawdziliśmy: 24 października, 6:01",
+  );
+  // A file seen today, another source without a row checked days ago.
+  assert.equal(
+    checkedLine(
+      wasteChecked(
+        place({
+          sources: [seen("2026-10-25T04:03:00Z"), seen(null, "2026-10-20")],
+        }),
+      ),
+    ),
+    "Ostatnio sprawdziliśmy: 20 października",
+  );
+  // A day counts as older than any time on that Warsaw day, and the day
+  // is Warsaw's: 23:30 UTC on the 24th is already the 25th there.
+  assert.equal(
+    wasteChecked(
+      place({
+        sources: [seen("2026-10-24T23:30:00Z"), seen(null, "2026-10-25")],
+      }),
+    ),
+    "2026-10-25",
+  );
+  assert.equal(
+    checkedLine(
+      wasteChecked(
+        place({
+          sources: [seen("2026-10-24T21:30:00Z"), seen(null, "2026-10-25")],
+        }),
+      ),
+    ),
+    "Ostatnio sprawdziliśmy: 24 października, 23:30",
+  );
+});
+
+test("sources: one per document, its files' oldest lastSeenAt", () => {
+  const row = (
+    sourceDoc: string,
+    seenAt: string | null,
+    checkedAt = "2026-10-20",
+  ) => ({
+    sourceDoc,
+    sourceRef: `${sourceDoc}, ref`,
+    sourceUrl: `https://example.org/${sourceDoc}.pdf`,
+    checkedAt,
+    seenAt,
+  });
+  assert.deepEqual(
+    sourcesOf([
+      row("a", "2026-10-25T04:00:00Z"),
+      row("a", "2026-10-24T04:00:00Z"),
+      row("b", "2026-10-25T04:00:00Z"),
+      row("b", null),
+      row("c", null, "2026-10-01"),
+    ]),
+    [
+      {
+        label: "a, ref",
+        url: "https://example.org/a.pdf",
+        checkedAt: "2026-10-20",
+        seenAt: "2026-10-24T04:00:00Z",
+      },
+      // One file of the document without a row: its day instead.
+      {
+        label: "b, ref",
+        url: "https://example.org/b.pdf",
+        checkedAt: "2026-10-20",
+        seenAt: null,
+      },
+      {
+        label: "c, ref",
+        url: "https://example.org/c.pdf",
+        checkedAt: "2026-10-01",
+        seenAt: null,
+      },
+    ],
+  );
 });
