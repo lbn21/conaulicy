@@ -1,5 +1,6 @@
-// Checks the home page's examples (lib/examples.ts): each one opens a place
-// page with upcoming pickups, and the home page links to each, in order,
+// Checks the home page's examples (lib/examples.ts): each one opens an
+// address page whose waste card has the next pickup, and a waste subpage
+// with upcoming pickups, and the home page links to each, in order,
 // labelled with the place's own name (the page's h1). Fails otherwise.
 //
 // Runs against `next start` on the current build and database: in CI that is
@@ -29,8 +30,19 @@ try {
     names.set(id, name);
     if (response.status !== 200 || !name) {
       failures.push(`/adres/${id}: ${response.status}, not a place page`);
-    } else if (!html.includes('id="pickups-heading"')) {
-      failures.push(`/adres/${id} (${name}): no upcoming pickups`);
+    } else if (
+      !/<dt class="govuk-summary-list__key">Najbliższy odbiór<\/dt><dd class="govuk-summary-list__value">\p{L}+, \d{1,2} \p{L}+<\/dd>/u.test(
+        html,
+      )
+    ) {
+      failures.push(`/adres/${id} (${name}): no next pickup on its card`);
+    } else {
+      const waste = await fetch(`${server.origin}/adres/${id}/smieci`, {
+        headers,
+      });
+      if (!(await waste.text()).includes('id="pickups-heading"')) {
+        failures.push(`/adres/${id}/smieci (${name}): no upcoming pickups`);
+      }
     }
   }
 

@@ -15,6 +15,7 @@ import { finish, startServer } from "./lib/server.mjs";
 const PAGES = [
   { path: "/", name: "home" },
   { path: "/adres/0972447-00470", name: "street" },
+  { path: "/adres/0972447-00470/smieci", name: "street-waste" },
   { path: "/dostepnosc", name: "a11y" },
   { path: "/ulice", name: "all-places" },
 ];

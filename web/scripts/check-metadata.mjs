@@ -1,11 +1,12 @@
 // Checks each page's own metadata on the CI fixture (lib/share.ts): one
 // non-empty <title> and description (≤ 160 characters) on every page in
-// ROUTES, unique across pages (house-number variants, module subpages such
-// as /smieci until the street page is the hub, search results and 404s left
-// out: they describe their street, or are never indexed); og:url
-// is the canonical address, with the share image; the home page's WebSite
-// JSON-LD parses. Every page in ROUTES, those included: the title is GOV.UK's
-// "<H1> – conaulicy.pl" ("Błąd: " first with an error summary), the share
+// ROUTES, unique across pages, an address page and its waste subpage
+// (/smieci) included (house-number variants, search results and 404s left
+// out: they describe their street, or are never indexed); og:url is the
+// canonical address, with the share image; the home page's WebSite JSON-LD
+// parses. Every page in ROUTES, those included: the title is GOV.UK's
+// "<H1> – conaulicy.pl", on the waste subpage "<H1>: wszystkie terminy –
+// <place> – conaulicy.pl" ("Błąd: " first with an error summary), the share
 // title the same, and the share name conaulicy.pl.
 //
 // Runs against `next start` on the current build.
@@ -42,7 +43,20 @@ try {
     );
     const title = all(html, /<title>([^<]*)<\/title>/g).map(decode);
     const error = html.includes('class="govuk-error-summary"') ? "Błąd: " : "";
-    if (h1.length !== 1 || title[0] !== `${error}${h1[0]} – conaulicy.pl`) {
+    // The waste subpage: its h1, then its place (the breadcrumb before it).
+    const place = /\/smieci(?:\?|$)/.test(path)
+      ? decode(
+          all(
+            html,
+            /<a class="govuk-breadcrumbs__link" href="[^"]*">([^<]*)<\/a>/g,
+          ).at(-1) ?? "",
+        )
+      : null;
+    const want =
+      place === null
+        ? `${error}${h1[0]} – conaulicy.pl`
+        : `${error}${h1[0]}: wszystkie terminy – ${place} – conaulicy.pl`;
+    if (h1.length !== 1 || title[0] !== want) {
       failures.push(
         `${path}: title ${JSON.stringify(title)}, H1 ${JSON.stringify(h1)}`,
       );
@@ -61,7 +75,7 @@ try {
     if (
       route.status ||
       route.path.includes("?nr") ||
-      /^\/adres\/[^/]+\/[^/?]+/.test(route.path) ||
+      /^\/adres\/[^/]+\/(?!smieci$)[^/?]+/.test(route.path) ||
       route.path.startsWith("/szukaj")
     )
       continue;

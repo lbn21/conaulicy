@@ -16,6 +16,12 @@ export const ROUTES = [
   { path: "/adres/0972447-90004?nr=", name: "split-street-missing-number" },
   { path: "/adres/0972447-00470?nr=12", name: "city-street-number" },
   { path: "/adres/0972447-00470/smieci", name: "city-street-waste" },
+  { path: "/adres/0606010/smieci", name: "village-waste" },
+  { path: "/adres/0972447-90004/smieci", name: "split-street-waste" },
+  {
+    path: "/adres/0972447-90004/smieci?nr=7a",
+    name: "split-street-number-waste",
+  },
   { path: "/ulice", name: "all-places" },
   { path: "/prywatnosc", name: "privacy" },
   { path: "/dostepnosc", name: "accessibility" },

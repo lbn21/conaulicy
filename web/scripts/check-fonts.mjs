@@ -1,5 +1,5 @@
-// Checks that the web font arriving late moves nothing: on the home page and
-// a street page, at 360px and 1280px, every font request is
+// Checks that the web font arriving late moves nothing: on the home page, an
+// address page and its waste subpage, at 360px and 1280px, every font request is
 // held back 1.5s (a slow first visit) and the summed layout shift, including
 // shifts CLS itself would forgive, must stay under 0.001. (0.01 is too loose:
 // the 28px jump of the search section on / at 1280px scored only 0.0071.)
@@ -7,7 +7,7 @@
 import { chromium } from "playwright";
 import { finish, startServer } from "./lib/server.mjs";
 
-const PAGES = ["/", "/adres/0972447-00470"];
+const PAGES = ["/", "/adres/0972447-00470", "/adres/0972447-00470/smieci"];
 const WIDTHS = [360, 1280];
 const FONT_DELAY = 1500;
 const LIMIT = 0.001;
