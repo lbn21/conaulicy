@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { SITE_URL } from "./config.generated.ts";
 import type { Disruption } from "./disruptions.ts";
 import type { PlaceView } from "./schedule.ts";
 import {
@@ -28,6 +29,9 @@ const NOW = new Date("2026-10-25T12:30:00Z");
 const POST_URL =
   "https://www.gminalubaczow.pl/2026/10/23/przerwy-w-dostawie-wody-26-29-10-2026/";
 const ZUKI_UID = "woda-39885-0972447-0972447-26555-2026-10-27@conaulicy.pl";
+// The /woda page each event and its alarm link to, from SITE_URL.
+const ZUKI_PAGE = `${SITE_URL}/adres/0972447-26555/woda`;
+const CHECK = `Sprawdź\\, czy przerwa jest aktualna: ${ZUKI_PAGE}`;
 
 const ZUKI = testPlace();
 const ASNYKA = { ...ZUKI, id: "0972447-00470", streetId: "0972447-00470" };
@@ -52,6 +56,12 @@ const at = (
 
 /** The file unfolded, one property per line. */
 const lines = (ics: string) => ics.replace(/\r\n /g, "").split("\r\n");
+
+/** Every line folded to 75 octets. */
+const folded = (ics: string) => {
+  for (const line of ics.split("\r\n"))
+    assert.ok(new TextEncoder().encode(line).length <= 75, line);
+};
 
 const events = (ics: string) => ics.split("BEGIN:VEVENT").length - 1;
 
@@ -82,9 +92,15 @@ test("a cut at the address: one event, Warsaw hours, place and source", () => {
   const [description] = value(ics, "DESCRIPTION");
   assert.match(description, /^Cała ulica Żuki\.\\n/);
   assert.ok(description.includes(`Źródło: ${POST_URL}`));
-  // Every line folded to 75 octets, CRLF throughout.
-  for (const line of ics.split("\r\n"))
-    assert.ok(new TextEncoder().encode(line).length <= 75, line);
+  // The last line: our /woda page, which always shows the current state.
+  assert.ok(description.endsWith(`rację ma komunikat.\\n${CHECK}`));
+  assert.equal(ZUKI_PAGE, "https://conaulicy.pl/adres/0972447-26555/woda");
+  assert.ok(
+    description.endsWith(
+      "\\nSprawdź\\, czy przerwa jest aktualna: https://conaulicy.pl/adres/0972447-26555/woda",
+    ),
+  );
+  folded(ics);
   assert.ok(ics.endsWith("END:VCALENDAR\r\n"));
 });
 
@@ -94,7 +110,9 @@ test("the alarm: the evening before, 18:00 in Warsaw", () => {
   // Monday 26 Oct, 18:00 CET.
   assert.ok(all.includes("TRIGGER;VALUE=DATE-TIME:20261026T170000Z"));
   assert.ok(
-    all.includes("DESCRIPTION:Jutro przerwa w dostawie wody\\, 8:00–16:00"),
+    all.includes(
+      `DESCRIPTION:Jutro przerwa w dostawie wody\\, 8:00–16:00.\\n${CHECK}`,
+    ),
   );
   assert.equal(value(ics, "BEGIN").filter((v) => v === "VALARM").length, 1);
 });
@@ -121,7 +139,7 @@ test("across the change to winter time: wall clock kept, alarm in CEST", () => {
   assert.ok(all.includes("RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU"));
   assert.ok(
     all.includes(
-      "DESCRIPTION:Jutro przerwa w dostawie wody\\, 22:00 – niedziela\\, 25 października\\, 4:00",
+      `DESCRIPTION:Jutro przerwa w dostawie wody\\, 22:00 – niedziela\\, 25 października\\, 4:00.\\n${CHECK}`,
     ),
   );
 });
@@ -191,14 +209,47 @@ test("no cut here: an empty calendar, as a waste zone with no dates", () => {
   assert.equal(events(waterCalendar(none, NOW)), 0);
 });
 
-test("the house number: in the place and the file name", () => {
+test("the house number: in the place, the file name and the page link", () => {
   const data = at([post()], { ...ZUKI, givenNr: "12" });
+  const ics = waterCalendar(data, NOW);
+  assert.ok(lines(ics).includes("LOCATION:ul. Żuki 12\\, Lubaczów"));
+  assert.equal(waterFilename(data), "woda-ul-zuki-12-lubaczow.ics");
+  const page = `${ZUKI_PAGE}?nr=12`;
+  assert.equal(page, "https://conaulicy.pl/adres/0972447-26555/woda?nr=12");
   assert.ok(
-    lines(waterCalendar(data, NOW)).includes(
-      "LOCATION:ul. Żuki 12\\, Lubaczów",
+    value(ics, "DESCRIPTION")[0].endsWith(
+      `\\nSprawdź\\, czy przerwa jest aktualna: ${page}`,
     ),
   );
-  assert.equal(waterFilename(data), "woda-ul-zuki-12-lubaczow.ics");
+});
+
+test("a streetless village with a house number: the link keeps ?nr=, folded", () => {
+  const opaka = testPlace({
+    id: "0606317",
+    kind: "wies",
+    name: "Opaka",
+    label: "Opaka",
+    localityId: "0606317",
+    streetId: null,
+    givenNr: "105",
+  });
+  // 39885: Opaka „od numeru 104 do 110” on 27 Oct; 105 is inside.
+  const data = at([post()], opaka);
+  const cuts = calendarCuts(data).filter(
+    (cut) => cut.place.localityId === "0606317",
+  );
+  assert.equal(cuts.length, 1);
+  assert.equal(cuts[0].date, "2026-10-27");
+  const ics = waterCalendar(data, NOW);
+  assert.equal(events(ics), 1);
+  const page = `${SITE_URL}/adres/0606317/woda?nr=105`;
+  assert.equal(page, "https://conaulicy.pl/adres/0606317/woda?nr=105");
+  const check = `Sprawdź\\, czy przerwa jest aktualna: ${page}`;
+  assert.ok(value(ics, "DESCRIPTION")[0].endsWith(`\\n${check}`));
+  assert.ok(value(ics, "DESCRIPTION")[1].endsWith(`.\\n${check}`));
+  // The raw file: no line over 75 octets; unfolded, the exact URL.
+  folded(ics);
+  assert.ok(lines(ics).some((line) => line.includes(page)));
 });
 
 test("house numbers in a village with streets: the village's UID, the range as written", () => {

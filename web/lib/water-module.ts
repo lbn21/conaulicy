@@ -131,7 +131,7 @@ export function water(view: ZukData, place: PlaceView): Water {
 }
 
 /** The water subpage, with the house number as given. */
-function waterPath(place: Pick<PlaceView, "id" | "givenNr">): string {
+export function waterPath(place: Pick<PlaceView, "id" | "givenNr">): string {
   return `${placePath(place.id)}/woda${place.givenNr ? `?nr=${place.givenNr}` : ""}`;
 }
 
