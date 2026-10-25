@@ -463,11 +463,9 @@ function WasteBody({
             href={`/ics/${encodeURIComponent(place.zoneId)}`}
             label="Dodaj do kalendarza"
             hint="Plik z datami. Telefon zapyta, czy wpisać je do kalendarza."
-            data={{
-              "data-event": "calendar_add",
-              "data-zone": place.zoneId,
-              "data-source": "street",
-            }}
+            event="calendar_add"
+            zone={place.zoneId}
+            source="street"
           />
           <p className="govuk-body">
             <a

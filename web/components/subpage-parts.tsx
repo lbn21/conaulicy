@@ -9,18 +9,25 @@ import type { ReactNode } from "react";
  * „Dodaj … do kalendarza”: GOV.UK's link button, a link that looks and
  * works like a button (GOV.UK's Button JS makes Space activate it), then
  * one line on what the file does. Only for a file with at least one event.
- * `data`: the analytics attributes (data-event, …).
+ * `event` and its properties, whichever are given, are what
+ * components/web-analytics.tsx sends on a click.
  */
 export function CalendarBlock({
   href,
   label,
   hint,
-  data,
+  event,
+  zone,
+  source,
+  place,
 }: {
   href: string;
   label: string;
   hint: string;
-  data?: Record<`data-${string}`, string>;
+  event: "calendar_add" | "water_calendar_add";
+  zone?: string;
+  source?: string;
+  place?: string;
 }) {
   return (
     <>
@@ -31,7 +38,10 @@ export function CalendarBlock({
         draggable="false"
         className="govuk-button"
         data-module="govuk-button"
-        {...data}
+        data-event={event}
+        data-zone={zone}
+        data-source={source}
+        data-place={place}
       >
         {label}
       </a>

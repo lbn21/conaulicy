@@ -48,11 +48,12 @@ export default function PrivacyPage() {
               <p className="govuk-body">
                 Liczymy odwiedziny, żeby wiedzieć, czy strona się przydaje: ile
                 osób ją otwiera, które strony i jak często ktoś dodaje odbiory
-                do kalendarza albo otwiera PDF. Robi to Vercel Web Analytics,
-                bez ciasteczek. Adres IP nie jest zapisywany, a skrót, który
-                odróżnia jedną wizytę od drugiej, znika po 24 godzinach. Widzimy
-                tylko zbiorcze liczby, nigdy pojedynczą osobę. Wpisanego adresu
-                ani numeru domu do statystyk nie wysyłamy.
+                albo przerwy w dostawie wody do kalendarza albo otwiera PDF.
+                Robi to Vercel Web Analytics, bez ciasteczek. Adres IP nie jest
+                zapisywany, a skrót, który odróżnia jedną wizytę od drugiej,
+                znika po 24 godzinach. Widzimy tylko zbiorcze liczby, nigdy
+                pojedynczą osobę. Wpisanego adresu ani numeru domu do statystyk
+                nie wysyłamy.
               </p>
               <p className="govuk-body">
                 <a

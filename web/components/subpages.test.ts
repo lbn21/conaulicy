@@ -12,6 +12,7 @@ import { water } from "../lib/water-module.ts";
 import { zukView } from "../lib/zuk-data.ts";
 import { WasteDetails } from "./place-page.tsx";
 import { WaterDetails } from "./water-page.tsx";
+import { eventProperties } from "./web-analytics.tsx";
 
 // The address subpages' one layout (docs/layout.md), rendered as the pages
 // render them (scripts/lib/tsx.mjs): /woda and /smieci in the same order,
@@ -139,4 +140,33 @@ test("/smieci and /woda: the same skeleton and calendar block", () => {
     shape(waste),
     '<a role="button" draggable="false" class="govuk-button" data-module="govuk-button"></a><p class="govuk-body"></p>',
   );
+});
+
+/** The button's opening tag. */
+const buttonTag = (html: string) =>
+  /<a [^>]*role="button"[^>]*>/.exec(html)?.[0] ?? "";
+
+test("the calendar buttons' analytics: water by place, waste by zone", () => {
+  assert.equal(
+    buttonTag(waterPage()),
+    '<a href="/adres/0972447-26555/woda.ics" role="button" draggable="false" class="govuk-button" data-module="govuk-button" data-event="water_calendar_add" data-place="0972447-26555">',
+  );
+  // /smieci's as before task 125, byte for byte.
+  assert.equal(
+    buttonTag(wastePage()),
+    '<a href="/ics/waste%3Amiasto-s2" role="button" draggable="false" class="govuk-button" data-module="govuk-button" data-event="calendar_add" data-zone="waste:miasto-s2" data-source="street">',
+  );
+});
+
+test("a click sends whichever of zone, source and place the link has", () => {
+  assert.deepEqual(eventProperties({ event: "x", place: "0972447-26555" }), {
+    place: "0972447-26555",
+  });
+  assert.deepEqual(
+    eventProperties({ event: "x", zone: "waste:miasto-s2", source: "street" }),
+    { zone: "waste:miasto-s2", source: "street" },
+  );
+  assert.deepEqual(eventProperties({ event: "x", zone: "waste:miasto-s2" }), {
+    zone: "waste:miasto-s2",
+  });
 });

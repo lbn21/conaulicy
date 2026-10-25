@@ -86,6 +86,8 @@ export function WaterDetails({
             href={calendar}
             label="Dodaj przerwy do kalendarza"
             hint="Plik z przerwami. Jeśli gmina zmieni godziny, pobierz plik jeszcze raz – kalendarz poprawi wpis."
+            event="water_calendar_add"
+            place={data.place.id}
           />
         )}
         {empty ? (
