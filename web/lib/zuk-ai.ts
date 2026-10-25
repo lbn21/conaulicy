@@ -1,8 +1,13 @@
 // Grok reads one ZUK post (xAI chat/completions, structured output). What it
 // returns is a claim, not a fact: lib/zuk-guards.ts checks every value
 // against the post's own text and lib/zuk-resolve.ts maps the places to
-// ours; anything that fails stays a Notice. Prompt and schema scored
-// 116/117 items on 23 real notices (25 Oct 2026, reasoning low, temp. 0).
+// ours; a place that fails is dropped, a date or time that fails makes the
+// post a Notice. The prompt is the rules plus a context of our own places
+// (systemPrompt): with it grok-4.7 scored 330/330 place-days on 24 hand-checked
+// posts, 0 wrong (A/B test, 25 Oct 2026, reasoning low, temp. 0). It never
+// returns ids: our code has the last word (lib/zuk-resolve.ts).
+
+import type { ZukPlaces } from "./zuk-resolve.ts";
 
 export const ZUK_MODEL = "grok-4.7";
 
@@ -131,6 +136,56 @@ Rules:
 - Use the publish date only to resolve a year if missing. Do not guess.
 - Posts that are not about water interruptions: is_outage_notice=false, items=[].`;
 
+const PLACE_RULES = `Place-name rules (they override 'copy locality verbatim' only for the locality field):
+- locality is the town or village the text names, written exactly as in the list above. Change only case, spacing, dashes or a missing diacritic; never pick a different place.
+- A name not on the list that is attached to a listed village ('Załuże–Podłęże', 'Załuże (Podłęże)'): locality = that village ('Załuże'), note = the unlisted name exactly as written ('Podłęże'). Never invent where an unlisted name lies.
+- 'X (przysiółek Y)' or 'X ... (przysiółek Y)': locality = the village X; keep the bracket in place_verbatim. Example: 'Basznia Górna od nr 121 do nr 144 (przysiółek Dąbrowa)' -> locality 'Basznia Górna'.
+- A bare name that is both a village and a village part (e.g. 'Dąbrowa') is the village.
+- A village part named on its own, without its village: locality = the part's name.
+- 'Młodów, ul. Pilipy' / 'Młodów ul. Pilipy' is the street Pilipy in Młodów: locality 'Młodów', street 'Pilipy'.
+- street, place_verbatim and note are always copied exactly from the text, never normalized. Never output ids or places not in the text.`;
+
+// Code-point order, so the prompt is byte-for-byte the same for the same
+// places (a cacheable prefix).
+const sorted = (names: string[]) => [...names].sort();
+
+/**
+ * The system prompt: the rules, then our localities (town, villages, village
+ * parts with their village; no streets, which made the readings worse), then
+ * the place-name rules. Built from the places the resolver uses, so it
+ * follows the data.
+ */
+export function systemPrompt(places: ZukPlaces): string {
+  const byId = new Map(places.localities.map((l) => [l.id, l]));
+  const names = (kind: string) =>
+    sorted(
+      places.localities.filter((l) => l.kind === kind).map((l) => l.name),
+    ).join(", ");
+  const parts = sorted(
+    places.localities
+      .filter((l) => l.kind === "czesc_wsi")
+      .map((l) => {
+        const parent = l.parentId ? byId.get(l.parentId)?.name : undefined;
+        return parent ? `${l.name} (${parent})` : l.name;
+      }),
+  ).join(", ");
+  const seen = new Map<string, number>();
+  for (const l of places.localities)
+    seen.set(l.name, (seen.get(l.name) ?? 0) + 1);
+  const twice = sorted(
+    [...seen].filter(([, n]) => n > 1).map(([name]) => name),
+  );
+  return `${SYSTEM}
+
+Context: the places in our database. ZUK Mokrzyca supplies water to the villages of gmina Lubaczów and to some streets of the town Lubaczów.
+Town (miasto): ${names("miasto")}
+Villages (wieś): ${names("wies")}
+Village parts (część wsi, przysiółek), each with its village: ${parts}
+Names used more than once: ${twice.join(", ")}.
+${PLACE_RULES}
+`;
+}
+
 export type AiInput = {
   /** Site time, "2026-10-23T18:59:43". */
   published: string;
@@ -192,11 +247,13 @@ export function costUsd(usage: AiUsage): number {
 const count = (v: unknown) => (typeof v === "number" ? v : 0);
 
 /**
- * One post read by the model. Throws on a network or HTTP error, a timeout
- * or a reply that is not the schema; never logs the key.
+ * One post read by the model, `system` from systemPrompt. Throws on a
+ * network or HTTP error, a timeout or a reply that is not the schema; never
+ * logs the key.
  */
 export async function readWithAi(
   input: AiInput,
+  system: string,
   apiKey: string,
   fetcher: typeof fetch = fetch,
 ): Promise<AiReading> {
@@ -212,7 +269,7 @@ export async function readWithAi(
       reasoning_effort: "low",
       temperature: 0,
       messages: [
-        { role: "system", content: SYSTEM },
+        { role: "system", content: system },
         {
           role: "user",
           content: `Publish date: ${input.published}\nTitle: ${input.title}\n\nText:\n${input.text}`,

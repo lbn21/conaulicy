@@ -1,10 +1,13 @@
 // The ZUK cron (app/api/cron/zuk/route.ts, every 15 minutes): reads the
 // gmina's recent posts, has the model read only the ZUK posts that are new
-// or edited (or whose last reading failed), keeps every other post's stored
-// result, and writes the file (lib/zuk-data.ts) when its content changed or
-// its checkedAt is RECHECK_MS old. The gmina's site down: the old file
-// stays, unchanged, and turns stale. xAI down: new and edited posts become
-// Notices, retried next run. Dependencies come in, so the tests mock them.
+// or edited (or whose last reading failed or waited), keeps every other
+// post's stored result, and writes the file (lib/zuk-data.ts) when its
+// content changed or its checkedAt is RECHECK_MS old. A post whose title's
+// days are all over is not read ("past"). The gmina's site down: the old
+// file stays, unchanged, and turns stale. xAI down: new and edited posts
+// become Notices, retried next run; so do those over the run's cap. A file
+// of an older version: every post is read again. Dependencies come in, so
+// the tests mock them.
 
 import { addDays, todayInWarsaw } from "./dates.ts";
 import { NO_STORE } from "./headers.ts";
@@ -12,6 +15,7 @@ import { sameSecret } from "./secret.ts";
 import {
   current,
   isChangePost,
+  isPastPost,
   isZukPost,
   mentionedLocalities,
   plainText,
@@ -19,9 +23,11 @@ import {
   wall,
   type ZukPost,
 } from "./zuk.ts";
-import { type AiReading, readWithAi } from "./zuk-ai.ts";
+import { type AiReading, readWithAi, systemPrompt } from "./zuk-ai.ts";
 import {
+  AI_DEFERRED,
   AI_UNAVAILABLE,
+  PAST,
   parseZukFile,
   type StoredPost,
   ZUK_FILE_VERSION,
@@ -121,14 +127,22 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     await fetchPosts(deps.fetch, addDays(today, -WINDOW_DAYS))
   ).filter(isZukPost);
   const checkedAt = started.toISOString();
-  const before = new Map(previous?.posts.map((p) => [p.id, p]));
+  const before = new Map(
+    previous?.version === ZUK_FILE_VERSION
+      ? previous.posts.map((p) => [p.id, p])
+      : [],
+  );
   const toRead = posts.filter((post) => {
     const old = before.get(post.id);
     return (
-      !old || old.modified !== post.modified || old.reason === AI_UNAVAILABLE
+      !old ||
+      old.modified !== post.modified ||
+      old.reason === AI_UNAVAILABLE ||
+      old.reason === AI_DEFERRED
     );
   });
   const places = toRead.length > 0 ? await deps.places() : null;
+  const system = places && systemPrompt(places);
   const readAi = deps.readAi ?? readWithAi;
 
   let aiCalls = 0;
@@ -151,19 +165,26 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
       localityIds: places ? mentionedLocalities(post, places) : [],
       ...(isChangePost(post) ? { change: true } : {}),
     };
-    const unavailable: StoredPost = {
+    const notice = (reason: string): StoredPost => ({
       ...base,
       status: "notice",
-      reason: AI_UNAVAILABLE,
+      reason,
+      itemCount: 0,
       items: [],
-    };
+    });
+    if (isPastPost(post, today)) {
+      stored.push(notice(PAST));
+      continue;
+    }
+    if (aiDown || !places || !system) {
+      stored.push(notice(AI_UNAVAILABLE));
+      continue;
+    }
     if (
-      aiDown ||
-      !places ||
       aiCalls >= MAX_AI_CALLS ||
       deps.now().getTime() - started.getTime() > AI_BUDGET_MS
     ) {
-      stored.push(unavailable);
+      stored.push(notice(AI_DEFERRED));
       continue;
     }
     aiCalls++;
@@ -175,6 +196,7 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
           title: base.title,
           text: plainText(post.content.rendered),
         },
+        system,
         deps.xaiKey as string,
         deps.fetch,
       );
@@ -185,7 +207,7 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
         post: post.id,
         error: (error as Error).message,
       });
-      stored.push(unavailable);
+      stored.push(notice(AI_UNAVAILABLE));
       continue;
     }
     costUsd += reading.costUsd;
@@ -198,7 +220,9 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
       latencyMs: reading.latencyMs,
       costUsd: Number(reading.costUsd.toFixed(6)),
       status: read.status,
-      ...(read.status === "notice" ? { reason: read.reason } : {}),
+      ...(read.status === "notice"
+        ? { reason: read.reason }
+        : { items: read.items.length, dropped: read.dropped }),
     });
     stored.push({
       ...base,
@@ -207,8 +231,12 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
       usage: reading.usage,
       costUsd: reading.costUsd,
       ...(read.status === "parsed"
-        ? { status: "parsed", items: current(read.items, today) }
-        : { status: "notice", reason: read.reason, items: [] }),
+        ? {
+            status: "parsed",
+            itemCount: read.items.length,
+            items: current(read.items, today),
+          }
+        : { status: "notice", reason: read.reason, itemCount: 0, items: [] }),
     });
   }
 

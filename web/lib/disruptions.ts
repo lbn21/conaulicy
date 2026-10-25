@@ -28,6 +28,19 @@ export type DisruptionPlace = {
   streetId: string | null;
 };
 
+/**
+ * Our names for the place, for its label: never the source's wording. The
+ * houses are the scope.
+ */
+export type DisruptionLabel = {
+  /** "Dąbrowa". */
+  locality: string;
+  /** A village part's village, "Basznia Górna"; else null. */
+  parent: string | null;
+  /** "Jana III Sobieskiego"; null for the whole locality. */
+  street: string | null;
+};
+
 export type Disruption = {
   /** Stable across re-reads of the same notice: zuk-<postId>-<date>-<place>. */
   uid: string;
@@ -42,6 +55,8 @@ export type Disruption = {
   /** The end is the source's estimate ("przewidywane wznowienie"). */
   endEstimated: boolean;
   place: DisruptionPlace;
+  /** Absent only in files of version 1 (lib/zuk-data.ts). */
+  label?: DisruptionLabel;
   /** The source's own wording for the place: "Opaka od nr 104 do nr 110". */
   where: string;
   scope: DisruptionScope;

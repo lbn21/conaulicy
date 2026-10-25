@@ -3,19 +3,25 @@
 // Pure, so the tests run it as is.
 //
 // {
-//   version: 1,
+//   version: 2,
 //   generatedAt,  // ISO: when `posts` last changed
 //   checkedAt,    // ISO: the last successful read of the gmina's posts
 //   posts: [{
 //     id, modified, url, title, publishedAt, updatedAt,
 //     status: "parsed" | "notice",
-//     reason?,            // why a Notice ("ai-unavailable" is retried)
+//     reason?,            // why a Notice: "past" (not read), or retried
+//                         // next run: "ai-deferred" (the run's cap),
+//                         // "ai-unavailable" (xAI failed or no key)
 //     past?, change?,     // a report of a past cut; a date-change post
 //     localityIds,        // what a Notice may concern
 //     model?, usage?, costUsd?,  // the reading that produced it
+//     itemCount,          // items read, before those already over went
 //     items: Disruption[] // parsed only; cuts already over are dropped
 //   }]
 // }
+//
+// Version 1 (no itemCount, no item label) is still read: the pages show it
+// as it is, and the cron reads every post again.
 
 import { todayInWarsaw } from "./dates.ts";
 import type { Disruption, Notice } from "./disruptions.ts";
@@ -23,13 +29,17 @@ import { current, noticeUntil, SOURCE_NAME } from "./zuk.ts";
 import type { AiUsage } from "./zuk-ai.ts";
 
 export const ZUK_PATHNAME = "zuk/disruptions.json";
-export const ZUK_FILE_VERSION = 1;
+export const ZUK_FILE_VERSION = 2;
 
 /** Older than this, the data may be out of date: show the source link. */
 export const STALE_MS = 60 * 60_000;
 
 /** A Notice for a post the model could not read; retried every run. */
 export const AI_UNAVAILABLE = "ai-unavailable";
+/** A Notice for a post over the run's model calls; retried next run. */
+export const AI_DEFERRED = "ai-deferred";
+/** A Notice for a post whose title's days are all over: never read. */
+export const PAST = "past";
 
 export type StoredPost = {
   id: number;
@@ -46,11 +56,13 @@ export type StoredPost = {
   model?: string;
   usage?: AiUsage;
   costUsd?: number;
+  /** Absent in version 1. */
+  itemCount?: number;
   items: Disruption[];
 };
 
 export type ZukFile = {
-  version: typeof ZUK_FILE_VERSION;
+  version: typeof ZUK_FILE_VERSION | 1;
   generatedAt: string;
   checkedAt: string;
   posts: StoredPost[];
@@ -60,7 +72,7 @@ export type ZukFile = {
 export function parseZukFile(body: string): ZukFile | null {
   try {
     const file = JSON.parse(body) as ZukFile;
-    return file?.version === ZUK_FILE_VERSION &&
+    return (file?.version === ZUK_FILE_VERSION || file?.version === 1) &&
       typeof file.checkedAt === "string" &&
       Array.isArray(file.posts)
       ? file
@@ -150,7 +162,7 @@ export function zukView(file: ZukFile | null, now: Date): ZukData {
     const shown =
       post.status === "parsed"
         ? post.items.length > 0
-        : today < noticeUntil(post.publishedAt);
+        : post.reason !== PAST && today < noticeUntil(post.publishedAt);
     if (!shown) continue;
     notices.push({
       uid: `zuk-${post.id}`,

@@ -3,6 +3,7 @@ import { test } from "node:test";
 import type { Disruption } from "./disruptions.ts";
 import { readPost } from "./zuk.ts";
 import {
+  PAST,
   parseZukFile,
   STALE_MS,
   type StoredPost,
@@ -27,13 +28,14 @@ function stored(id: number, over: Partial<StoredPost> = {}): StoredPost {
     updatedAt: post.modified.replace("T", " "),
     status: read.status,
     localityIds: [],
+    itemCount: read.status === "parsed" ? read.items.length : 0,
     items: read.status === "parsed" ? read.items : [],
     ...over,
   };
 }
 
 const file = (posts: StoredPost[], checkedAt = CHECKED): ZukFile => ({
-  version: 1,
+  version: 2,
   generatedAt: checkedAt,
   checkedAt,
   posts,
@@ -62,8 +64,23 @@ test("stale: data last checked more than 60 minutes ago", () => {
 test("parse: only a file we wrote", () => {
   assert.deepEqual(parseZukFile(JSON.stringify(file([]))), file([]));
   assert.equal(parseZukFile("not json"), null);
-  assert.equal(parseZukFile(JSON.stringify({ ...file([]), version: 2 })), null);
+  assert.equal(parseZukFile(JSON.stringify({ ...file([]), version: 3 })), null);
   assert.equal(parseZukFile("null"), null);
+});
+
+test("version 1: read as it is, its cuts still shown", () => {
+  // A version 1 post: no itemCount, items without a label.
+  const { itemCount, ...post } = stored(39885);
+  assert.ok(itemCount);
+  const old = {
+    ...file([{ ...post, items: post.items.map(({ label, ...d }) => d) }]),
+    version: 1,
+  };
+  const parsed = parseZukFile(JSON.stringify(old));
+  assert.equal(parsed?.version, 1);
+  const view = zukView(parsed, NOW);
+  assert.equal(view.disruptions.length, post.items.length);
+  assert.equal(view.disruptions[0].label, undefined);
 });
 
 test("cuts: those still to come, checkedAt from the file", () => {
@@ -94,6 +111,16 @@ test("notices: for 14 days after the post", () => {
   assert.equal(n.uid, "zuk-34394");
   assert.equal(n.source.url, notice.url);
   assert.equal(view("2025-10-23T12:00:00Z").length, 0);
+});
+
+test("notices: a post whose days are all over is never shown", () => {
+  const past = stored(39872, {
+    status: "notice",
+    reason: PAST,
+    itemCount: 0,
+    items: [],
+  });
+  assert.deepEqual(zukView(file([past]), NOW).notices, []);
 });
 
 test("clash: two posts give one place and day different hours", () => {

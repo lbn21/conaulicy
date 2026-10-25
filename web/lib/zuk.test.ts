@@ -3,13 +3,16 @@ import { test } from "node:test";
 import type { Disruption } from "./disruptions.ts";
 import {
   isChangePost,
+  isPastPost,
   isZukPost,
   mentionedLocalities,
   plainText,
   readPost,
+  titleDays,
   type ZukPost,
 } from "./zuk.ts";
 import { PLACES, READINGS, reading, realPosts } from "./zuk-fixture.ts";
+import { READ_B, readingB, TRUTH } from "./zuk-fixture-b.ts";
 
 const CHECKED = "2026-10-25T07:00:00Z";
 const posts = realPosts();
@@ -39,10 +42,76 @@ test("real: every post the model read, checked and resolved", () => {
   assert.deepEqual(notices, {
     // The fox vaccination post: not a water cut.
     39868: "not an outage notice",
-    // Dąbrowa the village or Basznia Górna's Dąbrowa: we do not guess.
-    34394: 'item 1: "Dąbrowa" is 2 localities',
   });
   assert.equal(Object.keys(READINGS).length, posts.length);
+});
+
+test("real, context prompt: all 24 posts, every place-day right, none wrong", () => {
+  assert.deepEqual(READ_B.sort(), posts.map((p) => p.id).sort());
+  const hhmm = (wall: string | null) => wall?.slice(11, 16) ?? null;
+  const got = new Set<string>();
+  for (const id of READ_B) {
+    const read = readPost(post(id), readingB(id), PLACES, CHECKED);
+    if (id === 39868) {
+      assert.equal(read.status, "notice");
+      continue;
+    }
+    assert.equal(read.status, "parsed", `${id}: ${JSON.stringify(read)}`);
+    if (read.status !== "parsed") continue;
+    assert.deepEqual(read.dropped, [], String(id));
+    for (const d of read.items)
+      got.add(
+        [
+          id,
+          d.date,
+          hhmm(d.start),
+          hhmm(d.end),
+          d.place.streetId ?? d.place.localityId,
+          d.scope.type,
+        ].join(" "),
+      );
+  }
+  const want = new Set<string>();
+  for (const [id, date, start, end, localityId, streetId, houses] of TRUTH) {
+    // A whole village is the village and each of its streets.
+    const places = streetId
+      ? [streetId]
+      : [
+          localityId,
+          ...PLACES.streets
+            .filter((s) => s.localityId === localityId)
+            .map((s) => s.id),
+        ];
+    for (const place of places)
+      want.add([id, date, start, end, place, houses].join(" "));
+  }
+  assert.deepEqual([...got].sort(), [...want].sort());
+  assert.equal(TRUTH.length, 117);
+});
+
+test("real 34394: bare Dąbrowa is the village, Krowica Lasowa kept", () => {
+  const items = cuts(post(34394), readingB(34394));
+  assert.deepEqual(
+    items.map((d) => d.place.localityId),
+    ["0606010", "0606168"],
+  );
+  assert.deepEqual(items[0].label, {
+    locality: "Dąbrowa",
+    parent: null,
+    street: null,
+  });
+});
+
+test("real 39885, context prompt: Załuże–Podłęże is Załuże 44-92, no alias", () => {
+  const zaluze = cuts(post(39885), readingB(39885)).find(
+    (d) => d.uid === "zuk-39885-2026-10-28-0606464",
+  );
+  assert.deepEqual(zaluze?.scope, {
+    type: "ranges",
+    ranges: [{ from: "44", to: "92" }],
+  });
+  assert.equal(zaluze?.note, "Podłęże");
+  assert.equal(zaluze?.where, "Załuże–Podłęże od numeru 44 do numeru 92");
 });
 
 test("real 39885: four days, villages expanded, a street of the town", () => {
@@ -66,9 +135,12 @@ test("real 39885: four days, villages expanded, a street of the town", () => {
   });
   assert.equal(opaka?.where, "Opaka od numeru 104 do 110");
   const day28 = at(items, "2026-10-28");
-  // Załuże–Podłęże (numbers 44-92), Lubaczów's Przemysłowa, Młodów's Pilipy.
-  for (const id of ["0606464", "0972447-17742", "0606286-39507", "0605878"])
+  // Lubaczów's Przemysłowa, Młodów's Pilipy, Bałaje.
+  for (const id of ["0972447-17742", "0606286-39507", "0605878"])
     assert.ok(day28.includes(id), id);
+  // The first prompt read the locality "Załuże–Podłęże", not ours: that
+  // place alone is dropped (the context prompt reads it as Załuże).
+  assert.ok(!day28.includes("0606464"));
   // Pilipy is a street: Młodów itself is not cut.
   assert.ok(!day28.includes("0606286"));
   const first = items[0];
@@ -83,7 +155,7 @@ test("real 39885: four days, villages expanded, a street of the town", () => {
   });
 });
 
-test("real 39865: the reading that dropped ul. Pilipy is a Notice", () => {
+test("real 39865: the reading that dropped ul. Pilipy loses only that place", () => {
   // grok-4.7, the first prompt (before the place rule): all of Młodów.
   const ai = reading(39865);
   const pilipy = ai.items.findIndex((i) => i.street === "Pilipy");
@@ -93,10 +165,23 @@ test("real 39865: the reading that dropped ul. Pilipy is a Notice", () => {
     place_verbatim: "Młodów",
   };
   const read = readPost(post(39865), ai, PLACES, CHECKED);
+  assert.equal(read.status, "parsed");
+  if (read.status !== "parsed") return;
+  assert.equal(read.dropped.length, 1);
+  assert.match(read.dropped[0], /^item 8: "Młodów" leaves out/);
+  // Neither Młodów nor any of its streets: never widened.
+  assert.ok(read.items.every((d) => d.place.localityId !== "0606286"));
+  assert.ok(read.items.some((d) => d.place.localityId === "0605890"));
+});
+
+test("a post with no place left is a Notice", () => {
+  const ai = reading(39863);
+  ai.items = ai.items.map((i) => ({ ...i, locality: "Podłęże" }));
+  const read = readPost(post(39863), ai, PLACES, CHECKED);
   assert.equal(read.status, "notice");
   assert.match(
     read.status === "notice" ? read.reason : "",
-    /^item 8: "Młodów" leaves out/,
+    /^no place: item 1:/,
   );
 });
 
@@ -117,7 +202,7 @@ test("real 35661: an emergency, its end an estimate", () => {
 });
 
 test("real 26028: 'w części' and the SUW note are only part of the place", () => {
-  const items = cuts(post(26028));
+  const items = cuts(post(26028), readingB(26028));
   const balaje = items.find((d) => d.uid === "zuk-26028-2024-04-09-0605878");
   assert.deepEqual(balaje?.scope, { type: "unknown" });
   assert.equal(balaje?.note, "w części miejscowości");
@@ -202,6 +287,30 @@ test("a Notice's localities: every namesake, not a name inside a longer one", ()
   assert.ok(balaje.includes("0605890"));
   // "Basznia" (a part of Basznia Dolna) is inside "Basznia Dolna".
   assert.ok(!balaje.includes("0605909"));
+});
+
+test("title days: in full, a range, none without a year", () => {
+  assert.deepEqual(titleDays("Przerwy w dostawie wody: 26-29.10.2026"), [
+    "2026-10-26",
+    "2026-10-29",
+  ]);
+  assert.deepEqual(
+    titleDays("Przerwa w dostawie wody – Młodów, ul. Floriana (7-8.09.2026)"),
+    ["2026-09-07", "2026-09-08"],
+  );
+  assert.deepEqual(titleDays("(awaria 16.12.2025)"), ["2025-12-16"]);
+  assert.deepEqual(titleDays("Budomierz (noc 21/22 grudnia)"), []);
+  assert.deepEqual(titleDays("Przerwa w dostawie wody – aktualizacja dat"), []);
+});
+
+test("past post: every title day before today, and only then", () => {
+  assert.equal(isPastPost(post(39885), "2026-10-29"), false);
+  assert.equal(isPastPost(post(39885), "2026-10-30"), true);
+  assert.equal(isPastPost(post(39872), "2026-10-22"), false);
+  assert.equal(isPastPost(post(39872), "2026-10-23"), true);
+  // No day in the title: read it.
+  assert.equal(isPastPost(post(26028), "2026-10-25"), false);
+  assert.equal(isPastPost(post(35690), "2026-10-25"), false);
 });
 
 test("plain text: a line per paragraph and list item, entities decoded", () => {

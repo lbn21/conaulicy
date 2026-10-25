@@ -1,16 +1,17 @@
 // Water cuts announced by Zakład Usług Komunalnych w Mokrzycy (ZUK), posted
 // on the gmina's site (https://www.gminalubaczow.pl, WordPress REST API).
 // Grok reads each post (lib/zuk-ai.ts); here, purely, that reading becomes
-// Disruptions only if every item passes our guards (lib/zuk-guards.ts) and
-// resolves to our places (lib/zuk-resolve.ts). A wrong date or a widened
-// place is the worst outcome and a link is always acceptable, so any doubt
-// makes the whole post a Notice (lib/disruptions.ts). The cron that runs it:
-// lib/zuk-cron.ts.
+// Disruptions through our guards (lib/zuk-guards.ts) and our places
+// (lib/zuk-resolve.ts). A wrong date or a wrong or widened place is the
+// worst outcome and leaving one out is acceptable: an item whose place
+// fails is dropped, alone; a day or time that fails makes the whole post a
+// Notice (lib/disruptions.ts), and so does a post left with no item. The
+// cron that runs it: lib/zuk-cron.ts.
 
 import { addDays } from "./dates.ts";
 import type { Disruption } from "./disruptions.ts";
 import type { AiResult } from "./zuk-ai.ts";
-import { checkItem } from "./zuk-guards.ts";
+import { checkPlace, checkWhen } from "./zuk-guards.ts";
 import { resolvePlace, type ZukPlaces } from "./zuk-resolve.ts";
 
 export const SOURCE_NAME = "Zakład Usług Komunalnych w Mokrzycy";
@@ -106,12 +107,18 @@ export function mentionedLocalities(
 }
 
 export type PostReading =
-  | { status: "parsed"; items: Disruption[] }
+  | {
+      status: "parsed";
+      items: Disruption[];
+      /** Items whose place failed, with the reason. */
+      dropped: string[];
+    }
   | { status: "notice"; reason: string };
 
 /**
- * The model's reading of one post, checked and resolved: Disruptions only
- * if every item passes, else a Notice with the first reason.
+ * The model's reading of one post, checked and resolved: Disruptions for
+ * every item whose place passes, as long as every day and time does, else
+ * a Notice with the first reason.
  */
 export function readPost(
   post: ZukPost,
@@ -132,34 +139,43 @@ export function readPost(
   const source = { name: SOURCE_NAME, url: post.link, checkedAt };
 
   const items: Disruption[] = [];
+  const dropped: string[] = [];
   const seen = new Set<string>();
   for (const [n, item] of ai.items.entries()) {
-    const why = (reason: string) => notice(`item ${n + 1}: ${reason}`);
-    const checked = checkItem(item, { text, others, publishedAt, updatedAt });
-    if (typeof checked === "string") return why(checked);
-    const resolved = resolvePlace(
-      {
-        locality: item.locality,
-        street: item.street,
-        hamlet: checked.hamlet,
-        scope: checked.scope,
-      },
-      places,
-    );
-    if (typeof resolved === "string") return why(resolved);
-    for (const place of resolved.places) {
+    const why = (reason: string) => `item ${n + 1}: ${reason}`;
+    const when = checkWhen(item, { text, others, publishedAt, updatedAt });
+    if (typeof when === "string") return notice(why(when));
+    const checked = checkPlace(item, { text, others });
+    const resolved =
+      typeof checked === "string"
+        ? checked
+        : resolvePlace(
+            {
+              locality: item.locality,
+              street: item.street,
+              hamlet: checked.hamlet,
+              scope: checked.scope,
+              phrase: item.place_verbatim,
+            },
+            text,
+            places,
+          );
+    if (typeof resolved === "string") {
+      dropped.push(why(resolved));
+      continue;
+    }
+    for (const { label, ...place } of resolved.places) {
       const uid = `zuk-${post.id}-${item.date}-${place.streetId ?? place.localityId}`;
-      if (seen.has(uid)) return why(`${uid} twice`);
+      if (seen.has(uid)) return notice(why(`${uid} twice`));
       seen.add(uid);
       items.push({
         uid,
         kind: "water",
         cause: item.kind,
         date: item.date,
-        start: checked.start,
-        end: checked.end,
-        endEstimated: checked.endEstimated,
+        ...when,
         place,
+        label,
         where: item.place_verbatim,
         scope: resolved.scope,
         note: item.note,
@@ -169,7 +185,30 @@ export function readPost(
       });
     }
   }
-  return { status: "parsed", items };
+  if (items.length === 0) return notice(`no place: ${dropped[0]}`);
+  return { status: "parsed", items, dropped };
+}
+
+const TITLE_DAY =
+  /(?<!\d)(\d{1,2})(?:\s*[-–]\s*(\d{1,2}))?\.(\d{1,2})\.(\d{4})(?!\d)/g;
+
+/**
+ * The days a post's title gives in full ("26-29.10.2026", "awaria
+ * 16.12.2025"), as YYYY-MM-DD; none for "noc 21/22 grudnia" or no date.
+ */
+export function titleDays(title: string): string[] {
+  const pad = (n: string) => n.padStart(2, "0");
+  return [...title.matchAll(TITLE_DAY)].flatMap(([, from, to, m, y]) =>
+    [from, to]
+      .filter((d) => d !== undefined)
+      .map((d) => `${y}-${pad(m)}-${pad(d)}`),
+  );
+}
+
+/** Every day the title gives is before `today`: no need to read it. */
+export function isPastPost(post: ZukPost, today: string): boolean {
+  const days = titleDays(plainText(post.title.rendered));
+  return days.length > 0 && days.every((d) => d < today);
 }
 
 /** The Warsaw day a cut is over after: its end's, else its start's. */
