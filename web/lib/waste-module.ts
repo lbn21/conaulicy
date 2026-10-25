@@ -25,7 +25,7 @@ const SPLIT_HINT =
   "Na tej ulicy śmieciarka przyjeżdża w różne dni, zależnie od numeru.";
 
 /** The waste subpage (/adres/<id>/smieci), with the house number. */
-function wastePath(place: Pick<PlaceView, "id" | "nr">): string {
+export function wastePath(place: Pick<PlaceView, "id" | "nr">): string {
   return `${placePath(place.id)}/smieci${place.nr ? `?nr=${place.nr}` : ""}`;
 }
 

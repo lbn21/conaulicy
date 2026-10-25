@@ -8,13 +8,16 @@
 // no PDF (404), as on the street page; nor has a street whose schedule has
 // ended, and its page offers neither the PDF nor the calendar file. The PDF,
 // ICS and search responses carry the dataset cache tag, so an import's
-// revalidate purges their CDN copies. Run after `next build`; needs
-// poppler-utils (pdfinfo, pdffonts, pdftotext).
+// revalidate purges their CDN copies. The QR code, read back from the page,
+// and every printed link open the waste subpage on SITE_URL. Run after
+// `next build`; needs poppler-utils (pdfinfo, pdffonts, pdftotext).
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { inflateSync } from "node:zlib";
+import QRCode from "qrcode";
+import { SITE_URL } from "../lib/config.generated.ts";
 import {
   DISCLAIMER,
   NO_MORE_DATES,
@@ -30,11 +33,20 @@ const MAX_PAGES = 6;
 // The proposal stamp, not the home page's „Przykładowe adresy”.
 const SAMPLE = /PRZYKŁADOWE DANE|podgląd układu/;
 const CASES = [
-  { name: "city street", path: "/adres/0972447-00470/harmonogram.pdf" },
-  { name: "village", path: "/adres/0606375/harmonogram.pdf" },
+  {
+    name: "city street",
+    path: "/adres/0972447-00470/harmonogram.pdf",
+    page: "/adres/0972447-00470/smieci",
+  },
+  {
+    name: "village",
+    path: "/adres/0606375/harmonogram.pdf",
+    page: "/adres/0606375/smieci",
+  },
   {
     name: "split street, nr 7a",
     path: "/adres/0972447-90004/harmonogram.pdf?nr=7a",
+    page: "/adres/0972447-90004/smieci?nr=7a",
   },
   {
     name: "split street, no nr",
@@ -73,6 +85,40 @@ function pdfSource(bytes) {
     } catch {}
   }
   return parts.join("\n");
+}
+
+// The QR code's modules, read back from the drawing: one square per dark
+// module ("x y w h re", w = h = cell + 0.05), the most common square size.
+// Null if there is none.
+function qrModules(source) {
+  const squares = [
+    ...source.matchAll(/(-?[\d.]+) (-?[\d.]+) ([\d.]+) ([\d.]+) re\b/g),
+  ]
+    .map((m) => m.slice(1, 5).map(Number))
+    .filter(([, , w, h]) => w === h);
+  const counts = Map.groupBy(squares, ([, , w]) => w);
+  const [w, cells] =
+    [...counts].sort((a, b) => b[1].length - a[1].length)[0] ?? [];
+  if (!cells || cells.length < 100) return null;
+  const cell = w - 0.05;
+  const x0 = Math.min(...cells.map(([x]) => x));
+  const y0 = Math.min(...cells.map(([, y]) => y));
+  const size = Math.round((Math.max(...cells.map(([x]) => x)) - x0) / cell + 1);
+  const grid = new Uint8Array(size * size);
+  for (const [x, y] of cells) {
+    grid[Math.round((y - y0) / cell) * size + Math.round((x - x0) / cell)] = 1;
+  }
+  return { size, grid };
+}
+
+// Whether the drawn modules are exactly the code for url.
+function qrEncodes(modules, url) {
+  const want = QRCode.create(url, { errorCorrectionLevel: "M" }).modules;
+  return (
+    modules !== null &&
+    modules.size === want.size &&
+    modules.grid.every((dark, i) => dark === want.data[i])
+  );
 }
 
 // No example data in anything that ships.
@@ -161,6 +207,24 @@ try {
       `${c.name}: no "${DISCLAIMER}" line`,
     );
     check(text.includes("Źródło:"), `${c.name}: no source line`);
+    // The QR code and the printed link: the waste subpage, never the hub or
+    // a preview deployment.
+    const page = SITE_URL + c.page;
+    check(
+      qrEncodes(qrModules(source), page),
+      `${c.name}: the QR code does not open ${page}`,
+    );
+    check(
+      text.includes(page.replace("https://", "")),
+      `${c.name}: no printed link to ${page}`,
+    );
+    const links = [...source.matchAll(/\/URI \((https:[^)]*)\)/g)]
+      .map((m) => m[1])
+      .filter((uri) => uri.startsWith(SITE_URL));
+    check(
+      links.length > 0 && links.every((uri) => uri === page),
+      `${c.name}: links ${links.join(", ")}, expected ${page} only`,
+    );
     // A month is never split: each later page of the text version starts
     // with a month heading ("Marzec 2027", maybe "(ciąg dalszy)") or a line
     // about months without dates ("2027: ..."), never with a lone date.
@@ -228,5 +292,5 @@ try {
 
 finish(
   failures,
-  `PDFs: tagged, no PDF/UA claim, ${MIN_PAGES}–${MAX_PAGES} pages, ≤ ${MAX_BYTES / 1000} KB, Atkinson only, text version, no example data.`,
+  `PDFs: tagged, no PDF/UA claim, QR code and links to the waste subpage, ${MIN_PAGES}–${MAX_PAGES} pages, ≤ ${MAX_BYTES / 1000} KB, Atkinson only, text version, no example data.`,
 );
