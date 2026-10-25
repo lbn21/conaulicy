@@ -90,6 +90,16 @@ const CASES = [
   ],
   ["GET", "/adres/0972447-88888", 404],
   ["GET", "/adres/0972447-88888?nr=12", 404],
+  // A module subpage (lib/address-routes.ts): the street page's rules.
+  ["GET", `${STREET}/smieci?x=1`, 308, `${STREET}/smieci`],
+  ["GET", `${STREET}/smieci?nr=12&x=1`, 308, `${STREET}/smieci?nr=12`],
+  ["GET", `${STREET}/smieci?nr=12`, 200],
+  ["GET", `${SPLIT}/smieci?nr=`, 200],
+  ["GET", `${RENAMED}/smieci`, 308, `${STREET}/smieci`],
+  ["GET", `${RENAMED}/smieci?nr=12`, 308, `${STREET}/smieci?nr=12`],
+  ["GET", "/adres/0972447-88888/smieci", 404],
+  ["GET", "/adres/0972447-88888/smieci?nr=12", 404],
+  ["GET", `${STREET}/nie-ma-takiego-modulu`, 404],
   ["GET", "/api/place-redirects", 200],
 ];
 

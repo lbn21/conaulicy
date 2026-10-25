@@ -15,6 +15,7 @@
     "check:examples": "next build && node scripts/check-examples.mjs",
     "check:all-places": "next build && node scripts/check-all-places.mjs",
     "check:pdf": "next build && node scripts/check-pdf.mjs",
+    "check:modules": "next build && node scripts/check-modules.mjs",
     "sources:pull": "node scripts/sources-pull.ts",
     "config:sync": "node scripts/config-sync.ts",
     "config:check": "node scripts/config-sync.ts --check",

@@ -15,6 +15,7 @@ export const ROUTES = [
   { path: "/adres/0972447-90004?nr=42", name: "split-street-unknown-number" },
   { path: "/adres/0972447-90004?nr=", name: "split-street-missing-number" },
   { path: "/adres/0972447-00470?nr=12", name: "city-street-number" },
+  { path: "/adres/0972447-00470/smieci", name: "city-street-waste" },
   { path: "/ulice", name: "all-places" },
   { path: "/prywatnosc", name: "privacy" },
   { path: "/dostepnosc", name: "accessibility" },
@@ -24,6 +25,11 @@ export const ROUTES = [
   { path: "/szukaj?q=", name: "search-empty" },
   { path: "/nie-ma-takiej-strony", name: "not-found", status: 404 },
   { path: "/adres/9999999", name: "unknown-place", status: 404 },
+  {
+    path: "/adres/0972447-00470/nie-ma-takiego-modulu",
+    name: "unknown-module",
+    status: 404,
+  },
 ];
 
 export async function startServer(port = 3300, extraEnv = {}) {

@@ -207,6 +207,9 @@ jobs:
       - name: "Query parameters (unknown ones redirect to the clean URL)"
         run: node scripts/check-query.mjs
 
+      - name: "Modules (/smieci shows the street page as it is)"
+        run: node scripts/check-modules.mjs
+
       # Every banner state from the mock, each page re-rendered by a server
       # with that state's setting; at the end the pages are dropped again, so
       # the checks below render them with mock:none.

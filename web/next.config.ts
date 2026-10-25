@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
+import { NUMBER_REWRITES } from "./lib/address-routes";
 import { SITE_URL } from "./lib/config.generated";
 import { headerList } from "./lib/headers";
-import { NR_QUERY } from "./lib/house";
 import { indexable, NOINDEX, NOINDEX_NOFOLLOW } from "./lib/indexing";
 import { writeBrandAssets } from "./scripts/brand-assets";
 
@@ -23,24 +23,10 @@ const nextConfig: NextConfig = {
     "/adres/[id]/harmonogram.pdf": ["./assets/fonts/*.ttf"],
   },
   // A house number in the query (?nr=12a, ?nr=7/22) keeps the street page
-  // cached: it becomes a path. Any other ?nr= is routed by proxy.ts (a
-  // rewrite cannot see an empty value).
+  // and its module subpages cached: it becomes a path. Any other ?nr= is
+  // routed by proxy.ts (a rewrite cannot see an empty value).
   async rewrites() {
-    return {
-      beforeFiles: [
-        {
-          source: "/adres/:id",
-          has: [
-            {
-              type: "query",
-              key: "nr",
-              value: `(?<nr>${NR_QUERY})`,
-            },
-          ],
-          destination: "/adres/:id/nr/:nr",
-        },
-      ],
-    };
+    return { beforeFiles: NUMBER_REWRITES };
   },
   // headers() and redirects() are evaluated at build time (baked into the
   // routes manifest). On Vercel VERCEL_ENV and SITE_BASIC_AUTH are set at

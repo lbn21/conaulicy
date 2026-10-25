@@ -5,6 +5,7 @@
 // own paths, the revalidate hook, unknown paths) is never touched: Next.js
 // links its icons with a cache-busting query.
 
+import { ADDRESS, ADDRESS_VARIANTS } from "./address-routes.ts";
 import { STATIC_PAGES } from "./static-pages.ts";
 
 // The home page and the static pages: /, /ulice, …
@@ -15,9 +16,8 @@ const PAGES = new RegExp(
 const ROUTES: [RegExp, string[]][] = [
   [PAGES, []],
   [/^\/szukaj$/, ["q"]],
-  [/^\/adres\/[^/]+\/?$/, ["nr"]],
-  [/^\/adres\/[^/]+\/nr(?:\/[^/]+)+$/, []],
-  [/^\/adres\/[^/]+\/numer$/, []],
+  [ADDRESS, ["nr"]],
+  ...ADDRESS_VARIANTS.map((path): [RegExp, string[]] => [path, []]),
   [/^\/adres\/[^/]+\/harmonogram\.pdf$/, ["nr"]],
   [/^\/ics\/[^/]+$/, []],
   [/^\/api\/search$/, ["q"]],

@@ -3,6 +3,7 @@ import {
   type NextRequest,
   NextResponse,
 } from "next/server";
+import { ADDRESS, numberErrorPath } from "@/lib/address-routes";
 import { cleanQuery } from "@/lib/clean-query";
 import { PRIVATE_NO_STORE, TEXT_PLAIN } from "@/lib/headers";
 import { NR_QUERY } from "@/lib/house";
@@ -33,19 +34,18 @@ const GATED_HEADERS = {
   "Cache-Control": PRIVATE_NO_STORE,
 };
 
-const ADDRESS = /^\/adres\/([^/]+)\/?$/;
 const NR = new RegExp(`^${NR_QUERY}$`);
 
-// A street page asked with ?nr= but no usable house number (empty, or not a
-// number) goes to its own cached page, which shows the GOV.UK error on a
-// split street. Valid numbers are rewritten in next.config.ts; a rewrite's
-// `has` cannot match an empty value, hence here.
+// A street page (or a module subpage) asked with ?nr= but no usable house
+// number (empty, or not a number) goes to its own cached page, which shows
+// the GOV.UK error on a split street. Valid numbers are rewritten in
+// next.config.ts; a rewrite's `has` cannot match an empty value, hence here.
 function missingNumber(request: NextRequest): URL | null {
-  const match = ADDRESS.exec(request.nextUrl.pathname);
+  const path = numberErrorPath(request.nextUrl.pathname);
   const nr = request.nextUrl.searchParams.get("nr");
-  if (!match || nr === null || NR.test(nr)) return null;
+  if (!path || nr === null || NR.test(nr)) return null;
   const url = request.nextUrl.clone();
-  url.pathname = `/adres/${match[1]}/numer`;
+  url.pathname = path;
   url.search = "";
   return url;
 }
@@ -54,7 +54,9 @@ function missingNumber(request: NextRequest): URL | null {
 // ?nr= is rewritten to another page (next.config.ts, missingNumber), and a
 // redirect from a rewritten page carries Location twice (Next.js replays the
 // render's headers onto the response), so its 308 is answered here, before
-// the rewrite. The plain page and the PDF redirect themselves. The map stays
+// the rewrite. A module subpage (/adres/<id>/smieci) gets the same doubled
+// Location from its own redirect, so its 308 is answered here too, with or
+// without ?nr=. The plain page and the PDF redirect themselves. The map stays
 // in memory: a cold instance fetches it once (from the CDN), later
 // refreshes run after the response, so a normal request pays only a lookup.
 const MOVED_TTL = 5 * 60_000;
@@ -81,21 +83,22 @@ async function movedAddress(
   request: NextRequest,
   event: NextFetchEvent,
 ): Promise<URL | null> {
-  const match = ADDRESS.exec(request.nextUrl.pathname);
-  if (!match || !request.nextUrl.searchParams.has("nr")) return null;
+  const { pathname } = request.nextUrl;
+  const match = ADDRESS.exec(pathname);
+  const subpage = match !== null && match[1].split("/").length > 3;
+  if (!match || (!subpage && !request.nextUrl.searchParams.has("nr")))
+    return null;
   if (!moved) await loadMoved(request);
   else if (Date.now() - moved.at > MOVED_TTL)
     event.waitUntil(loadMoved(request));
   let id: string;
   try {
-    id = decodeURIComponent(match[1]);
+    id = decodeURIComponent(pathname.split("/")[2]);
   } catch {
     return null;
   }
   const to = moved?.map[id];
-  const path =
-    to &&
-    movedPath(`${request.nextUrl.pathname}${request.nextUrl.search}`, id, to);
+  const path = to && movedPath(`${pathname}${request.nextUrl.search}`, id, to);
   return path ? new URL(path, request.url) : null;
 }
 
