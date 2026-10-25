@@ -1,7 +1,8 @@
 // Checks each page's own metadata on the CI fixture (lib/share.ts): one
 // non-empty <title> and description (≤ 160 characters) on every page in
-// ROUTES, unique across pages (house-number variants, search results and
-// 404s left out: they describe their street, or are never indexed); og:url
+// ROUTES, unique across pages (house-number variants, module subpages such
+// as /smieci until the street page is the hub, search results and 404s left
+// out: they describe their street, or are never indexed); og:url
 // is the canonical address, with the share image; the home page's WebSite
 // JSON-LD parses. Every page in ROUTES, those included: the title is GOV.UK's
 // "<H1> – conaulicy.pl" ("Błąd: " first with an error summary), the share
@@ -60,6 +61,7 @@ try {
     if (
       route.status ||
       route.path.includes("?nr") ||
+      /^\/adres\/[^/]+\/[^/?]+/.test(route.path) ||
       route.path.startsWith("/szukaj")
     )
       continue;
