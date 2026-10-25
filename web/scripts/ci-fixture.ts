@@ -7,9 +7,10 @@
 //
 // Covers: a renamed street's old id (place_redirects), a city street from the old fixture URL (ul. Adama Asnyka), streets
 // with diacritics, a street in no zone, a street whose schedule has ended
-// (only past dates), villages with streets, villages without, a village
-// part whose village has streets (Pilipy, Młodów) and one whose village has
-// none (Holiki, Dąbrowa), the places of the ZUK dev mock's post 39885
+// (only past dates), villages without streets, villages with streets (each
+// a place too: Lisie Jamy, Młodów, and Krowica Sama in a sector of its
+// own), a village part whose village has streets (Pilipy, Młodów) and one
+// whose village has none (Holiki, Dąbrowa), the places of the ZUK dev mock's post 39885
 // (lib/water-fixture.ts: ul. Żuki, Załuże; Lisie Jamy above), one month
 // with 6 pickup days and holiday-shifted dates, and the home page's examples
 // (lib/examples.ts) under their real ids.
@@ -57,6 +58,7 @@ const LOCALITIES = [
   { id: "0606375", gminaId: "1809042", name: "Szczutków", kind: "wies" },
   { id: "0606286", gminaId: "1809042", name: "Młodów", kind: "wies" },
   { id: "0606464", gminaId: "1809042", name: "Załuże", kind: "wies" },
+  { id: "0606180", gminaId: "1809042", name: "Krowica Sama", kind: "wies" },
   {
     id: "0606300",
     gminaId: "1809042",
@@ -88,6 +90,7 @@ const STREETS = [
   ["0606234", "90007", "Polna", null],
   ["0606234", "90008", "Leśna", null],
   ["0606286", "24550", "Wodna", null],
+  ["0606180", "90010", "Szkolna", null],
 ] as const;
 
 // The CI fixture is the only place a redirect is made without review: it
@@ -192,6 +195,19 @@ const ZONES: Array<{
       mixed: ["zmieszane_i_bio"],
       recycling: ["papier", "tworzywa_metale", "szklo"],
       recyclingDay: { weekday: 5, nth: 1 },
+      bulkyMonths: [4, 10],
+      putOutBy: "06:00",
+    },
+  },
+  {
+    id: "waste:gmina-s2",
+    name: "Krowica Sama, sektor 2",
+    members: [{ localityId: "0606180" }],
+    rule: {
+      weekday: 2,
+      mixed: ["zmieszane_i_bio"],
+      recycling: ["papier", "tworzywa_metale", "szklo"],
+      recyclingDay: { weekday: 5, nth: 2 },
       bulkyMonths: [4, 10],
       putOutBy: "06:00",
     },
@@ -317,7 +333,7 @@ async function main() {
   const localityRows = LOCALITIES.map((l) => ({
     ...l,
     teryt: l.id,
-    // Villages without streets are places: "Dąbrowa (gm. Lubaczów)".
+    // Villages are places: "Dąbrowa (gm. Lubaczów)".
     search: normalize(
       localitySearchLabel({
         ...l,

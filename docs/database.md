@@ -34,7 +34,7 @@ Never use `vercel env run` (Vercel CLI 64.5): it hands the command back to its o
 
 ## Places and zones
 
-A zone (`waste:miasto-s1` … `waste:gmina-s5`) links places to events. A village part (`czesc_wsi`) without a zone entry of its own takes its parent village's zone (`pickZone`, `web/lib/places.ts`). A street in no zone has no sector: the site says the data is missing and never guesses.
+Every village and village part is a place of its own, whether or not it has streets (its streets are places too); the town is not, its streets are (`villagePlaces`, `web/lib/schedule.ts`). A zone (`waste:miasto-s1` … `waste:gmina-s5`) links places to events. A village part (`czesc_wsi`) without a zone entry of its own takes its parent village's zone (`pickZone`, `web/lib/places.ts`). A street in no zone has no sector: the site says the data is missing and never guesses.
 
 ## TERYT names and renamed streets
 

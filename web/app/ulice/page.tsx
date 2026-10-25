@@ -19,8 +19,8 @@ export const revalidate = 3600;
 /**
  * Every place search can find, as plain links: for people who would rather
  * browse, without JS, and for search engines. The town's streets by first
- * letter (Polish order), then the villages, with their streets if they have
- * any. No client JS of its own.
+ * letter (Polish order), then the villages, each a link, with their streets
+ * under it if they have any. No client JS of its own.
  */
 export default async function AllPlacesPage() {
   const { list, noData } = await searchIndex();
@@ -84,23 +84,16 @@ export default async function AllPlacesPage() {
             </h2>
             <ul className="govuk-list">
               {list.villages.map((village) => (
-                <li
-                  key={village.id ?? village.label}
-                  id={localityAnchor(village.localityId)}
-                >
-                  {village.id ? (
-                    <Place place={{ id: village.id, label: village.label }} />
-                  ) : (
-                    <>
-                      {village.label}
-                      <ul className="govuk-list govuk-!-margin-left-4 govuk-!-margin-top-1">
-                        {village.streets.map((street) => (
-                          <li key={street.id}>
-                            <Place place={street} />
-                          </li>
-                        ))}
-                      </ul>
-                    </>
+                <li key={village.id} id={localityAnchor(village.id)}>
+                  <Place place={village} />
+                  {village.streets.length > 0 && (
+                    <ul className="govuk-list govuk-!-margin-left-4 govuk-!-margin-top-1">
+                      {village.streets.map((street) => (
+                        <li key={street.id}>
+                          <Place place={street} />
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </li>
               ))}

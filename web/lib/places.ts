@@ -205,8 +205,8 @@ export function hasZone(
 export type ListedPlace = { id: string; label: string };
 
 /**
- * The id of a locality's group heading on /ulice (the town's streets, a
- * village's streets), from its SIMC: the breadcrumbs link there. Prefixed,
+ * The id of a locality's heading or line on /ulice (the town's streets, a
+ * village and its streets), from its SIMC: the breadcrumbs link there. Prefixed,
  * as an id should not start with a digit.
  */
 export function localityAnchor(simc: string): string {
@@ -218,13 +218,9 @@ export type PlaceList = {
   /** The town's SIMC, null without town streets. */
   townId: string | null;
   town: Array<{ letter: string; places: ListedPlace[] }>;
-  /**
-   * A village is a place, or (with streets of its own) holds its streets;
-   * localityId is its SIMC either way.
-   */
+  /** Every village is a place (id: its SIMC), with its streets if any. */
   villages: Array<{
-    id: string | null;
-    localityId: string;
+    id: string;
     label: string;
     streets: ListedPlace[];
   }>;
@@ -278,43 +274,26 @@ export function placeList(
     town.at(-1)?.places.push({ id: street.id, label: street.label });
   }
 
-  const withStreets = new Map<
-    string,
-    {
-      localityId: string;
-      name: string;
-      label: string;
-      streets: ReturnType<typeof listed>[];
-    }
-  >();
-  for (const street of streets.filter((s) => s.localityKind !== "miasto")) {
-    const village = withStreets.get(street.localityId) ?? {
-      localityId: street.localityId,
-      name: street.locality,
-      label: street.locality,
-      streets: [],
-    };
-    village.streets.push(listed(street));
-    withStreets.set(street.localityId, village);
-  }
-  const groups = [
-    ...villages.map((v) => ({
+  // Every village is a place, and holds its own streets: one line.
+  const villageStreets = Map.groupBy(
+    streets.filter((s) => s.localityKind !== "miasto"),
+    (s) => s.localityId,
+  );
+  const groups = villages
+    .map((v) => ({
       id: v.id,
-      localityId: v.id,
       name: v.name,
       label: villageLabel(v),
-      streets: [] as ReturnType<typeof listed>[],
-    })),
-    ...[...withStreets.values()].map((v) => ({ id: null, ...v })),
-  ].sort(byName);
+      streets: (villageStreets.get(v.id) ?? []).map(listed),
+    }))
+    .sort(byName);
 
   return {
     townId:
       streets.find((s) => s.localityKind === "miasto")?.localityId ?? null,
     town,
-    villages: groups.map(({ id, localityId, label, streets }) => ({
+    villages: groups.map(({ id, label, streets }) => ({
       id,
-      localityId,
       label,
       streets: streets.sort(byName).map(({ id, label }) => ({ id, label })),
     })),

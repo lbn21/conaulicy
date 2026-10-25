@@ -4,7 +4,8 @@
 // street's own name, not its prefix); a place without pickup data (the
 // fixture's street in no zone, only it) says „(brak danych)”; every id is
 // unique, and the town's heading and every village's line have their SIMC
-// ids; and the route
+// ids; a village with streets is one link with its streets nested under it,
+// and the town is no place; and the route
 // loads no JS beyond what /dostepnosc, a page without client code, loads.
 //
 // With SCREENSHOT_DIR, also saves screenshots of /ulice at 390 px and 1280 px
@@ -49,6 +50,8 @@ try {
     if (count !== 1) failures.push(`/ulice: ${id} (${label}) ${count}×`);
   }
   const known = new Set(places.map(([id]) => id));
+  // The town is no place: its streets are.
+  if (known.has("0972447")) failures.push("index: Lubaczów is a place");
   for (const { id } of links) {
     if (!known.has(id)) failures.push(`/ulice: ${id} is not in the index`);
   }
@@ -71,10 +74,23 @@ try {
   if (repeated.length > 0) failures.push(`/ulice: ids twice: ${repeated}`);
   if (!main.includes('<h2 id="m-0972447" class="govuk-heading-m">'))
     failures.push("/ulice: no id m-0972447 on the town's heading");
-  // A village with streets, then one without (a place), and a village part.
+  // Villages with streets (each a place too: one link, its streets nested
+  // under it), then one without, and a village part.
+  const nested =
+    '</a><ul class="govuk-list govuk-!-margin-left-4 govuk-!-margin-top-1"><li><a href="/adres/';
   for (const [id, line] of [
-    ["m-0606234", "Lisie Jamy<ul"],
-    ["m-0606286", "Młodów<ul"],
+    [
+      "m-0606234",
+      `<a href="/adres/0606234" class="govuk-link">Lisie Jamy (gm. Lubaczów)${nested}0606234-`,
+    ],
+    [
+      "m-0606286",
+      `<a href="/adres/0606286" class="govuk-link">Młodów (gm. Lubaczów)${nested}0606286-`,
+    ],
+    [
+      "m-0606180",
+      `<a href="/adres/0606180" class="govuk-link">Krowica Sama (gm. Lubaczów)${nested}0606180-`,
+    ],
     ["m-0606010", '<a href="/adres/0606010" class="govuk-link">'],
     ["m-0606027", '<a href="/adres/0606027" class="govuk-link">'],
   ]) {
