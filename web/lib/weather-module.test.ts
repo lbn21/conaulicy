@@ -32,6 +32,7 @@ test("a warning: one alert with an absolute date, a card, its source", () => {
     {
       text: "Silny wiatr, stopień 1 z 3. Obowiązuje teraz, do niedzieli 25 października, 19:00.",
       href: "https://meteo.imgw.pl/",
+      link: "Więcej na meteo.imgw.pl",
       short: "IMGW-PIB",
       from: "2026-10-25T13:00:00+01:00",
     },

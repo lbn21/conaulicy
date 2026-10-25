@@ -320,10 +320,10 @@ try {
   await house.waitForURL(`${server.origin}/adres/0972447-90004?nr=7a`);
   const heading = await house.locator("h1").textContent();
   // The calendar and the PDF are on the waste subpage, its section's
-  // „Szczegóły”, with the number.
+  // „Wszystkie odbiory śmieci”, with the number.
   await house
     .locator('section[aria-labelledby="smieci-heading"] a', {
-      hasText: "Szczegóły",
+      hasText: "Wszystkie odbiory śmieci",
     })
     .first()
     .click();

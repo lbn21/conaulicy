@@ -198,6 +198,8 @@ export function waterAlerts(data: Water): Alert[] {
     {
       text: `przerwa w dostawie – ${when(next)}${more > 0 ? ` (i jeszcze ${days(more)})` : ""}.`,
       href: waterPath(data.place),
+      // One water alert at most, so the name stays unique.
+      link: "Więcej o tej przerwie",
       short: SHORT,
       from:
         warsawToIso(next.start ?? `${next.date} 00:00:00`) ??

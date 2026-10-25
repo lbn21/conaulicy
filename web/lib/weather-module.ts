@@ -37,6 +37,7 @@ export function weatherAlerts(data: Weather): Alert[] {
   return (data.banner?.warnings ?? []).map((warning) => ({
     text: `${warning.event}, ${warning.level.toLowerCase()}. ${warning.when}`,
     href: IMGW_PAGE,
+    link: "Więcej na meteo.imgw.pl",
     short: SHORT,
     from: warning.from,
   }));

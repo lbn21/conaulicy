@@ -43,6 +43,11 @@ export type Module<D> = {
   id: ModuleId;
   /** The card's title. */
   title: string;
+  /**
+   * Its section's link on the address page, saying where it goes
+   * („Wszystkie odbiory śmieci”), never a bare „Szczegóły”.
+   */
+  more: string;
   /** Registry order, from 0. */
   order: number;
   /**
@@ -90,7 +95,7 @@ export type Module<D> = {
       }>;
     }
   | {
-      /** No subpage: „Szczegóły” goes to the source's own page. */
+      /** No subpage: its section's link goes to the source's own page. */
       href: string;
     }
 );
@@ -100,6 +105,7 @@ export type Module<D> = {
 const waste: Module<PlaceView> = {
   id: "smieci",
   title: "Śmieci",
+  more: "Wszystkie odbiory śmieci",
   pageTitle: "Odbiór śmieci",
   order: MODULE_IDS.indexOf("smieci"),
   load: getPlace,
@@ -117,6 +123,7 @@ const waste: Module<PlaceView> = {
 const woda: Module<Water> = {
   id: "woda",
   title: "Woda",
+  more: "Wszystkie przerwy w wodzie",
   pageTitle: "Przerwy w dostawie wody",
   order: MODULE_IDS.indexOf("woda"),
   load: loadWater,
@@ -135,6 +142,7 @@ const woda: Module<Water> = {
 const pogoda: Module<Weather> = {
   id: "pogoda",
   title: "Pogoda",
+  more: "Wszystkie ostrzeżenia na meteo.imgw.pl",
   order: MODULE_IDS.indexOf("pogoda"),
   async load() {
     const now = Date.now();

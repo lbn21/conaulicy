@@ -24,6 +24,8 @@ export type Alert = {
   text: string;
   /** Its details: the subpage, or the source's own page. */
   href: string;
+  /** The link's text, saying where it goes: „Więcej o tej przerwie”. */
+  link: string;
   /** The source, short: "IMGW-PIB". */
   short: string;
   /** When it starts (ISO): the soonest first. */

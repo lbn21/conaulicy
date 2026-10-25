@@ -9,7 +9,7 @@
 //   error variants keep the hub's;
 // - the hub: no caption (the locality is in its breadcrumbs), one h1,
 //   „Zmień adres”, no summary cards: a section per module (task 131), waste
-//   first (h2 „Śmieci”, its „Szczegóły – śmieci” link to /smieci, ?nr= kept,
+//   first (h2 „Śmieci”, its „Wszystkie odbiory śmieci” link to /smieci, ?nr= kept,
 //   last in the section), a visible section break between each pair of
 //   sections and none before the first or after the last, its
 //   rows (Najbliższy odbiór with an absolute date, Pojemniki, Źródło), no
@@ -81,7 +81,21 @@ const fail = (path, message) => failures.push(`${path}: ${message}`);
 async function main(path) {
   const response = await fetch(`${server.origin}${path}`);
   const html = await response.text();
+  vagueLinks(path, html);
   return { status: response.status, main: MAIN.exec(html)?.[0] ?? "", html };
+}
+
+// Link text says where it goes (docs/layout.md): no link whose visible
+// text, without its visually hidden part, is a bare „Szczegóły”.
+const VAGUE = new Set(["Szczegóły", "Kliknij tutaj"]);
+function vagueLinks(path, html) {
+  for (const [, inner] of html.matchAll(/<a\b[^>]*>([\s\S]*?)<\/a>/g)) {
+    const text = inner
+      .replace(/<span class="govuk-visually-hidden">[\s\S]*?<\/span>/g, "")
+      .replace(/<[^>]+>/g, "")
+      .trim();
+    if (VAGUE.has(text)) fail(path, `a link reading only „${text}”`);
+  }
 }
 
 function headingsInOrder(path, html) {
@@ -230,9 +244,12 @@ try {
     if (!hub.includes(">Zmień adres<")) fail(path, "no „Zmień adres”");
     hubOutline(path, hub);
     if (sections(hub)[0] !== "Śmieci") fail(path, `sections ${sections(hub)}`);
-    const action = `<p class="govuk-body"><a class="govuk-link" href="${links[1]}">Szczegóły<span class="govuk-visually-hidden"> – śmieci</span></a></p></section>`;
+    const action = `<p class="govuk-body"><a class="govuk-link" href="${links[1]}">Wszystkie odbiory śmieci</a></p></section>`;
     if (!hub.includes(action))
-      fail(path, `no „Szczegóły – śmieci” to ${links[1]} closing its section`);
+      fail(
+        path,
+        `no „Wszystkie odbiory śmieci” to ${links[1]} closing its section`,
+      );
     if (
       !new RegExp(
         `<dt class="govuk-summary-list__key">Najbliższy odbiór</dt><dd class="govuk-summary-list__value">${DATE}</dd>`,
@@ -450,6 +467,17 @@ try {
       `Nie znaleźliśmy nr ${nr} w tej miejscowości w rejestrze adresów.`,
     );
     if (has !== hint) fail(path, hint ? "no PRG hint" : "a PRG hint");
+  }
+  // The other pages, for vague links only.
+  for (const path of [
+    "/",
+    "/ulice",
+    "/o-projekcie",
+    "/dostepnosc",
+    "/prywatnosc",
+  ]) {
+    const page = await main(path);
+    if (page.status !== 200) fail(path, `${page.status}, want 200`);
   }
   // The town is no place of its own.
   const town = await fetch(`${server.origin}/adres/0972447`);
