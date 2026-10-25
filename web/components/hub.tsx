@@ -108,6 +108,10 @@ function AlertSlot({
   );
 }
 
+const ROW = "govuk-summary-list__row";
+// The last row has no border: the section break follows.
+const LAST_ROW = `${ROW} govuk-summary-list__row--no-border`;
+
 /** A module's section: its h2, GOV.UK's summary list, „Szczegóły”. */
 function ModuleSection({
   loaded,
@@ -133,8 +137,7 @@ function ModuleSection({
         {all.map(([key, value], i) => (
           <div
             key={`${key}: ${textOf(value)}`}
-            // The last row has no border: the section break follows.
-            className={`govuk-summary-list__row${i === all.length - 1 ? " govuk-summary-list__row--no-border" : ""}`}
+            className={i === all.length - 1 ? LAST_ROW : ROW}
           >
             <dt className="govuk-summary-list__key">{key}</dt>
             <dd className="govuk-summary-list__value">
