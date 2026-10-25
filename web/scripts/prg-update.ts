@@ -3,9 +3,9 @@
 // places, from its address points for powiat 1809. The zip goes to a temp
 // dir and is never kept; only the derived file is committed. Places are
 // TERYT's (lib/zuk-places.generated.ts): a street by ID_SIMC + ID_ULIC, a
-// village without streets by ID_SIMC alone. A place PRG has no point for is
-// left out, so the page knows nothing about it (lib/prg.ts), rather than
-// "no numbers". Run it when PRG publishes new points (its file date is in
+// village (part) by ID_SIMC, with every number in it, on its streets too.
+// A place PRG has no point for is left out, so the page knows nothing about
+// it (lib/prg.ts), rather than "no numbers". Run it when PRG publishes new points (its file date is in
 // the header).
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -101,13 +101,11 @@ try {
 const { data, date } = unzip(zip, ENTRY);
 
 const tercs = new Set(gminaTercs(loadConfig()));
-const withStreets = new Set(ZUK_PLACES.streets.map((s) => s.localityId));
-const places = [
-  ...ZUK_PLACES.streets.map((s) => s.id),
-  ...ZUK_PLACES.localities
-    .filter((l) => !withStreets.has(l.id))
-    .map((l) => l.id),
-];
+// Every village (part) is a place, streets or not; the town is not.
+const villages = new Set(
+  ZUK_PLACES.localities.filter((l) => l.kind !== "miasto").map((l) => l.id),
+);
+const places = [...ZUK_PLACES.streets.map((s) => s.id), ...villages];
 const known = new Set(places);
 
 const numbers = new Map<string, Set<string>>();
@@ -118,12 +116,17 @@ for (const row of readDbf(data)) {
   points++;
   const id = row.ID_ULIC ? `${row.ID_SIMC}-${row.ID_ULIC}` : row.ID_SIMC;
   const nr = prgNumber(row.NUMER_PORZ);
-  if (!known.has(id) || !nr) {
+  // A village's numbers are all of it, its streets' too, so a number on
+  // one of them is never "not found" on the village's page.
+  const at = new Set([id, row.ID_SIMC].filter((place) => known.has(place)));
+  if (at.size === 0 || !nr) {
     unplaced++;
     continue;
   }
-  if (!numbers.has(id)) numbers.set(id, new Set());
-  numbers.get(id)?.add(nr);
+  for (const place of at) {
+    if (!numbers.has(place)) numbers.set(place, new Set());
+    numbers.get(place)?.add(nr);
+  }
 }
 
 const lines = [...numbers]

@@ -7,8 +7,9 @@ import { prgMatch, prgNote } from "./prg.ts";
 
 const NUMBERS = new Set(["1", "7", "10A", "116/1-3"]);
 
-test("PRG's numbers: trimmed, letters upper case, slash forms kept", () => {
+test("PRG's numbers: no spaces, letters upper case, slash forms kept", () => {
   assert.equal(prgNumber(" 10a "), "10A");
+  assert.equal(prgNumber("7 a"), "7A");
   assert.equal(prgNumber("116/1-3"), "116/1-3");
   assert.equal(prgNumber("  "), null);
 });
@@ -16,6 +17,7 @@ test("PRG's numbers: trimmed, letters upper case, slash forms kept", () => {
 test("a typed number: itself, a flat's building, or not found", () => {
   assert.equal(prgMatch(NUMBERS, "10a"), "found");
   assert.equal(prgMatch(NUMBERS, "10A"), "found");
+  assert.equal(prgMatch(NUMBERS, "10 a"), "found");
   assert.equal(prgMatch(NUMBERS, "7/22"), "found");
   assert.equal(prgMatch(NUMBERS, "116/1-3"), "found");
   assert.equal(prgMatch(NUMBERS, "10"), "not-found");
@@ -41,6 +43,14 @@ test("the note: only for a number PRG lacks at a place it knows", () => {
   // Bałaje, a village without streets.
   assert.equal(
     prgNote(place("0605878", "9999", "wies")),
+    "Nie znaleźliśmy nr 9999 w tej miejscowości w rejestrze adresów. Sprawdź, czy numer jest dobry.",
+  );
+  // Krowica Sama, a village with a street (os. Wolności): every number in
+  // it, streetless (40) or on its street (48).
+  assert.equal(prgNote(place("0606180", "40", "wies")), null);
+  assert.equal(prgNote(place("0606180", "48", "wies")), null);
+  assert.equal(
+    prgNote(place("0606180", "9999", "wies")),
     "Nie znaleźliśmy nr 9999 w tej miejscowości w rejestrze adresów. Sprawdź, czy numer jest dobry.",
   );
   assert.equal(
