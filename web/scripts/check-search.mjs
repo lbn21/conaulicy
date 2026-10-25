@@ -3,8 +3,9 @@
 // result popup overlays the page (nothing below the field moves while it loads,
 // lists results, says "Brak wyników" or closes), follows the APG combobox
 // keyboard model, and its rows use the field's font family and size.
-// Matching runs on the device: the index loads once, on focus, and typing
-// makes no request. Also: "ul" alone asks for a name, "Zmień adres" on a
+// Matching runs on the device: the index loads once, when the page is idle
+// after load or on focus if that comes first (only on focus with
+// Save-Data), and typing makes no request. Also: "ul" alone asks for a name, "Zmień adres" on a
 // street page lands on an empty, focused field with the list closed,
 // /api/search answers when the index cannot load, and a house number
 // ("kosciuszki 7a") reaches the street page, which picks the part of a split
@@ -23,6 +24,15 @@ import { finish, startServer } from "./lib/server.mjs";
 
 const WIDTHS = [360, 1280];
 
+// Counts the page's requests for the search index.
+function countIndex(page) {
+  const counter = { count: 0 };
+  page.on("request", (request) => {
+    if (request.url().includes("/api/search-index/")) counter.count += 1;
+  });
+  return counter;
+}
+
 const server = await startServer(3302);
 const browser = await chromium.launch();
 const failures = [];
@@ -36,19 +46,38 @@ try {
       viewport: { width, height: 800 },
       reducedMotion: "reduce",
     });
-    // Slow the index down a little so the loading state is visible.
+    // Hold the index until the first letter is typed, so the loading state
+    // is visible.
     const requests = { index: 0, search: 0 };
+    let release;
+    const held = new Promise((resolve) => {
+      release = resolve;
+    });
+    let requested;
+    const indexRequested = new Promise((resolve) => {
+      requested = resolve;
+    });
     await page.route("**/api/search-index/**", async (route) => {
       requests.index += 1;
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      requested();
+      await held;
       await route.continue();
     });
     await page.route("**/api/search?**", (route) => {
       requests.search += 1;
       return route.continue();
     });
-    // Typing before hydration would be lost, so wait for the scripts.
-    await page.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+    // The index loads once the page is idle, with no focus (and only after
+    // hydration, so typing is not lost).
+    await page.goto(`${server.origin}/`, { waitUntil: "load" });
+    await Promise.race([
+      indexRequested,
+      new Promise((resolve) => setTimeout(resolve, 10000)),
+    ]);
+    check(
+      requests.index === 1,
+      `${width}px: the index was not requested without focus once idle`,
+    );
     await page.waitForFunction(() =>
       document.getAnimations().every((a) => a.playState === "finished"),
     );
@@ -110,6 +139,7 @@ try {
     await note("Szukam…").waitFor();
     await same("loading");
     await sameType(note("Szukam…"), "loading");
+    release();
 
     await result().first().waitFor();
     await same("results");
@@ -408,9 +438,14 @@ try {
   const again = await browser.newPage({
     viewport: { width: 360, height: 800 },
   });
+  const againIndex = countIndex(again);
   await again.goto(`${server.origin}/szukaj?q=adama`, {
     waitUntil: "networkidle",
   });
+  check(
+    againIndex.count === 1,
+    `/szukaj?q=adama: ${againIndex.count} index requests before focus, expected 1`,
+  );
   await again.locator("#adres").click();
   const prefilled = again.getByRole("combobox");
   await prefilled.waitFor();
@@ -426,6 +461,10 @@ try {
       (await again.locator('input[name="q"]').count()) === 1 &&
       !texts.includes("adama"),
     `/szukaj?q=adama enhanced: field "${await prefilled.inputValue()}", options ${JSON.stringify(texts)}`,
+  );
+  check(
+    againIndex.count === 1,
+    `/szukaj?q=adama: ${againIndex.count} index requests after focus, expected 1`,
   );
   await again.goto(`${server.origin}/szukaj?q=`, { waitUntil: "networkidle" });
   await again.locator("#adres").click();
@@ -648,6 +687,67 @@ try {
     "error summary: its link does not focus the field",
   );
   await withJs.close();
+
+  // Focus before the page is idle loads the index; idle later does not load
+  // it again. Idle callbacks wait here until released by hand.
+  const first = await browser.newPage();
+  const firstIndex = countIndex(first);
+  await first.addInitScript(() => {
+    window.__idle = new Map();
+    let next = 0;
+    window.requestIdleCallback = (callback) => {
+      next += 1;
+      window.__idle.set(next, callback);
+      return next;
+    };
+    window.cancelIdleCallback = (id) => window.__idle.delete(id);
+  });
+  await first.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+  const beforeFocus = firstIndex.count;
+  await Promise.all([
+    first.waitForResponse(/\/api\/search-index\//, { timeout: 5000 }),
+    first.locator("#adres").click(),
+  ]).catch(() => {});
+  await first.evaluate(() => {
+    const callbacks = [...window.__idle.values()];
+    window.__idle.clear();
+    for (const callback of callbacks) {
+      callback({ didTimeout: true, timeRemaining: () => 0 });
+    }
+  });
+  await first.getByRole("combobox").pressSequentially("asnyka");
+  await first
+    .getByRole("option", { name: /Asnyka/ })
+    .first()
+    .waitFor({ timeout: 5000 })
+    .catch(() => {});
+  check(
+    beforeFocus === 0 && firstIndex.count === 1,
+    `focus before idle: ${beforeFocus} index requests before focus and ${firstIndex.count} in all, expected 0 and 1`,
+  );
+  await first.close();
+
+  // Save-Data: no prefetch, the index loads on focus.
+  const lite = await browser.newPage();
+  const liteIndex = countIndex(lite);
+  await lite.addInitScript(() => {
+    Object.defineProperty(navigator, "connection", {
+      value: { saveData: true },
+    });
+  });
+  await lite.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+  // Past requestIdleCallback's 2000 ms timeout.
+  await lite.waitForTimeout(3000);
+  const liteBefore = liteIndex.count;
+  await Promise.all([
+    lite.waitForResponse(/\/api\/search-index\//, { timeout: 5000 }),
+    lite.locator("#adres").click(),
+  ]).catch(() => {});
+  check(
+    liteBefore === 0 && liteIndex.count === 1,
+    `Save-Data: ${liteBefore} index requests before focus and ${liteIndex.count} after, expected 0 and 1`,
+  );
+  await lite.close();
 
   // No index (blocked or broken): the server answers instead.
   const fallback = await browser.newPage();
