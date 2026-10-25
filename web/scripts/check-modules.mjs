@@ -1,7 +1,12 @@
 // The address page as a hub of modules (components/hub.tsx, lib/modules.ts)
 // and the waste subpage (/adres/<id>/smieci), on the CI fixture with the
 // build's IMGW setting (mock:none in CI; check-warnings.mjs covers warnings):
-// - the hub: caption, h1, „Zmień adres”, h2 „Co Cię czeka”, the waste card
+// - breadcrumbs (GOV.UK's, every item a link, the page itself left out):
+//   the hub „Strona główna › <locality>” (a town street's to /ulice's
+//   streets, a village street's or a village's to its villages; a village
+//   names its gmina), /smieci adds the address page; the street page's
+//   error variants keep the hub's;
+// - the hub: no caption (the locality is in its breadcrumbs), h1, „Zmień adres”, h2 „Co Cię czeka”, the waste card
 //   first (h3 „Śmieci”, „Szczegóły – śmieci” to /smieci, ?nr= kept), its
 //   rows (Najbliższy odbiór with an absolute date, Pojemniki, Źródło), no
 //   calendar, PDF or IMGW banner, „Bez zapowiedzi” with the weather and its
@@ -11,9 +16,7 @@
 // - a split street without a number: the card asks for it, linking /smieci;
 //   with one, the card has its date; an unknown number keeps the street
 //   page's error (GOV.UK's validation pattern);
-// - /smieci: GOV.UK breadcrumbs (locality as text on a street, the address
-//   page linked, „Odbiór śmieci” aria-current, no link; two levels for a
-//   village), caption, h1 „Odbiór śmieci”, the calendar and the PDF;
+// - /smieci: caption, h1 „Odbiór śmieci”, the calendar and the PDF;
 // - a house number on a street with one schedule: both pages say, right
 //   under the h1, that it changes nothing; never on a split street, a
 //   village or without a number;
@@ -33,6 +36,7 @@ import { finish, startServer } from "./lib/server.mjs";
 const STREET = "/adres/0972447-00470";
 const SPLIT = "/adres/0972447-90004";
 const VILLAGE = "/adres/0606010";
+const VILLAGE_STREET = "/adres/0606234-90007";
 const MAIN = /<main[\s\S]*<\/main>/;
 const DATE = String.raw`\p{L}+, \d{1,2} \p{L}+`;
 const NOTE = sharedNumberNote({
@@ -61,6 +65,38 @@ function headingsInOrder(path, html) {
   }
 }
 
+// GOV.UK's breadcrumbs as [href, text], or null for any item that is not
+// one link.
+function crumbs(html) {
+  const list =
+    /<nav class="govuk-breadcrumbs[^"]*" aria-label="[^"]+"><ol class="govuk-breadcrumbs__list">([\s\S]*?)<\/ol><\/nav>/.exec(
+      html,
+    )?.[1] ?? "";
+  return [
+    ...list.matchAll(
+      /<li class="govuk-breadcrumbs__list-item">([\s\S]*?)<\/li>/g,
+    ),
+  ].map(
+    ([, item]) =>
+      /^<a class="govuk-breadcrumbs__link" href="([^"]+)">([^<]+)<\/a>$/
+        .exec(item)
+        ?.slice(1) ?? null,
+  );
+}
+
+const HOME = ["/", "Strona główna"];
+const TOWN = ["/ulice#ulice-heading", "Lubaczów"];
+const VILLAGES = (text) => ["/ulice#wsie-heading", text];
+
+function crumbsAre(path, html, want) {
+  const got = crumbs(html);
+  if (JSON.stringify(got) !== JSON.stringify(want))
+    fail(
+      path,
+      `breadcrumbs ${JSON.stringify(got)}, want ${JSON.stringify(want)}`,
+    );
+}
+
 // The cards' titles, in order.
 const cards = (html) =>
   [...html.matchAll(/<h3 class="govuk-summary-card__title">([^<]*)</g)].map(
@@ -70,20 +106,41 @@ const cards = (html) =>
 try {
   // [address page, its waste subpage, the links between them]: a number
   // only counts on a split street (elsewhere the page drops it, as before).
-  for (const [path, waste, links = [path, waste]] of [
-    [STREET, `${STREET}/smieci`],
-    [`${STREET}?nr=12`, `${STREET}/smieci?nr=12`, [STREET, `${STREET}/smieci`]],
-    [VILLAGE, `${VILLAGE}/smieci`],
-    [`${SPLIT}?nr=7a`, `${SPLIT}/smieci?nr=7a`],
+  // [address page, its waste subpage, the hub's breadcrumbs, the address
+  // page's name in /smieci's]: a number only counts on a split street
+  // (elsewhere the page drops it, as before).
+  for (const [path, waste, locality, name, links = [path, waste]] of [
+    [STREET, `${STREET}/smieci`, TOWN, "ul. Adama Asnyka"],
+    [
+      `${STREET}?nr=12`,
+      `${STREET}/smieci?nr=12`,
+      TOWN,
+      "ul. Adama Asnyka",
+      [STREET, `${STREET}/smieci`],
+    ],
+    [VILLAGE, `${VILLAGE}/smieci`, VILLAGES("Gmina Lubaczów"), "Dąbrowa"],
+    [
+      VILLAGE_STREET,
+      `${VILLAGE_STREET}/smieci`,
+      VILLAGES("Lisie Jamy"),
+      "ul. Polna",
+    ],
+    [
+      `${SPLIT}?nr=7a`,
+      `${SPLIT}/smieci?nr=7a`,
+      TOWN,
+      "ul. Tadeusza Kościuszki 7a",
+    ],
   ]) {
     const { status, main: hub, html } = await main(path);
     if (status !== 200) fail(path, `${status}, want 200`);
+    crumbsAre(path, hub, [HOME, locality]);
     if (
-      !/<span class="govuk-caption-l">[^<]+<\/span><h1 class="govuk-heading-l">[^<]+<\/h1>/.test(
+      !/<\/nav><div class="govuk-grid-row"><div class="govuk-grid-column-two-thirds"><h1 class="govuk-heading-l">[^<]+<\/h1>/.test(
         hub,
       )
     )
-      fail(path, "no caption and h1");
+      fail(path, "not the breadcrumbs, then the h1 with no caption");
     if (!hub.includes(">Zmień adres<")) fail(path, "no „Zmień adres”");
     if (
       !hub.includes(
@@ -137,31 +194,7 @@ try {
 
     const sub = await main(waste);
     if (sub.status !== 200) fail(waste, `${sub.status}, want 200`);
-    const crumbs =
-      /<nav class="govuk-breadcrumbs[^"]*" aria-label="[^"]+"><ol class="govuk-breadcrumbs__list">([\s\S]*?)<\/ol><\/nav>/.exec(
-        sub.main,
-      )?.[1] ?? "";
-    const items = [
-      ...crumbs.matchAll(
-        /<li class="govuk-breadcrumbs__list-item"( aria-current="page")?>([\s\S]*?)<\/li>/g,
-      ),
-    ];
-    const village = path.startsWith(VILLAGE);
-    const place = path.split("?")[0];
-    if (
-      items.length !== (village ? 2 : 3) ||
-      items.at(-1)?.[1] !== ' aria-current="page"' ||
-      items.at(-1)?.[2] !== "Odbiór śmieci" ||
-      items.slice(0, -1).some(([, current]) => current) ||
-      !items
-        .at(-2)?.[2]
-        .startsWith(`<a class="govuk-breadcrumbs__link" href="${links[0]}">`) ||
-      (!village && items[0][2].includes("<a"))
-    )
-      fail(
-        waste,
-        `breadcrumbs ${JSON.stringify(items.map(([, c, t]) => [c, t]))} (${place})`,
-      );
+    crumbsAre(waste, sub.main, [HOME, locality, [links[0], name]]);
     if (
       !/<span class="govuk-caption-l">[^<]+<\/span><h1 class="govuk-heading-l">Odbiór śmieci<\/h1>/.test(
         sub.main,
@@ -197,12 +230,20 @@ try {
   )
     fail(SPLIT, "no „Podaj numer domu” to /smieci");
   if (ask.main.includes('href="/ics/')) fail(SPLIT, "a calendar link");
+  crumbsAre(SPLIT, ask.main, [HOME, TOWN]);
   const wrong = await main(`${SPLIT}?nr=42`);
   if (
     !wrong.main.includes("govuk-error-summary") ||
     cards(wrong.main).length > 0
   )
     fail(`${SPLIT}?nr=42`, "not the street page's error");
+  crumbsAre(`${SPLIT}?nr=42`, wrong.main, [HOME, TOWN]);
+  const askSub = `${SPLIT}/smieci`;
+  crumbsAre(askSub, (await main(askSub)).main, [
+    HOME,
+    TOWN,
+    [SPLIT, "ul. Tadeusza Kościuszki"],
+  ]);
   // Never on a split street (asked, or a wrong number) or a village.
   for (const path of [
     SPLIT,
@@ -220,7 +261,10 @@ try {
   server.stop();
 }
 
-/** 375-<page>-nr5.png, and the note's ink-free box gaps, in CSS px. */
+/**
+ * 375-<page>.png, the breadcrumbs' gap to what follows and their left edge
+ * against the h1's, and with ?nr=5 the note's ink-free box gaps, in CSS px.
+ */
 async function shots(dir) {
   mkdirSync(dir, { recursive: true });
   const browser = await chromium.launch();
@@ -231,27 +275,37 @@ async function shots(dir) {
     });
     const page = await context.newPage();
     for (const [name, url] of [
-      ["hub", `${STREET}?nr=5`],
-      ["smieci", `${STREET}/smieci?nr=5`],
+      ["hub", STREET],
+      ["smieci", `${STREET}/smieci`],
+      ["village-hub", VILLAGE],
+      ["village-smieci", `${VILLAGE}/smieci`],
+      ["hub-nr5", `${STREET}?nr=5`],
+      ["smieci-nr5", `${STREET}/smieci?nr=5`],
     ]) {
       await page.goto(server.origin + url, { waitUntil: "load" });
-      const gaps = await page.evaluate(() => {
-        const h1 = document.querySelector("main h1").getBoundingClientRect();
-        const note = document
-          .querySelector("main h1 + p")
-          .getBoundingClientRect();
-        const change = document
-          .querySelector("main h1 + p + p")
-          .getBoundingClientRect();
-        return {
-          h1ToNote: note.top - h1.bottom,
-          noteToChange: change.top - note.bottom,
-          left: note.left - h1.left,
+      const gaps = await page.evaluate((note) => {
+        const box = (selector) =>
+          document.querySelector(selector).getBoundingClientRect();
+        const crumbs = box("main .govuk-breadcrumbs");
+        const next = box("main .govuk-grid-row");
+        const h1 = box("main h1");
+        const gaps = {
+          crumbsToNext: next.top - crumbs.bottom,
+          crumbsLeft: crumbs.left - h1.left,
         };
-      });
+        if (!note) return gaps;
+        const nr = box("main h1 + p");
+        const change = box("main h1 + p + p");
+        return {
+          ...gaps,
+          h1ToNote: nr.top - h1.bottom,
+          noteToChange: change.top - nr.bottom,
+          left: nr.left - h1.left,
+        };
+      }, name.endsWith("nr5"));
       console.log(`${url} [375px]: ${JSON.stringify(gaps)}`);
       await page.screenshot({
-        path: path.join(dir, `375-${name}-nr5.png`),
+        path: path.join(dir, `375-${name}.png`),
         fullPage: true,
       });
     }

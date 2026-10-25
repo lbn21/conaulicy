@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { NOT_FOUND_TITLE } from "@/components/page-not-found";
-import { PlaceNotFound } from "@/components/place-page";
+import { Breadcrumbs, PlaceNotFound } from "@/components/place-page";
 import { findSubpage } from "@/lib/modules";
+import { getPlace } from "@/lib/schedule";
 
 // A module's subpage, /adres/[id]/[module] (lib/modules.ts), with the same
 // house-number and /numer variants as the address page
-// (lib/address-routes.ts). An unknown module, or one without a subpage
-// (the weather), is a 404. Canonical: the subpage itself.
+// (lib/address-routes.ts), under the place's breadcrumbs, the same for every
+// module. An unknown module, or one without a subpage (the weather), is a
+// 404. Canonical: the subpage itself.
 
 export async function moduleMetadata(
   id: string,
@@ -32,7 +34,15 @@ export async function ModuleMain({
   missing?: boolean;
 }) {
   const module = findSubpage(slug);
-  const data = module && (await module.load(id, nr));
-  if (!module || !data) return <PlaceNotFound />;
-  return <module.Details data={data} missing={missing} />;
+  const [place, data] = await Promise.all([
+    getPlace(id, nr),
+    module?.load(id, nr),
+  ]);
+  if (!module || !place || !data) return <PlaceNotFound />;
+  return (
+    <>
+      <Breadcrumbs place={place} subpage />
+      <module.Details data={data} missing={missing} />
+    </>
+  );
 }

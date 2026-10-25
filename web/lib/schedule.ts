@@ -64,6 +64,8 @@ type Place = {
   /** TERYT's: a street's CECHA, a village's kind (lib/search.ts SearchIndex). */
   type: string;
   area: string;
+  /** A street of the town (/ulice's first list), not of a village. */
+  town: boolean;
   gmina: string;
   schedulePage: string | null;
   localityId: string;
@@ -96,6 +98,8 @@ export type PlaceView = {
   name: string;
   label: string;
   area: string;
+  /** A street of the town (/ulice's first list), not of a village. */
+  town: boolean;
   /** Gmina name as in TERYT, e.g. "Lubaczów (miasto)". */
   gmina: string;
   zoneId: string | null;
@@ -181,6 +185,7 @@ function streetPlace(row: StreetRow): Place {
     label: streetLabel(row),
     type: row.prefix,
     area: row.locality,
+    town: row.localityKind === "miasto",
     gmina: row.gmina,
     schedulePage: row.scheduleUrl,
     localityId: row.localityId,
@@ -198,6 +203,7 @@ function villagePlace(row: VillageRow): Place {
     label: villageLabel(row),
     type: row.kind,
     area: row.parent ? `${row.parent}, gmina ${gmina}` : `gmina ${gmina}`,
+    town: false,
     gmina: row.gmina,
     schedulePage: row.scheduleUrl,
     localityId: row.id,
@@ -441,6 +447,7 @@ const placeCached = unstable_cache(
       name: place.name,
       label: place.label,
       area: place.area,
+      town: place.town,
       gmina: place.gmina,
       zoneId: zone.id,
       // A number only matters on a split street; elsewhere it is ignored,
