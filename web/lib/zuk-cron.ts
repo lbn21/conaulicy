@@ -18,7 +18,7 @@
 
 import { addDays, todayInWarsaw } from "./dates.ts";
 import { NO_STORE } from "./headers.ts";
-import { sameSecret } from "./secret.ts";
+import { cronDenied } from "./secret.ts";
 import { gminaLubaczow } from "./sources/gmina-lubaczow/index.ts";
 import { type PostSource, SourceDown } from "./sources/source.ts";
 import {
@@ -275,9 +275,8 @@ export async function handleZukCron(
   cronSecret: string | undefined,
   deps: ZukCronDeps,
 ): Promise<Response> {
-  const given = request.headers.get("authorization") ?? "";
-  if (!cronSecret || !sameSecret(given, `Bearer ${cronSecret}`))
-    return new Response("Unauthorized", { status: 401, headers: NO_STORE });
+  const denied = cronDenied(request, cronSecret);
+  if (denied) return denied;
   try {
     return Response.json(await runZuk(deps), { headers: NO_STORE });
   } catch (error) {
