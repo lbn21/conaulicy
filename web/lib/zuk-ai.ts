@@ -1,13 +1,11 @@
-// Grok reads one ZUK post (xAI chat/completions, structured output). What it
-// returns is a claim, not a fact: lib/zuk-guards.ts checks every value
-// against the post's own text and lib/zuk-resolve.ts maps the places to
-// ours; a place that fails is dropped, a date or time that fails makes the
-// post a Notice. The prompt is the rules plus a context of our own places
-// (systemPrompt): with it grok-4.7 scored 330/330 place-days on 24 hand-checked
-// posts, 0 wrong (A/B test, 25 Oct 2026, reasoning low, temp. 0). It never
+// Grok reads one post (xAI chat/completions, structured output): what it is
+// (post_type) and, for a water post, its items. Shared by every source: the
+// schema, the reply check and the call; the prompt is the source's own
+// (lib/sources/<id>/prompt.ts). What it returns is a claim, not a fact:
+// lib/zuk-guards.ts checks every value against the post's own text and
+// lib/zuk-resolve.ts maps the places to ours; a place that fails is
+// dropped, a date or time that fails makes the post a Notice. It never
 // returns ids: our code has the last word (lib/zuk-resolve.ts).
-
-import type { ZukPlaces } from "./zuk-resolve.ts";
 
 export const ZUK_MODEL = "grok-4.7";
 
@@ -18,24 +16,35 @@ const PRICE_IN = 2 / 1_000_000;
 const PRICE_OUT = 6 / 1_000_000;
 
 export type AiItem = {
-  /** YYYY-MM-DD, the day the cut starts. */
+  /**
+   * YYYY-MM-DD: the day the cut starts; for water_quality the day the
+   * warning starts, or ends if lifted.
+   */
   date: string;
   /** HH:MM or null. */
   start: string | null;
   end: string | null;
-  /** As written: "Lubaczów", "Załuże–Podłęże". */
+  /** Our name from the prompt's list: "Lubaczów", "Dąbrowa (Basznia Górna)". */
   locality: string;
-  /** As written, without "ul.": "Pilipy"; null for the whole locality. */
+  /** The post's own words for it, exactly: "Lubaczów". */
+  locality_verbatim: string;
+  /** Our street name from the list ("Jana III Sobieskiego"); null if none. */
   street: string | null;
-  /** The exact phrase naming this place: "Młodów, ul. Pilipy". */
-  place_verbatim: string;
-  /** The text's own qualifier: "w części miejscowości", or null. */
+  /** The post's own words for it: "ul. Sobieskiego"; null if no street. */
+  street_verbatim: string | null;
+  /** The place's limitation, one exact quote: "od nr 104 do nr 110". */
   note: string | null;
-  kind: "planned" | "emergency";
+  /** "quality" for a water_quality post's places. */
+  kind: "planned" | "emergency" | "quality";
 };
 
+/** What the post is: only a water_outage is read for cuts. */
+type PostType = "water_outage" | "water_quality" | "other";
+
 export type AiResult = {
-  is_outage_notice: boolean;
+  post_type: PostType;
+  /** water_quality only, else null. */
+  quality_status: "warning" | "lifted" | null;
   is_past: boolean;
   items: AiItem[];
 };
@@ -54,20 +63,20 @@ export type AiReading = {
   latencyMs: number;
 };
 
-const nullable = (type: string, description: string) => ({
-  type: [type, "null"],
-  description,
-});
-
+/** schema-v31.json (task 114b), as is. */
 const SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["is_outage_notice", "is_past", "items"],
+  required: ["post_type", "quality_status", "is_past", "items"],
   properties: {
-    is_outage_notice: {
-      type: "boolean",
-      description:
-        "true only if the post announces or reports a water supply interruption",
+    post_type: {
+      type: "string",
+      enum: ["water_outage", "water_quality", "other"],
+    },
+    quality_status: {
+      type: ["string", "null"],
+      enum: ["warning", "lifted", null],
+      description: "non-null only for water_quality",
     },
     is_past: {
       type: "boolean",
@@ -84,8 +93,9 @@ const SCHEMA = {
           "start",
           "end",
           "locality",
+          "locality_verbatim",
           "street",
-          "place_verbatim",
+          "street_verbatim",
           "note",
           "kind",
         ],
@@ -95,96 +105,48 @@ const SCHEMA = {
             format: "date",
             description: "day the interruption starts, YYYY-MM-DD",
           },
-          start: nullable("string", "HH:MM, null if not stated"),
-          end: nullable(
-            "string",
-            "HH:MM, null if not stated; may be on the next day for night spans",
-          ),
+          start: {
+            type: ["string", "null"],
+            description: "HH:MM, null if not stated",
+          },
+          end: {
+            type: ["string", "null"],
+            description:
+              "HH:MM, null if not stated; may be on the next day for night spans",
+          },
           locality: {
             type: "string",
-            description: "locality name copied exactly as written in the text",
+            description: "canonical locality name from the context list",
           },
-          street: nullable(
-            "string",
-            "street name copied exactly as written, without 'ul.'; null if the whole locality",
-          ),
-          place_verbatim: {
+          locality_verbatim: {
             type: "string",
             description:
-              "the shortest exact substring of the text naming this place: from the locality through this item's street, with its house numbers and qualifiers, e.g. 'Młodów, ul. Pilipy', 'Opaka od nr 104 do nr 110'",
+              "exact substring of the post naming the locality as written, may be inflected",
           },
-          note: nullable(
-            "string",
-            "a qualifier of the place copied exactly, e.g. 'w części miejscowości', 'gospodarstwa zasilane z SUW Mokrzyca'; null if none",
-          ),
-          kind: { type: "string", enum: ["planned", "emergency"] },
+          street: {
+            type: ["string", "null"],
+            description:
+              "canonical street name from the context list for that locality (as written if not listed); null if the whole locality",
+          },
+          street_verbatim: {
+            type: ["string", "null"],
+            description:
+              "exact substring of the post naming the street, e.g. 'ul. Polna', 'os. Testowe'; no house numbers; null if street is null",
+          },
+          note: {
+            type: ["string", "null"],
+            description:
+              "the place's limitation as ONE continuous exact quote from the post (house ranges, 'w części miejscowości', unlisted part name, '(przysiółek …)'); never another place; null if none",
+          },
+          kind: {
+            type: "string",
+            enum: ["planned", "emergency", "quality"],
+          },
         },
       },
     },
   },
 };
-
-const SYSTEM = `You extract water supply interruptions from Polish notices by ZUK Mokrzyca (gmina Lubaczów).
-Rules:
-- One item per (day, locality, street). If a locality lists several streets, emit one item per street, repeating the locality.
-- A multi-day notice gets one item per day per place. A night span (e.g. 'w nocy z 21.12 na 22.12, 22:00-5:00') is ONE item dated on the first day, start 22:00, end 05:00.
-- 'ul.'/'ulica' after a comma belongs to the locality before it: 'Młodów, ul. Pilipy' = locality Młodów, street Pilipy. Never drop a street, house range or 'w części' qualifier.
-- place_verbatim is copied exactly from the text, the shortest phrase that contains the locality and this item's street, plus its house numbers, '(przysiółek …)' or other bracket if any: 'Młodów – ul. Warszawska, Rzeczna' for the street Rzeczna, 'ul. Przemysłowa (Lubaczów)', 'w części miejscowości Bałaje'.
-- note: a qualifier that narrows the place ('w części miejscowości', 'gospodarstwa zasilane z SUW Mokrzyca'), copied exactly; otherwise null.
-- Copy locality and street verbatim from the text (keep Polish diacritics). Never add places, dates or times that are not in the text. If something is unclear, leave it out.
-- kind is 'emergency' for a failure (awaria), else 'planned'. For an estimated restore ('przewidywane wznowienie do godz. 19.00') use that time as end.
-- Use the publish date only to resolve a year if missing. Do not guess.
-- Posts that are not about water interruptions: is_outage_notice=false, items=[].`;
-
-const PLACE_RULES = `Place-name rules (they override 'copy locality verbatim' only for the locality field):
-- locality is the town or village the text names, written exactly as in the list above. Change only case, spacing, dashes or a missing diacritic; never pick a different place.
-- A name not on the list that is attached to a listed village ('Załuże–Podłęże', 'Załuże (Podłęże)'): locality = that village ('Załuże'), note = the unlisted name exactly as written ('Podłęże'). Never invent where an unlisted name lies.
-- 'X (przysiółek Y)' or 'X ... (przysiółek Y)': locality = the village X; keep the bracket in place_verbatim. Example: 'Basznia Górna od nr 121 do nr 144 (przysiółek Dąbrowa)' -> locality 'Basznia Górna'.
-- A bare name that is both a village and a village part (e.g. 'Dąbrowa') is the village.
-- A village part named on its own, without its village: locality = the part's name.
-- 'Młodów, ul. Pilipy' / 'Młodów ul. Pilipy' is the street Pilipy in Młodów: locality 'Młodów', street 'Pilipy'.
-- street, place_verbatim and note are always copied exactly from the text, never normalized. Never output ids or places not in the text.`;
-
-// Code-point order, so the prompt is byte-for-byte the same for the same
-// places (a cacheable prefix).
-const sorted = (names: string[]) => [...names].sort();
-
-/**
- * The system prompt: the rules, then our localities (town, villages, village
- * parts with their village; no streets, which made the readings worse), then
- * the place-name rules. Built from the places the resolver uses, so it
- * follows the data.
- */
-export function systemPrompt(places: ZukPlaces): string {
-  const byId = new Map(places.localities.map((l) => [l.id, l]));
-  const names = (kind: string) =>
-    sorted(
-      places.localities.filter((l) => l.kind === kind).map((l) => l.name),
-    ).join(", ");
-  const parts = sorted(
-    places.localities
-      .filter((l) => l.kind === "czesc_wsi")
-      .map((l) => {
-        const parent = l.parentId ? byId.get(l.parentId)?.name : undefined;
-        return parent ? `${l.name} (${parent})` : l.name;
-      }),
-  ).join(", ");
-  const seen = new Map<string, number>();
-  for (const l of places.localities)
-    seen.set(l.name, (seen.get(l.name) ?? 0) + 1);
-  const twice = sorted(
-    [...seen].filter(([, n]) => n > 1).map(([name]) => name),
-  );
-  return `${SYSTEM}
-
-Context: the places in our database. ZUK Mokrzyca supplies water to the villages of gmina Lubaczów and to some streets of the town Lubaczów.
-Town (miasto): ${names("miasto")}
-Villages (wieś): ${names("wies")}
-Village parts (część wsi, przysiółek), each with its village: ${parts}
-Names used more than once: ${twice.join(", ")}.
-${PLACE_RULES}
-`;
-}
 
 export type AiInput = {
   /** Site time, "2026-10-23T18:59:43". */
@@ -209,12 +171,15 @@ function isItem(v: unknown): v is AiItem {
     isTime(i.start) &&
     isTime(i.end) &&
     isText(i.locality) &&
+    isText(i.locality_verbatim) &&
     orNull(i.street) &&
-    isText(i.place_verbatim) &&
+    orNull(i.street_verbatim) &&
     orNull(i.note) &&
-    (i.kind === "planned" || i.kind === "emergency")
+    (i.kind === "planned" || i.kind === "emergency" || i.kind === "quality")
   );
 }
+
+const POST_TYPES: PostType[] = ["water_outage", "water_quality", "other"];
 
 /** The model's JSON, or null if it does not have the schema's shape. */
 export function parseAiResult(content: string): AiResult | null {
@@ -227,7 +192,12 @@ export function parseAiResult(content: string): AiResult | null {
   if (
     typeof v !== "object" ||
     v === null ||
-    typeof v.is_outage_notice !== "boolean" ||
+    !POST_TYPES.includes(v.post_type as PostType) ||
+    !(
+      v.quality_status === null ||
+      v.quality_status === "warning" ||
+      v.quality_status === "lifted"
+    ) ||
     typeof v.is_past !== "boolean" ||
     !Array.isArray(v.items) ||
     !v.items.every(isItem)
@@ -247,7 +217,7 @@ export function costUsd(usage: AiUsage): number {
 const count = (v: unknown) => (typeof v === "number" ? v : 0);
 
 /**
- * One post read by the model, `system` from systemPrompt. Throws on a
+ * One post read by the model, `system` the source's prompt. Throws on a
  * network or HTTP error, a timeout or a reply that is not the schema; never
  * logs the key.
  */

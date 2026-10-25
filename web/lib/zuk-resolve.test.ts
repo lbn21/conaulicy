@@ -1,399 +1,475 @@
+// The place gate (v3.1, task 114b): the X8 handoff's edge cases
+// (test_gate_v31.py) and golden set (golden.json, lib/zuk-golden.ts), the
+// checks gate-spec.md asks of the snapshot, and every name of ours.
+
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { DisruptionScope } from "./disruptions.ts";
-import { normalize } from "./normalize.ts";
 import { PLACES } from "./zuk-fixture.ts";
+import { GOLDEN } from "./zuk-golden.ts";
 import { ZUK_PLACES } from "./zuk-places.generated.ts";
 import {
-  type Resolved,
-  resolvePlace,
-  type Wanted,
+  type GateItem,
+  GatePlaces,
+  gateItem,
+  gateText,
+  guardDate,
+  mentions,
+  streetForms,
   type ZukPlaces,
 } from "./zuk-resolve.ts";
 
-const WHOLE: DisruptionScope = { type: "whole" };
+const ALL = new GatePlaces(ZUK_PLACES);
 
-/** The phrase is "Locality, ul. Street" and the text the phrase, unless given. */
-function resolve(over: Partial<Wanted>, text?: string, places = PLACES) {
-  const locality = over.locality ?? "";
-  const phrase =
-    over.phrase ?? (over.street ? `${locality}, ul. ${over.street}` : locality);
-  return resolvePlace(
-    {
-      locality,
-      street: null,
-      hamlet: null,
-      scope: WHOLE,
-      ...over,
-      phrase,
-    },
-    text ?? phrase,
-    places,
-  );
+const dl = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/\p{Mn}/gu, "")
+    .replace(/ł/g, "l")
+    .toLowerCase();
+const wnorm = (s: string) =>
+  ` ${dl(s)
+    .replace(/[^0-9a-z]+/g, " ")
+    .trim()} `;
+
+/** One item through the gate on a post of `text` (test_gate_v31.py run). */
+function gate(text: string, over: Partial<GateItem>, places = ALL) {
+  const t = gateText("Przerwa w dostawie wody", text);
+  return gateItem(places, t, mentions(t, places), {
+    date: "2026-10-12",
+    locality: "",
+    locality_verbatim: "",
+    street: null,
+    street_verbatim: null,
+    note: null,
+    ...over,
+  });
 }
 
-function ok(result: Resolved | string): Resolved {
-  assert.equal(typeof result, "object", `failed: ${result}`);
-  return result as Resolved;
-}
-
-const ids = (r: Resolved) => r.places.map((p) => p.streetId ?? p.localityId);
-
-test("street: only among its locality's streets", () => {
-  // Leśna is a street of Młodów, Lisie Jamy and Basznia Dolna.
-  assert.deepEqual(ids(ok(resolve({ locality: "Młodów", street: "Leśna" }))), [
-    "0606286-10898",
-  ]);
-  assert.deepEqual(
-    ids(ok(resolve({ locality: "Lisie Jamy", street: "Leśna" }))),
-    ["0606234-10898"],
+test("day: D.M, D <month>, inside a-b.M, a do b.M, a.M - b.M", () => {
+  const t = (s: string) => s.toLowerCase();
+  assert.equal(guardDate("2026-10-12", t("w dniu 12.10.2026r.")), null);
+  assert.equal(guardDate("2026-10-02", t("w dniu 02.10")), null);
+  assert.equal(guardDate("2026-06-08", t("w dniu 8 czerwca 2026 r.")), null);
+  assert.equal(guardDate("2026-10-27", t("w dniach 26-29.10.2026")), null);
+  assert.equal(guardDate("2026-10-27", t("od 26 do 29.10.2026")), null);
+  assert.equal(guardDate("2026-10-27", t("od 26.10 - 29.10.2026")), null);
+  assert.equal(
+    guardDate("2026-10-13", t("w dniu 12.10.2026")),
+    "13.10 not in text",
   );
+  // Both ends full dates (post 23860): accepted since task 114b.
+  assert.equal(guardDate("2023-11-07", t("od 06.11.2023 do 10.11.2023")), null);
 });
 
-test("street: Lubaczów ul. Żuki is the town's, not Dąbków's or Opaka's part", () => {
-  assert.deepEqual(ids(ok(resolve({ locality: "Lubaczów", street: "Żuki" }))), [
-    "0972447-26555",
-  ]);
-});
-
-test("street: the whole name or a unique end of it, with our name as the label", () => {
-  const karolowka = ok(
-    resolve({ locality: "Karolówka", street: "Sobieskiego" }),
-  );
-  assert.deepEqual(ids(karolowka), ["0606116-20431"]);
-  assert.deepEqual(karolowka.places[0].label, {
-    locality: "Karolówka",
-    parent: null,
-    street: "Jana III Sobieskiego",
-  });
-  const floriana = ok(resolve({ locality: "Młodów", street: "Floriana" }));
-  assert.deepEqual(floriana.places[0].label.street, "św. Floriana");
-  assert.deepEqual(ids(ok(resolve({ locality: "Młodów", street: "Pilipy" }))), [
-    "0606286-39507",
-  ]);
-});
-
-test("street: an end two streets share is dropped, never a pick", () => {
-  const places: ZukPlaces = {
-    localities: [{ id: "1", name: "Wieś", kind: "wies", parentId: null }],
-    streets: [
-      { id: "1-1", localityId: "1", name: "Jana Kowalskiego" },
-      { id: "1-2", localityId: "1", name: "Anny Kowalskiego" },
-      { id: "1-3", localityId: "1", name: "Polna" },
-      { id: "1-4", localityId: "1", name: "Mała Polna" },
-    ],
-  };
-  assert.match(
-    resolve(
-      { locality: "Wieś", street: "Kowalskiego" },
-      undefined,
-      places,
-    ) as string,
-    /2 streets "Kowalskiego" in Wieś/,
-  );
-  // "Polna" is a whole name, but also the end of "Mała Polna".
-  assert.match(
-    resolve({ locality: "Wieś", street: "Polna" }, undefined, places) as string,
-    /2 streets "Polna"/,
-  );
-  assert.deepEqual(
-    ids(
-      ok(
-        resolve(
-          { locality: "Wieś", street: "Jana Kowalskiego" },
-          undefined,
-          places,
-        ),
-      ),
-    ),
-    ["1-1"],
-  );
-});
-
-test("street: what matched must be written as whole words, in the text and the phrase", () => {
-  // A street of Młodów the text does not name: dropped, however real.
-  assert.match(
-    resolve(
-      { locality: "Młodów", street: "Warszawska", phrase: "Młodów, ul. Leśna" },
-      "Młodów, ul. Leśna",
-    ) as string,
-    /street "Warszawska" not in the text/,
-  );
-  // In the text, but not in this item's phrase.
-  assert.match(
-    resolve(
-      { locality: "Młodów", street: "Warszawska", phrase: "Młodów, ul. Leśna" },
-      "Młodów, ul. Leśna, Warszawska",
-    ) as string,
-    /street "Warszawska" not in "Młodów, ul. Leśna"/,
-  );
-  // Inside another word: "Leśna" is not "Podleśna".
-  assert.match(
-    resolve(
-      {
-        locality: "Lisie Jamy",
-        street: "Leśna",
-        phrase: "Lisie Jamy, ul. Podleśna",
-      },
-      "Lisie Jamy, ul. Podleśna",
-    ) as string,
-    /street "Leśna" not in the text/,
-  );
-  // The end used for matching is enough: "Sobieskiego".
-  assert.deepEqual(
-    ids(
-      ok(
-        resolve(
-          { locality: "Karolówka", street: "Sobieskiego" },
-          "Karolówka – ul. Sobieskiego od nr 23",
-        ),
-      ),
-    ),
-    ["0606116-20431"],
-  );
-});
-
-test("street: not in that locality, or a locality without streets", () => {
-  assert.match(
-    resolve({ locality: "Młodów", street: "Lwowska" }) as string,
-    /0 streets "Lwowska" in Młodów/,
-  );
-  assert.match(
-    resolve({ locality: "Opaka", street: "Polna" }) as string,
-    /0 streets/,
-  );
-});
-
-test("village-wide: the village and every street of its own, from our data", () => {
-  const lisie = ok(resolve({ locality: "Lisie Jamy" }));
-  const own = PLACES.streets.filter((s) => s.localityId === "0606234");
-  assert.equal(own.length, 19);
-  assert.deepEqual(ids(lisie), ["0606234", ...own.map((s) => s.id)]);
-  assert.ok(lisie.places.every((p) => p.localityId === "0606234"));
-  assert.deepEqual(lisie.places[0].label, {
-    locality: "Lisie Jamy",
-    parent: null,
-    street: null,
-  });
-  assert.deepEqual(
-    lisie.places.slice(1).map((p) => p.label.street),
-    own.map((s) => s.name),
-  );
-  // Its village parts (Smolińce, Flisy…) are not added.
-  assert.ok(!ids(lisie).includes("0606257"));
-  assert.deepEqual(ids(ok(resolve({ locality: "Opaka" }))), ["0606317"]);
-});
-
-test("village-wide: house numbers of a village with streets fail", () => {
-  assert.match(
-    resolve({
-      locality: "Młodów",
-      scope: { type: "ranges", ranges: [{ from: "1", to: "9" }] },
-    }) as string,
-    /house numbers for Młodów, which has streets/,
-  );
-  const opaka = ok(
-    resolve({
-      locality: "Opaka",
-      scope: { type: "ranges", ranges: [{ from: "104", to: "110" }] },
-    }),
-  );
-  assert.deepEqual(opaka.scope, {
-    type: "ranges",
-    ranges: [{ from: "104", to: "110" }],
-  });
-});
-
-test("town-wide: all of Lubaczów fails", () => {
-  assert.match(resolve({ locality: "Lubaczów" }) as string, /all of Lubaczów/);
-});
-
-test("no aliases: a name not on our list is never a place", () => {
-  for (const locality of ["Podłęże", "Załuże–Podłęże", "Załuże (Podłęże)"])
-    assert.match(
-      resolve(
-        { locality },
-        "Załuże–Podłęże od numeru 44 do numeru 92",
-      ) as string,
-      /no locality/,
-      locality,
-    );
-  // The model's way: the listed village, the unlisted name as its note,
-  // so only part of it (the guards make the scope unknown).
-  const zaluze = ok(
-    resolve(
-      {
-        locality: "Załuże",
-        phrase: "Załuże (Podłęże)",
-        scope: { type: "unknown" },
-      },
-      "w miejscowościach Antoniki, Załuże (Podłęże)",
-    ),
-  );
-  assert.deepEqual(ids(zaluze), ["0606464"]);
-  assert.deepEqual(zaluze.scope, { type: "unknown" });
-});
-
-test("hamlet: '(przysiółek Dąbrowa)' is Basznia Górna's Dąbrowa", () => {
-  const phrase =
-    "Basznia Górna od numeru 121 do numeru 144 (przysiółek Dąbrowa)";
-  const r = ok(
-    resolve({ locality: "Basznia Górna", hamlet: "Dąbrowa", phrase }),
-  );
-  assert.deepEqual(ids(r), ["0605967"]);
-  assert.deepEqual(r.places[0].label, {
-    locality: "Dąbrowa",
-    parent: "Basznia Górna",
-    street: null,
-  });
-  assert.match(
-    resolve({ locality: "Opaka", hamlet: "Dąbrowa" }) as string,
-    /no part "Dąbrowa" of Opaka/,
-  );
-});
-
-test("shared name: bare Dąbrowa is the village, with Basznia Górna the part", () => {
-  assert.deepEqual(ids(ok(resolve({ locality: "Dąbrowa" }))), ["0606010"]);
-  assert.deepEqual(
-    ids(
-      ok(resolve({ locality: "Dąbrowa", phrase: "Basznia Górna (Dąbrowa)" })),
-    ),
-    ["0605967"],
-  );
-  // Basznia Górna elsewhere in the post, not in this phrase: the village.
-  assert.deepEqual(
-    ids(ok(resolve({ locality: "Dąbrowa" }, "Basznia Górna, Dąbrowa"))),
-    ["0606010"],
-  );
-});
-
-test("shared name: two village parts and no village, Mielniki", () => {
-  assert.match(
-    resolve({ locality: "Mielniki" }) as string,
-    /"Mielniki" is 2 localities/,
-  );
-  assert.deepEqual(
-    ids(ok(resolve({ locality: "Mielniki", phrase: "Szczutków (Mielniki)" }))),
-    ["0606381"],
-  );
-});
-
-test("przysiółek: a village part without its village is dropped", () => {
-  assert.match(
-    resolve({ locality: "Dąbrowa" }, "Opaka, przysiółek Dąbrowa") as string,
-    /"przysiółek Dąbrowa" without its village/,
-  );
-  // With its village in the phrase, it is that village's part.
-  assert.deepEqual(
-    ids(
-      ok(
-        resolve(
-          { locality: "Dąbrowa", phrase: "Basznia Górna – przysiółek Dąbrowa" },
-          "Basznia Górna – przysiółek Dąbrowa",
-        ),
-      ),
-    ),
-    ["0605967"],
-  );
-});
-
-test("longest match: a name only inside a longer one of ours is dropped", () => {
-  for (const [short, long] of [
-    ["Basznia", "Basznia Dolna"],
-    ["Cetynia", "Cetynia Hołodowska"],
-    ["Ruda", "Ruda Szczutkowska"],
+test("day: a range of two full dates, 'do' or a dash, optional 'od'", () => {
+  for (const text of [
+    "od 06.11.2023 do 10.11.2023",
+    "06.11.2023 do 10.11.2023",
+    "6.11.2023-10.11.2023",
+    "od 6.11.2023 - 10.11.2023r.",
+    "od 28.10.2023 do 10.11.2023",
   ])
-    assert.match(
-      resolve(
-        { locality: short, phrase: short },
-        `w miejscowości ${long}`,
-      ) as string,
-      new RegExp(`"${short}" not named on its own in the text`),
-      short,
+    assert.equal(guardDate("2023-11-07", text), null, text);
+  // Both ends are in the range.
+  assert.equal(guardDate("2023-11-06", "od 06.11.2023 do 10.11.2023"), null);
+  assert.equal(guardDate("2023-11-10", "od 06.11.2023 do 10.11.2023"), null);
+  // A day outside it, a reversed range, another year.
+  assert.equal(
+    guardDate("2023-11-11", "od 06.11.2023 do 10.11.2023"),
+    "11.11 not in text",
+  );
+  assert.equal(
+    guardDate("2023-11-07", "od 10.11.2023 do 06.11.2023"),
+    "7.11 not in text",
+  );
+  assert.equal(
+    guardDate("2024-11-07", "od 06.11.2023 do 10.11.2023"),
+    "7.11 not in text",
+  );
+  // An en dash with spaces, through the gate (the post's dashes become "-").
+  const r = gate("Brak wody od 06.11.2023 – 10.11.2023 w miejscowości Opaka.", {
+    date: "2023-11-07",
+    locality: "Opaka",
+    locality_verbatim: "Opaka",
+  });
+  assert.equal(r.kept, true, JSON.stringify(r));
+});
+
+test("day: a year written with the day must be the item's", () => {
+  assert.equal(
+    guardDate("2026-10-12", "w dniu 12.10.2025r."),
+    "12.10 not in text",
+  );
+  assert.equal(guardDate("2026-10-12", "w dniu 12.10.2026r."), null);
+  // No year written: as before.
+  assert.equal(guardDate("2026-10-12", "w dniu 12.10"), null);
+  assert.equal(
+    guardDate("2026-06-08", "w dniu 8 czerwca 2025 r."),
+    "8.6 not in text",
+  );
+  assert.equal(guardDate("2026-06-08", "w dniu 8 czerwca"), null);
+  assert.equal(
+    guardDate("2026-10-27", "w dniach 26-29.10.2025"),
+    "27.10 not in text",
+  );
+  assert.equal(
+    guardDate("2026-10-27", "od 26.10 - 29.10.2025"),
+    "27.10 not in text",
+  );
+  // The right year elsewhere still counts.
+  assert.equal(guardDate("2026-10-12", "12.10.2025 i 12.10.2026"), null);
+});
+
+test("day: a weekday in brackets must agree; no such day", () => {
+  assert.equal(
+    guardDate("2026-10-12", "w dniu 12.10.2026 (wtorek)"),
+    "weekday mismatch 2026-10-12",
+  );
+  assert.equal(
+    guardDate("2026-10-12", "w dniu 12.10.2026r. (poniedziałek)"),
+    null,
+  );
+  assert.equal(guardDate("2026-10-12", "12.10.2026r.(poniedziałek)"), null);
+  assert.equal(guardDate("2026-02-30", "30.02.2026"), "bad date");
+  assert.equal(guardDate("30.10.2026", "30.10.2026"), "bad date");
+});
+
+// test_gate_v31.py, case by case: [kept, text, item].
+const CASES: Array<[boolean, string, Partial<GateItem>]> = [
+  // [v3.1] an inflected locality_verbatim only: dropped (the trade-off).
+  [
+    false,
+    "W dniu 12.10.2026 brak wody w Lubaczowie, ul. Mickiewicza.",
+    {
+      locality: "Lubaczów",
+      locality_verbatim: "Lubaczowie",
+      street: "Adama Mickiewicza",
+      street_verbatim: "ul. Mickiewicza",
+    },
+  ],
+  // locality_verbatim not literal.
+  [
+    false,
+    "W dniu 12.10.2026 brak wody w Lubaczowie, ul. Mickiewicza.",
+    {
+      locality: "Lubaczów",
+      locality_verbatim: "Lubaczów",
+      street: "Adama Mickiewicza",
+      street_verbatim: "ul. Mickiewicza",
+    },
+  ],
+  [
+    true,
+    "W dniu 12.10.2026 brak wody: Lubaczów, ul. Mickiewicza.",
+    {
+      locality: "Lubaczów",
+      locality_verbatim: "Lubaczów",
+      street: "Adama Mickiewicza",
+      street_verbatim: "ul. Mickiewicza",
+    },
+  ],
+  [
+    false,
+    "W dniu 12.10.2026 brak wody: Lubaczów, ul. Mickiewicza.",
+    {
+      locality: "Lubaczów",
+      locality_verbatim: "Lubaczów",
+      street: "Osiedle Mickiewicza",
+      street_verbatim: "ul. Mickiewicza",
+    },
+  ],
+  [
+    true,
+    "W dniu 12.10.2026 brak wody: Lubaczów, os. Mickiewicza.",
+    {
+      locality: "Lubaczów",
+      locality_verbatim: "Lubaczów",
+      street: "Osiedle Mickiewicza",
+      street_verbatim: "os. Mickiewicza",
+    },
+  ],
+  // Ambiguous: no type word.
+  [
+    false,
+    "W dniu 12.10.2026 brak wody: Lubaczów, Mickiewicza.",
+    {
+      locality: "Lubaczów",
+      locality_verbatim: "Lubaczów",
+      street: "Adama Mickiewicza",
+      street_verbatim: "Mickiewicza",
+    },
+  ],
+  [
+    true,
+    "W dniu 12.10.2026 brak wody: Lubaczów, ul. Armii Krajowej.",
+    {
+      locality: "Lubaczów",
+      locality_verbatim: "Lubaczów",
+      street: "Armii Krajowej",
+      street_verbatim: "ul. Armii Krajowej",
+    },
+  ],
+  [
+    false,
+    "W dniu 12.10.2026 brak wody: Lubaczów, ul. Kurierów Armii Krajowej.",
+    {
+      locality: "Lubaczów",
+      locality_verbatim: "Lubaczów",
+      street: "Armii Krajowej",
+      street_verbatim: "ul. Kurierów Armii Krajowej",
+    },
+  ],
+  [
+    true,
+    "W dniu 12.10.2026 brak wody: Lubaczów, ul. Kurierów Armii Krajowej.",
+    {
+      locality: "Lubaczów",
+      locality_verbatim: "Lubaczów",
+      street: "Kurierów Armii Krajowej",
+      street_verbatim: "ul. Kurierów Armii Krajowej",
+    },
+  ],
+  [
+    true,
+    "W dniu 12.10.2026 brak wody: Lubaczów, ul. Unii Lubelskiej.",
+    {
+      locality: "Lubaczów",
+      locality_verbatim: "Lubaczów",
+      street: "Unii Lubelskiej",
+      street_verbatim: "ul. Unii Lubelskiej",
+    },
+  ],
+  [
+    false,
+    "W dniu 12.10.2026 brak wody: Lubaczów, ul. Unii Lubelskiej.",
+    {
+      locality: "Lubaczów",
+      locality_verbatim: "Lubaczów",
+      street: "Osiedle Unii Lubelskiej",
+      street_verbatim: "ul. Unii Lubelskiej",
+    },
+  ],
+  // The town without a street.
+  [
+    false,
+    "W dniu 12.10.2026 brak wody w Lubaczowie.",
+    { locality: "Lubaczów", locality_verbatim: "Lubaczowie" },
+  ],
+  // An inflection look-alike.
+  [
+    false,
+    "W dniu 12.10.2026 brak wody w miejscowości Podłęże.",
+    { locality: "Podlesie", locality_verbatim: "Podłęże" },
+  ],
+  // The day not in the text.
+  [
+    false,
+    "W dniu 13.10.2026 brak wody w miejscowości Opaka.",
+    { locality: "Opaka", locality_verbatim: "Opaka" },
+  ],
+  // 12.10.2026 is a Monday.
+  [
+    false,
+    "W dniu 12.10.2026 (wtorek) brak wody w miejscowości Opaka.",
+    { locality: "Opaka", locality_verbatim: "Opaka" },
+  ],
+  [
+    true,
+    "W dniu 12.10.2026 (poniedziałek) brak wody w miejscowości Opaka od numeru 5 do numeru 9.",
+    {
+      locality: "Opaka",
+      locality_verbatim: "Opaka",
+      note: "od numeru 5 do numeru 9",
+    },
+  ],
+  // The note names another place.
+  [
+    false,
+    "W dniu 12.10.2026 brak wody: Opaka od numeru 5 do numeru 9 i Załuże od numeru 1.",
+    {
+      locality: "Opaka",
+      locality_verbatim: "Opaka",
+      note: "od numeru 5 do numeru 9 i Załuże od numeru 1",
+    },
+  ],
+  // A spliced note.
+  [
+    false,
+    "W dniu 12.10.2026 brak wody: Opaka od numeru 5 do numeru 9, 12.",
+    {
+      locality: "Opaka",
+      locality_verbatim: "Opaka",
+      note: "od numeru 5 do numeru 12",
+    },
+  ],
+];
+
+test("edge cases: test_gate_v31.py, 18/18", () => {
+  assert.equal(CASES.length, 18);
+  for (const [kept, text, item] of CASES) {
+    const r = gate(text, item);
+    assert.equal(
+      r.kept,
+      kept,
+      `${text} ${JSON.stringify(item)}: ${JSON.stringify(r)}`,
     );
-  // On its own it is the village part.
-  assert.deepEqual(ids(ok(resolve({ locality: "Basznia" }))), ["0605909"]);
+  }
 });
 
-test("street, not a locality: 'ul. Żuki' is never Opaka's part Żuki", () => {
-  assert.match(
-    resolve(
-      { locality: "Żuki", phrase: "Żuki" },
-      "Lubaczów ul. Żuki",
-    ) as string,
-    /"Żuki" not named on its own in the text/,
-  );
+test("golden: the v3.1 replies, item by item, 78/78", () => {
+  let n = 0;
+  for (const p of [...GOLDEN.posts, ...GOLDEN.negatives]) {
+    const text = gateText(p.title, p.text);
+    const found = mentions(text, ALL);
+    assert.equal(p.model_output.items.length, p.expected.length, String(p.id));
+    for (const [i, item] of p.model_output.items.entries()) {
+      n++;
+      const want = p.expected[i];
+      const got = gateItem(ALL, text, found, item);
+      const at = `${p.id} item ${i + 1}`;
+      assert.equal(got.kept, want.kept, `${at}: ${JSON.stringify(got)}`);
+      if (got.kept) {
+        assert.ok(want.resolved, at);
+        assert.deepEqual(
+          {
+            date: item.date,
+            localityId: got.locality.id,
+            locality: got.locality.name,
+            streetId: got.street?.id ?? null,
+            street: got.street?.name ?? null,
+            note: item.note,
+          },
+          want.resolved,
+          at,
+        );
+      } else assert.equal(got.reason, want.reason, at);
+    }
+  }
+  // 64 recorded items, and 23860's 14 (a hand-checked reading).
+  assert.equal(n, 78);
 });
 
-test("literal: the name must be in the text and in the phrase", () => {
-  assert.match(
-    resolve({ locality: "Opaka", phrase: "Opaka" }, "Dąbków") as string,
-    /not named on its own in the text/,
-  );
-  assert.match(
-    resolve({ locality: "Opaka", phrase: "Dąbków" }, "Opaka, Dąbków") as string,
-    /not named on its own in "Dąbków"/,
-  );
+test("snapshot: no two of our names match each other (cross-match proof)", (t) => {
+  const { direct, confusable } = ALL.crossReport();
+  assert.deepEqual(direct, []);
+  // For review, not failing: a third word could match both of a pair, but
+  // only an exact mention ever approves (gate check 9).
+  t.diagnostic(`confusable: ${confusable.map((p) => p.join("/")).join(", ")}`);
+  assert.ok(Array.isArray(confusable));
 });
 
-test("unknown: no fuzzy match ('Podleśna' is not Podlesie)", () => {
-  assert.match(resolve({ locality: "Podleśna" }) as string, /no locality/);
+test("snapshot: locality names that are street forms; forms unique per locality", () => {
+  const forms = new Set(
+    ZUK_PLACES.streets.flatMap((s) => streetForms(s).map(dl)),
+  );
+  // gate-spec says none; the snapshot (and gate_v31.py on it) has these
+  // five. Pinned, so a new one fails here for review of the street
+  // look-alike rule (an exact mention of them is still a mention).
+  assert.deepEqual(
+    [...new Set(ZUK_PLACES.localities.map((l) => l.name))]
+      .filter((name) => forms.has(dl(name)))
+      .sort(),
+    ["Mazury", "Piaski", "Pilipy", "Smolińce", "Żuki"],
+  );
+  for (const [id, own] of ALL.streets) {
+    const all = own.flatMap((s) => streetForms(s).map(wnorm));
+    assert.equal(new Set(all).size, all.length, id);
+  }
+});
+
+test("snapshot: the CECHA forms, from TERYT columns only", () => {
+  const extra = ZUK_PLACES.streets
+    .map((s) => [s.localityId, streetForms(s)] as const)
+    .filter(([, f]) => f.length > 1)
+    .map(([l, f]) => `${l} ${f[1]}`)
+    .sort();
+  assert.deepEqual(extra, [
+    "0605890 os. Sołotwina",
+    "0605890 os. Sportowe",
+    "0606180 os. Wolności",
+    "0606234 al. kardynała Mariana Jaworskiego",
+    "0606286 os. Wrzosowe",
+    "0972447 al. kardynała Mariana Jaworskiego",
+    "0972447 os. Jagiellonów",
+    "0972447 os. Mickiewicza",
+    "0972447 os. Unii Lubelskiej",
+  ]);
+  const cecha = new Map<string, number>();
+  for (const s of ZUK_PLACES.streets)
+    cecha.set(s.cecha, (cecha.get(s.cecha) ?? 0) + 1);
+  assert.deepEqual(Object.fromEntries(cecha), {
+    "ul.": 264,
+    "os.": 7,
+    "al.": 2,
+    rondo: 2,
+    skwer: 1,
+  });
 });
 
 /**
  * Every locality, village part and street of `places`, named as ZUK would:
- * one place, the one named, or dropped; never two places, never another.
+ * one place, the one named, or dropped; never another.
  */
-function everyName(places: ZukPlaces) {
-  const byId = new Map(places.localities.map((l) => [l.id, l]));
-  for (const l of places.localities) {
+function everyName(data: ZukPlaces) {
+  const places = new GatePlaces(data);
+  const byId = new Map(data.localities.map((l) => [l.id, l]));
+  for (const l of data.localities) {
     const parent = l.parentId ? byId.get(l.parentId)?.name : undefined;
-    const phrases = [l.name, ...(parent ? [`${parent} (${l.name})`] : [])];
-    for (const phrase of phrases) {
-      const r = resolve({ locality: l.name, phrase }, phrase, places);
-      if (typeof r === "string") continue;
-      const localities = new Set(r.places.map((p) => p.localityId));
-      assert.equal(localities.size, 1, phrase);
-      const [id] = localities;
-      // A namesake only when the phrase does not name the part's village.
-      assert.equal(normalize(byId.get(id)?.name ?? ""), normalize(l.name));
-      if (phrase !== l.name) assert.equal(id, l.id, phrase);
+    for (const locality of [
+      l.name,
+      ...(parent ? [`${l.name} (${parent})`] : []),
+    ]) {
+      const text = `W dniu 12.10.2026 brak wody: ${parent ? `${parent}, ` : ""}${l.name}.`;
+      const r = gate(text, { locality, locality_verbatim: l.name }, places);
+      if (!r.kept) continue;
+      assert.equal(dl(r.locality.name), dl(l.name), locality);
+      if (locality !== l.name) assert.equal(r.locality.id, l.id, locality);
     }
   }
-  for (const s of places.streets) {
+  for (const s of data.streets) {
     const l = byId.get(s.localityId);
     assert.ok(l, s.id);
     const words = s.name.split(" ");
     for (let i = 0; i < words.length; i++) {
       const street = words.slice(i).join(" ");
-      const r = resolve({ locality: l.name, street }, undefined, places);
-      if (typeof r === "string") {
-        // Dropped: only when another street of that locality ends the same
-        // (or its locality's name is ambiguous).
-        assert.match(
-          r,
-          /\d+ streets "|is \d+ localities/,
-          `${l.name}, ${street}: ${r}`,
+      const r = gate(
+        `W dniu 12.10.2026 brak wody: ${l.name}, ul. ${street}.`,
+        {
+          locality: l.name,
+          locality_verbatim: l.name,
+          street,
+          street_verbatim: `ul. ${street}`,
+        },
+        places,
+      );
+      // Kept, it is this street, or the one whose whole form this is
+      // ("Mazury", not "Boczna Mazury"); dropped, for a reason of the gate.
+      if (!r.kept) assert.ok(r.reason, `${l.name}, ${street}`);
+      else if (r.street?.id !== s.id)
+        assert.ok(
+          r.street &&
+            streetForms(r.street).some((f) => wnorm(f) === wnorm(street)),
+          `${l.name}, ${street}: ${r.street?.name}`,
         );
-        continue;
-      }
-      // The street itself matches, so a single match is the street.
-      assert.deepEqual(ids(r), [s.id], `${l.name}, ${street}`);
     }
   }
   // A street name given with any locality: that locality's street or none.
-  const streetNames = [...new Set(places.streets.map((s) => s.name))];
-  for (const l of places.localities)
-    for (const street of streetNames) {
-      const r = resolve({ locality: l.name, street }, undefined, places);
-      if (typeof r === "string") continue;
-      assert.equal(r.places.length, 1);
-      const hit = places.streets.find((s) => s.id === r.places[0].streetId);
-      assert.equal(hit?.localityId, r.places[0].localityId, street);
-      assert.equal(
-        normalize(byId.get(hit?.localityId ?? "")?.name ?? ""),
-        normalize(l.name),
+  const names = [...new Set(data.streets.map((s) => s.name))];
+  for (const l of data.localities)
+    for (const street of names) {
+      const r = gate(
+        `W dniu 12.10.2026 brak wody: ${l.name}, ul. ${street}.`,
+        {
+          locality: l.name,
+          locality_verbatim: l.name,
+          street,
+          street_verbatim: `ul. ${street}`,
+        },
+        places,
       );
+      if (!r.kept) continue;
+      assert.equal(r.street?.localityId, r.locality.id, street);
+      assert.equal(dl(r.locality.name), dl(l.name), street);
     }
 }
 

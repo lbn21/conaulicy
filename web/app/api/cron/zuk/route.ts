@@ -1,5 +1,5 @@
-import { zukPlaces } from "@/lib/schedule";
 import { handleZukCron } from "@/lib/zuk-cron";
+import { ZUK_PLACES } from "@/lib/zuk-places.generated";
 import { readZukFile, writeZukFile } from "@/lib/zuk-store";
 
 // ZUK's water cuts into the private Blob file (lib/zuk-cron.ts). Vercel Cron
@@ -18,7 +18,9 @@ export function GET(request: Request) {
     fetch,
     readFile: () => readZukFile(true),
     writeFile: writeZukFile,
-    places: zukPlaces,
+    // The TERYT snapshot, not the database: the prompt and the gate need
+    // each street's CECHA and NAZWA_1 (lib/zuk-resolve.ts).
+    places: async () => ZUK_PLACES,
     xaiKey: process.env.XAI_API_KEY,
     now: () => new Date(),
     log: (line) => console.log(JSON.stringify(line)),

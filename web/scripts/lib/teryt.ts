@@ -229,7 +229,7 @@ export function changesTable(changes: TerytChange[]): string {
 export type PlaceRows = {
   /** "SIMC;name;kind;parent SIMC or empty". */
   localities: string[];
-  /** "SIMC-SYM_UL;SIMC;name". */
+  /** "SIMC-SYM_UL;SIMC;name;CECHA;NAZWA_1", CECHA and NAZWA_1 raw. */
   streets: string[];
 };
 
@@ -253,7 +253,9 @@ export function placeRows(
       .sort(byId),
     streets: ulic
       .filter((r) => tercs.includes(r.terc))
-      .map((r) => `${streetId(r)};${r.simc};${ulicName(r)}`)
+      .map(
+        (r) => `${streetId(r)};${r.simc};${ulicName(r)};${r.cecha};${r.nazwa1}`,
+      )
       .sort(byId),
   };
 }

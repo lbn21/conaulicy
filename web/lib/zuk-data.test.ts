@@ -3,10 +3,12 @@ import { test } from "node:test";
 import type { Disruption } from "./disruptions.ts";
 import { readPost } from "./zuk.ts";
 import {
+  NOT_WATER,
   PAST,
   parseZukFile,
   STALE_MS,
   type StoredPost,
+  WATER_QUALITY,
   type ZukFile,
   zukView,
 } from "./zuk-data.ts";
@@ -35,7 +37,7 @@ function stored(id: number, over: Partial<StoredPost> = {}): StoredPost {
 }
 
 const file = (posts: StoredPost[], checkedAt = CHECKED): ZukFile => ({
-  version: 2,
+  version: 3,
   generatedAt: checkedAt,
   checkedAt,
   posts,
@@ -64,7 +66,13 @@ test("stale: data last checked more than 60 minutes ago", () => {
 test("parse: only a file we wrote", () => {
   assert.deepEqual(parseZukFile(JSON.stringify(file([]))), file([]));
   assert.equal(parseZukFile("not json"), null);
-  assert.equal(parseZukFile(JSON.stringify({ ...file([]), version: 3 })), null);
+  assert.equal(parseZukFile(JSON.stringify({ ...file([]), version: 4 })), null);
+  // Versions 1 and 2 are read as they are.
+  for (const version of [1, 2])
+    assert.equal(
+      parseZukFile(JSON.stringify({ ...file([]), version }))?.version,
+      version,
+    );
   assert.equal(parseZukFile("null"), null);
 });
 
@@ -140,15 +148,81 @@ test("clash: two posts give one place and day different hours", () => {
 });
 
 test("change: an earlier post on the same locality becomes a Notice", () => {
-  const earlier = stored(23860, { publishedAt: "2023-10-20 10:00:00" });
-  const change = stored(24161, { change: true });
+  // 39857 (19 Oct) and a later date-change post on Lisie Jamy.
+  const earlier = stored(39857);
+  const change = stored(39855, {
+    publishedAt: "2026-10-17 10:00:00",
+    change: true,
+  });
+  assert.ok(earlier.items.length > 0 && change.items.length > 0);
   const view = zukView(
     file([earlier, change]),
-    new Date("2023-11-02T06:00:00Z"),
+    new Date("2026-10-16T06:00:00Z"),
   );
-  assert.ok(view.disruptions.every((d) => d.uid.startsWith("zuk-24161-")));
+  assert.ok(view.disruptions.length > 0);
+  assert.ok(view.disruptions.every((d) => d.uid.startsWith("zuk-39855-")));
   assert.deepEqual(
     view.notices.map((n) => n.uid),
-    ["zuk-23860"],
+    ["zuk-39857"],
   );
+});
+
+const hidden = (id: number, reason: string, over: Partial<StoredPost> = {}) =>
+  stored(id, {
+    status: "notice",
+    reason,
+    itemCount: 0,
+    items: [],
+    localityIds: ["0606441"],
+    ...over,
+  });
+
+test("not-water and water-quality: never shown, like past", () => {
+  // 39885 published 23 Oct: a Notice of it would still be shown on 25 Oct.
+  const shownAsNotice = stored(39885, {
+    status: "notice",
+    reason: "ambiguous",
+    itemCount: 0,
+    items: [],
+  });
+  assert.equal(zukView(file([shownAsNotice]), NOW).notices.length, 1);
+  for (const reason of [NOT_WATER, WATER_QUALITY, PAST]) {
+    const view = zukView(file([hidden(39885, reason)]), NOW);
+    assert.deepEqual(view.notices, [], reason);
+    assert.deepEqual(view.disruptions, [], reason);
+  }
+});
+
+test("water-quality: its places are kept in the file, not shown", () => {
+  const quality = hidden(39885, WATER_QUALITY, {
+    qualityStatus: "warning",
+    places: [
+      {
+        place: { localityId: "0606441", streetId: null },
+        label: { locality: "Wólka Krowicka", parent: null, street: null },
+        where: "Wólka Krowicka",
+        scope: { type: "whole" },
+        date: "2026-10-24",
+      },
+    ],
+  });
+  const parsed = parseZukFile(JSON.stringify(file([quality])));
+  assert.equal(parsed?.posts[0].places?.length, 1);
+  assert.deepEqual(zukView(parsed, NOW).notices, []);
+});
+
+test("not-water: a date-change post that is not about water doubts nothing", () => {
+  const earlier = stored(39857);
+  const lisie = earlier.items[0].place.localityId;
+  const sesja = hidden(39855, NOT_WATER, {
+    publishedAt: "2026-10-17 10:00:00",
+    change: true,
+    localityIds: [lisie],
+  });
+  const view = zukView(
+    file([earlier, sesja]),
+    new Date("2026-10-16T06:00:00Z"),
+  );
+  assert.ok(view.disruptions.length > 0);
+  assert.deepEqual(view.notices, []);
 });
