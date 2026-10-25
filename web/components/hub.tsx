@@ -59,7 +59,8 @@ type Loaded = { module: Module<unknown>; data: unknown };
 /** Where a module's „Szczegóły” go: its subpage, or the source's page. */
 function detailsHref({ module }: Loaded, place: PlaceView): string {
   if ("href" in module) return module.href;
-  return `${placePath(place.id)}/${module.id}${place.nr ? `?nr=${place.nr}` : ""}`;
+  // The number as given, as the subpage's breadcrumb back here.
+  return `${placePath(place.id)}/${module.id}${place.givenNr ? `?nr=${place.givenNr}` : ""}`;
 }
 
 // An alert slot's line; those after the first keep a gap (GOV.UK's

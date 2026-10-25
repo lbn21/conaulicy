@@ -344,7 +344,9 @@ export function Breadcrumbs({
   if (subpage) {
     items.push([
       withHouseNumber(place.name, place.nr),
-      placePath(place.id, place.nr),
+      // The number as given, even where it changes nothing (the address
+      // page then says so); none on /numer.
+      placePath(place.id, place.givenNr),
     ]);
   }
   return (

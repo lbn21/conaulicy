@@ -104,20 +104,14 @@ const cards = (html) =>
   );
 
 try {
-  // [address page, its waste subpage, the links between them]: a number
-  // only counts on a split street (elsewhere the page drops it, as before).
   // [address page, its waste subpage, the hub's breadcrumbs, the address
-  // page's name in /smieci's]: a number only counts on a split street
-  // (elsewhere the page drops it, as before).
+  // page's name in /smieci's, the links between them]: the number given
+  // stays in both links; the name shows it only on a split street.
   for (const [path, waste, locality, name, links = [path, waste]] of [
     [STREET, `${STREET}/smieci`, TOWN, "ul. Adama Asnyka"],
-    [
-      `${STREET}?nr=12`,
-      `${STREET}/smieci?nr=12`,
-      TOWN,
-      "ul. Adama Asnyka",
-      [STREET, `${STREET}/smieci`],
-    ],
+    // The number changes nothing here, but both links keep it, so the note
+    // stays on the way back.
+    [`${STREET}?nr=12`, `${STREET}/smieci?nr=12`, TOWN, "ul. Adama Asnyka"],
     [VILLAGE, `${VILLAGE}/smieci`, VILLAGES("Gmina Lubaczów"), "Dąbrowa"],
     [
       VILLAGE_STREET,
@@ -244,6 +238,21 @@ try {
     TOWN,
     [SPLIT, "ul. Tadeusza Kościuszki"],
   ]);
+  // A wrong number on a split street goes back with it (the hub's error);
+  // no usable number (/numer) goes back without.
+  crumbsAre(
+    `${SPLIT}/smieci?nr=42`,
+    (await main(`${SPLIT}/smieci?nr=42`)).main,
+    [HOME, TOWN, [`${SPLIT}?nr=42`, "ul. Tadeusza Kościuszki"]],
+  );
+  for (const nr of ["", "x!"]) {
+    const path = `${STREET}/smieci?nr=${nr}`;
+    crumbsAre(path, (await main(path)).main, [
+      HOME,
+      TOWN,
+      [STREET, "ul. Adama Asnyka"],
+    ]);
+  }
   // Never on a split street (asked, or a wrong number) or a village.
   for (const path of [
     SPLIT,
