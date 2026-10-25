@@ -3,9 +3,9 @@
 // build's IMGW setting (mock:none in CI; check-warnings.mjs covers warnings):
 // - breadcrumbs (GOV.UK's, every item a link, the page itself left out):
 //   the hub „Strona główna › <locality>” (a street's to its locality's
-//   group on /ulice, #m-<SIMC>; a village part's to its village's group
-//   when that has streets; any other village's to the villages; a village
-//   names its gmina), /smieci adds the address page; the street page's
+//   line on /ulice, #m-<SIMC>; a village part's to its village's line;
+//   any other village's to the villages; a village names its gmina),
+//   /smieci adds the address page; the street page's
 //   error variants keep the hub's;
 // - the hub: no caption (the locality is in its breadcrumbs), h1, „Zmień adres”, h2 „Co Cię czeka”, the waste card
 //   first (h3 „Śmieci”, „Szczegóły – śmieci” to /smieci, ?nr= kept), its
@@ -39,9 +39,11 @@ const SPLIT = "/adres/0972447-90004";
 const VILLAGE = "/adres/0606010";
 const VILLAGE_STREET = "/adres/0606234-90007";
 // ul. Wodna in Młodów, and Pilipy, a part of Młodów: both crumbs go to
-// Młodów's group on /ulice (check-all-places.mjs checks its id).
+// Młodów's line on /ulice; Holiki, a part of Dąbrowa (no streets), to
+// Dąbrowa's (check-all-places.mjs checks their ids).
 const MLODOW_STREET = "/adres/0606286-24550";
 const VILLAGE_PART = "/adres/0606300";
+const BARE_VILLAGE_PART = "/adres/0606027";
 const MAIN = /<main[\s\S]*<\/main>/;
 const DATE = String.raw`\p{L}+, \d{1,2} \p{L}+`;
 const NOTE = sharedNumberNote({
@@ -136,6 +138,12 @@ try {
       `${VILLAGE_PART}/smieci`,
       GROUP("0606286", "Młodów, gmina Lubaczów"),
       "Pilipy",
+    ],
+    [
+      BARE_VILLAGE_PART,
+      `${BARE_VILLAGE_PART}/smieci`,
+      GROUP("0606010", "Dąbrowa, gmina Lubaczów"),
+      "Holiki",
     ],
     [
       `${SPLIT}?nr=7a`,

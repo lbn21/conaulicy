@@ -67,8 +67,8 @@ type Place = {
   type: string;
   area: string;
   /**
-   * The SIMC of the /ulice group its locality crumb links to: a street's
-   * locality; a village part's village, if that has streets (a group);
+   * The SIMC of the /ulice line its locality crumb links to: a street's
+   * locality; a village part's village, if that has a line there;
    * otherwise null (the villages' list).
    */
   group: string | null;
@@ -105,8 +105,8 @@ export type PlaceView = {
   label: string;
   area: string;
   /**
-   * The SIMC of the /ulice group its locality crumb links to: a street's
-   * locality; a village part's village, if that has streets (a group);
+   * The SIMC of the /ulice line its locality crumb links to: a street's
+   * locality; a village part's village, if that has a line there;
    * otherwise null (the villages' list).
    */
   group: string | null;
@@ -146,6 +146,13 @@ const listed = notInArray(streets.prefix, UNLISTED_PREFIXES);
 
 const parent = alias(localities, "parent");
 
+// A village part's village's streets, all or those matching `where`.
+const parentStreets = (where?: SQL) =>
+  db()
+    .select({ id: streets.id })
+    .from(streets)
+    .where(and(eq(streets.localityId, parent.id), where));
+
 const streetPlaces = (where: SQL | undefined, limit: number) =>
   db()
     .select({
@@ -174,12 +181,11 @@ const villagePlaces = (where: SQL | undefined, limit: number) =>
       kind: localities.kind,
       parentId: localities.parentId,
       parent: parent.name,
-      // The village has a group of its streets on /ulice.
-      parentGroup: sql<boolean>`${exists(
-        db()
-          .select({ id: streets.id })
-          .from(streets)
-          .where(and(eq(streets.localityId, parent.id), listed)),
+      // The village has a line on /ulice: as a place (no streets), or as
+      // the group of its listed streets.
+      parentLine: sql<boolean>`${or(
+        notExists(parentStreets()),
+        exists(parentStreets(listed)),
       )}`,
       gmina: gminy.name,
       scheduleUrl: gminy.scheduleUrl,
@@ -220,7 +226,7 @@ function villagePlace(row: VillageRow): Place {
     label: villageLabel(row),
     type: row.kind,
     area: row.parent ? `${row.parent}, gmina ${gmina}` : `gmina ${gmina}`,
-    group: row.parentGroup ? row.parentId : null,
+    group: row.parentLine ? row.parentId : null,
     gmina: row.gmina,
     schedulePage: row.scheduleUrl,
     localityId: row.id,

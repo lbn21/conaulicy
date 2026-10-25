@@ -315,8 +315,8 @@ function placeCaption(place: PlaceView): string {
 
 /**
  * GOV.UK's breadcrumbs, every item a link and the page itself left out: the
- * home page, the locality (its group on /ulice: a street's locality, a
- * village part's village with streets; else the villages' list), and on a
+ * home page, the locality (its line on /ulice: a street's locality, a
+ * village part's village; else the villages' list), and on a
  * module's subpage the address page. A village names
  * its gmina there, as the caption did, not itself again.
  * Inside <main> (the layout's), so its own margin-top gives way to main's

@@ -8,7 +8,8 @@
 // Covers: a renamed street's old id (place_redirects), a city street from the old fixture URL (ul. Adama Asnyka), streets
 // with diacritics, a street in no zone, a street whose schedule has ended
 // (only past dates), villages with streets, villages without, a village
-// part whose village has streets (Pilipy, Młodów), one month
+// part whose village has streets (Pilipy, Młodów) and one whose village has
+// none (Holiki, Dąbrowa), one month
 // with 6 pickup days and holiday-shifted dates, and the home page's examples
 // (lib/examples.ts) under their real ids.
 import { createHash } from "node:crypto";
@@ -60,6 +61,13 @@ const LOCALITIES = [
     name: "Pilipy",
     kind: "czesc_wsi",
     parentId: "0606286",
+  },
+  {
+    id: "0606027",
+    gminaId: "1809042",
+    name: "Holiki",
+    kind: "czesc_wsi",
+    parentId: "0606010",
   },
 ] as const;
 
@@ -164,11 +172,16 @@ const ZONES: Array<{
   {
     id: "waste:gmina-s1",
     name: "Lisie Jamy, Dąbrowa, Szczutków i Młodów",
-    members: ["0606234", "0606010", "0606375", "0606286", "0606300"].map(
-      (localityId) => ({
-        localityId,
-      }),
-    ),
+    members: [
+      "0606234",
+      "0606010",
+      "0606375",
+      "0606286",
+      "0606300",
+      "0606027",
+    ].map((localityId) => ({
+      localityId,
+    })),
     rule: {
       weekday: 4,
       mixed: ["zmieszane_i_bio"],

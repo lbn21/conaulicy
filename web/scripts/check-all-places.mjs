@@ -3,7 +3,8 @@
 // town's streets and their letter headings are in Polish order (by the
 // street's own name, not its prefix); a place without pickup data (the
 // fixture's street in no zone, only it) says „(brak danych)”; every id is
-// unique, and the group headings have their SIMC ids; and the route
+// unique, and the town's heading and every village's line have their SIMC
+// ids; and the route
 // loads no JS beyond what /dostepnosc, a page without client code, loads.
 //
 // With SCREENSHOT_DIR, also saves screenshots of /ulice at 390 px and 1280 px
@@ -63,19 +64,28 @@ try {
     );
   }
 
-  // Every id once; the town's and each village's group heading by SIMC,
+  // Every id once; the town's heading and every village's line by SIMC,
   // where the breadcrumbs link (check-modules.mjs), the old ids kept.
   const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map(([, id]) => id);
   const repeated = ids.filter((id, i) => ids.indexOf(id) !== i);
   if (repeated.length > 0) failures.push(`/ulice: ids twice: ${repeated}`);
-  for (const [id, text] of [
-    ["m-0972447", "Ulice w Lubaczowie"],
-    ["m-0606234", "Lisie Jamy"],
-    ["m-0606286", "Młodów"],
+  if (!main.includes('<h2 id="m-0972447" class="govuk-heading-m">'))
+    failures.push("/ulice: no id m-0972447 on the town's heading");
+  // A village with streets, then one without (a place), and a village part.
+  for (const [id, line] of [
+    ["m-0606234", "Lisie Jamy<ul"],
+    ["m-0606286", "Młodów<ul"],
+    ["m-0606010", '<a href="/adres/0606010" class="govuk-link">'],
+    ["m-0606027", '<a href="/adres/0606027" class="govuk-link">'],
   ]) {
-    if (!new RegExp(`<(h2|span) id="${id}"[^>]*>${text}</`).test(main))
-      failures.push(`/ulice: no heading ${text} with id ${id}`);
+    if (!main.includes(`<li id="${id}">${line}`))
+      failures.push(`/ulice: no line ${id}`);
   }
+  // Every village line has one.
+  const villages = main.slice(main.indexOf('id="wsie-heading"'));
+  const lines = villages.match(/<ul class="govuk-list">([\s\S]*)<\/ul>/)?.[1];
+  const bare = (lines ?? "").match(/<li>(?!<a href="\/adres\/[^"]*-)/g);
+  if (bare) failures.push(`/ulice: ${bare.length} village lines without id`);
   for (const id of ["ulice-heading", "wsie-heading"]) {
     if (!ids.includes(id)) failures.push(`/ulice: no id ${id}`);
   }

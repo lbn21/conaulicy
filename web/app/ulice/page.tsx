@@ -54,8 +54,9 @@ export default async function AllPlacesPage() {
             .
           </p>
 
-          {/* Ids from SIMC (localityAnchor), where the breadcrumbs link;
-              the section keeps the old #ulice-heading, at the same spot. */}
+          {/* Ids from SIMC (localityAnchor) on the town's heading and every
+              village's line, where the breadcrumbs link; the section keeps
+              the old #ulice-heading, at the same spot. */}
           <section id="ulice-heading" aria-labelledby={town}>
             <h2 id={town} className="govuk-heading-m">
               Ulice w Lubaczowie
@@ -83,14 +84,15 @@ export default async function AllPlacesPage() {
             </h2>
             <ul className="govuk-list">
               {list.villages.map((village) => (
-                <li key={village.id ?? village.label}>
+                <li
+                  key={village.id ?? village.label}
+                  id={localityAnchor(village.localityId)}
+                >
                   {village.id ? (
                     <Place place={{ id: village.id, label: village.label }} />
                   ) : (
                     <>
-                      <span id={localityAnchor(village.localityId)}>
-                        {village.label}
-                      </span>
+                      {village.label}
                       <ul className="govuk-list govuk-!-margin-left-4 govuk-!-margin-top-1">
                         {village.streets.map((street) => (
                           <li key={street.id}>
