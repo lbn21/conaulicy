@@ -6,21 +6,25 @@ minutes into one JSON file in Vercel Blob. No database writes, no UI yet.
 ## A run (`GET /api/cron/zuk`, Vercel Cron `*/15 * * * *`)
 
 1. Reads the stored file (`zuk/disruptions.json`, private store `conaulicy-zuk`).
-2. Fetches the gmina's posts of the last 30 days (`/wp-json/wp/v2/posts`,
+2. Fetches the gmina's posts of the last 14 days (`/wp-json/wp/v2/posts`,
    `lib/sources/gmina-lubaczow/fetch.ts`). No keyword gate: every post goes
-   to the model.
-3. Has grok-4.7 (xAI, reasoning low) read only the posts that are new, edited
-   (`modified`) or whose last reading failed or waited: at most 4 per run
+   to the model. 14 days: in 18 months of the gmina's posts (54 outage
+   posts), an outage was announced 0-4 days ahead and its last day was at
+   most 6 days after the post.
+3. Has grok-4.7 (xAI, reasoning low) read only the posts that are new,
+   edited (`modified`), read by an older reader (`reader` below
+   `ZUK_READER`) or whose last reading failed: at most 4 per run
    (`lib/zuk-ai.ts`), one call per post. Every other post keeps its stored
-   result. A post whose title's days are all before today (Warsaw) is not
-   read: a Notice with `reason: "past"`, never shown. The model says what
-   the post is (`post_type`):
+   result, and so does a post read before that is not read this run. A
+   post whose title's days are all before today (Warsaw) is not read
+   (`seen`, `reason: "past"`). The model says what the post is
+   (`post_type`):
    - `water_outage`: read for its cuts (steps 4 and 5);
    - `water_quality` (boil-water, contamination, or its lifting,
-     `quality_status`): a Notice with `reason: "water-quality"`, its places
+     `quality_status`): `active` with `reason: "water-quality"`, its places
      through the same gate (`places`, each with its day; none if none
      passes), not shown yet;
-   - `other`: a Notice with `reason: "not-water"`, never read again unless
+   - `other`: `seen` with `reason: "not-water"`, never read again unless
      edited, never shown.
    The old keyword filter (`matchesOutageKeywords`) only cross-checks: where
    it and the model disagree, the log has `{zuk: "classify-disagree"}`.
@@ -30,22 +34,51 @@ minutes into one JSON file in Vercel Blob. No database writes, no UI yet.
    there is no note, the houses from the note). A place that fails is
    dropped, alone, and shown nowhere; a day or time that fails, or no place
    left, makes the whole post a Notice: a link, no date.
-5. Drops cuts that are over (`itemCount` keeps how many were read) and
-   writes the file if its content changed, or to refresh `checkedAt` every
-   30 minutes.
+5. Drops cuts that are over (`itemCount` keeps how many were read), sorts
+   the posts into `active` and `seen` (below) and writes the file if its
+   content changed, or to refresh `checkedAt` every 30 minutes.
 
-The gmina's site down: 502, the file stays and turns stale. xAI down: new
-and edited posts become Notices (`reason: "ai-unavailable"`), retried next
-run; so do posts over the run's 4 calls (`reason: "ai-deferred"`). A file of
-version 1 or 2 (read with the v1 prompt and gate) is still read by the
-pages; the cron reads every post again and writes version 3.
+The gmina's site down: 502, the file stays and turns stale. xAI down: a new
+post is `seen` with `reason: "ai-unavailable"`, retried next run, never
+shown; a new post over the run's 4 calls is stored nowhere and read on a
+later run. Either way an edited post keeps its old reading until it is read.
+
+## The file (version 4, `lib/zuk-data.ts`)
+
+```json
+{
+  "version": 4,
+  "generatedAt": "2026-10-25T08:00:00.000Z",
+  "checkedAt": "2026-10-25T08:00:00.000Z",
+  "active": [{ "id": 39885, "modified": "…", "reader": 3, "url": "…",
+               "title": "…", "status": "parsed", "localityIds": ["…"],
+               "itemCount": 76, "items": ["…"], "sourceId": "gmina-lubaczow" }],
+  "seen": [{ "id": 39868, "modified": "…", "reason": "not-water", "reader": 3 }]
+}
+```
+
+- `active`: what the pages read: parsed posts with cuts still to come
+  (only those cuts), Notices (water posts that could not be read) within
+  their 14 days, water-quality posts (not shown yet), and a date-change
+  post while it doubts an active one.
+- `seen`: one record per other decided post, for the cron only: `not-water`,
+  `past` (its title's days or its cuts are over), `expired` (a Notice past
+  its 14 days), `ai-unavailable`. No title, url, places or cuts.
+- A post leaves both when it leaves the 14-day window. The model's tokens
+  and cost are in the log only.
+- The file version is the shape; `reader` (`ZUK_READER`, now 3: the v3.1
+  prompt, schema and gate) is what read the post. Raise `ZUK_READER` and
+  every post is read again, 4 a run. A file of an older version is no
+  file: the pages show the
+  source link and the cron reads the window afresh, 4 a run, and replaces
+  it (never delete the Blob by hand).
 
 ## The prompt (v3.1)
 
 One module per source (`lib/sources/<id>/prompt.ts`; a new source is a
 prompt plus a fetch adapter, `lib/sources/source.ts`); the schema
 (`schema-v31.json` of the X8 handoff), the reply check, the guards and the
-place gate are shared. Each stored post keeps its `sourceId`. The gmina
+place gate are shared. Each active post keeps its `sourceId`. The gmina
 Lubaczów's prompt is the rules (what a post is, `post_type`, Jakub's X8
 text; the item and place-name rules, every example name invented) and
 then the context, built from the TERYT snapshot (`systemPrompt`): our town,
