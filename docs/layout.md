@@ -22,6 +22,7 @@ With no calendar file, or nothing to show, the rest keeps the same order. New su
 Each needs Jakub's OK; listed here so nothing drifts silently.
 
 - `/smieci` and the street page: GOV.UK's error summary above the caption, and the house-number note under the h1 (a number that changes nothing), both from `PlaceHeading` (`web/components/place-page.tsx`). Existing before task 125.
+  Since task 126 the same note also says when the address register (PRG, `web/lib/prg.ts`) has no such number at the place, on the hub and on every subpage's house-number variant; a hint only, never shown with a split street's error.
 - `/smieci`: „Harmonogram do druku (PDF)” between the calendar block and the pickup list. Existing before task 125.
 - `/woda`: when the gmina's posts were last read over an hour ago, an inset with the stale note (`staleNote`, `web/lib/water-module.ts`) between the checked line and the calendar block. Existing before task 125.
 - `/woda` with no cut here: no AI-read note and no source inset; the empty text links the gmina's news itself (`waterEmpty`).

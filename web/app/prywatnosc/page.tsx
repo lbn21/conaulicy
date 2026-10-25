@@ -47,8 +47,8 @@ export default function PrivacyPage() {
               <h2 className="govuk-heading-m">Anonimowe statystyki</h2>
               <p className="govuk-body">
                 Liczymy odwiedziny, żeby wiedzieć, czy strona się przydaje: ile
-                osób ją otwiera, które strony i jak często ktoś dodaje odbiory
-                albo przerwy w dostawie wody do kalendarza albo otwiera PDF.
+                osób ją otwiera, które strony i jak często ktoś dodaje do
+                kalendarza odbiory lub przerwy w dostawie wody albo otwiera PDF.
                 Robi to Vercel Web Analytics, bez ciasteczek. Adres IP nie jest
                 zapisywany, a skrót, który odróżnia jedną wizytę od drugiej,
                 znika po 24 godzinach. Widzimy tylko zbiorcze liczby, nigdy

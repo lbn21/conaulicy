@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import type { PlaceView } from "../lib/schedule.ts";
 import {
   POST_39885,
   storedPost,
@@ -30,9 +31,10 @@ const waterPage = (posts = [storedPost(POST_39885, CHECKED)], place = ZUKI) =>
     }),
   );
 
-const wastePage = () =>
+const wastePage = (place: Partial<PlaceView> = {}, missing = false) =>
   renderToStaticMarkup(
     createElement(WasteDetails, {
+      missing,
       data: testPlace({
         zoneId: "waste:miasto-s2",
         verified: false,
@@ -58,6 +60,7 @@ const wastePage = () =>
             seenAt: null,
           },
         ],
+        ...place,
       }),
       checkedAt: new Date(CHECKED),
     }),
@@ -169,4 +172,53 @@ test("a click sends whichever of zone, source and place the link has", () => {
   assert.deepEqual(eventProperties({ event: "x", zone: "waste:miasto-s2" }), {
     zone: "waste:miasto-s2",
   });
+});
+
+// The house number against the address register (lib/prg.ts): PRG has 1-7
+// at ul. Adama Asnyka, nothing at os. Unii Lubelskiej.
+const ASNYKA = { id: "0972447-00470", name: "ul. Adama Asnyka" };
+const PRG_NOTE =
+  "Nie znaleźliśmy nr 9999 przy tej ulicy w rejestrze adresów. Sprawdź, czy numer jest dobry.";
+
+test("a number PRG has: no note; one it lacks: the note, the schedule as ever", () => {
+  assert.doesNotMatch(
+    wastePage({ ...ASNYKA, givenNr: "5" }),
+    /rejestrze adresów/,
+  );
+  const html = wastePage({ ...ASNYKA, givenNr: "9999" });
+  assert.match(
+    html,
+    new RegExp(
+      `<h1 class="govuk-heading-l">Odbiór śmieci</h1><p class="govuk-body">Harmonogram jest wspólny dla całej ulicy, także dla nr 9999\\. ${PRG_NOTE.replace(".", "\\.")}</p>`,
+    ),
+  );
+  assert.ok(
+    ascending(order(html, [...SKELETON, "Najbliższe odbiory", ...AFTER])),
+    html,
+  );
+  // /woda: the same note, the cuts as ever.
+  const water = waterPage(undefined, testPlace({ ...ASNYKA, givenNr: "9999" }));
+  assert.ok(water.includes(PRG_NOTE), water);
+  assert.ok(ascending(order(water, [...SKELETON, "<h2", "Godziny"])), water);
+});
+
+test("a place PRG has no points for: no note", () => {
+  const html = wastePage({
+    id: "0972447-48373",
+    name: "os. Osiedle Unii Lubelskiej",
+    givenNr: "9999",
+  });
+  assert.doesNotMatch(html, /rejestrze adresów/);
+});
+
+test("a split street: only the schedule's own error, never both", () => {
+  const html = wastePage({
+    ...ASNYKA,
+    zoneId: null,
+    askNumber: true,
+    unknownNr: "9999",
+    givenNr: "9999",
+  });
+  assert.match(html, /Numeru 9999 nie ma w harmonogramie tej ulicy/);
+  assert.doesNotMatch(html, /rejestrze adresów/);
 });

@@ -10,6 +10,10 @@ export const metadata: Metadata = pageMetadata({
     "Darmowa, niekomercyjna strona dla mieszkańców Lubaczowa i okolicznych wsi. Skąd bierzemy terminy wywozu śmieci i dlaczego rację ma zawsze harmonogram gminy.",
 });
 
+// The address register the house-number note checks against (lib/prg.ts).
+const PRG_PAGE =
+  "https://www.geoportal.gov.pl/pl/dane/panstwowy-rejestr-granic-prg/";
+
 export default function AboutPage() {
   return (
     <>
@@ -36,6 +40,13 @@ export default function AboutPage() {
             Terminy przepisujemy z harmonogramów miasta Lubaczów i gminy
             Lubaczów. Przy każdym adresie podajemy źródło i datę, kiedy je
             sprawdziliśmy.
+          </p>
+          <p className="govuk-body">
+            Wpisany numer domu porównujemy z{" "}
+            <a href={PRG_PAGE} className="govuk-link">
+              państwowym rejestrem adresów (PRG, GUGiK)
+            </a>
+            .
           </p>
           <p className="govuk-body">
             Nie jesteśmy urzędem. Gdyby coś się nie zgadzało, rację ma
