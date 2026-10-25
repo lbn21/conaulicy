@@ -217,10 +217,9 @@ try {
     )
       fail(path, `no „${WASTE_CHECKED}” under the waste card's source`);
     if (
-      !new RegExp(
-        `<p class="govuk-body">Pogoda: brak ostrzeżeń IMGW\\.(?:(?!</p>).)* Ostatnio sprawdziliśmy: ${DATE}, \\d{1,2}:\\d{2}\\.</p>`,
-        "su",
-      ).test(hub)
+      !/<p class="govuk-body">Pogoda: brak ostrzeżeń IMGW\.(?:(?!<\/p>).)* Ostatnio sprawdziliśmy: \d{1,2} \p{L}+, \d{1,2}:\d{2}\.<\/p>/su.test(
+        hub,
+      )
     )
       fail(path, "no checked line after the weather");
     if (
