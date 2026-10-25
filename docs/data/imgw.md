@@ -82,7 +82,7 @@ Nothing at all (no "no warnings" text) when there is no warning, the newest copy
 | `mock:real` | the real 24 Oct feed, verbatim (nothing for 1809; its times are past after 25 Oct) |
 | `mock:1809` | **derived, not real**: the 24 Oct feed with `1809` added to its podkarpackie warning, moved so it began an hour ago (level 1) |
 | `mock:1809?level=3` | the same at level 1, 2 or 3 |
-| `mock:1809?start=upcoming` | the same, starting in three hours |
+| `mock:1809?start=upcoming` | the same, starting at the next 10:00 at least two hours ahead (ends 16:00 the same day) |
 | `mock:1809?start=night` | the same, starting at the next 22:00 at least two hours ahead (ends 4:00 the next day) |
 | `mock:1809?also=2` / `also=2,3` | one or two more 1809 warnings at those levels, also derived: two other items of the 24 Oct feed, moved with ours |
 | `…&fail=500` / `fail=html` / `fail=timeout` | a broken upstream (HTTP 500, an HTML page, no answer) |
