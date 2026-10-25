@@ -5,6 +5,11 @@ import { CheckedLine } from "@/components/checked-line";
 import { ErrorSummary } from "@/components/error-summary";
 import { NOT_FOUND_TITLE, PageNotFound } from "@/components/page-not-found";
 import { PickupSchedule } from "@/components/pickup-schedule";
+import {
+  AiReadNote,
+  CalendarBlock,
+  SourceInset,
+} from "@/components/subpage-parts";
 import { withHouseNumber } from "@/lib/house";
 import type { Checked } from "@/lib/hub";
 import { indexable } from "@/lib/indexing";
@@ -454,24 +459,16 @@ function WasteBody({
         />
       ) : (
         <>
-          {/* GOV.UK's link button: a link that looks and works like a
-                button; GOV.UK's Button JS makes Space activate it. */}
-          {/* biome-ignore lint/a11y/useSemanticElements: it navigates to a file, so it stays a link, as GOV.UK documents */}
-          <a
+          <CalendarBlock
             href={`/ics/${encodeURIComponent(place.zoneId)}`}
-            role="button"
-            draggable="false"
-            className="govuk-button"
-            data-module="govuk-button"
-            data-event="calendar_add"
-            data-zone={place.zoneId}
-            data-source="street"
-          >
-            Dodaj do kalendarza
-          </a>
-          <p className="govuk-body">
-            Plik z datami. Telefon zapyta, czy wpisać je do kalendarza.
-          </p>
+            label="Dodaj do kalendarza"
+            hint="Plik z datami. Telefon zapyta, czy wpisać je do kalendarza."
+            data={{
+              "data-event": "calendar_add",
+              "data-zone": place.zoneId,
+              "data-source": "street",
+            }}
+          />
           <p className="govuk-body">
             <a
               href={`${placePath(place.id)}/harmonogram.pdf${place.nr ? `?nr=${place.nr}` : ""}`}
@@ -485,18 +482,8 @@ function WasteBody({
 
           <PickupSchedule days={place.days} renderedOn={place.today} />
 
-          {!place.verified && (
-            <div className="govuk-warning-text">
-              <span className="govuk-warning-text__icon" aria-hidden="true">
-                !
-              </span>
-              <strong className="govuk-warning-text__text">
-                <span className="govuk-visually-hidden">Uwaga</span>
-                {UNVERIFIED_NOTE}
-              </strong>
-            </div>
-          )}
-          <div className="govuk-inset-text">
+          {!place.verified && <AiReadNote text={UNVERIFIED_NOTE} />}
+          <SourceInset>
             {place.sources.map((source) => (
               <p key={source.label} className="govuk-body">
                 Źródło:{" "}
@@ -510,7 +497,7 @@ function WasteBody({
                 , {source.label}
               </p>
             ))}
-          </div>
+          </SourceInset>
         </>
       )}
     </>
