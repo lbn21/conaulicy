@@ -4,5 +4,11 @@
     "deploymentEnabled": {
       "import-review/**": false
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/zuk",
+      "schedule": "*/15 * * * *"
+    }
+  ]
 }

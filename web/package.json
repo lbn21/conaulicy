@@ -44,6 +44,7 @@
     "@leeoniya/ufuzzy": "1.0.19",
     "@neondatabase/serverless": "1.2.0",
     "@vercel/analytics": "2.0.1",
+    "@vercel/blob": "2.8.2",
     "accessible-autocomplete": "3.0.2",
     "drizzle-orm": "0.45.3",
     "govuk-frontend": "6.5.1",
