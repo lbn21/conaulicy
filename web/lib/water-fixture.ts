@@ -31,6 +31,39 @@ export const KROWICA_RANGE: Pick<
   note: "od nr 10 do nr 50",
 };
 
+/**
+ * Real post 39872 (22.10.2026), ul. Jana III Sobieskiego in Karolówka "od nr
+ * 23 do nr 47", as a cut by house numbers on a street.
+ */
+export const SOBIESKIEGO_RANGE: Pick<
+  Disruption,
+  "place" | "label" | "where" | "scope" | "note"
+> = {
+  place: { localityId: "0606116", streetId: "0606116-20431" },
+  label: {
+    locality: "Karolówka",
+    parent: null,
+    street: "Jana III Sobieskiego",
+  },
+  where: "ul. Jana III Sobieskiego od nr 23 do nr 47",
+  scope: { type: "ranges", ranges: [{ from: "23", to: "47" }] },
+  note: "od nr 23 do nr 47",
+};
+
+/** ul. Jana III Sobieskiego in Karolówka, with the house number as given. */
+export const sobieskiego = (givenNr: string | null): PlaceView =>
+  testPlace({
+    id: "0606116-20431",
+    name: "ul. Jana III Sobieskiego",
+    label: "ul. Jana III Sobieskiego, Karolówka",
+    area: "Karolówka",
+    group: "0606116",
+    gmina: "Lubaczów (gmina)",
+    localityId: "0606116",
+    streetId: "0606116-20431",
+    givenNr,
+  });
+
 /** ul. Żuki in Lubaczów, as the pages get it, with `overrides`. */
 export const testPlace = (overrides: Partial<PlaceView> = {}): PlaceView => ({
   id: "0972447-26555",

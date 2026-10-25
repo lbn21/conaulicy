@@ -28,6 +28,7 @@ import {
   waterNone,
   waterSources,
   waterSummary,
+  waterTrace,
 } from "@/lib/water-module";
 import {
   type Weather,
@@ -55,6 +56,11 @@ export type Module<D> = {
   summary(data: D): SummaryRow[] | null;
   /** What „Bez zapowiedzi” says for it, after its title (summary null). */
   none?: string | ((data: D) => string);
+  /**
+   * A line after its card or its „Bez zapowiedzi” line (water: a cut left
+   * out for the house number); left out or null: none.
+   */
+  trace?(data: D): string | null;
   /** Its sources, one „Źródło” each: a link and when it was checked. */
   sources(data: D): Part[][];
   /**
@@ -117,6 +123,7 @@ const woda: Module<Water> = {
   alerts: waterAlerts,
   summary: waterSummary,
   none: waterNone,
+  trace: waterTrace,
   sources: waterSources,
   checkedAt: waterChecked,
   metadata: waterMetadata,

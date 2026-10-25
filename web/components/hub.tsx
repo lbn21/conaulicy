@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { CheckedLine } from "@/components/checked-line";
 import { Parts, textOf } from "@/components/parts";
 import {
@@ -36,6 +37,12 @@ const checkedAt = ({ module, data }: Loaded) =>
 /** What „Bez zapowiedzi” says for a module. */
 const noneText = ({ module, data }: Loaded) =>
   typeof module.none === "function" ? module.none(data) : module.none;
+
+/** The module's line after its card or „Bez zapowiedzi” line, if any. */
+export function Trace({ module, data }: Loaded) {
+  const text = module.trace?.(data) ?? null;
+  return text && <p className="govuk-body">{text}</p>;
+}
 
 /** Where a module's „Szczegóły” go: its subpage, or the source's page. */
 function detailsHref({ module }: Loaded, place: PlaceView): string {
@@ -200,12 +207,10 @@ export async function HubMain({
           Co Cię czeka
         </h2>
         {cards.map(({ entry, rows }) => (
-          <Card
-            key={entry.module.id}
-            loaded={entry}
-            rows={rows}
-            place={place}
-          />
+          <Fragment key={entry.module.id}>
+            <Card loaded={entry} rows={rows} place={place} />
+            <Trace {...entry} />
+          </Fragment>
         ))}
       </section>
       {quiet.length > 0 && (
@@ -220,15 +225,20 @@ export async function HubMain({
             const { module, data } = entry;
             const checked = checkedLine(checkedAt(entry));
             return (
-              <p key={module.id} className="govuk-body">
-                {`${module.title}: ${noneText(entry)}. Źródło: `}
-                <Parts
-                  parts={module
-                    .sources(data)
-                    .flatMap((parts, i) => (i > 0 ? ["; ", ...parts] : parts))}
-                />
-                .{checked && ` ${checked}.`}
-              </p>
+              <Fragment key={module.id}>
+                <p className="govuk-body">
+                  {`${module.title}: ${noneText(entry)}. Źródło: `}
+                  <Parts
+                    parts={module
+                      .sources(data)
+                      .flatMap((parts, i) =>
+                        i > 0 ? ["; ", ...parts] : parts,
+                      )}
+                  />
+                  .{checked && ` ${checked}.`}
+                </p>
+                <Trace {...entry} />
+              </Fragment>
             );
           })}
         </section>

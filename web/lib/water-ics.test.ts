@@ -6,6 +6,8 @@ import type { PlaceView } from "./schedule.ts";
 import {
   KROWICA_RANGE,
   POST_39885,
+  SOBIESKIEGO_RANGE,
+  sobieskiego,
   storedPost,
   testPlace,
   zukFile,
@@ -258,4 +260,17 @@ test("no dated cut, no button: an emergency, no hours, a Notice, none", () => {
     water(zukView(null, NOW), ZUKI),
   ])
     assert.equal(waterCalendarHref(data), null);
+});
+
+test("a house number outside a cut's range: no event; inside: the same UID", () => {
+  const [first] = post().items;
+  const sob = post({ items: [{ ...first, ...SOBIESKIEGO_RANGE }] });
+  const outside = at([sob], sobieskiego("5"));
+  assert.equal(events(waterCalendar(outside, NOW)), 0);
+  assert.equal(waterCalendarHref(outside), null);
+  const inside = waterCalendar(at([sob], sobieskiego("30")), NOW);
+  assert.equal(events(inside), 1);
+  assert.deepEqual(value(inside, "UID"), [
+    `woda-${POST_39885}-0606116-0606116-20431-${first.date}@conaulicy.pl`,
+  ]);
 });

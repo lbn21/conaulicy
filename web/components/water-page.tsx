@@ -24,6 +24,7 @@ import {
   type Water,
   waterEmpty,
   waterSources,
+  waterTrace,
 } from "@/lib/water-module";
 
 // The water module's subpage, /adres/<id>/woda (lib/modules.ts), under
@@ -70,6 +71,7 @@ export function WaterDetails({
 }) {
   const note = staleNote(data);
   const empty = waterEmpty(data);
+  const trace = waterTrace(data);
   const dates = [...new Set(data.outages.map((cut) => cut.date))];
   const calendar = waterCalendarHref(data);
   return (
@@ -121,6 +123,7 @@ export function WaterDetails({
             </section>
           ))
         )}
+        {trace && <p className="govuk-body">{trace}</p>}
         {data.notices.length > 0 && (
           <section aria-labelledby="inne-komunikaty">
             <h2 id="inne-komunikaty" className="govuk-heading-m">

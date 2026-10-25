@@ -8,6 +8,11 @@
 // village is not matched to it (nothing in the data says the part shares
 // the village's water). Notices (posts we could not read safely) are
 // matched by the localities the gate found in them.
+//
+// With a house number, a cut by house ranges or numbers that clearly leaves
+// it out is not shown (outsideRange), and the page says one was left out.
+// Anything we cannot compare (no number, parity, "w części", an odd bound, a
+// village's range where its streets number on their own) is always shown.
 import type { PlaceView } from "@/lib/schedule";
 import { longDate } from "./date-labels.ts";
 import { absoluteDay, warsawToIso } from "./dates.ts";
@@ -15,6 +20,7 @@ import type { Disruption, Notice } from "./disruptions.ts";
 import type { Alert, Part, SummaryRow } from "./hub.ts";
 import { placePath } from "./places.ts";
 import type { ZukData } from "./zuk-data.ts";
+import { ZUK_PLACES } from "./zuk-places.generated.ts";
 
 /** The gmina's news: where its water posts appear. */
 export const GMINA_NEWS = "https://www.gminalubaczow.pl/aktualnosci/";
@@ -30,6 +36,8 @@ export type Water = {
   place: PlaceView;
   /** Cuts still to come here, the soonest first, one per day and hours. */
   outages: Disruption[];
+  /** A cut here left out for the house number as given (outsideRange). */
+  hiddenForNr: boolean;
   /** Water posts we could not read safely that may concern this locality. */
   notices: Notice[];
   /** The last read of the gmina's posts; null without a file. */
@@ -48,6 +56,34 @@ export function matches(address: Address, cut: Disruption): boolean {
     cut.place.localityId === address.localityId &&
     (cut.place.streetId === null || cut.place.streetId === address.streetId)
   );
+}
+
+/** Localities with streets of their own (the town among them). */
+const STREETED = new Set(ZUK_PLACES.streets.map((s) => s.localityId));
+
+/**
+ * Whether the house number is clearly outside the cut's houses. Compared on
+ * whole numbers only ("30a" is inside 23–47, "7/22" is 7 and 22, each
+ * inside or not); a village's range where the village has streets, any
+ * scope but ranges or numbers, or anything that does not parse: never
+ * outside, so the cut is shown.
+ */
+export function outsideRange(cut: Disruption, nr: string | null): boolean {
+  if (nr === null) return false;
+  if (cut.place.streetId === null && STREETED.has(cut.place.localityId))
+    return false;
+  const parts = (nr.match(/\d+/g) ?? []).map(Number);
+  const { scope } = cut;
+  const spans =
+    scope.type === "ranges"
+      ? scope.ranges.map((r) => [r.from, r.to])
+      : scope.type === "numbers"
+        ? scope.numbers.map((n) => [n, n])
+        : [];
+  const bounds = spans.map((span) => span.map((b) => Number.parseInt(b, 10)));
+  if (parts.length === 0 || bounds.length === 0) return false;
+  if (bounds.flat().some(Number.isNaN)) return false;
+  return !parts.some((p) => bounds.some(([from, to]) => from <= p && p <= to));
 }
 
 const wholeLocality = (cut: Disruption) =>
@@ -79,9 +115,12 @@ function atAddress(address: Address, cuts: Disruption[]): Disruption[] {
 
 /** The module's data for a place, from what the pages get of the file. */
 export function water(view: ZukData, place: PlaceView): Water {
+  const here = atAddress(place, view.disruptions);
+  const outages = here.filter((cut) => !outsideRange(cut, place.givenNr));
   return {
     place,
-    outages: atAddress(place, view.disruptions),
+    outages,
+    hiddenForNr: outages.length < here.length,
     notices: view.notices.filter((notice) =>
       notice.localityIds.includes(place.localityId),
     ),
@@ -225,6 +264,14 @@ export function waterEmpty(data: Water): Part[] | null {
     gminaNews,
     ".",
   ];
+}
+
+/** After the cuts or the empty text: a cut here left out for the number. */
+export function waterTrace(data: Water): string | null {
+  if (!data.hiddenForNr) return null;
+  const where =
+    data.place.streetId === null ? "w tej miejscowości" : "na tej ulicy";
+  return `Gmina zapowiedziała też przerwę ${where}, ale według komunikatu nie obejmuje nr ${data.place.givenNr}.`;
 }
 
 /** What „Bez zapowiedzi” says: none announced, or we could not check. */

@@ -102,6 +102,10 @@ wording stays in `where` (its street, else its locality, as written) and
 `note`. Pages read the file through `lib/zuk-store.ts` `getZukData()`; data last
 checked more than 60 minutes ago is `stale`, so a page shows the source link
 instead.
+With a house number (`?nr=`), a cut by house ranges or numbers that clearly
+leaves it out is not shown, on the page or in its calendar file, and the page
+says one was left out (`lib/water-module.ts` `outsideRange`); anything we
+cannot compare is always shown.
 
 ## Environment (Vercel, Production and Preview)
 

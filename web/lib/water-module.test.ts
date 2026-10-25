@@ -8,6 +8,8 @@ import {
   KROWICA_RANGE,
   mockFile,
   POST_39885,
+  SOBIESKIEGO_RANGE,
+  sobieskiego,
   storedPost,
   testPlace,
   zukFile,
@@ -15,6 +17,7 @@ import {
 import {
   GMINA_NEWS,
   matches,
+  outsideRange,
   scope,
   staleNote,
   type Water,
@@ -25,6 +28,7 @@ import {
   waterNone,
   waterSources,
   waterSummary,
+  waterTrace,
 } from "./water-module.ts";
 import {
   AI_DEFERRED,
@@ -155,7 +159,7 @@ test("matching: house numbers in a village with streets, the village and every s
   );
   assert.equal(matches(ZALUZE, krowica), false);
   assert.equal(scope(krowica), "Krowica Sama: od nr 10 do nr 50");
-  // No house-number filtering: the range is stated, never applied.
+  // A village's range in a village with streets is never filtered by nr.
   const village = place({
     id: "0606180",
     kind: "wies",
@@ -167,6 +171,142 @@ test("matching: house numbers in a village with streets, the village and every s
   assert.deepEqual(waterAt(village, [post({ items: [krowica] })]).outages, [
     krowica,
   ]);
+});
+
+const SOBIESKIEGO = cut(SOBIESKIEGO_RANGE);
+const ranged = (ranges: Array<{ from: string; to: string }>) =>
+  cut({ ...SOBIESKIEGO_RANGE, scope: { type: "ranges", ranges } });
+const only = (item: Disruption) => [post({ items: [item] })];
+
+test("house number: outside a street's range, the cut is not shown", () => {
+  const at = (nr: string | null) => waterAt(sobieskiego(nr), only(SOBIESKIEGO));
+  const five = at("5");
+  assert.deepEqual(five.outages, []);
+  assert.deepEqual(waterAlerts(five), []);
+  assert.equal(waterSummary(five), null);
+  assert.equal(at("30").outages.length, 1);
+  // Letters ignored: 30a and 47a are inside 23–47, 22a is not.
+  for (const nr of ["30", "30a", "47", "47a", null])
+    assert.deepEqual(at(nr).outages, [SOBIESKIEGO], String(nr));
+  assert.deepEqual(at("22a").outages, []);
+});
+
+test("house number: outsideRange compares whole numbers, shown on doubt", () => {
+  assert.equal(outsideRange(SOBIESKIEGO, null), false);
+  assert.equal(outsideRange(SOBIESKIEGO, "5"), true);
+  for (const nr of ["30", "30a", "47"])
+    assert.equal(outsideRange(SOBIESKIEGO, nr), false, nr);
+  // Either part of "7/22" inside is enough.
+  const twenties = ranged([{ from: "20", to: "30" }]);
+  assert.equal(outsideRange(twenties, "7/22"), false);
+  assert.equal(outsideRange(twenties, "7/2"), true);
+  assert.equal(outsideRange(ranged([{ from: "x", to: "30" }]), "5"), false);
+  assert.equal(outsideRange(SOBIESKIEGO, "abc"), false);
+});
+
+test("house number: two ranges, listed numbers, unknown and whole", () => {
+  const two = ranged([
+    { from: "1", to: "15" },
+    { from: "16", to: "54" },
+  ]);
+  assert.equal(outsideRange(two, "16"), false);
+  assert.equal(outsideRange(two, "55"), true);
+  const twelve = cut({
+    ...SOBIESKIEGO_RANGE,
+    scope: { type: "numbers", numbers: ["12"] },
+    note: "nr 12",
+  });
+  assert.equal(outsideRange(twelve, "12"), false);
+  assert.equal(outsideRange(twelve, "12a"), false);
+  assert.equal(outsideRange(twelve, "13"), true);
+  const odd = cut({
+    ...SOBIESKIEGO_RANGE,
+    scope: { type: "unknown" },
+    note: "numery nieparzyste od 13 do 21",
+  });
+  const whole = cut({
+    ...SOBIESKIEGO_RANGE,
+    scope: { type: "whole" },
+    note: null,
+  });
+  for (const nr of ["2", "15", "999"]) {
+    assert.deepEqual(waterAt(sobieskiego(nr), only(odd)).outages, [odd], nr);
+    assert.deepEqual(waterAt(sobieskiego(nr), only(whole)).outages, [whole]);
+  }
+});
+
+test("house number: a village's range in a village with streets, always shown", () => {
+  const krowica = cut(KROWICA_RANGE);
+  const street = place({
+    id: "0606180-51473",
+    localityId: "0606180",
+    streetId: "0606180-51473",
+    givenNr: "99",
+  });
+  assert.deepEqual(waterAt(street, only(krowica)).outages, [krowica]);
+  assert.equal(outsideRange(krowica, "99"), false);
+});
+
+test("house number: a streetless village and a village part, filtered", () => {
+  const opaka = (givenNr: string | null) =>
+    place({
+      id: "0606317",
+      kind: "wies",
+      name: "Opaka",
+      localityId: "0606317",
+      streetId: null,
+      givenNr,
+    });
+  // 39885: Opaka „od numeru 104 do 110” on 27 Oct.
+  const opakaCuts = (nr: string | null) =>
+    waterAt(opaka(nr)).outages.filter((d) => d.place.localityId === "0606317");
+  assert.deepEqual(opakaCuts("5"), []);
+  assert.equal(opakaCuts("105").length, 1);
+  assert.equal(opakaCuts(null).length, 1);
+  // 39885's Podłęże, 44–92, made the cut of a TERYT part: Czarne (Załuże).
+  const part = cut({
+    place: { localityId: "0606470", streetId: null },
+    label: { locality: "Czarne", parent: "Załuże", street: null },
+    where: "Załuże – Podłęże od numeru 44 do numeru 92",
+    scope: { type: "ranges", ranges: [{ from: "44", to: "92" }] },
+    note: "od numeru 44 do numeru 92",
+  });
+  const czarne = place({
+    id: "0606470",
+    kind: "wies",
+    localityId: "0606470",
+    streetId: null,
+    givenNr: "10",
+  });
+  assert.deepEqual(waterAt(czarne, only(part)).outages, []);
+  assert.equal(waterAt(czarne, only(part)).hiddenForNr, true);
+});
+
+test("house number: one trace line when a cut was left out", () => {
+  const sob = (nr: string | null) =>
+    waterAt(sobieskiego(nr), only(SOBIESKIEGO));
+  assert.equal(sob("5").hiddenForNr, true);
+  assert.equal(
+    waterTrace(sob("5")),
+    "Gmina zapowiedziała też przerwę na tej ulicy, ale według komunikatu nie obejmuje nr 5.",
+  );
+  for (const nr of ["30", null]) {
+    assert.equal(sob(nr).hiddenForNr, false);
+    assert.equal(waterTrace(sob(nr)), null);
+  }
+  const opaka = place({
+    id: "0606317",
+    kind: "wies",
+    localityId: "0606317",
+    streetId: null,
+    givenNr: "5",
+  });
+  assert.equal(
+    waterTrace(waterAt(opaka)),
+    "Gmina zapowiedziała też przerwę w tej miejscowości, ale według komunikatu nie obejmuje nr 5.",
+  );
+  const odd = cut({ ...SOBIESKIEGO_RANGE, scope: { type: "unknown" } });
+  assert.equal(waterTrace(waterAt(sobieskiego("999"), only(odd))), null);
 });
 
 test("alert: the nearest cut, an absolute date, the subpage, the source", () => {
