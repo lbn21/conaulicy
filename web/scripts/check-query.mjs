@@ -100,6 +100,9 @@ const CASES = [
   ["GET", "/adres/0972447-88888/smieci", 404],
   ["GET", "/adres/0972447-88888/smieci?nr=12", 404],
   ["GET", `${STREET}/nie-ma-takiego-modulu`, 404],
+  // A module without a subpage (the weather): a 404, its query untouched.
+  ["GET", `${STREET}/pogoda`, 404],
+  ["GET", `${STREET}/pogoda?nr=12`, 404],
   ["GET", "/api/place-redirects", 200],
 ];
 
@@ -265,10 +268,11 @@ try {
     failures.push(`/szukaj?q=Rynek: Cache-Control ${JSON.stringify(store)}`);
   }
 
-  const street = await (await fetch(`${server.origin}${STREET}`)).text();
+  // The calendar link is on the waste subpage (the address page has none).
+  const street = await (await fetch(`${server.origin}${STREET}/smieci`)).text();
   const ics = /href="(\/ics\/[^"?]+)"/.exec(street)?.[1];
   if (ics) CASES.push(["GET", `${ics}?x=1`, 308, ics]);
-  else failures.push(`${STREET}: no /ics/ link`);
+  else failures.push(`${STREET}/smieci: no /ics/ link`);
 
   for (const [method, path, status, clean] of CASES) {
     const response = await fetch(`${server.origin}${path}`, {

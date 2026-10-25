@@ -1,7 +1,11 @@
 // The IMGW banner (components/imgw-banner.tsx) in every state, from the mock
 // (IMGW_WARNINGS_URL=mock:…, lib/imgw-mock.ts), on the built site:
-// - mock:none (the build's own setting in CI): no banner on any route;
-// - each state on one address page, a server per state: GOV.UK's markup
+// - mock:none (the build's own setting in CI): no banner on any route, no
+//   alert on the address page;
+// - never the banner on an address page or its waste subpage: their alert
+//   slot (components/hub.tsx) for one warning, three (two lines, then
+//   „I jeszcze 1 ostrzeżenie”), and IMGW failing (no weather at all);
+// - each state on one page (/o-projekcie), a server per state: GOV.UK's markup
 //   (role="region", aria-labelledby, no role="alert", no button), the title,
 //   one tag per warning with its level and colour, highest first, the time,
 //   the visible source line, the probability and footer sentences, the stale
@@ -30,7 +34,10 @@ import { IMGW_ATTRIBUTION } from "../lib/imgw-warnings.ts";
 import { WARNING_LEVELS } from "../lib/palette.ts";
 import { finish, ROUTES, startServer } from "./lib/server.mjs";
 
-const ADDRESS = "/adres/0972447-00470";
+// The banner's page for every state: any page but an address page, which
+// carries the warnings in its alert slot instead (HUB, below).
+const PAGE = "/o-projekcie";
+const HUB = "/adres/0972447-00470";
 const WIDTHS = [375, 1280];
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const MINUTE = 60_000;
@@ -51,6 +58,7 @@ const STATES = [
       url: `mock:1809?level=${level}`,
       levels: [level],
       opened: level === 3,
+      ...(level === 1 && { hub: 1 }),
     },
     {
       name: `l${level}-upcoming`,
@@ -65,6 +73,7 @@ const STATES = [
     url: "mock:1809?level=1&also=2,3",
     levels: [3, 2, 1],
     opened: true,
+    hub: 3,
   },
   {
     name: "cross-day-upcoming",
@@ -78,7 +87,7 @@ const STATES = [
   { name: "kept-fresh", url: KEPT, levels: [2], shot: false },
   { name: "stale", url: KEPT, ahead: 20 * MINUTE, levels: [2], stale: true },
   { name: "too-old", url: KEPT, ahead: 195 * MINUTE, levels: null },
-  { name: "failing", url: "mock:1809?fail=timeout", levels: null },
+  { name: "failing", url: "mock:1809?fail=timeout", levels: null, hub: null },
 ];
 
 // Home and /ulice, with the state's server.
@@ -313,7 +322,7 @@ async function deepChecks(browser, origin) {
   const page = await browser.newPage({
     viewport: { width: 1280, height: 900 },
   });
-  await page.goto(origin + ADDRESS);
+  await page.goto(origin + PAGE);
   // Tab to the summary (keyboard only), open it with Enter, Tab to the link.
   for (const [what, selector] of [
     ["summary", ".govuk-details__summary"],
@@ -458,7 +467,7 @@ async function deepChecks(browser, origin) {
       viewport: { width, height: 900 },
       deviceScaleFactor: scale,
     });
-    await narrow.goto(origin + ADDRESS);
+    await narrow.goto(origin + PAGE);
     const [scroll, client] = await narrow.evaluate(() => [
       document.documentElement.scrollWidth,
       document.documentElement.clientWidth,
@@ -473,6 +482,76 @@ async function deepChecks(browser, origin) {
     await narrow.close();
   }
   await page.close();
+}
+
+// The address page with the state's warnings (state.hub: how many; null:
+// IMGW failing): never the banner, on it or its waste subpage; the alert
+// slot, one GOV.UK warning text: a line per warning ("Pogoda: …" with an
+// absolute day, „Szczegóły – pogoda” to IMGW, „(IMGW-PIB)”), two at most,
+// then „I jeszcze N …” to the cards; the weather's card after the waste's.
+// Failing: the page still renders, without the weather.
+async function hubChecks(origin, state) {
+  const label = `${state.name} ${HUB}`;
+  const [hub, waste] = await Promise.all(
+    [HUB, `${HUB}/smieci`].map(async (p) => {
+      const response = await fetch(origin + p);
+      if (response.status !== 200)
+        failures.push(`${state.name} ${p}: HTTP ${response.status}`);
+      return response.text();
+    }),
+  );
+  for (const [p, html] of [
+    [HUB, hub],
+    [`${HUB}/smieci`, waste],
+  ]) {
+    if (html.includes('<div class="govuk-notification-banner"'))
+      failures.push(`${state.name} ${p}: the IMGW banner`);
+  }
+  // The subpage's own warning text is the street page's (unverified dates).
+  if (waste.includes("Pogoda: "))
+    failures.push(`${state.name} ${HUB}/smieci: an alert slot`);
+  const cards = [
+    ...hub.matchAll(/<h3 class="govuk-summary-card__title">([^<]*)</g),
+  ].map(([, title]) => title);
+  const slot =
+    /<div class="govuk-warning-text">[\s\S]*?<strong class="govuk-warning-text__text">([\s\S]*?)<\/strong><\/div>/.exec(
+      hub,
+    )?.[1];
+  if (state.hub === null) {
+    if (slot || /Pogoda/.test(hub) || cards.join() !== "Śmieci")
+      failures.push(`${label}: weather shown while IMGW fails (${cards})`);
+    else console.log(`ok    ${label}: rendered without the weather`);
+    return;
+  }
+  const lines = [
+    ...(slot ?? "").matchAll(
+      /<span class="govuk-!-display-block">([\s\S]*?)<\/span>(?=<span class="govuk-!-display-block">|$)/g,
+    ),
+  ].map(([, line]) => line);
+  const alerts = lines.filter((line) => line.startsWith("Pogoda: "));
+  const more = lines.filter((line) => line.includes('href="#co-cie-czeka"'));
+  const hidden = state.hub > 1 ? `Uwaga, ${state.hub} ostrzeżenia.` : "Uwaga.";
+  const line = new RegExp(
+    `^Pogoda: Silny wiatr, stopień [1-3] z 3\\. (?:Obowiązuje teraz, do|Od) ${DAY}, ${TIME}.*? <a href="https://meteo\\.imgw\\.pl/" class="govuk-link">Szczegóły<span class="govuk-visually-hidden"> – pogoda</span></a> <span class="govuk-!-font-weight-regular">\\(IMGW-PIB\\)</span>$`,
+    "u",
+  );
+  const problems = [
+    !slot?.startsWith(`<span class="govuk-visually-hidden">${hidden}</span>`) &&
+      `hidden count, want "${hidden}"`,
+    alerts.length !== Math.min(state.hub, 2) &&
+      `${alerts.length} alert lines, want ${Math.min(state.hub, 2)}`,
+    ...alerts.filter((a) => !line.test(a)).map((a) => `line ${a}`),
+    state.hub > 2
+      ? !(
+          more.length === 1 && more[0].includes(">I jeszcze 1 ostrzeżenie</a>")
+        ) && `overflow ${JSON.stringify(more)}`
+      : more.length > 0 && "an overflow link",
+    cards.join() !== "Śmieci,Pogoda" && `cards ${cards}`,
+    hub.includes('id="bez-zapowiedzi-heading"') &&
+      "„Bez zapowiedzi” with a warning",
+  ].filter(Boolean);
+  if (problems.length > 0) failures.push(`${label}: ${problems.join("; ")}`);
+  else console.log(`ok    ${label}: alert slot, ${alerts.length} lines`);
 }
 
 async function visit(browser, origin, state, pagePath, name) {
@@ -578,16 +657,22 @@ try {
           `${route.path}: a banner with ${process.env.IMGW_WARNINGS_URL}`,
         );
     }
+    const hub = await (await fetch(plain.origin + HUB)).text();
+    if (
+      /govuk-warning-text/.test(hub) ||
+      !hub.includes("Pogoda: brak ostrzeżeń IMGW.")
+    )
+      failures.push(`${HUB}: an alert, or no „Pogoda: brak ostrzeżeń IMGW.”`);
     console.log(
-      `ok    ${process.env.IMGW_WARNINGS_URL}: no banner on ${ROUTES.length} routes`,
+      `ok    ${process.env.IMGW_WARNINGS_URL}: no banner on ${ROUTES.length} routes, no alert on ${HUB}`,
     );
   } finally {
     await plain.stop();
   }
 
   for (const state of [...STATES, PLACEMENT]) {
-    const pages = state.pages ?? [ADDRESS];
-    for (const page of pages) forget(page);
+    const pages = state.pages ?? [PAGE];
+    for (const page of [...pages, HUB, `${HUB}/smieci`]) forget(page);
     const env = { IMGW_WARNINGS_URL: state.url };
     if (state.ahead)
       Object.assign(env, {
@@ -605,11 +690,13 @@ try {
       }
       if (state.name === "three-l1-l2-l3")
         await deepChecks(browser, server.origin);
+      if (state.hub !== undefined) await hubChecks(server.origin, state);
     } finally {
       await server.stop();
     }
   }
-  for (const page of [ADDRESS, ...PLACEMENT.pages]) forget(page);
+  for (const page of [PAGE, HUB, `${HUB}/smieci`, ...PLACEMENT.pages])
+    forget(page);
   if (SHOTS) {
     await contactSheets(browser);
     writeFileSync(

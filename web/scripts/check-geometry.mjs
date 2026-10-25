@@ -1,6 +1,6 @@
 // Checks the header's and the warning icon's pixel geometry numerically, so
 // the pixel-perfect work of tasks 78-84 cannot regress unnoticed: on the home
-// page and a street page, at 375px and 1280px, the bar's height, colour and the
+// page, an address page and its waste subpage, at 375px and 1280px, the bar's height, colour and the
 // plate's gaps, the hover and focus bars' place, the focus box's frame, and
 // the warning icon's "!" in its circle (ink, measured as in task 83). Boxes
 // come from getBoundingClientRect and computed styles, and must be exact;
@@ -11,7 +11,7 @@ import { HEADER } from "../lib/palette.ts";
 import { finish, startServer } from "./lib/server.mjs";
 
 const WIDTHS = [375, 1280];
-const PATHS = ["/", "/adres/0972447-00470"];
+const PATHS = ["/", "/adres/0972447-00470", "/adres/0972447-00470/smieci"];
 const DPR = 4;
 
 // The Generic header's bar, 1px taller than GOV.UK's 61px (tasks 78 and 82).
@@ -237,7 +237,8 @@ try {
       );
       exact(`${label} plate top on focus`, focus.plate.top, normal.plate.top);
 
-      if (path !== "/") {
+      // The street page's body, with its unverified-dates warning text.
+      if (path.endsWith("/smieci")) {
         const bang = await measureBang(page);
         near(`${label} "!" gap above`, bang.top, BANG_GAPS.top);
         near(`${label} "!" gap below`, bang.bottom, BANG_GAPS.bottom);

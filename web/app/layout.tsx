@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { GovukFrontend } from "@/components/govuk-frontend";
-import { ImgwBanner } from "@/components/imgw-banner";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { WebAnalytics } from "@/components/web-analytics";
@@ -37,9 +36,11 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-// Every page shows IMGW's warnings (components/imgw-banner.tsx), so none is
-// cached for more than 10 minutes: static pages become ISR, and none with a
-// longer revalidate keeps it (/ulice: 3600 before).
+// Every page shows IMGW's warnings: the banner (components/imgw-banner.tsx),
+// which each page but the address pages draws above its h1, or the address
+// pages' alert slot (components/hub.tsx). So none is cached for more than
+// 10 minutes: static pages become ISR, and none with a longer revalidate
+// keeps it (/ulice: 3600 before).
 export const revalidate = 600;
 
 // GOV.UK's snippet, exactly as in its page template: marks browsers that run
@@ -66,7 +67,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SiteHeader />
         <div className="govuk-width-container">
           <main className="govuk-main-wrapper" id="main-content">
-            <ImgwBanner />
             {children}
           </main>
         </div>

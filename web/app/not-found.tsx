@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ImgwBanner } from "@/components/imgw-banner";
 import { NOT_FOUND_TITLE, PageNotFound } from "@/components/page-not-found";
 
 export const metadata: Metadata = {
@@ -9,5 +10,10 @@ export const metadata: Metadata = {
 };
 
 export default function NotFound() {
-  return <PageNotFound />;
+  return (
+    <>
+      <ImgwBanner />
+      <PageNotFound />
+    </>
+  );
 }

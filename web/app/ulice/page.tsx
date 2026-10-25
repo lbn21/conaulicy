@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ImgwBanner } from "@/components/imgw-banner";
 import { type ListedPlace, placePath } from "@/lib/places";
 import { searchIndex } from "@/lib/schedule";
 import { pageMetadata } from "@/lib/share";
@@ -36,67 +37,70 @@ export default async function AllPlacesPage() {
   );
 
   return (
-    <div className="govuk-grid-row">
-      <div className="govuk-grid-column-two-thirds">
-        <h1 className="govuk-heading-l">{ALL_PLACES.text}</h1>
-        <p className="govuk-body-l">
-          Wybierz swoją ulicę albo wieś, żeby zobaczyć terminy wywozu śmieci.
-        </p>
-        <p className="govuk-body govuk-!-margin-bottom-8">
-          Wolisz wpisać adres?{" "}
-          <a href="/" className="govuk-link">
-            Wyszukaj go na stronie głównej
-          </a>
-          .
-        </p>
+    <>
+      <ImgwBanner />
+      <div className="govuk-grid-row">
+        <div className="govuk-grid-column-two-thirds">
+          <h1 className="govuk-heading-l">{ALL_PLACES.text}</h1>
+          <p className="govuk-body-l">
+            Wybierz swoją ulicę albo wieś, żeby zobaczyć terminy wywozu śmieci.
+          </p>
+          <p className="govuk-body govuk-!-margin-bottom-8">
+            Wolisz wpisać adres?{" "}
+            <a href="/" className="govuk-link">
+              Wyszukaj go na stronie głównej
+            </a>
+            .
+          </p>
 
-        <section aria-labelledby="ulice-heading">
-          <h2 id="ulice-heading" className="govuk-heading-m">
-            Ulice w Lubaczowie
-          </h2>
-          {list.town.map(({ letter, places }) => (
-            <div key={letter}>
-              <h3 className="govuk-heading-s">{letter}</h3>
-              <ul className="govuk-list">
-                {places.map((place) => (
-                  <li key={place.id}>
-                    <Place place={place} />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </section>
-
-        <section aria-labelledby="wsie-heading">
-          <h2
-            id="wsie-heading"
-            className="govuk-heading-m govuk-!-margin-top-6"
-          >
-            Wsie w gminie Lubaczów
-          </h2>
-          <ul className="govuk-list">
-            {list.villages.map((village) => (
-              <li key={village.id ?? village.label}>
-                {village.id ? (
-                  <Place place={{ id: village.id, label: village.label }} />
-                ) : (
-                  <>
-                    {village.label}
-                    <ul className="govuk-list govuk-!-margin-left-4 govuk-!-margin-top-1">
-                      {village.streets.map((street) => (
-                        <li key={street.id}>
-                          <Place place={street} />
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </li>
+          <section aria-labelledby="ulice-heading">
+            <h2 id="ulice-heading" className="govuk-heading-m">
+              Ulice w Lubaczowie
+            </h2>
+            {list.town.map(({ letter, places }) => (
+              <div key={letter}>
+                <h3 className="govuk-heading-s">{letter}</h3>
+                <ul className="govuk-list">
+                  {places.map((place) => (
+                    <li key={place.id}>
+                      <Place place={place} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
-        </section>
+          </section>
+
+          <section aria-labelledby="wsie-heading">
+            <h2
+              id="wsie-heading"
+              className="govuk-heading-m govuk-!-margin-top-6"
+            >
+              Wsie w gminie Lubaczów
+            </h2>
+            <ul className="govuk-list">
+              {list.villages.map((village) => (
+                <li key={village.id ?? village.label}>
+                  {village.id ? (
+                    <Place place={{ id: village.id, label: village.label }} />
+                  ) : (
+                    <>
+                      {village.label}
+                      <ul className="govuk-list govuk-!-margin-left-4 govuk-!-margin-top-1">
+                        {village.streets.map((street) => (
+                          <li key={street.id}>
+                            <Place place={street} />
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

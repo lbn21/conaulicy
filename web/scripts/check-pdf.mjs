@@ -200,13 +200,15 @@ try {
     );
   }
 
-  // The page of an ended schedule says so, with no dead PDF link and no
-  // empty calendar file.
+  // The waste subpage of an ended schedule (the page that offers both) says
+  // so, with no dead PDF link and no empty calendar file.
   const ended = await (
-    await fetch(`${server.origin}/adres/0972447-90009`)
+    await fetch(`${server.origin}/adres/0972447-90009/smieci`)
   ).text();
   check(
-    !ended.includes("harmonogram.pdf") && !ended.includes('href="/ics/'),
+    // Links only: the RSC payload names the sibling route harmonogram.pdf.
+    !/href="[^"]*harmonogram\.pdf/.test(ended) &&
+      !ended.includes('href="/ics/'),
     "schedule ended: the page still offers the PDF or the calendar file",
   );
   check(ended.includes(NO_MORE_DATES), "schedule ended: no notice on the page");

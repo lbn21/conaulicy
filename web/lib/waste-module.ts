@@ -1,39 +1,102 @@
-// What the waste module (lib/modules.ts) says about a place, from today's
-// street page data (PlaceView, unchanged). Pure, so the unit tests need no
-// database.
+// What the waste module (lib/modules.ts) says about a place on the address
+// page, from today's street page data (PlaceView, unchanged). Pure, so the
+// unit tests need no database.
 import type { PlaceView } from "@/lib/schedule";
 import { longDate } from "./date-labels.ts";
-import { putOutNote } from "./schedule-notes.ts";
+import { absoluteDay } from "./dates.ts";
+import type { Part, SummaryRow } from "./hub.ts";
+import { placePath, scheduleName } from "./places.ts";
+import {
+  hasUpcoming,
+  NO_MORE_DATES,
+  NO_MORE_DATES_NEXT,
+  putOutBy,
+  UNVERIFIED_NOTE,
+} from "./schedule-notes.ts";
 
-/** One row of a module's summary: key, value. */
-export type SummaryRow = [string, string];
+/** A place we have no pickup data for: the street page's heading. */
+export function noDataHeading(kind: PlaceView["kind"]): string {
+  return kind === "ulica"
+    ? "Tej ulicy jeszcze nie mamy"
+    : "Tej wsi jeszcze nie mamy";
+}
 
-export type ModuleStatus = {
-  /** "unsupported": a place we have no pickup data for. */
-  state: "ok" | "stale" | "error" | "unsupported";
-  sources: PlaceView["sources"];
-};
+/** The street page's words for a split street, before the number. */
+const SPLIT_HINT =
+  "Na tej ulicy śmieciarka przyjeżdża w różne dni, zależnie od numeru.";
+
+/** The waste subpage (/adres/<id>/smieci), with the house number. */
+function wastePath(place: Pick<PlaceView, "id" | "nr">): string {
+  return `${placePath(place.id)}/smieci${place.nr ? `?nr=${place.nr}` : ""}`;
+}
+
+// No dates to show: why, then the gmina's own schedule (linked when we know
+// its page), as the street page says it.
+function noDates(place: PlaceView, why: string): Part[] {
+  return [
+    `${why} Do tego czasu sprawdź odbiory w harmonogramie gminy.`,
+    ...(place.schedulePage
+      ? [
+          " ",
+          {
+            href: place.schedulePage,
+            text: `Otwórz ${scheduleName(place.gmina)}`,
+          },
+        ]
+      : []),
+  ];
+}
 
 /**
- * The next pickup, its bins and when to put them out; null when there is
- * nothing to show (no data, a number to ask for, or no dates left).
+ * The waste card, always there: the next pickup, its bins and when to put
+ * them out; on a split street without a number, the question's page; or
+ * why there are no dates.
  */
-export function wasteSummary(place: PlaceView): SummaryRow[] | null {
-  if (place.askNumber) return null;
+export function wasteSummary(place: PlaceView): SummaryRow[] {
+  const key = "Najbliższy odbiór";
+  if (place.askNumber) {
+    return [
+      [
+        key,
+        [
+          `${SPLIT_HINT} `,
+          { href: wastePath(place), text: "Podaj numer domu" },
+        ],
+      ],
+    ];
+  }
+  if (place.zoneId === null) {
+    return [
+      [
+        key,
+        noDates(
+          place,
+          `${noDataHeading(place.kind)}. Harmonogramu tu nie zgadujemy.`,
+        ),
+      ],
+    ];
+  }
+  if (!hasUpcoming(place.days, place.today)) {
+    return [[key, noDates(place, `${NO_MORE_DATES}. ${NO_MORE_DATES_NEXT}`)]];
+  }
   const next = place.days.find((day) => day.date >= place.today);
-  if (!next) return null;
+  if (!next) return [];
   const rows: SummaryRow[] = [
-    ["Najbliższy odbiór", longDate(next.date)],
-    ["Pojemniki", next.pickups.map((pickup) => pickup.label).join(", ")],
+    [key, [absoluteDay(next.date)]],
+    ["Pojemniki", [{ bins: next.pickups }]],
   ];
-  const putOutBy = next.pickups.find((pickup) => pickup.putOutBy)?.putOutBy;
-  if (putOutBy) rows.push(["Wystaw", putOutNote(putOutBy)]);
+  const time = next.pickups.find((pickup) => pickup.putOutBy)?.putOutBy;
+  if (time) rows.push(["Wystaw", [putOutBy(time)]]);
+  if (!place.verified) rows.push(["Uwaga", [UNVERIFIED_NOTE]]);
   return rows;
 }
 
-export function wasteStatus(place: PlaceView): ModuleStatus {
-  return {
-    state: place.zoneId === null && !place.askNumber ? "unsupported" : "ok",
-    sources: place.sources,
-  };
+/** One „Źródło” row per source: its link, its part, when it was checked. */
+export function wasteSources(place: PlaceView): Part[][] {
+  const name = scheduleName(place.gmina);
+  return place.sources.map((source) => [
+    source.url ? { href: source.url, text: name } : name,
+    `, ${source.label}`,
+    ...(source.checkedAt ? [`, sprawdzono ${longDate(source.checkedAt)}`] : []),
+  ]);
 }

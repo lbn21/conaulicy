@@ -1,41 +1,72 @@
-// The address page's modules: waste today; water, power and others later
-// (docs/tasks T102). Each module has its own subpage, /adres/<id>/<id of the
-// module>, and later one card on the address page. The ids and their order
-// live in lib/address-routes.ts, so the unit tests and the URL rules can read
-// them without Next.js; this registry must list exactly those.
+// The address page's modules: waste and the weather today; water, power and
+// others later (docs/tasks T102). Each one has a card on the address page
+// (components/hub.tsx), or a line under „Bez zapowiedzi” when it has nothing
+// to show, and a subpage of its own, /adres/<id>/<id of the module>, if it
+// has one. The ids and their order live in lib/address-routes.ts, so the
+// unit tests and the URL rules can read them without Next.js; this registry
+// must list exactly those.
+import type { Metadata } from "next";
 import type { ComponentType } from "react";
-import { WasteDetails } from "@/components/place-page";
-import { isModuleId, MODULE_IDS, type ModuleId } from "@/lib/address-routes";
-import { getPlace, type PlaceView } from "@/lib/schedule";
+import { imgwCopy } from "@/components/imgw-banner";
+import { WasteDetails, wasteMetadata } from "@/components/place-page";
 import {
-  type ModuleStatus,
-  type SummaryRow,
-  wasteStatus,
-  wasteSummary,
-} from "@/lib/waste-module";
+  isModuleId,
+  MODULE_IDS,
+  type ModuleId,
+  SUBPAGE_IDS,
+} from "@/lib/address-routes";
+import type { Alert, Part, SummaryRow } from "@/lib/hub";
+import { IMGW_PAGE } from "@/lib/imgw-banner";
+import { getPlace, type PlaceView } from "@/lib/schedule";
+import { wasteSources, wasteSummary } from "@/lib/waste-module";
+import {
+  type Weather,
+  weather,
+  weatherAlerts,
+  weatherSources,
+  weatherSummary,
+} from "@/lib/weather-module";
 
-/** Something for today or tomorrow, shown above everything else. */
-type Alert = { text: string; short: string; linkText: string };
-
-type Module<D> = {
-  /** The subpage slug. */
+export type Module<D> = {
   id: ModuleId;
+  /** The card's title. */
   title: string;
-  /** The subpage's h1. */
-  pageTitle: string;
   /** Registry order, from 0. */
   order: number;
-  /** null: no such place. `place` is the place id, `nr` a house number. */
+  /**
+   * `place` is the place id, `nr` a house number. null: no such place
+   * (waste: a 404), or nothing we may show (any other: left out).
+   */
   load(place: string, nr: string | null): Promise<D | null>;
-  alert(data: D): Alert | null;
-  /** null: nothing to show ("Bez zapowiedzi"). */
+  /** Today's and the coming warnings, for the slot above the cards. */
+  alerts(data: D): Alert[];
+  /** The card's rows; null: nothing to show („Bez zapowiedzi”). */
   summary(data: D): SummaryRow[] | null;
-  status(data: D): ModuleStatus;
-  /** The subpage body. `missing`: ?nr= came without a usable number. */
-  Details: ComponentType<{ data: D; missing?: boolean }>;
-};
+  /** What „Bez zapowiedzi” says for it, after its title (summary null). */
+  none?: string;
+  /** Its sources, one „Źródło” each: a link and when it was checked. */
+  sources(data: D): Part[][];
+} & (
+  | {
+      /** The subpage's h1. */
+      pageTitle: string;
+      /** The subpage's title, description and canonical (its own URL). */
+      metadata(
+        id: string,
+        nr: string | null,
+        missing: boolean,
+      ): Promise<Metadata>;
+      /** The subpage body. `missing`: ?nr= came without a usable number. */
+      Details: ComponentType<{ data: D; missing?: boolean }>;
+    }
+  | {
+      /** No subpage: „Szczegóły” goes to the source's own page. */
+      href: string;
+    }
+);
 
-// Waste wraps today's street page as it is: PlaceView, PlaceMain's body.
+// Waste wraps today's street page data as it is (PlaceView): a card on the
+// address page, and the street page's body on its subpage.
 const waste: Module<PlaceView> = {
   id: "smieci",
   title: "Śmieci",
@@ -43,17 +74,46 @@ const waste: Module<PlaceView> = {
   order: MODULE_IDS.indexOf("smieci"),
   load: getPlace,
   // A pickup is routine, never a warning.
-  alert: () => null,
+  alerts: () => [],
   summary: wasteSummary,
-  status: wasteStatus,
+  sources: wasteSources,
+  metadata: wasteMetadata,
   Details: WasteDetails,
 };
 
-// A module's data type stays its own; the pages only pass it from load()
-// to Details.
-// biome-ignore lint/suspicious/noExplicitAny: one registry for every data type
-const MODULES: { [K in ModuleId]: Module<any> } = { smieci: waste };
+// IMGW's warnings for the powiat (all our gminas lie in one), as the
+// banner other pages show; failing or too old, simply left out.
+const pogoda: Module<Weather> = {
+  id: "pogoda",
+  title: "Pogoda",
+  order: MODULE_IDS.indexOf("pogoda"),
+  async load() {
+    const now = Date.now();
+    try {
+      return weather(await imgwCopy(now), now);
+    } catch (error) {
+      console.warn(`IMGW: not shown (${(error as Error).message})`);
+      return null;
+    }
+  },
+  alerts: weatherAlerts,
+  summary: weatherSummary,
+  none: "brak ostrzeżeń IMGW",
+  sources: weatherSources,
+  href: IMGW_PAGE,
+};
 
-export function findModule(slug: string): Module<unknown> | null {
-  return isModuleId(slug) ? MODULES[slug] : null;
+// A module's data type stays its own; the pages only pass it from load()
+// to the card and to Details.
+// biome-ignore lint/suspicious/noExplicitAny: one registry for every data type
+export const MODULES: { [K in ModuleId]: Module<any> } = {
+  smieci: waste,
+  pogoda,
+};
+
+/** A module with a subpage, by its slug; null for any other slug. */
+export function findSubpage(slug: string) {
+  if (!isModuleId(slug) || !SUBPAGE_IDS.includes(slug)) return null;
+  const module: Module<unknown> = MODULES[slug];
+  return "Details" in module ? module : null;
 }

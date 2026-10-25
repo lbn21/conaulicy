@@ -5,10 +5,16 @@
 // registry; it needs Next.js, so it cannot be loaded here).
 import { NR_QUERY } from "./house.ts";
 
-/** Module ids in registry order: the subpage slugs. Waste comes first. */
-export const MODULE_IDS = ["smieci"] as const;
+/** Module ids in registry order. Waste comes first. */
+export const MODULE_IDS = ["smieci", "pogoda"] as const;
 
 export type ModuleId = (typeof MODULE_IDS)[number];
+
+/**
+ * The modules with a subpage of their own, /adres/<id>/<module id>: the
+ * others (weather) link their source instead.
+ */
+export const SUBPAGE_IDS: readonly ModuleId[] = ["smieci"];
 
 /**
  * Folders under app/adres/[id]/ that win over app/adres/[id]/[module]/, so no
@@ -20,7 +26,7 @@ export function isModuleId(slug: string): slug is ModuleId {
   return (MODULE_IDS as readonly string[]).includes(slug);
 }
 
-const MODULE = `(?:/(?:${MODULE_IDS.join("|")}))?`;
+const MODULE = `(?:/(?:${SUBPAGE_IDS.join("|")}))?`;
 
 /** /adres/<id> or /adres/<id>/<module>, which take ?nr=. */
 export const ADDRESS = new RegExp(`^(/adres/[^/]+${MODULE})/?$`);
@@ -38,7 +44,7 @@ export const ADDRESS_VARIANTS = [
 export const NUMBER_REWRITES = [
   { source: "/adres/:id", destination: "/adres/:id/nr/:nr" },
   {
-    source: `/adres/:id/:module(${MODULE_IDS.join("|")})`,
+    source: `/adres/:id/:module(${SUBPAGE_IDS.join("|")})`,
     destination: "/adres/:id/:module/nr/:nr",
   },
 ].map((rule) => ({

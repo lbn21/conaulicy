@@ -8,14 +8,16 @@
 //                     to conaulicy.pl, path and query kept.
 // Both: /sitemap.xml is well-formed; empty unless indexable, else the five
 // static pages (/ulice included) and every place in the search index but
-// those /ulice marks „(brak danych)”, nothing else (no module subpage such
-// as /adres/<id>/smieci, whose canonical is its street page). PDFs and calendars send
+// those /ulice marks „(brak danych)”, each with its waste subpage
+// (/adres/<id>/smieci, canonical itself), nothing else. The address page and
+// /smieci canonicalise to themselves, ?nr= left out. PDFs and calendars send
 // X-Robots-Tag: noindex; the number-error page (/numer), a place without
 // data and /szukaj have meta robots noindex (/szukaj the header too); the
 // static pages have one canonical link each. 404s (an unknown path, unknown
 // addresses) are whole pages in the raw HTML, no JS needed: status 404, the
 // layout (lang, stylesheet), GOV.UK's "page not found" H1, and one robots
-// meta, noindex; an unknown module (/adres/<id>/<slug>) too.
+// meta, noindex; an unknown module (/adres/<id>/<slug>) and one without a
+// subpage (/pogoda) too.
 //
 // Runs against `next start` on the current build and the CI fixture.
 import { readFileSync } from "node:fs";
@@ -176,14 +178,19 @@ try {
     }
   }
 
-  // A module subpage canonicalises to its street page until the street
-  // page becomes the hub of modules (lib/modules.ts).
+  // The address page and its waste subpage canonicalise to themselves, a
+  // house number left out (lib/modules.ts).
   for (const name of ["city-street", "village", "split-street"]) {
     const place = ROUTES.find((route) => route.name === name).path;
-    for (const path of [`${place}/smieci`, `${place}/smieci?nr=7a`]) {
+    for (const [path, want] of [
+      [place, place],
+      [`${place}?nr=7a`, place],
+      [`${place}/smieci`, `${place}/smieci`],
+      [`${place}/smieci?nr=7a`, `${place}/smieci`],
+    ]) {
       const html = await (await fetch(`${server.origin}${path}`)).text();
       const links = [...html.matchAll(CANONICAL)].map(([, href]) => href);
-      if (links.length !== 1 || links[0] !== `${SITE}${place}`) {
+      if (links.length !== 1 || links[0] !== `${SITE}${want}`) {
         failures.push(`${path}: canonical ${JSON.stringify(links)}`);
       }
     }
@@ -226,6 +233,9 @@ try {
     "/adres/0972447-00470/nie-ma-takiego-modulu/nr/12",
     "/adres/0972447-00470/nie-ma-takiego-modulu/numer",
     "/adres/9999999/smieci",
+    // A module without a subpage (the weather).
+    "/adres/0972447-00470/pogoda",
+    "/adres/0972447-00470/pogoda/nr/12",
   ]) {
     const response = await fetch(`${server.origin}${path}`);
     const html = await response.text();
@@ -251,7 +261,9 @@ try {
   }
 
   const street = ROUTES.find((route) => route.name === "city-street").path;
-  const streetHtml = await (await fetch(`${server.origin}${street}`)).text();
+  const streetHtml = await (
+    await fetch(`${server.origin}${street}/smieci`)
+  ).text();
   const ics = /href="(\/ics\/[^"]+)"/.exec(streetHtml)?.[1];
   if (!ics) failures.push(`${street}: no /ics/ link`);
   const files = [
@@ -307,14 +319,19 @@ try {
     }
     const placeUrls = places
       .map(([id]) => `${SITE}/adres/${encodeURIComponent(id)}`)
-      .filter((url) => !noData.has(url));
+      .filter((url) => !noData.has(url))
+      .flatMap((url) => [url, `${url}/smieci`]);
     const fixturePlaces = ROUTES.filter(
       (route) => /^\/adres\/[^/?]+$/.test(route.path) && !route.status,
     )
       .map((route) => `${SITE}${route.path}`)
       .filter((url) => !noData.has(url));
     for (const url of noData) {
-      if (locs.includes(url)) failures.push(`/sitemap.xml: ${url} (no data)`);
+      for (const page of [url, `${url}/smieci`]) {
+        if (locs.includes(page)) {
+          failures.push(`/sitemap.xml: ${page} (no data)`);
+        }
+      }
     }
     const want = [...STATIC.map((path) => `${SITE}${path}`), ...placeUrls];
     const got = new Set(locs);
@@ -322,7 +339,7 @@ try {
     for (const loc of locs) {
       if (
         !loc.startsWith(`${SITE}/`) ||
-        /\/nr\/|\/numer|\.pdf|\/ics\/|\/adres\/[^/]+\/[^/]/.test(loc)
+        /\/nr\/|\/numer|\.pdf|\/ics\/|\/adres\/[^/]+\/(?!smieci$)[^/]/.test(loc)
       ) {
         failures.push(`/sitemap.xml: ${loc}`);
       }
@@ -332,7 +349,7 @@ try {
     }
     if (locs.length !== placeUrls.length + STATIC.length) {
       failures.push(
-        `/sitemap.xml: ${locs.length} URLs, want ${places.length} places − ${noData.size} without data + ${STATIC.length}`,
+        `/sitemap.xml: ${locs.length} URLs, want 2 × (${places.length} places − ${noData.size} without data) + ${STATIC.length}`,
       );
     }
     // Whether the build's copy carries the search index's `dataset` tag,

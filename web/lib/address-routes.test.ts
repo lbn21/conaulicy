@@ -8,11 +8,14 @@ import {
   NUMBER_REWRITES,
   numberErrorPath,
   RESERVED_SEGMENTS,
+  SUBPAGE_IDS,
 } from "./address-routes.ts";
 
-test("waste is the only module, and the first", () => {
-  assert.deepEqual(MODULE_IDS, ["smieci"]);
+test("waste first, then weather; only waste has a subpage", () => {
+  assert.deepEqual(MODULE_IDS, ["smieci", "pogoda"]);
   assert.equal(MODULE_IDS[0], "smieci");
+  assert.deepEqual(SUBPAGE_IDS, ["smieci"]);
+  for (const id of SUBPAGE_IDS) assert.ok(isModuleId(id), id);
 });
 
 test("module ids are unique", () => {
@@ -28,6 +31,7 @@ test("no module is called nr, numer or like another folder", () => {
   assert.equal(isModuleId("numer"), false);
   assert.equal(isModuleId("harmonogram.pdf"), false);
   assert.equal(isModuleId("smieci"), true);
+  assert.equal(isModuleId("pogoda"), true);
   assert.equal(isModuleId("woda"), false);
 });
 
@@ -41,6 +45,8 @@ test("the street page and a module subpage take ?nr=", () => {
   assert.ok(ADDRESS.test("/adres/0972447-00470/smieci"));
   assert.ok(ADDRESS.test("/adres/0972447-00470/smieci/"));
   assert.ok(!ADDRESS.test("/adres/0972447-00470/woda"));
+  // A module without a subpage takes no ?nr= (its URL is a 404).
+  assert.ok(!ADDRESS.test("/adres/0972447-00470/pogoda"));
   assert.ok(!ADDRESS.test("/adres/0972447-00470/numer"));
   assert.ok(!ADDRESS.test("/adres/0972447-00470/harmonogram.pdf"));
   assert.ok(!ADDRESS.test("/adres"));
@@ -57,6 +63,8 @@ test("their number and error variants", () => {
   assert.ok(variant("/adres/X/smieci/numer"));
   assert.ok(!variant("/adres/X/nr"));
   assert.ok(!variant("/adres/X/woda/nr/12"));
+  assert.ok(!variant("/adres/X/pogoda/nr/12"));
+  assert.ok(!variant("/adres/X/pogoda/numer"));
   assert.ok(!variant("/adres/X/smieci"));
 });
 

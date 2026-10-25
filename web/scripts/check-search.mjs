@@ -289,6 +289,13 @@ try {
   await house.getByRole("combobox").press("Enter");
   await house.waitForURL(`${server.origin}/adres/0972447-90004?nr=7a`);
   const heading = await house.locator("h1").textContent();
+  // The calendar and the PDF are on the waste subpage, its card's
+  // „Szczegóły”, with the number.
+  await house
+    .locator(".govuk-summary-card__actions a", { hasText: "Szczegóły" })
+    .first()
+    .click();
+  await house.waitForURL(`${server.origin}/adres/0972447-90004/smieci?nr=7a`);
   const sector = await house.locator('a[href^="/ics/"]').getAttribute("href");
   check(
     heading === "ul. Tadeusza Kościuszki 7a" &&
@@ -503,14 +510,28 @@ try {
   );
   await form.close();
   const ask = await plain.newPage();
+  // The address page asks for the number on its waste card, linking the
+  // waste subpage's question; the answer opens the address page with it.
   await ask.goto(`${server.origin}/adres/0972447-90004`);
   check(
     (await ask.locator('a[href^="/ics/"]').count()) === 0,
     "split street: a calendar link before the number is known",
   );
+  await ask.getByRole("link", { name: "Podaj numer domu" }).click();
+  await ask.waitForURL(`${server.origin}/adres/0972447-90004/smieci`);
+  check(
+    (await ask.locator('a[href^="/ics/"]').count()) === 0,
+    "split street /smieci: a calendar link before the number is known",
+  );
   await ask.getByLabel("Jaki jest numer domu?").fill("12");
   await ask.getByRole("button", { name: "Pokaż odbiory" }).click();
   await ask.waitForURL(`${server.origin}/adres/0972447-90004?nr=12`);
+  check(
+    (await ask.locator("main dt", { hasText: "Najbliższy odbiór" }).count()) ===
+      1,
+    "split street ?nr=12: no next pickup on the card",
+  );
+  await ask.goto(`${server.origin}/adres/0972447-90004/smieci?nr=12`);
   check(
     (await ask.locator('a[href^="/ics/"]').getAttribute("href")) ===
       "/ics/waste%3Amiasto-s1",
@@ -522,7 +543,7 @@ try {
     ["12a", "s1"],
     ["7/22", "s2"],
   ]) {
-    await ask.goto(`${server.origin}/adres/0972447-90004?nr=${nr}`);
+    await ask.goto(`${server.origin}/adres/0972447-90004/smieci?nr=${nr}`);
     const href = await ask.locator('a[href^="/ics/"]').getAttribute("href");
     check(
       href === `/ics/waste%3Amiasto-${zone}` &&

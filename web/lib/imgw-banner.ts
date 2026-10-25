@@ -15,6 +15,16 @@ export const POWIAT = "1809";
 /** A copy older than this is not shown at all. */
 const MAX_AGE_MS = 3 * 3_600_000;
 
+/** Where the banner and the address page send readers for more. */
+export const IMGW_PAGE = "https://meteo.imgw.pl/";
+
+type Found = { feed: Feed; stale: boolean } | null;
+
+/** A copy we may show: there is one, and it is under 3 hours old. */
+export function fresh(found: Found, now: number): found is NonNullable<Found> {
+  return found !== null && now - Date.parse(found.feed.fetchedAt) < MAX_AGE_MS;
+}
+
 // IMGW's three levels: the tag's colour, never the only signal (its text
 // says the level).
 const TAG = {
@@ -25,6 +35,8 @@ const TAG = {
 
 type BannerWarning = {
   id: string;
+  /** When it starts (ISO), to put the soonest first. */
+  from: string;
   event: string;
   /** The tag's classes. */
   tag: string;
@@ -70,13 +82,9 @@ function times({ validFrom, validTo }: Warning, now: number) {
  * The banner, or null: no copy, a copy 3 hours old or older, or no warning
  * in force or to come for the powiat (a warning is dropped once it ends).
  */
-export function banner(
-  found: { feed: Feed; stale: boolean } | null,
-  now: number,
-): Banner | null {
-  if (!found) return null;
+export function banner(found: Found, now: number): Banner | null {
+  if (!fresh(found, now)) return null;
   const fetchedAt = Date.parse(found.feed.fetchedAt);
-  if (now - fetchedAt >= MAX_AGE_MS) return null;
   const warnings = forPowiat(found.feed.items, POWIAT, now);
   if (warnings.length === 0) return null;
   return {
@@ -85,6 +93,7 @@ export function banner(
       warnings.length === 1 ? "Szczegóły ostrzeżenia" : "Szczegóły ostrzeżeń",
     warnings: warnings.map((warning) => ({
       id: warning.id,
+      from: warning.validFrom,
       event: warning.event,
       tag: TAG[warning.level],
       level: `Stopień ${warning.level} z 3`,

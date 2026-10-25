@@ -225,7 +225,8 @@ async function smokeCheck(rows: Rows, today: string) {
   if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET)
     headers["x-vercel-protection-bypass"] =
       process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-  const url = new URL(`/adres/${SMOKE_PLACE}`, site);
+  // The waste subpage: the address page's card shows the date as text.
+  const url = new URL(`/adres/${SMOKE_PLACE}/smieci`, site);
   const response = await fetch(url, { headers });
   const html = await response.text();
   const shown =

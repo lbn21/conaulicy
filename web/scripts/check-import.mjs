@@ -90,8 +90,10 @@ try {
   ])
     await db.query(`delete from ${table}`);
   await db.end();
-  // Read Asnyka once, so the cache holds what the import must replace.
+  // Read Asnyka once, so the cache holds what the import must replace (its
+  // waste subpage: the smoke check reads it).
   await page(`/adres/${FIXTURE_IDS.asnyka}`);
+  await page(`/adres/${FIXTURE_IDS.asnyka}/smieci`);
 
   await expectRun("production guard", ["--apply"], 1, /--yes-production/, {
     VERCEL_ENV: "production",
@@ -118,14 +120,15 @@ try {
   await expectRun("re-run", [], 0, /events\s+\+0\s+−0\s+~0/);
 
   // Pages read the import (after the revalidate above).
-  const part = await page(`/adres/${FIXTURE_IDS.villagePart}`);
+  // The waste subpages: the calendar and the source line are there.
+  const part = await page(`/adres/${FIXTURE_IDS.villagePart}/smieci`);
   check(
     part.status === 200 &&
       part.text.includes("Dąbrowa (Basznia Górna, gm. Lubaczów)") &&
       part.text.includes("Dodaj do kalendarza"),
     "village part: no label with its village, or no zone from its village",
   );
-  const village = await page(`/adres/${FIXTURE_IDS.village}`);
+  const village = await page(`/adres/${FIXTURE_IDS.village}/smieci`);
   check(
     village.status === 200 &&
       village.text.includes("Harmonogram") &&
