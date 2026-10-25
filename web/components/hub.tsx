@@ -23,7 +23,8 @@ import type { PlaceView } from "@/lib/schedule";
 // The address page, /adres/[id] (and /nr/…): the hub of modules
 // (lib/modules.ts, docs/tasks T102), under breadcrumbs. Under the h1, one GOV.UK warning text
 // for every module's alerts; then a section per module with something to
-// show, waste always first: its h2, a summary list and a „Szczegóły” link
+// show, waste always first: its h2, a summary list and a link saying where
+// it goes („Wszystkie odbiory śmieci”)
 // (no summary cards: GOV.UK keeps them for lists of the same type of thing,
 // task 131); then „Bez zapowiedzi”, a line for each module with nothing. A
 // visible section break between sections. Dates are absolute only, so a
@@ -46,7 +47,7 @@ export function Trace({ module, data }: Loaded) {
   return text && <p className="govuk-body">{text}</p>;
 }
 
-/** Where a module's „Szczegóły” go: its subpage, or the source's page. */
+/** Where a module's section link goes: its subpage, or the source's page. */
 function detailsHref({ module }: Loaded, place: PlaceView): string {
   if ("href" in module) return module.href;
   // The number as given, as the subpage's breadcrumb back here.
@@ -88,10 +89,7 @@ function AlertSlot({
           >
             {`${title}: ${alert.text} `}
             <a href={alert.href} className="govuk-link">
-              Szczegóły
-              <span className="govuk-visually-hidden">
-                {` – ${title.toLowerCase()}`}
-              </span>
+              {alert.link}
             </a>{" "}
             <span className="govuk-!-font-weight-regular">{`(${alert.short})`}</span>
           </span>
@@ -110,7 +108,7 @@ function AlertSlot({
 
 const ROW = "govuk-summary-list__row";
 
-/** A module's section: its h2, GOV.UK's summary list, „Szczegóły”. */
+/** A module's section: its h2, GOV.UK's summary list, its link. */
 function ModuleSection({
   loaded,
   rows,
@@ -153,10 +151,7 @@ function ModuleSection({
       <Trace {...loaded} />
       <p className="govuk-body">
         <a className="govuk-link" href={detailsHref(loaded, place)}>
-          Szczegóły
-          <span className="govuk-visually-hidden">
-            {` – ${module.title.toLowerCase()}`}
-          </span>
+          {module.more}
         </a>
       </p>
     </section>

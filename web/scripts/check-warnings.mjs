@@ -493,7 +493,7 @@ async function deepChecks(browser, origin) {
 // The address page with the state's warnings (state.hub: how many; null:
 // IMGW failing): never the banner, on it or its waste subpage; the alert
 // slot, one GOV.UK warning text: a line per warning ("Pogoda: …" with an
-// absolute day, „Szczegóły – pogoda” to IMGW, „(IMGW-PIB)”), two at most,
+// absolute day, „Więcej na meteo.imgw.pl” to IMGW, „(IMGW-PIB)”), two at most,
 // then „I jeszcze N …” to the module sections, a gap above every line but
 // the first; the weather's section after the waste's.
 // Failing: the page still renders, without the weather.
@@ -545,7 +545,7 @@ async function hubChecks(origin, state) {
   const target = hub.includes('<div id="co-cie-czeka"><section ');
   const hidden = state.hub > 1 ? `Uwaga, ${state.hub} ostrzeżenia.` : "Uwaga.";
   const line = new RegExp(
-    `^Pogoda: Silny wiatr, stopień [1-3] z 3\\. (?:Obowiązuje teraz, do|Od) ${DAY}, ${TIME}.*? <a href="https://meteo\\.imgw\\.pl/" class="govuk-link">Szczegóły<span class="govuk-visually-hidden"> – pogoda</span></a> <span class="govuk-!-font-weight-regular">\\(IMGW-PIB\\)</span>$`,
+    `^Pogoda: Silny wiatr, stopień [1-3] z 3\\. (?:Obowiązuje teraz, do|Od) ${DAY}, ${TIME}.*? <a href="https://meteo\\.imgw\\.pl/" class="govuk-link">Więcej na meteo\\.imgw\\.pl</a> <span class="govuk-!-font-weight-regular">\\(IMGW-PIB\\)</span>$`,
     "u",
   );
   const problems = [

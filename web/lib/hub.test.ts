@@ -11,6 +11,7 @@ import {
 const alert = (from: string): Alert => ({
   text: `od ${from}`,
   href: "https://example.org/",
+  link: "Więcej",
   short: "Źródło",
   from,
 });

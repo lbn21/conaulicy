@@ -314,6 +314,7 @@ test("alert: the nearest cut, an absolute date, the subpage, the source", () => 
     {
       text: "przerwa w dostawie – wtorek, 27 października, 8:00–16:00.",
       href: "/adres/0972447-26555/woda",
+      link: "Więcej o tej przerwie",
       short: "ZUK Mokrzyca",
       from: "2026-10-27T08:00:00+01:00",
     },
@@ -323,7 +324,7 @@ test("alert: the nearest cut, an absolute date, the subpage, the source", () => 
     lisie.text,
     "przerwa w dostawie – poniedziałek, 26 października, 8:00–16:00 (i jeszcze 1 dzień).",
   );
-  // The number as given goes along, as the card's „Szczegóły”.
+  // The number as given goes along, as the alert's link.
   const [withNr] = waterAlerts(waterAt(place({ givenNr: "5" })));
   assert.equal(withNr.href, "/adres/0972447-26555/woda?nr=5");
   assert.deepEqual(waterAlerts(waterAt(ASNYKA)), []);
@@ -334,6 +335,7 @@ test("alert slot: water before the weather, at most 2, the rest counted", () => 
   const weather = (from: string): Alert => ({
     text: "Silny wiatr, stopień 1 z 3.",
     href: "https://meteo.imgw.pl/",
+    link: "Więcej na meteo.imgw.pl",
     short: "IMGW-PIB",
     from,
   });
