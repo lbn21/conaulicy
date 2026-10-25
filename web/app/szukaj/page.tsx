@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { permanentRedirect } from "next/navigation";
 import { AddressSearch } from "@/components/address-search";
 import { ErrorSummary } from "@/components/error-summary";
+import { ImgwBanner } from "@/components/imgw-banner";
 import { withHouseNumber } from "@/lib/house";
 import { indexable } from "@/lib/indexing";
 import { searchIndex, searchIndexUrl, searchMatcher } from "@/lib/schedule";
@@ -82,56 +83,59 @@ export default async function SearchPage({
   if (result.kind === "one") permanentRedirect(placeHref(result.hit));
 
   return (
-    <div className="govuk-grid-row">
-      <div className="govuk-grid-column-two-thirds">
-        {result.kind === "empty" && (
-          <ErrorSummary error={EMPTY_ERROR} href="#adres" />
-        )}
-        <h1 className="govuk-heading-l">{H1[result.kind]}</h1>
+    <>
+      <ImgwBanner />
+      <div className="govuk-grid-row">
+        <div className="govuk-grid-column-two-thirds">
+          {result.kind === "empty" && (
+            <ErrorSummary error={EMPTY_ERROR} href="#adres" />
+          )}
+          <h1 className="govuk-heading-l">{H1[result.kind]}</h1>
 
-        {/* GOV.UK search results: the heading, the field, then the results. */}
-        <div className="govuk-!-margin-bottom-8">
-          <AddressSearch
-            indexUrl={await searchIndexUrl()}
-            value={result.kind === "empty" ? "" : result.q}
-            error={result.kind === "empty" ? EMPTY_ERROR : null}
-          />
-        </div>
+          {/* GOV.UK search results: the heading, the field, then the results. */}
+          <div className="govuk-!-margin-bottom-8">
+            <AddressSearch
+              indexUrl={await searchIndexUrl()}
+              value={result.kind === "empty" ? "" : result.q}
+              error={result.kind === "empty" ? EMPTY_ERROR : null}
+            />
+          </div>
 
-        {result.kind === "many" && (
-          <>
-            <p className="govuk-body">
-              {`Dla „${result.q}” znaleźliśmy ${addresses(result.hits.length)}. Wybierz swój.`}
-            </p>
-            <ul className="govuk-list">
-              {result.hits.map((hit) => (
-                <li key={hit.id}>
-                  <a href={placeHref(hit)} className="govuk-link">
-                    {withHouseNumber(hit.label, hit.nr ?? null)}
+          {result.kind === "many" && (
+            <>
+              <p className="govuk-body">
+                {`Dla „${result.q}” znaleźliśmy ${addresses(result.hits.length)}. Wybierz swój.`}
+              </p>
+              <ul className="govuk-list">
+                {result.hits.map((hit) => (
+                  <li key={hit.id}>
+                    <a href={placeHref(hit)} className="govuk-link">
+                      {withHouseNumber(hit.label, hit.nr ?? null)}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {result.kind === "none" && (
+            <>
+              <p className="govuk-body">{`Nie znaleźliśmy „${result.q}”.`}</p>
+              <p className="govuk-body">Możesz:</p>
+              <ul className="govuk-list govuk-list--bullet">
+                <li>sprawdzić, czy nazwa jest dobrze napisana</li>
+                <li>wpisać samą nazwę ulicy, na przykład Asnyka</li>
+                <li>
+                  znaleźć swój adres na liście{" "}
+                  <a href={ALL_PLACES.path} className="govuk-link">
+                    {ALL_PLACES.text}
                   </a>
                 </li>
-              ))}
-            </ul>
-          </>
-        )}
-
-        {result.kind === "none" && (
-          <>
-            <p className="govuk-body">{`Nie znaleźliśmy „${result.q}”.`}</p>
-            <p className="govuk-body">Możesz:</p>
-            <ul className="govuk-list govuk-list--bullet">
-              <li>sprawdzić, czy nazwa jest dobrze napisana</li>
-              <li>wpisać samą nazwę ulicy, na przykład Asnyka</li>
-              <li>
-                znaleźć swój adres na liście{" "}
-                <a href={ALL_PLACES.path} className="govuk-link">
-                  {ALL_PLACES.text}
-                </a>
-              </li>
-            </ul>
-          </>
-        )}
+              </ul>
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
