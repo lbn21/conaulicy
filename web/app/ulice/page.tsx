@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ImgwBanner } from "@/components/imgw-banner";
-import { type ListedPlace, placePath } from "@/lib/places";
+import { type ListedPlace, localityAnchor, placePath } from "@/lib/places";
 import { searchIndex } from "@/lib/schedule";
 import { pageMetadata } from "@/lib/share";
 import { ALL_PLACES } from "@/lib/static-pages";
@@ -25,6 +25,7 @@ export const revalidate = 3600;
 export default async function AllPlacesPage() {
   const { list, noData } = await searchIndex();
   const without = new Set(noData);
+  const town = list.townId ? localityAnchor(list.townId) : undefined;
   // A place we have no dates for says so (its page links the gmina's
   // schedule).
   const Place = ({ place }: { place: ListedPlace }) => (
@@ -53,8 +54,10 @@ export default async function AllPlacesPage() {
             .
           </p>
 
-          <section aria-labelledby="ulice-heading">
-            <h2 id="ulice-heading" className="govuk-heading-m">
+          {/* Ids from SIMC (localityAnchor), where the breadcrumbs link;
+              the section keeps the old #ulice-heading, at the same spot. */}
+          <section id="ulice-heading" aria-labelledby={town}>
+            <h2 id={town} className="govuk-heading-m">
               Ulice w Lubaczowie
             </h2>
             {list.town.map(({ letter, places }) => (
@@ -85,7 +88,9 @@ export default async function AllPlacesPage() {
                     <Place place={{ id: village.id, label: village.label }} />
                   ) : (
                     <>
-                      {village.label}
+                      <span id={localityAnchor(village.localityId)}>
+                        {village.label}
+                      </span>
                       <ul className="govuk-list govuk-!-margin-left-4 govuk-!-margin-top-1">
                         {village.streets.map((street) => (
                           <li key={street.id}>
