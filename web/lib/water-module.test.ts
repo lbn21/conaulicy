@@ -159,7 +159,7 @@ test("matching: a village part takes its own cuts, not its village's", () => {
 test("alert: the nearest cut, an absolute date, the subpage, the source", () => {
   assert.deepEqual(waterAlerts(waterAt(ZUKI)), [
     {
-      text: "przerwa w dostawie: wtorek, 27 października, 8:00–16:00.",
+      text: "przerwa w dostawie – wtorek, 27 października, 8:00–16:00.",
       href: "/adres/0972447-26555/woda",
       short: "ZUK Mokrzyca",
       from: "2026-10-27T08:00:00+01:00",
@@ -168,7 +168,7 @@ test("alert: the nearest cut, an absolute date, the subpage, the source", () => 
   const [lisie] = waterAlerts(waterAt(LISIE_JAMY_CICHA));
   assert.equal(
     lisie.text,
-    "przerwa w dostawie: poniedziałek, 26 października, 8:00–16:00 (i jeszcze 1 dzień).",
+    "przerwa w dostawie – poniedziałek, 26 października, 8:00–16:00 (i jeszcze 1 dzień).",
   );
   // The number as given goes along, as the card's „Szczegóły”.
   const [withNr] = waterAlerts(waterAt(place({ givenNr: "5" })));

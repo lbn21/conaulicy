@@ -157,7 +157,7 @@ export function waterAlerts(data: Water): Alert[] {
   ).size;
   return [
     {
-      text: `przerwa w dostawie: ${when(next)}${more > 0 ? ` (i jeszcze ${days(more)})` : ""}.`,
+      text: `przerwa w dostawie – ${when(next)}${more > 0 ? ` (i jeszcze ${days(more)})` : ""}.`,
       href: waterPath(data.place),
       short: SHORT,
       from:

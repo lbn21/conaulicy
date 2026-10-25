@@ -110,6 +110,10 @@ function Card({
   place: PlaceView;
 }) {
   const { module, data } = loaded;
+  const all: Array<[string, Part[]]> = [
+    ...rows,
+    ...module.sources(data).map((parts): [string, Part[]] => ["Źródło", parts]),
+  ];
   return (
     <div className="govuk-summary-card">
       <div className="govuk-summary-card__title-wrapper">
@@ -125,12 +129,7 @@ function Card({
       </div>
       <div className="govuk-summary-card__content">
         <dl className="govuk-summary-list">
-          {[
-            ...rows,
-            ...module
-              .sources(data)
-              .map((parts): [string, Part[]] => ["Źródło", parts]),
-          ].map(([key, value]) => (
+          {all.map(([key, value], i) => (
             <div
               key={`${key}: ${textOf(value)}`}
               className="govuk-summary-list__row"
@@ -138,14 +137,18 @@ function Card({
               <dt className="govuk-summary-list__key">{key}</dt>
               <dd className="govuk-summary-list__value">
                 <Parts parts={value} />
+                {/* Under the last source, so the row keeps GOV.UK's spacing. */}
+                {i === all.length - 1 && (
+                  <CheckedLine
+                    at={checkedAt(loaded)}
+                    as="span"
+                    className="govuk-!-display-block govuk-!-margin-top-1 govuk-!-margin-bottom-0"
+                  />
+                )}
               </dd>
             </div>
           ))}
         </dl>
-        <CheckedLine
-          at={checkedAt(loaded)}
-          className="govuk-!-margin-top-4 govuk-!-margin-bottom-0"
-        />
       </div>
     </div>
   );
