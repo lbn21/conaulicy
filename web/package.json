@@ -39,7 +39,7 @@
     "check:teryt": "node scripts/check-teryt.ts",
     "import:run": "node --env-file-if-exists=.env.local scripts/import/core/run.ts",
     "import:revert": "node --env-file-if-exists=.env.local scripts/import/core/revert.ts",
-    "test": "node --import ./scripts/lib/no-network.mjs --import ./scripts/lib/server-only.mjs --test \"lib/**/*.test.ts\" \"scripts/**/*.test.ts\""
+    "test": "node --import ./scripts/lib/no-network.mjs --import ./scripts/lib/server-only.mjs --import ./scripts/lib/tsx.mjs --test \"lib/**/*.test.ts\" \"scripts/**/*.test.ts\" \"components/**/*.test.ts\""
   },
   "dependencies": {
     "@leeoniya/ufuzzy": "1.0.19",
