@@ -30,24 +30,14 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { ImageResponse } from "next/og.js";
 import { createElement as h } from "react";
-import {
-  LOGO_HEIGHT,
-  PLATE,
-  PLATE_COLOUR,
-  RIM,
-  UL,
-  UL_SHIFT,
-  UL_TRANSFORM,
-} from "../lib/logo.ts";
+import { PLATE, PLATE_COLOUR, RIM, UL, UL_TRANSFORM } from "../lib/logo.ts";
 import { paletteScss } from "../lib/palette.ts";
-import { BACKGROUND_COLOR } from "../lib/theme.ts";
 import { wasteColoursCss } from "../lib/waste-colours.ts";
 
 const ROOT = path.join(import.meta.dirname, "..");
 export const INPUTS = [
   "lib/palette.ts",
   "lib/logo.ts",
-  "lib/theme.ts",
   "lib/govuk-colours.ts",
   "lib/waste-colours.ts",
   "lib/brand/favicon-16.svg",
@@ -69,24 +59,20 @@ const replaceOnce = (text: string, from: string | RegExp, to: string) => {
 };
 const painted = (svg: string) => svg.replaceAll("currentColor", PLATE_COLOUR);
 
-// "ul." moved UL_SHIFT plate units down from the SVGs' placement (task 88,
-// UL_VARIANT in lib/logo.ts), as on the site and in the PDF. The favicons
-// have their own pixel-fitted "ul.", so they move by whole px only (the plate
-// is 26 px tall in the 32-px favicon, 12 in the 16-px one), or not at all.
-const FAVICON_PLATE = { 32: 26, 16: 12 };
-function faviconSvg(size: 16 | 32): string {
-  const px = Math.round((UL_SHIFT * FAVICON_PLATE[size]) / LOGO_HEIGHT);
-  const svg = svgText(`favicon-${size}.svg`);
-  return painted(
-    px === 0
-      ? svg
-      : replaceOnce(
-          svg,
-          '" class="t"',
-          `" class="t" transform="translate(0 ${px})"`,
-        ),
+// The favicons (task 134): the plate fills the square, with a white rim on
+// its edge so it stands out on dark tab bars too. Each size has its own
+// pixel-fitted "ul.", placed in the SVG: the 32-px one is the logo's, its ink
+// box centred (5-26.37 x 8.73-23.24); the 16-px one is drawn on whole pixels.
+const faviconSvg = (size: 16 | 32) => painted(svgText(`favicon-${size}.svg`));
+
+// The 32-px "ul." alone, its viewBox its ink box, for the full-bleed tiles.
+const UL_INK = "5 8.73 21.37 14.51";
+const ulSvg = () =>
+  replaceOnce(
+    faviconSvg(32).replace(/<path d="[^"]*" class="[pr]"[^>]*\/>/g, ""),
+    /width="32" height="32"([^>]*)viewBox="0 0 32 32"/,
+    `$1viewBox="${UL_INK}"`,
   );
-}
 
 // The share card's text block, centred optically on the plate (task 88): the
 // plate's ink is y 145-485 (centre 315); the text is measured from the first
@@ -133,29 +119,31 @@ async function render(element: ReturnType<typeof h>, w: number, hgt: number) {
 const png = (svg: string, w: number, hgt: number) =>
   render(img(svg, w, hgt), w, hgt);
 
-// An app icon: the 32-px favicon on a white tile (the page background);
-// radius 0 = full bleed (Apple rounds the corners itself; maskable icons are
-// cut by the launcher, mark in the 80 % circle).
-const tile = (size: number, scale: number, radius: number) =>
-  render(
+// A full-bleed plum tile with "ul." `scale` of its width, centred (Apple
+// rounds the corners itself; maskable icons are cut by the launcher, so "ul."
+// stays in the central 80 % circle).
+const tile = (size: number, scale: number) => {
+  const w = size * scale;
+  const [, , inkW, inkH] = UL_INK.split(" ").map(Number);
+  return render(
     h(
       "div",
       {
         style: {
           width: size,
           height: size,
-          background: BACKGROUND_COLOR,
-          borderRadius: size * radius,
+          background: PLATE_COLOUR,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
         },
       },
-      img(faviconSvg(32), size * scale),
+      img(ulSvg(), w, (w * inkH) / inkW),
     ),
     size,
     size,
   );
+};
 
 // favicon.ico: PNG entries, 16 from the 16-px design, 32 from the 32-px one.
 function ico(images: [number, Buffer][]): Buffer {
@@ -186,10 +174,10 @@ const OUTPUTS: Record<string, () => Promise<Buffer | string>> = {
       [16, await png(faviconSvg(16), 16, 16)],
       [32, await png(faviconSvg(32), 32, 32)],
     ]),
-  "app/apple-icon.png": () => tile(180, 0.74, 0),
-  "public/icon-192.png": () => tile(192, 0.74, 0.22),
-  "public/icon-512.png": () => tile(512, 0.74, 0.22),
-  "public/icon-maskable-512.png": () => tile(512, 0.6, 0),
+  "app/apple-icon.png": () => tile(180, 0.66),
+  "public/icon-192.png": () => png(faviconSvg(32), 192, 192),
+  "public/icon-512.png": () => png(faviconSvg(32), 512, 512),
+  "public/icon-maskable-512.png": () => tile(512, 0.56),
   "public/og.png": () => png(ogSvg(), 1200, 630),
 };
 export const OUTPUT_PATHS = Object.keys(OUTPUTS);
