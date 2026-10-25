@@ -10,7 +10,7 @@ The site uses **GOV.UK Frontend as-is, including its palette**. Only three thing
 | **Plate + wordmark, on dark** | [`a-logo-dark.svg`](logo/a-logo-dark.svg) | Dark backgrounds only. Not the site header or the PDF band: those draw the plate white from `web/lib/logo.ts`, as GOV.UK's white crown |
 | **Plate only** | [`a-mark-light.svg`](logo/a-mark-light.svg), [`a-mark-dark.svg`](logo/a-mark-dark.svg) | Where the name is right beside it (OG card) or space is square |
 | **Mono** | [`a-logo-mono.svg`](logo/a-logo-mono.svg), [`a-mark-mono.svg`](logo/a-mark-mono.svg) | One colour, `currentColor`: stamps, single-colour print, embossing |
-| **Favicons** | [`favicon-32.svg`](../web/lib/brand/favicon-32.svg) (32 px), [`favicon-16.svg`](../web/lib/brand/favicon-16.svg) (16 px), plate in `currentColor` | Browser tab, app icons: separate pixel-snapped drawings |
+| **Favicons** | [`favicon-32.svg`](../web/lib/brand/favicon-32.svg) (32 px), [`favicon-16.svg`](../web/lib/brand/favicon-16.svg) (16 px), plate in `currentColor` | Browser tab, app icons: a square plate (rounded corners, white rim on its edge) with its own pixel-fitted “ul.” (task 134) |
 
 - "ul." and the rim are **cut out** of the plate (an SVG mask), so the background shows through them.
 - **Header:** the GOV.UK **Generic header** (`govuk-generic-header`), markup as its template, with only our logo in `govuk-generic-header__homepage-link`. The place name is in the page content, not the header. Never the GOV.UK header, the crown or the GOV.UK logotype. The header rules in `web/app/site.scss` are the bar's colour (`HEADER`, shade-50, not the Generic header's black: Jakub's decision, task 88), the plate colour (white; black on focus), the logo's geometry (30 px tall, padding 18/11, `top: -2px`: the plate centred in the 62 px bar, 16 px above and below), GOV.UK's hover bar made 4 px and centred under the plate, GOV.UK's focus bar in the header's colour so it does not show (the yellow box with the black plate carries the focus, 12.36 : 1 on the cherry), an even 6 px focus box round the plate, and the wordmark centred optically on the plate (see [`docs/logo/README.md`](logo/README.md)).
@@ -22,9 +22,9 @@ The site uses **GOV.UK Frontend as-is, including its palette**. Only three thing
 | Place | File |
 |---|---|
 | Header | `web/components/site-header.tsx`: inline SVG (paths in `web/lib/logo.ts`); plate GOV.UK white (`govuk-colour("white")` in `app/site.scss`) on the cherry bar (`$app-header`, `HEADER`), the "ul." and rim cut out to the cherry; wordmark `currentColor` (white); on focus, a black plate with the "ul." in focus yellow (the plate takes `currentColor`, GOV.UK's focus-text) |
-| Tab icon | `web/app/icon.svg` and `web/app/favicon.ico` (16 from `web/lib/brand/favicon-16.svg`, 32 from `favicon-32.svg`): the `PLATE` plate with white “ul.”, transparent around it |
-| Apple | `web/app/apple-icon.png` (180): the 32-px favicon on a full-bleed white tile; iOS rounds it |
-| PWA | `web/public/icon-192.png`, `icon-512.png` (white tile, rounded corners) and `icon-maskable-512.png` (full-bleed white, plate inside the central 80 % circle), listed in `web/app/manifest.ts` |
+| Tab icon | `web/app/icon.svg` and `web/app/favicon.ico` (16 from `web/lib/brand/favicon-16.svg`, 32 from `favicon-32.svg`): the `PLATE` plate filling the square (corner radius 6/32), a white rim 1/32 wide on its edge so it stands out on dark tab bars, and white “ul.”; one icon for light and dark. The 16-px “ul.” is drawn on whole pixels (stems 2 px, dot 2 × 2 px) |
+| Apple | `web/app/apple-icon.png` (180): full-bleed `PLATE`, opaque, no rim, “ul.” 66 % of the width; iOS rounds it |
+| PWA | `web/public/icon-192.png`, `icon-512.png` (the tab icon's design, `favicon-32.svg` scaled) and `icon-maskable-512.png` (full-bleed `PLATE`, “ul.” 56 % of the width, inside the central 80 % circle), listed in `web/app/manifest.ts` |
 | Footer | `web/components/site-footer.tsx`: the plate alone, `PLATE`, on the footer's tint-95 |
 | Share card | `web/public/og.png` (1200 × 630): the flat `PLATE` plate, rim and “ul.” cut out, on white, with the tagline in `PLATE` too (from `web/lib/brand/og.svg`), in the `openGraph` and `twitter` metadata |
 | PDF | The cherry band (`HEADER`, as `THEME_COLOR`) at the top of each page, as in the site header (white plate, wordmark centred optically on the plate), drawn as vector paths from `web/lib/logo.ts` |
@@ -38,7 +38,7 @@ The unit is **P**, a quarter of the plate height (34 units → P = 8.5; 7.5 px i
 - **Plate only:** at least **20 px** tall.
 - **Below 20 px use the favicon drawings:**
   - 17–32 px: use `favicon-32.svg`;
-  - **16 px and smaller: always use the pixel-snapped `favicon-16.svg`**, never a scaled-down full mark. Its x-height and plate edges sit on whole pixels, so “ul.” stays sharp.
+  - **16 px and smaller: always use the pixel-snapped `favicon-16.svg`**, never a scaled-down full mark. Its stems, x-height, dot and rim sit on whole pixels, so “ul.” stays sharp.
 
 ## Do and don't
 
@@ -54,7 +54,7 @@ The unit is **P**, a quarter of the plate height (34 units → P = 8.5; 7.5 px i
 - Add effects to the flat mark: no shadow, gradient, glow, outline or bevel. Depth belongs only to the enamel backlog version.
 - Retype “ul.” or “conaulicy” in a font. Always use the outlined paths, which carry the optical centring and kerning.
 - Show the plate without its letters.
-- Put the mark in a box, circle or badge. The app icons' white tile is the only exception: launchers need an opaque square.
+- Put the mark in a box, circle or badge. The favicons and app icons are the only exception: their plate fills the square, as tabs and launchers need.
 - Add the city's herb or a blue-and-white street-sign look next to it. This is not an official service.
 
 ## Colour
