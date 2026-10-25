@@ -41,10 +41,7 @@ test("a warning: one alert with an absolute date, a card, its source", () => {
     ["Gdzie", ["cały powiat lubaczowski"]],
   ]);
   assert.deepEqual(weatherSources(data), [
-    [
-      { href: "https://meteo.imgw.pl/", text: "IMGW-PIB" },
-      ", sprawdzono 25 października 2026, 13:52",
-    ],
+    [{ href: "https://meteo.imgw.pl/", text: "IMGW-PIB" }],
   ]);
 });
 

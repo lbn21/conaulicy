@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { type Alert, alertSlot, MAX_ALERTS, warningCount } from "./hub.ts";
+import {
+  type Alert,
+  alertSlot,
+  checkedLine,
+  MAX_ALERTS,
+  warningCount,
+} from "./hub.ts";
 
 const alert = (from: string): Alert => ({
   text: `od ${from}`,
@@ -47,4 +53,21 @@ test("Polish plurals for the count", () => {
     "22 ostrzeżenia",
     "25 ostrzeżeń",
   ]);
+});
+
+test("checked line: a day alone, an instant with its Warsaw time", () => {
+  assert.equal(
+    checkedLine("2026-10-23"),
+    "Ostatnio sprawdziliśmy: 23 października",
+  );
+  // 22:30 UTC on 31 August is already 1 September in Warsaw.
+  assert.equal(
+    checkedLine(new Date("2026-08-31T22:30:00Z")),
+    "Ostatnio sprawdziliśmy: 1 września, 0:30",
+  );
+  assert.equal(
+    checkedLine(new Date("2026-10-25T14:42:00Z")),
+    "Ostatnio sprawdziliśmy: 25 października, 15:42",
+  );
+  assert.equal(checkedLine(null), null);
 });

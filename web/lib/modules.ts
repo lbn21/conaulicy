@@ -16,7 +16,7 @@ import {
   type ModuleId,
   SUBPAGE_IDS,
 } from "@/lib/address-routes";
-import type { Alert, Part, SummaryRow } from "@/lib/hub";
+import type { Alert, Checked, Part, SummaryRow } from "@/lib/hub";
 import { IMGW_PAGE } from "@/lib/imgw-banner";
 import { getPlace, type PlaceView } from "@/lib/schedule";
 import { wasteChecked, wasteSources, wasteSummary } from "@/lib/waste-module";
@@ -63,7 +63,7 @@ export type Module<D> = {
    * its „Bez zapowiedzi” line and its subpage (lib/hub.ts checkedLine).
    * Left out or null: nothing shown.
    */
-  checkedAt?(data: D): Date | null;
+  checkedAt?(data: D): Checked;
 } & (
   | {
       /** The subpage's h1. */
@@ -81,7 +81,7 @@ export type Module<D> = {
       Details: ComponentType<{
         data: D;
         missing?: boolean;
-        checkedAt?: Date | null;
+        checkedAt?: Checked;
       }>;
     }
   | {

@@ -43,7 +43,6 @@ const place = (overrides: Partial<PlaceView> = {}): PlaceView => ({
   ],
   sources: [{ label: "Sektor 1", url: null, checkedAt: "2026-10-20" }],
   verified: true,
-  importedAt: "2026-10-25T05:12:00Z",
   ...overrides,
 });
 
@@ -121,11 +120,7 @@ test("no dates: why, then the gmina's schedule, always a card", () => {
 
 test("one source row each: link, part, when checked", () => {
   assert.deepEqual(wasteSources(place()), [
-    [
-      "harmonogram Urzędu Miejskiego w Lubaczowie",
-      ", Sektor 1",
-      ", sprawdzono 20 października 2026",
-    ],
+    ["harmonogram Urzędu Miejskiego w Lubaczowie", ", Sektor 1"],
   ]);
   const url = "https://example.org/a.pdf";
   assert.deepEqual(
@@ -149,12 +144,31 @@ test("the PDF's QR code and link: the waste subpage, with the number", () => {
   );
 });
 
-test("checked line: the latest successful import (lib/schedule.ts lastImport)", () => {
+test("checked line: the source's events.checkedAt, a day, no time", () => {
+  assert.equal(wasteChecked(place()), "2026-10-20");
   assert.equal(
     checkedLine(wasteChecked(place())),
-    "Ostatnio sprawdziliśmy: 25 października, 6:12",
+    "Ostatnio sprawdziliśmy: 20 października",
   );
-  // No import yet: nothing shown.
-  assert.equal(wasteChecked(place({ importedAt: null })), null);
-  assert.equal(checkedLine(wasteChecked(place({ importedAt: null }))), null);
+  // The source row says no more than its link and part: one checked line.
+  for (const row of wasteSources(place()))
+    for (const part of row)
+      assert.doesNotMatch(
+        typeof part === "string" ? part : JSON.stringify(part),
+        /sprawdz|Stan na/,
+      );
+});
+
+test("checked line: the oldest of several sources; none without a date", () => {
+  const sources = [
+    { label: "Sektor 1", url: null, checkedAt: "2026-10-23" },
+    { label: "Sektor 1, papier", url: null, checkedAt: "2026-09-30" },
+    { label: "Sektor 1, szkło", url: null, checkedAt: null },
+  ];
+  assert.equal(
+    checkedLine(wasteChecked(place({ sources }))),
+    "Ostatnio sprawdziliśmy: 30 września",
+  );
+  assert.equal(wasteChecked(place({ sources: [sources[2]] })), null);
+  assert.equal(wasteChecked(place({ sources: [] })), null);
 });

@@ -4,6 +4,7 @@ import { Parts } from "@/components/parts";
 import { SubpageHeading } from "@/components/place-page";
 import { absoluteDay } from "@/lib/dates";
 import { withHouseNumber } from "@/lib/house";
+import type { Checked } from "@/lib/hub";
 import { indexable } from "@/lib/indexing";
 import { placePath } from "@/lib/places";
 import { getPlace } from "@/lib/schedule";
@@ -55,7 +56,7 @@ export function WaterDetails({
   checkedAt = null,
 }: {
   data: Water;
-  checkedAt?: Date | null;
+  checkedAt?: Checked;
 }) {
   const note = staleNote(data);
   const empty = waterEmpty(data);

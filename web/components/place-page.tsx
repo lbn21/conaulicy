@@ -5,8 +5,8 @@ import { CheckedLine } from "@/components/checked-line";
 import { ErrorSummary } from "@/components/error-summary";
 import { NOT_FOUND_TITLE, PageNotFound } from "@/components/page-not-found";
 import { PickupSchedule } from "@/components/pickup-schedule";
-import { longDate } from "@/lib/date-labels";
 import { withHouseNumber } from "@/lib/house";
+import type { Checked } from "@/lib/hub";
 import { indexable } from "@/lib/indexing";
 import { localityAnchor, placePath, scheduleName } from "@/lib/places";
 import { getPlace, movedTarget, type PlaceView } from "@/lib/schedule";
@@ -241,7 +241,7 @@ function PlaceHeading({
   caption?: string;
   heading: string;
   error?: string | null;
-  checkedAt?: Date | null;
+  checkedAt?: Checked;
 }) {
   const name = withHouseNumber(place.name, place.nr);
   const note = sharedNumberNote(place);
@@ -270,7 +270,7 @@ export function SubpageHeading({
 }: {
   place: PlaceView;
   heading: string;
-  checkedAt: Date | null;
+  checkedAt: Checked;
 }) {
   return (
     <PlaceHeading
@@ -402,7 +402,7 @@ export function WasteDetails({
 }: {
   data: PlaceView;
   missing?: boolean;
-  checkedAt?: Date | null;
+  checkedAt?: Checked;
 }) {
   const error = numberError(place, missing);
   return (
@@ -508,9 +508,6 @@ function WasteBody({
                   scheduleName(place.gmina)
                 )}
                 , {source.label}
-                {source.checkedAt && (
-                  <>. Stan na {longDate(source.checkedAt)}.</>
-                )}
               </p>
             ))}
           </div>
