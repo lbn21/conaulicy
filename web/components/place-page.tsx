@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
-import { Suspense } from "react";
+import { type ReactNode, Suspense } from "react";
 import { ErrorSummary } from "@/components/error-summary";
 import { NOT_FOUND_TITLE, PageNotFound } from "@/components/page-not-found";
 import { PickupSchedule } from "@/components/pickup-schedule";
@@ -271,6 +271,26 @@ export function StreetPage({
 }) {
   const error = numberError(place, missing);
   return (
+    <AddressPage place={place} error={error}>
+      <WasteBody place={place} error={error} />
+    </AddressPage>
+  );
+}
+
+/**
+ * The address page's frame (the hub, and StreetPage): its breadcrumbs, then
+ * the two-thirds column with its heading, the place's name as the h1.
+ */
+export function AddressPage({
+  place,
+  error = null,
+  children,
+}: {
+  place: PlaceView;
+  error?: string | null;
+  children: ReactNode;
+}) {
+  return (
     <>
       <Breadcrumbs place={place} />
       <div className="govuk-grid-row">
@@ -280,7 +300,7 @@ export function StreetPage({
             heading={withHouseNumber(place.name, place.nr)}
             error={error}
           />
-          <WasteBody place={place} error={error} />
+          {children}
         </div>
       </div>
     </>

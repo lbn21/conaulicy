@@ -1,14 +1,12 @@
 import { Fragment } from "react";
 import {
-  Breadcrumbs,
+  AddressPage,
   numberError,
-  PlaceHeading,
   PlaceNotFound,
   StreetPage,
 } from "@/components/place-page";
 import { Bins } from "@/components/waste-bins";
 import { MODULE_IDS } from "@/lib/address-routes";
-import { withHouseNumber } from "@/lib/house";
 import { type Alert, alertSlot, type Part, warningCount } from "@/lib/hub";
 import { IMGW_ATTRIBUTION } from "@/lib/imgw-warnings";
 import { MODULES, type Module } from "@/lib/modules";
@@ -206,54 +204,43 @@ export async function HubMain({
   const imgw = loaded.some(({ module }) => module.id === "pogoda");
 
   return (
-    <>
-      <Breadcrumbs place={place} />
-      <div className="govuk-grid-row">
-        <div className="govuk-grid-column-two-thirds">
-          <PlaceHeading
+    <AddressPage place={place}>
+      <AlertSlot alerts={alerts} />
+      <section aria-labelledby="co-cie-czeka-heading" id="co-cie-czeka">
+        <h2 id="co-cie-czeka-heading" className="govuk-heading-m">
+          Co Cię czeka
+        </h2>
+        {cards.map(({ entry, rows }) => (
+          <Card
+            key={entry.module.id}
+            loaded={entry}
+            rows={rows}
             place={place}
-            heading={withHouseNumber(place.name, place.nr)}
           />
-          <AlertSlot alerts={alerts} />
-          <section aria-labelledby="co-cie-czeka-heading" id="co-cie-czeka">
-            <h2 id="co-cie-czeka-heading" className="govuk-heading-m">
-              Co Cię czeka
-            </h2>
-            {cards.map(({ entry, rows }) => (
-              <Card
-                key={entry.module.id}
-                loaded={entry}
-                rows={rows}
-                place={place}
+        ))}
+      </section>
+      {quiet.length > 0 && (
+        <section
+          aria-labelledby="bez-zapowiedzi-heading"
+          className="govuk-!-margin-top-6"
+        >
+          <h2 id="bez-zapowiedzi-heading" className="govuk-heading-s">
+            Bez zapowiedzi
+          </h2>
+          {quiet.map(({ module, data }) => (
+            <p key={module.id} className="govuk-body">
+              {`${module.title}: ${module.none}. Źródło: `}
+              <Parts
+                parts={module
+                  .sources(data)
+                  .flatMap((parts, i) => (i > 0 ? ["; ", ...parts] : parts))}
               />
-            ))}
-          </section>
-          {quiet.length > 0 && (
-            <section
-              aria-labelledby="bez-zapowiedzi-heading"
-              className="govuk-!-margin-top-6"
-            >
-              <h2 id="bez-zapowiedzi-heading" className="govuk-heading-s">
-                Bez zapowiedzi
-              </h2>
-              {quiet.map(({ module, data }) => (
-                <p key={module.id} className="govuk-body">
-                  {`${module.title}: ${module.none}. Źródło: `}
-                  <Parts
-                    parts={module
-                      .sources(data)
-                      .flatMap((parts, i) =>
-                        i > 0 ? ["; ", ...parts] : parts,
-                      )}
-                  />
-                  .
-                </p>
-              ))}
-            </section>
-          )}
-          {imgw && <p className="govuk-body-s">{IMGW_ATTRIBUTION.join(" ")}</p>}
-        </div>
-      </div>
-    </>
+              .
+            </p>
+          ))}
+        </section>
+      )}
+      {imgw && <p className="govuk-body-s">{IMGW_ATTRIBUTION.join(" ")}</p>}
+    </AddressPage>
   );
 }
