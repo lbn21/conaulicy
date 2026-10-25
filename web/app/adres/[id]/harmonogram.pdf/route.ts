@@ -22,7 +22,6 @@ import {
 } from "@/lib/logo";
 import { normalize } from "@/lib/normalize";
 import { type Block, flow, type Spot } from "@/lib/pdf-flow";
-import { placePath } from "@/lib/places";
 import {
   getPlace,
   movedTarget,
@@ -40,11 +39,13 @@ import { SITE_NAME } from "@/lib/share";
 import { THEME_COLOR } from "@/lib/theme";
 import { FRACTIONS, TOKEN, tones } from "@/lib/waste-bin";
 import { WASTE_COLOURS as WASTE } from "@/lib/waste-colours";
+import { wastePath } from "@/lib/waste-module";
 
 export const runtime = "nodejs";
 
-// Printed QR codes and links point at the permanent address (SITE_URL),
-// never at a preview deployment.
+// Printed QR codes and links point at the waste subpage
+// (/adres/<id>/smieci, with the house number) on the permanent address
+// (SITE_URL), never at a preview deployment.
 
 // Bundled through outputFileTracingIncludes in next.config.ts.
 const FONT_DIR = path.join(process.cwd(), "assets/fonts");
@@ -1368,10 +1369,7 @@ export async function GET(
     });
   }
 
-  const pdf = await render(
-    place,
-    `${SITE_URL}${placePath(place.id, place.nr)}`,
-  );
+  const pdf = await render(place, `${SITE_URL}${wastePath(place)}`);
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",

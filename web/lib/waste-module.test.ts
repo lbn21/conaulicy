@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { PlaceView } from "./schedule.ts";
-import { wasteSources, wasteSummary } from "./waste-module.ts";
+import { wastePath, wasteSources, wasteSummary } from "./waste-module.ts";
 
 const pickup = (label: string, putOutBy: string | null = null) => ({
   id: label,
@@ -127,5 +127,13 @@ test("one source row each: link, part, when checked", () => {
         ", Sektor 2",
       ],
     ],
+  );
+});
+
+test("the PDF's QR code and link: the waste subpage, with the number", () => {
+  assert.equal(wastePath(place()), "/adres/0972447-00470/smieci");
+  assert.equal(
+    wastePath(place({ id: "0972447-90004", nr: "7a" })),
+    "/adres/0972447-90004/smieci?nr=7a",
   );
 });
