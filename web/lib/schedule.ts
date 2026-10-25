@@ -8,6 +8,8 @@ import {
   gte,
   inArray,
   isNull,
+  max,
+  ne,
   notExists,
   notInArray,
   or,
@@ -21,6 +23,7 @@ import {
   db,
   events,
   gminy,
+  importRuns,
   localities,
   placeRedirects,
   streets,
@@ -131,6 +134,11 @@ export type PlaceView = {
   days: PickupDay[];
   sources: SourceView[];
   verified: boolean;
+  /**
+   * ISO: when the import last read the sources (lib/modules.ts checkedAt);
+   * null before any.
+   */
+  importedAt: string | null;
 };
 
 const SUBTYPE_ORDER = FRACTIONS.map(({ subtype }) => subtype);
@@ -435,6 +443,27 @@ function sourcesOf(rows: ZoneEvent[]): SourceView[] {
   return [...byDoc.values()];
 }
 
+// The latest import that read the sources without a problem, of any source
+// (import_runs has no link to a zone's source): neither a dry run, a failed
+// or blocked one, nor an undo (npm run import:revert).
+async function lastImport(): Promise<string | null> {
+  const [row] = await db()
+    .select({
+      at: sql<
+        string | null
+      >`to_char(${max(importRuns.finishedAt)} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`,
+    })
+    .from(importRuns)
+    .where(
+      and(
+        inArray(importRuns.status, ["no_change", "applied"]),
+        eq(importRuns.dryRun, false),
+        ne(importRuns.source, "revert"),
+      ),
+    );
+  return row?.at ?? null;
+}
+
 // Keyed by the Warsaw day, so past pickups drop out at midnight.
 const placeCached = unstable_cache(
   async (
@@ -442,7 +471,10 @@ const placeCached = unstable_cache(
     today: string,
     nr: string | null,
   ): Promise<PlaceView | null> => {
-    const place = await findPlace(id);
+    const [place, importedAt] = await Promise.all([
+      findPlace(id),
+      lastImport(),
+    ]);
     if (!place) return null;
 
     const zone = await wasteZoneFor(place, nr);
@@ -490,10 +522,11 @@ const placeCached = unstable_cache(
       days,
       sources: sourcesOf(upcoming),
       verified: upcoming.every((e) => e.verified),
+      importedAt,
     };
   },
-  // v2: localityId and streetId (task 117); older entries lack them.
-  ["place-v2"],
+  // v3: importedAt (task 118); older entries lack it.
+  ["place-v3"],
   CACHE,
 );
 

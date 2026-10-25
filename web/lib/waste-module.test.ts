@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { checkedLine } from "./hub.ts";
 import type { PlaceView } from "./schedule.ts";
-import { wastePath, wasteSources, wasteSummary } from "./waste-module.ts";
+import {
+  wasteChecked,
+  wastePath,
+  wasteSources,
+  wasteSummary,
+} from "./waste-module.ts";
 
 const pickup = (label: string, putOutBy: string | null = null) => ({
   id: label,
@@ -37,6 +43,7 @@ const place = (overrides: Partial<PlaceView> = {}): PlaceView => ({
   ],
   sources: [{ label: "Sektor 1", url: null, checkedAt: "2026-10-20" }],
   verified: true,
+  importedAt: "2026-10-25T05:12:00Z",
   ...overrides,
 });
 
@@ -140,4 +147,14 @@ test("the PDF's QR code and link: the waste subpage, with the number", () => {
     wastePath(place({ id: "0972447-90004", nr: "7a" })),
     "/adres/0972447-90004/smieci?nr=7a",
   );
+});
+
+test("checked line: the latest successful import (lib/schedule.ts lastImport)", () => {
+  assert.equal(
+    checkedLine(wasteChecked(place())),
+    "Ostatnio sprawdziliśmy: 25 października, 6:12",
+  );
+  // No import yet: nothing shown.
+  assert.equal(wasteChecked(place({ importedAt: null })), null);
+  assert.equal(checkedLine(wasteChecked(place({ importedAt: null }))), null);
 });

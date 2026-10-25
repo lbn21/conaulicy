@@ -257,7 +257,7 @@ test("unchanged posts: no model call, no places query, results kept", async () =
   const w = world();
   await runZuk(deps(w));
   await runZuk(deps(w));
-  const before = w.file;
+  const before = saved(w);
   w.aiCalls = [];
   w.placesLoads = 0;
   w.writes = [];
@@ -265,21 +265,25 @@ test("unchanged posts: no model call, no places query, results kept", async () =
   const summary = await runZuk(deps(w));
   assert.deepEqual(w.aiCalls, []);
   assert.equal(w.placesLoads, 0);
-  assert.equal(summary.written, false);
-  assert.equal(w.file, before);
+  assert.equal(summary.changed, false);
+  assert.deepEqual(saved(w).active, before.active);
+  assert.deepEqual(saved(w).seen, before.seen);
 });
 
-test("unchanged posts: checkedAt rewritten after 30 minutes", async () => {
+test("unchanged posts: every run writes a new checkedAt, generatedAt kept", async () => {
   const w = world();
   await runZuk(deps(w));
   await runZuk(deps(w));
   const generated = saved(w).generatedAt;
-  w.writes = [];
-  w.now = new Date(NOW.getTime() + 30 * 60_000);
-  const summary = await runZuk(deps(w));
-  assert.equal(summary.written, true);
-  assert.equal(saved(w).checkedAt, w.now.toISOString());
-  assert.equal(saved(w).generatedAt, generated);
+  for (const minutes of [15, 30]) {
+    w.writes = [];
+    w.now = new Date(NOW.getTime() + minutes * 60_000);
+    const summary = await runZuk(deps(w));
+    assert.equal(summary.changed, false);
+    assert.equal(w.writes.length, 1);
+    assert.equal(saved(w).checkedAt, w.now.toISOString());
+    assert.equal(saved(w).generatedAt, generated);
+  }
 });
 
 test("an edited post is read again", async () => {
@@ -293,7 +297,8 @@ test("an edited post is read again", async () => {
   w.now = new Date(NOW.getTime() + 60_000);
   const summary = await runZuk(deps(w));
   assert.deepEqual(w.aiCalls, [39885]);
-  assert.equal(summary.written, true);
+  assert.equal(summary.changed, true);
+  assert.equal(saved(w).generatedAt, w.now.toISOString());
   assert.equal(byId(w, 39885)?.modified, "2026-10-24T09:00:00");
 });
 
@@ -355,10 +360,11 @@ test("no XAI_API_KEY: new posts retried, nothing called", async () => {
   assert.ok(saved(w).seen.every((p) => p.reason === AI_UNAVAILABLE));
 });
 
-test("the gmina's site down: 502, the old file untouched", async () => {
+test("the gmina's site down: 502, the old file and checkedAt untouched", async () => {
   const w = world();
   await runZuk(deps(w));
   const before = w.file;
+  const checked = saved(w).checkedAt;
   w.writes = [];
   w.posts = "down";
   w.now = new Date(NOW.getTime() + 2 * 3600_000);
@@ -373,6 +379,7 @@ test("the gmina's site down: 502, the old file untouched", async () => {
   assert.deepEqual(await response.json(), { error: "source unavailable" });
   assert.equal(w.writes.length, 0);
   assert.equal(w.file, before);
+  assert.equal(saved(w).checkedAt, checked);
 });
 
 test("the gmina's site answers with something else: the same", async () => {

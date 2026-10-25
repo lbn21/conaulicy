@@ -19,7 +19,7 @@ import {
 import type { Alert, Part, SummaryRow } from "@/lib/hub";
 import { IMGW_PAGE } from "@/lib/imgw-banner";
 import { getPlace, type PlaceView } from "@/lib/schedule";
-import { wasteSources, wasteSummary } from "@/lib/waste-module";
+import { wasteChecked, wasteSources, wasteSummary } from "@/lib/waste-module";
 import {
   type Water,
   water,
@@ -33,6 +33,7 @@ import {
   type Weather,
   weather,
   weatherAlerts,
+  weatherChecked,
   weatherSources,
   weatherSummary,
 } from "@/lib/weather-module";
@@ -101,6 +102,7 @@ const waste: Module<PlaceView> = {
   alerts: () => [],
   summary: wasteSummary,
   sources: wasteSources,
+  checkedAt: wasteChecked,
   metadata: wasteMetadata,
   Details: WasteDetails,
 };
@@ -144,6 +146,7 @@ const pogoda: Module<Weather> = {
   summary: weatherSummary,
   none: "brak ostrzeżeń IMGW",
   sources: weatherSources,
+  checkedAt: weatherChecked,
   href: IMGW_PAGE,
 };
 

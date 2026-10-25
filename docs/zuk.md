@@ -35,10 +35,13 @@ minutes into one JSON file in Vercel Blob. No database writes, no UI yet.
    dropped, alone, and shown nowhere; a day or time that fails, or no place
    left, makes the whole post a Notice: a link, no date.
 5. Drops cuts that are over (`itemCount` keeps how many were read), sorts
-   the posts into `active` and `seen` (below) and writes the file if its
-   content changed, or to refresh `checkedAt` every 30 minutes.
+   the posts into `active` and `seen` (below) and writes the file on every
+   run: `checkedAt` is this run (the pages' „Ostatnio sprawdziliśmy”),
+   `generatedAt` the last run that changed its content. About 96 small
+   Blob writes a day.
 
-The gmina's site down: 502, the file stays and turns stale. xAI down: a new
+The gmina's site down: 502, the file and its `checkedAt` stay, and it turns
+stale after an hour. xAI down: a new
 post is `seen` with `reason: "ai-unavailable"`, retried next run, never
 shown; a new post over the run's 4 calls is stored nowhere and read on a
 later run. Either way an edited post keeps its old reading until it is read.

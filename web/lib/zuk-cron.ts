@@ -2,7 +2,8 @@
 // gmina's recent posts, has the model read every post that is new, edited,
 // read by an older reader (ZUK_READER) or whose last reading failed, keeps
 // every other post's stored result, and writes the file (lib/zuk-data.ts)
-// when its content changed or its checkedAt is RECHECK_MS old. The model
+// on every run that read the posts: checkedAt is that run, generatedAt the
+// last run that changed its content. The model
 // says what a post is: a water cut is read for its cuts, a water-quality
 // warning for its places (not shown yet), anything else is "not-water",
 // never read again; the old keyword filter only cross-checks it, in the
@@ -55,8 +56,6 @@ const WINDOW_DAYS = 14;
 const MAX_AI_CALLS = 4;
 /** No new model call after this long into the run (maxDuration 300 s). */
 const AI_BUDGET_MS = 200_000;
-/** An unchanged file is rewritten (checkedAt) after this long. */
-const RECHECK_MS = 30 * 60_000;
 
 export type ZukCronDeps = {
   fetch: typeof fetch;
@@ -77,7 +76,8 @@ export type RunSummary = {
   active: number;
   aiCalls: number;
   costUsd: number;
-  written: boolean;
+  /** The file's content changed (generatedAt moved). */
+  changed: boolean;
 };
 
 /** One run. Throws SourceDown, or anything else, without writing. */
@@ -249,25 +249,21 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     !previous ||
     JSON.stringify([previous.active, previous.seen]) !==
       JSON.stringify([active, seen]);
-  const due =
-    !previous ||
-    started.getTime() - Date.parse(previous.checkedAt) >= RECHECK_MS;
-  if (changed || due) {
-    const file: ZukFile = {
-      version: ZUK_FILE_VERSION,
-      generatedAt: changed || !previous ? checkedAt : previous.generatedAt,
-      checkedAt,
-      active,
-      seen,
-    };
-    await deps.writeFile(JSON.stringify(file));
-  }
+  // Written even when unchanged: checkedAt says we read the posts now.
+  const file: ZukFile = {
+    version: ZUK_FILE_VERSION,
+    generatedAt: changed ? checkedAt : previous.generatedAt,
+    checkedAt,
+    active,
+    seen,
+  };
+  await deps.writeFile(JSON.stringify(file));
   const summary = {
     posts: posts.length,
     active: active.length,
     aiCalls,
     costUsd: Number(costUsd.toFixed(6)),
-    written: changed || due,
+    changed,
   };
   deps.log({ zuk: "run", ...summary });
   return summary;
