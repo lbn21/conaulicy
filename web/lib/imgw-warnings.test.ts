@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { mock, test } from "node:test";
 import { warsawToIso } from "./dates.ts";
 import {
   DERIVED_1809_ID,
@@ -331,6 +331,41 @@ test("the mock answers from the fixtures, and never in production", async () => 
   } finally {
     if (env === undefined) delete process.env.VERCEL_ENV;
     else process.env.VERCEL_ENV = env;
+  }
+});
+
+test("the upcoming mock starts and ends on one Warsaw day, whenever it runs", async () => {
+  // 00:30, 15:30 and 23:30 in Warsaw on 24 Oct and on 25 Oct (summer time ends).
+  const runs = [
+    "2026-10-23T22:30:00Z",
+    "2026-10-24T13:30:00Z",
+    "2026-10-24T21:30:00Z",
+    "2026-10-24T22:30:00Z",
+    "2026-10-25T14:30:00Z",
+    "2026-10-25T22:30:00Z",
+  ];
+  mock.timers.enable({ apis: ["Date"] });
+  try {
+    for (const run of runs) {
+      const now = Date.parse(run);
+      mock.timers.setTime(now);
+      const [upcoming] = forPowiat(
+        (await fetchFeed("mock:1809?start=upcoming", { fetch: mockFetch }))
+          .items,
+        "1809",
+        now,
+      );
+      assert.ok(Date.parse(upcoming.validFrom) > now, `${run}: to come`);
+      assert.equal(upcoming.validFrom.slice(11, 16), "10:00", run);
+      assert.equal(upcoming.validTo.slice(11, 16), "16:00", run);
+      assert.equal(
+        upcoming.validFrom.slice(0, 10),
+        upcoming.validTo.slice(0, 10),
+        `${run}: one day`,
+      );
+    }
+  } finally {
+    mock.timers.reset();
   }
 });
 
