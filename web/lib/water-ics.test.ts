@@ -4,7 +4,12 @@ import { test } from "node:test";
 import type { Disruption } from "./disruptions.ts";
 import type { PlaceView } from "./schedule.ts";
 import { POST_39885, storedPost, testPlace, zukFile } from "./water-fixture.ts";
-import { calendarCuts, waterCalendar, waterFilename } from "./water-ics.ts";
+import {
+  calendarCuts,
+  waterCalendar,
+  waterCalendarHref,
+  waterFilename,
+} from "./water-ics.ts";
 import { water } from "./water-module.ts";
 import { type StoredPost, zukView } from "./zuk-data.ts";
 
@@ -198,6 +203,29 @@ test("the page and the file share the loader and the cut list", () => {
   // The button shows exactly when the file has an event.
   assert.match(
     read("../components/water-page.tsx"),
-    /calendarCuts\(data\)\.length > 0/,
+    /const calendar = waterCalendarHref\(data\);/,
   );
+});
+
+test("the button's link: the file, with the house number as given", () => {
+  assert.equal(
+    waterCalendarHref(at([post()])),
+    "/adres/0972447-26555/woda.ics",
+  );
+  assert.equal(
+    waterCalendarHref(at([post()], { ...ZUKI, givenNr: "12" })),
+    "/adres/0972447-26555/woda.ics?nr=12",
+  );
+});
+
+test("no dated cut, no button: an emergency, no hours, a Notice, none", () => {
+  const notice = post({ status: "notice", reason: "x", items: [] });
+  for (const data of [
+    at([zukiPost({ cause: "emergency" })]),
+    at([zukiPost({ end: null })]),
+    at([notice]),
+    at([post()], ASNYKA),
+    water(zukView(null, NOW), ZUKI),
+  ])
+    assert.equal(waterCalendarHref(data), null);
 });
