@@ -3,11 +3,15 @@ import { test } from "node:test";
 import type { Disruption } from "./disruptions.ts";
 import { readPost } from "./zuk.ts";
 import {
+  AI_DEFERRED,
+  AI_UNAVAILABLE,
+  EXPIRED,
   NOT_WATER,
   PAST,
   parseZukFile,
   STALE_MS,
   type StoredPost,
+  settle,
   WATER_QUALITY,
   type ZukFile,
   zukView,
@@ -28,6 +32,8 @@ function stored(id: number, over: Partial<StoredPost> = {}): StoredPost {
     title: post.title.rendered,
     publishedAt: post.date.replace("T", " "),
     updatedAt: post.modified.replace("T", " "),
+    reader: 3,
+    sourceId: "gmina-lubaczow",
     status: read.status,
     localityIds: [],
     itemCount: read.status === "parsed" ? read.items.length : 0,
@@ -37,10 +43,11 @@ function stored(id: number, over: Partial<StoredPost> = {}): StoredPost {
 }
 
 const file = (posts: StoredPost[], checkedAt = CHECKED): ZukFile => ({
-  version: 3,
+  version: 4,
   generatedAt: checkedAt,
   checkedAt,
-  posts,
+  active: posts,
+  seen: [],
 });
 
 test("no file: empty, the source unavailable, stale", () => {
@@ -63,32 +70,25 @@ test("stale: data last checked more than 60 minutes ago", () => {
   assert.equal(view(0).checkedAt, CHECKED);
 });
 
-test("parse: only a file we wrote", () => {
+test("parse: only a file we wrote, of version 4", () => {
   assert.deepEqual(parseZukFile(JSON.stringify(file([]))), file([]));
   assert.equal(parseZukFile("not json"), null);
-  assert.equal(parseZukFile(JSON.stringify({ ...file([]), version: 4 })), null);
-  // Versions 1 and 2 are read as they are.
-  for (const version of [1, 2])
+  assert.equal(parseZukFile(JSON.stringify({ ...file([]), version: 5 })), null);
+  // Older versions are no file: the cron reads the window afresh.
+  for (const version of [1, 2, 3])
     assert.equal(
-      parseZukFile(JSON.stringify({ ...file([]), version }))?.version,
-      version,
+      parseZukFile(
+        JSON.stringify({
+          version,
+          generatedAt: CHECKED,
+          checkedAt: CHECKED,
+          posts: [],
+        }),
+      ),
+      null,
     );
+  assert.equal(parseZukFile(JSON.stringify({ ...file([]), seen: null })), null);
   assert.equal(parseZukFile("null"), null);
-});
-
-test("version 1: read as it is, its cuts still shown", () => {
-  // A version 1 post: no itemCount, items without a label.
-  const { itemCount, ...post } = stored(39885);
-  assert.ok(itemCount);
-  const old = {
-    ...file([{ ...post, items: post.items.map(({ label, ...d }) => d) }]),
-    version: 1,
-  };
-  const parsed = parseZukFile(JSON.stringify(old));
-  assert.equal(parsed?.version, 1);
-  const view = zukView(parsed, NOW);
-  assert.equal(view.disruptions.length, post.items.length);
-  assert.equal(view.disruptions[0].label, undefined);
 });
 
 test("cuts: those still to come, checkedAt from the file", () => {
@@ -177,7 +177,7 @@ const hidden = (id: number, reason: string, over: Partial<StoredPost> = {}) =>
     ...over,
   });
 
-test("not-water and water-quality: never shown, like past", () => {
+test("not-water, water-quality, waiting or failed: never shown, like past", () => {
   // 39885 published 23 Oct: a Notice of it would still be shown on 25 Oct.
   const shownAsNotice = stored(39885, {
     status: "notice",
@@ -186,7 +186,14 @@ test("not-water and water-quality: never shown, like past", () => {
     items: [],
   });
   assert.equal(zukView(file([shownAsNotice]), NOW).notices.length, 1);
-  for (const reason of [NOT_WATER, WATER_QUALITY, PAST]) {
+  // A waiting or failed reading is never in `active`; not shown even so.
+  for (const reason of [
+    NOT_WATER,
+    WATER_QUALITY,
+    PAST,
+    AI_DEFERRED,
+    AI_UNAVAILABLE,
+  ]) {
     const view = zukView(file([hidden(39885, reason)]), NOW);
     assert.deepEqual(view.notices, [], reason);
     assert.deepEqual(view.disruptions, [], reason);
@@ -207,7 +214,7 @@ test("water-quality: its places are kept in the file, not shown", () => {
     ],
   });
   const parsed = parseZukFile(JSON.stringify(file([quality])));
-  assert.equal(parsed?.posts[0].places?.length, 1);
+  assert.equal(parsed?.active[0].places?.length, 1);
   assert.deepEqual(zukView(parsed, NOW).notices, []);
 });
 
@@ -225,4 +232,105 @@ test("not-water: a date-change post that is not about water doubts nothing", () 
   );
   assert.ok(view.disruptions.length > 0);
   assert.deepEqual(view.notices, []);
+});
+
+const TODAY = "2026-10-25";
+const ids = (posts: Array<{ id: number }>) => posts.map((p) => p.id);
+
+test("settle: a post whose cuts are all over is seen, past", () => {
+  // 39885: cuts 26-29 Oct; 39872: 22 Oct.
+  const { active, seen } = settle([stored(39885), stored(39872)], TODAY);
+  assert.deepEqual(ids(active), [39885]);
+  assert.ok(active[0].items.length > 0);
+  assert.deepEqual(seen, [
+    { id: 39872, modified: stored(39872).modified, reason: PAST, reader: 3 },
+  ]);
+  // On 30 Oct 39885's are over too.
+  const later = settle(active, "2026-10-30");
+  assert.deepEqual(later.active, []);
+  assert.deepEqual(
+    later.seen.map((p) => [p.id, p.reason]),
+    [[39885, PAST]],
+  );
+});
+
+test("settle: a Notice is active for 14 days, then seen, expired", () => {
+  const notice = stored(34394, {
+    status: "notice",
+    reason: "ambiguous",
+    itemCount: 0,
+    items: [],
+  });
+  assert.deepEqual(ids(settle([notice], "2025-10-22").active), [34394]);
+  const { active, seen } = settle([notice], "2025-10-23");
+  assert.deepEqual(active, []);
+  assert.deepEqual(seen, [
+    { id: 34394, modified: notice.modified, reason: EXPIRED, reader: 3 },
+  ]);
+});
+
+test("settle: water-quality stays active, not-water and failed are slim", () => {
+  const { active, seen } = settle(
+    [
+      hidden(39885, WATER_QUALITY, { qualityStatus: "warning", places: [] }),
+      hidden(39872, NOT_WATER),
+      hidden(39865, AI_UNAVAILABLE),
+      hidden(39863, AI_DEFERRED),
+    ],
+    TODAY,
+  );
+  assert.deepEqual(ids(active), [39885]);
+  // Deferred: in neither. Seen: no title, url, localityIds or items.
+  assert.deepEqual(
+    seen.map((p) => [p.id, p.reason]),
+    [
+      [39872, NOT_WATER],
+      [39865, AI_UNAVAILABLE],
+    ],
+  );
+  for (const p of seen)
+    assert.deepEqual(Object.keys(p).sort(), [
+      "id",
+      "modified",
+      "reader",
+      "reason",
+    ]);
+});
+
+test("settle: a date-change post stays while it doubts an active post", () => {
+  // 39857's cuts are on 19 Oct; a date-change Notice on Lisie Jamy after
+  // it, whose 14 days are over on 16 Oct.
+  const earlier = stored(39857, { publishedAt: "2026-10-01 08:00:00" });
+  assert.ok(earlier.items.every((d) => d.date === "2026-10-19"));
+  const change = stored(39855, {
+    publishedAt: "2026-10-02 10:00:00",
+    change: true,
+    status: "notice",
+    reason: "ambiguous",
+    itemCount: 0,
+    items: [],
+    localityIds: [earlier.items[0].place.localityId],
+  });
+  const kept = settle([earlier, change], "2026-10-18");
+  assert.deepEqual(ids(kept.active), [39857, 39855]);
+  // Its earlier post still a Notice, not dates, on the page.
+  const view = zukView(file(kept.active), new Date("2026-10-18T06:00:00Z"));
+  assert.deepEqual(view.disruptions, []);
+  assert.deepEqual(
+    view.notices.map((n) => n.uid),
+    ["zuk-39857"],
+  );
+  // 39857's cuts over: neither matters.
+  const over = settle([earlier, change], "2026-10-20");
+  assert.deepEqual(ids(over.active), []);
+  assert.deepEqual(
+    over.seen.map((p) => [p.id, p.reason]),
+    [
+      [39857, PAST],
+      [39855, EXPIRED],
+    ],
+  );
+  // Not about water: never kept for that.
+  const sesja = { ...change, reason: NOT_WATER };
+  assert.deepEqual(ids(settle([earlier, sesja], "2026-10-18").active), [39857]);
 });
