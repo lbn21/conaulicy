@@ -157,6 +157,18 @@ function hubOutline(path, hub) {
     fail(path, `not one section break between sections ${gaps}`);
   if ((hub.match(/<hr[\s/>]/g)?.length ?? 0) !== parts.length - 1)
     fail(path, "a section break outside the gaps between sections");
+  // No row borders on the hub: the section break is the only line.
+  const lists = hub.match(/<dl class="[^"]*"/g) ?? [];
+  if (
+    lists.length === 0 ||
+    lists.some(
+      (dl) =>
+        dl !== '<dl class="govuk-summary-list govuk-summary-list--no-border"',
+    )
+  )
+    fail(path, `not every summary list without borders ${lists}`);
+  if (hub.includes("govuk-summary-list__row--no-border"))
+    fail(path, "a row-level --no-border");
 }
 
 try {
@@ -249,11 +261,11 @@ try {
       )
     )
       fail(path, "no „Bez zapowiedzi” line for the weather");
-    // The checked line: under the waste list's last source (no border), after the
+    // The checked line: under the waste list's last source, after the
     // weather's „Bez zapowiedzi” line (the copy's fetchedAt).
     if (
       !new RegExp(
-        `<div class="govuk-summary-list__row govuk-summary-list__row--no-border"><dt class="govuk-summary-list__key">Źródło</dt><dd class="govuk-summary-list__value">(?:(?!</dd>).)*<span class="govuk-hint govuk-!-font-size-16 [^"]*">${WASTE_CHECKED}</span></dd></div></dl>`,
+        `<div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Źródło</dt><dd class="govuk-summary-list__value">(?:(?!</dd>).)*<span class="govuk-hint govuk-!-font-size-16 [^"]*">${WASTE_CHECKED}</span></dd></div></dl>`,
         "su",
       ).test(hub)
     )
@@ -303,6 +315,12 @@ try {
     )
       fail(waste, "no calendar or PDF");
     if (!sub.main.includes('id="pickups-heading"')) fail(waste, "no pickups");
+    // Subpages keep GOV.UK's row borders (only the hub drops them).
+    if (
+      !sub.main.includes('<dl class="govuk-summary-list">') ||
+      sub.main.includes("no-border")
+    )
+      fail(waste, "the pickup list without row borders");
     if (!sub.main.includes(UNVERIFIED_NOTE)) fail(waste, "no unverified note");
     if (!new RegExp(`>${WASTE_CHECKED}</p>`, "u").test(sub.main))
       fail(waste, "no day-only checked line");

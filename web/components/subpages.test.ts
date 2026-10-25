@@ -149,6 +149,27 @@ test("/smieci and /woda: the same skeleton and calendar block", () => {
   );
 });
 
+test("/smieci and /woda keep GOV.UK's row borders (only the hub drops them)", () => {
+  const pickup = (date: string) => ({
+    date,
+    pickups: [
+      {
+        id: date,
+        subtype: "zmieszane",
+        label: "Zmieszane",
+        putOutBy: null,
+        shiftedFrom: null,
+      },
+    ],
+  });
+  // Two days: the list starts with the second.
+  const days = [pickup("2026-10-27"), pickup("2026-11-10")];
+  for (const html of [wastePage({ days }), waterPage()]) {
+    assert.match(html, /<dl class="govuk-summary-list">/);
+    assert.doesNotMatch(html, /no-border/);
+  }
+});
+
 /** The button's opening tag. */
 const buttonTag = (html: string) =>
   /<a [^>]*role="button"[^>]*>/.exec(html)?.[0] ?? "";
