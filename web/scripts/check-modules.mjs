@@ -205,7 +205,7 @@ try {
     )
       fail(path, "no „Bez zapowiedzi” line for the water");
     if (
-      !/<\/p><p class="govuk-body">Pogoda: brak ostrzeżeń IMGW\. Źródło: <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">IMGW-PIB<\/a>\. Ostatnio sprawdziliśmy: /.test(
+      !/<\/p><p class="govuk-body">Pogoda: brak ostrzeżeń IMGW\. Źródło: <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">IMGW-PIB<\/a>\.(?:<!-- -->)? Ostatnio sprawdziliśmy: /.test(
         hub,
       )
     )
