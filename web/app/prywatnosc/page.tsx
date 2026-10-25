@@ -16,8 +16,7 @@ export default function PrivacyPage() {
       <div className="govuk-grid-column-two-thirds">
         <h1 className="govuk-heading-l">{PRIVACY.text}</h1>
         <p className="govuk-body-l">
-          Krótko: nie wiemy, kim jesteś, i nie chcemy wiedzieć. Strona ma tylko
-          powiedzieć, kiedy wystawić śmieci.
+          Krótko: nie wiemy, kim jesteś, i nie chcemy wiedzieć.
         </p>
 
         <div>
@@ -34,6 +33,10 @@ export default function PrivacyPage() {
             <p className="govuk-body">
               Nie zapisujemy niczego w pamięci Twojej przeglądarki. Strona tylko
               pobiera listę ulic, żeby szybciej podpowiadać adresy.
+            </p>
+            <p className="govuk-body">
+              Ostrzeżenia pogodowe pobiera z IMGW nasz serwer. Twoja
+              przeglądarka nie łączy się z IMGW.
             </p>
           </section>
 
