@@ -142,7 +142,7 @@ Generic, from the snapshot only: no place-specific code, list or alias.
   Krajowej"); the locality that decides for it (a bracket right after it,
   "ul. Przemysłowa (Lubaczów)", else the nearest before, else the nearest
   after in its sentence) not this one, or only inflected;
-- all of Lubaczów; house numbers for a village with streets;
+- all of Lubaczów;
 - a note not one literal piece of the post, or naming another place of
   ours; with no note, the place in the text with something left out (house
   numbers, "w części", a bracket) that no other item's note has.
@@ -153,8 +153,9 @@ all-caps word only exactly ("ZUK" is not Żuki), and a look-alike that is a
 street ("Piaskowa") none; only an exact mention approves. A name a village
 and a village part share is the village, unless written with its village
 ("Dąbrowa (Basznia Górna)"). A village-wide cut covers the village and
-every street of its own, from our data, not its village parts. The houses
-come from the note: ranges or numbers if that is all it says, else
+every street of its own, from our data, not its village parts. House
+numbers for a village with streets are the village only, never copied onto
+its streets. The houses come from the note: ranges or numbers if that is all it says, else
 "unknown" (part of the place).
 
 ## Our places: the TERYT snapshot

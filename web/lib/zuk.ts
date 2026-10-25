@@ -140,8 +140,8 @@ type ItemPlaces = {
  * One item through the gate, then the repo's stricter place rules: with
  * no note, the place written on its own with nothing left out; the houses
  * from the note, "(przysiółek X)" the village's part X; a village-wide cut
- * is the village and every street of its own, never with house numbers
- * when it has streets. `date`: the gate's day check failed.
+ * is the village and every street of its own, house numbers in a village
+ * with streets the village only. `date`: the gate's day check failed.
  */
 function itemPlaces(
   item: AiItem,
@@ -215,9 +215,14 @@ function itemPlaces(
   if (gated.street)
     return { places: [at(gated.street.id, gated.street.name)], scope };
   const own = ctx.data.streets.filter((s) => s.localityId === locality.id);
-  // House numbers run per street, so a village-wide range would be a guess.
-  if (own.length > 0 && (scope.type === "ranges" || scope.type === "numbers"))
-    return fail(`house numbers for ${locality.name}, which has streets`);
+  // A village's numbering runs on across its streets, so its house numbers
+  // are the village only, which its street pages show too; the town has
+  // no place of its own for them.
+  if (own.length > 0 && (scope.type === "ranges" || scope.type === "numbers")) {
+    if (locality.kind === "miasto")
+      return fail(`house numbers for ${locality.name} without a street`);
+    return { places: [at(null, null)], scope };
+  }
   return {
     places: [at(null, null), ...own.map((s) => at(s.id, s.name))],
     scope,

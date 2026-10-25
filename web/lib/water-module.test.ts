@@ -14,6 +14,7 @@ import {
 import {
   GMINA_NEWS,
   matches,
+  scope,
   staleNote,
   type Water,
   water,
@@ -139,6 +140,39 @@ test("matching: a village part takes its own cuts, not its village's", () => {
   assert.equal(matches(PILIPY_PART, villageStreet), false);
   // 39885's „Młodów ul. Pilipy” is Młodów's street, not the part.
   assert.deepEqual(waterAt(PILIPY_PART).outages, []);
+});
+
+test("matching: house numbers in a village with streets, the village and every street, any nr", () => {
+  // Krowica Sama's numbering runs on across its streets (zuk.ts).
+  const krowica = cut({
+    place: { localityId: "0606180", streetId: null },
+    label: { locality: "Krowica Sama", parent: null, street: null },
+    where: "Krowica Sama od nr 10 do nr 50",
+    scope: { type: "ranges", ranges: [{ from: "10", to: "50" }] },
+    note: "od nr 10 do nr 50",
+  });
+  assert.equal(
+    matches({ localityId: "0606180", streetId: null }, krowica),
+    true,
+  );
+  assert.equal(
+    matches({ localityId: "0606180", streetId: "0606180-51473" }, krowica),
+    true,
+  );
+  assert.equal(matches(ZALUZE, krowica), false);
+  assert.equal(scope(krowica), "Krowica Sama: od nr 10 do nr 50");
+  // No house-number filtering: the range is stated, never applied.
+  const village = place({
+    id: "0606180",
+    kind: "wies",
+    name: "Krowica Sama",
+    localityId: "0606180",
+    streetId: null,
+    givenNr: "99",
+  });
+  assert.deepEqual(waterAt(village, [post({ items: [krowica] })]).outages, [
+    krowica,
+  ]);
 });
 
 test("alert: the nearest cut, an absolute date, the subpage, the source", () => {
