@@ -99,12 +99,12 @@ export function SiteFooter() {
                 ))}
               </ul>
               <div className="govuk-footer__meta-custom">
-                Zrobił Jakub Marciniszyn dla mieszkańców Lubaczowa.
+                Zrobił Jakub Marciniszyn dla mieszkańców Lubaczowa i gminy.
                 <br />
                 {DISCLAIMER}
               </div>
               <span className="govuk-footer__licence-description">
-                Teksty na tej stronie są dostępne na licencji{" "}
+                Nasze teksty są na licencji{" "}
                 <a
                   className="govuk-footer__link"
                   href="https://creativecommons.org/licenses/by/4.0/deed.pl"
@@ -113,7 +113,7 @@ export function SiteFooter() {
                   CC BY 4.0
                 </a>
                 . Terminy wywozu pochodzą z harmonogramów miasta Lubaczów i
-                gminy Lubaczów.
+                gminy Lubaczów, a ostrzeżenia pogodowe z IMGW-PIB.
               </span>
             </div>
             <div className="govuk-footer__meta-item">{`© ${COPYRIGHT_YEAR} ${SITE_NAME}`}</div>

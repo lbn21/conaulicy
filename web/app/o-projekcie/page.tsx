@@ -20,6 +20,10 @@ export default function AboutPage() {
           śmieciarka.
         </p>
         <p className="govuk-body">
+          Gdy IMGW ogłosi ostrzeżenie pogodowe dla powiatu lubaczowskiego,
+          pokażemy je na górze każdej strony.
+        </p>
+        <p className="govuk-body">
           Strona jest darmowa i niekomercyjna. Nie ma na niej reklam ani kont.
         </p>
         <p className="govuk-body">
