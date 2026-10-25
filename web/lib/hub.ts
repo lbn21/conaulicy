@@ -1,6 +1,7 @@
 // The address page as a hub of modules (lib/modules.ts, components/hub.tsx):
 // what a module gives it, and the alert slot's rules. Pure, so the unit
 // tests read it.
+import { clockTime, dayMonth } from "./date-labels.ts";
 
 /** A link; `hidden` follows its text for screen readers only. */
 type Link = { href: string; text: string; hidden?: string };
@@ -53,4 +54,14 @@ export function alertSlot<T extends { order: number; alert: Alert }>(
 export function warningCount(n: number): string {
   const few = n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14);
   return `${n} ${n === 1 ? "ostrzeżenie" : few ? "ostrzeżenia" : "ostrzeżeń"}`;
+}
+
+/**
+ * When a module last checked its source, in Polish time, absolute: "Ostatnio
+ * sprawdziliśmy: 25 października, 14:20". null: nothing to say.
+ */
+export function checkedLine(at: Date | null): string | null {
+  if (!at) return null;
+  const ms = at.getTime();
+  return `Ostatnio sprawdziliśmy: ${dayMonth(ms)}, ${clockTime(ms)}`;
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
+import { CheckedLine } from "@/components/checked-line";
 import { ErrorSummary } from "@/components/error-summary";
 import { NOT_FOUND_TITLE, PageNotFound } from "@/components/page-not-found";
 import { PickupSchedule } from "@/components/pickup-schedule";
@@ -226,18 +227,21 @@ export function PlaceNotFound() {
  * The top of the street page, the address page and the waste subpage:
  * GOV.UK's error summary, the caption (the subpage's: its h1 does not name
  * the place; the address page's locality is in its breadcrumbs), the h1, a house number the street
- * does not need (sharedNumberNote), then „Zmień adres”.
+ * does not need (sharedNumberNote), „Zmień adres”, then on a subpage when
+ * its module last checked its source (Module.checkedAt).
  */
 function PlaceHeading({
   place,
   caption,
   heading,
   error = null,
+  checkedAt = null,
 }: {
   place: PlaceView;
   caption?: string;
   heading: string;
   error?: string | null;
+  checkedAt?: Date | null;
 }) {
   const name = withHouseNumber(place.name, place.nr);
   const note = sharedNumberNote(place);
@@ -253,7 +257,28 @@ function PlaceHeading({
           Zmień adres<span className="govuk-visually-hidden"> {name}</span>
         </a>
       </p>
+      <CheckedLine at={checkedAt} />
     </>
+  );
+}
+
+/** A module subpage's heading: the place as its caption, then the h1. */
+export function SubpageHeading({
+  place,
+  heading,
+  checkedAt,
+}: {
+  place: PlaceView;
+  heading: string;
+  checkedAt: Date | null;
+}) {
+  return (
+    <PlaceHeading
+      place={place}
+      caption={placeCaption(place)}
+      heading={heading}
+      checkedAt={checkedAt}
+    />
   );
 }
 
@@ -373,9 +398,11 @@ export function Breadcrumbs({
 export function WasteDetails({
   data: place,
   missing = false,
+  checkedAt = null,
 }: {
   data: PlaceView;
   missing?: boolean;
+  checkedAt?: Date | null;
 }) {
   const error = numberError(place, missing);
   return (
@@ -386,6 +413,7 @@ export function WasteDetails({
           caption={placeCaption(place)}
           heading={WASTE_H1}
           error={error}
+          checkedAt={checkedAt}
         />
         <WasteBody place={place} error={error} />
       </div>

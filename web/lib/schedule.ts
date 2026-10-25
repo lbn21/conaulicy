@@ -112,6 +112,10 @@ export type PlaceView = {
   group: string | null;
   /** Gmina name as in TERYT, e.g. "Lubaczów (miasto)". */
   gmina: string;
+  /** TERYT SIMC: a street's locality, or the village (part) itself. */
+  localityId: string;
+  /** TERYT SIMC-SYM_UL; null for a village. */
+  streetId: string | null;
   zoneId: string | null;
   /** The house number this view is for, shown after the name. */
   nr: string | null;
@@ -472,6 +476,8 @@ const placeCached = unstable_cache(
       area: place.area,
       group: place.group,
       gmina: place.gmina,
+      localityId: place.localityId,
+      streetId: place.streetId ?? null,
       zoneId: zone.id,
       // A number only matters on a split street; elsewhere it is ignored,
       // so the page never repeats one nobody checked.
@@ -486,7 +492,8 @@ const placeCached = unstable_cache(
       verified: upcoming.every((e) => e.verified),
     };
   },
-  ["place"],
+  // v2: localityId and streetId (task 117); older entries lack them.
+  ["place-v2"],
   CACHE,
 );
 

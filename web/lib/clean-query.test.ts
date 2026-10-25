@@ -91,6 +91,6 @@ test("a module subpage keeps only nr, as the street page", () => {
 });
 
 test("an unknown module is not a route of ours", () => {
-  assert.equal(clean("/adres/X/woda?x=1"), null);
-  assert.equal(clean("/adres/X/woda/nr/12?x=1"), null);
+  assert.equal(clean("/adres/X/prad?x=1"), null);
+  assert.equal(clean("/adres/X/prad/nr/12?x=1"), null);
 });

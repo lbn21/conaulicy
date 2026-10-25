@@ -5,8 +5,11 @@
 // registry; it needs Next.js, so it cannot be loaded here).
 import { NR_QUERY } from "./house.ts";
 
-/** Module ids in registry order. Waste comes first. */
-export const MODULE_IDS = ["smieci", "pogoda"] as const;
+/**
+ * Module ids in registry order. Waste comes first; water, at this address,
+ * before the weather for the whole powiat.
+ */
+export const MODULE_IDS = ["smieci", "woda", "pogoda"] as const;
 
 export type ModuleId = (typeof MODULE_IDS)[number];
 
@@ -14,7 +17,7 @@ export type ModuleId = (typeof MODULE_IDS)[number];
  * The modules with a subpage of their own, /adres/<id>/<module id>: the
  * others (weather) link their source instead.
  */
-export const SUBPAGE_IDS: readonly ModuleId[] = ["smieci"];
+export const SUBPAGE_IDS: readonly ModuleId[] = ["smieci", "woda"];
 
 /**
  * Folders under app/adres/[id]/ that win over app/adres/[id]/[module]/, so no

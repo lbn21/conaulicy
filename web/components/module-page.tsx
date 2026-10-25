@@ -42,7 +42,11 @@ export async function ModuleMain({
   return (
     <>
       <Breadcrumbs place={place} subpage />
-      <module.Details data={data} missing={missing} />
+      <module.Details
+        data={data}
+        missing={missing}
+        checkedAt={module.checkedAt?.(data) ?? null}
+      />
     </>
   );
 }
