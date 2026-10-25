@@ -224,3 +224,36 @@ export function changesTable(changes: TerytChange[]): string {
   );
   return ["| | | id | |", "|---|---|---|---|", ...rows].join("\n");
 }
+
+/** A ZUK place snapshot's rows (lib/zuk-places.generated.ts). */
+export type PlaceRows = {
+  /** "SIMC;name;kind;parent SIMC or empty". */
+  localities: string[];
+  /** "SIMC-SYM_UL;SIMC;name". */
+  streets: string[];
+};
+
+/**
+ * Our places as TERYT gives them, for the gminy `tercs`: every locality
+ * (with a parent, a village part; RM 96 the town; else a village) and every
+ * street, as the database holds them (docs/database.md), ordered by id.
+ */
+export function placeRows(
+  ulic: UlicRow[],
+  simc: SimcRow[],
+  tercs: string[],
+): PlaceRows {
+  const byId = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+  const kind = (r: SimcRow) =>
+    r.parent ? "czesc_wsi" : r.rm === "96" ? "miasto" : "wies";
+  return {
+    localities: simc
+      .filter((r) => tercs.includes(r.terc))
+      .map((r) => `${r.simc};${r.name};${kind(r)};${r.parent ?? ""}`)
+      .sort(byId),
+    streets: ulic
+      .filter((r) => tercs.includes(r.terc))
+      .map((r) => `${streetId(r)};${r.simc};${ulicName(r)}`)
+      .sort(byId),
+  };
+}

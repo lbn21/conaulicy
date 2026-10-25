@@ -176,7 +176,6 @@ export const PLACES: ZukPlaces = {
     id: `${simc}-${sym}`,
     localityId: simc,
     name: terytName(nazwa1, nazwa2 ?? null),
-    nazwa1,
   })),
 };
 

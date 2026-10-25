@@ -31,7 +31,7 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 import { todayInWarsaw } from "../lib/dates.ts";
 import { archive } from "./import/core/archive.ts";
-import { loadConfig } from "./import/core/config.ts";
+import { gminaTercs, loadConfig } from "./import/core/config.ts";
 import { Db } from "./import/core/db.ts";
 import { sha256 } from "./import/core/hash.ts";
 import { Issues } from "./import/core/issues.ts";
@@ -67,17 +67,7 @@ const config = loadConfig(process.env.IMPORT_CONFIG || undefined);
 const issues = new Issues();
 const today = todayInWarsaw();
 
-/** Every gmina the sources cover: <domain>.gmina.teryt of each source. */
-const tercs = [
-  ...new Set(
-    config.sources.flatMap((source) => {
-      const own = (source as Record<string, unknown>)[source.domain] as
-        | { gmina?: { teryt?: string } }
-        | undefined;
-      return own?.gmina?.teryt ? [own.gmina.teryt] : [];
-    }),
-  ),
-].sort();
+const tercs = gminaTercs(config);
 
 type Files = { ULIC: string; SIMC: string };
 

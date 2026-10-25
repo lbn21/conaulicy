@@ -18,6 +18,7 @@
     "check:modules": "next build && node scripts/check-modules.mjs",
     "sources:pull": "node scripts/sources-pull.ts",
     "config:sync": "node scripts/config-sync.ts",
+    "zuk:places": "node scripts/zuk-places-snapshot.ts",
     "config:check": "node scripts/config-sync.ts --check",
     "check:fonts": "next build && node scripts/check-fonts.mjs",
     "check:metadata": "next build && node scripts/check-metadata.mjs",

@@ -9,17 +9,37 @@ minutes into one JSON file in Vercel Blob. No database writes, no UI yet.
 2. Fetches the gmina's posts of the last 30 days (`/wp-json/wp/v2/posts`) and
    keeps ZUK's water cut notices (`lib/zuk.ts` `isZukPost`).
 3. Has grok-4.7 (xAI, reasoning low) read only the posts that are new, edited
-   (`modified`) or whose last reading failed: at most 4 per run
-   (`lib/zuk-ai.ts`). Every other post keeps its stored result.
+   (`modified`) or whose last reading failed or waited: at most 4 per run
+   (`lib/zuk-ai.ts`). Every other post keeps its stored result. A post whose
+   title's days are all before today (Warsaw) is not read: a Notice with
+   `reason: "past"`, never shown.
 4. Checks each item against the post's own text (`lib/zuk-guards.ts`) and
-   maps it to our places (`lib/zuk-resolve.ts`). Any doubt makes the whole
-   post a Notice: a link, no date.
-5. Drops cuts that are over and writes the file if its content changed, or
-   to refresh `checkedAt` every 30 minutes.
+   maps it to our places (`lib/zuk-resolve.ts`). A place that fails is
+   dropped, alone, and shown nowhere; a day or time that fails, or no place
+   left, makes the whole post a Notice: a link, no date.
+5. Drops cuts that are over (`itemCount` keeps how many were read) and
+   writes the file if its content changed, or to refresh `checkedAt` every
+   30 minutes.
 
 The gmina's site down: 502, the file stays and turns stale. xAI down: new
 and edited posts become Notices (`reason: "ai-unavailable"`), retried next
-run. Pages read the file through `lib/zuk-store.ts` `getZukData()`; data last
+run; so do posts over the run's 4 calls (`reason: "ai-deferred"`). A file of
+version 1 is still read by the pages; the cron reads every post again and
+writes version 2.
+
+## The prompt
+
+The rules, then the context: our town, villages and village parts (with
+their village), built from the same places the resolver uses
+(`systemPrompt`), in a fixed order, so it is a cacheable prefix and follows
+the data. No streets: they made the readings worse. The model writes the
+locality as on that list and never returns ids; our code decides. On the 24
+hand-checked posts it scored 330/330 place-days, 0 wrong (A/B test, 25 Oct
+2026; `lib/zuk-fixture-b.ts`).
+
+Each cut carries our names for its label (`label`: locality, its village
+for a village part, street) and its houses (`scope`); the source's own
+wording stays in `where`. Pages read the file through `lib/zuk-store.ts` `getZukData()`; data last
 checked more than 60 minutes ago is `stale`, so a page shows the source link
 instead.
 
@@ -48,9 +68,43 @@ $6/1M out and reasoning) in the function log.
 - a place phrase not in the text, or one that leaves out what the text adds
   to it (house numbers, a street, "w części", a bracket), or a street dropped
   ("Młodów, ul. Pilipy" read as all of Młodów);
-- a locality with no match or several ("Dąbrowa"), a street not among that
-  locality's own, house numbers for a village with streets, all of Lubaczów.
+- a place we cannot pin to exactly one of ours (`lib/zuk-resolve.ts`, no
+  alias list): a name not ours; a name not in the text and the item's
+  phrase on its own, or only inside a longer name of ours ("Basznia" in
+  "Basznia Dolna") or after "ul." ("Lubaczów ul. Żuki" is not the village
+  part Żuki); a name two village parts share, without the village in the
+  phrase (Mielniki); "przysiółek X" without X's village; a street not among
+  that locality's own, by its whole name or an end of it no other of its
+  streets shares ("Sobieskiego"), and what matched not written as whole
+  words in the text and the item's phrase ("Leśna" is not "ul. Podleśna");
+  house numbers for a village with streets; all of Lubaczów.
 
-Local names TERYT does not have: Podłęże (part of Załuże), "(przysiółek X)"
-(the village part X). A village-wide cut covers the village and every street
-of its own, not its village parts.
+A name a village and a village part share is the village ("Dąbrowa"),
+unless the phrase names the part's village. A name not on our list attached
+to a village ("Załuże–Podłęże") is that village, only partly: the model
+gives the village as the locality and the name as the note. "(przysiółek X)"
+is the village part X. A village-wide cut covers the village and every
+street of its own, from our data, not its village parts.
+
+## Tests on all our places
+
+`web/lib/zuk-places.generated.ts` holds every locality, village part and
+street TERYT has for our gminy (69 and 276; the database's streets are all
+of them, docs/database.md), so CI checks every one of our names resolves
+to one place, the one named, or is dropped, with no database or network
+(`lib/zuk-resolve.test.ts`). It is built from the TERYT files archived in
+`etl/sources.yaml`. Refresh it whenever those change (a reviewed TERYT
+difference):
+
+```sh
+cd web && npm run sources:pull && npm run zuk:places
+```
+
+`zuk:places` takes the newest archived SIMC and ULIC files from
+`.cache/sources/` and checks their SHA-256 against `etl/sources.yaml`
+(`-- --teryt <dir>` reads another directory). It cannot drift silently:
+every apply run of the import workflow, the one job with read access to
+the archive (PR CI has none), pulls the TERYT files
+(`npm run sources:pull -- --origin teryt`) and runs `npm run zuk:places --
+--check`, which fails the run, and opens its workflow issue, if the
+committed file differs.

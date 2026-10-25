@@ -340,7 +340,6 @@ export const zukPlaces = unstable_cache(
           id: streets.id,
           localityId: streets.localityId,
           name: streets.name,
-          nazwa1: streets.nazwa1,
         })
         .from(streets),
     ]);

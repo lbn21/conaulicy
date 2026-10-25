@@ -184,3 +184,17 @@ export function loadConfig(file = CONFIG_FILE): Config {
 /** S3 key of an archived file. */
 export const archiveKey = (a: Config["archived"][number]) =>
   `sources/${a.origin}/${a.fetched}/${a.file}`;
+
+/** Every gmina the sources cover: <domain>.gmina.teryt of each source. */
+export function gminaTercs(config: Config): string[] {
+  return [
+    ...new Set(
+      config.sources.flatMap((source) => {
+        const own = (source as Record<string, unknown>)[source.domain] as
+          | { gmina?: { teryt?: string } }
+          | undefined;
+        return own?.gmina?.teryt ? [own.gmina.teryt] : [];
+      }),
+    ),
+  ].sort();
+}

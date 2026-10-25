@@ -4,7 +4,8 @@
 // written, the times, the place phrase; and the place phrase must not leave
 // out a street, house numbers or "w części" that the text gives with it.
 // From that phrase, not from the model, come the house numbers and the
-// hamlet. Any doubt is a reason, and the post stays a Notice.
+// hamlet. Any doubt is a reason: a day or time drops the post to a Notice,
+// a place drops only that item (lib/zuk.ts).
 
 import { addDays } from "./dates.ts";
 import type { DisruptionScope } from "./disruptions.ts";
@@ -214,28 +215,30 @@ export function deriveScope(item: AiItem): Derived | string {
   return { scope, hamlet };
 }
 
-export type Checked = Derived & {
+export type When = {
   /** Warsaw wall clock or null; end on the next day for a night cut. */
   start: string | null;
   end: string | null;
   endEstimated: boolean;
 };
 
+export type Checked = Derived & When;
+
+type ItemContext = {
+  /** The post's title and body. */
+  text: string;
+  /** Every item's place phrase. */
+  others: string[];
+  publishedAt: string;
+  updatedAt: string;
+};
+
 /**
- * Every guard on one item of a post: `text` is the title and the body,
- * `others` every item's place phrase. Days are checked against the post's
- * dates (Warsaw wall clock): from the day before it was published to 31
- * days after it was last edited.
+ * The item's day and times. Days are checked against the post's dates
+ * (Warsaw wall clock): from the day before it was published to 31 days
+ * after it was last edited.
  */
-export function checkItem(
-  item: AiItem,
-  context: {
-    text: string;
-    others: string[];
-    publishedAt: string;
-    updatedAt: string;
-  },
-): Checked | string {
+export function checkWhen(item: AiItem, context: ItemContext): When | string {
   const { text } = context;
   const date = checkDate(item.date, text);
   if (date) return date;
@@ -258,7 +261,23 @@ export function checkItem(
   if (item.start && item.end && item.end <= item.start && !night)
     return `ends ${item.end} before it starts ${item.start}`;
 
-  const t = normText(text);
+  const endDay = night ? addDays(item.date, 1) : item.date;
+  return {
+    start: item.start && `${item.date} ${item.start}:00`,
+    end: item.end && `${endDay} ${item.end}:00`,
+    endEstimated:
+      item.end !== null &&
+      (item.kind === "emergency" ||
+        /przewidywan\p{L}*\s+wznowien/u.test(normText(text))),
+  };
+}
+
+/** The item's place phrase: literal, nothing left out, read to the end. */
+export function checkPlace(
+  item: AiItem,
+  context: Pick<ItemContext, "text" | "others">,
+): Derived | string {
+  const t = normText(context.text);
   if (!t.includes(normText(item.place_verbatim)))
     return `"${item.place_verbatim}" not in the text`;
   if (item.note && !t.includes(normText(item.note)))
@@ -269,17 +288,19 @@ export function checkItem(
     item.place_verbatim,
     item.locality,
     context.others,
-    text,
+    context.text,
   );
-  if (omission) return omission;
+  return omission ?? derived;
+}
 
-  const endDay = night ? addDays(item.date, 1) : item.date;
-  return {
-    ...derived,
-    start: item.start && `${item.date} ${item.start}:00`,
-    end: item.end && `${endDay} ${item.end}:00`,
-    endEstimated:
-      item.end !== null &&
-      (item.kind === "emergency" || /przewidywan\p{L}*\s+wznowien/u.test(t)),
-  };
+/** Every guard on one item of a post: its day and times, then its place. */
+export function checkItem(
+  item: AiItem,
+  context: ItemContext,
+): Checked | string {
+  const when = checkWhen(item, context);
+  if (typeof when === "string") return when;
+  const place = checkPlace(item, context);
+  if (typeof place === "string") return place;
+  return { ...place, ...when };
 }
