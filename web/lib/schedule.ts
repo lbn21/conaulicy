@@ -4,6 +4,7 @@ import {
   and,
   asc,
   eq,
+  exists,
   gte,
   inArray,
   isNull,
@@ -11,6 +12,7 @@ import {
   notInArray,
   or,
   type SQL,
+  sql,
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { unstable_cache } from "next/cache";
@@ -64,8 +66,12 @@ type Place = {
   /** TERYT's: a street's CECHA, a village's kind (lib/search.ts SearchIndex). */
   type: string;
   area: string;
-  /** A street of the town (/ulice's first list), not of a village. */
-  town: boolean;
+  /**
+   * The SIMC of the /ulice line its locality crumb links to: a street's
+   * locality; a village part's village, if that has a line there;
+   * otherwise null (the villages' list).
+   */
+  group: string | null;
   gmina: string;
   schedulePage: string | null;
   localityId: string;
@@ -98,8 +104,12 @@ export type PlaceView = {
   name: string;
   label: string;
   area: string;
-  /** A street of the town (/ulice's first list), not of a village. */
-  town: boolean;
+  /**
+   * The SIMC of the /ulice line its locality crumb links to: a street's
+   * locality; a village part's village, if that has a line there;
+   * otherwise null (the villages' list).
+   */
+  group: string | null;
   /** Gmina name as in TERYT, e.g. "Lubaczów (miasto)". */
   gmina: string;
   zoneId: string | null;
@@ -136,6 +146,13 @@ const listed = notInArray(streets.prefix, UNLISTED_PREFIXES);
 
 const parent = alias(localities, "parent");
 
+// A village part's village's streets, all or those matching `where`.
+const parentStreets = (where?: SQL) =>
+  db()
+    .select({ id: streets.id })
+    .from(streets)
+    .where(and(eq(streets.localityId, parent.id), where));
+
 const streetPlaces = (where: SQL | undefined, limit: number) =>
   db()
     .select({
@@ -164,6 +181,12 @@ const villagePlaces = (where: SQL | undefined, limit: number) =>
       kind: localities.kind,
       parentId: localities.parentId,
       parent: parent.name,
+      // The village has a line on /ulice: as a place (no streets), or as
+      // the group of its listed streets.
+      parentLine: sql<boolean>`${or(
+        notExists(parentStreets()),
+        exists(parentStreets(listed)),
+      )}`,
       gmina: gminy.name,
       scheduleUrl: gminy.scheduleUrl,
     })
@@ -185,7 +208,7 @@ function streetPlace(row: StreetRow): Place {
     label: streetLabel(row),
     type: row.prefix,
     area: row.locality,
-    town: row.localityKind === "miasto",
+    group: row.localityId,
     gmina: row.gmina,
     schedulePage: row.scheduleUrl,
     localityId: row.localityId,
@@ -203,7 +226,7 @@ function villagePlace(row: VillageRow): Place {
     label: villageLabel(row),
     type: row.kind,
     area: row.parent ? `${row.parent}, gmina ${gmina}` : `gmina ${gmina}`,
-    town: false,
+    group: row.parentLine ? row.parentId : null,
     gmina: row.gmina,
     schedulePage: row.scheduleUrl,
     localityId: row.id,
@@ -447,7 +470,7 @@ const placeCached = unstable_cache(
       name: place.name,
       label: place.label,
       area: place.area,
-      town: place.town,
+      group: place.group,
       gmina: place.gmina,
       zoneId: zone.id,
       // A number only matters on a split street; elsewhere it is ignored,

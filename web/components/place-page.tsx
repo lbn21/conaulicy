@@ -7,7 +7,7 @@ import { PickupSchedule } from "@/components/pickup-schedule";
 import { longDate } from "@/lib/date-labels";
 import { withHouseNumber } from "@/lib/house";
 import { indexable } from "@/lib/indexing";
-import { placePath, scheduleName } from "@/lib/places";
+import { localityAnchor, placePath, scheduleName } from "@/lib/places";
 import { getPlace, movedTarget, type PlaceView } from "@/lib/schedule";
 import {
   hasUpcoming,
@@ -315,8 +315,9 @@ function placeCaption(place: PlaceView): string {
 
 /**
  * GOV.UK's breadcrumbs, every item a link and the page itself left out: the
- * home page, the locality (its list on /ulice: the town's streets, or the
- * villages), and on a module's subpage the address page. A village names
+ * home page, the locality (its line on /ulice: a street's locality, a
+ * village part's village; else the villages' list), and on a
+ * module's subpage the address page. A village names
  * its gmina there, as the caption did, not itself again.
  * Inside <main> (the layout's), so its own margin-top gives way to main's
  * padding, and its margin-bottom adds main's: GOV.UK's 30/50 px to what
@@ -329,17 +330,14 @@ export function Breadcrumbs({
   place: PlaceView;
   subpage?: boolean;
 }) {
+  const list = `${ALL_PLACES.path}#${
+    place.group ? localityAnchor(place.group) : "wsie-heading"
+  }`;
   const items: Array<[string, string]> = [
     ["Strona główna", "/"],
     place.kind === "ulica"
-      ? [
-          place.area,
-          `${ALL_PLACES.path}#${place.town ? "ulice" : "wsie"}-heading`,
-        ]
-      : [
-          place.area.charAt(0).toUpperCase() + place.area.slice(1),
-          `${ALL_PLACES.path}#wsie-heading`,
-        ],
+      ? [place.area, list]
+      : [place.area.charAt(0).toUpperCase() + place.area.slice(1), list],
   ];
   if (subpage) {
     items.push([

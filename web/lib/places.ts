@@ -204,11 +204,30 @@ export function hasZone(
 
 export type ListedPlace = { id: string; label: string };
 
+/**
+ * The id of a locality's group heading on /ulice (the town's streets, a
+ * village's streets), from its SIMC: the breadcrumbs link there. Prefixed,
+ * as an id should not start with a digit.
+ */
+export function localityAnchor(simc: string): string {
+  return `m-${simc}`;
+}
+
 /** /ulice's list: the town's streets by first letter, then the villages. */
 export type PlaceList = {
+  /** The town's SIMC, null without town streets. */
+  townId: string | null;
   town: Array<{ letter: string; places: ListedPlace[] }>;
-  /** A village is a place, or (with streets of its own) holds its streets. */
-  villages: Array<{ id: string | null; label: string; streets: ListedPlace[] }>;
+  /**
+   * A village is a place, or (with streets of its own) holds its streets;
+   * localityId is its SIMC either way.
+   */
+  villages: Array<{
+    id: string | null;
+    localityId: string;
+    label: string;
+    streets: ListedPlace[];
+  }>;
 };
 
 const collator = new Intl.Collator(LANG);
@@ -261,10 +280,16 @@ export function placeList(
 
   const withStreets = new Map<
     string,
-    { name: string; label: string; streets: ReturnType<typeof listed>[] }
+    {
+      localityId: string;
+      name: string;
+      label: string;
+      streets: ReturnType<typeof listed>[];
+    }
   >();
   for (const street of streets.filter((s) => s.localityKind !== "miasto")) {
     const village = withStreets.get(street.localityId) ?? {
+      localityId: street.localityId,
       name: street.locality,
       label: street.locality,
       streets: [],
@@ -275,6 +300,7 @@ export function placeList(
   const groups = [
     ...villages.map((v) => ({
       id: v.id,
+      localityId: v.id,
       name: v.name,
       label: villageLabel(v),
       streets: [] as ReturnType<typeof listed>[],
@@ -283,9 +309,12 @@ export function placeList(
   ].sort(byName);
 
   return {
+    townId:
+      streets.find((s) => s.localityKind === "miasto")?.localityId ?? null,
     town,
-    villages: groups.map(({ id, label, streets }) => ({
+    villages: groups.map(({ id, localityId, label, streets }) => ({
       id,
+      localityId,
       label,
       streets: streets.sort(byName).map(({ id, label }) => ({ id, label })),
     })),
