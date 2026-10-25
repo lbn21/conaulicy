@@ -228,7 +228,7 @@ export function PlaceNotFound() {
  * the place; the address page's locality is in its breadcrumbs), the h1, a house number the street
  * does not need (sharedNumberNote), then „Zmień adres”.
  */
-export function PlaceHeading({
+function PlaceHeading({
   place,
   caption,
   heading,
