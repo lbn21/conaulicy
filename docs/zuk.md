@@ -6,13 +6,24 @@ minutes into one JSON file in Vercel Blob. No database writes, no UI yet.
 ## A run (`GET /api/cron/zuk`, Vercel Cron `*/15 * * * *`)
 
 1. Reads the stored file (`zuk/disruptions.json`, private store `conaulicy-zuk`).
-2. Fetches the gmina's posts of the last 30 days (`/wp-json/wp/v2/posts`) and
-   keeps ZUK's water cut notices (`lib/zuk.ts` `isZukPost`).
+2. Fetches the gmina's posts of the last 30 days (`/wp-json/wp/v2/posts`,
+   `lib/sources/gmina-lubaczow/fetch.ts`). No keyword gate: every post goes
+   to the model.
 3. Has grok-4.7 (xAI, reasoning low) read only the posts that are new, edited
    (`modified`) or whose last reading failed or waited: at most 4 per run
-   (`lib/zuk-ai.ts`). Every other post keeps its stored result. A post whose
-   title's days are all before today (Warsaw) is not read: a Notice with
-   `reason: "past"`, never shown.
+   (`lib/zuk-ai.ts`), one call per post. Every other post keeps its stored
+   result. A post whose title's days are all before today (Warsaw) is not
+   read: a Notice with `reason: "past"`, never shown. The model says what
+   the post is (`post_type`):
+   - `water_outage`: read for its cuts (steps 4 and 5);
+   - `water_quality` (boil-water, contamination, or its lifting,
+     `quality_status`): a Notice with `reason: "water-quality"`, its places
+     through the same guards and resolver (`places`, each with its day;
+     none if none passes), not shown yet;
+   - `other`: a Notice with `reason: "not-water"`, never read again unless
+     edited, never shown.
+   The old keyword filter (`matchesOutageKeywords`) only cross-checks: where
+   it and the model disagree, the log has `{zuk: "classify-disagree"}`.
 4. Checks each item against the post's own text (`lib/zuk-guards.ts`) and
    maps it to our places (`lib/zuk-resolve.ts`). A place that fails is
    dropped, alone, and shown nowhere; a day or time that fails, or no place
@@ -29,13 +40,17 @@ writes version 2.
 
 ## The prompt
 
-The rules, then the context: our town, villages and village parts (with
-their village), built from the same places the resolver uses
-(`systemPrompt`), in a fixed order, so it is a cacheable prefix and follows
-the data. No streets: they made the readings worse. The model writes the
-locality as on that list and never returns ids; our code decides. On the 24
-hand-checked posts it scored 330/330 place-days, 0 wrong (A/B test, 25 Oct
-2026; `lib/zuk-fixture-b.ts`).
+One module per source (`lib/sources/<id>/prompt.ts`; a new source is a
+prompt plus a fetch adapter, `lib/sources/source.ts`); the schema, the reply
+check, the guards and the place gate are shared. Each stored post keeps its
+`sourceId`. The gmina Lubaczów's prompt: what a post is (`post_type`, with
+examples; Jakub's text, X8), the rules, then the context: our town, villages
+and village parts (with their village), built from the same places the
+resolver uses (`systemPrompt`), in a fixed order, so it is a cacheable
+prefix and follows the data. No streets: they made the readings worse. The
+model writes the locality as on that list and never returns ids; our code
+decides. On the 24 hand-checked posts the rules and context scored 330/330
+place-days, 0 wrong (A/B test, 25 Oct 2026; `lib/zuk-fixture-b.ts`).
 
 Each cut carries our names for its label (`label`: locality, its village
 for a village part, street) and its houses (`scope`); the source's own

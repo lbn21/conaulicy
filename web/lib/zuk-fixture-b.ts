@@ -1,6 +1,6 @@
 // The prompt A/B test of 25 Oct 2026 (task 112): grok-4.7 with the context
-// prompt (lib/zuk-ai.ts systemPrompt, design B; reasoning low, temp. 0) on
-// the 24 real posts of lib/zuk-fixture.ts, and what those posts say,
+// prompt (lib/sources/gmina-lubaczow/prompt.ts, design B; reasoning low,
+// temp. 0) on the 24 real posts of lib/zuk-fixture.ts, and what those posts say,
 // checked by hand. A fixture, so code (scripts/check-tracked-data.mjs).
 
 import type { AiResult } from "./zuk-ai.ts";
@@ -40,7 +40,16 @@ const READINGS_B = new Map(
   REPLIES_B.trim()
     .split("\n")
     .map((line) => {
-      const { id, ...result } = JSON.parse(line) as AiResult & { id: number };
+      // Recorded before post_type (task 114): is_outage_notice stands for it.
+      const { id, is_outage_notice, ...rest } = JSON.parse(line) as Omit<
+        AiResult,
+        "post_type" | "quality_status"
+      > & { id: number; is_outage_notice: boolean };
+      const result: AiResult = {
+        post_type: is_outage_notice ? "water_outage" : "other",
+        quality_status: null,
+        ...rest,
+      };
       return [id, result];
     }),
 );

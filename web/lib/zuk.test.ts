@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Disruption } from "./disruptions.ts";
+import { matchesOutageKeywords } from "./sources/gmina-lubaczow/index.ts";
 import {
   isChangePost,
   isPastPost,
-  isZukPost,
   mentionedLocalities,
   plainText,
   readPost,
@@ -249,7 +249,12 @@ test("no items, or not an outage notice", () => {
   assert.deepEqual(
     readPost(
       post(39863),
-      { is_outage_notice: true, is_past: false, items: [] },
+      {
+        post_type: "water_outage",
+        quality_status: null,
+        is_past: false,
+        items: [],
+      },
       PLACES,
       CHECKED,
     ),
@@ -264,8 +269,8 @@ test("uid: the same across re-reads", () => {
   assert.ok(a.includes("zuk-39872-2026-10-22-0606116-20431"));
 });
 
-test("ZUK posts: water cut notices only", () => {
-  const zuk = posts.filter(isZukPost).map((p) => p.id);
+test("keyword cross-check: water cut notices only", () => {
+  const zuk = posts.filter(matchesOutageKeywords).map((p) => p.id);
   assert.equal(zuk.length, posts.length - 1);
   assert.ok(!zuk.includes(39868));
 });
@@ -279,10 +284,10 @@ const inline = (title: string, text: string): ZukPost => ({
   content: { rendered: `<p>${text}</p>` },
 });
 
-test("ZUK posts: an outage phrase and its source, in any case ending", () => {
+test("keyword cross-check: an outage phrase and its source, in any case ending", () => {
   // Post 38847: "Zakładu" was missed by a match on "Zakład Usług".
   assert.ok(
-    isZukPost(
+    matchesOutageKeywords(
       inline(
         "Przerwa w dostawie wody - Młodów i Karolówka (31.08 i 1.09.2026)",
         "Prezes Zakładu Usług Komunalnych Sp. z o.o. w Mokrzycy informuje, że nastąpi przerwa w dostawie wody.",
@@ -290,7 +295,7 @@ test("ZUK posts: an outage phrase and its source, in any case ending", () => {
     ),
   );
   assert.ok(
-    isZukPost(
+    matchesOutageKeywords(
       inline(
         "Awaria sieci wodociągowej – Basznia Dolna",
         "Zakład Usług Komunalnych informuje o awarii. Awaria sieci wodociągowej usuwana jest na bieżąco.",
@@ -311,13 +316,13 @@ test("ZUK posts: an outage phrase and its source, in any case ending", () => {
       "Zakład Usług Komunalnych informuje, że prowadzi wymianę wodomierzy.",
     ],
   ]) {
-    assert.ok(!isZukPost(inline(title, text)), title);
+    assert.ok(!matchesOutageKeywords(inline(title, text)), title);
   }
 });
 
 test("date-change posts", () => {
   const change = posts
-    .filter((p) => isZukPost(p) && isChangePost(p))
+    .filter((p) => matchesOutageKeywords(p) && isChangePost(p))
     .map((p) => p.id);
   assert.deepEqual(change.sort(), [23860, 24161, 26028]);
 });

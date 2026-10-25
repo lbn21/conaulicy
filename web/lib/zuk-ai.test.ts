@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-  costUsd,
-  parseAiResult,
-  readWithAi,
-  systemPrompt,
-  ZUK_MODEL,
-} from "./zuk-ai.ts";
+import { systemPrompt } from "./sources/gmina-lubaczow/prompt.ts";
+import { costUsd, parseAiResult, readWithAi, ZUK_MODEL } from "./zuk-ai.ts";
 import { PLACES, reading } from "./zuk-fixture.ts";
 
 const SYSTEM = systemPrompt(PLACES);
@@ -110,6 +105,58 @@ test("schema check: every field, with its type", () => {
   assert.equal(parseAiResult('{"items": []}'), null);
 });
 
+test("schema check: post_type and quality_status, the quality item kind", () => {
+  const good = reading(39885);
+  const top = (over: object) => JSON.stringify({ ...good, ...over });
+  assert.equal(parseAiResult(top({ post_type: "outage" })), null);
+  assert.equal(parseAiResult(top({ post_type: undefined })), null);
+  assert.equal(parseAiResult(top({ quality_status: "maybe" })), null);
+  assert.equal(parseAiResult(top({ quality_status: undefined })), null);
+  // The old field alone is no longer the schema.
+  const { post_type, ...old } = good;
+  assert.equal(post_type, "water_outage");
+  assert.equal(
+    parseAiResult(JSON.stringify({ ...old, is_outage_notice: true })),
+    null,
+  );
+  const quality = {
+    ...good,
+    post_type: "water_quality",
+    quality_status: "warning",
+    items: [{ ...good.items[0], start: null, end: null, kind: "quality" }],
+  };
+  assert.deepEqual(parseAiResult(JSON.stringify(quality)), quality);
+});
+
+test("request: post_type and quality_status required, quality items allowed", async () => {
+  const { calls, fetcher } = xai(200, JSON.stringify(reading(39865)));
+  await readWithAi(INPUT, SYSTEM, "test-key", fetcher);
+  const schema = JSON.parse(calls[0].init.body as string).response_format
+    .json_schema.schema;
+  assert.deepEqual(schema.required, [
+    "post_type",
+    "quality_status",
+    "is_past",
+    "items",
+  ]);
+  assert.deepEqual(schema.properties.post_type.enum, [
+    "water_outage",
+    "water_quality",
+    "other",
+  ]);
+  assert.deepEqual(schema.properties.quality_status.enum, [
+    "warning",
+    "lifted",
+    null,
+  ]);
+  assert.ok(!("is_outage_notice" in schema.properties));
+  assert.deepEqual(schema.properties.items.items.properties.kind.enum, [
+    "planned",
+    "emergency",
+    "quality",
+  ]);
+});
+
 test("cost: list price", () => {
   assert.equal(
     costUsd({
@@ -127,75 +174,4 @@ test("cost: list price", () => {
     }),
     6,
   );
-});
-
-// The prompt of the A/B test's design B, as sent (25 Oct 2026): 330/330
-// place-days on the 24 hand-checked posts, 0 wrong.
-const DESIGN_B = `You extract water supply interruptions from Polish notices by ZUK Mokrzyca (gmina Lubaczów).
-Rules:
-- One item per (day, locality, street). If a locality lists several streets, emit one item per street, repeating the locality.
-- A multi-day notice gets one item per day per place. A night span (e.g. 'w nocy z 21.12 na 22.12, 22:00-5:00') is ONE item dated on the first day, start 22:00, end 05:00.
-- 'ul.'/'ulica' after a comma belongs to the locality before it: 'Młodów, ul. Pilipy' = locality Młodów, street Pilipy. Never drop a street, house range or 'w części' qualifier.
-- place_verbatim is copied exactly from the text, the shortest phrase that contains the locality and this item's street, plus its house numbers, '(przysiółek …)' or other bracket if any: 'Młodów – ul. Warszawska, Rzeczna' for the street Rzeczna, 'ul. Przemysłowa (Lubaczów)', 'w części miejscowości Bałaje'.
-- note: a qualifier that narrows the place ('w części miejscowości', 'gospodarstwa zasilane z SUW Mokrzyca'), copied exactly; otherwise null.
-- Copy locality and street verbatim from the text (keep Polish diacritics). Never add places, dates or times that are not in the text. If something is unclear, leave it out.
-- kind is 'emergency' for a failure (awaria), else 'planned'. For an estimated restore ('przewidywane wznowienie do godz. 19.00') use that time as end.
-- Use the publish date only to resolve a year if missing. Do not guess.
-- Posts that are not about water interruptions: is_outage_notice=false, items=[].
-
-Context: the places in our database. ZUK Mokrzyca supplies water to the villages of gmina Lubaczów and to some streets of the town Lubaczów.
-Town (miasto): Lubaczów
-Villages (wieś): Antoniki, Basznia Dolna, Basznia Górna, Bałaje, Borowa Góra, Budomierz, Dąbków, Dąbrowa, Hurcze, Huta Kryształowa, Karolówka, Krowica Hołodowska, Krowica Lasowa, Krowica Sama, Lisie Jamy, Mokrzyca, Młodów, Opaka, Piastowo, Podlesie, Szczutków, Tymce, Wólka Krowicka, Załuże
-Village parts (część wsi, przysiółek), each with its village: Basznia (Basznia Dolna), Blusy (Krowica Sama), Boble (Krowica Lasowa), Brzozie (Wólka Krowicka), Cetynia (Krowica Sama), Cetynia Hołodowska (Krowica Hołodowska), Czarne (Załuże), Dąbrowa (Basznia Górna), Flisy (Lisie Jamy), Głodówka (Krowica Hołodowska), Holiki (Dąbrowa), Kamienna (Opaka), Kornagi (Dąbrowa), Krause (Dąbrowa), Lubasy (Basznia Dolna), Malce (Basznia Górna), Michalce (Dąbrowa), Mielniki (Krowica Hołodowska), Mielniki (Szczutków), Misztale (Lisie Jamy), Moczar Duży (Załuże), Moczar Mały (Załuże), Mądre (Dąbrowa), Obrawczyzna (Krowica Sama), Onyszczaki (Szczutków), Piaski (Basznia Dolna), Pilipy (Młodów), Prewendy (Szczutków), Ruda (Basznia Dolna), Ruda Szczutkowska (Szczutków), Smolińce (Lisie Jamy), Szutki (Dąbrowa), Szymeczki (Basznia Dolna), Szyszaki (Szczutków), Tuczarnia (Opaka), Wasie (Dąbrowa), Wychylówka (Krowica Sama), Wygnańce (Lisie Jamy), Żuki (Opaka)
-Names used more than once: Dąbrowa, Mielniki.
-Place-name rules (they override 'copy locality verbatim' only for the locality field):
-- locality is the town or village the text names, written exactly as in the list above. Change only case, spacing, dashes or a missing diacritic; never pick a different place.
-- A name not on the list that is attached to a listed village ('Załuże–Podłęże', 'Załuże (Podłęże)'): locality = that village ('Załuże'), note = the unlisted name exactly as written ('Podłęże'). Never invent where an unlisted name lies.
-- 'X (przysiółek Y)' or 'X ... (przysiółek Y)': locality = the village X; keep the bracket in place_verbatim. Example: 'Basznia Górna od nr 121 do nr 144 (przysiółek Dąbrowa)' -> locality 'Basznia Górna'.
-- A bare name that is both a village and a village part (e.g. 'Dąbrowa') is the village.
-- A village part named on its own, without its village: locality = the part's name.
-- 'Młodów, ul. Pilipy' / 'Młodów ul. Pilipy' is the street Pilipy in Młodów: locality 'Młodów', street 'Pilipy'.
-- street, place_verbatim and note are always copied exactly from the text, never normalized. Never output ids or places not in the text.
-`;
-
-test("prompt: design B, its place list built from our places", () => {
-  assert.equal(SYSTEM, DESIGN_B);
-});
-
-test("prompt: the same for the same places in any order, no streets, no ids", () => {
-  const shuffled = {
-    localities: [...PLACES.localities].reverse(),
-    streets: [...PLACES.streets].reverse(),
-  };
-  assert.equal(systemPrompt(shuffled), SYSTEM);
-  assert.ok(!SYSTEM.includes("Sobieskiego"));
-  assert.ok(!/\d{7}/.test(SYSTEM));
-});
-
-test("prompt: follows the data", () => {
-  const more = {
-    ...PLACES,
-    localities: [
-      ...PLACES.localities,
-      {
-        id: "9999999",
-        name: "Nowa Wieś",
-        kind: "wies" as const,
-        parentId: null,
-      },
-      {
-        id: "9999998",
-        name: "Opaka",
-        kind: "czesc_wsi" as const,
-        parentId: "9999999",
-      },
-    ],
-  };
-  const prompt = systemPrompt(more);
-  assert.match(
-    prompt,
-    /Villages \(wieś\): .*Mokrzyca, Młodów, Nowa Wieś, Opaka,/,
-  );
-  assert.match(prompt, /, Opaka \(Nowa Wieś\),/);
-  assert.match(prompt, /Names used more than once: Dąbrowa, Mielniki, Opaka\./);
 });

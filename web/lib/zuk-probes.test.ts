@@ -47,7 +47,7 @@ const item = (
 function read(text: string, items: AiItem[], places: ZukPlaces = PLACES) {
   const r = readPost(
     post(text),
-    { is_outage_notice: true, is_past: false, items },
+    { post_type: "water_outage", quality_status: null, is_past: false, items },
     places,
     CHECKED,
   );
@@ -217,7 +217,8 @@ test("P18: a real street of the locality the text does not name is dropped", () 
   const r = readPost(
     post("Młodów, ul. Leśna"),
     {
-      is_outage_notice: true,
+      post_type: "water_outage",
+      quality_status: null,
       is_past: false,
       items: [
         item("Młodów", "Leśna", "Młodów, ul. Leśna"),

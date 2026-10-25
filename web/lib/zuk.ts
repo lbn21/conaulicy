@@ -9,10 +9,10 @@
 // cron that runs it: lib/zuk-cron.ts.
 
 import { addDays } from "./dates.ts";
-import type { Disruption } from "./disruptions.ts";
-import type { AiResult } from "./zuk-ai.ts";
-import { checkPlace, checkWhen } from "./zuk-guards.ts";
-import { resolvePlace, type ZukPlaces } from "./zuk-resolve.ts";
+import type { Disruption, DisruptionLabel } from "./disruptions.ts";
+import type { AiItem, AiResult } from "./zuk-ai.ts";
+import { checkDate, checkPlace, checkWhen } from "./zuk-guards.ts";
+import { type Resolved, resolvePlace, type ZukPlaces } from "./zuk-resolve.ts";
 
 export const SOURCE_NAME = "Zakład Usług Komunalnych w Mokrzycy";
 
@@ -54,22 +54,9 @@ export function plainText(html: string): string {
 /** Site time "2026-10-23T18:59:43" as wall clock "2026-10-23 18:59:43". */
 export const wall = (wp: string) => wp.replace("T", " ").slice(0, 19);
 
-const fullText = (post: ZukPost) =>
+/** The post's title and body as plain text: what the guards check. */
+export const fullText = (post: ZukPost) =>
   `${plainText(post.title.rendered)}\n${plainText(post.content.rendered)}`;
-
-const OUTAGE =
-  /przerw\p{L}*\s+w\s+dostaw\p{L}*\s+wody|brak\p{L}*\s+wody|wyłącz\p{L}*\s+wody|awari\p{L}*\s+(?:sieci\s+)?wodoci\p{L}*/iu;
-const SOURCE =
-  /Zakład\p{L}*\s+Usług\s+Komunalnych|Mokrzyc|Wójt\p{L}*\s+Gminy/iu;
-
-/**
- * A notice of a water cut: an outage phrase and its source (ZUK or the
- * wójt); the gmina's other posts are not read.
- */
-export function isZukPost(post: ZukPost): boolean {
-  const all = fullText(post);
-  return OUTAGE.test(all) && SOURCE.test(all);
-}
 
 const CHANGE =
   /aktualizac|zmian\p{L}* (?:termin|dat|dni)|wydłuż|przesun|przełoż/iu;
@@ -110,6 +97,28 @@ export function mentionedLocalities(
   return [...new Set(ids)].sort();
 }
 
+/** The item's place, through the guards, as ours; else the reason. */
+function itemPlaces(
+  item: AiItem,
+  text: string,
+  others: string[],
+  places: ZukPlaces,
+): Resolved | string {
+  const checked = checkPlace(item, { text, others });
+  if (typeof checked === "string") return checked;
+  return resolvePlace(
+    {
+      locality: item.locality,
+      street: item.street,
+      hamlet: checked.hamlet,
+      scope: checked.scope,
+      phrase: item.place_verbatim,
+    },
+    text,
+    places,
+  );
+}
+
 export type PostReading =
   | {
       status: "parsed";
@@ -134,7 +143,7 @@ export function readPost(
     status: "notice",
     reason,
   });
-  if (!ai.is_outage_notice) return notice("not an outage notice");
+  if (ai.post_type !== "water_outage") return notice("not an outage notice");
   if (ai.items.length === 0) return notice("no items");
   const text = fullText(post);
   const publishedAt = wall(post.date);
@@ -147,23 +156,10 @@ export function readPost(
   const seen = new Set<string>();
   for (const [n, item] of ai.items.entries()) {
     const why = (reason: string) => `item ${n + 1}: ${reason}`;
+    if (item.kind === "quality") return notice(why("a quality item"));
     const when = checkWhen(item, { text, others, publishedAt, updatedAt });
     if (typeof when === "string") return notice(why(when));
-    const checked = checkPlace(item, { text, others });
-    const resolved =
-      typeof checked === "string"
-        ? checked
-        : resolvePlace(
-            {
-              locality: item.locality,
-              street: item.street,
-              hamlet: checked.hamlet,
-              scope: checked.scope,
-              phrase: item.place_verbatim,
-            },
-            text,
-            places,
-          );
+    const resolved = itemPlaces(item, text, others, places);
     if (typeof resolved === "string") {
       dropped.push(why(resolved));
       continue;
@@ -191,6 +187,66 @@ export function readPost(
   }
   if (items.length === 0) return notice(`no place: ${dropped[0]}`);
   return { status: "parsed", items, dropped };
+}
+
+/** A place a water-quality warning concerns: ours, with the source's words. */
+export type WarningPlace = Pick<Disruption, "place" | "where" | "scope"> & {
+  label: DisruptionLabel;
+  /**
+   * YYYY-MM-DD: the day the warning starts there, or ends if lifted; null
+   * if the text does not have it (and it is not the publish day).
+   */
+  date: string | null;
+};
+
+export type QualityReading = {
+  status: "warning" | "lifted" | null;
+  places: WarningPlace[];
+  /** Items whose place failed, with the reason. */
+  dropped: string[];
+};
+
+/**
+ * A water-quality post (boil-water, contamination, or its lifting) read by
+ * the model: its places through the same guards and resolver as a cut's,
+ * each kept only if it passes; its day kept only if the text has it or it
+ * is the publish day. No place passing: no places.
+ */
+export function readQualityPost(
+  post: ZukPost,
+  ai: AiResult,
+  places: ZukPlaces,
+): QualityReading {
+  const text = fullText(post);
+  const others = ai.items.map((i) => i.place_verbatim);
+  const published = post.date.slice(0, 10);
+  const out: WarningPlace[] = [];
+  const dropped: string[] = [];
+  const seen = new Set<string>();
+  for (const [n, item] of ai.items.entries()) {
+    const resolved = itemPlaces(item, text, others, places);
+    if (typeof resolved === "string") {
+      dropped.push(`item ${n + 1}: ${resolved}`);
+      continue;
+    }
+    const date =
+      item.date === published || checkDate(item.date, text) === null
+        ? item.date
+        : null;
+    for (const { label, ...place } of resolved.places) {
+      const key = place.streetId ?? place.localityId;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        place,
+        label,
+        where: item.place_verbatim,
+        scope: resolved.scope,
+        date,
+      });
+    }
+  }
+  return { status: ai.quality_status, places: out, dropped };
 }
 
 const TITLE_DAY =

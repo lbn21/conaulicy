@@ -1,8 +1,8 @@
 // A place as a ZUK post names it, mapped to our places (TERYT: the source is
 // mapped to TERYT, never the other way). Pure, over all our places in
 // process, never search (its top results can hide a namesake). The model
-// picks the name from our list (lib/zuk-ai.ts systemPrompt); these generic
-// rules decide, and any name we cannot pin to exactly one place is dropped,
+// picks the name from our list (the source's prompt, e.g.
+// lib/sources/gmina-lubaczow/prompt.ts); these generic rules decide, and any name we cannot pin to exactly one place is dropped,
 // never a fuzzy match or a hand-kept alias:
 // - the name is one of our localities, written in the post's text and in the
 //   item's phrase, at least once not inside a longer one of our names

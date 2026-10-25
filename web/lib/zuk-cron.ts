@@ -1,9 +1,12 @@
 // The ZUK cron (app/api/cron/zuk/route.ts, every 15 minutes): reads the
-// gmina's recent posts, has the model read only the ZUK posts that are new
-// or edited (or whose last reading failed or waited), keeps every other
-// post's stored result, and writes the file (lib/zuk-data.ts) when its
-// content changed or its checkedAt is RECHECK_MS old. A post whose title's
-// days are all over is not read ("past"). The gmina's site down: the old
+// gmina's recent posts, has the model read every post that is new or
+// edited (or whose last reading failed or waited), keeps every other post's
+// stored result, and writes the file (lib/zuk-data.ts) when its content
+// changed or its checkedAt is RECHECK_MS old. The model says what a post
+// is: a water cut is read for its cuts, a water-quality warning for its
+// places (not shown yet), anything else is stored as "not-water", never
+// read again; the old keyword filter only cross-checks it, in the log. A
+// post whose title's days are all over is not read ("past"). The gmina's site down: the old
 // file stays, unchanged, and turns stale. xAI down: new and edited posts
 // become Notices, retried next run; so do those over the run's cap. A file
 // of an older version: every post is read again. Dependencies come in, so
@@ -12,34 +15,34 @@
 import { addDays, todayInWarsaw } from "./dates.ts";
 import { NO_STORE } from "./headers.ts";
 import { sameSecret } from "./secret.ts";
+import { gminaLubaczow } from "./sources/gmina-lubaczow/index.ts";
+import { type PostSource, SourceDown } from "./sources/source.ts";
 import {
   current,
   isChangePost,
   isPastPost,
-  isZukPost,
   mentionedLocalities,
   plainText,
   readPost,
+  readQualityPost,
   wall,
-  type ZukPost,
 } from "./zuk.ts";
-import { type AiReading, readWithAi, systemPrompt } from "./zuk-ai.ts";
+import { type AiReading, readWithAi } from "./zuk-ai.ts";
 import {
   AI_DEFERRED,
   AI_UNAVAILABLE,
+  NOT_WATER,
   PAST,
   parseZukFile,
   type StoredPost,
+  WATER_QUALITY,
   ZUK_FILE_VERSION,
   type ZukFile,
 } from "./zuk-data.ts";
 import type { ZukPlaces } from "./zuk-resolve.ts";
 
-export const WP_POSTS = "https://www.gminalubaczow.pl/wp-json/wp/v2/posts";
 /** Posts published in the last this many days are read. */
 const WINDOW_DAYS = 30;
-const WP_PAGES = 5;
-const WP_TIMEOUT_MS = 15_000;
 /** At most this many model calls per run; the rest wait for the next. */
 const MAX_AI_CALLS = 4;
 /** No new model call after this long into the run (maxDuration 300 s). */
@@ -54,61 +57,12 @@ export type ZukCronDeps = {
   writeFile: (body: string) => Promise<void>;
   places: () => Promise<ZukPlaces>;
   readAi?: typeof readWithAi;
+  /** Whose posts: lib/sources; the gmina Lubaczów's by default. */
+  source?: PostSource;
   xaiKey: string | undefined;
   now: () => Date;
   log: (line: Record<string, unknown>) => void;
 };
-
-class SourceDown extends Error {}
-
-function isPost(v: unknown): v is ZukPost {
-  const p = v as Record<string, unknown>;
-  const rendered = (x: unknown) =>
-    typeof (x as { rendered?: unknown })?.rendered === "string";
-  return (
-    typeof p === "object" &&
-    p !== null &&
-    typeof p.id === "number" &&
-    typeof p.date === "string" &&
-    typeof p.modified === "string" &&
-    typeof p.link === "string" &&
-    rendered(p.title) &&
-    rendered(p.content)
-  );
-}
-
-/** The posts published since `after` (a Warsaw day). Throws SourceDown. */
-async function fetchPosts(
-  fetcher: typeof fetch,
-  after: string,
-): Promise<ZukPost[]> {
-  const posts: ZukPost[] = [];
-  for (let page = 1; page <= WP_PAGES; page++) {
-    const url = new URL(WP_POSTS);
-    url.searchParams.set("after", `${after}T00:00:00`);
-    url.searchParams.set("per_page", "100");
-    url.searchParams.set("page", String(page));
-    url.searchParams.set("_fields", "id,date,modified,link,title,content");
-    let body: unknown;
-    let pages: number;
-    try {
-      const response = await fetcher(url, {
-        signal: AbortSignal.timeout(WP_TIMEOUT_MS),
-        cache: "no-store",
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      body = await response.json();
-      pages = Number(response.headers.get("x-wp-totalpages") ?? "1");
-    } catch (error) {
-      throw new SourceDown(`gmina posts: ${(error as Error).message}`);
-    }
-    if (!Array.isArray(body) || !body.every(isPost))
-      throw new SourceDown("gmina posts: not a list of posts");
-    posts.push(...body);
-    if (!(page < pages)) break;
-  }
-  return posts;
-}
 
 export type RunSummary = {
   posts: number;
@@ -123,9 +77,11 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
   const previousBody = await deps.readFile();
   const previous = previousBody ? parseZukFile(previousBody) : null;
   const today = todayInWarsaw(started);
-  const posts = (
-    await fetchPosts(deps.fetch, addDays(today, -WINDOW_DAYS))
-  ).filter(isZukPost);
+  const source = deps.source ?? gminaLubaczow;
+  const posts = await source.fetchPosts(
+    deps.fetch,
+    addDays(today, -WINDOW_DAYS),
+  );
   const checkedAt = started.toISOString();
   const before = new Map(
     previous?.version === ZUK_FILE_VERSION
@@ -142,7 +98,7 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     );
   });
   const places = toRead.length > 0 ? await deps.places() : null;
-  const system = places && systemPrompt(places);
+  const system = places && source.systemPrompt(places);
   const readAi = deps.readAi ?? readWithAi;
 
   let aiCalls = 0;
@@ -157,6 +113,7 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     }
     const base = {
       id: post.id,
+      sourceId: source.id,
       modified: post.modified,
       url: post.link,
       title: plainText(post.title.rendered),
@@ -211,25 +168,67 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
       continue;
     }
     costUsd += reading.costUsd;
-    const read = readPost(post, reading.result, places, checkedAt);
-    deps.log({
+    const type = reading.result.post_type;
+    const keywords = source.keywords?.(post);
+    if (keywords !== undefined && keywords !== (type !== "other"))
+      deps.log({
+        zuk: "classify-disagree",
+        post: post.id,
+        kind: type,
+        regex: keywords,
+      });
+    const ai = {
+      ...base,
+      ...(reading.result.is_past ? { past: true } : {}),
+      model: reading.model,
+      usage: reading.usage,
+      costUsd: reading.costUsd,
+    };
+    const usage = {
       zuk: "ai",
       post: post.id,
       model: reading.model,
       ...reading.usage,
       latencyMs: reading.latencyMs,
       costUsd: Number(reading.costUsd.toFixed(6)),
+      postType: type,
+    };
+    if (type !== "water_outage") {
+      const quality =
+        type === "water_quality"
+          ? readQualityPost(post, reading.result, places)
+          : null;
+      const reason = quality ? WATER_QUALITY : NOT_WATER;
+      deps.log({
+        ...usage,
+        status: "notice",
+        reason,
+        ...(quality
+          ? { places: quality.places.length, dropped: quality.dropped }
+          : {}),
+      });
+      stored.push({
+        ...ai,
+        status: "notice",
+        reason,
+        itemCount: 0,
+        items: [],
+        ...(quality
+          ? { qualityStatus: quality.status, places: quality.places }
+          : {}),
+      });
+      continue;
+    }
+    const read = readPost(post, reading.result, places, checkedAt);
+    deps.log({
+      ...usage,
       status: read.status,
       ...(read.status === "notice"
         ? { reason: read.reason }
         : { items: read.items.length, dropped: read.dropped }),
     });
     stored.push({
-      ...base,
-      ...(reading.result.is_past ? { past: true } : {}),
-      model: reading.model,
-      usage: reading.usage,
-      costUsd: reading.costUsd,
+      ...ai,
       ...(read.status === "parsed"
         ? {
             status: "parsed",

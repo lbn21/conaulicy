@@ -231,7 +231,8 @@ type Reading = [
 export function reading(id: number): AiResult {
   const r = READINGS[id];
   return {
-    is_outage_notice: r.outage,
+    post_type: r.outage ? "water_outage" : "other",
+    quality_status: null,
     is_past: r.past,
     items: r.items.map(
       ([date, start, end, locality, street, place_verbatim, note, kind]) => ({
