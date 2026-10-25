@@ -111,3 +111,8 @@ export function wasteSources(place: PlaceView): Part[][] {
     ...(source.checkedAt ? [`, sprawdzono ${longDate(source.checkedAt)}`] : []),
   ]);
 }
+
+/** When the import last read the sources: „Ostatnio sprawdziliśmy …”. */
+export function wasteChecked(place: PlaceView): Date | null {
+  return place.importedAt ? new Date(place.importedAt) : null;
+}

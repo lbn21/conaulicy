@@ -12,13 +12,15 @@
 // none (Holiki, Dąbrowa), the places of the ZUK dev mock's post 39885
 // (lib/water-fixture.ts: ul. Żuki, Załuże; Lisie Jamy above), one month
 // with 6 pickup days and holiday-shifted dates, and the home page's examples
-// (lib/examples.ts) under their real ids.
+// (lib/examples.ts) under their real ids, and the import's runs of every
+// status.
 import { createHash } from "node:crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { addDays, todayInWarsaw } from "../lib/dates.ts";
 import {
   events,
   gminy,
+  importRuns,
   localities,
   meta,
   placeRedirects,
@@ -31,6 +33,31 @@ import { localitySearchLabel, streetLabel, terytName } from "../lib/places.ts";
 import { polishHolidays } from "./import/waste/lib.ts";
 import { GMINA_SCHEDULE_PAGES } from "./lib/gmina-pages.ts";
 import { localDatabaseUrl } from "./lib/local-db.ts";
+
+// The import's runs (made up): the waste module's „Ostatnio sprawdziliśmy”
+// is the latest one that read the sources (check-modules.mjs), 20 Oct 6:12
+// in Warsaw; the later ones are a failed, a blocked, a dry run and an undo.
+const run = (
+  finishedAt: string,
+  source: string,
+  status: "no_change" | "applied" | "needs_review" | "failed",
+  dryRun = false,
+) => ({
+  id: `ci-${finishedAt}`,
+  startedAt: finishedAt,
+  finishedAt,
+  source,
+  status,
+  dryRun,
+});
+const IMPORT_RUNS = [
+  run("2026-10-19T04:10:00Z", "miasto", "no_change"),
+  run("2026-10-20T04:12:00Z", "gmina", "applied"),
+  run("2026-10-21T04:10:00Z", "gmina", "failed"),
+  run("2026-10-22T04:10:00Z", "miasto", "needs_review"),
+  run("2026-10-23T04:10:00Z", "miasto", "no_change", true),
+  run("2026-10-24T04:10:00Z", "revert", "applied"),
+];
 
 // A placeholder, never a public page: the fixture only lives in CI.
 const SOURCE_URL = "https://ci-fixture.invalid/harmonogram";
@@ -384,6 +411,7 @@ async function main() {
       localities,
       gminy,
       meta,
+      importRuns,
     ]) {
       await tx.delete(table);
     }
@@ -403,6 +431,7 @@ async function main() {
     await tx.insert(events).values(eventRows);
     // A renamed street's old page (made up): it must answer 308 to the new.
     await tx.insert(placeRedirects).values(REDIRECTS);
+    await tx.insert(importRuns).values(IMPORT_RUNS);
   });
 
   const shifted = eventRows.filter((e) => e.shiftedFrom);

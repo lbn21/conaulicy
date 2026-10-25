@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { checkedLine } from "./hub.ts";
 import { banner } from "./imgw-banner.ts";
 import { derived1809, NO_WARNINGS_2026_10_18 } from "./imgw-fixture.ts";
 import { type Feed, parseFeed } from "./imgw-warnings.ts";
 import {
   weather,
   weatherAlerts,
+  weatherChecked,
   weatherSources,
   weatherSummary,
 } from "./weather-module.ts";
@@ -77,4 +79,20 @@ test("a stale copy says so in its source", () => {
     weatherSources(data)[0].at(-1),
     ". Nowszych danych nie udało się pobrać",
   );
+});
+
+test("checked line: the copy's fetchedAt, warning or not", () => {
+  const now = at("2026-10-25T14:00:00+01:00");
+  for (const items of [undefined, none]) {
+    const data = weather(copy("2026-10-25T13:52:10+01:00", items), now);
+    assert.ok(data);
+    assert.equal(
+      weatherChecked(data).getTime(),
+      at("2026-10-25T13:52:10+01:00"),
+    );
+    assert.equal(
+      checkedLine(weatherChecked(data)),
+      "Ostatnio sprawdziliśmy: 25 października, 13:52",
+    );
+  }
 });

@@ -68,3 +68,8 @@ export function weatherSources(data: Weather): Part[][] {
     ],
   ];
 }
+
+/** When the copy of the feed was fetched: „Ostatnio sprawdziliśmy …”. */
+export function weatherChecked(data: Weather): Date {
+  return new Date(data.fetchedAt);
+}

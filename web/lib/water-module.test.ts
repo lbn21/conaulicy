@@ -54,6 +54,7 @@ const place = (overrides: Partial<PlaceView>): PlaceView => ({
   days: [],
   sources: [],
   verified: true,
+  importedAt: null,
   ...overrides,
 });
 
