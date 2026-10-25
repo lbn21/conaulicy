@@ -66,6 +66,9 @@ const NOTE = sharedNumberNote({
   askNumber: false,
   givenNr: "12",
 });
+// PRG has nr 1-7 at ul. Adama Asnyka (lib/prg.ts), so 12 also gets its hint.
+const PRG_NOTE =
+  "Nie znaleźliśmy nr 12 przy tej ulicy w rejestrze adresów. Sprawdź, czy numer jest dobry.";
 
 const server = await startServer(3312);
 const failures = [];
@@ -241,7 +244,9 @@ try {
     headingsInOrder(path, hub);
     // The note right under the h1, only for the street with one schedule.
     const note = path === `${STREET}?nr=12`;
-    const underH1 = new RegExp(`</h1><p class="govuk-body">${NOTE}</p>`);
+    const underH1 = new RegExp(
+      `</h1><p class="govuk-body">${NOTE} ${PRG_NOTE}</p>`,
+    );
     if (note !== underH1.test(hub))
       fail(path, note ? "no note under the h1" : "a house-number note");
     if (!note && hub.includes("Harmonogram jest wspólny"))
