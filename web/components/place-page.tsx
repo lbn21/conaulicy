@@ -18,6 +18,7 @@ import {
   UNVERIFIED_NOTE,
 } from "@/lib/schedule-notes";
 import { pageMetadata } from "@/lib/share";
+import { ALL_PLACES } from "@/lib/static-pages";
 import { noDataHeading } from "@/lib/waste-module";
 
 // The street or village page's parts: its metadata (the address page's,
@@ -223,7 +224,8 @@ export function PlaceNotFound() {
 
 /**
  * The top of the street page, the address page and the waste subpage:
- * GOV.UK's error summary, the caption, the h1, a house number the street
+ * GOV.UK's error summary, the caption (the subpage's: its h1 does not name
+ * the place; the address page's locality is in its breadcrumbs), the h1, a house number the street
  * does not need (sharedNumberNote), then „Zmień adres”.
  */
 export function PlaceHeading({
@@ -233,7 +235,7 @@ export function PlaceHeading({
   error = null,
 }: {
   place: PlaceView;
-  caption: string;
+  caption?: string;
   heading: string;
   error?: string | null;
 }) {
@@ -242,7 +244,7 @@ export function PlaceHeading({
   return (
     <>
       {error && <ErrorSummary error={error} href="#nr" />}
-      <span className="govuk-caption-l">{caption}</span>
+      {caption && <span className="govuk-caption-l">{caption}</span>}
       <h1 className="govuk-heading-l">{heading}</h1>
       {note && <p className="govuk-body">{note}</p>}
       {/* Like GOV.UK's "Change": back to the search on the home page. */}
@@ -269,17 +271,19 @@ export function StreetPage({
 }) {
   const error = numberError(place, missing);
   return (
-    <div className="govuk-grid-row">
-      <div className="govuk-grid-column-two-thirds">
-        <PlaceHeading
-          place={place}
-          caption={place.area}
-          heading={withHouseNumber(place.name, place.nr)}
-          error={error}
-        />
-        <WasteBody place={place} error={error} />
+    <>
+      <Breadcrumbs place={place} />
+      <div className="govuk-grid-row">
+        <div className="govuk-grid-column-two-thirds">
+          <PlaceHeading
+            place={place}
+            heading={withHouseNumber(place.name, place.nr)}
+            error={error}
+          />
+          <WasteBody place={place} error={error} />
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -290,48 +294,61 @@ function placeCaption(place: PlaceView): string {
 }
 
 /**
- * GOV.UK's breadcrumbs: the locality (as text: a locality with streets has
- * no page of its own), the address page, then this page, aria-current and
- * no link. A village without streets is the address itself: two levels.
+ * GOV.UK's breadcrumbs, every item a link and the page itself left out: the
+ * home page, the locality (its list on /ulice: the town's streets, or the
+ * villages), and on a module's subpage the address page. A village names
+ * its gmina there, as the caption did, not itself again.
  * Inside <main> (the layout's), so its own margin-top gives way to main's
- * padding, and its margin-bottom adds main's: GOV.UK's 30/50 px to the
- * caption.
+ * padding, and its margin-bottom adds main's: GOV.UK's 30/50 px to what
+ * follows.
  */
-function Breadcrumbs({
+export function Breadcrumbs({
   place,
-  current,
+  subpage = false,
 }: {
   place: PlaceView;
-  current: string;
+  subpage?: boolean;
 }) {
+  const items: Array<[string, string]> = [
+    ["Strona główna", "/"],
+    place.kind === "ulica"
+      ? [
+          place.area,
+          `${ALL_PLACES.path}#${place.town ? "ulice" : "wsie"}-heading`,
+        ]
+      : [
+          place.area.charAt(0).toUpperCase() + place.area.slice(1),
+          `${ALL_PLACES.path}#wsie-heading`,
+        ],
+  ];
+  if (subpage) {
+    items.push([
+      withHouseNumber(place.name, place.nr),
+      placePath(place.id, place.nr),
+    ]);
+  }
   return (
     <nav
       className="govuk-breadcrumbs govuk-!-margin-top-0 govuk-!-margin-bottom-8"
       aria-label="Ścieżka nawigacyjna"
     >
       <ol className="govuk-breadcrumbs__list">
-        {place.kind === "ulica" && (
-          <li className="govuk-breadcrumbs__list-item">{place.area}</li>
-        )}
-        <li className="govuk-breadcrumbs__list-item">
-          <a
-            className="govuk-breadcrumbs__link"
-            href={placePath(place.id, place.nr)}
-          >
-            {withHouseNumber(place.name, place.nr)}
-          </a>
-        </li>
-        <li className="govuk-breadcrumbs__list-item" aria-current="page">
-          {current}
-        </li>
+        {items.map(([text, href]) => (
+          <li key={href} className="govuk-breadcrumbs__list-item">
+            <a className="govuk-breadcrumbs__link" href={href}>
+              {text}
+            </a>
+          </li>
+        ))}
       </ol>
     </nav>
   );
 }
 
 /**
- * The waste module's subpage body (lib/modules.ts, /adres/<id>/smieci):
- * today's street page under breadcrumbs, the h1 „Odbiór śmieci”.
+ * The waste module's subpage body (lib/modules.ts, /adres/<id>/smieci,
+ * under ModuleMain's breadcrumbs): today's street page, the h1 „Odbiór
+ * śmieci”.
  */
 export function WasteDetails({
   data: place,
@@ -342,24 +359,21 @@ export function WasteDetails({
 }) {
   const error = numberError(place, missing);
   return (
-    <>
-      <Breadcrumbs place={place} current={WASTE_H1} />
-      <div className="govuk-grid-row">
-        <div className="govuk-grid-column-two-thirds">
-          <PlaceHeading
-            place={place}
-            caption={placeCaption(place)}
-            heading={WASTE_H1}
-            error={error}
-          />
-          <WasteBody place={place} error={error} />
-        </div>
+    <div className="govuk-grid-row">
+      <div className="govuk-grid-column-two-thirds">
+        <PlaceHeading
+          place={place}
+          caption={placeCaption(place)}
+          heading={WASTE_H1}
+          error={error}
+        />
+        <WasteBody place={place} error={error} />
       </div>
-    </>
+    </div>
   );
 }
 
-/** The waste subpage's h1, and its breadcrumb. */
+/** The waste subpage's h1. */
 const WASTE_H1 = "Odbiór śmieci";
 
 /** The street page's dates, files and sources, or why there are none. */

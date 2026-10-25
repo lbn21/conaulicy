@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import {
+  Breadcrumbs,
   numberError,
   PlaceHeading,
   PlaceNotFound,
@@ -15,7 +16,7 @@ import { placePath } from "@/lib/places";
 import type { PlaceView } from "@/lib/schedule";
 
 // The address page, /adres/[id] (and /nr/…): the hub of modules
-// (lib/modules.ts, docs/tasks T102). Under the h1, one GOV.UK warning text
+// (lib/modules.ts, docs/tasks T102), under breadcrumbs. Under the h1, one GOV.UK warning text
 // for every module's alerts; then „Co Cię czeka”, one summary card per module
 // with something to show, waste always first; then „Bez zapowiedzi”, a line
 // for each module with nothing. Dates are absolute only, so a cached copy
@@ -205,50 +206,54 @@ export async function HubMain({
   const imgw = loaded.some(({ module }) => module.id === "pogoda");
 
   return (
-    <div className="govuk-grid-row">
-      <div className="govuk-grid-column-two-thirds">
-        <PlaceHeading
-          place={place}
-          caption={place.area}
-          heading={withHouseNumber(place.name, place.nr)}
-        />
-        <AlertSlot alerts={alerts} />
-        <section aria-labelledby="co-cie-czeka-heading" id="co-cie-czeka">
-          <h2 id="co-cie-czeka-heading" className="govuk-heading-m">
-            Co Cię czeka
-          </h2>
-          {cards.map(({ entry, rows }) => (
-            <Card
-              key={entry.module.id}
-              loaded={entry}
-              rows={rows}
-              place={place}
-            />
-          ))}
-        </section>
-        {quiet.length > 0 && (
-          <section
-            aria-labelledby="bez-zapowiedzi-heading"
-            className="govuk-!-margin-top-6"
-          >
-            <h2 id="bez-zapowiedzi-heading" className="govuk-heading-s">
-              Bez zapowiedzi
+    <>
+      <Breadcrumbs place={place} />
+      <div className="govuk-grid-row">
+        <div className="govuk-grid-column-two-thirds">
+          <PlaceHeading
+            place={place}
+            heading={withHouseNumber(place.name, place.nr)}
+          />
+          <AlertSlot alerts={alerts} />
+          <section aria-labelledby="co-cie-czeka-heading" id="co-cie-czeka">
+            <h2 id="co-cie-czeka-heading" className="govuk-heading-m">
+              Co Cię czeka
             </h2>
-            {quiet.map(({ module, data }) => (
-              <p key={module.id} className="govuk-body">
-                {`${module.title}: ${module.none}. Źródło: `}
-                <Parts
-                  parts={module
-                    .sources(data)
-                    .flatMap((parts, i) => (i > 0 ? ["; ", ...parts] : parts))}
-                />
-                .
-              </p>
+            {cards.map(({ entry, rows }) => (
+              <Card
+                key={entry.module.id}
+                loaded={entry}
+                rows={rows}
+                place={place}
+              />
             ))}
           </section>
-        )}
-        {imgw && <p className="govuk-body-s">{IMGW_ATTRIBUTION.join(" ")}</p>}
+          {quiet.length > 0 && (
+            <section
+              aria-labelledby="bez-zapowiedzi-heading"
+              className="govuk-!-margin-top-6"
+            >
+              <h2 id="bez-zapowiedzi-heading" className="govuk-heading-s">
+                Bez zapowiedzi
+              </h2>
+              {quiet.map(({ module, data }) => (
+                <p key={module.id} className="govuk-body">
+                  {`${module.title}: ${module.none}. Źródło: `}
+                  <Parts
+                    parts={module
+                      .sources(data)
+                      .flatMap((parts, i) =>
+                        i > 0 ? ["; ", ...parts] : parts,
+                      )}
+                  />
+                  .
+                </p>
+              ))}
+            </section>
+          )}
+          {imgw && <p className="govuk-body-s">{IMGW_ATTRIBUTION.join(" ")}</p>}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
