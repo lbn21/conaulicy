@@ -40,9 +40,6 @@ test("real: every post the model read, checked and resolved", () => {
     if (read.status === "notice") notices[p.id] = read.reason;
   }
   assert.deepEqual(notices, {
-    // gate-spec's day forms have no "od D.M.Y do D.M.Y": 7.11 is not
-    // written, so the post fails closed (task 114b).
-    23860: "item 7: 7.11 not in text",
     // The fox vaccination post: not a water cut.
     39868: "not an outage notice",
   });
@@ -52,8 +49,6 @@ test("real: every post the model read, checked and resolved", () => {
 // What the gate (gate-spec v3.1) drops of the truth, by its own rules:
 // left out, never wrong.
 const LOST_POSTS: Record<number, string> = {
-  // "od 06.11.2023 do 10.11.2023" is not one of its day forms.
-  23860: "a day not written",
   39868: "not a water cut",
 };
 const LOST_ITEMS: Record<number, string[]> = {
@@ -203,11 +198,12 @@ test("a post with no place left is a Notice", () => {
   );
 });
 
-test("real 23860: 'od 06.11.2023 do 10.11.2023' is no day form of the gate: a Notice", () => {
-  assert.deepEqual(readPost(post(23860), reading(23860), PLACES, CHECKED), {
-    status: "notice",
-    reason: "item 7: 7.11 not in text",
-  });
+test("real 23860: days inside 'od 06.11.2023 do 10.11.2023' pass", () => {
+  const days = new Set(cuts(post(23860)).map((d) => d.date));
+  assert.deepEqual(
+    [...days],
+    ["02", "03", "06", "07", "08", "09", "10"].map((d) => `2023-11-${d}`),
+  );
 });
 
 test("real 35661: an emergency, its end an estimate", () => {

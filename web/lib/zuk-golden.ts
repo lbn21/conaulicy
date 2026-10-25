@@ -2,13 +2,17 @@
 // real gmina posts, grok-4.7's recorded replies with the v3.1 prompt
 // (lib/sources/gmina-lubaczow/prompt.ts; reasoning low, temp. 0), and the
 // hand-checked gate result per item, in item order. `negatives`: replies
-// of the older v3 prompt the gate must drop. A fixture, so code
+// of the older v3 prompt the gate must drop. Post 23860 (task 114b) has no
+// recorded reply: its reading is the hand-checked one, `recorded: false`.
+// A fixture, so code
 // (scripts/check-tracked-data.mjs).
 
 import type { AiResult } from "./zuk-ai.ts";
 
 export type GoldenPost = {
   id: number;
+  /** false: not a recorded reply but a hand-checked reading (23860). */
+  recorded?: false;
   link: string;
   published: string;
   title: string;
@@ -35,7 +39,7 @@ export const GOLDEN: {
   negatives_about: string;
   negatives: GoldenPost[];
 } = JSON.parse(`{
- "about": "v3.1 golden set: recorded inputs and grok-4.7 outputs (prompt system_prompt_v31, schema-v31.json, reasoning low, temperature 0) and the hand-checked gate result per item, in item order. The model input is the user message 'Publish date: {published}\\\\nTitle: {title}\\\\n\\\\nText:\\\\n{text}'. text = post HTML with <br> and block-element ends turned into line breaks, tags removed, entities unescaped, nbsp -> space, runs of spaces/tabs collapsed, lines trimmed, empty lines dropped. Places: places-v31.json (TERYT 2026-10-18).",
+ "about": "v3.1 golden set: recorded inputs and grok-4.7 outputs (prompt system_prompt_v31, schema-v31.json, reasoning low, temperature 0) and the hand-checked gate result per item, in item order. The model input is the user message 'Publish date: {published}\\\\nTitle: {title}\\\\n\\\\nText:\\\\n{text}'. text = post HTML with <br> and block-element ends turned into line breaks, tags removed, entities unescaped, nbsp -> space, runs of spaces/tabs collapsed, lines trimmed, empty lines dropped. Places: places-v31.json (TERYT 2026-10-18). Post 23860 (task 114b) is the exception: no v3.1 reply was recorded for it, so its model_output is the hand-checked reading in v3.1 shape (lib/zuk-fixture.ts READINGS), marked recorded: false; it tests the date form 'od D.M.YYYY do D.M.YYYY'.",
  "places": "places-v31.json",
  "posts": [
   {
@@ -1534,6 +1538,345 @@ export const GOLDEN: {
     "items": []
    },
    "expected": []
+  },
+  {
+   "id": 23860,
+   "link": "https://www.gminalubaczow.pl/2023/10/31/uwaga-przerwa-w-dostawie-wody-w-miejscowosciach-tymce-i-zaluze/",
+   "published": "2023-10-31T14:42:51",
+   "title": "Przerwa w dostawie wody w miejscowościach Tymce i Załuże – uwaga aktualizacja dni!",
+   "text": "Zakład Usług Komunalnych Sp. z o.o. w Mokrzycy informuje, że 2.11.2023, 3.11.2023 oraz od 06.11.2023 do 10.11.2023, w związku z potrzebą przeprowadzenia niezbędnych prac remontowych na sieci wodociągowej w miejscowościach Tymce i Załuże w godzinach 9.00 – 15.00 nastąpi przerwa w dostawie wody.\\nZa utrudnienia przepraszamy.\\nPrezes ZUK Sp. z o.o.",
+   "recorded": false,
+   "model_output": {
+    "post_type": "water_outage",
+    "quality_status": null,
+    "is_past": false,
+    "items": [
+     {
+      "date": "2023-11-02",
+      "start": "09:00",
+      "end": "15:00",
+      "locality": "Tymce",
+      "locality_verbatim": "Tymce",
+      "street": null,
+      "street_verbatim": null,
+      "note": null,
+      "kind": "planned"
+     },
+     {
+      "date": "2023-11-02",
+      "start": "09:00",
+      "end": "15:00",
+      "locality": "Załuże",
+      "locality_verbatim": "Załuże",
+      "street": null,
+      "street_verbatim": null,
+      "note": null,
+      "kind": "planned"
+     },
+     {
+      "date": "2023-11-03",
+      "start": "09:00",
+      "end": "15:00",
+      "locality": "Tymce",
+      "locality_verbatim": "Tymce",
+      "street": null,
+      "street_verbatim": null,
+      "note": null,
+      "kind": "planned"
+     },
+     {
+      "date": "2023-11-03",
+      "start": "09:00",
+      "end": "15:00",
+      "locality": "Załuże",
+      "locality_verbatim": "Załuże",
+      "street": null,
+      "street_verbatim": null,
+      "note": null,
+      "kind": "planned"
+     },
+     {
+      "date": "2023-11-06",
+      "start": "09:00",
+      "end": "15:00",
+      "locality": "Tymce",
+      "locality_verbatim": "Tymce",
+      "street": null,
+      "street_verbatim": null,
+      "note": null,
+      "kind": "planned"
+     },
+     {
+      "date": "2023-11-06",
+      "start": "09:00",
+      "end": "15:00",
+      "locality": "Załuże",
+      "locality_verbatim": "Załuże",
+      "street": null,
+      "street_verbatim": null,
+      "note": null,
+      "kind": "planned"
+     },
+     {
+      "date": "2023-11-07",
+      "start": "09:00",
+      "end": "15:00",
+      "locality": "Tymce",
+      "locality_verbatim": "Tymce",
+      "street": null,
+      "street_verbatim": null,
+      "note": null,
+      "kind": "planned"
+     },
+     {
+      "date": "2023-11-07",
+      "start": "09:00",
+      "end": "15:00",
+      "locality": "Załuże",
+      "locality_verbatim": "Załuże",
+      "street": null,
+      "street_verbatim": null,
+      "note": null,
+      "kind": "planned"
+     },
+     {
+      "date": "2023-11-08",
+      "start": "09:00",
+      "end": "15:00",
+      "locality": "Tymce",
+      "locality_verbatim": "Tymce",
+      "street": null,
+      "street_verbatim": null,
+      "note": null,
+      "kind": "planned"
+     },
+     {
+      "date": "2023-11-08",
+      "start": "09:00",
+      "end": "15:00",
+      "locality": "Załuże",
+      "locality_verbatim": "Załuże",
+      "street": null,
+      "street_verbatim": null,
+      "note": null,
+      "kind": "planned"
+     },
+     {
+      "date": "2023-11-09",
+      "start": "09:00",
+      "end": "15:00",
+      "locality": "Tymce",
+      "locality_verbatim": "Tymce",
+      "street": null,
+      "street_verbatim": null,
+      "note": null,
+      "kind": "planned"
+     },
+     {
+      "date": "2023-11-09",
+      "start": "09:00",
+      "end": "15:00",
+      "locality": "Załuże",
+      "locality_verbatim": "Załuże",
+      "street": null,
+      "street_verbatim": null,
+      "note": null,
+      "kind": "planned"
+     },
+     {
+      "date": "2023-11-10",
+      "start": "09:00",
+      "end": "15:00",
+      "locality": "Tymce",
+      "locality_verbatim": "Tymce",
+      "street": null,
+      "street_verbatim": null,
+      "note": null,
+      "kind": "planned"
+     },
+     {
+      "date": "2023-11-10",
+      "start": "09:00",
+      "end": "15:00",
+      "locality": "Załuże",
+      "locality_verbatim": "Załuże",
+      "street": null,
+      "street_verbatim": null,
+      "note": null,
+      "kind": "planned"
+     }
+    ]
+   },
+   "expected": [
+    {
+     "kept": true,
+     "reason": null,
+     "resolved": {
+      "date": "2023-11-02",
+      "localityId": "0606435",
+      "locality": "Tymce",
+      "streetId": null,
+      "street": null,
+      "note": null
+     }
+    },
+    {
+     "kept": true,
+     "reason": null,
+     "resolved": {
+      "date": "2023-11-02",
+      "localityId": "0606464",
+      "locality": "Załuże",
+      "streetId": null,
+      "street": null,
+      "note": null
+     }
+    },
+    {
+     "kept": true,
+     "reason": null,
+     "resolved": {
+      "date": "2023-11-03",
+      "localityId": "0606435",
+      "locality": "Tymce",
+      "streetId": null,
+      "street": null,
+      "note": null
+     }
+    },
+    {
+     "kept": true,
+     "reason": null,
+     "resolved": {
+      "date": "2023-11-03",
+      "localityId": "0606464",
+      "locality": "Załuże",
+      "streetId": null,
+      "street": null,
+      "note": null
+     }
+    },
+    {
+     "kept": true,
+     "reason": null,
+     "resolved": {
+      "date": "2023-11-06",
+      "localityId": "0606435",
+      "locality": "Tymce",
+      "streetId": null,
+      "street": null,
+      "note": null
+     }
+    },
+    {
+     "kept": true,
+     "reason": null,
+     "resolved": {
+      "date": "2023-11-06",
+      "localityId": "0606464",
+      "locality": "Załuże",
+      "streetId": null,
+      "street": null,
+      "note": null
+     }
+    },
+    {
+     "kept": true,
+     "reason": null,
+     "resolved": {
+      "date": "2023-11-07",
+      "localityId": "0606435",
+      "locality": "Tymce",
+      "streetId": null,
+      "street": null,
+      "note": null
+     }
+    },
+    {
+     "kept": true,
+     "reason": null,
+     "resolved": {
+      "date": "2023-11-07",
+      "localityId": "0606464",
+      "locality": "Załuże",
+      "streetId": null,
+      "street": null,
+      "note": null
+     }
+    },
+    {
+     "kept": true,
+     "reason": null,
+     "resolved": {
+      "date": "2023-11-08",
+      "localityId": "0606435",
+      "locality": "Tymce",
+      "streetId": null,
+      "street": null,
+      "note": null
+     }
+    },
+    {
+     "kept": true,
+     "reason": null,
+     "resolved": {
+      "date": "2023-11-08",
+      "localityId": "0606464",
+      "locality": "Załuże",
+      "streetId": null,
+      "street": null,
+      "note": null
+     }
+    },
+    {
+     "kept": true,
+     "reason": null,
+     "resolved": {
+      "date": "2023-11-09",
+      "localityId": "0606435",
+      "locality": "Tymce",
+      "streetId": null,
+      "street": null,
+      "note": null
+     }
+    },
+    {
+     "kept": true,
+     "reason": null,
+     "resolved": {
+      "date": "2023-11-09",
+      "localityId": "0606464",
+      "locality": "Załuże",
+      "streetId": null,
+      "street": null,
+      "note": null
+     }
+    },
+    {
+     "kept": true,
+     "reason": null,
+     "resolved": {
+      "date": "2023-11-10",
+      "localityId": "0606435",
+      "locality": "Tymce",
+      "streetId": null,
+      "street": null,
+      "note": null
+     }
+    },
+    {
+     "kept": true,
+     "reason": null,
+     "resolved": {
+      "date": "2023-11-10",
+      "localityId": "0606464",
+      "locality": "Załuże",
+      "streetId": null,
+      "street": null,
+      "note": null
+     }
+    }
+   ]
   }
  ],
  "negatives_about": "Recorded v3-prompt outputs (older prompt) that the gate must drop item by item: an inflected locality_verbatim not matching the list form (39480 'Hucie Kryształowej') and notes spliced from two pieces of the post (31662, 31782).",

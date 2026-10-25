@@ -57,11 +57,67 @@ test("day: D.M, D <month>, inside a-b.M, a do b.M, a.M - b.M", () => {
     guardDate("2026-10-13", t("w dniu 12.10.2026")),
     "13.10 not in text",
   );
-  // A year inside a range is no form of the gate's (post 23860).
+  // Both ends full dates (post 23860): accepted since task 114b.
+  assert.equal(guardDate("2023-11-07", t("od 06.11.2023 do 10.11.2023")), null);
+});
+
+test("day: a range of two full dates, 'do' or a dash, optional 'od'", () => {
+  for (const text of [
+    "od 06.11.2023 do 10.11.2023",
+    "06.11.2023 do 10.11.2023",
+    "6.11.2023-10.11.2023",
+    "od 6.11.2023 - 10.11.2023r.",
+    "od 28.10.2023 do 10.11.2023",
+  ])
+    assert.equal(guardDate("2023-11-07", text), null, text);
+  // Both ends are in the range.
+  assert.equal(guardDate("2023-11-06", "od 06.11.2023 do 10.11.2023"), null);
+  assert.equal(guardDate("2023-11-10", "od 06.11.2023 do 10.11.2023"), null);
+  // A day outside it, a reversed range, another year.
   assert.equal(
-    guardDate("2023-11-07", t("od 06.11.2023 do 10.11.2023")),
+    guardDate("2023-11-11", "od 06.11.2023 do 10.11.2023"),
+    "11.11 not in text",
+  );
+  assert.equal(
+    guardDate("2023-11-07", "od 10.11.2023 do 06.11.2023"),
     "7.11 not in text",
   );
+  assert.equal(
+    guardDate("2024-11-07", "od 06.11.2023 do 10.11.2023"),
+    "7.11 not in text",
+  );
+  // An en dash with spaces, through the gate (the post's dashes become "-").
+  const r = gate("Brak wody od 06.11.2023 – 10.11.2023 w miejscowości Opaka.", {
+    date: "2023-11-07",
+    locality: "Opaka",
+    locality_verbatim: "Opaka",
+  });
+  assert.equal(r.kept, true, JSON.stringify(r));
+});
+
+test("day: a year written with the day must be the item's", () => {
+  assert.equal(
+    guardDate("2026-10-12", "w dniu 12.10.2025r."),
+    "12.10 not in text",
+  );
+  assert.equal(guardDate("2026-10-12", "w dniu 12.10.2026r."), null);
+  // No year written: as before.
+  assert.equal(guardDate("2026-10-12", "w dniu 12.10"), null);
+  assert.equal(
+    guardDate("2026-06-08", "w dniu 8 czerwca 2025 r."),
+    "8.6 not in text",
+  );
+  assert.equal(guardDate("2026-06-08", "w dniu 8 czerwca"), null);
+  assert.equal(
+    guardDate("2026-10-27", "w dniach 26-29.10.2025"),
+    "27.10 not in text",
+  );
+  assert.equal(
+    guardDate("2026-10-27", "od 26.10 - 29.10.2025"),
+    "27.10 not in text",
+  );
+  // The right year elsewhere still counts.
+  assert.equal(guardDate("2026-10-12", "12.10.2025 i 12.10.2026"), null);
 });
 
 test("day: a weekday in brackets must agree; no such day", () => {
@@ -260,7 +316,7 @@ test("edge cases: test_gate_v31.py, 18/18", () => {
   }
 });
 
-test("golden: the recorded v3.1 replies, item by item, 64/64", () => {
+test("golden: the v3.1 replies, item by item, 78/78", () => {
   let n = 0;
   for (const p of [...GOLDEN.posts, ...GOLDEN.negatives]) {
     const text = gateText(p.title, p.text);
@@ -289,7 +345,8 @@ test("golden: the recorded v3.1 replies, item by item, 64/64", () => {
       } else assert.equal(got.reason, want.reason, at);
     }
   }
-  assert.equal(n, 64);
+  // 64 recorded items, and 23860's 14 (a hand-checked reading).
+  assert.equal(n, 78);
 });
 
 test("snapshot: no two of our names match each other (cross-match proof)", (t) => {

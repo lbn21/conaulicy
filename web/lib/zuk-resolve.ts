@@ -147,10 +147,15 @@ export function guardDate(date: string, txt: string): string | null {
   const D = day.getUTCDate();
   const M = day.getUTCMonth() + 1;
   const weekday = (day.getUTCDay() + 6) % 7;
+  const Y = date.slice(0, 4);
+  // A year written with the day must be the item's year (task 114b).
+  const ofYear = (m: RegExpMatchArray) => m[1] === undefined || m[1] === Y;
   const hits = [
-    new RegExp(`(?<!\\d)0?${D}\\.0?${M}(?!\\d)`, "g"),
-    new RegExp(`(?<!\\d)0?${D}\\s+${MONTHS[M - 1]}`, "g"),
-  ].flatMap((p) => [...txt.matchAll(p)]);
+    new RegExp(`(?<!\\d)0?${D}\\.0?${M}(?:\\.(\\d{4}))?(?!\\d)`, "g"),
+    new RegExp(`(?<!\\d)0?${D}\\s+${MONTHS[M - 1]}(?:\\s+(\\d{4}))?`, "g"),
+  ]
+    .flatMap((p) => [...txt.matchAll(p)])
+    .filter(ofYear);
   if (hits.length > 0) {
     for (const h of hits) {
       const named = /^[.\s]*\d{0,4}\s*r?\.?\s*\(([^)]*)\)/.exec(
@@ -163,23 +168,48 @@ export function guardDate(date: string, txt: string): string | null {
     return null;
   }
   const within = (re: RegExp) =>
-    [...txt.matchAll(re)].some(([, a, b]) => Number(a) <= D && D <= Number(b));
+    [...txt.matchAll(re)].some(
+      ([, a, b, y]) =>
+        Number(a) <= D && D <= Number(b) && (y === undefined || y === Y),
+    );
   if (
     within(
       new RegExp(
-        `(?<!\\d)(\\d{1,2})\\s*(?:-|do)\\s*(\\d{1,2})\\.0?${M}(?!\\d)`,
+        `(?<!\\d)(\\d{1,2})\\s*(?:-|do)\\s*(\\d{1,2})\\.0?${M}(?:\\.(\\d{4}))?(?!\\d)`,
         "g",
       ),
     ) ||
     within(
       new RegExp(
-        `(?<!\\d)(\\d{1,2})\\.0?${M}\\.?\\s*(?:-|do|i)\\s*(\\d{1,2})\\.0?${M}(?!\\d)`,
+        `(?<!\\d)(\\d{1,2})\\.0?${M}\\.?\\s*(?:-|do|i)\\s*(\\d{1,2})\\.0?${M}(?:\\.(\\d{4}))?(?!\\d)`,
         "g",
       ),
-    )
+    ) ||
+    inFullRange(date, txt)
   )
     return null;
   return `${D}.${M} not in text`;
+}
+
+const FULL = String.raw`(\d{1,2})\.(\d{1,2})\.(\d{4})`;
+/** "(od) D.M.YYYY do D.M.YYYY", "D.M.YYYY - D.M.YYYY" (dashes are "-"). */
+const FULL_RANGE = new RegExp(
+  `(?<!\\d)(?:od\\s+)?${FULL}\\s*(?:do|-)\\s*${FULL}(?!\\d)`,
+  "g",
+);
+
+/**
+ * The day is inside a range of two full dates (task 114b, post 23860:
+ * "od 06.11.2023 do 10.11.2023"), both ends included; a reversed range
+ * holds no day.
+ */
+function inFullRange(date: string, txt: string): boolean {
+  const iso = (d: string, m: string, y: string) =>
+    `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  return [...txt.matchAll(FULL_RANGE)].some(([, d1, m1, y1, d2, m2, y2]) => {
+    const [from, to] = [iso(d1, m1, y1), iso(d2, m2, y2)];
+    return from <= date && date <= to;
+  });
 }
 
 // ---------- the inflection rule ----------

@@ -90,7 +90,8 @@ $6/1M out and reasoning) in the function log.
 Generic, from the snapshot only: no place-specific code, list or alias.
 
 - a day not written in the post (D.M, "D <month>", inside "a-b.M", "a do
-  b.M", "a.M - b.M"; not "od D.M.Y do D.M.Y"), a bracketed weekday that
+  b.M", "a.M - b.M", or "(od) D.M.YYYY do/- D.M.YYYY", ends included), a
+  year written with it that is not the item's, a bracketed weekday that
   does not match, a day far from the post's dates, a time not in the text;
 - a locality not ours, or a name two places share without the village;
   `locality_verbatim` not in the text, not exactly the locality's name
