@@ -28,6 +28,23 @@ Each needs Jakub's OK; listed here so nothing drifts silently.
 - `/woda` with no cut here: no AI-read note and no source inset; the empty text links the gmina's news itself (`waterEmpty`).
 - `/woda` and the hub's water card or „Bez zapowiedzi” line: with a house number, when a cut here was left out because its houses clearly exclude that number, one `govuk-body` line after the cuts or the empty text (`waterTrace`, `web/lib/water-module.ts`; on the hub the module's `trace`, `web/lib/modules.ts`). Jakub's decision, task 129.
 
+## Titles
+
+GOV.UK's title is the page's h1, then „ – conaulicy.pl”. A place's pages add its locality to the title only, never to the h1, so that search results for the same street name in two places differ (Jakub's decision, task 133): the hub „ul. Leśna, Lubaczów – conaulicy.pl”, a village's street „ul. Leśna, Basznia Dolna – conaulicy.pl”, a whole village „Antoniki, gm. Lubaczów – conaulicy.pl”; `/smieci` „Odbiór śmieci: wszystkie terminy – ul. Leśna, Lubaczów – conaulicy.pl”, `/woda` „Przerwy w dostawie wody – ul. Leśna, Lubaczów – conaulicy.pl”. Built from the place's label (`titleLabel`, `web/lib/places.ts`); `web/scripts/check-metadata.mjs` checks the pattern, `check-indexing.mjs` that no two titles in the sitemap are the same.
+
+## Headings
+
+- One h1 per page.
+- Module and section headings are h2 (on the hub `govuk-heading-l`, on other pages `govuk-heading-m`); no skipped levels.
+- When a list needs a section heading for screen readers but not on screen, it gets a visually hidden h2 (`govuk-visually-hidden`), as the pickup list on `/smieci` (`web/components/pickup-schedule.tsx`).
+- `web/scripts/check-modules.mjs` guards the hub's outline (h1, then h2, no h3, no skips).
+
+## Indexing
+
+- Indexed, and in the sitemap (`web/app/sitemap.ts`): the static pages, and for each place with data its hub and `/smieci`.
+- `noindex` and not in the sitemap: `/woda` (its content lasts days and is mostly empty; it stays so), the house-number variants (`?nr=`, `/nr/…`, canonical to the hub), `/numer`, `/szukaj`, PDFs, ICS files, and places with no data.
+- `web/scripts/check-indexing.mjs` checks both lists, and that every URL in the sitemap is indexable (200, no noindex, canonical itself).
+
 ## Site-wide: the same job, the same component
 
 Across the whole site the same job always uses the same component and style:
