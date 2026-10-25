@@ -115,7 +115,7 @@ export function WaterDetails({
                     (components/place-page.tsx): a file, so a link. */}
                 {/* biome-ignore lint/a11y/useSemanticElements: it navigates to a file, so it stays a link, as GOV.UK documents */}
                 <a
-                  href={`${placePath(data.place.id)}/woda.ics${data.place.nr ? `?nr=${data.place.nr}` : ""}`}
+                  href={`${placePath(data.place.id)}/woda.ics${data.place.givenNr ? `?nr=${data.place.givenNr}` : ""}`}
                   role="button"
                   draggable="false"
                   className="govuk-button govuk-button--secondary"

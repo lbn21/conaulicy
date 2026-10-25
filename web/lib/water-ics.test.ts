@@ -179,7 +179,7 @@ test("no cut here: an empty calendar, as a waste zone with no dates", () => {
 });
 
 test("the house number: in the place and the file name", () => {
-  const data = at([post()], { ...ZUKI, nr: "12" });
+  const data = at([post()], { ...ZUKI, givenNr: "12" });
   assert.ok(
     lines(waterCalendar(data, NOW)).includes(
       "LOCATION:ul. Żuki 12\\, Lubaczów",

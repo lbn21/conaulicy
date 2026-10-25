@@ -88,9 +88,9 @@ const VTIMEZONE = [
 const capitalised = (text: string) =>
   text.charAt(0).toUpperCase() + text.slice(1);
 
-/** The address as the page names it, with its house number. */
+/** The address with the house number as given, split street or not. */
 const address = (data: Water) =>
-  withHouseNumber(data.place.label, data.place.nr);
+  withHouseNumber(data.place.label, data.place.givenNr);
 
 /** The file for the address: every cut in calendarCuts, none if none. */
 export function waterCalendar(data: Water, now: Date): string {
