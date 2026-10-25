@@ -3,6 +3,7 @@
 // real post and its recorded reading (lib/zuk-fixture.ts): for the unit
 // tests and the dev mock (lib/zuk-store.ts, ZUK_MOCK). A fixture, so code
 // (scripts/check-tracked-data.mjs).
+import type { Disruption } from "./disruptions.ts";
 import type { PlaceView } from "./schedule.ts";
 import { mentionedLocalities, readPost } from "./zuk.ts";
 import {
@@ -14,6 +15,21 @@ import {
 import { PLACES, reading, realPosts } from "./zuk-fixture.ts";
 
 export const POST_39885 = 39885;
+
+/**
+ * A made-up cut by house numbers in Krowica Sama, a village with streets:
+ * the village only, its numbering running on across its streets (zuk.ts).
+ */
+export const KROWICA_RANGE: Pick<
+  Disruption,
+  "place" | "label" | "where" | "scope" | "note"
+> = {
+  place: { localityId: "0606180", streetId: null },
+  label: { locality: "Krowica Sama", parent: null, street: null },
+  where: "Krowica Sama od nr 10 do nr 50",
+  scope: { type: "ranges", ranges: [{ from: "10", to: "50" }] },
+  note: "od nr 10 do nr 50",
+};
 
 /** ul. Żuki in Lubaczów, as the pages get it, with `overrides`. */
 export const testPlace = (overrides: Partial<PlaceView> = {}): PlaceView => ({

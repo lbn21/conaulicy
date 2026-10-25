@@ -11,8 +11,10 @@ import {
   titleDays,
   type ZukPost,
 } from "./zuk.ts";
+import type { AiItem, AiResult } from "./zuk-ai.ts";
 import { PLACES, READINGS, reading, realPosts } from "./zuk-fixture.ts";
 import { TRUTH } from "./zuk-fixture-b.ts";
+import { ZUK_PLACES } from "./zuk-places.generated.ts";
 
 const CHECKED = "2026-10-25T07:00:00Z";
 const posts = realPosts();
@@ -385,4 +387,142 @@ test("plain text: a line per paragraph and list item, entities decoded", () => {
     ),
     "Przerwa – 22.10.2026r. (czwartek)\nLisie Jamy\nOpaka\nnr 5",
   );
+});
+
+const RANGE_TEXT =
+  "Zakład Usług Komunalnych Sp. z o. o. w Mokrzycy informuje, że w dniu 2.09.2026r. (środa) w godz. od 8:00 do godz. 16:00 nastąpi przerwa w dostawie wody dla mieszkańców miejscowości";
+
+/** One item a hand-written model reading gives for `where`, on 2 Sep. */
+function readOne(
+  where: string,
+  item: Pick<
+    AiItem,
+    "locality" | "locality_verbatim" | "street" | "street_verbatim" | "note"
+  >,
+) {
+  const ai: AiResult = {
+    post_type: "water_outage",
+    quality_status: null,
+    is_past: false,
+    items: [
+      {
+        date: "2026-09-02",
+        start: "08:00",
+        end: "16:00",
+        kind: "planned",
+        ...item,
+      },
+    ],
+  };
+  return readPost(
+    inline(
+      `Przerwa w dostawie wody – ${where} (2.09.2026)`,
+      `${RANGE_TEXT} ${where}.`,
+    ),
+    ai,
+    ZUK_PLACES,
+    CHECKED,
+  );
+}
+
+const parsed = (read: ReturnType<typeof readPost>) => {
+  assert.equal(read.status, "parsed", JSON.stringify(read));
+  return read.status === "parsed" ? read : { items: [], dropped: [] };
+};
+
+test("house numbers in a village with streets: the village only, never its streets", () => {
+  const krowica = parsed(
+    readOne("Krowica Sama od nr 10 do nr 50", {
+      locality: "Krowica Sama",
+      locality_verbatim: "Krowica Sama",
+      street: null,
+      street_verbatim: null,
+      note: "od nr 10 do nr 50",
+    }),
+  );
+  assert.deepEqual(krowica.dropped, []);
+  assert.equal(krowica.items.length, 1);
+  const [cut] = krowica.items;
+  assert.deepEqual(cut.place, { localityId: "0606180", streetId: null });
+  assert.deepEqual(cut.scope, {
+    type: "ranges",
+    ranges: [{ from: "10", to: "50" }],
+  });
+  assert.equal(cut.label?.street, null);
+  assert.ok(
+    !krowica.items.some((d) => d.place.streetId?.startsWith("0606180-")),
+  );
+
+  const mlodow = parsed(
+    readOne("Młodów nr 12", {
+      locality: "Młodów",
+      locality_verbatim: "Młodów",
+      street: null,
+      street_verbatim: null,
+      note: "nr 12",
+    }),
+  );
+  assert.deepEqual(mlodow.dropped, []);
+  assert.equal(mlodow.items.length, 1);
+  assert.deepEqual(mlodow.items[0].place, {
+    localityId: "0606286",
+    streetId: null,
+  });
+  assert.deepEqual(mlodow.items[0].scope, { type: "numbers", numbers: ["12"] });
+  assert.ok(
+    !mlodow.items.some((d) => d.place.streetId?.startsWith("0606286-")),
+  );
+});
+
+test("a whole village with streets: the village and each street, as before", () => {
+  const read = parsed(
+    readOne("Krowica Sama", {
+      locality: "Krowica Sama",
+      locality_verbatim: "Krowica Sama",
+      street: null,
+      street_verbatim: null,
+      note: null,
+    }),
+  );
+  assert.deepEqual(
+    read.items.map((d) => [d.place.streetId ?? d.place.localityId, d.scope]),
+    [
+      ["0606180", { type: "whole" }],
+      ["0606180-51473", { type: "whole" }],
+    ],
+  );
+});
+
+test("house numbers on a village's street: that street only, as before", () => {
+  const read = parsed(
+    readOne("Lisie Jamy ul. Długa od nr 40 do nr 145", {
+      locality: "Lisie Jamy",
+      locality_verbatim: "Lisie Jamy",
+      street: "Długa",
+      street_verbatim: "ul. Długa",
+      note: "od nr 40 do nr 145",
+    }),
+  );
+  assert.deepEqual(
+    read.items.map((d) => [d.place.streetId, d.scope]),
+    [
+      [
+        "0606234-03839",
+        { type: "ranges", ranges: [{ from: "40", to: "145" }] },
+      ],
+    ],
+  );
+});
+
+test("house numbers in the town without a street: dropped", () => {
+  const read = readOne("Lubaczów od nr 1 do nr 20", {
+    locality: "Lubaczów",
+    locality_verbatim: "Lubaczów",
+    street: null,
+    street_verbatim: null,
+    note: "od nr 1 do nr 20",
+  });
+  const items = read.status === "parsed" ? read.items : [];
+  if (read.status === "parsed") assert.equal(read.dropped.length, 1);
+  assert.ok(!items.some((d) => d.place.localityId === "0972447"));
 });

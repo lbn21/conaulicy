@@ -3,7 +3,13 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import type { Disruption } from "./disruptions.ts";
 import type { PlaceView } from "./schedule.ts";
-import { POST_39885, storedPost, testPlace, zukFile } from "./water-fixture.ts";
+import {
+  KROWICA_RANGE,
+  POST_39885,
+  storedPost,
+  testPlace,
+  zukFile,
+} from "./water-fixture.ts";
 import {
   calendarCuts,
   waterCalendar,
@@ -191,6 +197,30 @@ test("the house number: in the place and the file name", () => {
     ),
   );
   assert.equal(waterFilename(data), "woda-ul-zuki-12-lubaczow.ics");
+});
+
+test("house numbers in a village with streets: the village's UID, the range as written", () => {
+  const [base] = post().items;
+  const krowica: Disruption = {
+    ...base,
+    uid: "zuk-39885-2026-10-26-0606180",
+    ...KROWICA_RANGE,
+  };
+  // From a street page of the village: the same event.
+  const osiedle = {
+    ...ZUKI,
+    id: "0606180-51473",
+    localityId: "0606180",
+    streetId: "0606180-51473",
+  };
+  const ics = waterCalendar(at([post({ items: [krowica] })], osiedle), NOW);
+  assert.equal(events(ics), 1);
+  assert.deepEqual(value(ics, "UID"), [
+    "woda-39885-0606180-all-2026-10-26@conaulicy.pl",
+  ]);
+  assert.ok(
+    value(ics, "DESCRIPTION")[0].startsWith("Krowica Sama: od nr 10 do nr 50."),
+  );
 });
 
 test("the page and the file share the loader and the cut list", () => {
