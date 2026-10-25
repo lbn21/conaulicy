@@ -10,7 +10,7 @@
 // static pages (/ulice included) and every place in the search index but
 // those /ulice marks „(brak danych)”, each with its waste subpage
 // (/adres/<id>/smieci, canonical itself), nothing else. The address page and
-// /smieci canonicalise to themselves, ?nr= left out. PDFs and calendars send
+// /smieci canonicalise to themselves, ?nr= (and its /nr/… path) left out. PDFs and calendars send
 // X-Robots-Tag: noindex; the number-error page (/numer), a place without
 // data and /szukaj have meta robots noindex (/szukaj the header too); the
 // static pages have one canonical link each. 404s (an unknown path, unknown
@@ -187,6 +187,10 @@ try {
       [`${place}?nr=7a`, place],
       [`${place}/smieci`, `${place}/smieci`],
       [`${place}/smieci?nr=7a`, `${place}/smieci`],
+      // The rewritten paths themselves, and a number with a slash.
+      [`${place}/nr/5`, place],
+      [`${place}/smieci/nr/5`, `${place}/smieci`],
+      [`${place}/smieci?nr=7/22`, `${place}/smieci`],
     ]) {
       const html = await (await fetch(`${server.origin}${path}`)).text();
       const links = [...html.matchAll(CANONICAL)].map(([, href]) => href);

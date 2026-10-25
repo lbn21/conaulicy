@@ -14,6 +14,7 @@ import {
   NO_MORE_DATES,
   NO_MORE_DATES_NEXT,
   placeDescription,
+  sharedNumberNote,
   UNVERIFIED_NOTE,
 } from "@/lib/schedule-notes";
 import { pageMetadata } from "@/lib/share";
@@ -222,7 +223,8 @@ export function PlaceNotFound() {
 
 /**
  * The top of the street page, the address page and the waste subpage:
- * GOV.UK's error summary, the caption, the h1, then „Zmień adres”.
+ * GOV.UK's error summary, the caption, the h1, a house number the street
+ * does not need (sharedNumberNote), then „Zmień adres”.
  */
 export function PlaceHeading({
   place,
@@ -236,11 +238,13 @@ export function PlaceHeading({
   error?: string | null;
 }) {
   const name = withHouseNumber(place.name, place.nr);
+  const note = sharedNumberNote(place);
   return (
     <>
       {error && <ErrorSummary error={error} href="#nr" />}
       <span className="govuk-caption-l">{caption}</span>
       <h1 className="govuk-heading-l">{heading}</h1>
+      {note && <p className="govuk-body">{note}</p>}
       {/* Like GOV.UK's "Change": back to the search on the home page. */}
       <p className="govuk-body">
         <a href="/" className="govuk-link govuk-link--no-visited-state">

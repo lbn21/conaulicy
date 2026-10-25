@@ -209,6 +209,18 @@ jobs:
 
       - name: "Modules (the address page as a hub, the /smieci subpage)"
         run: node scripts/check-modules.mjs
+        env:
+          SCREENSHOT_DIR: ${{ runner.temp }}/modules-screenshots
+
+      # For the reviewer: the hub and /smieci with a house number, 375 px.
+      - name: Screenshots of the hub and /smieci
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: modules-screenshots
+          path: ${{ runner.temp }}/modules-screenshots
+          if-no-files-found: ignore
+          retention-days: 14
 
       # Every banner state from the mock, each page re-rendered by a server
       # with that state's setting; at the end the pages are dropped again, so

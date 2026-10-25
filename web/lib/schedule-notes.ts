@@ -29,6 +29,20 @@ export function putOutBy(time: string): string {
 export const DISCLAIMER =
   "Nie jesteśmy urzędem – obowiązuje harmonogram gminy.";
 
+/**
+ * Under the h1 of the address page and the waste subpage: a house number
+ * given on a street not split by numbers changes nothing, so say so. Null on
+ * a split street (the number picks the part, or the page asks again), on a
+ * village, and where we have no dates.
+ */
+export function sharedNumberNote(
+  place: Pick<PlaceView, "kind" | "zoneId" | "nr" | "askNumber" | "givenNr">,
+): string | null {
+  if (!place.givenNr || place.nr || place.askNumber) return null;
+  if (place.kind !== "ulica" || place.zoneId === null) return null;
+  return `Harmonogram jest wspólny dla całej ulicy, także dla nr ${place.givenNr}.`;
+}
+
 /** When a place's schedule has ended: the heading, then what comes next. */
 export const NO_MORE_DATES = "Nie mamy jeszcze kolejnych terminów";
 export const NO_MORE_DATES_NEXT =
