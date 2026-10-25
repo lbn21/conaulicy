@@ -135,9 +135,13 @@ export default function PrivacyPage() {
                 </li>
               </ul>
               <p className="govuk-body">
-                Logi serwera Vercel przechowuje przez 1 dzień. Zbiorcze
-                statystyki są dostępne przez 12 miesięcy, a Vercel może je
-                trzymać dłużej.
+                W naszym panelu logi są dostępne przez 1 dzień; Vercel
+                przetwarza je zgodnie ze swoją{" "}
+                <a href={VERCEL_PRIVACY} className="govuk-link">
+                  polityką prywatności
+                </a>
+                . Zbiorcze statystyki są dostępne przez 12 miesięcy, a Vercel
+                może je trzymać dłużej.
               </p>
               <p className="govuk-body">
                 Masz prawo do dostępu do swoich danych, ich sprostowania,
