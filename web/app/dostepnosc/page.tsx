@@ -28,7 +28,10 @@ export default function AccessibilityPage() {
             <section>
               <h2 className="govuk-heading-m">Jak budujemy stronę</h2>
               <ul className="govuk-list govuk-list--bullet">
-                <li>Duży tekst (co najmniej 18 px) i mocny kontrast.</li>
+                <li>
+                  Tekst główny ma 19 px (ścieżka nawigacyjna i drobne dopiski 16
+                  px), do tego mocny kontrast.
+                </li>
                 <li>
                   Przyciski i pola do wpisywania duże na tyle, żeby trafić w nie
                   palcem (40 px wysokości).
@@ -58,10 +61,9 @@ export default function AccessibilityPage() {
                 Przy każdej zmianie strony automatycznie uruchamiamy dwa testy:
                 walidator HTML (Nu Html Checker, ten sam co na validator.w3.org)
                 oraz axe-core, który szuka błędów dostępności według WCAG 2.2
-                AA. Sprawdzamy każdą stronę na ekranie telefonu i komputera.
-                Ostatnio:{" "}
-                <time dateTime="2026-10-20">20 października 2026</time>, bez
-                błędów.
+                AA. Sprawdzamy każdy rodzaj strony, na danych testowych, na
+                ekranie telefonu i komputera. Zmiana trafia na stronę dopiero
+                wtedy, gdy oba testy przechodzą bez błędów.
               </p>
             </section>
 
@@ -79,8 +81,9 @@ export default function AccessibilityPage() {
                   osobnego testu dostępności PDF.
                 </li>
                 <li>
-                  Oryginalne harmonogramy gminy to często obrazki. Przepisujemy
-                  je na tekst, ale samych plików źródłowych nie poprawimy.
+                  Oryginalne harmonogramy gminy to często obrazki. Daty
+                  odczytujemy z nich automatycznie i pokazujemy jako tekst, ale
+                  samych plików źródłowych nie poprawimy.
                 </li>
               </ul>
             </section>
@@ -120,12 +123,23 @@ export default function AccessibilityPage() {
                   </a>
                   ).
                 </li>
+                <li>
+                  Podpowiedzi w wyszukiwarce adresów: accessible-autocomplete od
+                  GOV.UK (
+                  <a
+                    href="https://github.com/alphagov/accessible-autocomplete/blob/main/LICENSE.txt"
+                    className="govuk-link"
+                  >
+                    licencja MIT
+                  </a>
+                  ).
+                </li>
               </ul>
             </section>
 
             <p className="govuk-body">
               Ostatnia zmiana tej strony:{" "}
-              <time dateTime="2026-10-20">20 października 2026</time>.
+              <time dateTime="2026-10-25">25 października 2026</time>.
             </p>
           </div>
         </div>
