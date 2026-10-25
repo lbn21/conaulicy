@@ -22,6 +22,9 @@ export const ROUTES = [
     path: "/adres/0972447-90004/smieci?nr=7a",
     name: "split-street-number-waste",
   },
+  // The water subpage: noindex, and without a ZUK file in CI (no cut to show).
+  { path: "/adres/0972447-00470/woda", name: "city-street-water" },
+  { path: "/adres/0606010/woda", name: "village-water" },
   { path: "/ulice", name: "all-places" },
   { path: "/prywatnosc", name: "privacy" },
   { path: "/dostepnosc", name: "accessibility" },

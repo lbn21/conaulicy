@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
+import { ContactLink } from "@/components/contact-link";
 import { ImgwBanner } from "@/components/imgw-banner";
 import { pageMetadata } from "@/lib/share";
 import { ABOUT, ACCESSIBILITY, PRIVACY } from "@/lib/static-pages";
+import { GMINA_NEWS } from "@/lib/water-module";
 
 export const metadata: Metadata = pageMetadata({
   path: ABOUT.path,
   title: ABOUT.text,
   description:
-    "Darmowa, niekomercyjna strona dla mieszkańców Lubaczowa i okolicznych wsi. Skąd bierzemy terminy wywozu śmieci i dlaczego rację ma zawsze harmonogram gminy.",
+    "Darmowa strona dla Lubaczowa i gminy: wywóz śmieci, przerwy w dostawie wody i ostrzeżenia IMGW. Skąd bierzemy dane i jak je sprawdzamy.",
 });
 
 // The address register the house-number note checks against (lib/prg.ts).
@@ -27,6 +29,14 @@ export default function AboutPage() {
             śmieciarka.
           </p>
           <p className="govuk-body">
+            Pokazujemy też zapowiedziane przerwy w dostawie wody, które gmina
+            ogłasza w swoich{" "}
+            <a href={GMINA_NEWS} className="govuk-link">
+              aktualnościach na gminalubaczow.pl
+            </a>
+            .
+          </p>
+          <p className="govuk-body">
             Gdy IMGW ogłosi ostrzeżenie pogodowe dla powiatu lubaczowskiego,
             pokażemy je na górze każdej strony.
           </p>
@@ -34,12 +44,14 @@ export default function AboutPage() {
             Strona jest darmowa i niekomercyjna. Nie ma na niej reklam ani kont.
           </p>
           <p className="govuk-body">
-            Zrobił ją Jakub Marciniszyn dla mieszkańców Lubaczowa.
+            Zrobił ją Jakub Marciniszyn dla mieszkańców Lubaczowa i gminy.
           </p>
           <p className="govuk-body">
-            Terminy przepisujemy z harmonogramów miasta Lubaczów i gminy
-            Lubaczów. Przy każdym adresie podajemy źródło i datę, kiedy je
-            sprawdziliśmy.
+            Terminy wywozu i przerwy w dostawie wody odczytujemy automatycznie,
+            z pomocą sztucznej inteligencji, z harmonogramów i komunikatów
+            miasta Lubaczów i gminy Lubaczów. Potem je sprawdzamy, a dopóki tego
+            nie zrobimy, piszemy o tym przy adresie. Przy każdym adresie
+            podajemy źródło i datę, kiedy je sprawdziliśmy.
           </p>
           <p className="govuk-body">
             Wpisany numer domu porównujemy z{" "}
@@ -49,8 +61,8 @@ export default function AboutPage() {
             .
           </p>
           <p className="govuk-body">
-            Nie jesteśmy urzędem. Gdyby coś się nie zgadzało, rację ma
-            harmonogram gminy.
+            Nie jesteśmy urzędem. Gdyby coś się nie zgadzało, rację mają
+            harmonogram i komunikaty gminy.
           </p>
           <p className="govuk-body">
             Jak dbamy o Twoją prywatność, opisujemy w zakładce{" "}
@@ -62,6 +74,9 @@ export default function AboutPage() {
               {ACCESSIBILITY.text}
             </a>
             .
+          </p>
+          <p className="govuk-body">
+            Masz uwagę albo widzisz błąd? Napisz: <ContactLink />
           </p>
         </div>
       </div>

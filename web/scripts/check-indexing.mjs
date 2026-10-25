@@ -13,11 +13,14 @@
 // /smieci canonicalise to themselves, ?nr= (and its /nr/… path) left out. PDFs and calendars send
 // X-Robots-Tag: noindex; the number-error page (/numer), a place without
 // data and /szukaj have meta robots noindex (/szukaj the header too); the
-// static pages have one canonical link each. 404s (an unknown path, unknown
+// static pages have one canonical link each (the home page's as the
+// sitemap has it, no trailing slash). Indexable: every URL in the sitemap
+// answers 200 with no noindex (meta or X-Robots-Tag), canonicalises to
+// itself, and has a title of its own. 404s (an unknown path, unknown
 // addresses) are whole pages in the raw HTML, no JS needed: status 404, the
-// layout (lang, stylesheet), GOV.UK's "page not found" H1, and one robots
-// meta, noindex; an unknown module (/adres/<id>/<slug>) and one without a
-// subpage (/pogoda) too.
+// layout (lang, stylesheet), GOV.UK's "page not found" H1, one robots meta,
+// noindex, and no description; an unknown module (/adres/<id>/<slug>) and
+// one without a subpage (/pogoda) too.
 //
 // Runs against `next start` on the current build and the CI fixture.
 import { readFileSync } from "node:fs";
@@ -171,9 +174,9 @@ try {
   for (const path of STATIC) {
     const html = await (await fetch(`${server.origin}${path}`)).text();
     const links = [...html.matchAll(CANONICAL)].map(([, href]) => href);
-    // The root canonicalises with or without its slash; both are one URL.
-    const want = path === "/" ? [SITE, `${SITE}/`] : [`${SITE}${path}`];
-    if (links.length !== 1 || !want.includes(links[0])) {
+    // The root without its slash, as the sitemap lists it.
+    const want = path === "/" ? SITE : `${SITE}${path}`;
+    if (links.length !== 1 || links[0] !== want) {
       failures.push(`${path}: canonical ${JSON.stringify(links)}`);
     }
   }
@@ -254,12 +257,13 @@ try {
     if (
       response.status !== 404 ||
       missing.length > 0 ||
+      html.includes('<meta name="description"') ||
       html.includes("__next_error__") ||
       metas.length !== 1 ||
       metas[0] !== "noindex"
     ) {
       failures.push(
-        `${path}: ${response.status}, missing ${JSON.stringify(missing)}, meta robots ${JSON.stringify(metas)}${html.includes("__next_error__") ? ", error shell" : ""}`,
+        `${path}: ${response.status}, missing ${JSON.stringify(missing)}, meta robots ${JSON.stringify(metas)}${html.includes("__next_error__") ? ", error shell" : ""}${html.includes('<meta name="description"') ? ", a description" : ""}`,
       );
     }
   }
@@ -337,12 +341,15 @@ try {
         }
       }
     }
-    const want = [...STATIC.map((path) => `${SITE}${path}`), ...placeUrls];
+    const want = [
+      ...STATIC.map((path) => (path === "/" ? SITE : `${SITE}${path}`)),
+      ...placeUrls,
+    ];
     const got = new Set(locs);
     if (got.size !== locs.length) failures.push("/sitemap.xml: duplicates");
     for (const loc of locs) {
       if (
-        !loc.startsWith(`${SITE}/`) ||
+        (loc !== SITE && !loc.startsWith(`${SITE}/`)) ||
         /\/nr\/|\/numer|\.pdf|\/ics\/|\/adres\/[^/]+\/(?!smieci$)[^/]/.test(loc)
       ) {
         failures.push(`/sitemap.xml: ${loc}`);
@@ -356,6 +363,35 @@ try {
         `/sitemap.xml: ${locs.length} URLs, want 2 × (${places.length} places − ${noData.size} without data) + ${STATIC.length}`,
       );
     }
+    // Every URL listed is indexable: 200, no noindex anywhere, canonical
+    // itself; and no two share a title (a street name in two places reads
+    // differently: components/place-page.tsx).
+    const titles = new Map();
+    for (const loc of locs) {
+      const path = loc.slice(SITE.length) || "/";
+      const response = await fetch(`${server.origin}${path}`);
+      const html = await response.text();
+      const header = response.headers.get("x-robots-tag") ?? "";
+      const metas = [...html.matchAll(META)].map(([, content]) => content);
+      const links = [...html.matchAll(CANONICAL)].map(([, href]) => href);
+      const title = /<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "";
+      if (
+        response.status !== 200 ||
+        header.includes("noindex") ||
+        metas.some((content) => content.includes("noindex")) ||
+        links.length !== 1 ||
+        links[0] !== loc
+      ) {
+        failures.push(
+          `${loc}: ${response.status}, X-Robots-Tag ${JSON.stringify(header)}, meta robots ${JSON.stringify(metas)}, canonical ${JSON.stringify(links)}`,
+        );
+      }
+      if (!title || titles.has(title)) {
+        failures.push(`${loc}: title ${title} as ${titles.get(title)}`);
+      }
+      titles.set(title, loc);
+    }
+
     // Whether the build's copy carries the search index's `dataset` tag,
     // which POST /api/revalidate purges (information only).
     try {
@@ -379,6 +415,6 @@ try {
 finish(
   failures,
   index
-    ? `Indexing (${PAGES.join(", ")}): indexable, robots.txt open, vercel.app redirects, sitemap complete; PDF, ICS, /numer, no-data places, /szukaj noindex; 404s whole pages; canonicals.`
+    ? `Indexing (${PAGES.join(", ")}): indexable, robots.txt open, vercel.app redirects, sitemap complete, every URL in it indexable with its own title; PDF, ICS, /numer, no-data places, /szukaj noindex; 404s whole pages; canonicals.`
     : `Indexing (${PAGES.join(", ")}): noindex everywhere, robots.txt closed, sitemap empty; PDF, ICS noindex; 404s whole pages; canonicals.`,
 );

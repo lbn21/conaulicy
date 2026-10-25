@@ -5,15 +5,33 @@
 // out: they describe their street, or are never indexed); og:url is the
 // canonical address, with the share image; the home page's WebSite JSON-LD
 // parses. Every page in ROUTES, those included: the title is GOV.UK's
-// "<H1> – conaulicy.pl", on the waste subpage "<H1>: wszystkie terminy –
-// <place> – conaulicy.pl" ("Błąd: " first with an error summary), the share
-// title the same, and the share name conaulicy.pl.
+// "<H1> – conaulicy.pl", but a place's pages name its locality too (Jakub's
+// decision, task 133): the address page "<H1>, <locality> – conaulicy.pl",
+// the waste subpage "<H1>: wszystkie terminy – <place>, <locality> –
+// conaulicy.pl", the water subpage "<H1> – <place>, <locality> –
+// conaulicy.pl" ("Błąd: " first with an error summary); a few of them
+// exactly (TITLES). The share title is the same, and the share name
+// conaulicy.pl.
 //
 // Runs against `next start` on the current build.
 import { finish, ROUTES, startServer } from "./lib/server.mjs";
 
 const SITE = "https://conaulicy.pl";
 const STATIC = ["/", "/ulice", "/dostepnosc", "/prywatnosc", "/o-projekcie"];
+// A town street, a village's street, a whole village, on each kind of page.
+const TITLES = {
+  "/adres/0972447-00470": "ul. Adama Asnyka, Lubaczów – conaulicy.pl",
+  "/adres/0606234-90008": "ul. Leśna, Lisie Jamy – conaulicy.pl",
+  "/adres/0606010": "Dąbrowa, gm. Lubaczów – conaulicy.pl",
+  "/adres/0972447-00470/smieci":
+    "Odbiór śmieci: wszystkie terminy – ul. Adama Asnyka, Lubaczów – conaulicy.pl",
+  "/adres/0606010/smieci":
+    "Odbiór śmieci: wszystkie terminy – Dąbrowa, gm. Lubaczów – conaulicy.pl",
+  "/adres/0972447-00470/woda":
+    "Przerwy w dostawie wody – ul. Adama Asnyka, Lubaczów – conaulicy.pl",
+  "/adres/0606010/woda":
+    "Przerwy w dostawie wody – Dąbrowa, gm. Lubaczów – conaulicy.pl",
+};
 
 const all = (html, pattern) => [...html.matchAll(pattern)].map(([, v]) => v);
 const decode = (text) =>
@@ -43,8 +61,10 @@ try {
     );
     const title = all(html, /<title>([^<]*)<\/title>/g).map(decode);
     const error = html.includes('class="govuk-error-summary"') ? "Błąd: " : "";
-    // The waste subpage: its h1, then its place (the breadcrumb before it).
-    const place = /\/smieci(?:\?|$)/.test(path)
+    // A subpage: its h1, then its place (the breadcrumb before it), then
+    // the locality; the address page: its h1, then the locality.
+    const subpage = /^\/adres\/[^/]+\/(smieci|woda)(?:\?|$)/.exec(path)?.[1];
+    const place = subpage
       ? decode(
           all(
             html,
@@ -52,11 +72,19 @@ try {
           ).at(-1) ?? "",
         )
       : null;
-    const want =
-      place === null
-        ? `${error}${h1[0]} – conaulicy.pl`
-        : `${error}${h1[0]}: wszystkie terminy – ${place} – conaulicy.pl`;
-    if (h1.length !== 1 || title[0] !== want) {
+    const hub = /^\/adres\/[^/?]+(?:\?|$)/.test(path) && status === 200;
+    const prefix =
+      {
+        smieci: `${error}${h1[0]}: wszystkie terminy – ${place}, `,
+        woda: `${error}${h1[0]} – ${place}, `,
+      }[subpage] ?? `${error}${h1[0]}, `;
+    const ok =
+      subpage || hub
+        ? title[0]?.startsWith(prefix) &&
+          title[0].endsWith(" – conaulicy.pl") &&
+          title[0].length > prefix.length + " – conaulicy.pl".length
+        : title[0] === `${error}${h1[0]} – conaulicy.pl`;
+    if (h1.length !== 1 || !ok || (TITLES[path] ?? title[0]) !== title[0]) {
       failures.push(
         `${path}: title ${JSON.stringify(title)}, H1 ${JSON.stringify(h1)}`,
       );
@@ -147,5 +175,5 @@ try {
 
 finish(
   failures,
-  `Metadata: ${ROUTES.length} pages titled "<H1> – conaulicy.pl"; ${titles.size} with their own title and description.`,
+  `Metadata: ${ROUTES.length} pages titled "<H1> – conaulicy.pl" (a place's with its locality); ${titles.size} with their own title and description.`,
 );

@@ -3,7 +3,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
 import { CheckedLine } from "@/components/checked-line";
 import { ErrorSummary } from "@/components/error-summary";
-import { NOT_FOUND_TITLE, PageNotFound } from "@/components/page-not-found";
+import { NOT_FOUND_METADATA, PageNotFound } from "@/components/page-not-found";
 import { PickupSchedule } from "@/components/pickup-schedule";
 import {
   AiReadNote,
@@ -13,7 +13,12 @@ import {
 import { withHouseNumber } from "@/lib/house";
 import type { Checked } from "@/lib/hub";
 import { indexable } from "@/lib/indexing";
-import { localityAnchor, placePath, scheduleName } from "@/lib/places";
+import {
+  localityAnchor,
+  placePath,
+  scheduleName,
+  titleLabel,
+} from "@/lib/places";
 import { prgNote } from "@/lib/prg";
 import { getPlace, movedTarget, type PlaceView } from "@/lib/schedule";
 import {
@@ -123,10 +128,11 @@ async function addressMetadata(
 ): Promise<Metadata> {
   const place = await getPlace(id, nr);
   // As app/not-found.tsx: Next.js's own noindex is the only robots tag.
-  if (!place) return { title: NOT_FOUND_TITLE, robots: null };
+  if (!place) return NOT_FOUND_METADATA;
   // GOV.UK: the title is the H1 (the waste subpage's, then its place), and
-  // "Error: " first, so screen readers hear it first.
-  const name = withHouseNumber(place.name, place.nr);
+  // "Error: " first, so screen readers hear it first. The place adds its
+  // locality, the H1 does not (Jakub's decision, task 133: docs/layout.md).
+  const name = withHouseNumber(titleLabel(place.label), place.nr);
   const h1 =
     page === "waste" ? `${WASTE_H1}: wszystkie terminy – ${name}` : name;
   const title = numberError(place, missing) ? `Błąd: ${h1}` : h1;

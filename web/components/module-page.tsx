@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { NOT_FOUND_TITLE } from "@/components/page-not-found";
+import { NOT_FOUND_METADATA } from "@/components/page-not-found";
 import { Breadcrumbs, PlaceNotFound } from "@/components/place-page";
 import { findSubpage } from "@/lib/modules";
 import { getPlace } from "@/lib/schedule";
@@ -18,7 +18,7 @@ export async function moduleMetadata(
 ): Promise<Metadata> {
   const module = findSubpage(slug);
   // As placeMetadata: Next.js's own noindex is the only robots tag.
-  if (!module) return { title: NOT_FOUND_TITLE, robots: null };
+  if (!module) return NOT_FOUND_METADATA;
   return module.metadata(id, nr, missing);
 }
 

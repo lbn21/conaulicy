@@ -1,3 +1,4 @@
+import { CONTACT_HREF } from "@/components/contact-link";
 import { PlateMask } from "@/components/plate-mask";
 import { FEATURES } from "@/lib/config.generated";
 import { LOGO_HEIGHT, PLATE, PLATE_COLOUR, PLATE_WIDTH } from "@/lib/logo";
@@ -97,6 +98,11 @@ export function SiteFooter() {
                     </a>
                   </li>
                 ))}
+                <li className="govuk-footer__inline-list-item">
+                  <a className="govuk-footer__link" href={CONTACT_HREF}>
+                    Kontakt
+                  </a>
+                </li>
               </ul>
               <div className="govuk-footer__meta-custom">
                 Zrobił Jakub Marciniszyn dla mieszkańców Lubaczowa i gminy.
