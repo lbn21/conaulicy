@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { Fragment } from "react";
-import { type Banner, banner } from "@/lib/imgw-banner";
+import { type Banner, banner, IMGW_PAGE } from "@/lib/imgw-banner";
 import {
   type Feed,
   fetchFeed,
@@ -26,7 +26,13 @@ const reader = (url: string) => (slot: number, load: () => Promise<Feed>) =>
 const RETRY_MS = 60_000;
 let failedAt = Number.NEGATIVE_INFINITY;
 
-async function current(now: number): Promise<Banner | null> {
+/**
+ * The newest copy of the feed (lib/imgw-warnings.ts latest): the banner's,
+ * and the weather module's on the address page (lib/modules.ts).
+ */
+export async function imgwCopy(
+  now: number,
+): Promise<{ feed: Feed; stale: boolean } | null> {
   const { url, fetch } = await upstream();
   const load = async () => {
     if (now - failedAt < RETRY_MS) throw new Error("failed under a minute ago");
@@ -37,7 +43,7 @@ async function current(now: number): Promise<Banner | null> {
       throw error;
     }
   };
-  return banner(await latest(now, reader(url), load), now);
+  return latest(now, reader(url), load);
 }
 
 type Shown = Banner["warnings"][number];
@@ -52,8 +58,9 @@ function Line({ warning }: { warning: Shown }) {
   );
 }
 
-// IMGW's meteo warnings for the powiat (docs/data/imgw.md), on every page
-// above its h1 (app/layout.tsx): GOV.UK's notification banner, neutral, as
+// IMGW's meteo warnings for the powiat (docs/data/imgw.md), above the h1 of
+// every page but the address pages (/adres/**, whose alert slot carries them,
+// components/hub.tsx): GOV.UK's notification banner, neutral, as
 // govuk-frontend 6.5.1's template. Compact: one line per warning, the rest
 // in GOV.UK's details (native <details>, closed). Server-rendered, no client
 // JS (its data-module is not initialised: GOV.UK's script only focuses
@@ -63,7 +70,7 @@ export async function ImgwBanner() {
   const now = Date.now();
   let shown: Banner | null = null;
   try {
-    shown = await current(now);
+    shown = banner(await imgwCopy(now), now);
   } catch (error) {
     console.warn(`IMGW banner: not shown (${(error as Error).message})`);
   }
@@ -124,7 +131,7 @@ export async function ImgwBanner() {
                 <p className="govuk-body">
                   <a
                     className="govuk-notification-banner__link"
-                    href="https://meteo.imgw.pl/"
+                    href={IMGW_PAGE}
                   >
                     Szczegóły i mapa na meteo.imgw.pl
                   </a>

@@ -75,5 +75,26 @@ test("a place's description offers dates only when the page has them", () => {
     "ul. Generała Władysława Andersa, Lubaczów",
   ]) {
     assert.ok(placeDescription({ ...place, label }).length <= 160);
+    assert.ok(placeDescription({ ...place, label }, "waste").length <= 160);
+  }
+});
+
+test("the waste subpage's description is its own", () => {
+  const place = {
+    label: "ul. Rynek, Lubaczów",
+    zoneId: "lubaczow-1",
+    askNumber: false,
+    days: [day("2026-12-28")],
+    today: "2026-12-01",
+  };
+  assert.equal(
+    placeDescription(place, "waste"),
+    "Wszystkie terminy wywozu śmieci: ul. Rynek, Lubaczów. Dodaj je do kalendarza albo pobierz harmonogram do wydruku.",
+  );
+  for (const variant of [place, { ...place, zoneId: null, days: [] }]) {
+    assert.notEqual(
+      placeDescription(variant, "waste"),
+      placeDescription(variant),
+    );
   }
 });

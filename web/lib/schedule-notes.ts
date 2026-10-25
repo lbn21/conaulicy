@@ -17,7 +17,12 @@ export function hasUpcoming(days: PickupDay[], today: string): boolean {
  * `time` is the data's hour ("06:00"), shown without its leading zero.
  */
 export function putOutNote(time: string): string {
-  return `Wystaw pojemniki do ${time.replace(/^0/, "")} w dniu odbioru.`;
+  return `Wystaw pojemniki ${putOutBy(time)}.`;
+}
+
+/** The same, after „Wystaw”: "do 6:00 w dniu odbioru". */
+export function putOutBy(time: string): string {
+  return `do ${time.replace(/^0/, "")} w dniu odbioru`;
 }
 
 /** In the footer, the calendar and the PDF: we are not the gmina. */
@@ -37,12 +42,21 @@ export const UNVERIFIED_NOTE =
  * The place's description in search results and when shared: its dates and
  * files only when the page offers them (a split street offers them once the
  * house number is in). The label after a colon, so no place name is declined.
+ * `waste`: the waste subpage's own (/adres/<id>/smieci), every date.
  */
 export function placeDescription(
   place: Pick<PlaceView, "label" | "zoneId" | "askNumber" | "days" | "today">,
+  page: "address" | "waste" = "address",
 ): string {
-  return place.zoneId !== null &&
-    (place.askNumber || hasUpcoming(place.days, place.today))
+  const dates =
+    place.zoneId !== null &&
+    (place.askNumber || hasUpcoming(place.days, place.today));
+  if (page === "waste") {
+    return dates
+      ? `Wszystkie terminy wywozu śmieci: ${place.label}. Dodaj je do kalendarza albo pobierz harmonogram do wydruku.`
+      : `Odbiór śmieci: ${place.label}. Terminów jeszcze tu nie mamy – do tego czasu sprawdź harmonogram gminy.`;
+  }
+  return dates
     ? `Terminy wywozu śmieci: ${place.label}. Dodaj je do kalendarza w telefonie albo pobierz harmonogram do wydruku.`
     : `Wywóz śmieci: ${place.label}. Terminów jeszcze tu nie mamy – do tego czasu sprawdź harmonogram gminy.`;
 }

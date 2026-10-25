@@ -12,9 +12,10 @@ export const revalidate = 3600;
 
 const PAGES = ["/", ...STATIC_PAGES.map(({ path }) => path)];
 
-// One URL per place, as its canonical link (components/place-page.tsx):
-// never the /nr/ or /numer variants, PDFs or calendars, and no place we have
-// no pickup data for (its page is noindex).
+// Two URLs per place, as their canonical links (components/place-page.tsx):
+// its address page and its waste subpage (/adres/<id>/smieci); never the
+// /nr/ or /numer variants, PDFs or calendars, and no place we have no pickup
+// data for (its pages are noindex).
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // While gated, proxy.ts blocks it anyway.
   if (!indexable()) return [];
@@ -24,8 +25,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...PAGES.map((path) => ({ url: `${SITE_URL}${path}` })),
     ...places
       .filter(([id]) => !skip.has(id))
-      .map(([id]) => ({
-        url: `${SITE_URL}/adres/${encodeURIComponent(id)}`,
-      })),
+      .flatMap(([id]) => {
+        const url = `${SITE_URL}/adres/${encodeURIComponent(id)}`;
+        return [{ url }, { url: `${url}/smieci` }];
+      }),
   ];
 }
