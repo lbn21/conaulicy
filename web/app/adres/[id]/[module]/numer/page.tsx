@@ -4,9 +4,8 @@ import { ModuleMain, moduleMetadata } from "@/components/module-page";
 // rewrites it), as /adres/[id]/numer for the street page.
 export const revalidate = 600;
 
-export function generateStaticParams(): Array<{ id: string; module: string }> {
-  return [];
-}
+// No paths at build time, as the subpage.
+export { generateStaticParams } from "../page";
 
 export async function generateMetadata({
   params,
