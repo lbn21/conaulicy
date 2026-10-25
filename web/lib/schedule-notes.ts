@@ -33,14 +33,19 @@ export const DISCLAIMER =
  * Under the h1 of the address page and the waste subpage: a house number
  * given on a street not split by numbers changes nothing, so say so. Null on
  * a split street (the number picks the part, or the page asks again), on a
- * village, and where we have no dates.
+ * village, and where we have no dates. `notFound`: the address register has
+ * no such number (lib/prg.ts prgNote, said first), so the number is not
+ * repeated here.
  */
 export function sharedNumberNote(
   place: Pick<PlaceView, "kind" | "zoneId" | "nr" | "askNumber" | "givenNr">,
+  notFound = false,
 ): string | null {
   if (!place.givenNr || place.nr || place.askNumber) return null;
   if (place.kind !== "ulica" || place.zoneId === null) return null;
-  return `Harmonogram jest wspólny dla całej ulicy, także dla nr ${place.givenNr}.`;
+  return notFound
+    ? "Harmonogram jest wspólny dla całej ulicy."
+    : `Harmonogram jest wspólny dla całej ulicy, także dla nr ${place.givenNr}.`;
 }
 
 /** When a place's schedule has ended: the heading, then what comes next. */

@@ -232,9 +232,9 @@ export function PlaceNotFound() {
 /**
  * The top of the street page, the address page and the waste subpage:
  * GOV.UK's error summary, the caption (the subpage's: its h1 does not name
- * the place; the address page's locality is in its breadcrumbs), the h1, a house number the street
- * does not need (sharedNumberNote) or the address register does not have
- * (prgNote), „Zmień adres”, then on a subpage when
+ * the place; the address page's locality is in its breadcrumbs), the h1, a house number the address
+ * register does not have (prgNote) or the street does not need
+ * (sharedNumberNote), „Zmień adres”, then on a subpage when
  * its module last checked its source (Module.checkedAt).
  */
 function PlaceHeading({
@@ -251,7 +251,8 @@ function PlaceHeading({
   checkedAt?: Checked;
 }) {
   const name = withHouseNumber(place.name, place.nr);
-  const note = [sharedNumberNote(place), prgNote(place)]
+  const notFound = prgNote(place);
+  const note = [notFound, sharedNumberNote(place, notFound !== null)]
     .filter(Boolean)
     .join(" ");
   return (
