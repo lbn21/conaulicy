@@ -2,15 +2,19 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { MODULES } from "../lib/modules.ts";
 import type { PlaceView } from "../lib/schedule.ts";
 import {
   POST_39885,
+  SOBIESKIEGO_RANGE,
+  sobieskiego,
   storedPost,
   testPlace,
   zukFile,
 } from "../lib/water-fixture.ts";
 import { water } from "../lib/water-module.ts";
 import { zukView } from "../lib/zuk-data.ts";
+import { Trace } from "./hub.tsx";
 import { WasteDetails } from "./place-page.tsx";
 import { WaterDetails } from "./water-page.tsx";
 import { eventProperties } from "./web-analytics.tsx";
@@ -221,4 +225,39 @@ test("a split street: only the schedule's own error, never both", () => {
   });
   assert.match(html, /Numeru 9999 nie ma w harmonogramie tej ulicy/);
   assert.doesNotMatch(html, /rejestrze adresów/);
+});
+
+// Real post 39872's cut, ul. Jana III Sobieskiego „od nr 23 do nr 47”.
+const SOB_TRACE =
+  '<p class="govuk-body">Gmina zapowiedziała też przerwę na tej ulicy, ale według komunikatu nie obejmuje nr 5.</p>';
+
+test("a number outside a cut's range: one trace line, hub and /woda", () => {
+  const [first] = storedPost(POST_39885, CHECKED).items;
+  const posts = [
+    storedPost(POST_39885, CHECKED, {
+      items: [{ ...first, ...SOBIESKIEGO_RANGE }],
+    }),
+  ];
+  const data = (nr: string | null) =>
+    water(zukView(zukFile(posts, CHECKED), NOW), sobieskiego(nr));
+  const hub = (nr: string | null) =>
+    renderToStaticMarkup(
+      createElement(Trace, { module: MODULES.woda, data: data(nr) } as never),
+    );
+  assert.equal(hub("5"), SOB_TRACE);
+  // /woda: right after the empty text, before the AI note and source.
+  const five = waterPage(posts, sobieskiego("5"));
+  assert.match(
+    five,
+    new RegExp(
+      `Gmina ogłasza je w <a [^>]*>aktualności gminy Lubaczów</a>\\.</p>${SOB_TRACE}`,
+    ),
+  );
+  assert.equal(five.split("Gmina zapowiedziała też").length, 2);
+  for (const nr of ["30", null]) {
+    assert.equal(hub(nr), "");
+    const html = waterPage(posts, sobieskiego(nr));
+    assert.doesNotMatch(html, /Gmina zapowiedziała też/);
+    assert.match(html, /od nr 23 do nr 47/);
+  }
 });
