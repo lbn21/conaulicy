@@ -102,4 +102,9 @@ cd web && npm run sources:pull && npm run zuk:places
 
 `zuk:places` takes the newest archived SIMC and ULIC files from
 `.cache/sources/` and checks their SHA-256 against `etl/sources.yaml`
-(`-- --teryt <dir>` reads another directory).
+(`-- --teryt <dir>` reads another directory). It cannot drift silently:
+every apply run of the import workflow, the one job with read access to
+the archive (PR CI has none), pulls the TERYT files
+(`npm run sources:pull -- --origin teryt`) and runs `npm run zuk:places --
+--check`, which fails the run, and opens its workflow issue, if the
+committed file differs.

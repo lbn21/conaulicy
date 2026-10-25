@@ -1,4 +1,4 @@
-// npm run sources:pull: downloads the raw data sources archived in S3
+// npm run sources:pull [-- --origin <origin>]: downloads the raw data sources archived in S3
 // (etl/sources.yaml, archived; listed in docs/data/sources.md) from the private S3 bucket into .cache/sources/ (repo
 // root, gitignored) and checks each file's SHA-256. For the ETL only: the
 // build, CI and the site never need these files. Uses the AWS CLI and the
@@ -12,7 +12,12 @@ import { sha256 } from "./import/core/hash.ts";
 
 const CACHE = path.join(ROOT, ".cache");
 const { archive, archived } = loadConfig();
-const files = archived.map((a) => ({ key: archiveKey(a), sha256: a.sha256 }));
+// --origin <origin>: only that origin's files ("teryt").
+const at = process.argv.indexOf("--origin");
+const origin = at > 0 ? process.argv[at + 1] : undefined;
+const files = archived
+  .filter((a) => !origin || a.origin === origin)
+  .map((a) => ({ key: archiveKey(a), sha256: a.sha256 }));
 
 const sha256Of = (file: string) => sha256(readFileSync(file));
 
