@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   hasZone,
   isSplitStreet,
+  localityAnchor,
   localitySearchLabel,
   movedPath,
   pickZone,
@@ -188,14 +189,28 @@ test("/ulice lists the town by letter in Polish order, villages with their stree
       ["Ż", "ul. Żeromskiego"],
     ],
   );
+  // The group headings' SIMC: the town's, and each village's.
+  assert.equal(list.townId, "0972447");
+  assert.equal(localityAnchor("0972447"), "m-0972447");
   assert.deepEqual(list.villages, [
-    { id: "11", label: "Dąbrowa (gm. Lubaczów)", streets: [] },
+    {
+      id: "11",
+      localityId: "11",
+      label: "Dąbrowa (gm. Lubaczów)",
+      streets: [],
+    },
     {
       id: null,
+      localityId: "0606234",
       label: "Lisie Jamy",
       streets: [{ id: "9", label: "ul. Polna" }],
     },
-    { id: "10", label: "Szczutków (gm. Lubaczów)", streets: [] },
+    {
+      id: "10",
+      localityId: "10",
+      label: "Szczutków (gm. Lubaczów)",
+      streets: [],
+    },
   ]);
 });
 

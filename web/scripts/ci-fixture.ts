@@ -7,7 +7,8 @@
 //
 // Covers: a renamed street's old id (place_redirects), a city street from the old fixture URL (ul. Adama Asnyka), streets
 // with diacritics, a street in no zone, a street whose schedule has ended
-// (only past dates), a village with streets, villages without, one month
+// (only past dates), villages with streets, villages without, a village
+// part whose village has streets (Pilipy, Młodów), one month
 // with 6 pickup days and holiday-shifted dates, and the home page's examples
 // (lib/examples.ts) under their real ids.
 import { createHash } from "node:crypto";
@@ -52,6 +53,14 @@ const LOCALITIES = [
   { id: "0606234", gminaId: "1809042", name: "Lisie Jamy", kind: "wies" },
   { id: "0606010", gminaId: "1809042", name: "Dąbrowa", kind: "wies" },
   { id: "0606375", gminaId: "1809042", name: "Szczutków", kind: "wies" },
+  { id: "0606286", gminaId: "1809042", name: "Młodów", kind: "wies" },
+  {
+    id: "0606300",
+    gminaId: "1809042",
+    name: "Pilipy",
+    kind: "czesc_wsi",
+    parentId: "0606286",
+  },
 ] as const;
 
 // [SIMC, SYM_UL, NAZWA_1, NAZWA_2], as TERYT ULIC; SYM_UL 9xxxx are made up.
@@ -67,6 +76,7 @@ const STREETS = [
   ["0972447", "90009", "Wrzosowa", null],
   ["0606234", "90007", "Polna", null],
   ["0606234", "90008", "Leśna", null],
+  ["0606286", "24550", "Wodna", null],
 ] as const;
 
 // The CI fixture is the only place a redirect is made without review: it
@@ -153,10 +163,12 @@ const ZONES: Array<{
   },
   {
     id: "waste:gmina-s1",
-    name: "Lisie Jamy, Dąbrowa i Szczutków",
-    members: ["0606234", "0606010", "0606375"].map((localityId) => ({
-      localityId,
-    })),
+    name: "Lisie Jamy, Dąbrowa, Szczutków i Młodów",
+    members: ["0606234", "0606010", "0606375", "0606286", "0606300"].map(
+      (localityId) => ({
+        localityId,
+      }),
+    ),
     rule: {
       weekday: 4,
       mixed: ["zmieszane_i_bio"],
@@ -291,7 +303,9 @@ async function main() {
     search: normalize(
       localitySearchLabel({
         ...l,
-        parent: null,
+        parent:
+          LOCALITIES.find((p) => "parentId" in l && p.id === l.parentId)
+            ?.name ?? null,
         gmina: GMINY.find((g) => g.id === l.gminaId)?.name ?? "",
       }),
     ),

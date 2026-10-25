@@ -2,7 +2,8 @@
 // of the search index exactly once, to /adres/<id>, and nothing else; the
 // town's streets and their letter headings are in Polish order (by the
 // street's own name, not its prefix); a place without pickup data (the
-// fixture's street in no zone, only it) says „(brak danych)”; and the route
+// fixture's street in no zone, only it) says „(brak danych)”; every id is
+// unique, and the group headings have their SIMC ids; and the route
 // loads no JS beyond what /dostepnosc, a page without client code, loads.
 //
 // With SCREENSHOT_DIR, also saves screenshots of /ulice at 390 px and 1280 px
@@ -60,6 +61,23 @@ try {
     failures.push(
       `/ulice: „(brak danych)” on ${JSON.stringify(noData)}, want only 0972447-23434`,
     );
+  }
+
+  // Every id once; the town's and each village's group heading by SIMC,
+  // where the breadcrumbs link (check-modules.mjs), the old ids kept.
+  const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map(([, id]) => id);
+  const repeated = ids.filter((id, i) => ids.indexOf(id) !== i);
+  if (repeated.length > 0) failures.push(`/ulice: ids twice: ${repeated}`);
+  for (const [id, text] of [
+    ["m-0972447", "Ulice w Lubaczowie"],
+    ["m-0606234", "Lisie Jamy"],
+    ["m-0606286", "Młodów"],
+  ]) {
+    if (!new RegExp(`<(h2|span) id="${id}"[^>]*>${text}</`).test(main))
+      failures.push(`/ulice: no heading ${text} with id ${id}`);
+  }
+  for (const id of ["ulice-heading", "wsie-heading"]) {
+    if (!ids.includes(id)) failures.push(`/ulice: no id ${id}`);
   }
 
   const town = main.slice(

@@ -17,7 +17,7 @@ const place = (overrides: Partial<PlaceView> = {}): PlaceView => ({
   name: "ul. Adama Asnyka",
   label: "ul. Adama Asnyka, Lubaczów",
   area: "Lubaczów",
-  town: true,
+  group: "0972447",
   gmina: "Lubaczów (miasto)",
   zoneId: "zone-1",
   nr: null,
