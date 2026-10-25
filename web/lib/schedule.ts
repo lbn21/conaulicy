@@ -105,6 +105,8 @@ export type PlaceView = {
   askNumber: boolean;
   /** The number given on a split street when no part of it has that number. */
   unknownNr: string | null;
+  /** The house number as given (?nr=, normalised), split street or not. */
+  givenNr: string | null;
   /** Warsaw day this view was computed for; the page renders "dziś"/"jutro" from it. */
   today: string;
   schedulePage: string | null;
@@ -446,6 +448,7 @@ const placeCached = unstable_cache(
       nr: zone.split && !askNumber ? nr : null,
       askNumber,
       unknownNr: askNumber ? nr : null,
+      givenNr: nr,
       today,
       schedulePage: place.schedulePage,
       days,

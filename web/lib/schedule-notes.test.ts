@@ -4,6 +4,7 @@ import {
   hasUpcoming,
   placeDescription,
   putOutNote,
+  sharedNumberNote,
   UNVERIFIED_NOTE,
 } from "./schedule-notes.ts";
 
@@ -97,4 +98,62 @@ test("the waste subpage's description is its own", () => {
       placeDescription(variant),
     );
   }
+});
+
+// As the CI fixture's views: 0972447-00470 (ul. Adama Asnyka) has one zone,
+// 0972447-90004 is split by house numbers (scripts/ci-fixture.ts).
+const asnyka = {
+  kind: "ulica" as const,
+  zoneId: "lubaczow-sektor-1",
+  nr: null,
+  askNumber: false,
+  givenNr: null,
+};
+
+test("a number on a street with one schedule is acknowledged", () => {
+  assert.equal(
+    sharedNumberNote({ ...asnyka, givenNr: "5" }),
+    "Harmonogram jest wspólny dla całej ulicy, także dla nr 5.",
+  );
+  // As normalised by lib/house.ts: lower case, the slash kept.
+  assert.equal(
+    sharedNumberNote({ ...asnyka, givenNr: "7/22" }),
+    "Harmonogram jest wspólny dla całej ulicy, także dla nr 7/22.",
+  );
+});
+
+test("no number, no note", () => {
+  assert.equal(sharedNumberNote(asnyka), null);
+});
+
+test("a split street (0972447-90004) never shows the note", () => {
+  const split = { ...asnyka, zoneId: "lubaczow-sektor-2" };
+  // The number picks its part: the page shows it after the name.
+  assert.equal(sharedNumberNote({ ...split, nr: "7a", givenNr: "7a" }), null);
+  // A number no part has: the page asks again, with the error.
+  assert.equal(
+    sharedNumberNote({
+      ...split,
+      zoneId: null,
+      askNumber: true,
+      givenNr: "42",
+    }),
+    null,
+  );
+  // No number yet: the question.
+  assert.equal(
+    sharedNumberNote({ ...split, zoneId: null, askNumber: true }),
+    null,
+  );
+});
+
+test("a village or a street without dates never shows the note", () => {
+  assert.equal(
+    sharedNumberNote({ ...asnyka, kind: "wies", givenNr: "5" }),
+    null,
+  );
+  assert.equal(
+    sharedNumberNote({ ...asnyka, zoneId: null, givenNr: "5" }),
+    null,
+  );
 });
