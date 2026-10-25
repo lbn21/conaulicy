@@ -17,13 +17,17 @@ const HOUR = 3_600_000;
 // ours), moved with it.
 const ALSO_IDS = ["Sk20261024094216930", "Sk20261024094216309"];
 
-// Hours from the current hour to ours' start: an hour ago, in three hours
-// (upcoming), or the next 22:00 at least two hours ahead (night: it ends at
-// 4:00 the next day).
+// Ours' first hour (wall time), at least two hours ahead: upcoming at 10:00
+// (until 16:00 the same day, whenever it runs), night at 22:00 (until 4:00
+// the next day).
+const STARTS: Record<string, number> = { upcoming: 10, night: 22 };
+
+// Hours from the current hour to ours' start: an hour ago, or the next
+// STARTS hour at least two hours ahead.
 function startIn(start: string | null, hour: string): number {
-  if (start === "upcoming") return 3;
-  if (start !== "night") return -1;
-  const ahead = (22 - Number(hour.slice(11, 13)) + 24) % 24;
+  const at = STARTS[start ?? ""];
+  if (at === undefined) return -1;
+  const ahead = (at - Number(hour.slice(11, 13)) + 24) % 24;
   return ahead < 2 ? ahead + 24 : ahead;
 }
 
@@ -37,8 +41,8 @@ function shiftWall(wall: unknown, by: number): unknown {
   return moved.toISOString().slice(0, 19).replace("T", " ");
 }
 
-// The derived 1809 warning, moved so it began an hour ago (or begins in
-// three hours with start=upcoming, or at night with start=night), at the
+// The derived 1809 warning, moved so it began an hour ago (or begins at
+// 10:00 with start=upcoming, or at night with start=night), at the
 // level asked for; with also=, more.
 function mock1809(params: URLSearchParams, now: number): Item[] {
   const items = derived1809() as Item[];
