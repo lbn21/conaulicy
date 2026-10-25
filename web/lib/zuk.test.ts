@@ -270,6 +270,51 @@ test("ZUK posts: water cut notices only", () => {
   assert.ok(!zuk.includes(39868));
 });
 
+const inline = (title: string, text: string): ZukPost => ({
+  id: 1,
+  date: "2026-08-28T10:00:00",
+  modified: "2026-08-28T10:00:00",
+  link: "https://www.gminalubaczow.pl/",
+  title: { rendered: title },
+  content: { rendered: `<p>${text}</p>` },
+});
+
+test("ZUK posts: an outage phrase and its source, in any case ending", () => {
+  // Post 38847: "Zakładu" was missed by a match on "Zakład Usług".
+  assert.ok(
+    isZukPost(
+      inline(
+        "Przerwa w dostawie wody - Młodów i Karolówka (31.08 i 1.09.2026)",
+        "Prezes Zakładu Usług Komunalnych Sp. z o.o. w Mokrzycy informuje, że nastąpi przerwa w dostawie wody.",
+      ),
+    ),
+  );
+  assert.ok(
+    isZukPost(
+      inline(
+        "Awaria sieci wodociągowej – Basznia Dolna",
+        "Zakład Usług Komunalnych informuje o awarii. Awaria sieci wodociągowej usuwana jest na bieżąco.",
+      ),
+    ),
+  );
+  for (const [title, text] of [
+    [
+      "Upały – apel o oszczędzanie wody",
+      "Wójt Gminy Lubaczów apeluje o rozsądne korzystanie z wody w czasie upałów.",
+    ],
+    [
+      "Zawody wędkarskie",
+      "Koło wędkarskie zaprasza nad wodę w Mokrzycy na zawody.",
+    ],
+    [
+      "Wymiana wodomierzy",
+      "Zakład Usług Komunalnych informuje, że prowadzi wymianę wodomierzy.",
+    ],
+  ]) {
+    assert.ok(!isZukPost(inline(title, text)), title);
+  }
+});
+
 test("date-change posts", () => {
   const change = posts
     .filter((p) => isZukPost(p) && isChangePost(p))

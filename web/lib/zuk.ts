@@ -57,14 +57,18 @@ export const wall = (wp: string) => wp.replace("T", " ").slice(0, 19);
 const fullText = (post: ZukPost) =>
   `${plainText(post.title.rendered)}\n${plainText(post.content.rendered)}`;
 
-/** A ZUK notice of a water cut; the gmina's other posts are not read. */
+const OUTAGE =
+  /przerw\p{L}*\s+w\s+dostaw\p{L}*\s+wody|brak\p{L}*\s+wody|wyłącz\p{L}*\s+wody|awari\p{L}*\s+(?:sieci\s+)?wodoci\p{L}*/iu;
+const SOURCE =
+  /Zakład\p{L}*\s+Usług\s+Komunalnych|Mokrzyc|Wójt\p{L}*\s+Gminy/iu;
+
+/**
+ * A notice of a water cut: an outage phrase and its source (ZUK or the
+ * wójt); the gmina's other posts are not read.
+ */
 export function isZukPost(post: ZukPost): boolean {
   const all = fullText(post);
-  return (
-    /Zakład\s+Usług\s+Komunalnych/i.test(all) &&
-    /Mokrzyc/i.test(all) &&
-    /przerw\p{L}*\s+w\s+dostaw\p{L}*\s+wody/iu.test(all)
-  );
+  return OUTAGE.test(all) && SOURCE.test(all);
 }
 
 const CHANGE =
