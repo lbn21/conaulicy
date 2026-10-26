@@ -5,6 +5,12 @@ import localFont from "next/font/local";
 // scripts/subset-fonts.sh: every Polish letter in two requests (~25 KB). A
 // character outside the subset falls back per glyph. No generated fallback:
 // the metric-matched "Atkinson Fallback" lives in tokens.css.
+//
+// display "optional": a font that misses the first ~100 ms is not swapped
+// in on that page view (the next one has it cached). The fallback matches
+// on average, but a single line can still be a few pixels wider or narrower,
+// so a breadcrumb or a heading near the edge wraps differently: a late swap
+// moved /adres/<id>/smieci by 0.21 at 375px (task 141, scripts/check-fonts.mjs).
 
 export const atkinson = localFont({
   src: [
@@ -19,7 +25,7 @@ export const atkinson = localFont({
       style: "normal",
     },
   ],
-  display: "swap",
+  display: "optional",
   adjustFontFallback: false,
   variable: "--font-atkinson",
 });
