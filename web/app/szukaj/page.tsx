@@ -78,7 +78,7 @@ export default async function SearchPage({
   searchParams,
 }: PageProps<"/szukaj">) {
   const result = await outcome(searchParams);
-  // Keeps the house number: "Asnyka 12" → /adres/…?nr=12. Next.js
+  // Keeps the house number: "Asnyka 5" → /adres/…?nr=5. Next.js
   // redirects from a page with 307 or 308 only; 308, as the brief allows.
   if (result.kind === "one") permanentRedirect(placeHref(result.hit));
 
