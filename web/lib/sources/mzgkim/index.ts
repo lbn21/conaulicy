@@ -14,10 +14,9 @@ The body is one sentence, "Miejski Zakład Gospodarki Komunalnej i Mieszkaniowej
 A date is a day and a month name with no year ("w dniu 08 lipca"), and the post comes out a day or two before. The weekday in brackets is optional and may be upper case. Times look like "08.30 – 15.00", and night work like "w nocy z 14 na 15 listopada (z piątku na sobotę) w godzinach: 23.00 – 03.00".
 The list has one entry per line, sometimes several on a line separated by commas. Streets stand alone, usually without "ul.", mostly in the form that follows "przy ulicach" ("Próbnej", "Testowej") and sometimes in the nominative ("Wzorcowa").
 A part of a street follows its name: "Próbna od nr 1 do 9", "Próbna – od numeru 229 (nieparzyste) oraz numeru 168 (parzyste) w stronę Przykładowa", "Próbna (od siedziby straży w kierunku Wzorowa)". Place names inside such a direction are landmarks, not affected places.
-Estates are written "Osiedle Przykładowe", or "Próbna wraz z osiedlem", meaning the whole street plus the estate beside it.
+Estates and neighbourhoods are the town's districts listed below, written "Osiedle Przykładowe", "na Przykładowem" or "Próbna wraz z osiedlem" (the whole street plus the estate beside it).
 A description of a group of houses can be split over two lines ("Osiedle domów jednorodzinnych na zapleczu" / "ul. Próbnej"), and the same street may appear twice.
 A street may be followed by a neighbouring village name in brackets, "ul. Wzorowska (Wzorowo)"; it is still the town street of that name (the bracket names where the road leads, not a limit). The whole town is written "na terenie całego miasta".
-So far every notice is a planned outage announced once, with no failures, updates or cancellations.
 Other posts cover PSZOK closures, deratization, office hours, greetings, tenders (even about water analysis) and routine water-quality information, often only a list of PDF files or an empty body.`;
 
 export const mzgkim: PostSource = {
