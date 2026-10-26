@@ -6,7 +6,7 @@ Every page follows one consistent layout (Jakub's decision, task 125). Read this
 
 Every `/adres/<id>/<module>` page (`smieci`, `woda`, and later `prad` or any new module) has the same skeleton, in this order:
 
-1. Breadcrumbs: `Breadcrumbs` (`web/components/place-page.tsx`), rendered by `ModuleMain` (`web/components/module-page.tsx`).
+1. Breadcrumbs: `PlaceBreadcrumbs` (`web/components/place-page.tsx`, built on the shared `Breadcrumbs`, below), rendered by `ModuleMain` (`web/components/module-page.tsx`).
 2. Caption (place, street) + h1: `SubpageHeading` (`web/components/place-page.tsx`).
 3. „Zmień adres”: part of the same heading (GOV.UK "Change" pattern).
 4. „Ostatnio sprawdziliśmy …”: `CheckedLine` (`web/components/checked-line.tsx`), from the module's `checkedAt` (`web/lib/modules.ts`).
@@ -27,6 +27,16 @@ Each needs Jakub's OK; listed here so nothing drifts silently.
 - `/woda`: when the gmina's posts were last read over an hour ago, an inset with the stale note (`staleNote`, `web/lib/water-module.ts`) between the checked line and the calendar block. Existing before task 125.
 - `/woda` with no cut here: no AI-read note and no source inset; the empty text links the gmina's news itself (`waterEmpty`).
 - `/woda` and the hub's water card or „Bez zapowiedzi” line: with a house number, when a cut here was left out because its houses clearly exclude that number, one `govuk-body` line after the cuts or the empty text (`waterTrace`, `web/lib/water-module.ts`; on the hub the module's `trace`, `web/lib/modules.ts`). Jakub's decision, task 129.
+
+## Breadcrumbs
+
+One component, `Breadcrumbs` (`web/components/breadcrumbs.tsx`), GOV.UK's breadcrumbs: every item a link, the page itself left out, `aria-label` „Ścieżka nawigacyjna”. Always the first thing in `<main>`, above everything else (the IMGW banner included), with the same spacing on every page.
+
+- Address pages: „Strona główna”, the locality, and on a module's subpage the address page (`PlaceBreadcrumbs`, `web/components/place-page.tsx`).
+- `/szukaj`, `/o-projekcie`, `/prywatnosc`, `/dostepnosc`, `/ulice`: „Strona główna” alone (`HOME_CRUMB`; task 146).
+- None on the home page or an error page (404), as GOV.UK.
+
+`web/components/breadcrumbs.test.ts` renders the component; `web/scripts/check-modules.mjs` checks every page's crumbs in its HTML.
 
 ## Titles
 

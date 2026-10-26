@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { permanentRedirect } from "next/navigation";
 import { AddressSearch } from "@/components/address-search";
+import { Breadcrumbs, HOME_CRUMB } from "@/components/breadcrumbs";
 import { ErrorSummary } from "@/components/error-summary";
 import { ImgwBanner } from "@/components/imgw-banner";
 import { withHouseNumber } from "@/lib/house";
@@ -84,6 +85,7 @@ export default async function SearchPage({
 
   return (
     <>
+      <Breadcrumbs items={[HOME_CRUMB]} />
       <ImgwBanner />
       <div className="govuk-grid-row">
         <div className="govuk-grid-column-two-thirds">
