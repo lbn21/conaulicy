@@ -27,8 +27,11 @@ Vercel Blob. No database writes.
      passes), not shown yet;
    - `other`: `seen` with `reason: "not-water"`, never read again unless
      edited, never shown.
-   It also says whether the post moves, extends or cancels the dates of an
-   earlier one (`changes_earlier_dates`, stored as `change`).
+   It also says whether the post moves, cancels or corrects dates the
+   source announced earlier, in an earlier post or an earlier version of
+   itself (`changes_earlier_dates`, stored as `change`), and whether the
+   interruption started before the post (`is_past`, stored as `past`,
+   never a reason to drop it).
 4. Runs each item through the gate (`lib/zuk-resolve.ts`, below), which
    checks only what is certain, and the day and time checks
    (`lib/zuk-guards.ts`), then expands its place from our tables alone
@@ -155,11 +158,11 @@ It prints the model's JSON and the gate's result (`scripts/lib/water-dry-run.ts`
   "generatedAt": "2026-10-25T08:00:00.000Z",
   "checkedAt": "2026-10-25T08:00:00.000Z",
   "gazetteer": "3f2a9c01b7d4",
-  "active": [{ "id": 39885, "modified": "…", "reader": 6, "url": "…",
+  "active": [{ "id": 39885, "modified": "…", "reader": 7, "url": "…",
                "title": "…", "status": "parsed", "localityIds": ["…"],
                "itemCount": 76, "items": ["…"], "sourceId": "gmina-lubaczow",
                "unmatched": [{ "words": "ul. Próbna", "localityId": "…" }] }],
-  "seen": [{ "id": 39868, "modified": "…", "reason": "not-water", "reader": 6 }],
+  "seen": [{ "id": 39868, "modified": "…", "reason": "not-water", "reader": 7 }],
   "rejected": [{ "postId": 39885, "url": "…", "sourceId": "gmina-lubaczow",
                  "publishedAt": "…", "readAt": "…", "item": {"…": "…"},
                  "reason": "street not listed", "suggested_places": ["…"] }]
@@ -187,7 +190,7 @@ It prints the model's JSON and the gate's result (`scripts/lib/water-dry-run.ts`
   empty.
 - A post leaves `active` and `seen` when it leaves the 14-day window. The
   model's tokens and cost are in the log only.
-- The file version is the shape; `reader` (`ZUK_READER`, now 6: the shared
+- The file version is the shape; `reader` (`ZUK_READER`, now 7: the shared
   prompt and the gate of certain checks, task 182) is what read the post.
   Raise `ZUK_READER` and every post is read again, 4 a run. A file of an
   older version is no file: the pages show the source link and the cron
@@ -199,10 +202,11 @@ It prints the model's JSON and the gate's result (`scripts/lib/water-dry-run.ts`
 One prompt for every source (`lib/water-prompt.ts`): a short header of the
 source's own, saying how it writes (`lib/sources/<id>/index.ts`; from the
 style analysis of both sources' posts), the shared rules, then the context.
-The rules are general principles only: copy the post's words verbatim, use
-only listed names, never invent places, days or times, put every
-limitation in the note, return a place not on the list with
-`suggested_places`. No rule is written for one post: a post the model
+The rules are general principles only: read the post by the header's
+conventions, copy the post's words verbatim, name each place by the listed
+name its words clearly refer to (a listed part as that part), never invent
+places, days or times, put every limitation in the note without dropping
+the place, return a place no listed name fits with `suggested_places`. No rule is written for one post: a post the model
 reads wrongly becomes a regression case (`lib/water-cases.ts`, run by
 `--case` on the real model) and the fix is a rewrite of the prompt or a
 data-table change, then a dry run. Every example name is invented. The

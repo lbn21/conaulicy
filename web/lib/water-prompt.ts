@@ -11,22 +11,21 @@ import { districtLines } from "./districts.ts";
 import type { WaterSource } from "./water-sources.ts";
 import { listedName, type ZukPlaces } from "./zuk-resolve.ts";
 
-const RULES = `Read the post and return one JSON object in the given schema.
+const RULES = `Return one JSON object in the given schema. The header above describes this source's conventions; read every post by them.
 
 Principles:
-- Copy, never invent. locality_verbatim, street_verbatim, whole_town_verbatim and note are each one continuous piece of the post (title or text), copied character for character. Never output a place, day or time the post does not write.
-- Name places only as the list below names them, exactly as listed, whatever form the post uses. Whether a name is a village, a part, a street or a district, and which locality a street belongs to, follows from the list and from how the post attaches it.
-- Put every limitation of a place (house numbers, a part, a hamlet, "w części", a stretch of a street) in that place's note, quoted exactly; never drop one. A place you cannot note as one quote is a place you cannot name (below).
-- A place you cannot name as listed is still returned: its listed locality with street null and street_verbatim its words, or, with no listed locality, locality null and locality_verbatim its words; suggested_places: the listed names it most likely covers, else [].
-- Our code checks every listed name, every copied piece, day and time, and rejects what does not match.
+- Copy, never invent. locality_verbatim, street_verbatim, whole_town_verbatim and note are each one continuous piece of the post, copied character for character. Never output a place, day or time the post does not write.
+- Name each place by the listed name the post's words clearly refer to, whatever the inflection, spelling slip, prefix or phrasing. A listed part or hamlet is named as that part, not as its village. Only a place no listed name plausibly fits stays unnamed: its listed locality with street null and street_verbatim its words, or locality null and locality_verbatim its words; suggested_places: listed names it most likely covers, else [].
+- Every limitation of a place (house numbers, "w części", a stretch of a street, an unlisted part) goes into its note, quoted exactly; the note may be the whole phrase carrying it, the place's own words included. Never drop a limitation, nor the place for it.
 
 Fields:
-- post_type: "water_outage" for an interruption or limitation of the public water supply, announced, reported or rescheduled; "water_quality" for tap water declared unfit to drink or use (quality_status "warning") or fit again ("lifted"); otherwise "other". If unsure between "water_outage" and "other", choose "water_outage".
-- items: one per day and place, [] for "other". kind: "emergency" for a failure, "planned" for works, "quality" for a water_quality post (date the day the warning starts or ends, no times).
-- locality, street: the listed names; street is a listed street or district of that locality, null for the whole locality. The *_verbatim fields: the post's words for them; street_verbatim never includes house numbers.
-- whole_town: the post says the whole town, in the words given in whole_town_verbatim; the town is never whole otherwise.
-- doubt: for a bare name read as a street, the listed district it may also mean, else null.
-- date: YYYY-MM-DD; a day written without a year is the first such day from the publish date on. start, end: "HH:MM", null if not written; a span across midnight is one item on its first day.`;
+- post_type: "water_outage" for an interruption or limitation of the public water supply or a change to one; "water_quality" for tap water unfit to drink (quality_status "warning") or fit again ("lifted"); else "other". quality_status is null otherwise.
+- is_past: the interruption started before the publish time (an ongoing failure too). changes_earlier_dates: the post moves, cancels or corrects dates the source announced earlier, in an earlier post or an earlier version of this one.
+- items: one per day and place, [] for "other". kind: "emergency" for a failure, "planned" for works, "quality" for a water_quality post (date: when the warning starts or ends; no times).
+- locality: a listed name; street: a listed street or district of it, null for the whole locality. The *_verbatim fields: the post's words for them, never house numbers.
+- whole_town: the post says the whole town (whole_town_verbatim: its words).
+- doubt: for a bare name read as a street, a listed district it may also mean; else null.
+- date: YYYY-MM-DD; a day without a year is the first such day from the publish date on. start, end: "HH:MM", null if not written; a span across midnight is one item on its first day. end_estimated: the end is only expected.`;
 
 // Code-unit order, so the prompt is byte-for-byte the same for the same
 // places (a cacheable prefix).

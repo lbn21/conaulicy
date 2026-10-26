@@ -65,10 +65,11 @@ export const ZUK_FILE_VERSION = 5;
  * What reads a post: the prompt, schema and place gate. 3 is v3.1 (task
  * 114b), 4 the omission guard per dated line (task 152), 5 the town's
  * districts (the gazetteer, task 151), 6 the shared prompt and the gate of
- * certain checks only (task 182); raise it when they change, and every
- * post is read again.
+ * certain checks only (task 182), 7 its rules' revision 2; raise it when
+ * they change (the prompt is not part of the key), and every post is read
+ * again.
  */
-export const ZUK_READER = 6;
+export const ZUK_READER = 7;
 
 /** Older than this, the data may be out of date: show the source link. */
 export const STALE_MS = 60 * 60_000;

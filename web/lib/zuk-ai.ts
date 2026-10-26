@@ -54,7 +54,7 @@ export type AiResult = {
   /** water_quality only, else null. */
   quality_status: "warning" | "lifted" | null;
   is_past: boolean;
-  /** It moves, extends or cancels the dates of an earlier post. */
+  /** It moves, cancels or corrects dates the source announced earlier. */
   changes_earlier_dates: boolean;
   items: AiItem[];
 };
@@ -102,12 +102,12 @@ const SCHEMA = {
     is_past: {
       type: "boolean",
       description:
-        "the post reports an interruption that already happened, not one announced",
+        "the interruption started before the publish time (an ongoing failure too)",
     },
     changes_earlier_dates: {
       type: "boolean",
       description:
-        "this post moves, extends or cancels dates of an earlier announcement for the same places",
+        "the post moves, cancels or corrects dates the source announced earlier, in an earlier post or an earlier version of this one",
     },
     items: {
       type: "array",
@@ -153,7 +153,7 @@ const SCHEMA = {
           },
           end_estimated: {
             type: "boolean",
-            description: "the end is an expected, not a set, time",
+            description: "the end is only expected",
           },
           whole_town: {
             type: "boolean",
