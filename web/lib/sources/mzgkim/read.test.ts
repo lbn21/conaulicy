@@ -103,7 +103,7 @@ test("5237: the estate behind Niemirowska is its 9 streets, whole", () => {
 });
 
 test("5237: a district with no streets known is rejected, linked on the town", () => {
-  // 5237's estate line as Osiedle Folwarki, a district with no streets.
+  // 5237's estate line as Osiedle za Koleją, a district with no streets.
   const post = realMzgkimPost(CUT_100);
   const line =
     "<li>Osiedle domów jednorodzinnych na zapleczu</li>\n<li>ul. Niemirowskiej</li>";
@@ -115,7 +115,7 @@ test("5237: a district with no streets known is rejected, linked on the town", (
         content: {
           rendered: post.content.rendered.replace(
             line,
-            "<li>Osiedle Folwarki</li>",
+            "<li>Osiedle za Koleją</li>",
           ),
         },
       },
@@ -125,8 +125,8 @@ test("5237: a district with no streets known is rejected, linked on the town", (
           i.street === OSIEDLE
             ? {
                 ...i,
-                street: "Osiedle Folwarki",
-                street_verbatim: "Osiedle Folwarki",
+                street: "Osiedle za Koleją",
+                street_verbatim: "Osiedle za Koleją",
               }
             : i,
         ),
@@ -135,7 +135,7 @@ test("5237: a district with no streets known is rejected, linked on the town", (
   );
   assert.deepEqual(
     r.rejected.map((x) => [x.reason, x.localityId, x.words]),
-    [["district has no streets", TOWN, "Osiedle Folwarki"]],
+    [["district has no streets", TOWN, "Osiedle za Koleją"]],
   );
   assert.equal(r.items.length, 3 + 22);
 });
@@ -292,6 +292,6 @@ test("doubt: a bare street name the model says may mean a listed district", () =
   ]);
   // Not a listed district, or one with no streets: no doubt.
   assert.equal(withDoubt("Osiedle Mazurskie").doubts, undefined);
-  assert.equal(withDoubt("Osiedle Folwarki").doubts, undefined);
+  assert.equal(withDoubt("Osiedle za Koleją").doubts, undefined);
   assert.equal(withDoubt(null).doubts, undefined);
 });

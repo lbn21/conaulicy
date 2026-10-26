@@ -26,6 +26,8 @@ const LIGHTING_TENDER =
   "https://przetargi.favore.pl/zamowienia/naprawy-i-instalacje,1012/budowa-i-przebudowa-oswietlenia-ulicznego-w-lubaczowie,2989036.html";
 const PLOTS_FOR_SALE =
   "https://elubaczow.com/2025/04/04/atrakcyjne-dzialki-budowlane-w-lubaczowie-na-sprzedaz/";
+const FOLWARKI_SHRINE =
+  "https://konkatedra.zamojskolubaczowska.pl/krzyze-i-figury/";
 const PRNG =
   "http://tools.wikimedia.pl/~malarz_pl/cgi-bin/polska.pl?teryt=1809011";
 
@@ -276,6 +278,10 @@ export const DISTRICTS: District[] = [
     variants: ["os. Folwarki", "osiedla Folwarki"],
     confidence: "medium",
     sourceUrl: `${MZGKIM}/przerwa-w-dostawie-wody-79/`,
+    streets: [
+      // "W Lubaczowie na Folwarkach (przy ul. Słonecznej 8)".
+      ...streets("medium", FOLWARKI_SHRINE, "20254"),
+    ],
   }),
   district({
     id: "przy-przemyslowej",

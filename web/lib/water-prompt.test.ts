@@ -55,7 +55,7 @@ test("prompt: the context is the source's area, the districts once", () => {
   for (const context of [gmina, town]) {
     assert.equal(context.split("Districts of Lubaczów").length, 2);
     assert.match(context, /\n- Osiedle Mazury; forms: .*; streets: /);
-    assert.match(context, /\n- Osiedle Folwarki; forms: .*; no streets\b/);
+    assert.match(context, /\n- Osiedle za Koleją; forms: .*; no streets\b/);
   }
 });
 

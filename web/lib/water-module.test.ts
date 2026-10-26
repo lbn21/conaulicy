@@ -607,10 +607,10 @@ const SOBIESKIEGO_TOWN = place({
 const POST_5237 = "https://mzgkim.lubaczow.pl/przerwa-w-dostawie-wody-100/";
 const POST_5108 = "https://mzgkim.lubaczow.pl/przerwa-w-dostawie-wody-99/";
 const OSIEDLE = "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej";
-const FOLWARKI = "Osiedle Folwarki";
+const ZA_KOLEJA = "Osiedle za Koleją";
 
-/** 5237 with its estate line as Osiedle Folwarki, a district with no streets. */
-function withFolwarki(checkedAt: string) {
+/** 5237 with its estate line as Osiedle za Koleją, a district with no streets. */
+function withZaKoleja(checkedAt: string) {
   const post = realMzgkimPost(CUT_100);
   const line =
     "<li>Osiedle domów jednorodzinnych na zapleczu</li>\n<li>ul. Niemirowskiej</li>";
@@ -622,14 +622,14 @@ function withFolwarki(checkedAt: string) {
     {
       ...post,
       content: {
-        rendered: post.content.rendered.replace(line, `<li>${FOLWARKI}</li>`),
+        rendered: post.content.rendered.replace(line, `<li>${ZA_KOLEJA}</li>`),
       },
     },
     {
       ...MZGKIM_READINGS[CUT_100],
       items: MZGKIM_READINGS[CUT_100].items.map((i) =>
         i.street === OSIEDLE
-          ? { ...i, street: FOLWARKI, street_verbatim: FOLWARKI }
+          ? { ...i, street: ZA_KOLEJA, street_verbatim: ZA_KOLEJA }
           : i,
       ),
     },
@@ -755,7 +755,7 @@ test("town, a bare 'Mazury' read as the street: one line, on its estate's street
 });
 
 test("town, an MZGKiM area off our list: a link on every other town page", () => {
-  const cut = [withFolwarki(OCT_3_CHECKED)];
+  const cut = [withZaKoleja(OCT_3_CHECKED)];
   const data = townAt(ASNYKA, cut, OCT_3, OCT_3_CHECKED);
   assert.deepEqual(data.outages, []);
   assert.deepEqual(waterSummary(data), [
@@ -764,7 +764,7 @@ test("town, an MZGKiM area off our list: a link on every other town page", () =>
       [
         {
           href: POST_5237,
-          text: `MZGKiM ogłosił też przerwę w miejscu, którego nie umiemy dopasować do adresów: „${FOLWARKI}” – sprawdź komunikat`,
+          text: `MZGKiM ogłosił też przerwę w miejscu, którego nie umiemy dopasować do adresów: „${ZA_KOLEJA}” – sprawdź komunikat`,
           hidden: "„Przerwa w dostawie wody”",
         },
       ],
