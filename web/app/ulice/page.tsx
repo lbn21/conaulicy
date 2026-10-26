@@ -9,7 +9,7 @@ export const metadata: Metadata = pageMetadata({
   path: ALL_PLACES.path,
   title: ALL_PLACES.text,
   description:
-    "Wszystkie ulice Lubaczowa i wsie gminy Lubaczów w jednym miejscu. Wybierz swoją i sprawdź, kiedy przyjedzie śmieciarka.",
+    "Wszystkie ulice Lubaczowa i wsie gminy Lubaczów w jednym miejscu. Wybierz swoją i sprawdź wywóz śmieci, przerwy w dostawie wody i ostrzeżenia IMGW.",
 });
 
 // From the cached search index, as the sitemap: the same places, refreshed
@@ -44,7 +44,8 @@ export default async function AllPlacesPage() {
         <div className="govuk-grid-column-two-thirds">
           <h1 className="govuk-heading-l">{ALL_PLACES.text}</h1>
           <p className="govuk-body-l">
-            Wybierz swoją ulicę albo wieś, żeby zobaczyć terminy wywozu śmieci.
+            Wybierz swoją ulicę albo wieś, żeby zobaczyć terminy wywozu śmieci,
+            przerwy w dostawie wody i ostrzeżenia IMGW.
           </p>
           <p className="govuk-body govuk-!-margin-bottom-8">
             Wolisz wpisać adres?{" "}

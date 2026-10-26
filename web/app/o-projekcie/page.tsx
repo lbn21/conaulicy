@@ -26,11 +26,12 @@ export default function AboutPage() {
           <p className="govuk-body-l">
             conaulicy.pl to prosta strona dla Lubaczowa i okolicznych wsi:
             wpisujesz ulicę albo wieś i od razu widzisz, kiedy przyjedzie
-            śmieciarka.
+            śmieciarka, czy gmina zapowiedziała przerwę w dostawie wody i czy
+            IMGW ostrzega przed złą pogodą.
           </p>
           <p className="govuk-body">
-            Pokazujemy też zapowiedziane przerwy w dostawie wody, które gmina
-            ogłasza w swoich{" "}
+            Przerwy w dostawie wody bierzemy z komunikatów, które gmina ogłasza
+            w swoich{" "}
             <a href={GMINA_NEWS} className="govuk-link">
               aktualnościach na gminalubaczow.pl
             </a>
@@ -38,7 +39,8 @@ export default function AboutPage() {
           </p>
           <p className="govuk-body">
             Gdy IMGW ogłosi ostrzeżenie pogodowe dla powiatu lubaczowskiego,
-            pokażemy je na górze każdej strony.
+            pokażemy je na górze strony. Gdy ostrzeżeń nie ma, przy adresie
+            przeczytasz o tym w części „Bez zapowiedzi”.
           </p>
           <p className="govuk-body">
             Strona jest darmowa i niekomercyjna. Nie ma na niej reklam ani kont.

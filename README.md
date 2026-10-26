@@ -3,7 +3,7 @@
 [![Stan CI na gałęzi main](https://github.com/lbn21/conaulicy/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/lbn21/conaulicy/actions/workflows/ci.yml?query=branch%3Amain)
 [![Licencja: AGPL-3.0-or-later](https://img.shields.io/badge/licencja-AGPL--3.0--or--later-blue)](LICENSE)
 
-Darmowa strona dla mieszkańców Lubaczowa: miasta i gminy. Wpisujesz swoją ulicę albo miejscowość i od razu widzisz, kiedy przyjadą po śmieci. Terminy możesz dodać do swojego kalendarza (ICS) albo pobrać jako PDF i powiesić na lodówce.
+Darmowa strona dla mieszkańców Lubaczowa: miasta i gminy. Wpisujesz swoją ulicę albo miejscowość i od razu widzisz, kiedy przyjadą po śmieci, czy gmina zapowiedziała przerwę w dostawie wody i czy IMGW ostrzega przed złą pogodą. Terminy wywozu możesz dodać do swojego kalendarza (ICS) albo pobrać jako PDF i powiesić na lodówce.
 
 Strona jest niekomercyjna i nie trzeba na niej zakładać konta.
 
