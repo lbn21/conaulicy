@@ -6,6 +6,7 @@ import { DISTRICTS } from "./districts-seed.ts";
 import { pageText, parseFeed } from "./sources/mzgkim/fetch.ts";
 import type { ZukPost } from "./zuk.ts";
 import type { AiItem, AiResult } from "./zuk-ai.ts";
+import { AI_ITEM } from "./zuk-fixture.ts";
 import { ZUK_PLACES } from "./zuk-places.generated.ts";
 import type { ZukPlaces } from "./zuk-resolve.ts";
 
@@ -110,11 +111,12 @@ const street = (
   start,
   end,
   locality: "Lubaczów",
-  locality_verbatim: "Lubaczów",
+  locality_verbatim: null,
   street: name,
   street_verbatim: verbatim,
   note,
   kind: "planned",
+  ...AI_ITEM,
 });
 
 const OSIEDLE = "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej";
@@ -130,17 +132,19 @@ const district = (
 
 /**
  * The model's reading of each real post, as the prompt asks for it
- * (lib/sources/mzgkim/prompt.ts): written by hand for the tests, never a
- * real call. 5237: three streets, an area off our list, Osiedle Mazury of
- * the gazetteer; 5108: Sobieskiego only in part; 4935: the whole town, at
- * night; 4799: two streets "wraz z osiedlem"; 4744: a street before
- * "ul. Młodowska"; 5234 (deratyzacja): not water.
+ * (lib/water-prompt.ts, the town never named): written by hand for the
+ * tests, never a real call. 5237: three streets, a district with no
+ * streets known, Osiedle Mazury of the gazetteer; 5108: Sobieskiego only in
+ * part; 4935: the whole town, at night, in its words; 4799: each "X wraz z
+ * osiedlem" the street and the district; 4744: a street before "ul.
+ * Młodowska"; 5234 (deratyzacja): not water.
  */
 export const MZGKIM_READINGS: Record<number, AiResult> = {
   [CUT_100]: {
     post_type: "water_outage",
     quality_status: null,
     is_past: false,
+    changes_earlier_dates: false,
     items: [
       street(
         "2026-10-06",
@@ -165,6 +169,7 @@ export const MZGKIM_READINGS: Record<number, AiResult> = {
     post_type: "water_outage",
     quality_status: null,
     is_past: false,
+    changes_earlier_dates: false,
     items: [
       street(
         "2026-06-02",
@@ -183,17 +188,21 @@ export const MZGKIM_READINGS: Record<number, AiResult> = {
     post_type: "water_outage",
     quality_status: null,
     is_past: false,
+    changes_earlier_dates: false,
     items: [
       {
         date: "2025-11-14",
         start: "23:00",
         end: "03:00",
         locality: "Lubaczów",
-        locality_verbatim: "Lubaczów",
+        locality_verbatim: null,
         street: null,
         street_verbatim: null,
         note: null,
         kind: "planned",
+        ...AI_ITEM,
+        whole_town: true,
+        whole_town_verbatim: "na terenie całego miasta",
       },
     ],
   },
@@ -201,6 +210,7 @@ export const MZGKIM_READINGS: Record<number, AiResult> = {
     post_type: "water_outage",
     quality_status: null,
     is_past: false,
+    changes_earlier_dates: false,
     items: [
       street(
         "2025-07-08",
@@ -233,6 +243,7 @@ export const MZGKIM_READINGS: Record<number, AiResult> = {
     post_type: "water_outage",
     quality_status: null,
     is_past: false,
+    changes_earlier_dates: false,
     items: [
       street(
         "2025-05-14",
@@ -254,6 +265,7 @@ export const MZGKIM_READINGS: Record<number, AiResult> = {
     post_type: "other",
     quality_status: null,
     is_past: false,
+    changes_earlier_dates: false,
     items: [],
   },
 };

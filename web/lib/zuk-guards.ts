@@ -1,17 +1,13 @@
-// The repo's own checks of a ZUK item, on top of the place gate
-// (lib/zuk-resolve.ts, which checks the day is written): stricter, so they
-// stay. Pure. The day near the post's dates, the times in the text, a
-// night span; with no note, the place written once on its own, nothing
-// left out that the text adds to it (house numbers, "w części", a
-// bracket); and the houses (the scope) read from the note. Any doubt is a
-// reason: a day or time drops the post to a Notice, a place drops only that
-// item (lib/zuk.ts).
+// The checks of an item's day and times on top of the place gate
+// (lib/zuk-resolve.ts, which checks the day is written), and the houses
+// (the scope) read from its note. Pure. The day near the post's dates, the
+// times on the item's own lines, an end before the start on the next day.
+// A day or time that fails drops the post to a Notice (lib/zuk.ts).
 
 import { addDays } from "./dates.ts";
 import type { DisruptionScope } from "./disruptions.ts";
-import { normalize } from "./normalize.ts";
 import type { AiItem } from "./zuk-ai.ts";
-import { guardDate, MONTHS } from "./zuk-resolve.ts";
+import { inPost } from "./zuk-resolve.ts";
 
 /** Lower case, one kind of dash and space: what the guards compare. */
 function normText(text: string): string {
@@ -31,113 +27,19 @@ const validTime = (t: string) =>
   Number(t.slice(0, 2)) < 24 &&
   Number(t.slice(3)) < 60;
 
-// What, written right after a place, narrows or extends it: house numbers,
-// "w części", a street, or a bracket without digits ("(przysiółek Dąbrowa)",
-// "(Podłęże)"; "(noc 21/22 grudnia)" is not).
-// "od 8:00" is a time, not a house.
-const QUALIFIER =
-  /^(?:(?:i\s+)?od\s+(?:nr\.?|numer\p{L}*)?\s*\d+(?![\d:.]\d)|nr\.?\s*\d|numer|w\s+częś|ul\.|ulic|os\.|al\.|\((?![^)]*\d)([^)]*)\))/u;
-const PART_BEFORE = /w\s+częś\p{L}*(?:\s+miejscowości)?\s*$/u;
-
-function occurrences(haystack: string, needle: string): number[] {
-  const at: number[] = [];
-  for (
-    let i = haystack.indexOf(needle);
-    i >= 0;
-    i = haystack.indexOf(needle, i + 1)
-  )
-    at.push(i);
-  return at;
-}
-
-/** A day written in a line: "26.10", "26.10.2026", "26 października". */
-const A_DAY = new RegExp(
-  `(?<![\\d.])(?:0?[1-9]|[12]\\d|3[01])\\.(?:0?[1-9]|1[0-2])(?!\\d)|(?<!\\d)\\d{1,2}\\s+(?:${MONTHS.join("|")})`,
-);
-
-/**
- * The lines of the text that may concern `date`: those writing that day
- * (on its own or in a range) and those writing no day; never a line only
- * of other days ("-27.10.2026: Lisie Jamy, ul. Długa" is not 26.10's).
- */
-function linesOfDay(text: string, date: string): string {
-  return text
-    .split("\n")
-    .filter((line) => {
-      const t = normText(line);
-      return !A_DAY.test(t) || guardDate(date, t) === null;
-    })
-    .join("\n");
-}
-
-/**
- * Null if every place in the text that `verbatim` names is the whole of
- * it: no house numbers, street, "w części" or bracket left out. A qualified
- * occurrence is fine only when its qualifier is another item's note of the
- * same place (`claimed`), or when it starts another place's phrase
- * (`others`: "Bałaje, ul. Przemysłowa (Lubaczów)"). At least one
- * occurrence must be plain. With the item's `date`, only the lines of that
- * day count (linesOfDay): a post of several dated lines gives each day its
- * own places (39885: Lisie Jamy whole on 26.10, four of its streets on
- * 27.10).
- */
-export function checkOmission(
-  verbatim: string,
-  locality: string,
-  others: string[],
-  claimed: string[],
-  text: string,
-  date?: string,
-): string | null {
-  const t = normText(date ? linesOfDay(text, date) : text);
-  const v = normText(verbatim);
-  const rest = others.map(normText).filter((o) => o !== v);
-  const notes = claimed.map(normText);
-  let plain = false;
-  for (const p of occurrences(t, v)) {
-    const e = p + v.length;
-    const sep = /^\s*[,:-]?\s*/.exec(t.slice(e))?.[0] ?? "";
-    const q = e + sep.length;
-    const next = QUALIFIER.exec(t.slice(q));
-    const bracketIsLocality =
-      next?.[1] !== undefined && normalize(next[1]) === normalize(locality);
-    const qualified =
-      PART_BEFORE.test(t.slice(Math.max(0, p - 40), p)) ||
-      (next !== null &&
-        !bracketIsLocality &&
-        !rest.some((o) => t.startsWith(o, q)));
-    if (!qualified) {
-      plain = true;
-      continue;
-    }
-    // The qualifier right before or after it is another item's note.
-    const owned = notes.some((n) =>
-      occurrences(t, n).some((s) => s >= p - n.length - 3 && s <= q),
-    );
-    if (!owned) return `"${verbatim}" leaves out what the text adds to it`;
-  }
-  return plain ? null : `"${verbatim}" not named on its own`;
-}
-
-export type Derived = { scope: DisruptionScope; hamlet: string | null };
-
 const RANGE =
   /od\s+(?:nr\.?|numeru)?\s*(\d{1,4}[a-z]?)\s+do\s+(?:nr\.?|numeru)?\s*(\d{1,4}[a-z]?)/gu;
 const SINGLE = /(?:nr\.?|numer)\s*(\d{1,4}[a-z]?)(?![\d])/gu;
-const HAMLET = /\(\s*przysiół\p{L}*\s+([^)]+?)\s*\)/u;
 
 /**
- * Houses and hamlet from the item's note (one literal piece of the post,
- * lib/zuk-resolve.ts): house ranges or numbers, "(przysiółek X)". No note:
- * the whole place. Anything else in it ("w części", parity, an unlisted
- * part's name): part of the place, houses unknown. A range running
- * backwards, or ranges and numbers mixed, is a reason.
+ * The houses from the item's note (one literal piece of the post): house
+ * ranges or numbers. No note: the whole place. Anything else in it ("w
+ * części", parity, a part's name), a range running backwards, or ranges
+ * and numbers mixed: part of the place, houses unknown.
  */
-export function noteScope(note: string | null): Derived | string {
-  if (note === null) return { scope: { type: "whole" }, hamlet: null };
+export function noteScope(note: string | null): DisruptionScope {
+  if (note === null) return { type: "whole" };
   let tail = normText(note);
-  const hamlet = HAMLET.exec(tail)?.[1] ?? null;
-  tail = tail.replace(HAMLET, " ");
   const ranges = [...tail.matchAll(RANGE)].map((r) => ({
     from: r[1],
     to: r[2],
@@ -148,58 +50,18 @@ export function noteScope(note: string | null): Derived | string {
   const residue = tail
     .replace(/(?<!\p{L})(?:numery|i|oraz)(?!\p{L})/gu, " ")
     .replace(/[\s,:;.()-]+/g, "");
-  if (
-    ranges.some((r) => Number.parseInt(r.from, 10) > Number.parseInt(r.to, 10))
-  )
-    return `a house range runs backwards in "${note}"`;
-  if (ranges.length > 0 && numbers.length > 0)
-    return `ranges and numbers in "${note}"`;
-  const scope: DisruptionScope = residue
-    ? { type: "unknown" }
-    : ranges.length > 0
-      ? { type: "ranges", ranges }
-      : numbers.length > 0
-        ? { type: "numbers", numbers }
-        : { type: "whole" };
-  return { scope, hamlet };
-}
-
-/**
- * The item's day with its year from the post's date when the text writes
- * the day without one ("6 października", "6.10"): the first such day from
- * the day before the post on ("a day before the post is next year's");
- * the year as read when the text writes it with the day (D.M.YYYY, "D
- * <month> YYYY": the gate checks it).
- */
-export function inferYear(
-  date: string,
-  text: string,
-  publishedAt: string,
-): string {
-  const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(date);
-  if (!m) return date;
-  const [, mm, dd] = m;
-  const [M, D] = [Number(mm), Number(dd)];
-  const t = normText(text);
-  if (
-    new RegExp(`(?<!\\d)0?${D}\\.0?${M}\\.\\d{4}`).test(t) ||
-    new RegExp(`(?<!\\d)0?${D}\\s+${MONTHS[M - 1]}\\s+\\d{4}`).test(t)
-  )
-    return date;
-  const from = addDays(publishedAt.slice(0, 10), -1);
-  const year = Number(publishedAt.slice(0, 4));
-  for (const y of [year - 1, year, year + 1]) {
-    const day = `${y}-${mm}-${dd}`;
-    const at = Date.parse(`${day}T12:00:00Z`);
-    const real =
-      !Number.isNaN(at) && new Date(at).toISOString().slice(0, 10) === day;
-    if (real && day >= from) return day;
-  }
-  return date;
+  const backwards = ranges.some(
+    (r) => Number.parseInt(r.from, 10) > Number.parseInt(r.to, 10),
+  );
+  if (residue || backwards || (ranges.length > 0 && numbers.length > 0))
+    return { type: "unknown" };
+  if (ranges.length > 0) return { type: "ranges", ranges };
+  if (numbers.length > 0) return { type: "numbers", numbers };
+  return { type: "whole" };
 }
 
 export type When = {
-  /** Warsaw wall clock or null; end on the next day for a night cut. */
+  /** Warsaw wall clock or null; end on the next day if before the start. */
   start: string | null;
   end: string | null;
   endEstimated: boolean;
@@ -210,41 +72,76 @@ type ItemContext = {
   text: string;
   publishedAt: string;
   updatedAt: string;
+  /** Every item's quoted pieces in the post (quoted()), this one's too. */
+  pieces: string[];
 };
 
+/** The item's own words in the post: the pieces the gate checks are in it. */
+export const quoted = (item: AiItem): string[] =>
+  [
+    item.locality_verbatim,
+    item.street_verbatim,
+    item.note,
+    item.whole_town_verbatim,
+  ].filter((p): p is string => p !== null && p.trim() !== "");
+
 /**
- * The item's day and times. Days are checked against the post's dates
- * (Warsaw wall clock): from the day before it was published to 31 days
- * after it was last edited.
+ * The lines holding `piece`, as the quote check finds it: one line, or a
+ * run of up to three it spans (each line of the run needed).
  */
-export function checkWhen(item: AiItem, context: ItemContext): When | string {
-  const { text } = context;
+function linesOf(lines: string[], piece: string): number[] {
+  const out: number[] = [];
+  const spans = (from: number, to: number) =>
+    inPost(piece, lines.slice(from, to).join(" "));
+  for (let i = 0; i < lines.length; i++)
+    for (let k = 1; k <= 3 && i + k <= lines.length; k++)
+      if (spans(i, i + k)) {
+        if (k === 1 || !spans(i + 1, i + k))
+          for (let j = i; j < i + k; j++) out.push(j);
+        break;
+      }
+  return out;
+}
+
+/**
+ * The text an item's times may come from: the lines that quote it, and the
+ * lines that quote no item (a post's opening line with the hours for all);
+ * never a line only of other items, with hours of their own.
+ */
+function itemText(item: AiItem, context: ItemContext): string {
+  const lines = context.text.split("\n");
+  const own = new Set(quoted(item).flatMap((p) => linesOf(lines, p)));
+  const any = new Set(context.pieces.flatMap((p) => linesOf(lines, p)));
+  return lines.filter((_, i) => own.has(i) || !any.has(i)).join("\n");
+}
+
+/**
+ * The item's day and times, or why not ("date", "time"). Days are checked
+ * against the post's dates (Warsaw wall clock): from the day before it was
+ * published to 31 days after it was last edited; times against the item's
+ * own lines (itemText). An end before the start is on the next day.
+ */
+export function checkWhen(
+  item: AiItem,
+  context: ItemContext,
+): When | "date" | "time" {
   if (
     item.date < addDays(context.publishedAt.slice(0, 10), -1) ||
     item.date > addDays(context.updatedAt.slice(0, 10), 31)
   )
-    return `${item.date} too far from the post's date`;
-  for (const time of [item.start, item.end]) {
-    if (time === null) continue;
-    if (!validTime(time)) return `no such time ${time}`;
-    if (!timeInText(time, text)) return `${time} not in the text`;
-  }
-  const night =
-    item.start !== null &&
-    item.end !== null &&
-    item.end <= item.start &&
-    item.start >= "18:00" &&
-    item.end <= "08:00";
-  if (item.start && item.end && item.end <= item.start && !night)
-    return `ends ${item.end} before it starts ${item.start}`;
-
-  const endDay = night ? addDays(item.date, 1) : item.date;
+    return "date";
+  const own = itemText(item, context);
+  for (const time of [item.start, item.end])
+    if (time !== null && !(validTime(time) && timeInText(time, own)))
+      return "time";
+  if (item.start !== null && item.start === item.end) return "time";
+  const endDay =
+    item.start !== null && item.end !== null && item.end < item.start
+      ? addDays(item.date, 1)
+      : item.date;
   return {
     start: item.start && `${item.date} ${item.start}:00`,
     end: item.end && `${endDay} ${item.end}:00`,
-    endEstimated:
-      item.end !== null &&
-      (item.kind === "emergency" ||
-        /przewidywan\p{L}*\s+wznowien/u.test(normText(text))),
+    endEstimated: item.end !== null && item.end_estimated,
   };
 }

@@ -1,4 +1,4 @@
-// The gmina Lubaczów's posts, from its WordPress REST API: already in our
+// The gmina's posts, from its WordPress REST API: already in our
 // post shape (lib/zuk.ts ZukPost).
 
 import type { ZukPost } from "../../zuk.ts";

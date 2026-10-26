@@ -1,11 +1,10 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { test } from "node:test";
-import { systemPrompt } from "./sources/gmina-lubaczow/prompt.ts";
+import { gminaLubaczow } from "./sources/gmina-lubaczow/index.ts";
 import { costUsd, parseAiResult, readWithAi, ZUK_MODEL } from "./zuk-ai.ts";
 import { PLACES, reading } from "./zuk-fixture.ts";
 
-const SYSTEM = systemPrompt(PLACES);
+const SYSTEM = gminaLubaczow.systemPrompt(PLACES);
 
 const INPUT = {
   published: "2026-10-20T11:40:25",
@@ -36,7 +35,7 @@ function xai(status: number, content: string) {
   return { calls, fetcher };
 }
 
-test("request: grok-4.7, reasoning low, temperature 0, strict schema", async () => {
+test("request: grok-4.7, reasoning medium, temperature 0, strict schema", async () => {
   const { calls, fetcher } = xai(200, JSON.stringify(reading(39865)));
   await readWithAi(INPUT, SYSTEM, "test-key", fetcher);
   assert.equal(calls.length, 1);
@@ -45,7 +44,7 @@ test("request: grok-4.7, reasoning low, temperature 0, strict schema", async () 
   assert.equal(headers.Authorization, "Bearer test-key");
   const body = JSON.parse(calls[0].init.body as string);
   assert.equal(body.model, "grok-4.7");
-  assert.equal(body.reasoning_effort, "low");
+  assert.equal(body.reasoning_effort, "medium");
   assert.equal(body.temperature, 0);
   assert.equal(body.response_format.json_schema.strict, true);
   const item = body.response_format.json_schema.schema.properties.items.items;
@@ -104,6 +103,11 @@ test("schema check: every field, with its type", () => {
     "note",
     "kind",
     "locality",
+    "end_estimated",
+    "whole_town",
+    "whole_town_verbatim",
+    "doubt",
+    "suggested_places",
   ])
     assert.equal(parseAiResult(drop(key)), null, key);
   const bad = (over: object) =>
@@ -113,6 +117,11 @@ test("schema check: every field, with its type", () => {
   assert.equal(parseAiResult(bad({ kind: "revoked" })), null);
   assert.equal(parseAiResult(bad({ locality_verbatim: " " })), null);
   assert.equal(parseAiResult(bad({ street_verbatim: "" })), null);
+  assert.equal(parseAiResult(bad({ suggested_places: [""] })), null);
+  assert.equal(parseAiResult(bad({ whole_town: "no" })), null);
+  // A place off the list: no locality, its words kept.
+  const off = { locality: null, locality_verbatim: "Nowe Sioło" };
+  assert.ok(parseAiResult(bad(off)));
   assert.equal(parseAiResult('{"items": []}'), null);
 });
 
@@ -123,6 +132,7 @@ test("schema check: post_type and quality_status, the quality item kind", () => 
   assert.equal(parseAiResult(top({ post_type: undefined })), null);
   assert.equal(parseAiResult(top({ quality_status: "maybe" })), null);
   assert.equal(parseAiResult(top({ quality_status: undefined })), null);
+  assert.equal(parseAiResult(top({ changes_earlier_dates: undefined })), null);
   // The old field alone is no longer the schema.
   const { post_type, ...old } = good;
   assert.equal(post_type, "water_outage");
@@ -139,21 +149,6 @@ test("schema check: post_type and quality_status, the quality item kind", () => 
   assert.deepEqual(parseAiResult(JSON.stringify(quality)), quality);
 });
 
-test("request: the schema is schema-v31.json, as is", async () => {
-  const { calls, fetcher } = xai(200, JSON.stringify(reading(39865)));
-  await readWithAi(INPUT, SYSTEM, "test-key", fetcher);
-  const { json_schema } = JSON.parse(
-    calls[0].init.body as string,
-  ).response_format;
-  // SHA-256 of the handoff's schema-v31.json, parsed and written compact.
-  assert.equal(
-    createHash("sha256")
-      .update(JSON.stringify(json_schema.schema))
-      .digest("hex"),
-    "d8e2f8a27eaec5f985cbad93d286c8f239c2241ef83c0beae060b798606ff649",
-  );
-});
-
 test("request: post_type and quality_status required, quality items allowed", async () => {
   const { calls, fetcher } = xai(200, JSON.stringify(reading(39865)));
   await readWithAi(INPUT, SYSTEM, "test-key", fetcher);
@@ -163,8 +158,12 @@ test("request: post_type and quality_status required, quality items allowed", as
     "post_type",
     "quality_status",
     "is_past",
+    "changes_earlier_dates",
     "items",
   ]);
+  const item = schema.properties.items.items;
+  assert.deepEqual(item.required, Object.keys(item.properties));
+  assert.deepEqual(item.properties.locality.type, ["string", "null"]);
   assert.deepEqual(schema.properties.post_type.enum, [
     "water_outage",
     "water_quality",

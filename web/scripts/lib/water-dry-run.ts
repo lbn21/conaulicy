@@ -1,7 +1,7 @@
 // One post through the model and the gate exactly as the water cron reads
 // it (lib/zuk-cron.ts), with no write anywhere: the source's prompt with
 // our places (the TERYT snapshot and the gazetteer), the model's JSON, then
-// readPost or readQualityPost with the source's rules. For a real dry run
+// readPost or readQualityPost for the source. For a real dry run
 // on Jakub's box (scripts/water-dry-run.ts); `ai` given, no model call.
 import type { PostSource } from "../../lib/sources/source.ts";
 import {
@@ -54,7 +54,7 @@ export async function waterDryRun(args: {
     model = result;
     call = rest;
   }
-  const rules = { source: source.water, gate: source.gate };
+  const rules = { source: source.water };
   const gate =
     model.post_type === "water_quality"
       ? readQualityPost(post, model, places, rules)

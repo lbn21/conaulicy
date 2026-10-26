@@ -236,6 +236,25 @@ type Reading = [
   kind: AiItem["kind"],
 ];
 
+/** An item's fields a plain place leaves at their default. */
+export const AI_ITEM: Pick<
+  AiItem,
+  | "end_estimated"
+  | "whole_town"
+  | "whole_town_verbatim"
+  | "doubt"
+  | "suggested_places"
+> = {
+  end_estimated: false,
+  whole_town: false,
+  whole_town_verbatim: null,
+  doubt: null,
+  suggested_places: [],
+};
+
+/** The posts that move an earlier one's dates ("aktualizacja dat"). */
+const CHANGES = new Set([23860, 24161, 26028]);
+
 /** The model's reading of a real post, as the API returns it. */
 export function reading(id: number): AiResult {
   const r = READINGS[id];
@@ -243,6 +262,7 @@ export function reading(id: number): AiResult {
     post_type: r.outage ? "water_outage" : "other",
     quality_status: null,
     is_past: r.past,
+    changes_earlier_dates: CHANGES.has(id),
     items: r.items.map(
       ([
         date,
@@ -264,13 +284,16 @@ export function reading(id: number): AiResult {
         street_verbatim,
         note,
         kind,
+        ...AI_ITEM,
+        // An emergency's end is the expected restore (14117, 34394, 35661).
+        end_estimated: kind === "emergency" && end !== null,
       }),
     ),
   };
 }
 
 /** Other real posts (title, plain text), fetched with REAL_2026_10_25. */
-export const REAL_TEXTS: Array<{
+const REAL_TEXTS: Array<{
   id: number;
   date: string;
   link: string;
@@ -406,7 +429,9 @@ export const REAL_TEXTS: Array<{
  * locality_verbatim, street, street_verbatim, note, kind]. Recorded before
  * the v3.1 schema, so the verbatim fields and the note were converted from
  * the hand-filled place phrase (task 114b) and checked against TRUTH
- * (lib/zuk-fixture-b.ts). The recorded v3.1 replies: lib/zuk-golden.ts.
+ * (lib/zuk-fixture-b.ts); street names and 39699's hamlet as the shared
+ * prompt asks for them (task 182, lib/water-prompt.ts). The new fields:
+ * reading() (AI_ITEM, CHANGES).
  */
 export const READINGS: Record<
   number,
@@ -981,7 +1006,7 @@ export const READINGS: Record<
         "16:00",
         "Karolówka",
         "Karolówka",
-        "Sobieskiego",
+        "Jana III Sobieskiego",
         "ul. Sobieskiego",
         "numery: od 1 do 15 i od 16 do 54",
         "planned",
@@ -998,7 +1023,7 @@ export const READINGS: Record<
         "16:00",
         "Młodów",
         "Młodów",
-        "Floriana",
+        "św. Floriana",
         "ul. Floriana",
         null,
         "planned",
@@ -1009,7 +1034,7 @@ export const READINGS: Record<
         "16:00",
         "Młodów",
         "Młodów",
-        "Floriana",
+        "św. Floriana",
         "ul. Floriana",
         null,
         "planned",
@@ -1142,7 +1167,7 @@ export const READINGS: Record<
         "16:00",
         "Karolówka",
         "Karolówka",
-        "Sobieskiego",
+        "Jana III Sobieskiego",
         "ul. Sobieskiego",
         "od nr 27 do nr 47",
         "planned",
@@ -1268,11 +1293,11 @@ export const READINGS: Record<
         "2026-10-02",
         "08:00",
         "16:00",
-        "Basznia Górna",
-        "Basznia Górna",
+        "Dąbrowa (Basznia Górna)",
+        "Dąbrowa",
         null,
         null,
-        "od numeru 121 do numeru 144 (przysiółek Dąbrowa)",
+        "od numeru 121 do numeru 144",
         "planned",
       ],
     ],
@@ -1620,7 +1645,7 @@ export const READINGS: Record<
         "16:00",
         "Karolówka",
         "Karolówka",
-        "Sobieskiego",
+        "Jana III Sobieskiego",
         "ul. Sobieskiego",
         "od nr 23 do nr 47",
         "planned",
@@ -1884,6 +1909,7 @@ export function reading39885Edited(): AiResult {
     street_verbatim: verbatim,
     note: null,
     kind: "planned",
+    ...AI_ITEM,
   });
   const [first, ...rest] = reading(39885).items;
   return {

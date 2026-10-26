@@ -1,49 +1,53 @@
-// The place gate (v3.1, task 114b): the X8 handoff's edge cases
-// (test_gate_v31.py) and golden set (golden.json, lib/zuk-golden.ts), the
-// checks gate-spec.md asks of the snapshot, and every name of ours.
+// The place gate: one test per check it keeps (the day, a listed name, the
+// post's own words, the town whole only in its words), and the snapshot
+// it reads.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { DISTRICTS } from "./districts-seed.ts";
 import { PLACES } from "./zuk-fixture.ts";
-import { GOLDEN } from "./zuk-golden.ts";
 import { ZUK_PLACES } from "./zuk-places.generated.ts";
 import {
   type GateItem,
-  GatePlaces,
   gateItem,
   gateText,
   guardDate,
-  mentions,
-  streetForms,
-  type ZukPlaces,
+  Listed,
 } from "./zuk-resolve.ts";
 
-const ALL = new GatePlaces(ZUK_PLACES);
+const ALL = new Listed({ ...ZUK_PLACES, districts: DISTRICTS });
+const TOWN = "0972447";
 
-const dl = (s: string) =>
-  s
-    .normalize("NFD")
-    .replace(/\p{Mn}/gu, "")
-    .replace(/ł/g, "l")
-    .toLowerCase();
-const wnorm = (s: string) =>
-  ` ${dl(s)
-    .replace(/[^0-9a-z]+/g, " ")
-    .trim()} `;
-
-/** One item through the gate on a post of `text` (test_gate_v31.py run). */
-function gate(text: string, over: Partial<GateItem>, places = ALL) {
-  const t = gateText("Przerwa w dostawie wody", text);
-  return gateItem(places, t, mentions(t, places), {
-    date: "2026-10-12",
-    locality: "",
-    locality_verbatim: "",
-    street: null,
-    street_verbatim: null,
-    note: null,
-    ...over,
-  });
+/** One item through the gate on a post of `text`. */
+function gate(
+  text: string,
+  over: Partial<GateItem>,
+  {
+    listed = ALL,
+    implied = null as string | null,
+    published = null as string | null,
+  } = {},
+) {
+  return gateItem(
+    listed,
+    gateText("Przerwa w dostawie wody", text),
+    {
+      date: "2026-10-12",
+      locality: null,
+      locality_verbatim: null,
+      street: null,
+      street_verbatim: null,
+      note: null,
+      whole_town: false,
+      whole_town_verbatim: null,
+      ...over,
+    },
+    implied,
+    published,
+  );
 }
+
+const reason = (r: ReturnType<typeof gate>) => (r.kept ? null : r.reason);
 
 test("day: D.M, D <month>, inside a-b.M, a do b.M, a.M - b.M", () => {
   const t = (s: string) => s.toLowerCase();
@@ -134,351 +138,227 @@ test("day: a weekday in brackets must agree; no such day", () => {
   assert.equal(guardDate("30.10.2026", "30.10.2026"), "bad date");
 });
 
-// test_gate_v31.py, case by case: [kept, text, item].
-const CASES: Array<[boolean, string, Partial<GateItem>]> = [
-  // [v3.1] an inflected locality_verbatim only: dropped (the trade-off).
-  [
-    false,
-    "W dniu 12.10.2026 brak wody w Lubaczowie, ul. Mickiewicza.",
-    {
-      locality: "Lubaczów",
-      locality_verbatim: "Lubaczowie",
-      street: "Adama Mickiewicza",
-      street_verbatim: "ul. Mickiewicza",
-    },
-  ],
-  // locality_verbatim not literal.
-  [
-    false,
-    "W dniu 12.10.2026 brak wody w Lubaczowie, ul. Mickiewicza.",
-    {
-      locality: "Lubaczów",
-      locality_verbatim: "Lubaczów",
-      street: "Adama Mickiewicza",
-      street_verbatim: "ul. Mickiewicza",
-    },
-  ],
-  [
-    true,
-    "W dniu 12.10.2026 brak wody: Lubaczów, ul. Mickiewicza.",
-    {
-      locality: "Lubaczów",
-      locality_verbatim: "Lubaczów",
-      street: "Adama Mickiewicza",
-      street_verbatim: "ul. Mickiewicza",
-    },
-  ],
-  [
-    false,
-    "W dniu 12.10.2026 brak wody: Lubaczów, ul. Mickiewicza.",
-    {
-      locality: "Lubaczów",
-      locality_verbatim: "Lubaczów",
-      street: "Osiedle Mickiewicza",
-      street_verbatim: "ul. Mickiewicza",
-    },
-  ],
-  [
-    true,
-    "W dniu 12.10.2026 brak wody: Lubaczów, os. Mickiewicza.",
-    {
-      locality: "Lubaczów",
-      locality_verbatim: "Lubaczów",
-      street: "Osiedle Mickiewicza",
-      street_verbatim: "os. Mickiewicza",
-    },
-  ],
-  // Ambiguous: no type word.
-  [
-    false,
-    "W dniu 12.10.2026 brak wody: Lubaczów, Mickiewicza.",
-    {
-      locality: "Lubaczów",
-      locality_verbatim: "Lubaczów",
-      street: "Adama Mickiewicza",
-      street_verbatim: "Mickiewicza",
-    },
-  ],
-  [
-    true,
-    "W dniu 12.10.2026 brak wody: Lubaczów, ul. Armii Krajowej.",
-    {
-      locality: "Lubaczów",
-      locality_verbatim: "Lubaczów",
-      street: "Armii Krajowej",
-      street_verbatim: "ul. Armii Krajowej",
-    },
-  ],
-  [
-    false,
-    "W dniu 12.10.2026 brak wody: Lubaczów, ul. Kurierów Armii Krajowej.",
-    {
-      locality: "Lubaczów",
-      locality_verbatim: "Lubaczów",
-      street: "Armii Krajowej",
-      street_verbatim: "ul. Kurierów Armii Krajowej",
-    },
-  ],
-  [
-    true,
-    "W dniu 12.10.2026 brak wody: Lubaczów, ul. Kurierów Armii Krajowej.",
-    {
-      locality: "Lubaczów",
-      locality_verbatim: "Lubaczów",
-      street: "Kurierów Armii Krajowej",
-      street_verbatim: "ul. Kurierów Armii Krajowej",
-    },
-  ],
-  [
-    true,
-    "W dniu 12.10.2026 brak wody: Lubaczów, ul. Unii Lubelskiej.",
-    {
-      locality: "Lubaczów",
-      locality_verbatim: "Lubaczów",
-      street: "Unii Lubelskiej",
-      street_verbatim: "ul. Unii Lubelskiej",
-    },
-  ],
-  [
-    false,
-    "W dniu 12.10.2026 brak wody: Lubaczów, ul. Unii Lubelskiej.",
-    {
-      locality: "Lubaczów",
-      locality_verbatim: "Lubaczów",
-      street: "Osiedle Unii Lubelskiej",
-      street_verbatim: "ul. Unii Lubelskiej",
-    },
-  ],
-  // The town without a street.
-  [
-    false,
-    "W dniu 12.10.2026 brak wody w Lubaczowie.",
-    { locality: "Lubaczów", locality_verbatim: "Lubaczowie" },
-  ],
-  // An inflection look-alike.
-  [
-    false,
-    "W dniu 12.10.2026 brak wody w miejscowości Podłęże.",
-    { locality: "Podlesie", locality_verbatim: "Podłęże" },
-  ],
-  // The day not in the text.
-  [
-    false,
-    "W dniu 13.10.2026 brak wody w miejscowości Opaka.",
-    { locality: "Opaka", locality_verbatim: "Opaka" },
-  ],
-  // 12.10.2026 is a Monday.
-  [
-    false,
-    "W dniu 12.10.2026 (wtorek) brak wody w miejscowości Opaka.",
-    { locality: "Opaka", locality_verbatim: "Opaka" },
-  ],
-  [
-    true,
-    "W dniu 12.10.2026 (poniedziałek) brak wody w miejscowości Opaka od numeru 5 do numeru 9.",
-    {
-      locality: "Opaka",
-      locality_verbatim: "Opaka",
-      note: "od numeru 5 do numeru 9",
-    },
-  ],
-  // The note names another place.
-  [
-    false,
-    "W dniu 12.10.2026 brak wody: Opaka od numeru 5 do numeru 9 i Załuże od numeru 1.",
-    {
-      locality: "Opaka",
-      locality_verbatim: "Opaka",
-      note: "od numeru 5 do numeru 9 i Załuże od numeru 1",
-    },
-  ],
-  // A spliced note.
-  [
-    false,
-    "W dniu 12.10.2026 brak wody: Opaka od numeru 5 do numeru 9, 12.",
-    {
-      locality: "Opaka",
-      locality_verbatim: "Opaka",
-      note: "od numeru 5 do numeru 12",
-    },
-  ],
-];
-
-test("edge cases: test_gate_v31.py, 18/18", () => {
-  assert.equal(CASES.length, 18);
-  for (const [kept, text, item] of CASES) {
-    const r = gate(text, item);
+test("locality: a listed name, exactly; a part as 'Name (Village)'", () => {
+  const text = "W dniu 12.10.2026 brak wody: Opaka, Dąbrowa.";
+  const ok = gate(text, { locality: "Opaka", locality_verbatim: "Opaka" });
+  assert.equal(ok.kept && ok.locality.id, "0606317");
+  for (const locality of ["opaka", "Opaką", "Opaka ", "Nowe Sioło", null])
     assert.equal(
-      r.kept,
-      kept,
-      `${text} ${JSON.stringify(item)}: ${JSON.stringify(r)}`,
+      reason(gate(text, { locality, locality_verbatim: "Opaka" })),
+      "locality not listed",
+      String(locality),
     );
-  }
-});
-
-test("golden: the v3.1 replies, item by item, 78/78", () => {
-  let n = 0;
-  for (const p of [...GOLDEN.posts, ...GOLDEN.negatives]) {
-    const text = gateText(p.title, p.text);
-    const found = mentions(text, ALL);
-    assert.equal(p.model_output.items.length, p.expected.length, String(p.id));
-    for (const [i, item] of p.model_output.items.entries()) {
-      n++;
-      const want = p.expected[i];
-      const got = gateItem(ALL, text, found, item);
-      const at = `${p.id} item ${i + 1}`;
-      assert.equal(got.kept, want.kept, `${at}: ${JSON.stringify(got)}`);
-      if (got.kept) {
-        assert.ok(want.resolved, at);
-        assert.deepEqual(
-          {
-            date: item.date,
-            localityId: got.locality.id,
-            locality: got.locality.name,
-            streetId: got.street?.id ?? null,
-            street: got.street?.name ?? null,
-            note: item.note,
-          },
-          want.resolved,
-          at,
-        );
-      } else assert.equal(got.reason, want.reason, at);
-    }
-  }
-  // 64 recorded items, and 23860's 14 (a hand-checked reading).
-  assert.equal(n, 78);
-});
-
-test("snapshot: no two of our names match each other (cross-match proof)", (t) => {
-  const { direct, confusable } = ALL.crossReport();
-  assert.deepEqual(direct, []);
-  // For review, not failing: a third word could match both of a pair, but
-  // only an exact mention ever approves (gate check 9).
-  t.diagnostic(`confusable: ${confusable.map((p) => p.join("/")).join(", ")}`);
-  assert.ok(Array.isArray(confusable));
-});
-
-test("snapshot: locality names that are street forms; forms unique per locality", () => {
-  const forms = new Set(
-    ZUK_PLACES.streets.flatMap((s) => streetForms(s).map(dl)),
-  );
-  // gate-spec says none; the snapshot (and gate_v31.py on it) has these
-  // five. Pinned, so a new one fails here for review of the street
-  // look-alike rule (an exact mention of them is still a mention).
-  assert.deepEqual(
-    [...new Set(ZUK_PLACES.localities.map((l) => l.name))]
-      .filter((name) => forms.has(dl(name)))
-      .sort(),
-    ["Mazury", "Piaski", "Pilipy", "Smolińce", "Żuki"],
-  );
-  for (const [id, own] of ALL.streets) {
-    const all = own.flatMap((s) => streetForms(s).map(wnorm));
-    assert.equal(new Set(all).size, all.length, id);
-  }
-});
-
-test("snapshot: the CECHA forms, from TERYT columns only", () => {
-  const extra = ZUK_PLACES.streets
-    .map((s) => [s.localityId, streetForms(s)] as const)
-    .filter(([, f]) => f.length > 1)
-    .map(([l, f]) => `${l} ${f[1]}`)
-    .sort();
-  assert.deepEqual(extra, [
-    "0605890 os. Sołotwina",
-    "0605890 os. Sportowe",
-    "0606180 os. Wolności",
-    "0606234 al. kardynała Mariana Jaworskiego",
-    "0606286 os. Wrzosowe",
-    "0972447 al. kardynała Mariana Jaworskiego",
-    "0972447 os. Jagiellonów",
-    "0972447 os. Mickiewicza",
-    "0972447 os. Unii Lubelskiej",
-  ]);
-  const cecha = new Map<string, number>();
-  for (const s of ZUK_PLACES.streets)
-    cecha.set(s.cecha, (cecha.get(s.cecha) ?? 0) + 1);
-  assert.deepEqual(Object.fromEntries(cecha), {
-    "ul.": 264,
-    "os.": 7,
-    "al.": 2,
-    rondo: 2,
-    skwer: 1,
+  const part = gate(text, {
+    locality: "Dąbrowa (Basznia Górna)",
+    locality_verbatim: "Dąbrowa",
   });
+  assert.equal(part.kept && part.locality.id, "0605967");
+  // A bare name is the village of that name, never a part.
+  const village = gate(text, {
+    locality: "Dąbrowa",
+    locality_verbatim: "Dąbrowa",
+  });
+  assert.equal(village.kept && village.locality.id, "0606010");
 });
 
-/**
- * Every locality, village part and street of `places`, named as ZUK would:
- * one place, the one named, or dropped; never another.
- */
-function everyName(data: ZukPlaces) {
-  const places = new GatePlaces(data);
-  const byId = new Map(data.localities.map((l) => [l.id, l]));
-  for (const l of data.localities) {
-    const parent = l.parentId ? byId.get(l.parentId)?.name : undefined;
-    for (const locality of [
-      l.name,
-      ...(parent ? [`${l.name} (${parent})`] : []),
-    ]) {
-      const text = `W dniu 12.10.2026 brak wody: ${parent ? `${parent}, ` : ""}${l.name}.`;
-      const r = gate(text, { locality, locality_verbatim: l.name }, places);
-      if (!r.kept) continue;
-      assert.equal(dl(r.locality.name), dl(l.name), locality);
-      if (locality !== l.name) assert.equal(r.locality.id, l.id, locality);
-    }
-  }
-  for (const s of data.streets) {
-    const l = byId.get(s.localityId);
-    assert.ok(l, s.id);
-    const words = s.name.split(" ");
-    for (let i = 0; i < words.length; i++) {
-      const street = words.slice(i).join(" ");
-      const r = gate(
-        `W dniu 12.10.2026 brak wody: ${l.name}, ul. ${street}.`,
+test("locality: only the source's area is listed", () => {
+  const town = new Listed(ZUK_PLACES, new Set([TOWN, "0972453"]));
+  const text = "W dniu 12.10.2026 brak wody: Opaka, Mazury.";
+  assert.equal(
+    reason(
+      gate(
+        text,
+        { locality: "Opaka", locality_verbatim: "Opaka" },
         {
-          locality: l.name,
-          locality_verbatim: l.name,
-          street,
-          street_verbatim: `ul. ${street}`,
+          listed: town,
         },
-        places,
-      );
-      // Kept, it is this street, or the one whose whole form this is
-      // ("Mazury", not "Boczna Mazury"); dropped, for a reason of the gate.
-      if (!r.kept) assert.ok(r.reason, `${l.name}, ${street}`);
-      else if (r.street?.id !== s.id)
-        assert.ok(
-          r.street &&
-            streetForms(r.street).some((f) => wnorm(f) === wnorm(street)),
-          `${l.name}, ${street}: ${r.street?.name}`,
-        );
-    }
-  }
-  // A street name given with any locality: that locality's street or none.
-  const names = [...new Set(data.streets.map((s) => s.name))];
-  for (const l of data.localities)
-    for (const street of names) {
-      const r = gate(
-        `W dniu 12.10.2026 brak wody: ${l.name}, ul. ${street}.`,
-        {
-          locality: l.name,
-          locality_verbatim: l.name,
-          street,
-          street_verbatim: `ul. ${street}`,
-        },
-        places,
-      );
-      if (!r.kept) continue;
-      assert.equal(r.street?.localityId, r.locality.id, street);
-      assert.equal(dl(r.locality.name), dl(l.name), street);
-    }
-}
-
-test("every name of ours (fixture): one place, the one named, or dropped", () => {
-  everyName(PLACES);
+      ),
+    ),
+    "locality not listed",
+  );
+  const part = gate(
+    text,
+    { locality: "Mazury (Lubaczów)", locality_verbatim: "Mazury" },
+    { listed: town },
+  );
+  assert.equal(part.kept && part.locality.id, "0972453");
 });
 
-test("every name of ours (all our places): one place, the one named, or dropped", () => {
-  everyName(ZUK_PLACES);
+test("locality_verbatim: in the post; none only for the implied locality", () => {
+  const text = "W dniu 12.10.2026 brak wody w Opace, ul. Polna.";
+  const opaka = { locality: "Opaka", street: null };
+  assert.equal(
+    reason(gate(text, { ...opaka, locality_verbatim: "Opace" })),
+    null,
+  );
+  assert.equal(
+    reason(gate(text, { ...opaka, locality_verbatim: "Opaka" })),
+    "not in post",
+  );
+  assert.equal(
+    reason(gate(text, { ...opaka, locality_verbatim: null })),
+    "not in post",
+  );
+  const street = {
+    locality: "Lubaczów",
+    locality_verbatim: null,
+    street: "Polna",
+    street_verbatim: "ul. Polna",
+  };
+  assert.equal(reason(gate(text, street)), "not in post");
+  assert.equal(reason(gate(text, street, { implied: TOWN })), null);
+});
+
+test("street: a listed street of that locality, exactly, in the post's words", () => {
+  const text = "W dniu 12.10.2026 brak wody: Lubaczów ul. Żuki, Dąbków.";
+  const town = { locality: "Lubaczów", locality_verbatim: "Lubaczów" };
+  const zuki = gate(text, {
+    ...town,
+    street: "Żuki",
+    street_verbatim: "ul. Żuki",
+  });
+  assert.equal(zuki.kept && zuki.street?.id, "0972447-26555");
+  const dabkow = gate(text, {
+    locality: "Dąbków",
+    locality_verbatim: "Dąbków",
+    street: "Żuki",
+    street_verbatim: "ul. Żuki",
+  });
+  assert.equal(dabkow.kept && dabkow.street?.id, "0606004-26555");
+  // No end of a longer name, no other spelling, no other locality's.
+  for (const street of ["Sobieskiego", "żuki", "Floriana"])
+    assert.equal(
+      reason(gate(text, { ...town, street, street_verbatim: "ul. Żuki" })),
+      "street not listed",
+      street,
+    );
+  assert.equal(
+    reason(
+      gate(text, { ...town, street: "Żuki", street_verbatim: "ul. Polna" }),
+    ),
+    "not in post",
+  );
+  assert.equal(
+    reason(gate(text, { ...town, street: "Żuki", street_verbatim: null })),
+    "not in post",
+  );
+  // Words of a street not on the list: rejected, its locality known.
+  const unlisted = gate(text, { ...town, street_verbatim: "ul. Żuki" });
+  assert.equal(reason(unlisted), "street not listed");
+  assert.equal(!unlisted.kept && unlisted.locality?.id, TOWN);
+});
+
+test("district: listed by its name for its town", () => {
+  const text = "W dniu 12.10.2026 brak wody na osiedlu Mazury.";
+  const item = {
+    locality: "Lubaczów",
+    locality_verbatim: null,
+    street_verbatim: "osiedlu Mazury",
+  };
+  const ok = gate(
+    text,
+    { ...item, street: "Osiedle Mazury" },
+    { implied: TOWN },
+  );
+  assert.equal(ok.kept && ok.district?.id, "mazury");
+  assert.equal(ok.kept && ok.street, null);
+  for (const street of ["os. Mazury", "Mazury VI"])
+    assert.equal(
+      reason(gate(text, { ...item, street }, { implied: TOWN })),
+      "street not listed",
+      street,
+    );
+});
+
+test("the town whole: only with whole_town, its words in the post", () => {
+  const text = "W dniu 12.10.2026 brak wody na terenie całego miasta.";
+  const town = { locality: "Lubaczów", locality_verbatim: null };
+  assert.equal(
+    reason(gate(text, town, { implied: TOWN })),
+    "street not listed",
+  );
+  const whole = {
+    ...town,
+    whole_town: true,
+    whole_town_verbatim: "na terenie całego miasta",
+  };
+  assert.equal(reason(gate(text, whole, { implied: TOWN })), null);
+  assert.equal(
+    reason(
+      gate(
+        text,
+        { ...whole, whole_town_verbatim: "w całym mieście" },
+        { implied: TOWN },
+      ),
+    ),
+    "not in post",
+  );
+  assert.equal(
+    reason(
+      gate(text, { ...whole, whole_town_verbatim: null }, { implied: TOWN }),
+    ),
+    "not in post",
+  );
+});
+
+test("note: one literal piece of the post", () => {
+  const text =
+    "W dniu 12.10.2026 brak wody: Opaka od numeru 5 do numeru 9, 12.";
+  const opaka = { locality: "Opaka", locality_verbatim: "Opaka" };
+  assert.equal(
+    reason(gate(text, { ...opaka, note: "od  numeru 5 do NUMERU 9" })),
+    null,
+  );
+  assert.equal(
+    reason(gate(text, { ...opaka, note: "od numeru 5 do numeru 12" })),
+    "not in post",
+  );
+});
+
+test("day: not written, or a weekday that disagrees, is 'date' first", () => {
+  const opaka = { locality: "Nowe Sioło", locality_verbatim: "Opaka" };
+  assert.equal(
+    reason(gate("W dniu 13.10.2026 brak wody: Opaka.", opaka)),
+    "date",
+  );
+  assert.equal(
+    reason(gate("W dniu 12.10.2026 (wtorek) brak wody: Opaka.", opaka)),
+    "date",
+  );
+});
+
+test("day: a post that writes no day speaks of its publish day", () => {
+  const opaka = { locality: "Opaka", locality_verbatim: "Opaka" };
+  const text = "Awaria sieci, brak wody: Opaka.";
+  assert.equal(reason(gate(text, opaka, { published: "2026-10-12" })), null);
+  // Any other unwritten day is still dropped.
+  assert.equal(reason(gate(text, opaka, { published: "2026-10-11" })), "date");
+  assert.equal(
+    reason(
+      gate(text, { ...opaka, date: "2026-10-13" }, { published: "2026-10-12" }),
+    ),
+    "date",
+  );
+  // A day written with a weekday that disagrees is still dropped.
+  assert.equal(
+    reason(
+      gate("W dniu 12.10.2026 (wtorek) brak wody: Opaka.", opaka, {
+        published: "2026-10-12",
+      }),
+    ),
+    "date",
+  );
+});
+
+test("listed names: every locality, street and district of the list", () => {
+  assert.ok(ALL.has("Dąbrowa (Basznia Górna)"));
+  assert.ok(ALL.has("Jana III Sobieskiego"));
+  assert.ok(ALL.has("Osiedle Mazury"));
+  assert.ok(!ALL.has("Dąbrowa (Lubaczów)"));
+  assert.ok(!ALL.has("Sobieskiego"));
+  const town = new Listed(ZUK_PLACES, new Set([TOWN]));
+  assert.ok(!town.has("Opaka"));
+  assert.ok(!town.has("Pilipy"), "a village's street");
 });
 
 test("all our places: the full TERYT list, consistent, the fixture inside it", () => {

@@ -1,46 +1,24 @@
-// The place gate (v3.1, task 114b; gate-spec.md of the X8 handoff, ported
-// from its gate_v31.py): what the model read for one item, checked against
-// the post's own text and mapped to our places (TERYT: the source is mapped
-// to TERYT, never the other way). Pure, and generic: everything comes from
-// the places data (the TERYT snapshot, lib/zuk-places.generated.ts), with
-// no place-specific code, list or alias. An item is kept only if every
-// check passes, in order; the first that fails is the reason:
+// The place gate: what the model read for one item, checked only where
+// the check is certain, and mapped to our places (TERYT: the source is
+// mapped to TERYT, never the other way). Pure, and generic: everything
+// comes from the places data (the TERYT snapshot and the districts), with
+// no place-specific code, list or alias. Everything interpretive (which
+// place a word means, a qualifier, a doubt) is the model's
+// (lib/water-prompt.ts). An item is kept only if every check passes, in
+// order; the first that fails is the reason (Reason):
 // 1. the day is written in the post (D.M, "D <month>", inside "a-b.M",
-//    "a do b.M", "a.M - b.M", "a-b <month>", "z a na b <month>"), a
-//    weekday in brackets after it agreeing;
-// 2. locality is one of ours ("Name (Village)" for a part; a bare name a
-//    village and a part share is the village);
-// 3. locality_verbatim is in the text, 4. exactly the locality's name (case
-//    and diacritics aside), 5. at least once not inside a longer name of
-//    ours ("Basznia" in "Basznia Dolna");
-// 6. street_verbatim is in the text; 7. the street is exactly one of that
-//    locality's, by a whole form (the name or its CECHA form, "os.
-//    Wolności") or else a unique whole-word end ("Sobieskiego"); 8. what
-//    street_verbatim writes points to this street only: no rival ends so,
-//    or it is the full form with no rival's longer one written, or the type
-//    word before it fits this street's CECHA alone ("ul. Mickiewicza");
-// 9. the locality mention that decides for street_verbatim (one in a
-//    bracket right after it, else the nearest before it, else the nearest
-//    after it in its sentence) is this locality, or a part and its village,
-//    written exactly: an inflected mention can block but never approve;
-// 10. the town is never taken whole;
-// 11. a note is one literal piece of the post naming no other place of ours.
-// A mention is a capitalised run of words of one line matching one of our
-// names, a word matching if they share a stem (the word less 0-3 final
-// letters, at least 3 left); all-caps words only exactly ("ZUK" is not
-// "Żuki"), and an inflected look-alike that is a street ("Piaskowa") is
-// none.
-//
-// A source that serves one area (lib/sources: MZGKiM, the town) may give
-// rules of its own (GateRules), all off for the gmina's posts: its items
-// lie in the area or one of its parts, else dropped; the area itself need
-// not be written (its posts never name the town), so checks 3-5 hold for a
-// part only; in 9 only an exact mention of a place outside it blocks (a
-// direction, "w kierunku Dąbrowy", is no place of the cut); 10 lets the
-// whole area through when the post says so in its own words (`whole`); and
-// with `declined`, 8 also takes the street's last word declined, the post
-// writing nothing but its type word before it ("przy ulicach:
-// Niemirowskiej").
+//    "a do b.M", "a.M - b.M", "a-b <month>", "z a na b <month>", a range
+//    of two full dates), a year and a weekday in brackets after it agreeing;
+// 2. locality is a listed name of the source's list (Listed), exactly;
+// 3. locality_verbatim is in the post; none only for the locality the
+//    source's posts concern without naming it (`implied`);
+// 4. street is a listed street or district of that locality, exactly, and
+//    street_verbatim is in the post; street_verbatim with no street is a
+//    street not on the list;
+// 5. the town without a street only with whole_town, its words in the post;
+// 6. the note is in the post.
+// "In the post": a literal substring of the title and text, case, dashes
+// and runs of spaces aside.
 
 import type { Locality } from "./data-model.ts";
 import type { District } from "./districts.ts";
@@ -60,87 +38,68 @@ export type ZukPlaces = {
   streets: Array<{
     id: string;
     localityId: string;
-    /** NAZWA_2 NAZWA_1, "Jana III Sobieskiego". */
+    /** NAZWA_2 NAZWA_1, "Jana Próbnego". */
     name: string;
     /** TERYT CECHA, "ul.", "os.", "al.", "rondo", "skwer". */
     cecha: string;
-    /** TERYT NAZWA_1, "Osiedle Wolności". */
+    /** TERYT NAZWA_1, "Osiedle Próbne". */
     name1: string;
   }>;
 };
 
-type ZukLocality = ZukPlaces["localities"][number];
-type ZukStreet = ZukPlaces["streets"][number];
+export type ZukLocality = ZukPlaces["localities"][number];
+export type ZukStreet = ZukPlaces["streets"][number];
+
+/** Why an item failed: a short fixed code (the rejected list, lib/zuk-data.ts). */
+export type Reason =
+  | "locality not listed"
+  | "street not listed"
+  | "district has no streets"
+  | "not in post"
+  | "date"
+  | "time";
 
 /** What the gate reads of an item (lib/zuk-ai.ts AiItem). */
 export type GateItem = {
   date: string;
-  locality: string;
-  locality_verbatim: string;
+  locality: string | null;
+  locality_verbatim: string | null;
   street: string | null;
   street_verbatim: string | null;
   note: string | null;
+  whole_town: boolean;
+  whole_town_verbatim: string | null;
 };
 
 export type GateResult =
   | {
       kept: true;
       locality: ZukLocality;
+      /** A listed street, or a listed district; neither: the whole place. */
       street: ZukStreet | null;
-      /**
-       * A source with an area: the village in a bracket after a street of
-       * the area written whole ("ul. Młodowska (Młodów)"), which decides
-       * nothing there; the street is kept with it as its words.
-       */
-      bracket?: string;
+      district: District | null;
     }
-  /** `date`: the day failed (check 1); else the place. */
-  | { kept: false; reason: string; date: boolean };
+  /** `locality`: the listed locality, if it passed. */
+  | { kept: false; reason: Reason; locality: ZukLocality | null };
 
-/** A source's own rules (see the top of this file); none for the gmina. */
-export type GateRules = {
-  /** The locality its posts concern, named or not: "0972447", the town. */
-  area?: string;
-  /** The post's own words for the whole area: "na terenie całego miasta". */
-  whole?: RegExp;
-  /** Streets may be written declined: "Niemirowskiej" for Niemirowska. */
-  declined?: boolean;
-};
-
-const MIN_STEM = 3;
-const MAX_CUT = 3;
-
-// ---------- text ----------
-
-const deaccent = (s: string) =>
-  s
-    .normalize("NFD")
-    .replace(/\p{Mn}/gu, "")
-    .replace(/ł/g, "l")
-    .replace(/Ł/g, "L");
-const dl = (s: string) => deaccent(s).toLowerCase();
 /** Literal comparison: dashes one, spaces collapsed, lower case. */
 const norm = (s: string) =>
   s
     .replace(/[–—]/g, "-")
-    .replace(/ /g, " ")
+    .replace(/\u00a0/g, " ")
     .replace(/\s+/g, " ")
     .toLowerCase()
     .trim();
-/** Word comparison: no diacritics, lower case, padded by spaces. */
-const wnorm = (s: string) =>
-  ` ${dl(s)
-    .replace(/[^0-9a-z]+/g, " ")
-    .trim()} `;
-const WORD = /\p{L}+/gu;
-const words = (s: string) => s.match(WORD) ?? [];
-const isUpper = (s: string) => s === s.toUpperCase() && s !== s.toLowerCase();
 
 /** The post's title and text as the gate reads them. */
 export const gateText = (title: string, text: string) =>
-  `${title}\n${text}`.replace(/[–—]/g, "-").replace(/ /g, " ");
+  `${title}\n${text}`.replace(/[–—]/g, "-").replace(/\u00a0/g, " ");
 
-// ---------- 1. the day ----------
+/** `words` are in the post (gateText), case, dashes and spaces aside. */
+export const inPost = (words: string, text: string) =>
+  words.trim() !== "" && norm(text).includes(norm(words));
+
+// ---------- the day ----------
 
 const WEEKDAYS = [
   "poniedziałek",
@@ -166,9 +125,8 @@ export const MONTHS = [
   "grudnia",
 ];
 
-/** Null if the day is written in the post's gate text, else why. */
-export const dayInText = (date: string, text: string) =>
-  guardDate(date, norm(text));
+/** Null if the day is written in the post (gateText), else why. */
+const dayInText = (date: string, text: string) => guardDate(date, norm(text));
 
 /** Null if the day is written in `txt` (norm of the post), else why. */
 export function guardDate(date: string, txt: string): string | null {
@@ -242,7 +200,7 @@ const FULL_RANGE = new RegExp(
 );
 
 /**
- * The day is inside a range of two full dates (task 114b, post 23860:
+ * The day is inside a range of two full dates (task 114b:
  * "od 06.11.2023 do 10.11.2023"), both ends included; a reversed range
  * holds no day.
  */
@@ -255,465 +213,121 @@ function inFullRange(date: string, txt: string): boolean {
   });
 }
 
-// ---------- the inflection rule ----------
+// ---------- the list ----------
 
-function stems(w: string): Set<string> {
-  const d = dl(w);
-  const out = new Set<string>();
-  for (let i = 0; i <= MAX_CUT; i++)
-    if (d.length - i >= MIN_STEM) out.add(d.slice(0, d.length - i));
-  return out;
+/** "Name", or "Name (Village)" for a part: as the prompt lists it. */
+export function listedName(
+  l: ZukLocality,
+  byId: Map<string, ZukLocality>,
+): string {
+  const parent = l.parentId ? byId.get(l.parentId) : undefined;
+  return parent ? `${l.name} (${parent.name})` : l.name;
 }
-
-type Match = "exact" | "infl" | null;
-
-function wordMatch(a: string, b: string): Match {
-  const [x, y] = [dl(a), dl(b)];
-  if (x === y) return "exact";
-  const sx = stems(x);
-  for (const s of stems(y)) if (sx.has(s)) return "infl";
-  return null;
-}
-
-function nameMatch(verbatim: string, name: string): Match {
-  const [v, n] = [words(verbatim), words(name)];
-  if (v.length !== n.length || v.length === 0) return null;
-  const ms = v.map((w, i) => wordMatch(w, n[i]));
-  if (ms.includes(null)) return null;
-  return ms.every((m) => m === "exact") ? "exact" : "infl";
-}
-
-function confusable(a: string, b: string): boolean {
-  for (const sa of stems(a))
-    for (const sb of stems(b)) {
-      const [lo, hi] = sa.length <= sb.length ? [sa, sb] : [sb, sa];
-      if (hi.startsWith(lo) && hi.length - lo.length <= MAX_CUT) return true;
-    }
-  return false;
-}
-
-// ---------- our places ----------
 
 /**
- * A street's forms: its name, and its CECHA form when NAZWA_1's first word
- * begins with the CECHA's stem and is not the CECHA: "Osiedle Wolności"
- * (os.) is also "os. Wolności".
+ * The places a source's posts may name, by their listed names: every
+ * locality of `area` (null: all of ours), its streets and districts.
  */
-export function streetForms(s: ZukStreet): string[] {
-  const out = [s.name];
-  const cecha = s.cecha ?? "";
-  const name1 = s.name1 ?? "";
-  const space = name1.indexOf(" ");
-  const first = space < 0 ? name1 : name1.slice(0, space);
-  const rest = space < 0 ? "" : name1.slice(space + 1);
-  const stem = cecha.replace(/\.+$/, "").toLowerCase();
-  if (
-    rest &&
-    stem &&
-    first.toLowerCase().startsWith(stem) &&
-    first.toLowerCase() !== cecha.toLowerCase()
-  )
-    out.push(`${cecha} ${rest}`);
-  return out;
-}
-
-/** Our places, indexed for the gate. */
-export class GatePlaces {
+export class Listed {
   readonly byId = new Map<string, ZukLocality>();
-  readonly byName = new Map<string, ZukLocality[]>();
-  /** Every locality name, in code-unit order. */
-  readonly names: string[];
-  readonly streets = new Map<string, ZukStreet[]>();
-  /** Every street form, dl(), in any locality. */
-  readonly streetNames = new Set<string>();
+  readonly localities = new Map<string, ZukLocality>();
+  readonly streets = new Map<string, Map<string, ZukStreet>>();
+  readonly districts = new Map<string, Map<string, District>>();
+  readonly data: ZukPlaces;
 
-  constructor(places: ZukPlaces) {
-    for (const l of places.localities) {
-      this.byId.set(l.id, l);
-      this.byName.set(l.name, [...(this.byName.get(l.name) ?? []), l]);
-    }
-    this.names = [...this.byName.keys()].sort();
-    for (const s of places.streets) {
-      this.streets.set(s.localityId, [
-        ...(this.streets.get(s.localityId) ?? []),
-        s,
-      ]);
-      for (const f of streetForms(s)) this.streetNames.add(dl(f));
-    }
-  }
-
-  /** The same locality, or a village part and its village. */
-  compatible(name: string, loc: ZukLocality): boolean {
-    return (this.byName.get(name) ?? []).some(
-      (l) => l.id === loc.id || l.parentId === loc.id || loc.parentId === l.id,
-    );
-  }
-
-  /** "Name" or "Name (Village)" as one locality, and the name to match. */
-  resolve(locality: string): [ZukLocality | null, string] {
-    const name = locality.trim();
-    const part = /^(.*?)\s*\((.+)\)$/.exec(name);
-    if (part) {
-      const c = (this.byName.get(part[1]) ?? []).filter(
-        (l) => l.parentId && this.byId.get(l.parentId)?.name === part[2],
-      );
-      return [c.length === 1 ? c[0] : null, part[1]];
-    }
-    let c = this.byName.get(name) ?? [];
-    if (c.length === 0)
-      c = [...this.byId.values()].filter((l) => dl(l.name) === dl(name));
-    if (c.length === 1) return [c[0], c[0].name];
-    const settlements = c.filter((l) => l.kind !== "czesc_wsi");
-    return [
-      settlements.length === 1 ? settlements[0] : null,
-      c.length > 0 ? c[0].name : name,
-    ];
+  constructor(places: ZukPlaces, area: ReadonlySet<string> | null = null) {
+    this.data = places;
+    for (const l of places.localities) this.byId.set(l.id, l);
+    for (const l of places.localities)
+      if (!area || area.has(l.id))
+        this.localities.set(listedName(l, this.byId), l);
+    const add = <T>(
+      into: Map<string, Map<string, T>>,
+      localityId: string,
+      name: string,
+      value: T,
+    ) => {
+      const own = into.get(localityId) ?? new Map<string, T>();
+      own.set(name, value);
+      into.set(localityId, own);
+    };
+    for (const s of places.streets) add(this.streets, s.localityId, s.name, s);
+    for (const d of places.districts ?? [])
+      add(this.districts, d.localityId, d.name, d);
   }
 
   /**
-   * Names of ours that match each other under the inflection rule (CI:
-   * none), and pairs a third word could match both of (for review).
+   * The localities a listed name is, or lies in (a street or district of
+   * that name, in any of them); none if it is not listed.
    */
-  crossReport(): { direct: string[][]; confusable: string[][] } {
-    const direct: string[][] = [];
-    const pairs: string[][] = [];
-    for (const [i, a] of this.names.entries())
-      for (const b of this.names.slice(i + 1)) {
-        const [wa, wb] = [words(a), words(b)];
-        if (wa.length !== wb.length) continue;
-        if (nameMatch(a, b)) direct.push([a, b]);
-        if (wa.every((x, k) => confusable(x, wb[k]))) pairs.push([a, b]);
-      }
-    return { direct, confusable: pairs };
-  }
-}
-
-// ---------- locality mentions ----------
-
-export type Mention = {
-  start: number;
-  end: number;
-  name: string;
-  exact: boolean;
-};
-
-/** Every mention of one of our localities in `text`, nested ones dropped. */
-export function mentions(text: string, places: GatePlaces): Mention[] {
-  const toks = [...text.matchAll(WORD)].map((m) => ({
-    start: m.index,
-    end: m.index + m[0].length,
-    word: m[0],
-  }));
-  const out: Mention[] = [];
-  for (const name of places.names) {
-    const nw = words(name);
-    const k = nw.length;
-    for (let i = 0; i + k <= toks.length; i++) {
-      const win = toks.slice(i, i + k);
-      const [from, to] = [win[0].start, win[k - 1].end];
-      if (text.slice(from, to).includes("\n")) continue;
-      if (!isUpper(win[0].word[0])) continue;
-      const ms = win.map((t, j) => wordMatch(t.word, nw[j]));
-      if (ms.includes(null)) continue;
-      if (ms.some((m, j) => m === "infl" && isUpper(win[j].word))) continue;
-      const infl = ms.includes("infl");
-      if (infl && places.streetNames.has(dl(text.slice(from, to)))) continue;
-      out.push({ start: from, end: to, name, exact: !infl });
-    }
-  }
-  return out.filter(
-    (m) =>
-      !out.some(
-        (o) =>
-          o !== m &&
-          o.start <= m.start &&
-          o.end >= m.end &&
-          o.end - o.start > m.end - m.start,
-      ),
-  );
-}
-
-const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-/** Where `verbatim` occurs in `text`, any case, any run of spaces. */
-function occurrences(text: string, verbatim: string): Array<[number, number]> {
-  const toks = verbatim.split(/\s+/).filter(Boolean);
-  if (toks.length === 0) return [];
-  const re = new RegExp(toks.map(escapeRe).join("\\s+"), "giu");
-  return [...text.matchAll(re)].map((m) => [m.index, m.index + m[0].length]);
-}
-
-/** The end of the sentence (or line) from `pos`; "ul." ends none. */
-function sentenceEnd(text: string, pos: number): number {
-  const nl = text.indexOf("\n", pos);
-  const lineEnd = nl < 0 ? text.length : nl;
-  const re = /([\p{L}\p{N}_]+)([.!?])\s+(?=[A-ZĄĆĘŁŃÓŚŹŻ])/gu;
-  for (const m of text.slice(pos, lineEnd).matchAll(re))
-    if (m[1].length > 3) return pos + m.index + m[1].length + 1;
-  return lineEnd;
-}
-
-type Decided = {
-  how: string;
-  good: boolean;
-  name: string | null;
-  /** The deciding mention is written exactly. */
-  exact: boolean;
-  /** The bracket right after street_verbatim, its words, if any. */
-  bracket: string | null;
-};
-
-/** 9: the deciding mention for each occurrence of street_verbatim. */
-function proximity(
-  text: string,
-  found: Mention[],
-  verbatim: string,
-  loc: ZukLocality,
-  places: GatePlaces,
-): Decided {
-  const res: Decided[] = [];
-  for (const [s, e] of occurrences(text, verbatim)) {
-    const br = /^\s*\(([^)]*)\)/.exec(text.slice(e));
-    const open = br ? e + br[0].indexOf("(") + 1 : 0;
-    const inBracket = br
-      ? found.filter((m) => m.start >= open && m.end <= open + br[1].length)
-      : [];
-    const before = found.filter((m) => m.end <= s);
-    let n: Mention;
-    let how: string;
-    if (inBracket.length > 0) [n, how] = [inBracket[0], "bracket"];
-    else if (before.length > 0) {
-      n = before.reduce((a, m) => (m.end > a.end ? m : a));
-      how = "prev";
-    } else {
-      const end = sentenceEnd(text, e);
-      const after = found.filter((m) => m.start >= e && m.end <= end);
-      if (after.length === 0) {
-        res.push({
-          how: "none",
-          good: false,
-          name: null,
-          exact: false,
-          bracket: null,
-        });
-        continue;
-      }
-      n = after.reduce((a, m) => (m.start < a.start ? m : a));
-      how = "next";
-    }
-    res.push({
-      how,
-      good: places.compatible(n.name, loc) && n.exact,
-      name: n.name,
-      exact: n.exact,
-      bracket: br ? br[1] : null,
-    });
-  }
-  return (
-    res.find((r) => r.good) ??
-    res[0] ?? {
-      how: "noocc",
-      good: false,
-      name: null,
-      exact: false,
-      bracket: null,
-    }
-  );
-}
-
-// ---------- the street ----------
-
-/** 7: the locality's streets `street` means: a whole form first, else an end. */
-function pickStreet(
-  places: GatePlaces,
-  loc: ZukLocality,
-  street: string,
-): ZukStreet[] {
-  const sw = wnorm(street);
-  const own = places.streets.get(loc.id) ?? [];
-  const exact = own.filter((s) => streetForms(s).some((f) => wnorm(f) === sw));
-  if (exact.length > 0) return exact;
-  return own.filter((s) => streetForms(s).some((f) => wnorm(f).endsWith(sw)));
-}
-
-/** The word before `at` in `svw`, if any, begins with the street's CECHA stem. */
-function typeFits(svw: string, at: number, s: ZukStreet): boolean {
-  const before = svw.slice(0, at).trim().split(/\s+/).filter(Boolean);
-  if (before.length === 0) return true;
-  const stem = (s.cecha ?? "").replace(/\.+$/, "").toLowerCase();
-  return stem !== "" && dl(before[before.length - 1]).startsWith(dl(stem));
-}
-
-/**
- * `verbatim` is the street's type word, then one of its forms, whole:
- * "ul. Młodowska"; never an end of a longer name ("ul. Sobieskiego").
- */
-function writtenWhole(s: ZukStreet, verbatim: string): boolean {
-  const [type, ...rest] = wnorm(verbatim).trim().split(" ");
-  const stem = (s.cecha ?? "").replace(/\.+$/, "").toLowerCase();
-  return (
-    rest.length > 0 &&
-    TYPE_WORD.test(type) &&
-    stem !== "" &&
-    type.startsWith(dl(stem)) &&
-    streetForms(s).some((f) => wnorm(f) === ` ${rest.join(" ")} `)
-  );
-}
-
-/** A type word written before a street's name: "ul.", "ulicy", "os.". */
-const TYPE_WORD = /^(?:ul|ulica|ulicy|ulic|al|aleja|alei|os|osiedle|osiedla)$/;
-
-/**
- * `verbatim` is one of the street's forms with its last word declined,
- * at most a type word before it: "Niemirowskiej", "ul. Niemirowskiej" (a
- * whole form or its end, "Sobieskiego"); never a phrase around it ("na
- * zapleczu ul. Niemirowskiej").
- */
-function declinedForm(s: ZukStreet, verbatim: string): boolean {
-  const vw = wnorm(verbatim).trim().split(" ");
-  return streetForms(s).some((f) => {
-    const fw = wnorm(f).trim().split(" ");
-    for (let k = 0; k < fw.length; k++) {
-      const end = fw.slice(k);
-      const lead = vw.slice(0, vw.length - end.length);
-      if (lead.length > 1 || (lead.length === 1 && !TYPE_WORD.test(lead[0])))
-        continue;
-      const tail = vw.slice(vw.length - end.length);
-      if (tail.length !== end.length) continue;
-      const last = end.length - 1;
-      if (
-        tail.slice(0, last).every((w, i) => w === end[i]) &&
-        wordMatch(tail[last], end[last]) !== null
+  localitiesOf(name: string): string[] {
+    const own = this.localities.get(name);
+    if (own) return [own.id];
+    return [...this.localities.values()]
+      .filter(
+        (l) =>
+          this.streets.get(l.id)?.has(name) ||
+          this.districts.get(l.id)?.has(name),
       )
-        return true;
-    }
-    return false;
-  });
-}
-
-/** 8: street_verbatim writes this street, and only it. */
-function streetInVerbatim(
-  places: GatePlaces,
-  loc: ZukLocality,
-  street: ZukStreet,
-  verbatim: string,
-  declined = false,
-): boolean {
-  const svw = wnorm(verbatim);
-  const own = places.streets.get(loc.id) ?? [];
-  for (const f of streetForms(street)) {
-    const fw = wnorm(f).trim().split(" ");
-    for (let k = 0; k < fw.length; k++) {
-      const end = ` ${fw.slice(k).join(" ")} `;
-      if (!svw.includes(end)) continue;
-      const others = own.filter(
-        (s) =>
-          s.id !== street.id &&
-          streetForms(s).some((g) => wnorm(g).endsWith(end)),
-      );
-      if (others.length === 0) return true;
-      if (
-        k === 0 &&
-        !others.some((s) => streetForms(s).some((g) => svw.includes(wnorm(g))))
-      )
-        return true;
-      const at = svw.indexOf(end) + 1;
-      if (
-        typeFits(svw, at, street) &&
-        !others.some((s) => typeFits(svw, at, s))
-      )
-        return true;
-    }
+      .map((l) => l.id);
   }
-  if (!declined || !declinedForm(street, verbatim)) return false;
-  return !own.some((s) => s.id !== street.id && declinedForm(s, verbatim));
+
+  /** Every listed name: a locality, street or district. */
+  has(name: string): boolean {
+    return this.localitiesOf(name).length > 0;
+  }
 }
 
 // ---------- the gate ----------
 
 /**
- * One item through every check, `text` from gateText and `found` its
- * mentions (computed once per post); `rules` the source's own.
+ * One item through every check, `text` from gateText; `implied` the
+ * locality the source's posts concern without naming it; `published` the
+ * post's publish day (Warsaw, YYYY-MM-DD): a post that writes no day
+ * speaks of it.
  */
 export function gateItem(
-  places: GatePlaces,
+  listed: Listed,
   text: string,
-  found: Mention[],
   item: GateItem,
-  rules: GateRules = {},
+  implied: string | null = null,
+  published: string | null = null,
 ): GateResult {
-  const drop = (reason: string, date = false): GateResult => ({
+  let locality: ZukLocality | null = null;
+  const drop = (reason: Reason): GateResult => ({
     kept: false,
     reason,
-    date,
+    locality,
   });
-  const txt = norm(text);
-  const day = guardDate(item.date, txt);
-  if (day) return drop(day, true);
-  const [loc, name] = places.resolve(item.locality);
-  if (!loc) return drop(`locality '${item.locality}' not ours/ambiguous`);
-  const area = rules.area ? (places.byId.get(rules.area) ?? null) : null;
-  if (area && loc.id !== area.id && loc.parentId !== area.id)
-    return drop(`locality '${loc.name}' outside the source's area`);
-  if (loc !== area) {
-    const lv = item.locality_verbatim ?? "";
-    if (!(lv.trim() && txt.includes(norm(lv))))
-      return drop("locality_verbatim not literal");
-    if (nameMatch(lv, name) !== "exact")
-      return drop("locality_verbatim does not match locality");
-    const own = occurrences(text, lv).some(
-      ([s, e]) =>
-        !found.some(
-          (m) =>
-            m.start <= s &&
-            m.end >= e &&
-            m.end - m.start > e - s &&
-            m.name !== loc.name,
-        ),
-    );
-    if (!own) return drop("locality_verbatim only inside a longer place name");
-  }
-  let street: ZukStreet | null = null;
-  let bracket: string | undefined;
-  const sv = item.street_verbatim;
-  if (item.street) {
-    if (!(sv && txt.includes(norm(sv))))
-      return drop("street_verbatim not literal");
-    const candidates = pickStreet(places, loc, item.street);
-    if (candidates.length !== 1)
-      return drop(
-        `street '${item.street}' matches ${candidates.length} in ${loc.name}`,
-      );
-    street = candidates[0];
-    if (!streetInVerbatim(places, loc, street, sv, rules.declined))
-      return drop("street_verbatim lacks street name");
-    const decided = proximity(text, found, sv, loc, places);
-    // In a source's area, a village in a bracket after one of its streets
-    // written whole ("ul. Młodowska (Młodów)") is where it leads, not where
-    // it lies.
-    const toward =
-      area !== null &&
-      decided.how === "bracket" &&
-      decided.bracket !== null &&
-      writtenWhole(street, sv);
-    if (!toward && (area ? decided.exact && !decided.good : !decided.good))
-      return drop(
-        `proximity: deciding mention ${decided.name ?? "None"} (${decided.how})`,
-      );
-    if (toward && !decided.good) bracket = (decided.bracket as string).trim();
-  } else if (
-    loc.kind === "miasto" &&
-    !(loc === area && item.note === null && rules.whole?.test(text))
+  locality = (item.locality && listed.localities.get(item.locality)) || null;
+  const unwritten = dayInText(item.date, text);
+  if (
+    unwritten &&
+    !(item.date === published && unwritten.endsWith(" not in text"))
   )
-    return drop("town without street");
-  if (item.note !== null) {
-    if (!txt.includes(norm(item.note))) return drop("note not literal");
-    if (
-      mentions(item.note, places).some(
-        (m) => m.exact && !places.compatible(m.name, loc),
-      )
-    )
-      return drop("note names another place");
-  }
-  return { kept: true, locality: loc, street, ...(bracket ? { bracket } : {}) };
+    return drop("date");
+  if (!locality) return drop("locality not listed");
+  const lv = item.locality_verbatim;
+  if (lv === null ? locality.id !== implied : !inPost(lv, text))
+    return drop("not in post");
+  const sv = item.street_verbatim;
+  let street: ZukStreet | null = null;
+  let district: District | null = null;
+  if (item.street !== null) {
+    street = listed.streets.get(locality.id)?.get(item.street) ?? null;
+    district = street
+      ? null
+      : (listed.districts.get(locality.id)?.get(item.street) ?? null);
+    if (!street && !district) return drop("street not listed");
+    if (sv === null || !inPost(sv, text)) return drop("not in post");
+  } else if (sv !== null || (locality.kind === "miasto" && !item.whole_town))
+    return drop("street not listed");
+  if (
+    item.whole_town &&
+    !(item.whole_town_verbatim && inPost(item.whole_town_verbatim, text))
+  )
+    return drop("not in post");
+  if (item.note !== null && !inPost(item.note, text))
+    return drop("not in post");
+  return { kept: true, locality, street, district };
 }

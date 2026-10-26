@@ -43,11 +43,14 @@ function stored(id: number, over: Partial<StoredPost> = {}): StoredPost {
 }
 
 const file = (posts: StoredPost[], checkedAt = CHECKED): ZukFile => ({
-  version: 4,
+  version: 5,
   generatedAt: checkedAt,
   checkedAt,
+  gazetteer: null,
   active: posts,
   seen: [],
+  rejected: [],
+  retries: [],
 });
 
 test("no file: empty, the source unavailable, stale", () => {
@@ -70,12 +73,12 @@ test("stale: data last checked more than 60 minutes ago", () => {
   assert.equal(view(0).checkedAt, CHECKED);
 });
 
-test("parse: only a file we wrote, of version 4", () => {
+test("parse: only a file we wrote, of version 5", () => {
   assert.deepEqual(parseZukFile(JSON.stringify(file([]))), file([]));
   assert.equal(parseZukFile("not json"), null);
-  assert.equal(parseZukFile(JSON.stringify({ ...file([]), version: 5 })), null);
+  assert.equal(parseZukFile(JSON.stringify({ ...file([]), version: 6 })), null);
   // Older versions are no file: the cron reads the window afresh.
-  for (const version of [1, 2, 3])
+  for (const version of [1, 2, 3, 4])
     assert.equal(
       parseZukFile(
         JSON.stringify({
@@ -88,6 +91,12 @@ test("parse: only a file we wrote, of version 4", () => {
       null,
     );
   assert.equal(parseZukFile(JSON.stringify({ ...file([]), seen: null })), null);
+  const { rejected: _, ...noRejected } = file([]);
+  assert.equal(parseZukFile(JSON.stringify(noRejected)), null);
+  assert.equal(
+    parseZukFile(JSON.stringify({ ...file([]), gazetteer: 1 })),
+    null,
+  );
   assert.equal(parseZukFile("null"), null);
 });
 
@@ -147,23 +156,91 @@ test("clash: two posts give one place and day different hours", () => {
   ]);
 });
 
-test("change: an earlier post on the same locality becomes a Notice", () => {
-  // 39857 (19 Oct) and a later date-change post on Lisie Jamy.
+test("change: only the earlier cuts at its own places become a Notice", () => {
+  // 39857 (19 Oct: five villages) and a later post changing dates of two
+  // of them (Lisie Jamy, Wólka Krowicka).
   const earlier = stored(39857);
   const change = stored(39855, {
     publishedAt: "2026-10-17 10:00:00",
     change: true,
   });
-  assert.ok(earlier.items.length > 0 && change.items.length > 0);
+  const theirs = new Set(change.items.map((d) => d.place.localityId));
+  assert.deepEqual([...theirs].sort(), ["0606234", "0606441"]);
   const view = zukView(
     file([earlier, change]),
     new Date("2026-10-16T06:00:00Z"),
   );
-  assert.ok(view.disruptions.length > 0);
-  assert.ok(view.disruptions.every((d) => d.uid.startsWith("zuk-39855-")));
+  const shown = (d: { uid: string; place: { localityId: string } }) =>
+    view.disruptions.some((x) => x.uid === d.uid);
+  for (const d of earlier.items)
+    assert.equal(shown(d), !theirs.has(d.place.localityId), d.uid);
+  assert.ok(change.items.every(shown));
   assert.deepEqual(
-    view.notices.map((n) => n.uid),
-    ["zuk-39857"],
+    view.notices.map((n) => [n.uid, n.localityIds]),
+    [["zuk-39857-changed", ["0606234", "0606441"]]],
+  );
+  // A street it gives: only that street's earlier cuts.
+  const street = change.items.find((d) => d.place.streetId !== null);
+  assert.ok(street);
+  const narrow = zukView(
+    file([
+      earlier,
+      { ...change, itemCount: 1, items: [street], localityIds: [] },
+    ]),
+    new Date("2026-10-16T06:00:00Z"),
+  );
+  assert.deepEqual(
+    earlier.items
+      .filter((d) => !narrow.disruptions.some((x) => x.uid === d.uid))
+      .map((d) => d.place.streetId),
+    [street.place.streetId],
+  );
+});
+
+test("change: a post with no cut (a cancellation) falls back to its localities", () => {
+  const earlier = stored(39857);
+  const cancel = stored(39855, {
+    publishedAt: "2026-10-17 10:00:00",
+    change: true,
+    status: "notice",
+    reason: "no items",
+    itemCount: 0,
+    items: [],
+    localityIds: ["0606180"],
+  });
+  const view = zukView(
+    file([earlier, cancel]),
+    new Date("2026-10-16T06:00:00Z"),
+  );
+  assert.ok(view.disruptions.every((d) => d.place.localityId !== "0606180"));
+  assert.ok(view.disruptions.some((d) => d.place.localityId === "0606234"));
+  // A change post whose own cuts are over reaches nothing.
+  const over = { ...cancel, status: "parsed" as const, itemCount: 2 };
+  assert.equal(
+    zukView(file([earlier, over]), new Date("2026-10-16T06:00:00Z")).disruptions
+      .length,
+    earlier.items.length,
+  );
+});
+
+test("is_past: a past post's cuts settle by their own dates, an ongoing one shown", () => {
+  // A failure reported after it started (35661: no start, to 19:00).
+  const failure = stored(35661, {
+    past: true,
+    publishedAt: "2025-12-16 16:01:29",
+  });
+  const during = zukView(file([failure]), new Date("2025-12-16T17:00:00Z"));
+  assert.equal(during.disruptions.length, failure.items.length);
+  assert.deepEqual(ids(settle([failure], "2025-12-16").active), [35661]);
+  // The same as without the flag: it changes nothing a resident sees.
+  const plain = { ...failure, past: undefined };
+  assert.deepEqual(
+    zukView(file([plain]), new Date("2025-12-16T17:00:00Z")),
+    during,
+  );
+  assert.deepEqual(
+    settle([failure], "2025-12-17"),
+    settle([plain], "2025-12-17"),
   );
 });
 
@@ -313,12 +390,14 @@ test("settle: a date-change post stays while it doubts an active post", () => {
   });
   const kept = settle([earlier, change], "2026-10-18");
   assert.deepEqual(ids(kept.active), [39857, 39855]);
-  // Its earlier post still a Notice, not dates, on the page.
+  // Its earlier post's cuts there a Notice, not dates; the rest shown.
   const view = zukView(file(kept.active), new Date("2026-10-18T06:00:00Z"));
-  assert.deepEqual(view.disruptions, []);
+  const there = earlier.items[0].place.localityId;
+  assert.ok(view.disruptions.every((d) => d.place.localityId !== there));
+  assert.ok(view.disruptions.length > 0);
   assert.deepEqual(
     view.notices.map((n) => n.uid),
-    ["zuk-39857"],
+    ["zuk-39857-changed"],
   );
   // 39857's cuts over: neither matters.
   const over = settle([earlier, change], "2026-10-20");

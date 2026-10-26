@@ -13,14 +13,8 @@ import {
   realMzgkimPost,
 } from "./mzgkim-fixture.ts";
 import type { PlaceView } from "./schedule.ts";
-import { mzgkim } from "./sources/mzgkim/index.ts";
 import { MZGKIM, type WaterSourceId } from "./water-sources.ts";
-import {
-  mentionedLocalities,
-  type PostReading,
-  readPost,
-  type ZukPost,
-} from "./zuk.ts";
+import { type PostReading, readPost, type ZukPost } from "./zuk.ts";
 import type { AiResult } from "./zuk-ai.ts";
 import {
   STALE_MS,
@@ -126,8 +120,13 @@ function stored(
     itemCount: parsed.length,
     items: parsed,
     ...own,
-    ...(read.status === "parsed" && read.unmatched
-      ? { unmatched: read.unmatched }
+    ...(read.status === "parsed" && read.rejected.length > 0
+      ? {
+          unmatched: read.rejected.map((r) => ({
+            words: r.words,
+            localityId: r.localityId,
+          })),
+        }
       : {}),
     ...(read.status === "parsed" && read.doubts ? { doubts: read.doubts } : {}),
     ...(post.digest ? { digest: post.digest } : {}),
@@ -145,7 +144,7 @@ export function storedPost(
   const read = readPost(post, reading(id), PLACES, checkedAt);
   return {
     ...stored(post, read, {
-      localityIds: mentionedLocalities(post, PLACES),
+      localityIds: read.localityIds,
       sourceId: "gmina-lubaczow",
     }),
     ...over,
@@ -168,14 +167,17 @@ export function bothViews(
   };
 }
 
-/** A v4 file of `active` posts, checked at `checkedAt`. */
+/** A file of `active` posts, checked at `checkedAt`. */
 export function zukFile(active: StoredPost[], checkedAt: string): ZukFile {
   return {
-    version: 4,
+    version: 5,
     generatedAt: checkedAt,
     checkedAt,
+    gazetteer: null,
     active,
     seen: [],
+    rejected: [],
+    retries: [],
   };
 }
 
@@ -193,7 +195,6 @@ export function mzgkimPost(
 ): StoredPost {
   const read = readPost(post, ai, MZGKIM_PLACES, checkedAt, {
     source: MZGKIM,
-    gate: mzgkim.gate,
   });
   return {
     ...stored(post, read, {
