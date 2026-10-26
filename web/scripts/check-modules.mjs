@@ -28,7 +28,8 @@
 // - a house number on a street with one schedule: both pages say, right
 //   under the h1, that it changes nothing; never on a split street, a
 //   village or without a number;
-// - /woda without a ZUK file: breadcrumbs, h1, the gmina's news, noindex,
+// - /woda without a ZUK file: breadcrumbs, h1, the gmina's news (in the
+//   town, MZGKiM's posts too), noindex,
 //   no calendar button or its help; its woda.ics an empty calendar, noindex (an
 //   unknown address's a 404);
 // - the weather has no subpage: /pogoda is a 404 (check-indexing.mjs reads
@@ -269,10 +270,15 @@ try {
     )
       fail(path, "a calendar or PDF link");
     if (/govuk-notification-banner/.test(hub)) fail(path, "the IMGW banner");
-    // No ZUK file in CI: water first, with the gmina's news only.
+    // No ZUK file in CI: water first, with the gmina's news; in the town,
+    // MZGKiM's posts too.
+    const mzgkim =
+      locality === TOWN
+        ? '; <a href="https://mzgkim.lubaczow.pl/category/komunikaty/" class="govuk-link">komunikaty MZGKiM</a>'
+        : "";
     if (
-      !/<h2 id="bez-zapowiedzi-heading"[^>]*>Bez zapowiedzi<\/h2><p class="govuk-body">Woda: nie udało się nam sprawdzić komunikatów\. Źródło: <a href="https:\/\/www\.gminalubaczow\.pl\/aktualnosci\/" class="govuk-link">aktualności gminy Lubaczów<\/a>\.<\/p>/.test(
-        hub,
+      !hub.includes(
+        `<h2 id="bez-zapowiedzi-heading" class="govuk-heading-l">Bez zapowiedzi</h2><p class="govuk-body">Woda: nie udało się nam sprawdzić komunikatów. Źródło: <a href="https://www.gminalubaczow.pl/aktualnosci/" class="govuk-link">aktualności gminy Lubaczów</a>${mzgkim}.</p>`,
       )
     )
       fail(path, "no „Bez zapowiedzi” line for the water");
@@ -369,7 +375,7 @@ try {
   }
 
   // /woda without a ZUK file (CI): breadcrumbs, caption and h1, the gmina's
-  // news, no checked line; never a search result.
+  // and MZGKiM's news (a town street), no checked line; never a search result.
   const waterPath = `${STREET}/woda`;
   const water = await main(waterPath);
   if (water.status !== 200) fail(waterPath, `${water.status}, want 200`);
@@ -382,9 +388,12 @@ try {
     fail(waterPath, "no caption and h1 „Przerwy w dostawie wody”");
   if (
     !water.main.includes("Nie udało się nam teraz sprawdzić") ||
-    !water.main.includes('href="https://www.gminalubaczow.pl/aktualnosci/"')
+    !water.main.includes('href="https://www.gminalubaczow.pl/aktualnosci/"') ||
+    !water.main.includes(
+      'href="https://mzgkim.lubaczow.pl/category/komunikaty/" class="govuk-link">komunikatów MZGKiM</a>',
+    )
   )
-    fail(waterPath, "no fallback to the gmina's news");
+    fail(waterPath, "no fallback to the gmina's and MZGKiM's news");
   if (water.main.includes("Ostatnio sprawdziliśmy"))
     fail(waterPath, "a checked line without a file");
   if (!/<meta name="robots" content="noindex/.test(water.html))

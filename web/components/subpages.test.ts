@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -12,8 +13,15 @@ import {
   testPlace,
   zukFile,
 } from "../lib/water-fixture.ts";
-import { water } from "../lib/water-module.ts";
-import { zukView } from "../lib/zuk-data.ts";
+import {
+  water,
+  waterAlerts,
+  waterNone,
+  waterSources,
+  waterSummary,
+  waterTrace,
+} from "../lib/water-module.ts";
+import { STALE_MS, zukView } from "../lib/zuk-data.ts";
 import { Trace } from "./hub.tsx";
 import { WasteDetails } from "./place-page.tsx";
 import { CALENDAR_CHECK, CALENDAR_STEPS } from "./subpage-parts.tsx";
@@ -120,7 +128,7 @@ test("/woda: the AI note in a warning text, the source in an inset", () => {
   );
   assert.match(
     html,
-    /<div class="govuk-inset-text"><p class="govuk-body">Źródło: <a href="https:\/\/www\.gminalubaczow\.pl\/[^"]+" class="govuk-link">Komunikat gminy z 23 października 2026<\/a><\/p><\/div>/,
+    /<div class="govuk-inset-text"><p class="govuk-body">Źródło: <a href="https:\/\/www\.gminalubaczow\.pl\/[^"]+" class="govuk-link">Komunikat gminy z 23 października 2026<\/a><\/p><p class="govuk-body">Źródło: <a href="https:\/\/mzgkim\.lubaczow\.pl\/category\/komunikaty\/" class="govuk-link">komunikaty MZGKiM<\/a><\/p><\/div>/,
   );
   // The source is no longer a row of the cut.
   assert.doesNotMatch(html, /summary-list__key">Źródło/);
@@ -324,5 +332,112 @@ test("a number outside a cut's range: one trace line, hub and /woda", () => {
     const html = waterPage(posts, sobieskiego(nr));
     assert.doesNotMatch(html, /Gmina zapowiedziała też/);
     assert.match(html, /od nr 23 do nr 47/);
+  }
+});
+
+// Smolińce, a part of Lisie Jamy: outside MZGKiM's area, so its pages are
+// as before task 148, byte for byte (digests of the HTML before it).
+const SMOLINCE = testPlace({
+  id: "0606257",
+  kind: "wies",
+  name: "Smolińce",
+  label: "Smolińce",
+  group: "0606257",
+  gmina: "Lubaczów (gmina)",
+  localityId: "0606257",
+  streetId: null,
+});
+const GMINA = [
+  {
+    href: "https://www.gminalubaczow.pl/aktualnosci/",
+    text: "aktualności gminy Lubaczów",
+  },
+];
+
+test("village: the hub's water and /woda unchanged in every state", () => {
+  const late = new Date(Date.parse(CHECKED) + STALE_MS + 1);
+  const states = {
+    cut: zukView(zukFile([storedPost(POST_39885, CHECKED)], CHECKED), NOW),
+    none: zukView(zukFile([], CHECKED), NOW),
+    stale: zukView(zukFile([], CHECKED), late),
+    unavailable: zukView(null, NOW),
+  };
+  const hub = {
+    cut: [
+      [
+        {
+          text: "przerwa w dostawie – poniedziałek, 26 października, 8:00–16:00 (i jeszcze 1 dzień).",
+          href: "/adres/0606257/woda",
+          link: "Więcej o tej przerwie",
+          short: "ZUK Mokrzyca",
+          from: "2026-10-26T08:00:00+01:00",
+        },
+      ],
+      [
+        ["Najbliższa przerwa", ["poniedziałek, 26 października, 8:00–16:00"]],
+        ["Gdzie", ["cała miejscowość Lisie Jamy"]],
+        ["Kolejne", ["czwartek, 29 października"]],
+      ],
+      "brak zapowiedzianych przerw w dostawie",
+      [
+        [
+          {
+            href: "https://www.gminalubaczow.pl/2026/10/23/przerwy-w-dostawie-wody-26-29-10-2026/",
+            text: "Komunikat gminy z 23 października 2026",
+          },
+        ],
+      ],
+      null,
+    ],
+    none: [[], null, "brak zapowiedzianych przerw w dostawie", [GMINA], null],
+    stale: [
+      [],
+      null,
+      "brak zapowiedzianych przerw przy ostatnim sprawdzeniu, ale od ponad godziny nie udało się nam sprawdzić nowych",
+      [GMINA],
+      null,
+    ],
+    unavailable: [
+      [],
+      null,
+      "nie udało się nam sprawdzić komunikatów",
+      [GMINA],
+      null,
+    ],
+  };
+  const page = {
+    cut: "9d29940dada1ef5f20d6be7cfb33d8120bacd5b8d19c18b5dad8b3f7be66ca14",
+    none: "07689c52e94108d4dbaf3eb0e947833e9d7088442cfe2ab552d191d63a89ddfd",
+    stale: "30c28ea4f69209a99936fecba964463b708a45f1e1493e91bccd899a18a877e6",
+    unavailable:
+      "4934b50c0fbd811a9c8ba044d176f13fcdb209feb183368a801b8f88e034c21c",
+  };
+  for (const [state, view] of Object.entries(states) as Array<
+    [keyof typeof states, (typeof states)[keyof typeof states]]
+  >) {
+    const data = water(view, SMOLINCE);
+    assert.deepEqual(
+      [
+        waterAlerts(data),
+        waterSummary(data),
+        waterNone(data),
+        waterSources(data),
+        waterTrace(data),
+      ],
+      hub[state],
+      state,
+    );
+    const html = renderToStaticMarkup(
+      createElement(WaterDetails, {
+        data,
+        checkedAt: view.checkedAt ? new Date(view.checkedAt) : null,
+      }),
+    );
+    assert.doesNotMatch(html, /MZGKiM/, state);
+    assert.equal(
+      createHash("sha256").update(html).digest("hex"),
+      page[state],
+      `${state}: ${html}`,
+    );
   }
 });
