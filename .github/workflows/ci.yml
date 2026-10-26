@@ -104,7 +104,7 @@ jobs:
         run: node ../design/contrast.mjs
 
       - name: Database (migrate + seed)
-        run: npm run db:migrate && npm run db:ci-fixture
+        run: npm run db:migrate && npm run db:ci-fixture && npm run db:districts -- --apply && npm run db:districts -- --expect-no-changes
 
       - name: Build
         run: npm run build
@@ -321,7 +321,7 @@ jobs:
           key: brand-assets-${{ hashFiles('web/lib/palette.ts', 'web/lib/logo.ts', 'web/lib/theme.ts', 'web/lib/govuk-colours.ts', 'web/lib/waste-colours.ts', 'web/lib/brand/*.svg', 'web/scripts/brand-assets.ts', 'web/package-lock.json') }}
 
       - name: Database (migrate + seed)
-        run: npm run db:migrate && npm run db:ci-fixture
+        run: npm run db:migrate && npm run db:ci-fixture && npm run db:districts -- --apply && npm run db:districts -- --expect-no-changes
 
       - name: Build
         run: npm run build
