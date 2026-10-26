@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { WATER } from "./headers.ts";
 import { WP_POSTS } from "./sources/gmina-lubaczow/fetch.ts";
 import { systemPrompt } from "./sources/gmina-lubaczow/prompt.ts";
 import type { ZukPost } from "./zuk.ts";
@@ -43,6 +44,8 @@ type World = {
   /** The model's reading of a post, where not its fixture's. */
   readings: Record<number, AiResult>;
   logs: Array<Record<string, unknown>>;
+  /** Every cache tag purged (revalidateTag), in order. */
+  purges: string[];
 };
 
 function world(over: Partial<World> = {}): World {
@@ -57,6 +60,7 @@ function world(over: Partial<World> = {}): World {
     now: NOW,
     readings: {},
     logs: [],
+    purges: [],
     ...over,
   };
 }
@@ -74,6 +78,7 @@ function deps(w: World): ZukCronDeps {
       w.writes.push(body);
       w.file = body;
     },
+    purge: (tag) => w.purges.push(tag),
     places: async () => {
       w.placesLoads++;
       return PLACES;
@@ -118,6 +123,14 @@ const saved = (w: World): ZukFile => {
 const byId = (w: World, id: number) => saved(w).active.find((p) => p.id === id);
 const seenOf = (w: World, id: number) => saved(w).seen.find((p) => p.id === id);
 const ids = (posts: Array<{ id: number }>) => posts.map((p) => p.id);
+const cron = (w: World, over: Partial<ZukCronDeps> = {}) =>
+  handleZukCron(
+    new Request("https://conaulicy.pl/api/cron/zuk", {
+      headers: { authorization: `Bearer ${SECRET}` },
+    }),
+    SECRET,
+    { ...deps(w), ...over },
+  );
 
 test("auth: Vercel Cron's bearer secret, nothing else", async () => {
   const w = world();
@@ -284,6 +297,70 @@ test("unchanged posts: every run writes a new checkedAt, generatedAt kept", asyn
     assert.equal(saved(w).checkedAt, w.now.toISOString());
     assert.equal(saved(w).generatedAt, generated);
   }
+});
+
+test("purge: a run that changes the file purges WATER once, after the write", async () => {
+  const w = world();
+  const order: string[] = [];
+  const response = await cron(w, {
+    writeFile: async (body) => {
+      order.push("write");
+      w.file = body;
+    },
+    purge: (tag) => {
+      order.push(`purge ${tag}`);
+      w.purges.push(tag);
+    },
+  });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).changed, true);
+  assert.deepEqual(w.purges, [WATER]);
+  assert.deepEqual(order, ["write", `purge ${WATER}`]);
+  // An edited post read again: purged once more, never DATASET.
+  w.purges = [];
+  w.posts = RECENT.map((p) =>
+    p.id === 39885 ? { ...p, modified: "2026-10-24T09:00:00" } : p,
+  );
+  w.now = new Date(NOW.getTime() + 15 * 60_000);
+  await cron(w);
+  assert.deepEqual(w.purges, [WATER]);
+});
+
+test("purge: an unchanged run, only checkedAt new, purges nothing", async () => {
+  const w = world();
+  await cron(w);
+  await cron(w);
+  for (const minutes of [15, 30, 45]) {
+    w.purges = [];
+    w.writes = [];
+    w.now = new Date(NOW.getTime() + minutes * 60_000);
+    const response = await cron(w);
+    assert.equal((await response.json()).changed, false);
+    assert.equal(w.writes.length, 1);
+    assert.equal(saved(w).checkedAt, w.now.toISOString());
+    assert.deepEqual(w.purges, []);
+  }
+});
+
+test("purge: the write fails, nothing purged", async () => {
+  const w = world();
+  const response = await cron(w, {
+    writeFile: async () => {
+      throw new Error("blob: 503");
+    },
+  });
+  assert.equal(response.status, 500);
+  assert.deepEqual(w.purges, []);
+});
+
+test("purge: the gmina's site down, nothing written or purged", async () => {
+  const w = world();
+  await cron(w);
+  w.purges = [];
+  w.posts = "down";
+  w.now = new Date(NOW.getTime() + 15 * 60_000);
+  assert.equal((await cron(w)).status, 502);
+  assert.deepEqual(w.purges, []);
 });
 
 test("an edited post is read again", async () => {

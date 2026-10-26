@@ -37,8 +37,13 @@ minutes into one JSON file in Vercel Blob. No database writes, no UI yet.
 5. Drops cuts that are over (`itemCount` keeps how many were read), sorts
    the posts into `active` and `seen` (below) and writes the file on every
    run: `checkedAt` is this run (the pages' „Ostatnio sprawdziliśmy”),
-   `generatedAt` the last run that changed its content. About 96 small
-   Blob writes a day.
+   `generatedAt` the last run that changed its content (every `checkedAt`
+   in it aside). About 96 small Blob writes a day.
+6. Only a run that changed the content purges the `water` cache tag
+   (`revalidateTag("water", { expire: 0 })`, `lib/headers.ts`), after the
+   write: the file's cached copy and every response tagged with it, below.
+   Never `dataset`: the waste data did not change. An unchanged run, or one
+   that wrote nothing, purges nothing.
 
 The gmina's site down: 502, the file and its `checkedAt` stay, and it turns
 stale after an hour. xAI down: a new
@@ -102,6 +107,17 @@ wording stays in `where` (its street, else its locality, as written) and
 `note`. Pages read the file through `lib/zuk-store.ts` `getZukData()`; data last
 checked more than 60 minutes ago is `stale`, so a page shows the source link
 instead.
+
+**Caching.** `getZukData()` keeps the file in Next's data cache for 10
+minutes, tagged `water`; each refill reads the Blob's origin, not its CDN
+copy. The tag is also on every page rendered from it (their ISR entries:
+`/adres/[id]` and `/adres/[id]/woda`, with or without a house number) and,
+as `Vercel-Cache-Tag: dataset,water`, on the calendar file
+`/adres/[id]/woda.ics` (CDN: an hour, a day stale-while-revalidate). So a
+changed file reaches them on the next request after the run; an unchanged
+run purges nothing, and „Ostatnio sprawdziliśmy” there lags by up to those
+cache ages, as before.
+
 With a house number (`?nr=`), a cut by house ranges or numbers that clearly
 leaves it out is not shown, on the page or in its calendar file, and the page
 says one was left out (`lib/water-module.ts` `outsideRange`); anything we

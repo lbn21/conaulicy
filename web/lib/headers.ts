@@ -1,6 +1,16 @@
 // Response header values sent from more than one place. No imports, so
 // proxy.ts and next.config.ts can read it too.
 
+/**
+ * Cache tags: Next's data cache and, sent as Vercel-Cache-Tag
+ * (lib/gate.ts datasetHeaders), the CDN copies. DATASET: every database
+ * read, purged by an import (app/api/revalidate). WATER: the ZUK file and
+ * every response that shows water data, purged by the ZUK cron when the
+ * file's content changed (lib/zuk-cron.ts).
+ */
+export const DATASET = "dataset";
+export const WATER = "water";
+
 /** Kept by no cache: answers that must never be reused. */
 export const NO_STORE = { "Cache-Control": "no-store" };
 

@@ -1,6 +1,5 @@
 import { revalidateTag } from "next/cache";
-import { NO_STORE } from "@/lib/headers";
-import { DATASET } from "@/lib/schedule";
+import { DATASET, NO_STORE } from "@/lib/headers";
 import { sameSecret } from "@/lib/secret";
 
 // Called after an import: drops every cached database read, so the next

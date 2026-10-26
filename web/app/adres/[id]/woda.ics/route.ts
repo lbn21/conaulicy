@@ -1,5 +1,5 @@
 import { datasetHeaders } from "@/lib/gate";
-import { TEXT_PLAIN } from "@/lib/headers";
+import { TEXT_PLAIN, WATER } from "@/lib/headers";
 import { calendarResponse } from "@/lib/ics";
 import { NOINDEX } from "@/lib/indexing";
 import { movedTarget } from "@/lib/schedule";
@@ -9,7 +9,8 @@ import { loadWater } from "@/lib/water-load";
 // The water cuts at an address as a calendar file (lib/water-ics.ts), from
 // the /woda page's own loader. An address with no cut to add gets an empty
 // calendar, as a waste zone with no dates does (app/ics/[zoneId]); an
-// unknown one a 404, a renamed one its new address.
+// unknown one a 404, a renamed one its new address. The calendar is tagged
+// WATER too, so the ZUK cron's purge reaches its CDN copy.
 
 // A redirect or a 404: an hour at the CDN, without stale-while-revalidate.
 const NO_STALE = "public, s-maxage=3600";
@@ -38,7 +39,7 @@ export async function GET(
     waterCalendar(data, new Date()),
     waterFilename(data),
     {
-      ...datasetHeaders(),
+      ...datasetHeaders(undefined, WATER),
       ...NOINDEX,
     },
   );
