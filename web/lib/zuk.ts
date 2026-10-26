@@ -188,6 +188,7 @@ function itemPlaces(
       others,
       claimed,
       ctx.text,
+      item.date,
     );
     if (left) return fail(left);
   }

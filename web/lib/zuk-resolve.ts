@@ -118,7 +118,7 @@ const WEEKDAYS = [
   "sobota",
   "niedziela",
 ];
-const MONTHS = [
+export const MONTHS = [
   "stycznia",
   "lutego",
   "marca",
