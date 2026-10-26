@@ -18,9 +18,10 @@
 // answers 200 with no noindex (meta or X-Robots-Tag), canonicalises to
 // itself, and has a title of its own. 404s (an unknown path, unknown
 // addresses) are whole pages in the raw HTML, no JS needed: status 404, the
-// layout (lang, stylesheet), GOV.UK's "page not found" H1, one robots meta,
-// noindex, and no description; an unknown module (/adres/<id>/<slug>) and
-// one without a subpage (/pogoda) too.
+// layout (lang, stylesheet), GOV.UK's "page not found" H1, its link home
+// („Przejdź na stronę główną”), one robots meta, noindex, and no
+// description; an unknown module (/adres/<id>/<slug>) and one without a
+// subpage (/pogoda) too.
 //
 // Runs against `next start` on the current build and the CI fixture.
 import { readFileSync } from "node:fs";
@@ -253,6 +254,7 @@ try {
       '<h1 class="govuk-heading-l">Nie znaleziono strony</h1>',
       "<title>Nie znaleziono strony – conaulicy.pl</title>",
       'href="mailto:kontakt@conaulicy.pl"',
+      '<a href="/" class="govuk-link">Przejdź na stronę główną</a>',
     ].filter((part) => !html.includes(part));
     if (
       response.status !== 404 ||

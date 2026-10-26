@@ -13,11 +13,14 @@
 // exactly (TITLES). The share title is the same, and the share name
 // conaulicy.pl. The home page's Apple web-app tags (a "default" status bar,
 // never black-translucent) and the manifest's id, scope, display and icons.
+// The home page's copy (task 137): its exact H1, a description that leads
+// with the waste, and no "prąd" in its HTML or the manifest (no power data).
 //
 // Runs against `next start` on the current build.
 import { finish, ROUTES, startServer } from "./lib/server.mjs";
 
 const SITE = "https://conaulicy.pl";
+const HOME_H1 = "Sprawdź swoją ulicę w Lubaczowie i gminie";
 const STATIC = ["/", "/ulice", "/dostepnosc", "/prywatnosc", "/o-projekcie"];
 // A town street, a village's street, a whole village, on each kind of page.
 const TITLES = {
@@ -184,9 +187,20 @@ try {
   }
   if (home.includes("black-translucent"))
     failures.push("/: black-translucent in the HTML");
-  const manifest = await (
+  const homeH1 = all(home, /<h1[^>]*>([\s\S]*?)<\/h1>/g).map((text) =>
+    decode(text.replace(/<[^>]*>/g, "")).trim(),
+  );
+  if (homeH1[0] !== HOME_H1)
+    failures.push(`/: H1 ${JSON.stringify(homeH1)}, want ${HOME_H1}`);
+  const homeDescription = meta(home, "name", "description").map(decode);
+  if (!homeDescription[0]?.startsWith("Wywóz śmieci"))
+    failures.push(`/: description ${JSON.stringify(homeDescription)}`);
+  if (/prąd/i.test(home)) failures.push("/: „prąd” in the HTML");
+  const manifestText = await (
     await fetch(`${server.origin}/manifest.webmanifest`)
-  ).json();
+  ).text();
+  if (/prąd/i.test(manifestText)) failures.push("manifest: „prąd”");
+  const manifest = JSON.parse(manifestText);
   for (const [key, want] of [
     ["id", "/"],
     ["scope", "/"],

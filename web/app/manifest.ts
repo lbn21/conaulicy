@@ -10,7 +10,7 @@ import { BACKGROUND_COLOR, THEME_COLOR } from "@/lib/theme";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: `${SITE_NAME} – wywóz śmieci w Lubaczowie i gminie`,
+    name: `${SITE_NAME} – Twoja ulica w Lubaczowie i gminie`,
     short_name: SITE_NAME,
     lang: LANG,
     start_url: "/",

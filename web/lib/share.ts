@@ -7,7 +7,7 @@ const SHARE_IMAGE = {
   url: "/og.png",
   width: 1200,
   height: 630,
-  alt: "conaulicy.pl: wywozy śmieci przy Twojej ulicy. Lubaczów i gmina.",
+  alt: "conaulicy.pl: sprawdź swoją ulicę. Wywóz śmieci, przerwy w dostawie wody i ostrzeżenia IMGW. Lubaczów i gmina.",
 };
 
 /** The service's one name: in every title, the header and share tags. */
@@ -18,10 +18,10 @@ function pageTitle(h1: string): string {
   return `${h1} – ${SITE_NAME}`;
 }
 
-/** The home page's H1, and the link back to it from a missing page. */
-export const HOME_H1 = "Sprawdź dzień wywozu śmieci";
+/** The home page's H1. */
+export const HOME_H1 = "Sprawdź swoją ulicę w Lubaczowie i gminie";
 
-/** The home page's title, and every page's without one of its own. */
+/** The home page's title (GOV.UK: its H1, then the service). */
 export const HOME_TITLE = pageTitle(HOME_H1);
 
 /** The layout's share metadata: every page's image, name and language. */

@@ -6,7 +6,7 @@ import { WebAnalytics } from "@/components/web-analytics";
 import { SITE_URL } from "@/lib/config.generated";
 import { indexable } from "@/lib/indexing";
 import { LANG } from "@/lib/locale";
-import { HOME_TITLE, SHARE, SITE_NAME } from "@/lib/share";
+import { SHARE, SITE_NAME } from "@/lib/share";
 import { THEME_COLOR } from "@/lib/theme";
 import { atkinson } from "./fonts";
 import "./tokens.css";
@@ -18,11 +18,13 @@ export const metadata: Metadata = {
   // Share images and canonical links always point at the permanent address.
   metadataBase: new URL(SITE_URL),
   title: {
-    default: HOME_TITLE,
+    // A neutral fallback: a page without its own title never shows the
+    // home page's H1. Every route sets its own today.
+    default: SITE_NAME,
     template: `%s – ${SITE_NAME}`,
   },
   description:
-    "Kiedy przyjeżdża śmieciarka na Twoją ulicę w Lubaczowie albo do Twojej wsi w gminie.",
+    "Wywóz śmieci, zapowiedziane przerwy w dostawie wody i ostrzeżenia IMGW dla Lubaczowa i wsi w gminie Lubaczów.",
   ...SHARE,
   // "default" on purpose; black-translucent is deprecated by Apple (WebKit
   // bug 317153), never restore it. The bar takes the page's colour: see

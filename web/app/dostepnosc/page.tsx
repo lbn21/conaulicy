@@ -33,8 +33,8 @@ export default function AccessibilityPage() {
                   px), do tego mocny kontrast.
                 </li>
                 <li>
-                  Przyciski i pola do wpisywania duże na tyle, żeby trafić w nie
-                  palcem (40 px wysokości).
+                  Przyciski i pola do wpisywania są na tyle duże, żeby trafić w
+                  nie palcem (40 px wysokości).
                 </li>
                 <li>
                   Projektujemy od ekranu telefonu o szerokości 360 px i z myślą

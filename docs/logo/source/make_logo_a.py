@@ -425,8 +425,8 @@ def og_flat(mode="light"):
     tx = px + W + 70
     # The name grows with the wordmark (task 93), on the same baseline.
     d1, _, _ = run(BOLD, "conaulicy.pl", 92 * WORD["scale"], tx, 262, WORD_KERN)
-    d2, _, _ = run(REGULAR, "Wywozy śmieci", 52, tx, 350)
-    d3, _, _ = run(REGULAR, "przy Twojej ulicy.", 52, tx, 416)
+    d2, _, _ = run(REGULAR, "Sprawdź swoją ulicę", 52, tx, 350)
+    d3, _, _ = run(REGULAR, "śmieci, woda i IMGW", 52, tx, 416)
     d4, _, _ = run(REGULAR, "Lubaczów i gmina", 34, tx, 492)
     body = (
         f'<rect width="{w}" height="{h}" fill="{c["bg"]}"/>'
@@ -435,7 +435,7 @@ def og_flat(mode="light"):
         f'<path fill="{c["lines"]}" d="{d2}"/><path fill="{c["lines"]}" d="{d3}"/>'
         f'<path fill="{c["small"]}" d="{d4}"/>'
     )
-    return svg(w, h, body, defs=mask, title="conaulicy.pl: wywozy śmieci przy Twojej ulicy")
+    return svg(w, h, body, defs=mask, title="conaulicy.pl: sprawdź swoją ulicę – śmieci, woda i ostrzeżenia IMGW")
 
 
 # ---------------------------------------------------------------- debug
