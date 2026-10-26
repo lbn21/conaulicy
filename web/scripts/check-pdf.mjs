@@ -285,6 +285,14 @@ try {
       `${p}: Vercel-Cache-Tag ${response.headers.get("vercel-cache-tag")}, expected dataset`,
     );
   }
+  // The waste calendar's file is named after the calendar, not the zone id.
+  const ics = await fetch(`${server.origin}/ics/waste%3Amiasto-s1`);
+  await ics.arrayBuffer();
+  const disposition = ics.headers.get("content-disposition");
+  check(
+    disposition === 'inline; filename="wywoz-smieci-lubaczow-sektor-1.ics"',
+    `/ics/waste%3Amiasto-s1: Content-Disposition ${disposition}`,
+  );
   console.log(`ok    cache tag on ${TAGGED.length} responses`);
 } finally {
   server.stop();

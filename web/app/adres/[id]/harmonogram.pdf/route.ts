@@ -20,7 +20,7 @@ import {
   UL_SHIFT,
   WORDMARK,
 } from "@/lib/logo";
-import { normalize } from "@/lib/normalize";
+import { fileSlug } from "@/lib/normalize";
 import { type Block, flow, type Spot } from "@/lib/pdf-flow";
 import {
   getPlace,
@@ -1333,10 +1333,6 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   return done;
 }
 
-function slug(text: string): string {
-  return normalize(text).replaceAll(" ", "-");
-}
-
 // A redirect or a 404: an hour at the CDN, without stale-while-revalidate.
 const NO_STALE = "public, s-maxage=3600";
 
@@ -1374,7 +1370,7 @@ export async function GET(
     headers: {
       "Content-Type": "application/pdf",
       // With a house number: in the file name too.
-      "Content-Disposition": `inline; filename="harmonogram-${slug(withHouseNumber(place.label, place.nr))}.pdf"`,
+      "Content-Disposition": `inline; filename="harmonogram-${fileSlug(withHouseNumber(place.label, place.nr))}.pdf"`,
       ...datasetHeaders(),
       ...NOINDEX,
     },

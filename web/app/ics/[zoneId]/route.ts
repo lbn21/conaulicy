@@ -13,6 +13,7 @@ import {
 import { NOINDEX } from "@/lib/indexing";
 import { getZone } from "@/lib/schedule";
 import { DISCLAIMER, putOutNote } from "@/lib/schedule-notes";
+import { wasteCalendarName, wasteFilename } from "@/lib/waste-ics";
 
 export async function GET(
   _request: Request,
@@ -29,7 +30,7 @@ export async function GET(
 
   const stamp = icsUtc(new Date());
   const lines = [
-    ...calendarHead("Wywoz smieci", `Wywóz śmieci – ${zone.name}`),
+    ...calendarHead("Wywoz smieci", wasteCalendarName(zone.name)),
     `X-WR-TIMEZONE:${WARSAW}`,
   ];
 
@@ -56,8 +57,7 @@ export async function GET(
     );
   }
 
-  const filename = `wywoz-${zone.id.replace(/[^a-z0-9-]+/gi, "-")}.ics`;
-  return calendarResponse(calendarBody(lines), filename, {
+  return calendarResponse(calendarBody(lines), wasteFilename(zone.name), {
     ...datasetHeaders(),
     ...NOINDEX,
   });

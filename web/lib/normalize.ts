@@ -2,8 +2,8 @@
 // The search matcher (lib/search.ts) normalizes labels and queries with it,
 // on the device over the cached index and on the server for /api/search and
 // /szukaj. The importer and the CI fixture store normalize(label) per place
-// (lib/schedule.ts orders its place queries by it); the PDF builds its
-// file name with it.
+// (lib/schedule.ts orders its place queries by it); fileSlug turns it into
+// the PDF's and both calendars' file names.
 
 const DIACRITICS: Record<string, string> = {
   ą: "a",
@@ -25,4 +25,9 @@ export function normalize(text: string): string {
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+}
+
+/** A file name's words: "wywoz-smieci-gmina-lubaczow-sektor-1", ≤ 80 chars. */
+export function fileSlug(text: string): string {
+  return normalize(text).replaceAll(" ", "-").slice(0, 80).replace(/-+$/, "");
 }
