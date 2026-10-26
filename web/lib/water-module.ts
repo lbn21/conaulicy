@@ -15,6 +15,10 @@
 // it out is not shown (outsideRange), and the page says one was left out.
 // Anything we cannot compare (no number, parity, "w części", an odd bound, a
 // village's range where its streets number on their own) is always shown.
+//
+// In the town and its parts, MZGKiM supplies most of the water and posts
+// its own cuts, which we do not read yet: there the texts say so and link
+// its posts too. ZUK's cuts in the town are shown as anywhere else.
 import type { PlaceView } from "@/lib/schedule";
 import { longDate } from "./date-labels.ts";
 import { absoluteDay, warsawToIso } from "./dates.ts";
@@ -30,6 +34,12 @@ const gminaNews = {
   href: GMINA_NEWS,
   text: "aktualności gminy Lubaczów",
 };
+
+/** MZGKiM's posts: where the town's water cuts appear. */
+export const MZGKIM_NEWS = "https://mzgkim.lubaczow.pl/category/komunikaty/";
+const mzgkimNews = { href: MZGKIM_NEWS, text: "komunikaty MZGKiM" };
+/** The same, after „do”. */
+const mzgkimNewsOf = { href: MZGKIM_NEWS, text: "komunikatów MZGKiM" };
 
 /** The source, short, after an alert. */
 const SHORT = "ZUK Mokrzyca";
@@ -56,6 +66,20 @@ type Address = Pick<PlaceView, "localityId" | "streetId">;
 const PARENT = new Map<string, string>();
 for (const l of ZUK_PLACES.localities)
   if (l.parentId) PARENT.set(l.id, l.parentId);
+
+/** The town and its parts, from TERYT: MZGKiM's area. */
+const TOWNS = new Set(
+  ZUK_PLACES.localities.filter((l) => l.kind === "miasto").map((l) => l.id),
+);
+const TOWN = new Set(
+  ZUK_PLACES.localities
+    .filter((l) => TOWNS.has(l.id) || TOWNS.has(l.parentId ?? ""))
+    .map((l) => l.id),
+);
+
+/** Whether the address is in the town or one of its parts. */
+export const inTown = (data: Pick<Water, "place">) =>
+  TOWN.has(data.place.localityId);
 
 /** Whether a cut applies to the address (see the top of this file). */
 export function matches(address: Address, cut: Disruption): boolean {
@@ -260,6 +284,7 @@ export function staleNote(data: Water): Part[] | null {
   return [
     "Od ponad godziny nie udało się nam sprawdzić nowych komunikatów. Zajrzyj też do ",
     gminaNews,
+    ...(inTown(data) ? [" i ", mzgkimNewsOf] : []),
     ".",
   ];
 }
@@ -293,9 +318,28 @@ export function waterSummary(data: Water): SummaryRow[] | null {
 export const WATER_AI_NOTE =
   "Te daty i godziny odczytaliśmy automatycznie z komunikatu gminy i nikt ich jeszcze nie sprawdził drugi raz. Gdyby coś się nie zgadzało, rację ma komunikat gminy.";
 
-/** The subpage with no cut here: why, then the gmina's news; else null. */
+/**
+ * The subpage with no cut here: why, then the gmina's news (in the town,
+ * MZGKiM's posts too); else null.
+ */
 export function waterEmpty(data: Water): Part[] | null {
   if (data.outages.length > 0) return null;
+  if (data.unavailable && inTown(data))
+    return [
+      "Nie udało się nam teraz sprawdzić komunikatów o wodzie. Zajrzyj do ",
+      gminaNews,
+      " i ",
+      mzgkimNewsOf,
+      ".",
+    ];
+  if (inTown(data))
+    return [
+      "Gmina nie zapowiada przerw pod tym adresem. W mieście przerwy w dostawie wody ogłasza też MZGKiM, a jego komunikatów jeszcze tu nie pokazujemy. Sprawdź ",
+      mzgkimNews,
+      " i ",
+      gminaNews,
+      ".",
+    ];
   return [
     data.unavailable
       ? "Nie udało się nam teraz sprawdzić komunikatów o wodzie. Zajrzyj do "
@@ -318,6 +362,8 @@ export function waterNone(data: Water): string {
   if (data.unavailable) return "nie udało się nam sprawdzić komunikatów";
   if (data.stale)
     return "brak zapowiedzianych przerw przy ostatnim sprawdzeniu, ale od ponad godziny nie udało się nam sprawdzić nowych";
+  if (inTown(data))
+    return "gmina nie zapowiada przerw, ale w mieście przerwy ogłasza też MZGKiM – tych komunikatów jeszcze nie sprawdzamy";
   return "brak zapowiedzianych przerw w dostawie";
 }
 
@@ -331,14 +377,18 @@ function postLink(item: Pick<Disruption, "source" | "publishedAt">) {
 
 /**
  * „Źródło”: each post a cut or notice here comes from; without one, the
- * gmina's news. When it was checked: the module's checked line.
+ * gmina's news. In the town, MZGKiM's posts last. When it was checked: the
+ * module's checked line.
  */
 export function waterSources(data: Water): Part[][] {
   const posts = new Map<string, Part>();
   for (const item of [...data.outages, ...data.notices])
     if (!posts.has(item.source.url)) posts.set(item.source.url, postLink(item));
-  if (posts.size === 0) return [[gminaNews]];
-  return [...posts.values()].map((link) => [link]);
+  const sources =
+    posts.size === 0
+      ? [[gminaNews]]
+      : [...posts.values()].map((link) => [link]);
+  return inTown(data) ? [...sources, [mzgkimNews]] : sources;
 }
 
 /** The last read of the gmina's posts; null without a file. */

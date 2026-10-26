@@ -16,6 +16,8 @@ import {
 } from "./water-fixture.ts";
 import {
   GMINA_NEWS,
+  inTown,
+  MZGKIM_NEWS,
   matches,
   outsideRange,
   scope,
@@ -75,6 +77,27 @@ const PILIPY_PART = place({
   localityId: "0606300",
   streetId: null,
 });
+
+// Smolińce, a part of Lisie Jamy: a village, outside MZGKiM's area.
+const SMOLINCE = place({
+  id: "0606257",
+  kind: "wies",
+  name: "Smolińce",
+  localityId: "0606257",
+  streetId: null,
+});
+// Mazury, a part of the town.
+const MAZURY = place({
+  id: "0972453",
+  kind: "wies",
+  name: "Mazury",
+  localityId: "0972453",
+  streetId: null,
+});
+
+const GMINA = { href: GMINA_NEWS, text: "aktualności gminy Lubaczów" };
+const MZGKIM = { href: MZGKIM_NEWS, text: "komunikaty MZGKiM" };
+const MZGKIM_OF = { href: MZGKIM_NEWS, text: "komunikatów MZGKiM" };
 
 const post = (over: Partial<StoredPost> = {}) =>
   storedPost(POST_39885, CHECKED, over);
@@ -166,13 +189,6 @@ test("matching: a village part never takes its village's partial cuts", () => {
 });
 
 test("matching: 39885's whole villages reach their parts, one cut a day", () => {
-  const SMOLINCE = place({
-    id: "0606257",
-    kind: "wies",
-    name: "Smolińce",
-    localityId: "0606257",
-    streetId: null,
-  });
   const BASZNIA = place({
     id: "0605909",
     kind: "wies",
@@ -511,27 +527,98 @@ test("card: the cut, where, as written, and the post as its source", () => {
     ["Gdzie", ["cała miejscowość Lisie Jamy"]],
     ["Kolejne", ["czwartek, 29 października"]],
   ]);
-  assert.deepEqual(waterSources(waterAt(ZUKI)), [
+  assert.deepEqual(waterSources(waterAt(LISIE_JAMY_CICHA)), [
     [{ href: POST_URL, text: "Komunikat gminy z 23 października 2026" }],
   ]);
 });
 
 test("no cut here: no card, „Bez zapowiedzi” with the gmina's news", () => {
-  const data = waterAt(ASNYKA);
+  const data = waterAt(SMOLINCE, []);
   assert.equal(waterSummary(data), null);
   assert.equal(waterNone(data), "brak zapowiedzianych przerw w dostawie");
-  assert.deepEqual(waterSources(data), [
-    [{ href: GMINA_NEWS, text: "aktualności gminy Lubaczów" }],
-  ]);
+  assert.deepEqual(waterSources(data), [[GMINA]]);
 });
 
 test("/woda empty: a warm sentence and the gmina's news; none with a cut", () => {
-  assert.deepEqual(waterEmpty(waterAt(ASNYKA)), [
+  assert.deepEqual(waterEmpty(waterAt(SMOLINCE, [])), [
     "Nie wiemy o żadnej zapowiedzianej przerwie w dostawie wody pod tym adresem. Gmina ogłasza je w ",
-    { href: GMINA_NEWS, text: "aktualności gminy Lubaczów" },
+    GMINA,
     ".",
   ]);
   assert.equal(waterEmpty(waterAt(ZUKI)), null);
+});
+
+test("town: the town and its parts from TERYT, never a village or its part", () => {
+  for (const address of [ZUKI, ASNYKA, MAZURY])
+    assert.equal(inTown({ place: address }), true, address.id);
+  for (const address of [SMOLINCE, ZALUZE, LISIE_JAMY_CICHA, DABKOW_ZUKI])
+    assert.equal(inTown({ place: address }), false, address.id);
+});
+
+test("town, no cut: the gmina's none, MZGKiM's posts not read yet", () => {
+  for (const address of [ASNYKA, MAZURY]) {
+    const data = waterAt(address);
+    assert.deepEqual(data.outages, []);
+    assert.equal(waterSummary(data), null);
+    assert.equal(
+      waterNone(data),
+      "gmina nie zapowiada przerw, ale w mieście przerwy ogłasza też MZGKiM – tych komunikatów jeszcze nie sprawdzamy",
+    );
+    assert.deepEqual(waterEmpty(data), [
+      "Gmina nie zapowiada przerw pod tym adresem. W mieście przerwy w dostawie wody ogłasza też MZGKiM, a jego komunikatów jeszcze tu nie pokazujemy. Sprawdź ",
+      MZGKIM,
+      " i ",
+      GMINA,
+      ".",
+    ]);
+    assert.deepEqual(waterSources(data), [[GMINA], [MZGKIM]]);
+  }
+});
+
+test("town, a ZUK cut: shown as anywhere, MZGKiM's posts after its post", () => {
+  const data = waterAt(ZUKI);
+  assert.deepEqual(waterSummary(data), [
+    ["Najbliższa przerwa", ["wtorek, 27 października, 8:00–16:00"]],
+    ["Gdzie", ["cała ulica Żuki"]],
+  ]);
+  assert.equal(waterAlerts(data).length, 1);
+  assert.equal(waterEmpty(data), null);
+  assert.deepEqual(waterSources(data), [
+    [{ href: POST_URL, text: "Komunikat gminy z 23 października 2026" }],
+    [MZGKIM],
+  ]);
+});
+
+test("town, stale: its own none text, MZGKiM's posts in the note", () => {
+  const late = new Date(Date.parse(CHECKED) + STALE_MS + 1);
+  const quiet = waterAt(ASNYKA, [post()], late);
+  assert.match(waterNone(quiet), /przy ostatnim sprawdzeniu/);
+  assert.deepEqual(staleNote(quiet), [
+    "Od ponad godziny nie udało się nam sprawdzić nowych komunikatów. Zajrzyj też do ",
+    GMINA,
+    " i ",
+    MZGKIM_OF,
+    ".",
+  ]);
+  assert.deepEqual(waterSources(quiet), [[GMINA], [MZGKIM]]);
+  // With the cut, the note joins the card as before.
+  const cut = waterAt(ZUKI, [post()], late);
+  assert.deepEqual(waterSummary(cut)?.at(-1), ["Uwaga", staleNote(cut)]);
+});
+
+test("town, no file: the gmina's and MZGKiM's posts to check", () => {
+  for (const address of [ZUKI, MAZURY]) {
+    const data = water(zukView(null, NOW), address);
+    assert.equal(waterNone(data), "nie udało się nam sprawdzić komunikatów");
+    assert.deepEqual(waterEmpty(data), [
+      "Nie udało się nam teraz sprawdzić komunikatów o wodzie. Zajrzyj do ",
+      GMINA,
+      " i ",
+      MZGKIM_OF,
+      ".",
+    ]);
+    assert.deepEqual(waterSources(data), [[GMINA], [MZGKIM]]);
+  }
 });
 
 test("freshness: the checked line always, the stale note only after 1 h", () => {
@@ -596,20 +683,19 @@ test("checked line: null renders nothing; Warsaw time over midnight and DST", ()
 });
 
 test("no file: the gmina's news only, no cut, no checked line", () => {
-  const data = water(zukView(null, NOW), ZUKI);
+  const data = water(zukView(null, NOW), SMOLINCE);
   assert.deepEqual(data.outages, []);
   assert.equal(waterSummary(data), null);
   assert.deepEqual(waterAlerts(data), []);
   assert.equal(waterChecked(data), null);
   assert.equal(staleNote(data), null);
   assert.equal(waterNone(data), "nie udało się nam sprawdzić komunikatów");
-  assert.deepEqual(waterSources(data), [
-    [{ href: GMINA_NEWS, text: "aktualności gminy Lubaczów" }],
+  assert.deepEqual(waterSources(data), [[GMINA]]);
+  assert.deepEqual(waterEmpty(data), [
+    "Nie udało się nam teraz sprawdzić komunikatów o wodzie. Zajrzyj do ",
+    GMINA,
+    ".",
   ]);
-  assert.match(
-    String(waterEmpty(data)?.[0]),
-    /^Nie udało się nam teraz sprawdzić/,
-  );
 });
 
 test("notices: a link, only where the gate found the locality", () => {
