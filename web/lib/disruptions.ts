@@ -87,4 +87,9 @@ export type Notice = {
    * are shown, these are only linked (lib/zuk-data.ts).
    */
   where?: string[];
+  /**
+   * A post read, one of whose bare names ("Mazury") we took for the street
+   * though it may mean the estate of that name: shown elsewhere in the area.
+   */
+  doubt?: string[];
 };

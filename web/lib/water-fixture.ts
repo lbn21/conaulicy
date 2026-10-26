@@ -129,6 +129,7 @@ function stored(
     ...(read.status === "parsed" && read.unmatched
       ? { unmatched: read.unmatched }
       : {}),
+    ...(read.status === "parsed" && read.doubts ? { doubts: read.doubts } : {}),
     ...(post.digest ? { digest: post.digest } : {}),
   };
 }

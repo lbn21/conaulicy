@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { checkDistricts, districtSpans } from "../../districts.ts";
+import {
+  checkDistricts,
+  districtSpans,
+  unknownStreets,
+} from "../../districts.ts";
 import { DISTRICTS } from "../../districts-seed.ts";
 import {
   CICHA,
@@ -531,6 +535,28 @@ test("seed: the addendum's districts, their streets and stretches", () => {
       s.part ? `${s.id.slice(8)} ${s.part}` : s.id.slice(8),
     );
   assert.deepEqual(streets("mazury-vi"), ["38687", "48412"]);
+  assert.deepEqual(
+    DISTRICTS.find((d) => d.id === "mazury-vi")?.streets.map(
+      (s) => s.sourceUrl,
+    ),
+    [
+      "https://um.lubaczow.pl/aktualnosci/drogi-miejskie-do-przebudowy.html",
+      "https://um.lubaczow.pl/aktualnosci/drogi-miejskie-do-przebudowy.html",
+    ],
+  );
+  assert.deepEqual(
+    unknownStreets(
+      [
+        {
+          ...MAZURY_DISTRICT,
+          streets: [{ ...MAZURY_DISTRICT.streets[0], id: id("99999") }],
+        },
+      ],
+      ZUK_PLACES.streets,
+    ),
+    [{ district: "mazury", street: "0972447-99999" }],
+  );
+  assert.deepEqual(unknownStreets(DISTRICTS, ZUK_PLACES.streets), []);
   assert.deepEqual(streets("piaski"), [
     "16027",
     "16033",
@@ -670,6 +696,7 @@ test("4799: 'Mazury wraz z osiedlem' is ul. Mazury whole and the estate's 22 str
     { type: "whole" },
   );
   assert.deepEqual(r.unmatched, ["Niemirowska wraz z osiedlem"]);
+  assert.equal(r.doubts, undefined);
   assert.equal(r.items[0].date, "2025-07-08");
   assert.equal(r.items[0].start, "2025-07-08 09:00:00");
   assert.equal(r.items[0].end, "2025-07-08 12:00:00");
@@ -715,6 +742,7 @@ test("'ul. Mazury' is the street only; 'ul. Mazury, osiedle Mazury' both", () =>
     false,
   );
   assert.equal(street.unmatched?.includes("ul. Mazury"), false);
+  assert.equal(street.doubts, undefined);
   const both = parsed(
     mazuryAs("<li>ul. Mazury, osiedle Mazury</li>", (b) => [
       item(b, "Mazury", "ul. Mazury"),
@@ -755,8 +783,8 @@ test("a bare 'Mazury': the street, its words linked as a doubt", () => {
     );
     assert.deepEqual(r.unmatched, [
       "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej",
-      "Mazury",
     ]);
+    assert.deepEqual(r.doubts, ["Mazury"]);
   }
   // "Boczna Mazury" is its own street, never the bare name.
   const boczna = parsed(
@@ -776,11 +804,12 @@ test("Piaski: 'ul. Piaski' the street, bare a doubt, 'osiedle Piaski' its six st
   );
   assert.ok(streetsOf(ul).includes(PIASKI));
   assert.equal(ul.unmatched?.includes("ul. Piaski"), false);
+  assert.equal(ul.doubts, undefined);
   const bare = parsed(
     mazuryAs("<li>Piaski</li>", (b) => [item(b, "Piaski", "Piaski")]),
   );
   assert.ok(streetsOf(bare).includes(PIASKI));
-  assert.ok(bare.unmatched?.includes("Piaski"));
+  assert.deepEqual(bare.doubts, ["Piaski"]);
   const estate = parsed(
     mazuryAs("<li>osiedle Piaski</li>", (b) => [
       item(b, "Osiedle Piaski", "osiedle Piaski"),

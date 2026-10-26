@@ -23,6 +23,8 @@
 //                         // the places that passed the gate, each its day
 //     unmatched?,         // a source with an area: the post's words for
 //                         // places in it we could not match (lib/zuk.ts)
+//     doubts?,            // and bare names read as a street that may mean
+//                         // the estate of that name ("Mazury")
 //     digest?,            // a source without edit times: what changed
 //   }],
 //   seen: [{      // the cron's memory of every other post it decided
@@ -93,6 +95,8 @@ export type StoredPost = {
   places?: WarningPlace[];
   /** Places in the source's area we could not match, as written. */
   unmatched?: string[];
+  /** A bare name read as the street, which may mean the estate (lib/zuk.ts). */
+  doubts?: string[];
   /** lib/zuk.ts ZukPost digest. */
   digest?: string;
 };
@@ -256,15 +260,19 @@ export function zukView(
     url: post.url,
     checkedAt: file.checkedAt,
   });
-  const notice = (post: StoredPost, rest = false): Notice => ({
-    uid: `${source.uid}-${post.id}${rest ? "-rest" : ""}`,
+  const notice = (
+    post: StoredPost,
+    rest: "rest" | "doubt" | null = null,
+  ): Notice => ({
+    uid: `${source.uid}-${post.id}${rest ? `-${rest}` : ""}`,
     kind: "water",
     title: post.title,
     localityIds: post.localityIds,
     publishedAt: post.publishedAt,
     updatedAt: post.updatedAt,
     source: from(post),
-    ...(rest ? { where: post.unmatched } : {}),
+    ...(rest === "rest" ? { where: post.unmatched } : {}),
+    ...(rest === "doubt" ? { doubt: post.doubts } : {}),
   });
   const posts = file.active
     .filter((p) => !HIDDEN.has(p.reason ?? ""))
@@ -278,7 +286,9 @@ export function zukView(
         ...post.items.map((d) => ({ ...d, source: from(post) })),
       );
       if (post.items.length > 0 && post.unmatched?.length)
-        notices.push(notice(post, true));
+        notices.push(notice(post, "rest"));
+      if (post.items.length > 0 && post.doubts?.length)
+        notices.push(notice(post, "doubt"));
       continue;
     }
     const shown =

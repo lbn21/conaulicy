@@ -202,7 +202,11 @@ export function water(
         (notice) =>
           notice.localityIds.some(
             (id) => id === place.localityId || id === village,
-          ) && !(notice.where && shownPosts.has(notice.source.url)),
+          ) &&
+          !(
+            (notice.where || notice.doubt) &&
+            shownPosts.has(notice.source.url)
+          ),
       ),
     sources,
     checkedAt: checked[0] ?? null,
@@ -306,6 +310,15 @@ export function waterAlerts(data: Water): Alert[] {
  */
 export function noticeLink(notice: Notice): Part {
   const { who, announced } = sourceOf(notice.uid);
+  const doubt = notice.doubt ?? [];
+  if (doubt.length > 0) {
+    const one = doubt.length === 1;
+    return {
+      href: notice.source.url,
+      text: `${who} pisze po prostu ${doubt.map((w) => `„${w}”`).join(" i ")} i nie wiemy na pewno, czy chodzi o ${one ? "ulicę, czy o całe osiedle" : "ulice, czy o całe osiedla"} – zajrzyj do komunikatu`,
+      hidden: `„${notice.title}”`,
+    };
+  }
   const where = notice.where ?? [];
   if (where.length === 0)
     return {

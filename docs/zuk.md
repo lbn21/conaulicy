@@ -151,11 +151,17 @@ district). It lives in the database (`district_aliases`,
   model names when those words are in the post. A name the model does not
   map stays unmatched, linked as written.
 - **"ul. Mazury" is the street** 12559 only; "ul. Mazury, osiedle Mazury"
-  both. A **bare "Mazury"** (no "ul.", no "osiedle") is the street too, and
-  its words are linked on the town's pages as a doubt (`unmatched`): the
-  post may mean the estate. The same for "Piaski" (16027). Not for a
+  both. A **bare "Mazury"** (no "ul.", no "osiedle") is the street too, kept
+  as a doubt (`doubts` in the file): every other town page without a cut
+  from that post says so in one line, linking the post: „MZGKiM pisze po
+  prostu „Mazury” i nie wiemy na pewno, czy chodzi o ulicę, czy o całe
+  osiedle – zajrzyj do komunikatu”. The same for "Piaski" (16027). Not for a
   one-street estate whose street has its name (Żelichówka, Pod Borem, Mały
   Łążek): no doubt there. "Boczna Mazury" is its own street, never "Mazury".
+
+A district street the TERYT snapshot lacks is skipped by the gate and
+logged by the cron (`{zuk: "district-street-unknown", district, street}`,
+ids only); the seed refuses such ids in the first place.
 
 Adding a district is a new entry in `lib/districts-seed.ts`, then `npm run
 db:districts` (dry run, then `-- --apply`; production only with Jakub's

@@ -317,6 +317,7 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
             items: read.items.length,
             dropped: read.dropped,
             ...(read.unmatched ? { unmatched: read.unmatched } : {}),
+            ...(read.doubts ? { doubts: read.doubts } : {}),
           }),
     });
     stored.push({
@@ -327,6 +328,7 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
             itemCount: read.items.length,
             items: read.items,
             ...(read.unmatched ? { unmatched: read.unmatched } : {}),
+            ...(read.doubts ? { doubts: read.doubts } : {}),
           }
         : { status: "notice", reason: read.reason, itemCount: 0, items: [] }),
     });

@@ -21,6 +21,7 @@ import {
   GMINA_NEWS,
   MZGKIM_NEWS,
   matches,
+  noticeLink,
   outsideRange,
   scope,
   staleNote,
@@ -660,6 +661,30 @@ test("town, an MZGKiM cut: shown as a ZUK cut, its own post the source", () => {
   ]);
   // TERYT's part Mazury (no address) is no longer cut.
   assert.deepEqual(townAt(MAZURY, cut, OCT_3, OCT_3_CHECKED).outages, []);
+});
+
+test("town, a bare 'Mazury' read as the street: one friendly line elsewhere in town", () => {
+  // The cut read as ul. Mazury, in doubt (lib/zuk.ts doubts).
+  const cut = [{ ...mzgkimPost(CUT_100, OCT_3_CHECKED), doubts: ["Mazury"] }];
+  // A town street with no cut from that post (in a real post with a bare
+  // "Mazury", the estate's streets are such streets).
+  const estate = townAt(ASNYKA, cut, OCT_3, OCT_3_CHECKED);
+  const links = estate.notices.map(noticeLink);
+  assert.deepEqual(links.at(-1), {
+    href: POST_5237,
+    text: "MZGKiM pisze po prostu „Mazury” i nie wiemy na pewno, czy chodzi o ulicę, czy o całe osiedle – zajrzyj do komunikatu",
+    hidden: "„Przerwa w dostawie wody”",
+  });
+  // Not where the post's cut is shown (it is linked there already).
+  for (const shown of [NIEMIROWSKA, LESZKA_BIALEGO])
+    assert.deepEqual(townAt(shown, cut, OCT_3, OCT_3_CHECKED).notices, []);
+  // Two names: plural.
+  const [doubt] = estate.notices.filter((n) => n.doubt);
+  assert.deepEqual(noticeLink({ ...doubt, doubt: ["Mazury", "Piaski"] }), {
+    href: POST_5237,
+    text: "MZGKiM pisze po prostu „Mazury” i „Piaski” i nie wiemy na pewno, czy chodzi o ulice, czy o całe osiedla – zajrzyj do komunikatu",
+    hidden: "„Przerwa w dostawie wody”",
+  });
 });
 
 test("town, an MZGKiM area off our list: a link on every other town page", () => {

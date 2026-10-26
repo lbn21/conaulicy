@@ -182,8 +182,10 @@ type Placed = Pick<Disruption, "place"> & {
 type ItemPlaces = {
   places: Placed[];
   scope: Disruption["scope"];
-  /** The post's words to link on the area's pages: a doubt, a part. */
+  /** The post's words to link on the area's pages: a part, an estate. */
   unmatched?: string[];
+  /** A bare name that is a street and a district's: the street, in doubt. */
+  doubts?: string[];
   /** The item's note as read: none for "wraz z osiedlem". */
   note?: null;
 };
@@ -220,6 +222,7 @@ function itemPlaces(read: AiItem, ctx: PostContext): ItemPlaces | Failed {
   const result = gatedPlaces(item, ctx);
   if ("reason" in result || !ctx.gate.area) return result;
   const unmatched = [...(result.unmatched ?? [])];
+  const doubts: string[] = [];
   const places = [...result.places];
   const sv = item.street_verbatim;
   const streetId = places[0]?.place.streetId;
@@ -235,7 +238,7 @@ function itemPlaces(read: AiItem, ctx: PostContext): ItemPlaces | Failed {
       ctx.data.streets,
     )
   )
-    unmatched.push(sv.replace(/\s+/g, " ").trim());
+    doubts.push(sv.replace(/\s+/g, " ").trim());
   if (along) {
     // The estate the post adds to the street, if the gazetteer has it.
     const has = (s: DistrictSpan, w: string) =>
@@ -253,6 +256,7 @@ function itemPlaces(read: AiItem, ctx: PostContext): ItemPlaces | Failed {
     ...result,
     places,
     ...(unmatched.length > 0 ? { unmatched } : {}),
+    ...(doubts.length > 0 ? { doubts } : {}),
     ...(along ? { note: null } : {}),
   };
 }
@@ -541,6 +545,12 @@ export type PostReading =
        * Mazury"), so the area's pages link the post; never empty.
        */
       unmatched?: string[];
+      /**
+       * A source with an area: a bare name that is both a street and a
+       * district's ("Mazury"), read as the street; the area's pages say the
+       * post may mean the estate. Never empty.
+       */
+      doubts?: string[];
     }
   | { status: "notice"; reason: string };
 
@@ -574,6 +584,7 @@ export function readPost(
   const items: Disruption[] = [];
   const dropped: string[] = [];
   const unmatched: string[] = [];
+  const doubts: string[] = [];
   const seen = new Set<string>();
   // A district's streets come after every place an item names itself, and
   // give way to them: "osiedle Mazury, ul. Zibura od nr 1 do 9" is Zibura
@@ -599,7 +610,10 @@ export function readPost(
         unmatched.push(words.replace(/\s+/g, " ").trim());
       continue;
     }
-    if (rules.gate?.area) unmatched.push(...(resolved.unmatched ?? []));
+    if (rules.gate?.area) {
+      unmatched.push(...(resolved.unmatched ?? []));
+      doubts.push(...(resolved.doubts ?? []));
+    }
     // A part of the area (a TERYT part of the town) may have no address of
     // its own, so no page: its cut stays, and its words are linked on the
     // area's other pages too, never lost.
@@ -648,6 +662,7 @@ export function readPost(
     items,
     dropped,
     ...(unmatched.length > 0 ? { unmatched: [...new Set(unmatched)] } : {}),
+    ...(doubts.length > 0 ? { doubts: [...new Set(doubts)] } : {}),
   };
 }
 
