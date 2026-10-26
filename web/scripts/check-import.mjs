@@ -126,7 +126,7 @@ try {
     part.status === 200 &&
       part.text.includes("Dąbrowa (Basznia Górna, gm. Lubaczów)") &&
       part.text.includes("Dodaj do kalendarza") &&
-      part.text.includes("Nie wiesz, czy się udało?"),
+      part.text.includes("Jak dodać i sprawdzić, czy się udało?"),
     "village part: no label with its village, no zone from its village, or no calendar help",
   );
   const village = await page(`/adres/${FIXTURE_IDS.village}/smieci`);
