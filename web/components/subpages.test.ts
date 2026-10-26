@@ -482,15 +482,13 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
   );
   // Its cut shown here: its area off our list is not linked again.
   assert.doesNotMatch(html, /Inne komunikaty/);
-  // Another town street: no cut, the area linked under „Inne komunikaty”.
+  // Another town street: no cut, and nothing under „Inne komunikaty”
+  // (the estate is its 9 streets now, every area of the post matched).
   const asnyka = page(
     [mzgkimPost(CUT_100, checked)],
     testPlace({ id: "0972447-00470", streetId: "0972447-00470" }),
   );
-  assert.match(
-    asnyka,
-    /<h2 id="inne-komunikaty" class="govuk-heading-m">Inne komunikaty<\/h2><p class="govuk-body"><a href="https:\/\/mzgkim\.lubaczow\.pl\/przerwa-w-dostawie-wody-100\/" class="govuk-link">MZGKiM ogłosił też przerwę w miejscu, którego nie umiemy dopasować do adresów: „Osiedle domów jednorodzinnych na zapleczu ul\. Niemirowskiej” – sprawdź komunikat<span class="govuk-visually-hidden"> „Przerwa w dostawie wody”<\/span><\/a><\/p><\/section>/,
-  );
+  assert.doesNotMatch(asnyka, /Inne komunikaty/);
   // Fresh, no cut: one sentence, both sources' posts, no MZGKiM caveat.
   const quiet = page([]);
   assert.match(

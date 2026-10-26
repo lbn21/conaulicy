@@ -59,7 +59,24 @@ const ESTATE = [
   "00157",
   "02276",
 ].map((u) => `0972447-${u}`);
+/** The estate behind ul. Niemirowska in the gazetteer: 9 streets. */
+const ZAPLECZE = [
+  "10562",
+  "09223",
+  "26077",
+  "23129",
+  "19000",
+  "05027",
+  "07059",
+  "12991",
+  "13998",
+].map((u) => `0972447-${u}`);
+/** 5237's items before Osiedle Mazury: 3 streets and the estate's 9. */
+const BEFORE_MAZURY = 3 + ZAPLECZE.length;
 const OSIEDLE = "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej";
+/** The estate's line in 5237, split in two. */
+const ZAPLECZE_LINE =
+  "<li>Osiedle domów jednorodzinnych na zapleczu</li>\n<li>ul. Niemirowskiej</li>";
 
 const read = (post: ZukPost, ai: AiResult) =>
   readPost(post, ai, MZGKIM_PLACES, CHECKED, {
@@ -119,7 +136,7 @@ test("5237: three streets as TERYT names them, declined or shortened", () => {
 
 test("5237: Osiedle Mazury is its 22 streets, whole, in the post's words", () => {
   const r = parsed(read(realMzgkimPost(CUT_100), MZGKIM_READINGS[CUT_100]));
-  const estate = r.items.slice(3);
+  const estate = r.items.slice(BEFORE_MAZURY);
   assert.deepEqual(
     estate.map((d) => d.place.streetId).sort(),
     [...ESTATE].sort(),
@@ -166,18 +183,33 @@ test("5237: Osiedle Mazury is its 22 streets, whole, in the post's words", () =>
     ),
   );
   assert.deepEqual(
-    asPart.items.slice(3).map((d) => [d.place.streetId, d.where]),
+    asPart.items.slice(BEFORE_MAZURY).map((d) => [d.place.streetId, d.where]),
     estate.map((d) => [d.place.streetId, "Osiedle Mazury"]),
   );
-  assert.deepEqual(asPart.unmatched, [OSIEDLE]);
+  assert.equal(asPart.unmatched, undefined);
 });
 
 test("5237: the area off our list is kept as written, never its street", () => {
-  const r = parsed(read(realMzgkimPost(CUT_100), MZGKIM_READINGS[CUT_100]));
-  assert.deepEqual(r.unmatched, [OSIEDLE]);
+  // 5237's estate line as Osiedle Folwarki, a district with no streets.
+  const r = parsed(
+    read(withLine(ZAPLECZE_LINE, "<li>Osiedle Folwarki</li>"), {
+      ...MZGKIM_READINGS[CUT_100],
+      items: MZGKIM_READINGS[CUT_100].items.map((i) =>
+        i.street === OSIEDLE
+          ? {
+              ...i,
+              street: "Osiedle Folwarki",
+              street_verbatim: "Osiedle Folwarki",
+            }
+          : i,
+      ),
+    }),
+  );
+  assert.deepEqual(r.unmatched, ["Osiedle Folwarki"]);
   assert.equal(r.dropped.length, 1);
-  // The model taking the area for ul. Niemirowska: dropped, never widened
-  // to the whole street (the area's words are more than its name).
+  assert.equal(r.items.length, 3 + 22);
+  // The model taking the estate for ul. Niemirowska: never widened to the
+  // whole street (the area's words are more than its name), its 9 streets.
   const widened = parsed(
     readWith(CUT_100, (items) =>
       items
@@ -191,7 +223,11 @@ test("5237: the area off our list is kept as written, never its street", () => {
     widened.items.some((d) => d.place.streetId === NIEMIROWSKA),
     false,
   );
-  assert.deepEqual(widened.unmatched, [OSIEDLE]);
+  assert.deepEqual(
+    widened.items.slice(2, 2 + ZAPLECZE.length).map((d) => d.place.streetId),
+    ZAPLECZE,
+  );
+  assert.equal(widened.unmatched, undefined);
 });
 
 test("a part of the town with no street: its cut kept and its words linked too", () => {
@@ -218,11 +254,12 @@ test("a part of the town with no street: its cut kept and its words linked too",
       ),
     }),
   );
-  assert.deepEqual(r.items.at(-1)?.place, {
+  // Niwki in place of Osiedle Mazury, before the estate's 9 streets.
+  assert.deepEqual(r.items.at(-1 - ZAPLECZE.length)?.place, {
     localityId: "0972460",
     streetId: null,
   });
-  assert.deepEqual(r.unmatched, [OSIEDLE, "Niwki"]);
+  assert.deepEqual(r.unmatched, ["Niwki"]);
   // A street matched is never also linked.
   assert.equal(
     r.unmatched?.some((w) => /Sobieskiego|Starzyny/.test(w)),
@@ -244,6 +281,7 @@ test("5108: Sobieskiego in part, its words as the note; Dąbrowa only a directio
     [
       [NIEMIROWSKA, "whole"],
       [STARZYNY, "whole"],
+      ...ZAPLECZE.map((s) => [s, "whole"]),
     ],
   );
   assert.equal(sobieskiego.start, "2026-06-02 08:30:00");
@@ -260,7 +298,7 @@ test("5108: Sobieskiego in part, its words as the note; Dąbrowa only a directio
     whole.items.some((d) => d.place.streetId === SOBIESKIEGO),
     false,
   );
-  assert.deepEqual(whole.unmatched, ["Sobieskiego", OSIEDLE]);
+  assert.deepEqual(whole.unmatched, ["Sobieskiego"]);
 });
 
 test("4935: the whole town at night, every street and the town itself", () => {
@@ -575,6 +613,10 @@ test("seed: the addendum's districts, their streets and stretches", () => {
   assert.deepEqual(streets("zelichowka"), ["26445"]);
   assert.deepEqual(streets("pod-borem"), ["16590"]);
   assert.deepEqual(streets("zuki"), ["26555"]);
+  assert.deepEqual(
+    streets("za-niemirowska"),
+    ZAPLECZE.map((s) => s.slice(8)),
+  );
   for (const key of [
     "niwki",
     "ostrowiec",
@@ -583,7 +625,6 @@ test("seed: the addendum's districts, their streets and stretches", () => {
     "folwarki",
     "przy-przemyslowej",
     "za-koleja",
-    "za-niemirowska",
   ])
     assert.deepEqual(streets(key), [], key);
 });
@@ -689,13 +730,19 @@ test("4799: 'Mazury wraz z osiedlem' is ul. Mazury whole and the estate's 22 str
     assert.deepEqual(d.scope, { type: "whole" });
     assert.equal(d.where, "Mazury wraz z osiedlem");
   }
-  // "Niemirowska wraz z osiedlem": the street whole, the estate (no
-  // streets known) linked as written; ul. Mazury is not in doubt here.
+  // "Niemirowska wraz z osiedlem": the street whole and the estate's 9
+  // streets; ul. Mazury is not in doubt here.
   assert.deepEqual(
     r.items.find((d) => d.place.streetId === id("14183"))?.scope,
     { type: "whole" },
   );
-  assert.deepEqual(r.unmatched, ["Niemirowska wraz z osiedlem"]);
+  for (const s of ZAPLECZE) {
+    const d = r.items.find((x) => x.place.streetId === s);
+    assert.ok(d, s);
+    assert.deepEqual(d.scope, { type: "whole" });
+    assert.equal(d.where, "Niemirowska wraz z osiedlem");
+  }
+  assert.equal(r.unmatched, undefined);
   assert.equal(r.doubts, undefined);
   assert.equal(r.items[0].date, "2025-07-08");
   assert.equal(r.items[0].start, "2025-07-08 09:00:00");
@@ -724,7 +771,7 @@ test("4799 as the dry run read it: 'wraz z osiedlem' as a note never makes it pa
     assert.deepEqual(d.scope, { type: "whole" }, s);
     assert.equal(d.note, null);
   }
-  assert.deepEqual(r.unmatched, ["Niemirowska wraz z osiedlem"]);
+  assert.equal(r.unmatched, undefined);
   // The prompt says so too.
   assert.match(
     systemPrompt(MZGKIM_PLACES),
@@ -741,7 +788,7 @@ test("'ul. Mazury' is the street only; 'ul. Mazury, osiedle Mazury' both", () =>
     streetsOf(street).some((s) => ESTATE.includes(s as string)),
     false,
   );
-  assert.equal(street.unmatched?.includes("ul. Mazury"), false);
+  assert.equal(street.unmatched, undefined);
   assert.equal(street.doubts, undefined);
   const both = parsed(
     mazuryAs("<li>ul. Mazury, osiedle Mazury</li>", (b) => [
@@ -755,9 +802,7 @@ test("'ul. Mazury' is the street only; 'ul. Mazury, osiedle Mazury' both", () =>
     ).length,
     23,
   );
-  assert.deepEqual(both.unmatched, [
-    "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej",
-  ]);
+  assert.equal(both.unmatched, undefined);
 });
 
 test("a bare 'Mazury': the street, its words linked as a doubt", () => {
@@ -781,9 +826,7 @@ test("a bare 'Mazury': the street, its words linked as a doubt", () => {
       streetsOf(r).some((s) => ESTATE.includes(s as string)),
       false,
     );
-    assert.deepEqual(r.unmatched, [
-      "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej",
-    ]);
+    assert.equal(r.unmatched, undefined);
     // With the streets of Osiedle Mazury: where the doubt is said.
     assert.deepEqual(r.doubts, [{ words: "Mazury", streetIds: ESTATE }]);
   }
@@ -795,7 +838,7 @@ test("a bare 'Mazury': the street, its words linked as a doubt", () => {
   );
   assert.ok(streetsOf(boczna).includes(id("01533")));
   assert.equal(streetsOf(boczna).includes(UL_MAZURY), false);
-  assert.equal(boczna.unmatched?.includes("Boczna Mazury"), false);
+  assert.equal(boczna.unmatched, undefined);
 });
 
 test("Piaski: 'ul. Piaski' the street, bare a doubt, 'osiedle Piaski' its six streets", () => {
@@ -804,7 +847,7 @@ test("Piaski: 'ul. Piaski' the street, bare a doubt, 'osiedle Piaski' its six st
     mazuryAs("<li>ul. Piaski</li>", (b) => [item(b, "Piaski", "ul. Piaski")]),
   );
   assert.ok(streetsOf(ul).includes(PIASKI));
-  assert.equal(ul.unmatched?.includes("ul. Piaski"), false);
+  assert.equal(ul.unmatched, undefined);
   assert.equal(ul.doubts, undefined);
   const bare = parsed(
     mazuryAs("<li>Piaski</li>", (b) => [item(b, "Piaski", "Piaski")]),
@@ -837,7 +880,7 @@ test("inflected and other districts: 'na osiedlu Mazury VI', a stretch, two stre
     ]),
   );
   assert.deepEqual(
-    vi.items.slice(3).map((d) => d.place.streetId),
+    vi.items.slice(BEFORE_MAZURY).map((d) => d.place.streetId),
     [id("38687"), id("48412")],
   );
   // Never all of Osiedle Mazury: "os. Mazury" inside "os. Mazury VI" is
@@ -862,7 +905,7 @@ test("inflected and other districts: 'na osiedlu Mazury VI', a stretch, two stre
     ]),
   );
   assert.deepEqual(
-    unii.items.slice(3).map((d) => d.place.streetId),
+    unii.items.slice(BEFORE_MAZURY).map((d) => d.place.streetId),
     [id("48373"), id("23367")],
   );
   // A limit on the whole estate: its streets are not read, its words linked.
@@ -874,7 +917,7 @@ test("inflected and other districts: 'na osiedlu Mazury VI', a stretch, two stre
       },
     ]),
   );
-  assert.equal(limited.items.length, 3);
+  assert.equal(limited.items.length, BEFORE_MAZURY);
   assert.ok(limited.unmatched?.includes("Osiedle Mazury"));
 });
 
@@ -898,7 +941,7 @@ test("a street the post names gives way to the estate's: never twice, never wide
     type: "ranges",
     ranges: [{ from: "1", to: "9" }],
   });
-  assert.equal(r.items.length, 3 + 22);
+  assert.equal(r.items.length, BEFORE_MAZURY + 22);
 });
 
 test("a misspelt district: the model's listed name over the post's words; no guess in code", () => {
@@ -919,14 +962,14 @@ test("a misspelt district: the model's listed name over the post's words; no gue
     22,
   );
   assert.ok(mapped.items.every((d) => d.where !== "Osiedle Mazury"));
-  assert.equal(mapped.unmatched?.includes("osiedle Mazóry"), false);
+  assert.equal(mapped.unmatched, undefined);
   // The model's own spelling as the street: no fuzzy match in code, linked.
   const unmapped = parsed(
     mazuryAs("<li>osiedle Mazóry</li>", (b) => [
       item(b, "osiedle Mazóry", "osiedle Mazóry"),
     ]),
   );
-  assert.equal(unmapped.items.length, 3);
+  assert.equal(unmapped.items.length, BEFORE_MAZURY);
   assert.ok(unmapped.unmatched?.includes("osiedle Mazóry"));
   // A name not on the list stays unmatched.
   const unknown = parsed(
@@ -934,7 +977,7 @@ test("a misspelt district: the model's listed name over the post's words; no gue
       item(b, "osiedle Kwiatowe", "osiedle Kwiatowe"),
     ]),
   );
-  assert.equal(unknown.items.length, 3);
+  assert.equal(unknown.items.length, BEFORE_MAZURY);
   assert.ok(unknown.unmatched?.includes("osiedle Kwiatowe"));
 });
 
