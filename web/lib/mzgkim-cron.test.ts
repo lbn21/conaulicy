@@ -263,7 +263,7 @@ test("a model call starts with the timeout and the margin left", async () => {
   assert.ok(w.aiCalls.length > 0);
 });
 
-// The route: the gmina's run first, then MZGKiM's, each on its own.
+// The route: the gmina's run and MZGKiM's at once, each on its own.
 const gmina = (w: { gminaDown: boolean; gminaFile: string | null }) =>
   ({
     fetch: (async (url: string | URL) => {
@@ -339,4 +339,93 @@ test("the route: an MZGKiM failure of any kind is caught and reported", async ()
         l.zuk === "error" && l.source === "mzgkim" && l.error === "blob: 500",
     ),
   );
+});
+
+test("the route: the sources run at once, a slow gmina call never starves MZGKiM's", async () => {
+  // One clock and one deadline for both: just enough left for one call.
+  const clock = { now: NOW };
+  const deadline = new Date(NOW.getTime() + TIMEOUT_MS + 31_000);
+  const g = { gminaDown: false, gminaFile: null as string | null };
+  let gminaCalls = 0;
+  const slowGmina: ZukCronDeps = {
+    ...gmina(g),
+    fetch: (async () =>
+      Response.json(
+        [
+          {
+            id: 1,
+            date: "2026-10-02T09:00:00",
+            modified: "2026-10-02T09:00:00",
+            link: "https://lubaczow.com.pl/1/",
+            title: { rendered: "Komunikat" },
+            content: { rendered: "<p>Zebranie wiejskie.</p>" },
+          },
+        ],
+        { headers: { "x-wp-totalpages": "1" } },
+      )) as typeof fetch,
+    readAi: async () => {
+      gminaCalls++;
+      // The call takes its whole timeout.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      clock.now = new Date(clock.now.getTime() + TIMEOUT_MS);
+      return {
+        ...READING,
+        result: {
+          post_type: "other",
+          quality_status: null,
+          is_past: false,
+          changes_earlier_dates: false,
+          items: [],
+        },
+      };
+    },
+    now: () => clock.now,
+    deadline,
+  };
+  const w = world();
+  const response = await route(slowGmina, [
+    { ...deps(w), now: () => clock.now, deadline },
+  ]);
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(gminaCalls, 1);
+  assert.equal(body.aiCalls, 1);
+  // MZGKiM's (instant) calls started while the gmina's was running.
+  assert.deepEqual(w.aiCalls, [CUT_100, DERATYZACJA]);
+  assert.equal(body.sources.mzgkim.aiCalls, 2);
+  assert.equal(saved(w).active.length, 1);
+  assert.ok(g.gminaFile, "the gmina's file written");
+});
+
+test("the route: either source throwing, the other still writes its file", async () => {
+  // The gmina's Blob broken: 500, MZGKiM's file written.
+  const g1 = { gminaDown: false, gminaFile: null as string | null };
+  const w1 = world();
+  const brokenGmina = {
+    ...gmina(g1),
+    writeFile: async () => {
+      throw new Error("blob: 500");
+    },
+  };
+  const r1 = await route(brokenGmina, [deps(w1)]);
+  assert.equal(r1.status, 500);
+  const b1 = await r1.json();
+  assert.equal(b1.error, "failed");
+  assert.equal(b1.sources.mzgkim.aiCalls, 2);
+  assert.equal(saved(w1).active.length, 1);
+  // MZGKiM's Blob broken: 200, the gmina's file written.
+  const g2 = { gminaDown: false, gminaFile: null as string | null };
+  const w2 = world();
+  const r2 = await route(gmina(g2), [
+    {
+      ...deps(w2),
+      writeFile: async () => {
+        throw new Error("blob: 500");
+      },
+    },
+  ]);
+  assert.equal(r2.status, 200);
+  assert.deepEqual((await r2.json()).sources, { mzgkim: { error: "failed" } });
+  assert.ok(g2.gminaFile, "the gmina's file written");
+  assert.equal(w2.file, null);
 });

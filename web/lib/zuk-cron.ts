@@ -19,8 +19,8 @@
 // is read afresh. Dependencies come in, so the tests mock them.
 //
 // One run reads one source (lib/sources) into its own file; the route runs
-// every source in turn (handleZukCron), each failing on its own: the
-// gmina's posts first, then MZGKiM's. A source that gives only a summary
+// every source at the same time (handleZukCron), each failing on its own,
+// each its posts newest first. A source that gives only a summary
 // (MZGKiM's feed) has each post's page fetched right before the model
 // reads it; a source without edit times tells an edit by its digest.
 
@@ -496,9 +496,10 @@ async function runOne(
 /**
  * The route: Vercel Cron's `Authorization: Bearer ${CRON_SECRET}`. `deps`
  * is the gmina's run, whose result is the response's (502 or 500 if it
- * failed); then every source of `more`, each on its own: a failure is
- * logged and listed under `sources`, never the gmina's run's or the
- * response's status.
+ * failed); every source of `more` runs at the same time, each on its own
+ * (its own file; a slow model call of one never uses up another's time
+ * before the deadline): a failure is logged and listed under `sources`,
+ * never the gmina's run's or the response's status.
  */
 export async function handleZukCron(
   request: Request,
@@ -508,10 +509,10 @@ export async function handleZukCron(
 ): Promise<Response> {
   const denied = cronDenied(request, cronSecret);
   if (denied) return denied;
-  const main = await runOne(deps);
+  const [main, ...results] = await Promise.all([deps, ...more].map(runOne));
   const sources: Record<string, unknown> = {};
-  for (const run of more) {
-    const result = await runOne(run);
+  for (const [i, run] of more.entries()) {
+    const result = results[i];
     sources[(run.source ?? gminaLubaczow).id] =
       "error" in result
         ? { error: result.down ? "source unavailable" : "failed" }

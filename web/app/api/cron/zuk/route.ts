@@ -9,8 +9,8 @@ import { ZUK_PLACES } from "@/lib/zuk-places.generated";
 import { readZukFile, writeZukFile } from "@/lib/zuk-store";
 
 // The water cuts of every source into its private Blob file
-// (lib/zuk-cron.ts): the gmina's posts (ZUK), then MZGKiM's, each failing
-// on its own. Vercel Cron calls it every 15 minutes (vercel.json) with
+// (lib/zuk-cron.ts): the gmina's posts (ZUK) and MZGKiM's at the same
+// time, each failing on its own. Vercel Cron calls it every 15 minutes (vercel.json) with
 // `Authorization: Bearer $CRON_SECRET`; by hand:
 //
 //   curl -H "Authorization: Bearer $CRON_SECRET" https://conaulicy.pl/api/cron/zuk

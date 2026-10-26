@@ -19,8 +19,9 @@ Vercel Blob. No database writes.
    (`lib/zuk-ai.ts`), one call per post. A call times out after 240 s
    (`TIMEOUT_MS`; a real post took 161 s at medium) and is started only
    with at least that plus 30 s for the Blob write left before the route's
-   `maxDuration` (300 s, from the route's start, shared by every source);
-   otherwise the post waits for the next run. No word filter before the model:
+   `maxDuration` (300 s, from the route's start); otherwise the post waits
+   for the next run. The sources run at the same time, so each has the
+   whole window: one source's slow call never holds up another's. No word filter before the model:
    every post is read once. Every other post keeps its stored result, and
    so does a post read before that is not read this run. The model says
    what the post is (`post_type`):
@@ -100,8 +101,9 @@ schema, guards and gate (`lib/sources/mzgkim/`, `lib/water-sources.ts`):
   a part must be written.
 - **Failures stay its own:** the feed down, a page or Blob error: logged
   (`{zuk: "source-down", source: "mzgkim"}`) and listed under `sources` in
-  the reply, never the gmina's run or the status. Both runs share one
-  deadline, the route's start plus its `maxDuration` (step 3).
+  the reply, never the gmina's run or the status. Both runs go at the same
+  time, against one deadline, the route's start plus its `maxDuration`
+  (step 3).
 
 Model calls: every new or edited post, one each: about 20 a year (it
 posts 10 in a few months), so 0 on almost every day. The feed costs 96
