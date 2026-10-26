@@ -25,7 +25,7 @@ import {
   icsDate,
   icsUtc,
 } from "./ics.ts";
-import { normalize } from "./normalize.ts";
+import { fileSlug } from "./normalize.ts";
 import { placePath } from "./places.ts";
 import { hours, scope, type Water, waterPath } from "./water-module.ts";
 
@@ -148,5 +148,5 @@ export function waterCalendar(data: Water, now: Date): string {
 
 /** "woda-ul-zuki-12-lubaczow.ics". */
 export function waterFilename(data: Water): string {
-  return `woda-${normalize(address(data)).replaceAll(" ", "-")}.ics`;
+  return `${fileSlug(`woda ${address(data)}`)}.ics`;
 }
