@@ -4,7 +4,7 @@ import { ImgwBanner } from "@/components/imgw-banner";
 import { PageMain } from "@/components/page-main";
 import { pageMetadata } from "@/lib/share";
 import { ABOUT, ACCESSIBILITY, PRIVACY } from "@/lib/static-pages";
-import { GMINA_NEWS } from "@/lib/water-module";
+import { GMINA_NEWS, MZGKIM_NEWS } from "@/lib/water-module";
 
 export const metadata: Metadata = pageMetadata({
   path: ABOUT.path,
@@ -35,6 +35,10 @@ export default function AboutPage() {
             w swoich{" "}
             <a href={GMINA_NEWS} className="govuk-link">
               aktualnościach na gminalubaczow.pl
+            </a>
+            , a w Lubaczowie także z{" "}
+            <a href={MZGKIM_NEWS} className="govuk-link">
+              komunikatów MZGKiM
             </a>
             .
           </p>
