@@ -440,10 +440,6 @@ export function WasteDetails({
 /** The waste subpage's h1. */
 const WASTE_H1 = "Odbiór śmieci";
 
-/** The printable schedule, for the address's own number. */
-const pdfHref = (place: PlaceView) =>
-  `${placePath(place.id)}/harmonogram.pdf${place.nr ? `?nr=${place.nr}` : ""}`;
-
 /** The street page's dates, files and sources, or why there are none. */
 function WasteBody({
   place,
@@ -481,11 +477,10 @@ function WasteBody({
             event="calendar_add"
             zone={place.zoneId}
             source="street"
-            pdfHref={pdfHref(place)}
           />
           <p className="govuk-body">
             <a
-              href={pdfHref(place)}
+              href={`${placePath(place.id)}/harmonogram.pdf${place.nr ? `?nr=${place.nr}` : ""}`}
               data-event="pdf_open"
               data-zone={place.zoneId}
               className="govuk-link"

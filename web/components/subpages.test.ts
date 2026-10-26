@@ -147,14 +147,9 @@ test("/smieci and /woda: the same skeleton and calendar block", () => {
     calendarBlock(html)
       .replace(/ (href|data-(?!module)[a-z]+)="[^"]*"/g, "")
       .replace(/>[^<]*</g, "><");
-  // /smieci's details have one more item: the PDF.
-  const water = shape(waterPage());
+  assert.equal(shape(waste), shape(waterPage()));
   assert.equal(
     shape(waste),
-    water.replace("</ul>", '<li><a class="govuk-link"></a></li></ul>'),
-  );
-  assert.equal(
-    water,
     '<a role="button" draggable="false" class="govuk-button" data-module="govuk-button"></a><p class="govuk-body"></p><details class="govuk-details"><summary class="govuk-details__summary"><span class="govuk-details__summary-text"></span></summary><div class="govuk-details__text"><ul class="govuk-list govuk-list--bullet"><li></li><li></li><li></li></ul></div></details>',
   );
 });
@@ -162,24 +157,18 @@ test("/smieci and /woda: the same skeleton and calendar block", () => {
 test("the calendar's help is CalendarBlock's: the same words on both pages", () => {
   const waste = calendarBlock(wastePage());
   const water = calendarBlock(waterPage());
-  // Each page's own: its first sentence, and the PDF on /smieci only.
+  // Each page's own: its first sentence only.
   const own = (block: string) =>
     block
       .replace(/<p class="govuk-body">[^<]*?(?= Na iPhonie)/, "")
-      .replace(/^<a [^>]*>[^<]*/, "")
-      .replace(/<li>Możesz też [\s\S]*?<\/li>/, "");
+      .replace(/^<a [^>]*>[^<]*/, "");
   assert.ok(waste.includes(">Plik z datami wywozu. Na iPhonie "), waste);
   assert.ok(waste.includes(` ${CALENDAR_HOW}</p>`), waste);
   assert.ok(water.includes(` ${CALENDAR_HOW}</p>`), water);
   assert.ok(waste.includes(`>${CALENDAR_CHECK}<`), waste);
   assert.equal(own(waste), own(water));
-  // The PDF item links to the page's own PDF link.
-  const pdf =
-    /<li>Możesz też <a href="([^"]+)" class="govuk-link">wydrukować harmonogram \(PDF\)<\/a>\.<\/li>/.exec(
-      waste,
-    )?.[1];
-  assert.ok(pdf?.endsWith("/harmonogram.pdf"), waste);
-  assert.ok(wastePage().includes(`<a href="${pdf}" data-event="pdf_open"`));
+  // The PDF stays the page's own link, under the block.
+  assert.doesNotMatch(waste, /PDF/);
   // The details are closed until opened.
   assert.doesNotMatch(waste + water, /<details[^>]* open/);
   // A browser never knows whether the file was added.

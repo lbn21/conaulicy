@@ -336,10 +336,10 @@ try {
     )
       fail(waste, "no calendar or PDF");
     // The calendar's help (CalendarBlock): the shared sentence, then the
-    // closed details, the PDF their last item.
+    // closed details.
     if (
-      !sub.main.includes("Na iPhonie stuknij „Dodaj wszystkie”.") ||
-      !/<details class="govuk-details"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">Nie wiesz, czy się udało\?<\/span>[\s\S]*?harmonogram\.pdf[^"]*" class="govuk-link">wydrukować harmonogram \(PDF\)<\/a>\.<\/li><\/ul><\/div><\/details>/.test(
+      !sub.main.includes("Na iPhonie telefon pokaże daty") ||
+      !/<details class="govuk-details"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">Nie wiesz, czy się udało\?<\/span>[\s\S]*?calendar\.google\.com[^<]*<\/li><\/ul><\/div><\/details>/.test(
         sub.main,
       ) ||
       sub.main.includes("Dodano")
