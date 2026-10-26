@@ -9,12 +9,28 @@
 // cron that runs it: lib/zuk-cron.ts.
 
 import { addDays } from "./dates.ts";
-import type { Disruption, DisruptionLabel } from "./disruptions.ts";
-import { normalize } from "./normalize.ts";
-import type { AiItem, AiResult } from "./zuk-ai.ts";
-import { checkOmission, checkWhen, noteScope } from "./zuk-guards.ts";
+import type { Disruption, DisruptionLabel, Doubt } from "./disruptions.ts";
 import {
+  bareNamesake,
+  type District,
+  type DistrictSpan,
+  districtNamed,
+  districtSpans,
+  readDistrict,
+} from "./districts.ts";
+import { normalize } from "./normalize.ts";
+import { GMINA, type WaterSource } from "./water-sources.ts";
+import type { AiItem, AiResult } from "./zuk-ai.ts";
+import {
+  checkOmission,
+  checkWhen,
+  inferYear,
+  noteScope,
+} from "./zuk-guards.ts";
+import {
+  dayInText,
   GatePlaces,
+  type GateRules,
   gateItem,
   gateText,
   type Mention,
@@ -22,7 +38,11 @@ import {
   type ZukPlaces,
 } from "./zuk-resolve.ts";
 
-export const SOURCE_NAME = "Zakład Usług Komunalnych w Mokrzycy";
+/**
+ * Whose post it is (lib/water-sources.ts: its name and uid prefix) and its
+ * own gate rules (lib/zuk-resolve.ts GateRules); the gmina's by default.
+ */
+export type ReadRules = { source?: WaterSource; gate?: GateRules };
 
 /** A post as the WordPress REST API returns it: the fields we read. */
 export type ZukPost = {
@@ -30,6 +50,11 @@ export type ZukPost = {
   /** Site time (Warsaw), "2026-10-23T18:59:43". */
   date: string;
   modified: string;
+  /**
+   * A source without edit times (an RSS feed): a hash of what it gives,
+   * which tells an edit instead of `modified` (lib/zuk-cron.ts).
+   */
+  digest?: string;
   link: string;
   title: { rendered: string };
   content: { rendered: string };
@@ -112,29 +137,256 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 type PostContext = {
   data: ZukPlaces;
   places: GatePlaces;
+  gate: GateRules;
   /** The post as the gate reads it, and its mentions of our places. */
   text: string;
   found: Mention[];
   items: AiItem[];
+  /** The post's mentions of the town's districts (lib/districts.ts). */
+  spans: DistrictSpan[];
 };
 
 function postContext(
   post: ZukPost,
   ai: AiResult,
   data: ZukPlaces,
+  gate: GateRules = {},
 ): PostContext {
   const places = new GatePlaces(data);
   const text = gateText(
     plainText(post.title.rendered),
     plainText(post.content.rendered),
   );
-  return { data, places, text, found: mentions(text, places), items: ai.items };
+  return {
+    data,
+    places,
+    gate,
+    text,
+    found: mentions(text, places),
+    items: ai.items,
+    spans: districtSpans(text, data.districts ?? []),
+  };
 }
 
-type ItemPlaces = {
-  places: Array<Pick<Disruption, "place"> & { label: DisruptionLabel }>;
-  scope: Disruption["scope"];
+/**
+ * One place of an item, with its own houses and words where they differ
+ * from the item's (a district's street, a street before a bracket);
+ * `district`: a district's street, which gives way to any other place.
+ */
+type Placed = Pick<Disruption, "place"> & {
+  label: DisruptionLabel;
+  own?: Pick<Disruption, "scope" | "note" | "where">;
+  district?: true;
 };
+
+type ItemPlaces = {
+  places: Placed[];
+  scope: Disruption["scope"];
+  /** The post's words to link on the area's pages: a part, an estate. */
+  unmatched?: string[];
+  /** A bare name that is a street and a district's: the street, in doubt. */
+  doubts?: Doubt[];
+  /** The item's note as read: none for "wraz z osiedlem". */
+  note?: null;
+};
+
+/** `date`: the day failed; `words`: the post's words for the place. */
+type Failed = { reason: string; date: boolean; words?: string };
+
+/** "wraz z osiedlem", "wraz z przyległymi ulicami": more, never less. */
+const ALONG = /^\s*wraz\s+z(?!\p{L})/iu;
+
+/** A street word written first: "ul. Mazury", "ulicy Mazury". */
+const LEADING_STREET_WORD = /^(?:ul|ulica|ulicy|ulice|ulic)\b/;
+
+/**
+ * One item through the gate. A district of the town's gazetteer, by the
+ * post's words for it, is its streets (districtPlaces); a bare name the
+ * model took for one is the street of that name. Every other item goes
+ * through gatedPlaces. A source with an area also reads "X wraz z
+ * osiedlem" as the whole street X and that estate, and links a street
+ * written bare whose name is also a district's ("Mazury"): either may be
+ * meant.
+ */
+function itemPlaces(read: AiItem, ctx: PostContext): ItemPlaces | Failed {
+  const along =
+    ctx.gate.area && read.note !== null && ALONG.test(read.note)
+      ? read.note
+      : null;
+  let item = along ? { ...read, note: null } : read;
+  const district = districtOf(item, ctx);
+  if (district && "reason" in district) return district;
+  if (district?.kind === "district")
+    return districtPlaces(district.district, district.words, item, ctx);
+  if (district) item = district.item;
+  const result = gatedPlaces(item, ctx);
+  if ("reason" in result || !ctx.gate.area) return result;
+  const unmatched = [...(result.unmatched ?? [])];
+  const doubts: Doubt[] = [];
+  const places = [...result.places];
+  const sv = item.street_verbatim;
+  const streetId = places[0]?.place.streetId;
+  const doubted =
+    sv && streetId && !LEADING_STREET_WORD.test(normalize(sv))
+      ? bareNamesake(
+          ctx.text,
+          sv,
+          streetId,
+          ctx.data.districts ?? [],
+          ctx.data.streets,
+        )
+      : null;
+  if (sv && doubted)
+    doubts.push({
+      words: sv.replace(/\s+/g, " ").trim(),
+      streetIds: doubted.streets.map((s) => s.id),
+    });
+  if (along) {
+    // The estate the post adds to the street, if the gazetteer has it.
+    const has = (s: DistrictSpan, w: string) =>
+      normalize(s.words).includes(normalize(w));
+    const span = ctx.spans.find(
+      (s) => has(s, along) && (sv === null || has(s, sv)),
+    );
+    const more = span && districtPlaces(span.district, span.words, item, ctx);
+    if (more && !("reason" in more)) {
+      places.push(...more.places);
+      unmatched.push(...(more.unmatched ?? []));
+    } else unmatched.push(span?.words ?? along.replace(/\s+/g, " ").trim());
+  }
+  return {
+    ...result,
+    places,
+    ...(unmatched.length > 0 ? { unmatched } : {}),
+    ...(doubts.length > 0 ? { doubts } : {}),
+    ...(along ? { note: null } : {}),
+  };
+}
+
+type DistrictOf =
+  | { kind: "district"; district: District; words: string }
+  | { kind: "street"; item: AiItem };
+
+/**
+ * The item as the gazetteer reads it: a district (its day written, in the
+ * source's area or, with no area, its town named), or the street of a bare
+ * name rewritten as an item of the town; null: not a district's.
+ */
+function districtOf(
+  item: AiItem,
+  ctx: PostContext,
+): DistrictOf | Failed | null {
+  const districts = ctx.data.districts ?? [];
+  if (districts.length === 0) return null;
+  const [loc] = ctx.places.resolve(item.locality);
+  if (!loc) return null;
+  const mine = districts.filter(
+    (d) => d.localityId === loc.id || d.simc === loc.id,
+  );
+  if (mine.length === 0) return null;
+  const words = item.street_verbatim ?? item.locality_verbatim;
+  const claimed =
+    item.street !== null
+      ? districtNamed(item.street, mine)
+      : (mine.find((d) => d.simc === loc.id) ?? null);
+  const reading = readDistrict(
+    words,
+    claimed,
+    ctx.spans.filter((s) => mine.includes(s.district)),
+    ctx.data.streets,
+  );
+  if (!reading) return null;
+  const day = dayInText(item.date, ctx.text);
+  if (day) return { reason: day, date: true };
+  const fail = (reason: string): Failed => ({
+    reason,
+    date: false,
+    words: reading.words,
+  });
+  const t = ` ${normalize(ctx.text)} `;
+  if (!t.includes(` ${normalize(reading.words)} `))
+    return fail(`"${reading.words}" not literal`);
+  const d = reading.district;
+  const town = ctx.places.byId.get(d.localityId);
+  if (!town) return fail(`no town ${d.localityId}`);
+  if (ctx.gate.area) {
+    if (d.localityId !== ctx.gate.area)
+      return fail(`"${reading.words}" outside the source's area`);
+  } else {
+    // No area: the town or the part is written, as the gate's check 3-4.
+    const lv = normalize(item.locality_verbatim);
+    const names = [town.name, d.simc && ctx.places.byId.get(d.simc)?.name]
+      .filter((n): n is string => Boolean(n))
+      .map(normalize);
+    if (!names.includes(lv) || !t.includes(` ${lv} `))
+      return fail(`"${reading.words}" without its town`);
+  }
+  if (reading.kind === "district") return reading;
+  const street = ctx.data.streets.find((s) => s.id === reading.streetId);
+  if (!street) return fail(`no street ${reading.streetId}`);
+  return {
+    kind: "street",
+    item: {
+      ...item,
+      locality: town.name,
+      locality_verbatim: ctx.gate.area ? town.name : item.locality_verbatim,
+      street: street.name,
+      street_verbatim: reading.words,
+    },
+  };
+}
+
+/**
+ * A district's streets, each whole or its stretch, as the post's words; a
+ * district the post limits (a note) is left out, its words linked. One
+ * with no street is its TERYT part where it has one (no address, so no
+ * page: its words linked too), else only its words.
+ */
+function districtPlaces(
+  d: District,
+  words: string,
+  item: AiItem,
+  ctx: PostContext,
+): ItemPlaces | Failed {
+  const fail = (reason: string): Failed => ({ reason, date: false, words });
+  if (item.note !== null)
+    return fail(`"${words}" limited ("${item.note}"): not its streets`);
+  const town = ctx.places.byId.get(d.localityId);
+  if (!town) return fail(`no town ${d.localityId}`);
+  const whole = { type: "whole" } as const;
+  if (d.streets.length === 0) {
+    const part = d.simc ? ctx.places.byId.get(d.simc) : undefined;
+    if (!part) return fail(`"${words}": no streets known`);
+    return {
+      places: [
+        {
+          place: { localityId: part.id, streetId: null },
+          label: { locality: part.name, parent: town.name, street: null },
+        },
+      ],
+      scope: whole,
+      unmatched: [words],
+    };
+  }
+  const byId = new Map(ctx.data.streets.map((s) => [s.id, s]));
+  const places = d.streets.flatMap((s): Placed[] => {
+    const street = byId.get(s.id);
+    if (!street) return [];
+    return [
+      {
+        place: { localityId: town.id, streetId: s.id },
+        label: { locality: town.name, parent: null, street: street.name },
+        own: {
+          scope: s.part ? { type: "unknown" } : whole,
+          note: s.part,
+          where: words,
+        },
+        district: true,
+      },
+    ];
+  });
+  return { places, scope: whole };
+}
 
 /**
  * One item through the gate, then the repo's stricter place rules: with
@@ -143,14 +395,32 @@ type ItemPlaces = {
  * is the village and every street of its own, house numbers in a village
  * with streets the village only. `date`: the gate's day check failed.
  */
-function itemPlaces(
-  item: AiItem,
-  ctx: PostContext,
-): ItemPlaces | { reason: string; date: boolean } {
-  const gated = gateItem(ctx.places, ctx.text, ctx.found, item);
+function gatedPlaces(read: AiItem, ctx: PostContext): ItemPlaces | Failed {
+  let gated = gateItem(ctx.places, ctx.text, ctx.found, read, ctx.gate);
+  let item = read;
+  // "ul. Młodowska (Młodów)" in the source's area: the street whole, the
+  // bracket its words, never its houses, even when the model gives the
+  // bracket as the note.
+  const note = read.note;
+  if (ctx.gate.area && note !== null && read.street_verbatim) {
+    const bare = { ...read, note: null };
+    const again = gateItem(ctx.places, ctx.text, ctx.found, bare, ctx.gate);
+    if (
+      again.kept &&
+      again.bracket &&
+      normalize(again.bracket) === normalize(note)
+    ) {
+      gated = again;
+      item = bare;
+    }
+  }
   if (!gated.kept) return { reason: gated.reason, date: gated.date };
+  const { bracket } = gated;
   const fail = (reason: string) => ({ reason, date: false });
-  if (!gated.street) {
+  // The source's whole area (the gate checked the post says so): never
+  // named, so neither named as a place nor written on its own.
+  const wholeArea = !gated.street && gated.locality.id === ctx.gate.area;
+  if (!gated.street && !wholeArea) {
     // A whole place must be named once as a place, not as a street ("ul.
     // Żuki" is not Opaka's Żuki); "przysiółek X" is a village part, never
     // the village X.
@@ -167,12 +437,22 @@ function itemPlaces(
     )
       return fail(`"przysiółek ${item.locality_verbatim}" without its village`);
   }
-  if (item.note === null) {
+  if (item.note === null && !wholeArea) {
     // Another place's phrase may follow this one ("Bałaje, ul. Przemysłowa
-    // (Lubaczów)"); this place's own street never does.
+    // (Lubaczów)"); this place's own street never does. A street may be
+    // followed by another street of its place ("Cicha, ul. Młodowska",
+    // 4744); a whole place by its own street never.
     const others = ctx.items
-      .filter((o) => o.locality !== item.locality)
+      .filter(
+        (o) =>
+          o.locality !== item.locality ||
+          (item.street !== null &&
+            o.street !== null &&
+            o.street !== item.street),
+      )
       .map((o) => o.street_verbatim ?? o.locality_verbatim);
+    // The bracket where the street leads limits nothing.
+    if (bracket) others.push(`(${bracket})`);
     const claimed = ctx.items
       .filter(
         (o) =>
@@ -213,6 +493,21 @@ function itemPlaces(
     place: { localityId: locality.id, streetId },
     label: { locality: locality.name, parent, street },
   });
+  if (gated.street && bracket)
+    return {
+      places: [
+        {
+          ...at(gated.street.id, gated.street.name),
+          own: {
+            scope,
+            note: null,
+            where: `${item.street_verbatim} (${bracket})`,
+          },
+        },
+      ],
+      scope,
+      ...(item !== read ? { note: null } : {}),
+    };
   if (gated.street)
     return { places: [at(gated.street.id, gated.street.name)], scope };
   const own = ctx.data.streets.filter((s) => s.localityId === locality.id);
@@ -230,25 +525,49 @@ function itemPlaces(
   };
 }
 
+/** The post's words for a part: "Osiedle Mazury" if so written, else its name. */
+function partWords(text: string, name: string): string {
+  const m = new RegExp(
+    `(?:osiedl\\p{L}*|os\\.)\\s+${escapeRe(name)}(?!\\p{L})`,
+    "iu",
+  ).exec(text);
+  return (m?.[0] ?? name).replace(/\s+/g, " ");
+}
+
 export type PostReading =
   | {
       status: "parsed";
       items: Disruption[];
       /** Items whose place failed, with the reason. */
       dropped: string[];
+      /**
+       * A source with an area (GateRules): the post's own words for each
+       * place in it we could not match ("Osiedle domów … ul.
+       * Niemirowskiej") or matched only to a part of the area ("Osiedle
+       * Mazury"), so the area's pages link the post; never empty.
+       */
+      unmatched?: string[];
+      /**
+       * A source with an area: a bare name that is both a street and a
+       * district's ("Mazury"), read as the street; the area's pages say the
+       * post may mean the estate, on that estate's streets. Never empty.
+       */
+      doubts?: Doubt[];
     }
   | { status: "notice"; reason: string };
 
 /**
  * The model's reading of one post, checked and resolved: Disruptions for
  * every item whose place passes, as long as every day and time does, else
- * a Notice with the first reason.
+ * a Notice with the first reason. A day written without its year takes
+ * the post's (inferYear).
  */
 export function readPost(
   post: ZukPost,
   ai: AiResult,
   places: ZukPlaces,
   checkedAt: string,
+  rules: ReadRules = {},
 ): PostReading {
   const notice = (reason: string): PostReading => ({
     status: "notice",
@@ -256,17 +575,26 @@ export function readPost(
   });
   if (ai.post_type !== "water_outage") return notice("not an outage notice");
   if (ai.items.length === 0) return notice("no items");
-  const ctx = postContext(post, ai, places);
+  const ctx = postContext(post, ai, places, rules.gate);
   const text = fullText(post);
   const publishedAt = wall(post.date);
   const updatedAt = wall(post.modified);
-  const source = { name: SOURCE_NAME, url: post.link, checkedAt };
+  const { name, uid: prefix } = rules.source ?? GMINA;
+  const source = { name, url: post.link, checkedAt };
+  const literal = normalize(ctx.text);
 
   const items: Disruption[] = [];
   const dropped: string[] = [];
+  const unmatched: string[] = [];
+  const doubts: Doubt[] = [];
   const seen = new Set<string>();
-  for (const [n, item] of ai.items.entries()) {
+  // A district's streets come after every place an item names itself, and
+  // give way to them: "osiedle Mazury, ul. Zibura od nr 1 do 9" is Zibura
+  // in part, never whole.
+  const later: Disruption[] = [];
+  for (const [n, read] of ai.items.entries()) {
     const why = (reason: string) => `item ${n + 1}: ${reason}`;
+    const item = { ...read, date: inferYear(read.date, text, publishedAt) };
     if (item.kind === "quality") return notice(why("a quality item"));
     const resolved = itemPlaces(item, ctx);
     if ("reason" in resolved && resolved.date)
@@ -275,13 +603,33 @@ export function readPost(
     if (typeof when === "string") return notice(why(when));
     if ("reason" in resolved) {
       dropped.push(why(resolved.reason));
+      const words =
+        resolved.words ??
+        item.street_verbatim ??
+        item.note ??
+        item.locality_verbatim;
+      if (rules.gate?.area && literal.includes(normalize(words)))
+        unmatched.push(words.replace(/\s+/g, " ").trim());
       continue;
     }
-    for (const { label, place } of resolved.places) {
-      const uid = `zuk-${post.id}-${item.date}-${place.streetId ?? place.localityId}`;
-      if (seen.has(uid)) return notice(why(`${uid} twice`));
-      seen.add(uid);
-      items.push({
+    if (rules.gate?.area) {
+      unmatched.push(...(resolved.unmatched ?? []));
+      doubts.push(...(resolved.doubts ?? []));
+    }
+    // A part of the area (a TERYT part of the town) may have no address of
+    // its own, so no page: its cut stays, and its words are linked on the
+    // area's other pages too, never lost.
+    const [first] = resolved.places;
+    if (
+      rules.gate?.area &&
+      !resolved.unmatched &&
+      first?.place.streetId === null &&
+      first.place.localityId !== rules.gate.area
+    )
+      unmatched.push(partWords(ctx.text, item.locality_verbatim));
+    for (const { label, place, own, district } of resolved.places) {
+      const uid = `${prefix}-${post.id}-${item.date}-${place.streetId ?? place.localityId}`;
+      const cut: Disruption = {
         uid,
         kind: "water",
         cause: item.kind,
@@ -289,17 +637,41 @@ export function readPost(
         ...when,
         place,
         label,
-        where: item.street_verbatim ?? item.locality_verbatim,
-        scope: resolved.scope,
-        note: item.note,
+        where: own?.where ?? item.street_verbatim ?? item.locality_verbatim,
+        scope: own?.scope ?? resolved.scope,
+        note: own ? own.note : "note" in resolved ? null : item.note,
         publishedAt,
         updatedAt,
         source,
-      });
+      };
+      if (district) {
+        later.push(cut);
+        continue;
+      }
+      if (seen.has(uid)) return notice(why(`${uid} twice`));
+      seen.add(uid);
+      items.push(cut);
     }
   }
+  for (const cut of later) {
+    if (seen.has(cut.uid)) continue;
+    seen.add(cut.uid);
+    items.push(cut);
+  }
   if (items.length === 0) return notice(`no place: ${dropped[0]}`);
-  return { status: "parsed", items, dropped };
+  return {
+    status: "parsed",
+    items,
+    dropped,
+    ...(unmatched.length > 0 ? { unmatched: [...new Set(unmatched)] } : {}),
+    ...(doubts.length > 0
+      ? {
+          doubts: doubts.filter(
+            (d, i) => doubts.findIndex((o) => o.words === d.words) === i,
+          ),
+        }
+      : {}),
+  };
 }
 
 /** A place a water-quality warning concerns: ours, with the source's words. */
@@ -325,8 +697,9 @@ export function readQualityPost(
   post: ZukPost,
   ai: AiResult,
   places: ZukPlaces,
+  rules: ReadRules = {},
 ): QualityReading {
-  const ctx = postContext(post, ai, places);
+  const ctx = postContext(post, ai, places, rules.gate);
   const out: WarningPlace[] = [];
   const dropped: string[] = [];
   const seen = new Set<string>();
@@ -336,15 +709,15 @@ export function readQualityPost(
       dropped.push(`item ${n + 1}: ${resolved.reason}`);
       continue;
     }
-    for (const { label, place } of resolved.places) {
+    for (const { label, place, own, district } of resolved.places) {
       const key = place.streetId ?? place.localityId;
       if (seen.has(key)) continue;
       seen.add(key);
       out.push({
         place,
         label,
-        where: item.street_verbatim ?? item.locality_verbatim,
-        scope: resolved.scope,
+        where: own?.where ?? item.street_verbatim ?? item.locality_verbatim,
+        scope: own?.scope ?? resolved.scope,
         date: item.date,
       });
     }

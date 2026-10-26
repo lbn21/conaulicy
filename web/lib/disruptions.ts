@@ -82,4 +82,22 @@ export type Notice = {
   publishedAt: string;
   updatedAt: string;
   source: DisruptionSource;
+  /**
+   * A post read but for these places, as written: the rest of its cuts
+   * are shown, these are only linked (lib/zuk-data.ts).
+   */
+  where?: string[];
+  /**
+   * A post read, one of whose bare names ("Mazury") we took for the street
+   * though it may mean the estate of that name: shown on that estate's
+   * streets only.
+   */
+  doubt?: Doubt[];
 };
+
+/**
+ * A bare name read as the street of that name ("Mazury") that may mean the
+ * district of that name instead: the post's words, and that district's
+ * streets (the gazetteer, lib/districts.ts), where it is said.
+ */
+export type Doubt = { words: string; streetIds: string[] };

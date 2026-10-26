@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Disruption } from "./disruptions.ts";
+import { DISTRICTS } from "./districts-seed.ts";
 import { matchesOutageKeywords } from "./sources/gmina-lubaczow/index.ts";
 import {
   isChangePost,
@@ -167,6 +168,26 @@ test("real 39885 as edited (14:41): each dated line its own, Lisie Jamy whole on
   assert.deepEqual(
     at(wide.items, "2026-10-27").filter((id) => id.startsWith("0606234")),
     [],
+  );
+});
+
+test("the gazetteer changes no gmina post: every real one reads the same with it", () => {
+  const withDistricts = { ...PLACES, districts: DISTRICTS };
+  for (const p of posts)
+    assert.deepEqual(
+      readPost(p, reading(p.id), withDistricts, CHECKED),
+      readPost(p, reading(p.id), PLACES, CHECKED),
+      String(p.id),
+    );
+  // Nor 39885 as edited, on the full snapshot ("Lubaczów ul. Żuki").
+  assert.deepEqual(
+    readPost(
+      POST_39885_EDITED,
+      reading39885Edited(),
+      { ...ZUK_PLACES, districts: DISTRICTS },
+      CHECKED,
+    ),
+    readPost(POST_39885_EDITED, reading39885Edited(), ZUK_PLACES, CHECKED),
   );
 });
 

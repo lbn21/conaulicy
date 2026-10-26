@@ -164,6 +164,40 @@ export function noteScope(note: string | null): Derived | string {
   return { scope, hamlet };
 }
 
+/**
+ * The item's day with its year from the post's date when the text writes
+ * the day without one ("6 października", "6.10"): the first such day from
+ * the day before the post on ("a day before the post is next year's");
+ * the year as read when the text writes it with the day (D.M.YYYY, "D
+ * <month> YYYY": the gate checks it).
+ */
+export function inferYear(
+  date: string,
+  text: string,
+  publishedAt: string,
+): string {
+  const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(date);
+  if (!m) return date;
+  const [, mm, dd] = m;
+  const [M, D] = [Number(mm), Number(dd)];
+  const t = normText(text);
+  if (
+    new RegExp(`(?<!\\d)0?${D}\\.0?${M}\\.\\d{4}`).test(t) ||
+    new RegExp(`(?<!\\d)0?${D}\\s+${MONTHS[M - 1]}\\s+\\d{4}`).test(t)
+  )
+    return date;
+  const from = addDays(publishedAt.slice(0, 10), -1);
+  const year = Number(publishedAt.slice(0, 4));
+  for (const y of [year - 1, year, year + 1]) {
+    const day = `${y}-${mm}-${dd}`;
+    const at = Date.parse(`${day}T12:00:00Z`);
+    const real =
+      !Number.isNaN(at) && new Date(at).toISOString().slice(0, 10) === day;
+    if (real && day >= from) return day;
+  }
+  return date;
+}
+
 export type When = {
   /** Warsaw wall clock or null; end on the next day for a night cut. */
   start: string | null;

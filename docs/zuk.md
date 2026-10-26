@@ -1,7 +1,8 @@
 # ZUK water cuts
 
-Water cuts announced by ZUK Mokrzyca on gminalubaczow.pl, read every 15
-minutes into one JSON file in Vercel Blob. No database writes, no UI yet.
+Water cuts announced by ZUK Mokrzyca on gminalubaczow.pl, and in the town
+by MZGKiM (below), read every 15 minutes into one JSON file per source in
+Vercel Blob. No database writes.
 
 ## A run (`GET /api/cron/zuk`, Vercel Cron `7,22,37,52 * * * *`)
 
@@ -50,6 +51,139 @@ stale after an hour. xAI down: a new
 post is `seen` with `reason: "ai-unavailable"`, retried next run, never
 shown; a new post over the run's 4 calls is stored nowhere and read on a
 later run. Either way an edited post keeps its old reading until it is read.
+
+## MZGKiM, the town's second source (task 150)
+
+MZGKiM (Miejski Zakład Gospodarki Komunalnej i Mieszkaniowej,
+mzgkim.lubaczow.pl) supplies most of the town's water and posts its own
+cuts. The same route reads it right after the gmina's posts, into its own
+file of the same shape (`mzgkim/disruptions.json`), through the same model,
+schema, guards and gate (`lib/sources/mzgkim/`, `lib/water-sources.ts`):
+
+- **Feed, not REST:** its REST API is closed to the public, so the source
+  reads its RSS feed (`/category/komunikaty/feed/`, 10 posts a page, more
+  pages only while the 14-day window needs them). The feed has no edit time:
+  a hash of each item's title and summary (`digest`) tells an edit, and an
+  edited post's `modified` is the run that first saw it.
+- **Prefilter:** a post without a water word (`wody`, `wodę`,
+  `wodociągowej`…) in its title or summary is `seen` as `not-water` without
+  a model call (the PSZOK, opening hours, deratyzacja).
+- **The page:** the feed's summary flattens the street list, so a post the
+  model reads has its page fetched first (`fullPost`, one request); a page
+  that fails is retried next run, as xAI down.
+- **Gate rules of its own** (`GateRules`; none for the gmina): its posts
+  never name the town, so the town need not be written (a part, "Niwki",
+  must be); only an exact mention of a place outside the town
+  blocks a street ("w kierunku Dąbrowy" is a direction); streets may be
+  written declined ("Niemirowskiej"), nothing but a type word before them;
+  the whole town only in the post's own words ("na terenie całego miasta").
+- **Districts (the gazetteer, task 151):** see below; "Osiedle Mazury" is
+  its 22 streets.
+- **Places off our list** ("Osiedle domów jednorodzinnych na zapleczu ul.
+  Niemirowskiej") are kept as written (`unmatched`, logged with the run):
+  every town page without a cut from that post links it ("MZGKiM ogłosił też
+  przerwę w miejscu, którego nie umiemy dopasować do adresów: „…”"). So is
+  a place matched only to a part of the town with no street ("Niwki", TERYT
+  part 0972460): such a part has no PRG address point and so no page, and
+  the post's words for it are what the town's pages can link; and a doubt
+  (a bare "Mazury", below).
+- **"X wraz z osiedlem"** is never a limit: the street X whole, and the
+  estate a place of its own (the gazetteer's, else linked as written). The
+  prompt says so; the gate also reads such a note as the whole street.
+- **A street then another of the town** ("Cicha, ul. Młodowska", 4744): the
+  second is not a limit the first leaves out (`checkOmission`'s `others`
+  take the same place's other streets for a street, never for a whole
+  place).
+- **A village in a bracket after a town street** ("ul. Młodowska
+  (Młodów)", 4744): where it leads, not where it lies. A street of the town
+  written whole with its type word is kept whole, the bracket in its words
+  (`where`), never a note ("in part"); a street not written whole ("ul.
+  Sobieskiego (Dąbrowa)") is still dropped. The gmina's posts: unchanged,
+  the bracket decides.
+- **Year:** a day written without one ("6 października") takes the post's
+  year, a day before the post the next year's (`inferYear`, every source).
+- **Failures stay its own:** the feed down, a page or Blob error: logged
+  (`{zuk: "source-down", source: "mzgkim"}`) and listed under `sources` in
+  the reply, never the gmina's run or the status. Both runs share one
+  model-call budget from the route's start.
+
+Model calls: only new or edited posts that pass the prefilter, one each.
+In its last 20 posts (Nov 2025 to Oct 2026) that is 3 cuts and 2 other
+posts with a water word: about 5 calls a year, so 0 on almost every day and
+1 on a day it posts a cut. The feed costs 96 small requests a day.
+
+The pages (`lib/water-module.ts`): one logic and one set of texts for every
+address; only the list of sources differs (the gmina's everywhere, MZGKiM's
+in the town and its parts). A cut's „Źródło” is its own post only. A source
+stale or without a file is named in the texts when the address has another
+that is not.
+
+## The town's districts: the gazetteer (task 151)
+
+Residents and MZGKiM name estates TERYT lacks ("osiedle Mazury", "os.
+Jagiellonów"), or has only as a town part with no street (Mazury 0972453 has
+no address, its point 0.5–0.8 km south of the estate). The gazetteer gives
+each a name, the forms it is written in, and its streets
+(`lib/districts.ts`; the data, Jakub's approved list of 26 Oct 2026 from the
+research (Jakub's file, not in git), in `lib/districts-seed.ts`: high and
+medium confidence in, low out; Załuże and Bałaje are villages, never a town
+district). It lives in the database (`district_aliases`,
+`district_alias_streets`, docs/database.md), which the cron reads
+(`lib/districts-db.ts`) for both prompts and the gate:
+
+- **The prompts:** both list the districts with their forms and streets
+  after the streets. MZGKiM's rules: a district is ONE item, `street` its
+  name as listed, `street_verbatim` the post's words; never its streets.
+  The gmina's rules stay byte for byte; one line in its context says it.
+- **The gate:** an item whose words spell a district (case and diacritics
+  aside, "osiedle" in any form or "os.", "X wraz z osiedlem" for X its
+  name; a name inside a longer one, "os. Mazury" in "os. Mazury VI", is
+  not it), or whose `street` or town part names one, is the district: each
+  of its streets, whole (a stretch where the gazetteer gives one, "bloki
+  24–34A": in part, houses unknown), with the post's words as `where`. A
+  street an item names itself wins over the district's: never twice, never
+  wider. A district the post limits (a note) is left out and linked; one
+  with no street is its TERYT part if it has one (as before), else only
+  linked.
+- **Misspellings:** the code never guesses. Both prompts ask the model to
+  map an obvious misspelling of a listed district ("osiedle Mazóry") to its
+  listed name, keeping the post's words; the gate takes the district the
+  model names when those words are in the post. A name the model does not
+  map stays unmatched, linked as written.
+- **"ul. Mazury" is the street** 12559 only; "ul. Mazury, osiedle Mazury"
+  both. A **bare "Mazury"** (no "ul.", no "osiedle") is the street too, kept
+  as a doubt; so is a bare "Piaski" (16027). Not for a one-street estate
+  whose street has its name (Żelichówka, Pod Borem, Mały Łążek): no doubt
+  there. "Boczna Mazury" is its own street, never "Mazury".
+- **Where a doubt is said:** each doubt in the file (`doubts`) keeps the
+  post's words and the streets of the district it may mean, from the
+  gazetteer as the cron read it. Only the pages of those streets, and only
+  where that post shows no cut of its own, say it in one line linking the
+  post: „MZGKiM pisze tylko „Mazury”, więc nie wiemy na pewno, czy chodzi o
+  ulicę, czy o całe osiedle – zajrzyj do komunikatu” (two names on one
+  street: „Mazury” i „Piaski”, „ulice … osiedla”). No other town page
+  shows it (`water` in `lib/water-module.ts`; no names in code).
+
+A district street the TERYT snapshot lacks is skipped by the gate and
+logged by the cron (`{zuk: "district-street-unknown", district, street}`,
+ids only); the seed refuses such ids in the first place.
+
+Adding a district is a new entry in `lib/districts-seed.ts`, then `npm run
+db:districts` (dry run, then `-- --apply`; production only with Jakub's
+approval for that run). The tests read the seed; `checkDistricts` fails on
+any street id not in the TERYT snapshot.
+
+To try a post on the real model on your own computer (no write anywhere):
+
+```sh
+cd web
+npm run water:dry-run -- --source mzgkim --file post.txt --published 2026-10-02T12:11:39
+# --ai reading.json: gate a saved model reading again, no call
+# --districts db: the gazetteer from DATABASE_URL instead of the seed
+```
+
+It prints the model's JSON and the gate's result (`scripts/lib/water-dry-run.ts`
+`waterDryRun`, the same prompt, schema and gate as the cron).
 
 ## The file (version 4, `lib/zuk-data.ts`)
 

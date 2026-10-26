@@ -4,8 +4,11 @@ import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MODULES } from "../lib/modules.ts";
+import { CUT_100 } from "../lib/mzgkim-fixture.ts";
 import type { PlaceView } from "../lib/schedule.ts";
 import {
+  bothViews,
+  mzgkimPost,
   POST_39885,
   SOBIESKIEGO_RANGE,
   sobieskiego,
@@ -39,7 +42,7 @@ const ZUKI = testPlace();
 const waterPage = (posts = [storedPost(POST_39885, CHECKED)], place = ZUKI) =>
   renderToStaticMarkup(
     createElement(WaterDetails, {
-      data: water(zukView(zukFile(posts, CHECKED), NOW), place),
+      data: water(bothViews(posts, CHECKED, NOW), place),
       checkedAt: new Date(CHECKED),
     }),
   );
@@ -128,8 +131,10 @@ test("/woda: the AI note in a warning text, the source in an inset", () => {
   );
   assert.match(
     html,
-    /<div class="govuk-inset-text"><p class="govuk-body">Źródło: <a href="https:\/\/www\.gminalubaczow\.pl\/[^"]+" class="govuk-link">Komunikat gminy z 23 października 2026<\/a><\/p><p class="govuk-body">Źródło: <a href="https:\/\/mzgkim\.lubaczow\.pl\/category\/komunikaty\/" class="govuk-link">komunikaty MZGKiM<\/a><\/p><\/div>/,
+    /<div class="govuk-inset-text"><p class="govuk-body">Źródło: <a href="https:\/\/www\.gminalubaczow\.pl\/[^"]+" class="govuk-link">Komunikat gminy z 23 października 2026<\/a><\/p><\/div>/,
   );
+  // A town street: the cut's own post is its only source, never MZGKiM's.
+  assert.doesNotMatch(html, /MZGKiM/);
   // The source is no longer a row of the cut.
   assert.doesNotMatch(html, /summary-list__key">Źródło/);
 });
@@ -312,7 +317,7 @@ test("a number outside a cut's range: one trace line, hub and /woda", () => {
     }),
   ];
   const data = (nr: string | null) =>
-    water(zukView(zukFile(posts, CHECKED), NOW), sobieskiego(nr));
+    water(bothViews(posts, CHECKED, NOW), sobieskiego(nr));
   const hub = (nr: string | null) =>
     renderToStaticMarkup(
       createElement(Trace, { module: MODULES.woda, data: data(nr) } as never),
@@ -415,7 +420,7 @@ test("village: the hub's water and /woda unchanged in every state", () => {
   for (const [state, view] of Object.entries(states) as Array<
     [keyof typeof states, (typeof states)[keyof typeof states]]
   >) {
-    const data = water(view, SMOLINCE);
+    const data = water({ "gmina-lubaczow": view }, SMOLINCE);
     assert.deepEqual(
       [
         waterAlerts(data),
@@ -440,4 +445,57 @@ test("village: the hub's water and /woda unchanged in every state", () => {
       `${state}: ${html}`,
     );
   }
+});
+
+test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
+  // 5237's cut (6 Oct 2026) at ul. Niemirowska, seen on 3 Oct.
+  const checked = "2026-10-03T09:50:00.000Z";
+  const now = new Date("2026-10-03T10:00:00Z");
+  const niemirowska = testPlace({
+    id: "0972447-14183",
+    streetId: "0972447-14183",
+  });
+  const page = (town: ReturnType<typeof mzgkimPost>[], place = niemirowska) =>
+    renderToStaticMarkup(
+      createElement(WaterDetails, {
+        data: water(bothViews([], checked, now, town), place),
+        checkedAt: new Date(checked),
+      }),
+    );
+  const html = page([mzgkimPost(CUT_100, checked)]);
+  assert.ok(ascending(order(html, [...SKELETON, ...AFTER])));
+  assert.match(
+    html,
+    /<p class="govuk-body">Plik z przerwami\. Jeśli MZGKiM zmieni godziny, pobierz go jeszcze raz\.<\/p>/,
+  );
+  assert.match(
+    html,
+    /<h2 id="dzien-2026-10-06" class="govuk-heading-m">Wtorek, 6 października<\/h2><dl class="govuk-summary-list"><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Godziny<\/dt><dd class="govuk-summary-list__value">8:30–15:00<\/dd><\/div><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Gdzie<\/dt><dd class="govuk-summary-list__value">cała ulica Niemirowska<\/dd>/,
+  );
+  assert.match(
+    html,
+    /odczytaliśmy automatycznie z komunikatu MZGKiM i nikt ich jeszcze nie sprawdził drugi raz\. Gdyby coś się nie zgadzało, rację ma komunikat MZGKiM\./,
+  );
+  assert.match(
+    html,
+    /<div class="govuk-inset-text"><p class="govuk-body">Źródło: <a href="https:\/\/mzgkim\.lubaczow\.pl\/przerwa-w-dostawie-wody-100\/" class="govuk-link">Komunikat MZGKiM z 2 października 2026<\/a><\/p><\/div>/,
+  );
+  // Its cut shown here: its area off our list is not linked again.
+  assert.doesNotMatch(html, /Inne komunikaty/);
+  // Another town street: no cut, the area linked under „Inne komunikaty”.
+  const asnyka = page(
+    [mzgkimPost(CUT_100, checked)],
+    testPlace({ id: "0972447-00470", streetId: "0972447-00470" }),
+  );
+  assert.match(
+    asnyka,
+    /<h2 id="inne-komunikaty" class="govuk-heading-m">Inne komunikaty<\/h2><p class="govuk-body"><a href="https:\/\/mzgkim\.lubaczow\.pl\/przerwa-w-dostawie-wody-100\/" class="govuk-link">MZGKiM ogłosił też przerwę w miejscu, którego nie umiemy dopasować do adresów: „Osiedle domów jednorodzinnych na zapleczu ul\. Niemirowskiej” – sprawdź komunikat<span class="govuk-visually-hidden"> „Przerwa w dostawie wody”<\/span><\/a><\/p><\/section>/,
+  );
+  // Fresh, no cut: one sentence, both sources' posts, no MZGKiM caveat.
+  const quiet = page([]);
+  assert.match(
+    quiet,
+    /<p class="govuk-body">Nie wiemy o żadnej zapowiedzianej przerwie w dostawie wody pod tym adresem\. Gmina ogłasza je w <a href="https:\/\/www\.gminalubaczow\.pl\/aktualnosci\/" class="govuk-link">aktualności gminy Lubaczów<\/a>, a MZGKiM – w <a href="https:\/\/mzgkim\.lubaczow\.pl\/category\/komunikaty\/" class="govuk-link">komunikatach MZGKiM<\/a>\.<\/p>/,
+  );
+  assert.doesNotMatch(quiet, /jeszcze tu nie pokazujemy|nie sprawdzamy/);
 });

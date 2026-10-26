@@ -38,6 +38,7 @@
     "db:import": "node --env-file-if-exists=.env.local scripts/import.ts",
     "db:redirect": "node --env-file-if-exists=.env.local scripts/place-redirect.ts",
     "db:districts": "node --env-file-if-exists=.env.local scripts/districts-seed.ts",
+    "water:dry-run": "node --env-file-if-exists=.env.local --import ./scripts/lib/server-only.mjs scripts/water-dry-run.ts",
     "check:teryt": "node scripts/check-teryt.ts",
     "import:run": "node --env-file-if-exists=.env.local scripts/import/core/run.ts",
     "import:revert": "node --env-file-if-exists=.env.local scripts/import/core/revert.ts",
