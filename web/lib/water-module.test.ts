@@ -672,7 +672,7 @@ test("town, a bare 'Mazury' read as the street: one friendly line elsewhere in t
   const links = estate.notices.map(noticeLink);
   assert.deepEqual(links.at(-1), {
     href: POST_5237,
-    text: "MZGKiM pisze po prostu „Mazury” i nie wiemy na pewno, czy chodzi o ulicę, czy o całe osiedle – zajrzyj do komunikatu",
+    text: "MZGKiM pisze tylko „Mazury”, więc nie wiemy na pewno, czy chodzi o ulicę, czy o całe osiedle – zajrzyj do komunikatu",
     hidden: "„Przerwa w dostawie wody”",
   });
   // Not where the post's cut is shown (it is linked there already).
@@ -682,7 +682,7 @@ test("town, a bare 'Mazury' read as the street: one friendly line elsewhere in t
   const [doubt] = estate.notices.filter((n) => n.doubt);
   assert.deepEqual(noticeLink({ ...doubt, doubt: ["Mazury", "Piaski"] }), {
     href: POST_5237,
-    text: "MZGKiM pisze po prostu „Mazury” i „Piaski” i nie wiemy na pewno, czy chodzi o ulice, czy o całe osiedla – zajrzyj do komunikatu",
+    text: "MZGKiM pisze tylko „Mazury” i „Piaski”, więc nie wiemy na pewno, czy chodzi o ulice, czy o całe osiedla – zajrzyj do komunikatu",
     hidden: "„Przerwa w dostawie wody”",
   });
 });

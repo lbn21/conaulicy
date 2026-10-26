@@ -315,7 +315,7 @@ export function noticeLink(notice: Notice): Part {
     const one = doubt.length === 1;
     return {
       href: notice.source.url,
-      text: `${who} pisze po prostu ${doubt.map((w) => `„${w}”`).join(" i ")} i nie wiemy na pewno, czy chodzi o ${one ? "ulicę, czy o całe osiedle" : "ulice, czy o całe osiedla"} – zajrzyj do komunikatu`,
+      text: `${who} pisze tylko ${doubt.map((w) => `„${w}”`).join(" i ")}, więc nie wiemy na pewno, czy chodzi o ${one ? "ulicę, czy o całe osiedle" : "ulice, czy o całe osiedla"} – zajrzyj do komunikatu`,
       hidden: `„${notice.title}”`,
     };
   }

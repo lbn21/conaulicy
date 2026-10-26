@@ -153,9 +153,9 @@ district). It lives in the database (`district_aliases`,
 - **"ul. Mazury" is the street** 12559 only; "ul. Mazury, osiedle Mazury"
   both. A **bare "Mazury"** (no "ul.", no "osiedle") is the street too, kept
   as a doubt (`doubts` in the file): every other town page without a cut
-  from that post says so in one line, linking the post: „MZGKiM pisze po
-  prostu „Mazury” i nie wiemy na pewno, czy chodzi o ulicę, czy o całe
-  osiedle – zajrzyj do komunikatu”. The same for "Piaski" (16027). Not for a
+  from that post says so in one line, linking the post: „MZGKiM pisze tylko
+  „Mazury”, więc nie wiemy na pewno, czy chodzi o ulicę, czy o całe
+  osiedle – zajrzyj do komunikatu” (two names: „Mazury” i „Piaski”). The same for "Piaski" (16027). Not for a
   one-street estate whose street has its name (Żelichówka, Pod Borem, Mały
   Łążek): no doubt there. "Boczna Mazury" is its own street, never "Mazury".
 
