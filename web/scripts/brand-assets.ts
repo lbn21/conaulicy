@@ -1,8 +1,9 @@
 // Writes everything that takes the palette's colours (lib/palette.ts) and is
 // not code: the Sass palette (app/_palette.scss), the bin colours
 // (app/waste-colours.css, from lib/waste-colours.ts), the tab icons
-// (app/icon.svg, app/favicon.ico), the app icons (app/apple-icon.png,
-// public/icon-*.png) and the share card (public/og.png). None is in git.
+// (app/icon.svg, app/favicon.ico), the app icons (public/apple-touch-icon.png,
+// at the root with no query, where iOS looks for it; public/icon-*.png) and
+// the share card (public/og.png). None is in git.
 //   node scripts/brand-assets.ts
 // next.config.ts runs it on every next dev and next build (Vercel's
 // included), and scripts/check-own-css.mjs before it compiles the Sass.
@@ -174,7 +175,7 @@ const OUTPUTS: Record<string, () => Promise<Buffer | string>> = {
       [16, await png(faviconSvg(16), 16, 16)],
       [32, await png(faviconSvg(32), 32, 32)],
     ]),
-  "app/apple-icon.png": () => tile(180, 0.66),
+  "public/apple-touch-icon.png": () => tile(180, 0.66),
   "public/icon-192.png": () => png(faviconSvg(32), 192, 192),
   "public/icon-512.png": () => png(faviconSvg(32), 512, 512),
   "public/icon-maskable-512.png": () => tile(512, 0.56),

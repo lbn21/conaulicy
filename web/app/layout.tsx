@@ -24,6 +24,10 @@ export const metadata: Metadata = {
   description:
     "Kiedy przyjeżdża śmieciarka na Twoją ulicę w Lubaczowie albo do Twojej wsi w gminie.",
   ...SHARE,
+  // "default" on purpose; black-translucent is deprecated by Apple (WebKit
+  // bug 317153), never restore it. The bar takes the page's colour: see
+  // the standalone rule in app/site.scss.
+  appleWebApp: { title: SITE_NAME, statusBarStyle: "default" },
   robots: indexable()
     ? { index: true, follow: true }
     : { index: false, follow: false },
@@ -52,6 +56,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang={LANG} className={`govuk-template ${atkinson.variable}`}>
       {/* The snippet adds classes to <body> before React hydrates. */}
+      <head>
+        {/* The Apple icon at the root, with no query, where iOS also looks
+            for it unlinked (scripts/brand-assets.ts). Not metadata.icons:
+            Next then drops app/icon.svg's link. */}
+        <link
+          rel="apple-touch-icon"
+          href="/apple-touch-icon.png"
+          sizes="180x180"
+          type="image/png"
+        />
+      </head>
       <body className="govuk-template__body" suppressHydrationWarning>
         <script
           // biome-ignore lint/security/noDangerouslySetInnerHtml: GOV.UK's support snippet must run before the page renders

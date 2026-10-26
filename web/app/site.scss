@@ -30,6 +30,31 @@ $app-header-colour: $app-header;
   }
 }
 
+// The status bar of the home-screen app (task 136). Safari 26 ignores
+// theme-color and samples the page under the bar: a fixed element touching
+// the top edge and at least 90 % wide gives its colour (its background if
+// over 10px tall, else its pixels 4-6px in); without one, the page's (<html>,
+// tint-95), a grey bar above our header, which is not fixed (WebKit
+// LocalFrameView::fixedContainerEdges; github.com/joe-bell/skills,
+// apple-web-app/references/theme-color-and-status-bar.md). So in standalone
+// only, a strip in the header's colour, 10px deep, sits at the top: the only
+// own fixed element. Hidden while the skip link is focused, which it would
+// cover. Not black-translucent (app/layout.tsx).
+@media (display-mode: standalone) {
+  .govuk-template__body::before {
+    content: "";
+    position: fixed;
+    z-index: 1000;
+    inset: 0 0 auto;
+    height: govuk-spacing(2);
+    background: $app-header-colour;
+    pointer-events: none;
+  }
+
+  // On one line, under the 80-line cap (scripts/check-own-css.mjs).
+  .govuk-template__body:has(.govuk-skip-link:focus)::before { display: none; }
+}
+
 .govuk-generic-header__logo {
   @include generic-header.logo-styles($padding-top: 18px, $padding-bottom: 11px);
 }

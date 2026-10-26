@@ -11,7 +11,8 @@
 // conaulicy.pl", the water subpage "<H1> – <place>, <locality> –
 // conaulicy.pl" ("Błąd: " first with an error summary); a few of them
 // exactly (TITLES). The share title is the same, and the share name
-// conaulicy.pl.
+// conaulicy.pl. The home page's Apple web-app tags (a "default" status bar,
+// never black-translucent) and the manifest's id, scope, display and icons.
 //
 // Runs against `next start` on the current build.
 import { finish, ROUTES, startServer } from "./lib/server.mjs";
@@ -168,6 +169,49 @@ try {
     } else if (jsonLd.length > 0) {
       failures.push(`${path}: JSON-LD outside the home page`);
     }
+  }
+
+  // The home-screen app (task 136): Apple's title and a "default" status
+  // bar, never black-translucent; the manifest's identity and icons.
+  const home = await (await fetch(`${server.origin}/`)).text();
+  for (const [name, want] of [
+    ["apple-mobile-web-app-status-bar-style", "default"],
+    ["apple-mobile-web-app-title", "conaulicy.pl"],
+  ]) {
+    const got = meta(home, "name", name);
+    if (got.length !== 1 || got[0] !== want)
+      failures.push(`/: ${name} ${JSON.stringify(got)}, want ${want}`);
+  }
+  if (home.includes("black-translucent"))
+    failures.push("/: black-translucent in the HTML");
+  const manifest = await (
+    await fetch(`${server.origin}/manifest.webmanifest`)
+  ).json();
+  for (const [key, want] of [
+    ["id", "/"],
+    ["scope", "/"],
+    ["start_url", "/"],
+    ["display", "standalone"],
+  ]) {
+    if (manifest[key] !== want)
+      failures.push(`manifest: ${key} ${JSON.stringify(manifest[key])}`);
+  }
+  const icons = manifest.icons ?? [];
+  const any = (size) =>
+    icons.some((icon) => icon.sizes === size && icon.purpose !== "maskable");
+  if (!any("192x192") || !any("512x512"))
+    failures.push("manifest: no 192x192 and 512x512 icons (purpose any)");
+  if (icons.filter((icon) => icon.purpose === "maskable").length !== 1)
+    failures.push("manifest: not one maskable icon");
+  for (const { src } of icons) {
+    const response = await fetch(`${server.origin}${src}`);
+    if (
+      response.status !== 200 ||
+      response.headers.get("content-type") !== "image/png"
+    )
+      failures.push(
+        `manifest icon ${src}: ${response.status} ${response.headers.get("content-type")}`,
+      );
   }
 } finally {
   server.stop();

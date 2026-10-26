@@ -2,7 +2,8 @@
 // strings cannot bust the CDN cache (proxy.ts, lib/clean-query.ts). Allowed
 // ones (nr on street pages and PDFs, q on /api/search and /szukaj) are
 // served as they are; Next.js assets, icons with their cache-busting query,
-// other files and POST /api/revalidate are never redirected.
+// other files and POST /api/revalidate are never redirected. The Apple icon
+// is linked at the root with no query, and served as a PNG.
 //
 // Also the search without JS: the home page's raw HTML is a GET form to
 // /szukaj with a field named q and a submit button, and /szukaj answers it:
@@ -148,16 +149,29 @@ try {
   if (chunk) CASES.push(["GET", `${chunk}?x=1`, 200]);
   else failures.push("/: no /_next/static/ script");
 
-  // Next.js links its icons with a cache-busting query.
-  for (const name of ["favicon.ico", "icon.svg", "apple-icon.png"]) {
-    const icon = home
-      .match(/<link [^>]*>/g)
-      ?.filter((tag) => /rel="(?:icon|apple-touch-icon)"/.test(tag))
-      .map((tag) => /href="([^"]+)"/.exec(tag)?.[1])
-      .find((href) => href?.startsWith(`/${name}?`));
+  // Next.js links its tab icons with a cache-busting query.
+  const links = home.match(/<link [^>]*>/g) ?? [];
+  const hrefs = (rel) =>
+    links
+      .filter((tag) => new RegExp(`rel="${rel}"`).test(tag))
+      .map((tag) => /href="([^"]+)"/.exec(tag)?.[1]);
+  for (const name of ["favicon.ico", "icon.svg"]) {
+    const icon = hrefs("icon").find((href) => href?.startsWith(`/${name}?`));
     if (icon) CASES.push(["GET", icon, 200]);
     else failures.push(`/: no <link> to /${name}?…`);
   }
+  // The Apple icon at the root, with no query (task 136): iOS fetches it
+  // there, without cookies, when the page is added to the Home Screen.
+  const apple = hrefs("apple-touch-icon");
+  if (apple.length !== 1 || apple[0] !== "/apple-touch-icon.png")
+    failures.push(`/: apple-touch-icon ${JSON.stringify(apple)}`);
+  if (links.some((tag) => tag.includes('href="/apple-icon.png')))
+    failures.push("/: a <link> to /apple-icon.png");
+  const touch = await fetch(`${server.origin}/apple-touch-icon.png`);
+  if (touch.status !== 200 || touch.headers.get("content-type") !== "image/png")
+    failures.push(
+      `/apple-touch-icon.png: ${touch.status} ${touch.headers.get("content-type")}`,
+    );
 
   const { places } = await searchIndexOf(server.origin, home);
   if (places.length === 0) failures.push("/: no search index");

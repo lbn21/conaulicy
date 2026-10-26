@@ -54,6 +54,10 @@ Across the whole site the same job always uses the same component and style:
 - one freshness line (`CheckedLine`).
 - Link text says where it goes (e.g. „Wszystkie odbiory śmieci”); never a bare „Szczegóły” or „Kliknij tutaj” (`web/scripts/check-modules.mjs` fails on one).
 
+## Home-screen app
+
+Opened from the home screen (`display-mode: standalone`), every page has a strip in the header's colour, 10 px deep, fixed at the top (`.govuk-template__body::before`, `web/app/site.scss`; task 136): Safari 26 takes the status bar's colour from it, not from theme-color. It is the only own fixed element, sits on the header's own colour when the page is not scrolled, and is hidden while the skip link is focused. In a browser tab nothing changes. The status bar style is `default`, never `black-translucent` (`web/app/layout.tsx`).
+
 ## The hub, `/adres/<id>`
 
 The hub keeps its own layout (`web/components/hub.tsx`): the shared alert slot under the h1, then each module as its own section (h2 `govuk-heading-l`, a summary list, then a text link saying where it goes: its module's `more`, `web/lib/modules.ts`, e.g. „Wszystkie odbiory śmieci”), a visible `govuk-section-break--l` between sections and before „Bez zapowiedzi”; no summary cards on the hub. The hub's module summary lists use `govuk-summary-list--no-border`; the visible section break is the only line between modules; subpages keep row borders (Jakub's decision, task 132). Then „Bez zapowiedzi” (h2 `govuk-heading-l`), and no calendar button.

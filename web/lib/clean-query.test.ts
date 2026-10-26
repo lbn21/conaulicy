@@ -62,7 +62,7 @@ test("the other cacheable routes take no parameters", () => {
 test("files, metadata and unknown paths are never touched", () => {
   assert.equal(clean("/favicon.ico?favicon.2zyqv1b-1_vd2.ico"), null);
   assert.equal(clean("/icon.svg?icon.0otmg08cw9-wb.svg"), null);
-  assert.equal(clean("/apple-icon.png?apple-icon.290v98y1wixts.png"), null);
+  assert.equal(clean("/apple-touch-icon.png?x=1"), null);
   assert.equal(clean("/manifest.webmanifest?x=1"), null);
   assert.equal(clean("/og.png?x=1"), null);
   assert.equal(clean("/robots.txt?x=1"), null);

@@ -23,11 +23,13 @@ The site uses **GOV.UK Frontend as-is, including its palette**. Only three thing
 |---|---|
 | Header | `web/components/site-header.tsx`: inline SVG (paths in `web/lib/logo.ts`); plate GOV.UK white (`govuk-colour("white")` in `app/site.scss`) on the cherry bar (`$app-header`, `HEADER`), the "ul." and rim cut out to the cherry; wordmark `currentColor` (white); on focus, a black plate with the "ul." in focus yellow (the plate takes `currentColor`, GOV.UK's focus-text) |
 | Tab icon | `web/app/icon.svg` and `web/app/favicon.ico` (16 from `web/lib/brand/favicon-16.svg`, 32 from `favicon-32.svg`): the `PLATE` plate filling the square (corner radius 6/32), a white rim 1/32 wide on its edge so it stands out on dark tab bars, and white “ul.”; one icon for light and dark. The 16-px “ul.” is drawn on whole pixels (stems 2 px, dot 2 × 2 px) |
-| Apple | `web/app/apple-icon.png` (180): full-bleed `PLATE`, opaque, no rim, “ul.” 66 % of the width; iOS rounds it |
+| Apple | `web/public/apple-touch-icon.png` (180, same design): full-bleed `PLATE`, opaque, no rim, “ul.” 66 % of the width; iOS rounds it. Linked at the root without a query (`web/app/layout.tsx`) |
 | PWA | `web/public/icon-192.png`, `icon-512.png` (the tab icon's design, `favicon-32.svg` scaled) and `icon-maskable-512.png` (full-bleed `PLATE`, “ul.” 56 % of the width, inside the central 80 % circle), listed in `web/app/manifest.ts` |
 | Footer | `web/components/site-footer.tsx`: the plate alone, `PLATE`, on the footer's tint-95 |
 | Share card | `web/public/og.png` (1200 × 630): the flat `PLATE` plate, rim and “ul.” cut out, on white, with the tagline in `PLATE` too (from `web/lib/brand/og.svg`), in the `openGraph` and `twitter` metadata |
 | PDF | The cherry band (`HEADER`, as `THEME_COLOR`) at the top of each page, as in the site header (white plate, wordmark centred optically on the plate), drawn as vector paths from `web/lib/logo.ts` |
+
+iOS caches the icon and status-bar settings when the icon is added: after a change, delete the home-screen icon and add it again.
 
 ## Clear space and minimum size
 
