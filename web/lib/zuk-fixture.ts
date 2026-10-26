@@ -1843,3 +1843,56 @@ export const READINGS: Record<
     ],
   },
 };
+
+/**
+ * Real: post 39885 as the gmina edited it on 26 Oct 2026 at 14:41 (GET
+ * …/wp-json/wp/v2/posts?include=39885 at 17:31 UTC, title and content
+ * verbatim): a line added for 27.10, "Lisie Jamy, ul. Długa, Wąska, Leśna,
+ * Zielona", while 26.10 and 29.10 keep the whole village (task 152).
+ */
+export const POST_39885_EDITED: ZukPost = {
+  id: 39885,
+  date: "2026-10-23T18:59:43",
+  modified: "2026-10-26T14:41:25",
+  link: "https://www.gminalubaczow.pl/2026/10/23/przerwy-w-dostawie-wody-26-29-10-2026/",
+  title: {
+    rendered: "Przerwy w dostawie wody: 26-29.10.2026 (uwaga aktualizacja)",
+  },
+  content: {
+    rendered:
+      '<p>Zakład Usług Komunalnych Sp. z o. o. w Mokrzycy informuje, że w związku z trwającymi pracami modernizacyjnymi (wymiana węzłów i hydrantów) w dniach <strong>od \u00a026.10.2026r. (poniedziałek)\u00a0 do 29.10.2026r. (czwartek) </strong>nastąpi przerwa w dostawie wody dla mieszkańców miejscowości:</p>\n<ul>\n<li><strong><u>-26.10.2026 (poniedziałek): </u></strong><strong>Lisie Jamy w godz. od 8:00 do 16:00</strong></li>\n<li><strong><u><span style="color: #ff0000;">-27.10.2026 (wtorek): </span></u></strong><span style="color: #ff0000;"><strong>Lisie Jamy, ul. Długa, Wąska, Leśna, Zielona w godz. od 8:00 do 12:00\u00a0</strong></span></li>\n<li><strong><u>-27.10.2026 (wtorek): </u></strong><strong>Dąbków, Lubaczów ul. Żuki, Opaka od numeru 104 do 110 w godz. od 8:00 do 16:00\u00a0</strong></li>\n<li><strong><u>-28.10.2026 (środa): </u></strong><strong>Załuże–Podłęże od numeru 44 do numeru 92, Bałaje, ul. Przemysłowa (Lubaczów), Antoniki, Młodów ul. Pilipy, Piastowo, Basznia Dolna, Basznia Górna, Podlesie – w godz. od 8:00 do 16:00\u00a0</strong></li>\n<li><strong><u>-29.10.2026 (czwartek): </u></strong><strong>Wólka Krowicka, Lisie Jamy &#8211; w godz. od 8:00 do 16:00\u00a0 </strong></li>\n</ul>\n<p>Informujemy, że po ponownym uruchomieniu wodociągu może nastąpić czasowe pogorszenie jakości wody.</p>\n<p>Za utrudnienia przepraszamy.<br />\nPrezes ZUK. Sp. z o. o.</p>\n',
+  },
+};
+
+/**
+ * A reading of POST_39885_EDITED shaped as the real model's on Jakub's box
+ * (task 152, where items 1 and 19 were dropped): the 15 items of
+ * reading(39885) with the four streets of Lisie Jamy on 27.10 as items
+ * 2-5, so the 29.10 Lisie Jamy is item 19. Written by hand, never a real
+ * call.
+ */
+export function reading39885Edited(): AiResult {
+  const street = (name: string, verbatim: string): AiItem => ({
+    date: "2026-10-27",
+    start: "08:00",
+    end: "12:00",
+    locality: "Lisie Jamy",
+    locality_verbatim: "Lisie Jamy",
+    street: name,
+    street_verbatim: verbatim,
+    note: null,
+    kind: "planned",
+  });
+  const [first, ...rest] = reading(39885).items;
+  return {
+    ...reading(39885),
+    items: [
+      first,
+      street("Długa", "ul. Długa"),
+      street("Wąska", "Wąska"),
+      street("Leśna", "Leśna"),
+      street("Zielona", "Zielona"),
+      ...rest,
+    ],
+  };
+}

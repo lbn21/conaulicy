@@ -12,7 +12,14 @@ import {
   type ZukPost,
 } from "./zuk.ts";
 import type { AiItem, AiResult } from "./zuk-ai.ts";
-import { PLACES, READINGS, reading, realPosts } from "./zuk-fixture.ts";
+import {
+  PLACES,
+  POST_39885_EDITED,
+  READINGS,
+  reading,
+  reading39885Edited,
+  realPosts,
+} from "./zuk-fixture.ts";
 import { TRUTH } from "./zuk-fixture-b.ts";
 import { ZUK_PLACES } from "./zuk-places.generated.ts";
 
@@ -105,6 +112,62 @@ test("real, v3.1 items: all 24 posts, every place-day right, none wrong", () => 
   }
   assert.deepEqual([...got].sort(), [...want].sort());
   assert.equal(TRUTH.length, 117);
+});
+
+test("real 39885 as edited (14:41): each dated line its own, Lisie Jamy whole on 26 and 29.10", () => {
+  const read = readPost(
+    POST_39885_EDITED,
+    reading39885Edited(),
+    ZUK_PLACES,
+    CHECKED,
+  );
+  assert.equal(read.status, "parsed", JSON.stringify(read));
+  if (read.status !== "parsed") return;
+  assert.deepEqual(read.dropped, []);
+  const lisie = [
+    "0606234",
+    ...ZUK_PLACES.streets
+      .filter((s) => s.localityId === "0606234")
+      .map((s) => s.id),
+  ];
+  const ofLisie = (date: string) =>
+    at(read.items, date).filter((id) => id.startsWith("0606234"));
+  // 26.10: the whole village, every street of it.
+  assert.deepEqual(ofLisie("2026-10-26"), lisie);
+  // 27.10: only its four streets, 8:00-12:00, never the village.
+  assert.deepEqual(ofLisie("2026-10-27"), [
+    "0606234-03839",
+    "0606234-23795",
+    "0606234-10898",
+    "0606234-26081",
+  ]);
+  for (const d of read.items.filter(
+    (d) => d.date === "2026-10-27" && d.place.localityId === "0606234",
+  )) {
+    assert.deepEqual(d.scope, { type: "whole" });
+    assert.equal(d.end, "2026-10-27 12:00:00");
+  }
+  // 29.10: the whole village again, and Wólka Krowicka.
+  assert.deepEqual(ofLisie("2026-10-29"), lisie);
+  assert.ok(at(read.items, "2026-10-29").includes("0606441"));
+  // The 27.10 line still guards its own day: the whole village read for
+  // it is dropped, its streets left out.
+  const widened = reading39885Edited();
+  widened.items.splice(1, 4, {
+    ...widened.items[1],
+    street: null,
+    street_verbatim: null,
+  });
+  const wide = readPost(POST_39885_EDITED, widened, ZUK_PLACES, CHECKED);
+  assert.equal(wide.status, "parsed");
+  if (wide.status !== "parsed") return;
+  assert.deepEqual(wide.dropped, [
+    'item 2: "Lisie Jamy" leaves out what the text adds to it',
+  ]);
+  assert.deepEqual(
+    at(wide.items, "2026-10-27").filter((id) => id.startsWith("0606234")),
+    [],
+  );
 });
 
 test("real 34394: bare Dąbrowa is the village, Krowica Lasowa kept", () => {

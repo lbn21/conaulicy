@@ -11,7 +11,7 @@ import { addDays } from "./dates.ts";
 import type { DisruptionScope } from "./disruptions.ts";
 import { normalize } from "./normalize.ts";
 import type { AiItem } from "./zuk-ai.ts";
-import { MONTHS } from "./zuk-resolve.ts";
+import { guardDate, MONTHS } from "./zuk-resolve.ts";
 
 /** Lower case, one kind of dash and space: what the guards compare. */
 function normText(text: string): string {
@@ -50,13 +50,36 @@ function occurrences(haystack: string, needle: string): number[] {
   return at;
 }
 
+/** A day written in a line: "26.10", "26.10.2026", "26 października". */
+const A_DAY = new RegExp(
+  `(?<![\\d.])(?:0?[1-9]|[12]\\d|3[01])\\.(?:0?[1-9]|1[0-2])(?!\\d)|(?<!\\d)\\d{1,2}\\s+(?:${MONTHS.join("|")})`,
+);
+
+/**
+ * The lines of the text that may concern `date`: those writing that day
+ * (on its own or in a range) and those writing no day; never a line only
+ * of other days ("-27.10.2026: Lisie Jamy, ul. Długa" is not 26.10's).
+ */
+function linesOfDay(text: string, date: string): string {
+  return text
+    .split("\n")
+    .filter((line) => {
+      const t = normText(line);
+      return !A_DAY.test(t) || guardDate(date, t) === null;
+    })
+    .join("\n");
+}
+
 /**
  * Null if every place in the text that `verbatim` names is the whole of
  * it: no house numbers, street, "w części" or bracket left out. A qualified
  * occurrence is fine only when its qualifier is another item's note of the
  * same place (`claimed`), or when it starts another place's phrase
  * (`others`: "Bałaje, ul. Przemysłowa (Lubaczów)"). At least one
- * occurrence must be plain.
+ * occurrence must be plain. With the item's `date`, only the lines of that
+ * day count (linesOfDay): a post of several dated lines gives each day its
+ * own places (39885: Lisie Jamy whole on 26.10, four of its streets on
+ * 27.10).
  */
 export function checkOmission(
   verbatim: string,
@@ -64,8 +87,9 @@ export function checkOmission(
   others: string[],
   claimed: string[],
   text: string,
+  date?: string,
 ): string | null {
-  const t = normText(text);
+  const t = normText(date ? linesOfDay(text, date) : text);
   const v = normText(verbatim);
   const rest = others.map(normText).filter((o) => o !== v);
   const notes = claimed.map(normText);
