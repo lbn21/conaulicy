@@ -87,6 +87,12 @@ export type GateResult =
       kept: true;
       locality: ZukLocality;
       street: ZukStreet | null;
+      /**
+       * A source with an area: the village in a bracket after a street of
+       * the area written whole ("ul. Młodowska (Młodów)"), which decides
+       * nothing there; the street is kept with it as its words.
+       */
+      bracket?: string;
     }
   /** `date`: the day failed (check 1); else the place. */
   | { kept: false; reason: string; date: boolean };
@@ -453,6 +459,8 @@ type Decided = {
   name: string | null;
   /** The deciding mention is written exactly. */
   exact: boolean;
+  /** The bracket right after street_verbatim, its words, if any. */
+  bracket: string | null;
 };
 
 /** 9: the deciding mention for each occurrence of street_verbatim. */
@@ -481,7 +489,13 @@ function proximity(
       const end = sentenceEnd(text, e);
       const after = found.filter((m) => m.start >= e && m.end <= end);
       if (after.length === 0) {
-        res.push({ how: "none", good: false, name: null, exact: false });
+        res.push({
+          how: "none",
+          good: false,
+          name: null,
+          exact: false,
+          bracket: null,
+        });
         continue;
       }
       n = after.reduce((a, m) => (m.start < a.start ? m : a));
@@ -492,11 +506,18 @@ function proximity(
       good: places.compatible(n.name, loc) && n.exact,
       name: n.name,
       exact: n.exact,
+      bracket: br ? br[1] : null,
     });
   }
   return (
     res.find((r) => r.good) ??
-    res[0] ?? { how: "noocc", good: false, name: null, exact: false }
+    res[0] ?? {
+      how: "noocc",
+      good: false,
+      name: null,
+      exact: false,
+      bracket: null,
+    }
   );
 }
 
@@ -521,6 +542,22 @@ function typeFits(svw: string, at: number, s: ZukStreet): boolean {
   if (before.length === 0) return true;
   const stem = (s.cecha ?? "").replace(/\.+$/, "").toLowerCase();
   return stem !== "" && dl(before[before.length - 1]).startsWith(dl(stem));
+}
+
+/**
+ * `verbatim` is the street's type word, then one of its forms, whole:
+ * "ul. Młodowska"; never an end of a longer name ("ul. Sobieskiego").
+ */
+function writtenWhole(s: ZukStreet, verbatim: string): boolean {
+  const [type, ...rest] = wnorm(verbatim).trim().split(" ");
+  const stem = (s.cecha ?? "").replace(/\.+$/, "").toLowerCase();
+  return (
+    rest.length > 0 &&
+    TYPE_WORD.test(type) &&
+    stem !== "" &&
+    type.startsWith(dl(stem)) &&
+    streetForms(s).some((f) => wnorm(f) === ` ${rest.join(" ")} `)
+  );
 }
 
 /** A type word written before a street's name: "ul.", "ulicy", "os.". */
@@ -637,6 +674,7 @@ export function gateItem(
     if (!own) return drop("locality_verbatim only inside a longer place name");
   }
   let street: ZukStreet | null = null;
+  let bracket: string | undefined;
   const sv = item.street_verbatim;
   if (item.street) {
     if (!(sv && txt.includes(norm(sv))))
@@ -650,10 +688,19 @@ export function gateItem(
     if (!streetInVerbatim(places, loc, street, sv, rules.declined))
       return drop("street_verbatim lacks street name");
     const decided = proximity(text, found, sv, loc, places);
-    if (area ? decided.exact && !decided.good : !decided.good)
+    // In a source's area, a village in a bracket after one of its streets
+    // written whole ("ul. Młodowska (Młodów)") is where it leads, not where
+    // it lies.
+    const toward =
+      area !== null &&
+      decided.how === "bracket" &&
+      decided.bracket !== null &&
+      writtenWhole(street, sv);
+    if (!toward && (area ? decided.exact && !decided.good : !decided.good))
       return drop(
         `proximity: deciding mention ${decided.name ?? "None"} (${decided.how})`,
       );
+    if (toward && !decided.good) bracket = (decided.bracket as string).trim();
   } else if (
     loc.kind === "miasto" &&
     !(loc === area && item.note === null && rules.whole?.test(text))
@@ -668,5 +715,5 @@ export function gateItem(
     )
       return drop("note names another place");
   }
-  return { kept: true, locality: loc, street };
+  return { kept: true, locality: loc, street, ...(bracket ? { bracket } : {}) };
 }

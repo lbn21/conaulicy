@@ -168,10 +168,15 @@ function postContext(
   };
 }
 
-/** One place of an item; a district's street with its own houses and words. */
+/**
+ * One place of an item, with its own houses and words where they differ
+ * from the item's (a district's street, a street before a bracket);
+ * `district`: a district's street, which gives way to any other place.
+ */
 type Placed = Pick<Disruption, "place"> & {
   label: DisruptionLabel;
-  district?: Pick<Disruption, "scope" | "note" | "where">;
+  own?: Pick<Disruption, "scope" | "note" | "where">;
+  district?: true;
 };
 
 type ItemPlaces = {
@@ -365,11 +370,12 @@ function districtPlaces(
       {
         place: { localityId: town.id, streetId: s.id },
         label: { locality: town.name, parent: null, street: street.name },
-        district: {
+        own: {
           scope: s.part ? { type: "unknown" } : whole,
           note: s.part,
           where: words,
         },
+        district: true,
       },
     ];
   });
@@ -383,9 +389,27 @@ function districtPlaces(
  * is the village and every street of its own, house numbers in a village
  * with streets the village only. `date`: the gate's day check failed.
  */
-function gatedPlaces(item: AiItem, ctx: PostContext): ItemPlaces | Failed {
-  const gated = gateItem(ctx.places, ctx.text, ctx.found, item, ctx.gate);
+function gatedPlaces(read: AiItem, ctx: PostContext): ItemPlaces | Failed {
+  let gated = gateItem(ctx.places, ctx.text, ctx.found, read, ctx.gate);
+  let item = read;
+  // "ul. Młodowska (Młodów)" in the source's area: the street whole, the
+  // bracket its words, never its houses, even when the model gives the
+  // bracket as the note.
+  const note = read.note;
+  if (ctx.gate.area && note !== null && read.street_verbatim) {
+    const bare = { ...read, note: null };
+    const again = gateItem(ctx.places, ctx.text, ctx.found, bare, ctx.gate);
+    if (
+      again.kept &&
+      again.bracket &&
+      normalize(again.bracket) === normalize(note)
+    ) {
+      gated = again;
+      item = bare;
+    }
+  }
   if (!gated.kept) return { reason: gated.reason, date: gated.date };
+  const { bracket } = gated;
   const fail = (reason: string) => ({ reason, date: false });
   // The source's whole area (the gate checked the post says so): never
   // named, so neither named as a place nor written on its own.
@@ -421,6 +445,8 @@ function gatedPlaces(item: AiItem, ctx: PostContext): ItemPlaces | Failed {
             o.street !== item.street),
       )
       .map((o) => o.street_verbatim ?? o.locality_verbatim);
+    // The bracket where the street leads limits nothing.
+    if (bracket) others.push(`(${bracket})`);
     const claimed = ctx.items
       .filter(
         (o) =>
@@ -461,6 +487,21 @@ function gatedPlaces(item: AiItem, ctx: PostContext): ItemPlaces | Failed {
     place: { localityId: locality.id, streetId },
     label: { locality: locality.name, parent, street },
   });
+  if (gated.street && bracket)
+    return {
+      places: [
+        {
+          ...at(gated.street.id, gated.street.name),
+          own: {
+            scope,
+            note: null,
+            where: `${item.street_verbatim} (${bracket})`,
+          },
+        },
+      ],
+      scope,
+      ...(item !== read ? { note: null } : {}),
+    };
   if (gated.street)
     return { places: [at(gated.street.id, gated.street.name)], scope };
   const own = ctx.data.streets.filter((s) => s.localityId === locality.id);
@@ -570,7 +611,7 @@ export function readPost(
       first.place.localityId !== rules.gate.area
     )
       unmatched.push(partWords(ctx.text, item.locality_verbatim));
-    for (const { label, place, district } of resolved.places) {
+    for (const { label, place, own, district } of resolved.places) {
       const uid = `${prefix}-${post.id}-${item.date}-${place.streetId ?? place.localityId}`;
       const cut: Disruption = {
         uid,
@@ -580,10 +621,9 @@ export function readPost(
         ...when,
         place,
         label,
-        where:
-          district?.where ?? item.street_verbatim ?? item.locality_verbatim,
-        scope: district?.scope ?? resolved.scope,
-        note: district ? district.note : "note" in resolved ? null : item.note,
+        where: own?.where ?? item.street_verbatim ?? item.locality_verbatim,
+        scope: own?.scope ?? resolved.scope,
+        note: own ? own.note : "note" in resolved ? null : item.note,
         publishedAt,
         updatedAt,
         source,
@@ -646,16 +686,15 @@ export function readQualityPost(
       dropped.push(`item ${n + 1}: ${resolved.reason}`);
       continue;
     }
-    for (const { label, place, district } of resolved.places) {
+    for (const { label, place, own, district } of resolved.places) {
       const key = place.streetId ?? place.localityId;
       if (seen.has(key)) continue;
       seen.add(key);
       out.push({
         place,
         label,
-        where:
-          district?.where ?? item.street_verbatim ?? item.locality_verbatim,
-        scope: district?.scope ?? resolved.scope,
+        where: own?.where ?? item.street_verbatim ?? item.locality_verbatim,
+        scope: own?.scope ?? resolved.scope,
         date: item.date,
       });
     }

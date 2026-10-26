@@ -94,6 +94,12 @@ schema, guards and gate (`lib/sources/mzgkim/`, `lib/water-sources.ts`):
   second is not a limit the first leaves out (`checkOmission`'s `others`
   take the same place's other streets for a street, never for a whole
   place).
+- **A village in a bracket after a town street** ("ul. Młodowska
+  (Młodów)", 4744): where it leads, not where it lies. A street of the town
+  written whole with its type word is kept whole, the bracket in its words
+  (`where`), never a note ("in part"); a street not written whole ("ul.
+  Sobieskiego (Dąbrowa)") is still dropped. The gmina's posts: unchanged,
+  the bracket decides.
 - **Year:** a day written without one ("6 października") takes the post's
   year, a day before the post the next year's (`inferYear`, every source).
 - **Failures stay its own:** the feed down, a page or Blob error: logged
@@ -139,6 +145,11 @@ district). It lives in the database (`district_aliases`,
   wider. A district the post limits (a note) is left out and linked; one
   with no street is its TERYT part if it has one (as before), else only
   linked.
+- **Misspellings:** the code never guesses. Both prompts ask the model to
+  map an obvious misspelling of a listed district ("osiedle Mazóry") to its
+  listed name, keeping the post's words; the gate takes the district the
+  model names when those words are in the post. A name the model does not
+  map stays unmatched, linked as written.
 - **"ul. Mazury" is the street** 12559 only; "ul. Mazury, osiedle Mazury"
   both. A **bare "Mazury"** (no "ul.", no "osiedle") is the street too, and
   its words are linked on the town's pages as a doubt (`unmatched`): the

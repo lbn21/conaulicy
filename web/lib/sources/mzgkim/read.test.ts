@@ -577,14 +577,76 @@ test("4744: Cicha before 'ul. Młodowska' is kept, whole (the dry run lost it)",
     r.items.find((d) => d.place.streetId === id("09582"))?.scope,
     { type: "unknown" },
   );
-  // "ul. Młodowska (Młodów)": the bracket names the village Młodów, so the
-  // gate leaves it out, never widens it.
-  assert.equal(streetsOf(r).includes(id("13080")), false);
-  assert.deepEqual(r.dropped, [
-    "item 7: proximity: deciding mention Młodów (bracket)",
-  ]);
-  // Left out, its words linked on the town's pages.
-  assert.deepEqual(r.unmatched, ["ul. Młodowska"]);
+  // "ul. Młodowska (Młodów)": a street of the town written whole, the
+  // village in the bracket where it leads; the street whole, the bracket
+  // in its words, nothing dropped or linked.
+  const mlodowska = r.items.find((d) => d.place.streetId === id("13080"));
+  assert.ok(mlodowska);
+  assert.deepEqual(mlodowska.scope, { type: "whole" });
+  assert.equal(mlodowska.note, null);
+  assert.equal(mlodowska.where, "ul. Młodowska (Młodów)");
+  assert.deepEqual(mlodowska.label, {
+    locality: "Lubaczów",
+    parent: null,
+    street: "Młodowska",
+  });
+  assert.deepEqual(r.dropped, []);
+  assert.equal(r.unmatched, undefined);
+  // The model giving the bracket as a note: the same, never "in part".
+  const asNote = parsed(
+    read(realMzgkimPost(CICHA), {
+      ...MZGKIM_READINGS[CICHA],
+      items: MZGKIM_READINGS[CICHA].items.map((i) =>
+        i.street === "Młodowska" ? { ...i, note: "Młodów" } : i,
+      ),
+    }),
+  );
+  const again = asNote.items.find((d) => d.place.streetId === id("13080"));
+  assert.deepEqual([again?.scope, again?.note], [{ type: "whole" }, null]);
+});
+
+test("a village in a bracket after a town street: MZGKiM only, the name whole only", () => {
+  const post = (line: string): ZukPost => ({
+    ...realMzgkimPost(CICHA),
+    content: {
+      rendered: `<p>W dniu 14 maja w godzinach 08.30 – 12.00 przerwa:</p><ul><li>${line}</li></ul>`,
+    },
+  });
+  const ai = (verbatim: string, street: string): AiResult => ({
+    ...MZGKIM_READINGS[CICHA],
+    items: [
+      {
+        ...MZGKIM_READINGS[CICHA].items[0],
+        street,
+        street_verbatim: verbatim,
+        note: null,
+      },
+    ],
+  });
+  // The gmina's rules (no area): the bracket decides, as before.
+  const gmina = readPost(
+    post("Lubaczów ul. Młodowska (Młodów)"),
+    ai("ul. Młodowska", "Młodowska"),
+    MZGKIM_PLACES,
+    CHECKED,
+  );
+  assert.deepEqual(gmina, {
+    status: "notice",
+    reason: "no place: item 1: proximity: deciding mention Młodów (bracket)",
+  });
+  // MZGKiM, but the street not written whole ("Sobieskiego" ends "Jana III
+  // Sobieskiego"): dropped as before.
+  const part = read(
+    post("ul. Sobieskiego (Dąbrowa)"),
+    ai("ul. Sobieskiego", "Jana III Sobieskiego"),
+  );
+  assert.equal(part.status, "notice");
+  // MZGKiM, written whole: kept.
+  const whole = parsed(
+    read(post("ul. Młodowska (Młodów)"), ai("ul. Młodowska", "Młodowska")),
+  );
+  assert.equal(whole.items[0].place.streetId, id("13080"));
+  assert.equal(whole.items[0].where, "ul. Młodowska (Młodów)");
 });
 
 test("4799: 'Mazury wraz z osiedlem' is ul. Mazury whole and the estate's 22 streets", () => {
@@ -802,6 +864,43 @@ test("a street the post names gives way to the estate's: never twice, never wide
     ranges: [{ from: "1", to: "9" }],
   });
   assert.equal(r.items.length, 3 + 22);
+});
+
+test("a misspelt district: the model's listed name over the post's words; no guess in code", () => {
+  // The prompt asks the model to map an obvious misspelling...
+  assert.match(
+    systemPrompt(MZGKIM_PLACES),
+    /- A district written with an obvious misspelling of a listed name \("osiedle Wzorcowo" for a listed "Osiedle Wzorcowe"\): street = the district's name exactly as listed, street_verbatim = the post's exact words, misspelling kept\. A name that is not plainly one of the list is never mapped to it/,
+  );
+  // ...and the gate takes it: "osiedle Mazóry" read as Osiedle Mazury.
+  const mapped = parsed(
+    mazuryAs("<li>osiedle Mazóry</li>", (b) => [
+      item(b, "Osiedle Mazury", "osiedle Mazóry"),
+    ]),
+  );
+  assert.equal(
+    mapped.items.filter((d) => ESTATE.includes(d.place.streetId as string))
+      .length,
+    22,
+  );
+  assert.ok(mapped.items.every((d) => d.where !== "Osiedle Mazury"));
+  assert.equal(mapped.unmatched?.includes("osiedle Mazóry"), false);
+  // The model's own spelling as the street: no fuzzy match in code, linked.
+  const unmapped = parsed(
+    mazuryAs("<li>osiedle Mazóry</li>", (b) => [
+      item(b, "osiedle Mazóry", "osiedle Mazóry"),
+    ]),
+  );
+  assert.equal(unmapped.items.length, 3);
+  assert.ok(unmapped.unmatched?.includes("osiedle Mazóry"));
+  // A name not on the list stays unmatched.
+  const unknown = parsed(
+    mazuryAs("<li>osiedle Kwiatowe</li>", (b) => [
+      item(b, "osiedle Kwiatowe", "osiedle Kwiatowe"),
+    ]),
+  );
+  assert.equal(unknown.items.length, 3);
+  assert.ok(unknown.unmatched?.includes("osiedle Kwiatowe"));
 });
 
 test("prompt: the gazetteer in the context, names, forms and streets", () => {
