@@ -134,17 +134,81 @@ test("matching: the same street name in another locality never mixes", () => {
   );
 });
 
-test("matching: a village part takes its own cuts, not its village's", () => {
+test("matching: a village part takes its own cuts and its whole village's", () => {
   const part = cut({ place: { localityId: "0606300", streetId: null } });
   const village = cut({ place: { localityId: "0606286", streetId: null } });
   const villageStreet = cut({
     place: { localityId: "0606286", streetId: "0606286-39507" },
   });
+  assert.equal(village.scope.type, "whole");
+  assert.equal(village.note, null);
   assert.equal(matches(PILIPY_PART, part), true);
-  assert.equal(matches(PILIPY_PART, village), false);
+  assert.equal(matches(PILIPY_PART, village), true);
   assert.equal(matches(PILIPY_PART, villageStreet), false);
   // 39885's „Młodów ul. Pilipy” is Młodów's street, not the part.
   assert.deepEqual(waterAt(PILIPY_PART).outages, []);
+});
+
+test("matching: a village part never takes its village's partial cuts", () => {
+  const village = { localityId: "0606286", streetId: null };
+  for (const [name, over] of [
+    ["w części", { scope: { type: "unknown" } }],
+    ["ranges", { scope: { type: "ranges", ranges: [{ from: "1", to: "9" }] } }],
+    ["numbers", { scope: { type: "numbers", numbers: ["5"] } }],
+    ["note", { note: "gospodarstwa zasilane z SUW Mokrzyca" }],
+    ["street", { place: { ...village, streetId: "0606286-39507" } }],
+  ] as Array<[string, Partial<Disruption>]>)
+    assert.equal(
+      matches(PILIPY_PART, cut({ place: village, ...over })),
+      false,
+      name,
+    );
+});
+
+test("matching: 39885's whole villages reach their parts, one cut a day", () => {
+  const SMOLINCE = place({
+    id: "0606257",
+    kind: "wies",
+    name: "Smolińce",
+    localityId: "0606257",
+    streetId: null,
+  });
+  const BASZNIA = place({
+    id: "0605909",
+    kind: "wies",
+    name: "Basznia",
+    localityId: "0605909",
+    streetId: null,
+  });
+  const at = (address: PlaceView) =>
+    waterAt(address).outages.map((d) => [d.date, d.start, d.end, d.place]);
+  const day = (date: string, localityId: string) => [
+    date,
+    `${date} 08:00:00`,
+    `${date} 16:00:00`,
+    { localityId, streetId: null },
+  ];
+  assert.deepEqual(at(SMOLINCE), [
+    day("2026-10-26", "0606234"),
+    day("2026-10-29", "0606234"),
+  ]);
+  assert.deepEqual(at(BASZNIA), [day("2026-10-28", "0605890")]);
+  assert.equal(
+    scope(waterAt(SMOLINCE).outages[0] as Disruption),
+    "cała miejscowość Lisie Jamy",
+  );
+  // The part's own cut on the same day and hours: still one.
+  const own = cut({
+    ...(waterAt(SMOLINCE).outages[0] as Disruption),
+    uid: "own",
+    place: { localityId: "0606257", streetId: null },
+  });
+  const both = [post({ items: [...post().items, own] })];
+  assert.equal(
+    waterAt(SMOLINCE, both).outages.filter((d) => d.date === "2026-10-26")
+      .length,
+    1,
+  );
 });
 
 test("matching: house numbers in a village with streets, the village and every street, any nr", () => {
@@ -495,6 +559,31 @@ test("notices: a link, only where the gate found the locality", () => {
     streetId: null,
   });
   assert.deepEqual(waterAt(szczutkow, [notice]).notices, []);
+});
+
+test("notices: a village's notice is listed on its parts", () => {
+  const notice = post({
+    status: "notice",
+    reason: "ambiguous",
+    items: [],
+    localityIds: ["0606234"],
+  });
+  const smolince = place({
+    id: "0606257",
+    kind: "wies",
+    localityId: "0606257",
+    streetId: null,
+  });
+  assert.equal(waterAt(smolince, [notice]).notices.length, 1);
+  // Not the other way: a part's notice is not its village's.
+  const partNotice = post({ ...notice, localityIds: ["0606257"] });
+  const lisieJamy = place({
+    id: "0606234",
+    kind: "wies",
+    localityId: "0606234",
+    streetId: null,
+  });
+  assert.deepEqual(waterAt(lisieJamy, [partNotice]).notices, []);
 });
 
 test("notices: never for ai-deferred, not-water or water-quality posts", () => {

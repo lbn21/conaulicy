@@ -104,6 +104,27 @@ test("a cut at the address: one event, Warsaw hours, place and source", () => {
   assert.ok(ics.endsWith("END:VCALENDAR\r\n"));
 });
 
+test("a village part: its whole village's cuts, 26 and 29 Oct", () => {
+  // Smolińce, a part of Lisie Jamy, cut with the whole village in 39885.
+  const smolince = testPlace({
+    id: "0606257",
+    kind: "wies",
+    name: "Smolińce",
+    label: "Smolińce",
+    area: "Lisie Jamy",
+    group: "0606234",
+    gmina: "Lubaczów (gmina)",
+    localityId: "0606257",
+    streetId: null,
+  });
+  const ics = waterCalendar(at([post()], smolince), NOW);
+  assert.equal(events(ics), 2);
+  assert.deepEqual(value(ics, "DTSTART;TZID=Europe/Warsaw"), [
+    "20261026T080000",
+    "20261029T080000",
+  ]);
+});
+
 test("the alarm: the evening before, 18:00 in Warsaw", () => {
   const ics = waterCalendar(at([post()]), NOW);
   const all = lines(ics);
