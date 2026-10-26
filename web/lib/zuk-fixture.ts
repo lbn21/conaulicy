@@ -1849,6 +1849,8 @@ export const READINGS: Record<
  * …/wp-json/wp/v2/posts?include=39885 at 17:31 UTC, title and content
  * verbatim): a line added for 27.10, "Lisie Jamy, ul. Długa, Wąska, Leśna,
  * Zielona", while 26.10 and 29.10 keep the whole village (task 152).
+ * Its red ("#" written \u0023) is the gmina's inline style, kept as served
+ * (scripts/check-palette.mjs allows no raw colour in lib).
  */
 export const POST_39885_EDITED: ZukPost = {
   id: 39885,
@@ -1860,7 +1862,7 @@ export const POST_39885_EDITED: ZukPost = {
   },
   content: {
     rendered:
-      '<p>Zakład Usług Komunalnych Sp. z o. o. w Mokrzycy informuje, że w związku z trwającymi pracami modernizacyjnymi (wymiana węzłów i hydrantów) w dniach <strong>od \u00a026.10.2026r. (poniedziałek)\u00a0 do 29.10.2026r. (czwartek) </strong>nastąpi przerwa w dostawie wody dla mieszkańców miejscowości:</p>\n<ul>\n<li><strong><u>-26.10.2026 (poniedziałek): </u></strong><strong>Lisie Jamy w godz. od 8:00 do 16:00</strong></li>\n<li><strong><u><span style="color: #ff0000;">-27.10.2026 (wtorek): </span></u></strong><span style="color: #ff0000;"><strong>Lisie Jamy, ul. Długa, Wąska, Leśna, Zielona w godz. od 8:00 do 12:00\u00a0</strong></span></li>\n<li><strong><u>-27.10.2026 (wtorek): </u></strong><strong>Dąbków, Lubaczów ul. Żuki, Opaka od numeru 104 do 110 w godz. od 8:00 do 16:00\u00a0</strong></li>\n<li><strong><u>-28.10.2026 (środa): </u></strong><strong>Załuże–Podłęże od numeru 44 do numeru 92, Bałaje, ul. Przemysłowa (Lubaczów), Antoniki, Młodów ul. Pilipy, Piastowo, Basznia Dolna, Basznia Górna, Podlesie – w godz. od 8:00 do 16:00\u00a0</strong></li>\n<li><strong><u>-29.10.2026 (czwartek): </u></strong><strong>Wólka Krowicka, Lisie Jamy &#8211; w godz. od 8:00 do 16:00\u00a0 </strong></li>\n</ul>\n<p>Informujemy, że po ponownym uruchomieniu wodociągu może nastąpić czasowe pogorszenie jakości wody.</p>\n<p>Za utrudnienia przepraszamy.<br />\nPrezes ZUK. Sp. z o. o.</p>\n',
+      '<p>Zakład Usług Komunalnych Sp. z o. o. w Mokrzycy informuje, że w związku z trwającymi pracami modernizacyjnymi (wymiana węzłów i hydrantów) w dniach <strong>od \u00a026.10.2026r. (poniedziałek)\u00a0 do 29.10.2026r. (czwartek) </strong>nastąpi przerwa w dostawie wody dla mieszkańców miejscowości:</p>\n<ul>\n<li><strong><u>-26.10.2026 (poniedziałek): </u></strong><strong>Lisie Jamy w godz. od 8:00 do 16:00</strong></li>\n<li><strong><u><span style="color: \u0023ff0000;">-27.10.2026 (wtorek): </span></u></strong><span style="color: \u0023ff0000;"><strong>Lisie Jamy, ul. Długa, Wąska, Leśna, Zielona w godz. od 8:00 do 12:00\u00a0</strong></span></li>\n<li><strong><u>-27.10.2026 (wtorek): </u></strong><strong>Dąbków, Lubaczów ul. Żuki, Opaka od numeru 104 do 110 w godz. od 8:00 do 16:00\u00a0</strong></li>\n<li><strong><u>-28.10.2026 (środa): </u></strong><strong>Załuże–Podłęże od numeru 44 do numeru 92, Bałaje, ul. Przemysłowa (Lubaczów), Antoniki, Młodów ul. Pilipy, Piastowo, Basznia Dolna, Basznia Górna, Podlesie – w godz. od 8:00 do 16:00\u00a0</strong></li>\n<li><strong><u>-29.10.2026 (czwartek): </u></strong><strong>Wólka Krowicka, Lisie Jamy &#8211; w godz. od 8:00 do 16:00\u00a0 </strong></li>\n</ul>\n<p>Informujemy, że po ponownym uruchomieniu wodociągu może nastąpić czasowe pogorszenie jakości wody.</p>\n<p>Za utrudnienia przepraszamy.<br />\nPrezes ZUK. Sp. z o. o.</p>\n',
   },
 };
 
