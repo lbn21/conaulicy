@@ -291,15 +291,13 @@ export const DISTRICTS: District[] = [
     confidence: "medium",
     sourceUrl: `${MZGKIM}/informacja-o-przerwach-w-dostawie-wody-3/`,
   }),
-  // "Niemirowska wraz z osiedlem": post 4799 (8 Jul 2025).
+  // "Niemirowska wraz z osiedlem" (post 4799, 8 Jul 2025) is the street
+  // and this estate: a variant names the estate, never a street with it.
   district({
     id: "za-niemirowska",
     name: "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej",
     variants: [
       "osiedle na zapleczu ul. Niemirowskiej",
-      "Niemirowska wraz z osiedlem",
-      "ul. Niemirowska (wraz z przyległymi ulicami)",
-      "Niemirowska z ulicami przyległymi",
       "osiedle Niemirowska II",
     ],
     confidence: "medium",

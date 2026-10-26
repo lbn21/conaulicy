@@ -771,7 +771,16 @@ test("4799 as the dry run read it: 'wraz z osiedlem' as a note never makes it pa
     assert.deepEqual(d.scope, { type: "whole" }, s);
     assert.equal(d.note, null);
   }
-  assert.equal(r.unmatched, undefined);
+  // No estate item: Osiedle Mazury is found by its name in the post, the
+  // Niemirowska estate is not (no variant holds the street), so its words
+  // are linked as they are and its streets are not guessed.
+  for (const s of ZAPLECZE)
+    assert.equal(
+      r.items.some((x) => x.place.streetId === s),
+      false,
+      s,
+    );
+  assert.deepEqual(r.unmatched, ["wraz z osiedlem"]);
   // The prompt says so too.
   assert.match(
     systemPrompt(MZGKIM_PLACES),
