@@ -143,14 +143,10 @@ test("a run: every post read by the model from its page", async () => {
   assert.equal(post.id, CUT_100);
   assert.equal(post.sourceId, "mzgkim");
   assert.equal(post.status, "parsed");
-  // Three streets and the 22 of Osiedle Mazury (the gazetteer).
-  assert.equal(post.itemCount, 25);
-  assert.deepEqual(post.unmatched, [
-    {
-      words: "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej",
-      localityId: "0972447",
-    },
-  ]);
+  // Three streets, the estate's 9 and the 22 of Osiedle Mazury (the
+  // gazetteer).
+  assert.equal(post.itemCount, 3 + 9 + 22);
+  assert.equal(post.unmatched, undefined);
   // The town and its parts, never a village it names (Dąbrowa).
   assert.deepEqual(post.localityIds, [...TOWN].sort());
   assert.match(post.digest ?? "", /^[0-9a-f]{16}$/);
@@ -167,22 +163,14 @@ test("a run: every post read by the model from its page", async () => {
   ]);
   assert.ok(
     w.logs.some(
-      (l) => l.zuk === "ai" && l.source === "mzgkim" && l.rejected === 1,
+      (l) => l.zuk === "ai" && l.source === "mzgkim" && l.rejected === 0,
     ),
   );
   assert.deepEqual(w.purges, [WATER]);
-  // The pages: its cuts under MZGKiM's name, the area as a link.
+  // The pages: its cuts under MZGKiM's name, every area matched.
   const view = zukView(file, NOW, MZGKIM);
-  assert.equal(view.disruptions.length, 25);
-  assert.deepEqual(
-    view.notices.map((n) => [n.uid, n.where]),
-    [
-      [
-        "mzgkim-5237-rest-0972447",
-        ["Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej"],
-      ],
-    ],
-  );
+  assert.equal(view.disruptions.length, 3 + 9 + 22);
+  assert.deepEqual(view.notices, []);
 });
 
 test("idempotent: the next run reads no page and calls the model 0 times", async () => {

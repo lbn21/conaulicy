@@ -27,9 +27,13 @@ const SOBIESKIEGO = id("20431");
 const NIEMIROWSKA = id("14183");
 const STARZYNY = id("21042");
 const UL_MAZURY = id("12559");
-const ESTATE = (DISTRICTS.find((d) => d.id === "mazury")?.streets ?? []).map(
-  (s) => s.id,
-);
+const streetsOfDistrict = (key: string) =>
+  (DISTRICTS.find((d) => d.id === key)?.streets ?? []).map((s) => s.id);
+const ESTATE = streetsOfDistrict("mazury");
+/** The estate behind ul. Niemirowska in the gazetteer: 9 streets. */
+const ZAPLECZE = streetsOfDistrict("za-niemirowska");
+/** 5237's items before Osiedle Mazury: 3 streets and the estate's 9. */
+const BEFORE_MAZURY = 3 + ZAPLECZE.length;
 const OSIEDLE = "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej";
 
 const read = (post: ZukPost, ai: AiResult) =>
@@ -76,7 +80,7 @@ test("5237: three listed streets, the town never named", () => {
 
 test("5237: Osiedle Mazury is its 22 streets, whole, in the post's words", () => {
   const r = parsed(read(realMzgkimPost(CUT_100), MZGKIM_READINGS[CUT_100]));
-  const estate = r.items.slice(3);
+  const estate = r.items.slice(BEFORE_MAZURY);
   assert.deepEqual(
     estate.map((d) => d.place.streetId).sort(),
     [...ESTATE].sort(),
@@ -88,12 +92,52 @@ test("5237: Osiedle Mazury is its 22 streets, whole, in the post's words", () =>
   assert.equal(streetsOf(r).includes(UL_MAZURY), false);
 });
 
-test("5237: a district with no streets known is rejected, linked on the town", () => {
+test("5237: the estate behind Niemirowska is its 9 streets, whole", () => {
   const r = parsed(read(realMzgkimPost(CUT_100), MZGKIM_READINGS[CUT_100]));
   assert.deepEqual(
-    r.rejected.map((x) => [x.reason, x.localityId, x.words]),
-    [["district has no streets", TOWN, OSIEDLE]],
+    r.items.slice(3, BEFORE_MAZURY).map((d) => [d.place.streetId, d.scope]),
+    ZAPLECZE.map((s) => [s, { type: "whole" }]),
   );
+  assert.equal(ZAPLECZE.length, 9);
+  assert.deepEqual(r.rejected, []);
+});
+
+test("5237: a district with no streets known is rejected, linked on the town", () => {
+  // 5237's estate line as Osiedle Folwarki, a district with no streets.
+  const post = realMzgkimPost(CUT_100);
+  const line =
+    "<li>Osiedle domów jednorodzinnych na zapleczu</li>\n<li>ul. Niemirowskiej</li>";
+  assert.ok(post.content.rendered.includes(line));
+  const r = parsed(
+    read(
+      {
+        ...post,
+        content: {
+          rendered: post.content.rendered.replace(
+            line,
+            "<li>Osiedle Folwarki</li>",
+          ),
+        },
+      },
+      {
+        ...MZGKIM_READINGS[CUT_100],
+        items: MZGKIM_READINGS[CUT_100].items.map((i) =>
+          i.street === OSIEDLE
+            ? {
+                ...i,
+                street: "Osiedle Folwarki",
+                street_verbatim: "Osiedle Folwarki",
+              }
+            : i,
+        ),
+      },
+    ),
+  );
+  assert.deepEqual(
+    r.rejected.map((x) => [x.reason, x.localityId, x.words]),
+    [["district has no streets", TOWN, "Osiedle Folwarki"]],
+  );
+  assert.equal(r.items.length, 3 + 22);
 });
 
 test("5108: Sobieskiego in part, its words as the note", () => {
@@ -110,6 +154,7 @@ test("5108: Sobieskiego in part, its words as the note", () => {
     [
       [NIEMIROWSKA, "whole"],
       [STARZYNY, "whole"],
+      ...ZAPLECZE.map((s) => [s, "whole"]),
     ],
   );
 });
@@ -202,11 +247,15 @@ test("4799: 'X wraz z osiedlem' is two items: the street whole and the district"
     r.items.find((d) => d.place.streetId === NIEMIROWSKA)?.scope,
     { type: "whole" },
   );
-  // The estate behind Niemirowska has no streets known: linked.
-  assert.deepEqual(
-    r.rejected.map((x) => [x.reason, x.words]),
-    [["district has no streets", "Niemirowska wraz z osiedlem"]],
-  );
+  // "Niemirowska wraz z osiedlem": the street whole and the estate's 9
+  // streets.
+  for (const s of ZAPLECZE) {
+    const d = r.items.find((x) => x.place.streetId === s);
+    assert.ok(d, s);
+    assert.deepEqual(d.scope, { type: "whole" });
+    assert.equal(d.where, "Niemirowska wraz z osiedlem");
+  }
+  assert.deepEqual(r.rejected, []);
   assert.equal(r.doubts, undefined);
 });
 

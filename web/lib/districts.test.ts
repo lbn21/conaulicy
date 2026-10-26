@@ -158,6 +158,17 @@ test("seed: the addendum's districts, their streets and stretches", () => {
   assert.deepEqual(streets("zelichowka"), ["26445"]);
   assert.deepEqual(streets("pod-borem"), ["16590"]);
   assert.deepEqual(streets("zuki"), ["26555"]);
+  assert.deepEqual(streets("za-niemirowska"), [
+    "10562",
+    "09223",
+    "26077",
+    "23129",
+    "19000",
+    "05027",
+    "07059",
+    "12991",
+    "13998",
+  ]);
   for (const key of [
     "niwki",
     "ostrowiec",
@@ -166,7 +177,6 @@ test("seed: the addendum's districts, their streets and stretches", () => {
     "folwarki",
     "przy-przemyslowej",
     "za-koleja",
-    "za-niemirowska",
   ])
     assert.deepEqual(streets(key), [], key);
 });

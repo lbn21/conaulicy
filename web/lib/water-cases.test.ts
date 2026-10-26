@@ -46,7 +46,7 @@ test("cases: the twelve posts, each expected reading of the schema's shape", () 
     );
 });
 
-test("cases: every place passes the gate, but the unlisted and the streetless", () => {
+test("cases: every place passes the gate, but the unlisted", () => {
   const rejected = Object.fromEntries(
     WATER_CASES.map((c) => {
       const r = read(c.id);
@@ -62,9 +62,10 @@ test("cases: every place passes the gate, but the unlisted and the streetless", 
     23860: [],
     31662: ["locality not listed", "locality not listed"],
     31782: ["locality not listed"],
-    5237: ["district has no streets"],
-    5108: ["district has no streets"],
-    4799: ["district has no streets"],
+    // The Niemirowska estate has its 9 streets (task 185).
+    5237: [],
+    5108: [],
+    4799: [],
     4744: [],
   });
 });
