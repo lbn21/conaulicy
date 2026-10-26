@@ -13,7 +13,7 @@ import type { Disruption, DisruptionLabel, Doubt } from "./disruptions.ts";
 import type { District } from "./districts.ts";
 import { GMINA, type WaterSource } from "./water-sources.ts";
 import type { AiItem, AiResult } from "./zuk-ai.ts";
-import { checkWhen, noteScope, quoted, type When } from "./zuk-guards.ts";
+import { checkWhen, houseScope, quoted, type When } from "./zuk-guards.ts";
 import {
   gateItem,
   gateText,
@@ -105,7 +105,7 @@ function itemPlaces(
   { locality, street, district }: Gated,
   listed: Listed,
 ): { places: Placed[]; scope: Disruption["scope"] } | Reason {
-  const scope = noteScope(item.note);
+  const scope = houseScope(item.note, item.houses);
   const parent = locality.parentId
     ? (listed.byId.get(locality.parentId)?.name ?? null)
     : null;

@@ -52,7 +52,8 @@ test("request: grok-4.7, reasoning medium, temperature 0, strict schema", async 
   assert.ok(item.required.includes("street_verbatim"));
   assert.ok(!("place_verbatim" in item.properties));
   assert.ok(item.required.includes("note"));
-  assert.ok(!("houses" in item.properties));
+  assert.ok(item.required.includes("date_verbatim"));
+  assert.ok(item.required.includes("houses"));
   assert.equal(body.messages[0].role, "system");
   assert.equal(body.messages[0].content, SYSTEM);
   assert.match(

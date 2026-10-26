@@ -25,7 +25,6 @@ import {
   zukView,
 } from "./zuk-data.ts";
 import { PLACES, reading, realPosts } from "./zuk-fixture.ts";
-import { MONTHS } from "./zuk-resolve.ts";
 
 export const POST_39885 = 39885;
 
@@ -206,6 +205,20 @@ export function mzgkimPost(
   };
 }
 
+const MONTHS = [
+  "stycznia",
+  "lutego",
+  "marca",
+  "kwietnia",
+  "maja",
+  "czerwca",
+  "lipca",
+  "sierpnia",
+  "września",
+  "października",
+  "listopada",
+  "grudnia",
+];
 const WEEKDAYS = ["NIEDZIELA", "PONIEDZIAŁEK", "WTOREK", "ŚRODA"];
 const WEEKDAYS_REST = ["CZWARTEK", "PIĄTEK", "SOBOTA"];
 
@@ -221,7 +234,8 @@ function movedCut100(now: number, checkedAt: string): StoredPost {
   const day = addDays(today, 2);
   const noon = new Date(`${day}T12:00:00Z`);
   const weekday = [...WEEKDAYS, ...WEEKDAYS_REST][noon.getUTCDay()];
-  const written = `${noon.getUTCDate()} ${MONTHS[noon.getUTCMonth()]} (${weekday})`;
+  const words = `${noon.getUTCDate()} ${MONTHS[noon.getUTCMonth()]}`;
+  const written = `${words} (${weekday})`;
   const real = realMzgkimPost(CUT_100);
   const posted = isoWithOffset(now - 86_400_000).slice(0, 19);
   const post: ZukPost = {
@@ -240,6 +254,7 @@ function movedCut100(now: number, checkedAt: string): StoredPost {
     items: ai.items.map((item) => ({
       ...item,
       date: day,
+      date_verbatim: words,
       ...(item.street === "Starzyny"
         ? { street: "Adama Asnyka", street_verbatim: "Asnyka" }
         : {}),

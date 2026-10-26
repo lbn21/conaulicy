@@ -20,10 +20,12 @@ import type { ZukPost } from "./zuk.ts";
 import type { AiItem, AiResult } from "./zuk-ai.ts";
 import {
   AI_ITEM,
+  housesOf,
   POST_39885_EDITED,
   reading,
   reading39885Edited,
   realPosts,
+  writtenDay,
 } from "./zuk-fixture.ts";
 
 export type WaterCase = {
@@ -79,10 +81,12 @@ function tymcePost(id: keyof typeof TYMCE): ZukPost {
  */
 function tymceReading(id: keyof typeof TYMCE): AiResult {
   const place = (
+    date: string,
     locality: string | null,
     verbatim: string,
     note: string | null,
-  ): Omit<AiItem, "date"> => ({
+  ): AiItem => ({
+    date,
     start: "08:00",
     end: "15:00",
     locality,
@@ -92,6 +96,8 @@ function tymceReading(id: keyof typeof TYMCE): AiResult {
     note,
     kind: "planned",
     ...AI_ITEM,
+    date_verbatim: writtenDay(date, TYMCE[id].when),
+    houses: housesOf(note),
   });
   return {
     post_type: "water_outage",
@@ -99,9 +105,9 @@ function tymceReading(id: keyof typeof TYMCE): AiResult {
     is_past: false,
     changes_earlier_dates: false,
     items: TYMCE[id].days.flatMap((date) => [
-      { date, ...place("Tymce", "Tymce", null) },
-      { date, ...place("Załuże", "Załuże", "od numeru 263 do numeru 344") },
-      { date, ...place(null, "Nowe Sioło", "od numeru 161 do numeru 163") },
+      place(date, "Tymce", "Tymce", null),
+      place(date, "Załuże", "Załuże", "od numeru 263 do numeru 344"),
+      place(date, null, "Nowe Sioło", "od numeru 161 do numeru 163"),
     ]),
   };
 }

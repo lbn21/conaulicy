@@ -99,6 +99,14 @@ export const WHOLE_TOWN = 4935;
 export const WITH_ESTATE = 4799;
 export const CICHA = 4744;
 
+/** Each cut's day in its post's words (date_verbatim), read from the pages. */
+const DAYS: Record<string, string> = {
+  "2026-10-06": "6 października",
+  "2026-06-02": "2 czerwca",
+  "2025-07-08": "08 lipca",
+  "2025-05-14": "14 maja",
+};
+
 const street = (
   date: string,
   start: string,
@@ -117,6 +125,7 @@ const street = (
   note,
   kind: "planned",
   ...AI_ITEM,
+  date_verbatim: DAYS[date] ?? null,
 });
 
 const OSIEDLE = "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej";
@@ -201,6 +210,7 @@ export const MZGKIM_READINGS: Record<number, AiResult> = {
         note: null,
         kind: "planned",
         ...AI_ITEM,
+        date_verbatim: "w nocy z 14 na 15 listopada",
         whole_town: true,
         whole_town_verbatim: "na terenie całego miasta",
       },

@@ -189,7 +189,11 @@ test("4935: the whole town at night, in its words: every street and the town", (
 
 test("a day or time not in the post: the whole post a Notice", () => {
   const day = readWith(CUT_100, (items) =>
-    items.map((i) => ({ ...i, date: "2026-10-07" })),
+    items.map((i) => ({
+      ...i,
+      date: "2026-10-07",
+      date_verbatim: "7 października",
+    })),
   );
   assert.equal(day.status === "notice" && day.reason, "item 1: date");
   const time = readWith(CUT_100, (items) =>

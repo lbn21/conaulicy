@@ -1,7 +1,8 @@
 // The checks of an item's day and times on top of the place gate
 // (lib/zuk-resolve.ts, which checks the day is written), and the houses
-// (the scope) read from its note. Pure. The day near the post's dates, the
-// times on the item's own lines, an end before the start on the next day.
+// (the scope) the model read from its note, checked against it. Pure. The
+// day near the post's dates, the times on the item's own lines, an end
+// before the start on the next day.
 // A day or time that fails drops the post to a Notice (lib/zuk.ts).
 
 import { addDays } from "./dates.ts";
@@ -27,37 +28,37 @@ const validTime = (t: string) =>
   Number(t.slice(0, 2)) < 24 &&
   Number(t.slice(3)) < 60;
 
-const RANGE =
-  /od\s+(?:nr\.?|numeru)?\s*(\d{1,4}[a-z]?)\s+do\s+(?:nr\.?|numeru)?\s*(\d{1,4}[a-z]?)/gu;
-const SINGLE = /(?:nr\.?|numer)\s*(\d{1,4}[a-z]?)(?![\d])/gu;
+const HOUSE = /^\d{1,4}[a-z]?$/i;
 
 /**
- * The houses from the item's note (one literal piece of the post): house
- * ranges or numbers. No note: the whole place. Anything else in it ("w
- * części", parity, a part's name), a range running backwards, or ranges
- * and numbers mixed: part of the place, houses unknown.
+ * The houses the model read from the item's note (`houses`), each checked
+ * against the note: digits and at most one letter, both ends written in
+ * the note as whole words, `from` not above `to`. No note and no houses:
+ * the whole place. A house that fails, an open range, or a note with no
+ * houses: part of the place, houses unknown.
  */
-export function noteScope(note: string | null): DisruptionScope {
-  if (note === null) return { type: "whole" };
-  let tail = normText(note);
-  const ranges = [...tail.matchAll(RANGE)].map((r) => ({
-    from: r[1],
-    to: r[2],
-  }));
-  tail = tail.replace(RANGE, " ");
-  const numbers = [...tail.matchAll(SINGLE)].map((r) => r[1]);
-  tail = tail.replace(SINGLE, " ");
-  const residue = tail
-    .replace(/(?<!\p{L})(?:numery|i|oraz)(?!\p{L})/gu, " ")
-    .replace(/[\s,:;.()-]+/g, "");
-  const backwards = ranges.some(
-    (r) => Number.parseInt(r.from, 10) > Number.parseInt(r.to, 10),
-  );
-  if (residue || backwards || (ranges.length > 0 && numbers.length > 0))
-    return { type: "unknown" };
-  if (ranges.length > 0) return { type: "ranges", ranges };
-  if (numbers.length > 0) return { type: "numbers", numbers };
-  return { type: "whole" };
+export function houseScope(
+  note: string | null,
+  houses: AiItem["houses"],
+): DisruptionScope {
+  if (note === null)
+    return houses.length === 0 ? { type: "whole" } : { type: "unknown" };
+  const words = normText(note);
+  const written = (nr: string) =>
+    new RegExp(`(?<![\\p{L}\\d])${nr.toLowerCase()}(?![\\p{L}\\d])`, "u").test(
+      words,
+    );
+  const ok = (h: AiItem["houses"][number]): h is { from: string; to: string } =>
+    h.to !== null &&
+    HOUSE.test(h.from) &&
+    HOUSE.test(h.to) &&
+    written(h.from) &&
+    written(h.to) &&
+    Number.parseInt(h.from, 10) <= Number.parseInt(h.to, 10);
+  if (houses.length === 0 || !houses.every(ok)) return { type: "unknown" };
+  if (houses.every((h) => h.from === h.to))
+    return { type: "numbers", numbers: houses.map((h) => h.from) };
+  return { type: "ranges", ranges: houses };
 }
 
 export type When = {

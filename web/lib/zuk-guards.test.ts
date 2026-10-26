@@ -4,7 +4,7 @@ import type { AiItem } from "./zuk-ai.ts";
 import { AI_ITEM, reading } from "./zuk-fixture.ts";
 import {
   checkWhen,
-  noteScope,
+  houseScope,
   quoted,
   timeInText,
   type When,
@@ -165,31 +165,73 @@ test("item: a day far from the post's dates", () => {
   assert.equal(typeof check(item({ date: "2026-10-25" })), "object");
 });
 
-test("scope: house ranges or numbers from the note, else the whole place", () => {
-  assert.deepEqual(noteScope(null), { type: "whole" });
-  assert.deepEqual(noteScope("numery: od 1 do 15 i od 16 do 54"), {
-    type: "ranges",
-    ranges: [
+test("scope: the houses, each written in the note, else the whole place", () => {
+  assert.deepEqual(houseScope(null, []), { type: "whole" });
+  assert.deepEqual(
+    houseScope("numery: od 1 do 15 i od 16 do 54", [
       { from: "1", to: "15" },
       { from: "16", to: "54" },
-    ],
+    ]),
+    {
+      type: "ranges",
+      ranges: [
+        { from: "1", to: "15" },
+        { from: "16", to: "54" },
+      ],
+    },
+  );
+  assert.deepEqual(
+    houseScope("Podłęże od numeru 44 do numeru 92", [{ from: "44", to: "92" }]),
+    { type: "ranges", ranges: [{ from: "44", to: "92" }] },
+  );
+  assert.deepEqual(houseScope("nr 104", [{ from: "104", to: "104" }]), {
+    type: "numbers",
+    numbers: ["104"],
   });
-  assert.deepEqual(noteScope("od nr 104 do nr 110"), {
-    type: "ranges",
-    ranges: [{ from: "104", to: "110" }],
-  });
-  assert.deepEqual(noteScope("nr 104"), { type: "numbers", numbers: ["104"] });
+  assert.deepEqual(
+    houseScope("nr 34A i 36", [
+      { from: "34A", to: "34A" },
+      { from: "36", to: "36" },
+    ]),
+    { type: "numbers", numbers: ["34A", "36"] },
+  );
+  // A single house among ranges is a range of one.
+  assert.deepEqual(
+    houseScope("od nr 1 do nr 5 i nr 9", [
+      { from: "1", to: "5" },
+      { from: "9", to: "9" },
+    ]),
+    {
+      type: "ranges",
+      ranges: [
+        { from: "1", to: "5" },
+        { from: "9", to: "9" },
+      ],
+    },
+  );
 });
 
-test("scope: anything else, or numbers it cannot read, is houses unknown", () => {
-  for (const note of [
-    "w części miejscowości",
-    "gospodarstwa zasilane z SUW Mokrzyca",
-    "numery nieparzyste od 13 do 21 oraz numery parzyste od 2 do 82",
-    "Podłęże od numeru 44 do numeru 92",
-    "od numeru 121 do numeru 144 (przysiółek Dąbrowa)",
-    "od nr 110 do nr 104",
-    "od nr 1 do nr 5 i nr 9",
-  ])
-    assert.deepEqual(noteScope(note), { type: "unknown" }, note);
+test("scope: houses not certain from the note are houses unknown", () => {
+  const unknown = { type: "unknown" };
+  const cases: Array<[string | null, AiItem["houses"]]> = [
+    // An open range, a reversed one.
+    ["od numeru 44", [{ from: "44", to: null }]],
+    ["od nr 110 do nr 104", [{ from: "110", to: "104" }]],
+    // A number not in the note, or only inside another one.
+    ["od nr 104 do nr 110", [{ from: "104", to: "111" }]],
+    ["od nr 104 do nr 110", [{ from: "10", to: "110" }]],
+    ["nr 34A", [{ from: "34", to: "34" }]],
+    // Not a house number.
+    ["od nr 1 do nr 5", [{ from: "nr 1", to: "5" }]],
+    // Houses without a note, a note without houses.
+    [null, [{ from: "1", to: "5" }]],
+    ["w części miejscowości", []],
+    ["numery nieparzyste od 13 do 21", []],
+  ];
+  for (const [note, houses] of cases)
+    assert.deepEqual(
+      houseScope(note, houses),
+      unknown,
+      JSON.stringify([note, houses]),
+    );
 });

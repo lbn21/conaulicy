@@ -4,10 +4,10 @@
 
 import type { Locality } from "./data-model.ts";
 import { terytName } from "./places.ts";
-import type { ZukPost } from "./zuk.ts";
+import { plainText, type ZukPost } from "./zuk.ts";
 import type { AiItem, AiResult } from "./zuk-ai.ts";
 import { ZUK_PLACES } from "./zuk-places.generated.ts";
-import type { ZukPlaces } from "./zuk-resolve.ts";
+import { gateText, type ZukPlaces } from "./zuk-resolve.ts";
 
 /**
  * Real: GET https://www.gminalubaczow.pl/wp-json/wp/v2/posts?include=39885,
@@ -239,12 +239,16 @@ type Reading = [
 /** An item's fields a plain place leaves at their default. */
 export const AI_ITEM: Pick<
   AiItem,
+  | "date_verbatim"
+  | "houses"
   | "end_estimated"
   | "whole_town"
   | "whole_town_verbatim"
   | "doubt"
   | "suggested_places"
 > = {
+  date_verbatim: null,
+  houses: [],
   end_estimated: false,
   whole_town: false,
   whole_town_verbatim: null,
@@ -252,12 +256,81 @@ export const AI_ITEM: Pick<
   suggested_places: [],
 };
 
+const MONTHS = [
+  "stycznia",
+  "lutego",
+  "marca",
+  "kwietnia",
+  "maja",
+  "czerwca",
+  "lipca",
+  "sierpnia",
+  "września",
+  "października",
+  "listopada",
+  "grudnia",
+];
+
+/**
+ * The post's words for the day, as the prompt asks the model to copy them
+ * (date_verbatim): the day ("27.10.2026", "8 czerwca"), or a written range
+ * holding it ("26-29.10.2026"); null if the post writes neither.
+ */
+export function writtenDay(date: string, text: string): string | null {
+  const [Y, M, D] = date.split("-").map(Number);
+  const month = `(?:\\.0?${M}|\\s+${MONTHS[M - 1]})`;
+  const year = String.raw`(?:\.|\s+)(\d{4})`;
+  const t = text.replace(/[–—]/g, "-").replace(/\s+/g, " ");
+  const found = (re: RegExp, holds: (m: RegExpMatchArray) => boolean) =>
+    [...t.matchAll(re)].find(
+      (m) => holds(m) && (m.at(-1) === undefined || Number(m.at(-1)) === Y),
+    )?.[0] ?? null;
+  return (
+    found(
+      new RegExp(`(?<!\\d)0?${D}${month}(?:${year})?(?!\\d)`, "giu"),
+      () => true,
+    ) ??
+    found(
+      new RegExp(
+        `(?<!\\d)(\\d{1,2})(?:${month}(?:[.\\s]+${Y})?)?\\.?\\s*(?:-|do|na)\\s*(\\d{1,2})${month}(?:${year})?(?!\\d)`,
+        "giu",
+      ),
+      ([, a, b]) => Number(a) <= D && D <= Number(b),
+    )
+  );
+}
+
+/**
+ * The note's house numbers, as the prompt asks the model to list them
+ * (houses): each "od X do Y" a range, each "nr X" a house; none if the note
+ * limits them any other way (parity, a direction, "w części").
+ */
+export function housesOf(note: string | null): AiItem["houses"] {
+  if (note === null || /parzyst|części|stronę|kierunku/iu.test(note)) return [];
+  const nr = String.raw`(?:nr\.?|numeru?)?\s*(\d{1,4}[a-z]?)`;
+  const range = new RegExp(`od\\s+${nr}\\s+do\\s+${nr}`, "giu");
+  const ranges = [...note.matchAll(range)].map(([, from, to]) => ({
+    from,
+    to,
+  }));
+  const houses = [
+    ...note
+      .replace(range, " ")
+      .matchAll(/(?:nr\.?|numer)\s*(\d{1,4}[a-z]?)(?!\d)/giu),
+  ].map(([, n]) => ({ from: n, to: n }));
+  return [...ranges, ...houses];
+}
+
 /** The posts that move an earlier one's dates ("aktualizacja dat"). */
 const CHANGES = new Set([23860, 24161, 26028]);
 
 /** The model's reading of a real post, as the API returns it. */
 export function reading(id: number): AiResult {
   const r = READINGS[id];
+  const post = realPosts().find((p) => p.id === id);
+  const text = post
+    ? gateText(plainText(post.title.rendered), plainText(post.content.rendered))
+    : "";
   return {
     post_type: r.outage ? "water_outage" : "other",
     quality_status: null,
@@ -285,6 +358,8 @@ export function reading(id: number): AiResult {
         note,
         kind,
         ...AI_ITEM,
+        date_verbatim: writtenDay(date, text),
+        houses: housesOf(note),
         // An emergency's end is the expected restore (14117, 34394, 35661).
         end_estimated: kind === "emergency" && end !== null,
       }),
@@ -1910,6 +1985,7 @@ export function reading39885Edited(): AiResult {
     note: null,
     kind: "planned",
     ...AI_ITEM,
+    date_verbatim: "27.10.2026",
   });
   const [first, ...rest] = reading(39885).items;
   return {

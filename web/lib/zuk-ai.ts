@@ -21,6 +21,8 @@ export type AiItem = {
    * warning starts, or ends if lifted.
    */
   date: string;
+  /** The post's exact words giving the day; null if it writes none. */
+  date_verbatim: string | null;
   /** HH:MM or null. */
   start: string | null;
   end: string | null;
@@ -34,6 +36,8 @@ export type AiItem = {
   street_verbatim: string | null;
   /** The place's limitation, one exact quote: "od nr 104 do nr 110". */
   note: string | null;
+  /** The note's house numbers: one house has `to` equal, an open range null. */
+  houses: { from: string; to: string | null }[];
   /** "quality" for a water_quality post's places. */
   kind: "planned" | "emergency" | "quality";
   /** The end is an expected restore time, not a set one. */
@@ -117,6 +121,7 @@ const SCHEMA = {
         additionalProperties: false,
         required: [
           "date",
+          "date_verbatim",
           "start",
           "end",
           "locality",
@@ -124,6 +129,7 @@ const SCHEMA = {
           "street",
           "street_verbatim",
           "note",
+          "houses",
           "kind",
           "end_estimated",
           "whole_town",
@@ -137,6 +143,7 @@ const SCHEMA = {
             format: "date",
             description: "the day, YYYY-MM-DD",
           },
+          date_verbatim: nullable("exact words of the post giving the day"),
           start: nullable("HH:MM, null if not written"),
           end: nullable("HH:MM, null if not written"),
           locality: nullable("listed locality name, null if not listed"),
@@ -148,6 +155,19 @@ const SCHEMA = {
             "exact words of the post naming the street or district",
           ),
           note: nullable("the place's limitation, one exact quote"),
+          houses: {
+            type: "array",
+            description: "the note's house numbers",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["from", "to"],
+              properties: {
+                from: { type: "string" },
+                to: { type: ["string", "null"] },
+              },
+            },
+          },
           kind: {
             type: "string",
             enum: ["planned", "emergency", "quality"],
@@ -188,6 +208,16 @@ const isTime = (v: unknown) =>
 const isText = (v: unknown) => typeof v === "string" && v.trim() !== "";
 const orNull = (v: unknown) => v === null || isText(v);
 
+const isHouse = (v: unknown) => {
+  const h = v as Record<string, unknown>;
+  return (
+    typeof h === "object" &&
+    h !== null &&
+    typeof h.from === "string" &&
+    (h.to === null || typeof h.to === "string")
+  );
+};
+
 function isItem(v: unknown): v is AiItem {
   const i = v as Record<string, unknown>;
   return (
@@ -195,6 +225,7 @@ function isItem(v: unknown): v is AiItem {
     i !== null &&
     typeof i.date === "string" &&
     /^\d{4}-\d{2}-\d{2}$/.test(i.date) &&
+    (i.date_verbatim === null || typeof i.date_verbatim === "string") &&
     isTime(i.start) &&
     isTime(i.end) &&
     orNull(i.locality) &&
@@ -202,6 +233,8 @@ function isItem(v: unknown): v is AiItem {
     orNull(i.street) &&
     orNull(i.street_verbatim) &&
     orNull(i.note) &&
+    Array.isArray(i.houses) &&
+    i.houses.every(isHouse) &&
     (i.kind === "planned" || i.kind === "emergency" || i.kind === "quality") &&
     typeof i.end_estimated === "boolean" &&
     typeof i.whole_town === "boolean" &&
