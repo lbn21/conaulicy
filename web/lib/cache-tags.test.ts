@@ -50,9 +50,7 @@ test("the pages: the ZUK file's cache is tagged WATER, so is every page reading 
     read("./zuk-store.ts"),
     /unstable_cache\(readZukFile, \["zuk-file"\], \{\n\s+tags: \[WATER\],/,
   );
-  assert.match(read("./water-load.ts"), /getWaterData\(\)/);
-  // Every source's file through that one cache, by its pathname.
-  assert.match(read("./zuk-store.ts"), /await cached\(source\.pathname\)/);
+  assert.match(read("./water-load.ts"), /getZukData\(\)/);
 });
 
 test("the ZUK cron purges WATER, never DATASET", () => {

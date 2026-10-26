@@ -1,7 +1,6 @@
 // The gmina Lubaczów's site (https://www.gminalubaczow.pl): ZUK Mokrzyca's
 // and the wójt's water notices among the gmina's other posts.
 
-import { GMINA } from "../../water-sources.ts";
 import { fullText, type ZukPost } from "../../zuk.ts";
 import type { PostSource } from "../source.ts";
 import { fetchPosts } from "./fetch.ts";
@@ -24,7 +23,6 @@ export function matchesOutageKeywords(post: ZukPost): boolean {
 
 export const gminaLubaczow: PostSource = {
   id: "gmina-lubaczow",
-  water: GMINA,
   fetchPosts,
   systemPrompt,
   keywords: matchesOutageKeywords,

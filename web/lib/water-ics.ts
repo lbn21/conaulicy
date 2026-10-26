@@ -28,7 +28,6 @@ import {
 import { fileSlug } from "./normalize.ts";
 import { placePath } from "./places.ts";
 import { hours, scope, type Water, waterPath } from "./water-module.ts";
-import { sourceOf } from "./water-sources.ts";
 
 const SUMMARY = "Przerwa w dostawie wody";
 
@@ -57,15 +56,8 @@ export function waterCalendarHref(data: Water): string | null {
 const local = (wall: string) =>
   `${icsDate(wall.slice(0, 10))}T${wall.slice(11, 19).replaceAll(":", "")}`;
 
-/**
- * "zuk-39885-2026-10-27-…" → "39885" (the gmina's, as ever);
- * "mzgkim-5237-…" → "mzgkim-5237".
- */
-function postId(cut: Disruption): string {
-  const [, prefix, id] = /^([a-z]+)-(\d+)-/.exec(cut.uid) ?? [];
-  if (!id) return "0";
-  return prefix === "zuk" ? id : `${prefix}-${id}`;
-}
+/** "zuk-39885-2026-10-27-…" → "39885". */
+const postId = (cut: Disruption) => /^zuk-(\d+)-/.exec(cut.uid)?.[1] ?? "0";
 
 /** Stable across downloads: the post, the place, the day. */
 function cutUid(cut: Disruption): string {
@@ -128,7 +120,7 @@ export function waterCalendar(data: Water, now: Date): string {
     const description = [
       `${capitalised(scope(cut))}.`,
       `Źródło: ${cut.source.url}`,
-      `Daty i godziny odczytaliśmy z komunikatu ${sourceOf(cut.uid).of}. Gdyby coś się nie zgadzało, rację ma komunikat.`,
+      "Daty i godziny odczytaliśmy z komunikatu gminy. Gdyby coś się nie zgadzało, rację ma komunikat.",
       check,
     ].join("\n");
     lines.push(

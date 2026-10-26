@@ -1,7 +1,6 @@
-// A source's water file in Vercel Blob (private store, one per source,
-// lib/water-sources.ts pathname, "zuk/disruptions.json" the gmina's): what
+// The ZUK file in Vercel Blob (private store, pathname ZUK_PATHNAME): what
 // the cron (lib/zuk-cron.ts) writes and the pages read (lib/zuk-store.ts).
-// Every source's file has this one shape. Pure, so the tests run it as is.
+// Pure, so the tests run it as is.
 //
 // {
 //   version: 4,
@@ -18,15 +17,12 @@
 //     localityIds,        // what a Notice may concern
 //     itemCount,          // items read, before those already over went
 //     items: Disruption[] // parsed only; cuts already over are dropped
-//     sourceId,           // lib/sources: "gmina-lubaczow", "mzgkim"
+//     sourceId,           // lib/sources: "gmina-lubaczow"
 //     qualityStatus?, places?  // "water-quality" only: warning or lifted,
 //                         // the places that passed the gate, each its day
-//     unmatched?,         // a source with an area: the post's words for
-//                         // places in it we could not match (lib/zuk.ts)
-//     digest?,            // a source without edit times: what changed
 //   }],
 //   seen: [{      // the cron's memory of every other post it decided
-//     id, modified, reader, digest?,
+//     id, modified, reader,
 //     reason,     // "not-water" (the model's post_type "other"), "past"
 //                 // (its days or cuts are over), "expired" (a Notice
 //                 // past its 14 days), "ai-unavailable" (retried next run)
@@ -41,9 +37,9 @@
 
 import { todayInWarsaw } from "./dates.ts";
 import type { Disruption, Notice } from "./disruptions.ts";
-import { GMINA, type WaterSource } from "./water-sources.ts";
-import { current, noticeUntil, type WarningPlace } from "./zuk.ts";
+import { current, noticeUntil, SOURCE_NAME, type WarningPlace } from "./zuk.ts";
 
+export const ZUK_PATHNAME = "zuk/disruptions.json";
 export const ZUK_FILE_VERSION = 4;
 /**
  * What reads a post: the prompt, schema and place gate. 3 is v3.1 (task
@@ -89,10 +85,6 @@ export type StoredPost = {
   /** "water-quality" only. */
   qualityStatus?: "warning" | "lifted" | null;
   places?: WarningPlace[];
-  /** Places in the source's area we could not match, as written. */
-  unmatched?: string[];
-  /** lib/zuk.ts ZukPost digest. */
-  digest?: string;
 };
 
 /** A post decided and not active: only what the cron needs. */
@@ -101,7 +93,6 @@ export type SeenPost = {
   modified: string;
   reason: string;
   reader: number;
-  digest?: string;
 };
 
 export type ZukFile = {
@@ -132,7 +123,6 @@ const seenAs = (post: StoredPost, reason: string): SeenPost => ({
   modified: post.modified,
   reason,
   reader: post.reader,
-  ...(post.digest === undefined ? {} : { digest: post.digest }),
 });
 
 /** Posts published before `change` with a cut in a locality it touches. */
@@ -230,16 +220,8 @@ function doubted(posts: StoredPost[]): Set<number> {
   return out;
 }
 
-/**
- * What the pages get from `source`'s file at `now`. A post with places we
- * could not match gives a Notice too, naming them (`where`): the pages
- * link it where none of its cuts is shown (lib/water-module.ts).
- */
-export function zukView(
-  file: ZukFile | null,
-  now: Date,
-  source: WaterSource = GMINA,
-): ZukData {
+/** What the pages get from the file at `now`. */
+export function zukView(file: ZukFile | null, now: Date): ZukData {
   if (!file)
     return {
       disruptions: [],
@@ -249,20 +231,10 @@ export function zukView(
       checkedAt: null,
     };
   const today = todayInWarsaw(now);
-  const from = (post: StoredPost) => ({
-    name: source.name,
+  const source = (post: StoredPost) => ({
+    name: SOURCE_NAME,
     url: post.url,
     checkedAt: file.checkedAt,
-  });
-  const notice = (post: StoredPost, rest = false): Notice => ({
-    uid: `${source.uid}-${post.id}${rest ? "-rest" : ""}`,
-    kind: "water",
-    title: post.title,
-    localityIds: post.localityIds,
-    publishedAt: post.publishedAt,
-    updatedAt: post.updatedAt,
-    source: from(post),
-    ...(rest ? { where: post.unmatched } : {}),
   });
   const posts = file.active
     .filter((p) => !HIDDEN.has(p.reason ?? ""))
@@ -273,10 +245,8 @@ export function zukView(
   for (const post of posts) {
     if (post.status === "parsed" && !doubt.has(post.id)) {
       disruptions.push(
-        ...post.items.map((d) => ({ ...d, source: from(post) })),
+        ...post.items.map((d) => ({ ...d, source: source(post) })),
       );
-      if (post.items.length > 0 && post.unmatched?.length)
-        notices.push(notice(post, true));
       continue;
     }
     const shown =
@@ -284,7 +254,15 @@ export function zukView(
         ? post.items.length > 0
         : post.reason !== PAST && today < noticeUntil(post.publishedAt);
     if (!shown) continue;
-    notices.push(notice(post));
+    notices.push({
+      uid: `zuk-${post.id}`,
+      kind: "water",
+      title: post.title,
+      localityIds: post.localityIds,
+      publishedAt: post.publishedAt,
+      updatedAt: post.updatedAt,
+      source: source(post),
+    });
   }
   return {
     disruptions,

@@ -11,17 +11,10 @@
 import { addDays } from "./dates.ts";
 import type { Disruption, DisruptionLabel } from "./disruptions.ts";
 import { normalize } from "./normalize.ts";
-import { GMINA, type WaterSource } from "./water-sources.ts";
 import type { AiItem, AiResult } from "./zuk-ai.ts";
-import {
-  checkOmission,
-  checkWhen,
-  inferYear,
-  noteScope,
-} from "./zuk-guards.ts";
+import { checkOmission, checkWhen, noteScope } from "./zuk-guards.ts";
 import {
   GatePlaces,
-  type GateRules,
   gateItem,
   gateText,
   type Mention,
@@ -29,11 +22,7 @@ import {
   type ZukPlaces,
 } from "./zuk-resolve.ts";
 
-/**
- * Whose post it is (lib/water-sources.ts: its name and uid prefix) and its
- * own gate rules (lib/zuk-resolve.ts GateRules); the gmina's by default.
- */
-export type ReadRules = { source?: WaterSource; gate?: GateRules };
+export const SOURCE_NAME = "Zakład Usług Komunalnych w Mokrzycy";
 
 /** A post as the WordPress REST API returns it: the fields we read. */
 export type ZukPost = {
@@ -41,11 +30,6 @@ export type ZukPost = {
   /** Site time (Warsaw), "2026-10-23T18:59:43". */
   date: string;
   modified: string;
-  /**
-   * A source without edit times (an RSS feed): a hash of what it gives,
-   * which tells an edit instead of `modified` (lib/zuk-cron.ts).
-   */
-  digest?: string;
   link: string;
   title: { rendered: string };
   content: { rendered: string };
@@ -128,7 +112,6 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 type PostContext = {
   data: ZukPlaces;
   places: GatePlaces;
-  gate: GateRules;
   /** The post as the gate reads it, and its mentions of our places. */
   text: string;
   found: Mention[];
@@ -139,21 +122,13 @@ function postContext(
   post: ZukPost,
   ai: AiResult,
   data: ZukPlaces,
-  gate: GateRules = {},
 ): PostContext {
   const places = new GatePlaces(data);
   const text = gateText(
     plainText(post.title.rendered),
     plainText(post.content.rendered),
   );
-  return {
-    data,
-    places,
-    gate,
-    text,
-    found: mentions(text, places),
-    items: ai.items,
-  };
+  return { data, places, text, found: mentions(text, places), items: ai.items };
 }
 
 type ItemPlaces = {
@@ -172,13 +147,10 @@ function itemPlaces(
   item: AiItem,
   ctx: PostContext,
 ): ItemPlaces | { reason: string; date: boolean } {
-  const gated = gateItem(ctx.places, ctx.text, ctx.found, item, ctx.gate);
+  const gated = gateItem(ctx.places, ctx.text, ctx.found, item);
   if (!gated.kept) return { reason: gated.reason, date: gated.date };
   const fail = (reason: string) => ({ reason, date: false });
-  // The source's whole area (the gate checked the post says so): never
-  // named, so neither named as a place nor written on its own.
-  const wholeArea = !gated.street && gated.locality.id === ctx.gate.area;
-  if (!gated.street && !wholeArea) {
+  if (!gated.street) {
     // A whole place must be named once as a place, not as a street ("ul.
     // Żuki" is not Opaka's Żuki); "przysiółek X" is a village part, never
     // the village X.
@@ -195,7 +167,7 @@ function itemPlaces(
     )
       return fail(`"przysiółek ${item.locality_verbatim}" without its village`);
   }
-  if (item.note === null && !wholeArea) {
+  if (item.note === null) {
     // Another place's phrase may follow this one ("Bałaje, ul. Przemysłowa
     // (Lubaczów)"); this place's own street never does.
     const others = ctx.items
@@ -263,27 +235,19 @@ export type PostReading =
       items: Disruption[];
       /** Items whose place failed, with the reason. */
       dropped: string[];
-      /**
-       * A source with an area (GateRules): the post's own words for each
-       * place in it we could not match ("Osiedle domów … ul.
-       * Niemirowskiej"), so the area's pages link the post; never empty.
-       */
-      unmatched?: string[];
     }
   | { status: "notice"; reason: string };
 
 /**
  * The model's reading of one post, checked and resolved: Disruptions for
  * every item whose place passes, as long as every day and time does, else
- * a Notice with the first reason. A day written without its year takes
- * the post's (inferYear).
+ * a Notice with the first reason.
  */
 export function readPost(
   post: ZukPost,
   ai: AiResult,
   places: ZukPlaces,
   checkedAt: string,
-  rules: ReadRules = {},
 ): PostReading {
   const notice = (reason: string): PostReading => ({
     status: "notice",
@@ -291,21 +255,17 @@ export function readPost(
   });
   if (ai.post_type !== "water_outage") return notice("not an outage notice");
   if (ai.items.length === 0) return notice("no items");
-  const ctx = postContext(post, ai, places, rules.gate);
+  const ctx = postContext(post, ai, places);
   const text = fullText(post);
   const publishedAt = wall(post.date);
   const updatedAt = wall(post.modified);
-  const { name, uid: prefix } = rules.source ?? GMINA;
-  const source = { name, url: post.link, checkedAt };
-  const literal = normalize(ctx.text);
+  const source = { name: SOURCE_NAME, url: post.link, checkedAt };
 
   const items: Disruption[] = [];
   const dropped: string[] = [];
-  const unmatched: string[] = [];
   const seen = new Set<string>();
-  for (const [n, read] of ai.items.entries()) {
+  for (const [n, item] of ai.items.entries()) {
     const why = (reason: string) => `item ${n + 1}: ${reason}`;
-    const item = { ...read, date: inferYear(read.date, text, publishedAt) };
     if (item.kind === "quality") return notice(why("a quality item"));
     const resolved = itemPlaces(item, ctx);
     if ("reason" in resolved && resolved.date)
@@ -314,13 +274,10 @@ export function readPost(
     if (typeof when === "string") return notice(why(when));
     if ("reason" in resolved) {
       dropped.push(why(resolved.reason));
-      const words = item.street_verbatim ?? item.note ?? item.locality_verbatim;
-      if (rules.gate?.area && literal.includes(normalize(words)))
-        unmatched.push(words.replace(/\s+/g, " ").trim());
       continue;
     }
     for (const { label, place } of resolved.places) {
-      const uid = `${prefix}-${post.id}-${item.date}-${place.streetId ?? place.localityId}`;
+      const uid = `zuk-${post.id}-${item.date}-${place.streetId ?? place.localityId}`;
       if (seen.has(uid)) return notice(why(`${uid} twice`));
       seen.add(uid);
       items.push({
@@ -341,12 +298,7 @@ export function readPost(
     }
   }
   if (items.length === 0) return notice(`no place: ${dropped[0]}`);
-  return {
-    status: "parsed",
-    items,
-    dropped,
-    ...(unmatched.length > 0 ? { unmatched: [...new Set(unmatched)] } : {}),
-  };
+  return { status: "parsed", items, dropped };
 }
 
 /** A place a water-quality warning concerns: ours, with the source's words. */
@@ -372,9 +324,8 @@ export function readQualityPost(
   post: ZukPost,
   ai: AiResult,
   places: ZukPlaces,
-  rules: ReadRules = {},
 ): QualityReading {
-  const ctx = postContext(post, ai, places, rules.gate);
+  const ctx = postContext(post, ai, places);
   const out: WarningPlace[] = [];
   const dropped: string[] = [];
   const seen = new Set<string>();

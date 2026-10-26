@@ -627,16 +627,9 @@ test("keywords and the model disagree: logged, the model decides", async () => {
   await runZuk(deps(w));
   const disagree = w.logs.filter((l) => l.zuk === "classify-disagree");
   assert.deepEqual(disagree, [
+    { zuk: "classify-disagree", post: 39885, kind: "other", regex: true },
     {
       zuk: "classify-disagree",
-      source: "gmina-lubaczow",
-      post: 39885,
-      kind: "other",
-      regex: true,
-    },
-    {
-      zuk: "classify-disagree",
-      source: "gmina-lubaczow",
       post: FOX,
       kind: "water_quality",
       regex: false,
