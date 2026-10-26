@@ -4,10 +4,12 @@
 //
 // Matching, from the data alone: a cut applies when its locality is the
 // address's locality and it names no street (the whole locality) or this
-// street. A village part is a locality of its own: a cut for its whole
-// village is not matched to it (nothing in the data says the part shares
-// the village's water). Notices (posts we could not read safely) are
-// matched by the localities the gate found in them.
+// street. A village part (a TERYT part with a parent) also gets its
+// village's cut when ZUK names the whole village and nothing more: no
+// street, scope whole, no note. Not a village's cut "w części", by house
+// ranges or numbers, with a note, or on a street: we cannot tell whether
+// the part is in it. Notices (posts we could not read safely) are matched
+// by the localities the gate found in them, the part's village included.
 //
 // With a house number, a cut by house ranges or numbers that clearly leaves
 // it out is not shown (outsideRange), and the page says one was left out.
@@ -50,11 +52,22 @@ export type Water = {
 
 type Address = Pick<PlaceView, "localityId" | "streetId">;
 
+/** Each village part's village (the town's parts among them). */
+const PARENT = new Map<string, string>();
+for (const l of ZUK_PLACES.localities)
+  if (l.parentId) PARENT.set(l.id, l.parentId);
+
 /** Whether a cut applies to the address (see the top of this file). */
 export function matches(address: Address, cut: Disruption): boolean {
+  if (cut.place.localityId === address.localityId)
+    return (
+      cut.place.streetId === null || cut.place.streetId === address.streetId
+    );
   return (
-    cut.place.localityId === address.localityId &&
-    (cut.place.streetId === null || cut.place.streetId === address.streetId)
+    cut.place.localityId === PARENT.get(address.localityId) &&
+    cut.place.streetId === null &&
+    cut.scope.type === "whole" &&
+    cut.note === null
   );
 }
 
@@ -116,13 +129,16 @@ function atAddress(address: Address, cuts: Disruption[]): Disruption[] {
 /** The module's data for a place, from what the pages get of the file. */
 export function water(view: ZukData, place: PlaceView): Water {
   const here = atAddress(place, view.disruptions);
+  const village = PARENT.get(place.localityId);
   const outages = here.filter((cut) => !outsideRange(cut, place.givenNr));
   return {
     place,
     outages,
     hiddenForNr: outages.length < here.length,
     notices: view.notices.filter((notice) =>
-      notice.localityIds.includes(place.localityId),
+      notice.localityIds.some(
+        (id) => id === place.localityId || id === village,
+      ),
     ),
     checkedAt: view.checkedAt,
     stale: view.stale,
