@@ -13,14 +13,15 @@
 // exactly (TITLES). The share title is the same, and the share name
 // conaulicy.pl. The home page's Apple web-app tags (a "default" status bar,
 // never black-translucent) and the manifest's id, scope, display and icons.
-// The home page's copy (task 137): its exact H1, a description that leads
-// with the waste, and no "prąd" in its HTML or the manifest (no power data).
+// The home page's copy (task 137): its exact H1 and lead (task 140), a
+// description that leads with the waste, and no "prąd" in its HTML or the manifest (no power data).
 //
 // Runs against `next start` on the current build.
 import { finish, ROUTES, startServer } from "./lib/server.mjs";
 
 const SITE = "https://conaulicy.pl";
 const HOME_H1 = "Sprawdź swoją ulicę w Lubaczowie i gminie";
+const HOME_LEAD = "Wpisz ulicę albo wieś i sprawdź terminy.";
 const STATIC = ["/", "/ulice", "/dostepnosc", "/prywatnosc", "/o-projekcie"];
 // A town street, a village's street, a whole village, on each kind of page.
 const TITLES = {
@@ -192,6 +193,12 @@ try {
   );
   if (homeH1[0] !== HOME_H1)
     failures.push(`/: H1 ${JSON.stringify(homeH1)}, want ${HOME_H1}`);
+  const homeLead = all(
+    home,
+    /<p class="govuk-body-l"[^>]*>([\s\S]*?)<\/p>/g,
+  ).map((text) => decode(text.replace(/<[^>]*>/g, "")).trim());
+  if (homeLead[0] !== HOME_LEAD)
+    failures.push(`/: lead ${JSON.stringify(homeLead)}, want ${HOME_LEAD}`);
   const homeDescription = meta(home, "name", "description").map(decode);
   if (!homeDescription[0]?.startsWith("Wywóz śmieci"))
     failures.push(`/: description ${JSON.stringify(homeDescription)}`);

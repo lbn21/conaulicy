@@ -47,7 +47,7 @@ export default async function Home() {
         <div className="govuk-grid-column-two-thirds">
           <h1 className="govuk-heading-xl">{HOME_H1}</h1>
           <p className="govuk-body-l">
-            Wpisz ulicę albo wieś i sprawdź, co Cię czeka.
+            Wpisz ulicę albo wieś i sprawdź terminy.
           </p>
 
           <div className="govuk-!-margin-bottom-8">
