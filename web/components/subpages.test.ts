@@ -489,7 +489,7 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
   );
   assert.match(
     asnyka,
-    /<h2 id="inne-komunikaty" class="govuk-heading-m">Inne komunikaty<\/h2><p class="govuk-body"><a href="https:\/\/mzgkim\.lubaczow\.pl\/przerwa-w-dostawie-wody-100\/" class="govuk-link">MZGKiM ogłosił też przerwę w miejscu, którego nie umiemy dopasować do adresów: „Osiedle domów jednorodzinnych na zapleczu ul\. Niemirowskiej” – sprawdź komunikat<span class="govuk-visually-hidden"> „Przerwa w dostawie wody”<\/span><\/a><\/p><\/section>/,
+    /<h2 id="inne-komunikaty" class="govuk-heading-m">Inne komunikaty<\/h2><p class="govuk-body"><a href="https:\/\/mzgkim\.lubaczow\.pl\/przerwa-w-dostawie-wody-100\/" class="govuk-link">MZGKiM ogłosił też przerwę w miejscach, których nie umiemy dopasować do adresów: „Osiedle domów jednorodzinnych na zapleczu ul\. Niemirowskiej”, „Osiedle Mazury” – sprawdź komunikat<span class="govuk-visually-hidden"> „Przerwa w dostawie wody”<\/span><\/a><\/p><\/section>/,
   );
   // Fresh, no cut: one sentence, both sources' posts, no MZGKiM caveat.
   const quiet = page([]);

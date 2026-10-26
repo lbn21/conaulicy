@@ -257,6 +257,15 @@ function itemPlaces(
   };
 }
 
+/** The post's words for a part: "Osiedle Mazury" if so written, else its name. */
+function partWords(text: string, name: string): string {
+  const m = new RegExp(
+    `(?:osiedl\\p{L}*|os\\.)\\s+${escapeRe(name)}(?!\\p{L})`,
+    "iu",
+  ).exec(text);
+  return (m?.[0] ?? name).replace(/\s+/g, " ");
+}
+
 export type PostReading =
   | {
       status: "parsed";
@@ -266,7 +275,8 @@ export type PostReading =
       /**
        * A source with an area (GateRules): the post's own words for each
        * place in it we could not match ("Osiedle domów … ul.
-       * Niemirowskiej"), so the area's pages link the post; never empty.
+       * Niemirowskiej") or matched only to a part of the area ("Osiedle
+       * Mazury"), so the area's pages link the post; never empty.
        */
       unmatched?: string[];
     }
@@ -319,6 +329,16 @@ export function readPost(
         unmatched.push(words.replace(/\s+/g, " ").trim());
       continue;
     }
+    // A part of the area (a TERYT part of the town, "Osiedle Mazury") may
+    // have no address of its own, so no page: its cut stays, and its words
+    // are linked on the area's other pages too, never lost.
+    const [first] = resolved.places;
+    if (
+      rules.gate?.area &&
+      first.place.streetId === null &&
+      first.place.localityId !== rules.gate.area
+    )
+      unmatched.push(partWords(ctx.text, item.locality_verbatim));
     for (const { label, place } of resolved.places) {
       const uid = `${prefix}-${post.id}-${item.date}-${place.streetId ?? place.localityId}`;
       if (seen.has(uid)) return notice(why(`${uid} twice`));
