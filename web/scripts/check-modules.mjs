@@ -24,12 +24,12 @@
 //   linking /smieci; with one, it has its date; an unknown number keeps the street
 //   page's error (GOV.UK's validation pattern);
 // - /smieci: caption, h1 „Odbiór śmieci”, the checked line (its one
-//   freshness text), the calendar and the PDF;
+//   freshness text), the calendar with its help (no „Dodano”) and the PDF;
 // - a house number on a street with one schedule: both pages say, right
 //   under the h1, that it changes nothing; never on a split street, a
 //   village or without a number;
 // - /woda without a ZUK file: breadcrumbs, h1, the gmina's news, noindex,
-//   no calendar button; its woda.ics an empty calendar, noindex (an
+//   no calendar button or its help; its woda.ics an empty calendar, noindex (an
 //   unknown address's a 404);
 // - the weather has no subpage: /pogoda is a 404 (check-indexing.mjs reads
 //   the whole 404 page).
@@ -262,7 +262,11 @@ try {
         fail(path, `no row ${key}`);
     }
     if (/\b(dziś|jutro|pojutrze)\b/i.test(hub)) fail(path, "a relative date");
-    if (/href="\/ics\/|harmonogram\.pdf|woda\.ics|do kalendarza/.test(hub))
+    if (
+      /href="\/ics\/|harmonogram\.pdf|woda\.ics|do kalendarza|czy się udało/.test(
+        hub,
+      )
+    )
       fail(path, "a calendar or PDF link");
     if (/govuk-notification-banner/.test(hub)) fail(path, "the IMGW banner");
     // No ZUK file in CI: water first, with the gmina's news only.
@@ -331,6 +335,16 @@ try {
       !sub.main.includes("harmonogram.pdf")
     )
       fail(waste, "no calendar or PDF");
+    // The calendar's help (CalendarBlock): the shared sentence, then the
+    // closed details.
+    if (
+      !sub.main.includes("Na iPhonie telefon pokaże daty") ||
+      !/<details class="govuk-details"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">Nie wiesz, czy się udało\?<\/span>[\s\S]*?calendar\.google\.com[^<]*<\/li><\/ul><\/div><\/details>/.test(
+        sub.main,
+      ) ||
+      sub.main.includes("Dodano")
+    )
+      fail(waste, "no calendar help, or it says „Dodano”");
     if (!sub.main.includes('id="pickups-heading"')) fail(waste, "no pickups");
     // Subpages keep GOV.UK's row borders (only the hub drops them).
     if (
@@ -378,7 +392,7 @@ try {
   headingsInOrder(waterPath, water.main);
   // No cut to add: no calendar button; the file is an empty calendar (as a
   // waste zone with no dates), never a search result.
-  if (/woda\.ics|do kalendarza/.test(water.main))
+  if (/woda\.ics|do kalendarza|czy się udało/.test(water.main))
     fail(waterPath, "a calendar button without a cut");
   const icsPath = `${waterPath}.ics?nr=5`;
   const ics = await fetch(`${server.origin}${icsPath}`);

@@ -87,7 +87,7 @@ export function WaterDetails({
           <CalendarBlock
             href={calendar}
             label="Dodaj przerwy do kalendarza"
-            hint="Plik z przerwami. Jeśli gmina zmieni godziny, pobierz plik jeszcze raz – kalendarz poprawi wpis."
+            hint="Plik z przerwami. Jeśli gmina zmieni godziny, pobierz go jeszcze raz."
             event="water_calendar_add"
             place={data.place.id}
           />

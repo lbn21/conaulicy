@@ -473,7 +473,7 @@ function WasteBody({
           <CalendarBlock
             href={`/ics/${encodeURIComponent(place.zoneId)}`}
             label="Dodaj do kalendarza"
-            hint="Plik z datami. Telefon zapyta, czy wpisać je do kalendarza."
+            hint="Plik z datami wywozu."
             event="calendar_add"
             zone={place.zoneId}
             source="street"

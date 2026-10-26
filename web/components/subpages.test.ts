@@ -16,6 +16,7 @@ import { water } from "../lib/water-module.ts";
 import { zukView } from "../lib/zuk-data.ts";
 import { Trace } from "./hub.tsx";
 import { WasteDetails } from "./place-page.tsx";
+import { CALENDAR_CHECK, CALENDAR_HOW } from "./subpage-parts.tsx";
 import { WaterDetails } from "./water-page.tsx";
 import { eventProperties } from "./web-analytics.tsx";
 
@@ -74,9 +75,9 @@ const wastePage = (place: Partial<PlaceView> = {}, missing = false) =>
 const order = (html: string, markers: string[]) =>
   markers.map((marker) => html.indexOf(marker));
 
-/** The button and the hint under it, as one string. */
+/** The button, the hint and the details under it, as one string. */
 const calendarBlock = (html: string) =>
-  /<a [^>]*role="button"[^>]*>[^<]*<\/a><p class="govuk-body">[^<]*<\/p>/.exec(
+  /<a [^>]*role="button"[^>]*>[^<]*<\/a><p class="govuk-body">[^<]*<\/p><details class="govuk-details">[\s\S]*?<\/details>/.exec(
     html,
   )?.[0] ?? "";
 
@@ -100,7 +101,11 @@ test("/woda: a primary button and its hint before the cuts", () => {
   assert.doesNotMatch(block, /govuk-button--/);
   assert.match(block, /href="\/adres\/0972447-26555\/woda\.ics"/);
   assert.match(block, />Dodaj przerwy do kalendarza</);
-  assert.match(block, /pobierz plik jeszcze raz – kalendarz poprawi wpis\./);
+  assert.match(
+    block,
+    /<p class="govuk-body">Plik z przerwami\. Jeśli gmina zmieni godziny, pobierz go jeszcze raz\. Na iPhonie/,
+  );
+  assert.doesNotMatch(block, /poprawi wpis|PDF/);
   assert.ok(
     ascending(order(html, [...SKELETON, "<h2", "Godziny", ...AFTER])),
     html,
@@ -145,8 +150,30 @@ test("/smieci and /woda: the same skeleton and calendar block", () => {
   assert.equal(shape(waste), shape(waterPage()));
   assert.equal(
     shape(waste),
-    '<a role="button" draggable="false" class="govuk-button" data-module="govuk-button"></a><p class="govuk-body"></p>',
+    '<a role="button" draggable="false" class="govuk-button" data-module="govuk-button"></a><p class="govuk-body"></p><details class="govuk-details"><summary class="govuk-details__summary"><span class="govuk-details__summary-text"></span></summary><div class="govuk-details__text"><ul class="govuk-list govuk-list--bullet"><li></li><li></li><li></li></ul></div></details>',
   );
+});
+
+test("the calendar's help is CalendarBlock's: the same words on both pages", () => {
+  const waste = calendarBlock(wastePage());
+  const water = calendarBlock(waterPage());
+  // Each page's own: its first sentence only.
+  const own = (block: string) =>
+    block
+      .replace(/<p class="govuk-body">[^<]*?(?= Na iPhonie)/, "")
+      .replace(/^<a [^>]*>[^<]*/, "");
+  assert.ok(waste.includes(">Plik z datami wywozu. Na iPhonie "), waste);
+  assert.ok(waste.includes(` ${CALENDAR_HOW}</p>`), waste);
+  assert.ok(water.includes(` ${CALENDAR_HOW}</p>`), water);
+  assert.ok(waste.includes(`>${CALENDAR_CHECK}<`), waste);
+  assert.equal(own(waste), own(water));
+  // The PDF stays the page's own link, under the block.
+  assert.doesNotMatch(waste, /PDF/);
+  // The details are closed until opened.
+  assert.doesNotMatch(waste + water, /<details[^>]* open/);
+  // A browser never knows whether the file was added.
+  for (const html of [wastePage(), waterPage()])
+    assert.doesNotMatch(html, /Dodano|dodano/);
 });
 
 test("/smieci and /woda keep GOV.UK's row borders (only the hub drops them)", () => {
