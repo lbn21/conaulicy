@@ -19,7 +19,7 @@ So every environment reads and writes production data. Previews only read; anyth
 
 ## Writing to production
 
-Jakub's rule (23 Oct 2026): an agent may run `db:migrate`, `db:import --apply` or `db:redirect --apply` on production **only after asking Jakub in chat and getting his explicit approval, every time**. One approval covers one run; it never carries over to the next.
+Jakub's rule (23 Oct 2026): an agent may run `db:migrate`, `db:import --apply`, `db:redirect --apply` or `db:districts --apply` on production **only after asking Jakub in chat and getting his explicit approval, every time**. One approval covers one run; it never carries over to the next.
 
 Each approved run:
 
@@ -28,7 +28,7 @@ Each approved run:
 3. Apply.
 4. Run the dry run again: it must show 0 changes.
 
-An approved run reads production's URL from `web/.env.local` through the npm scripts (`npm run db:migrate`, `db:import`, `db:redirect`); nothing else may read that file: a local `next build`, `next start`, `next dev` or `npm run check:*` stays forbidden.
+An approved run reads production's URL from `web/.env.local` through the npm scripts (`npm run db:migrate`, `db:import`, `db:redirect`, `db:districts`); nothing else may read that file: a local `next build`, `next start`, `next dev` or `npm run check:*` stays forbidden.
 
 Never use `vercel env run` (Vercel CLI 64.5): it hands the command back to its own parser, so `vercel env run -e production -- node -e …` started a `vercel deploy` of the working tree (rejected only by luck). Use `web/.env.local` instead.
 
@@ -52,6 +52,10 @@ npm run db:redirect -- --from <old id> --to <new id> --reason "TERYT rename, iss
 
 The unattended import (docs/import.md) adds `import_runs` (one row per source per run), `import_changes` (every change by batch, for `npm run import:revert`), `source_files` (every source file by SHA-256, with its S3 key) and `source_pages` (watched pages' link hashes). It connects as the Neon role `conaulicy_import`, which can only read places and zones, write `events` and `gminy.schedule_url`, and write those four tables.
 
+## District names (the gazetteer)
+
+`district_aliases` (id, locality_id, teryt_simc, name, variants text[], confidence, source_url) holds a town's informal district names ("Osiedle Mazury"), `district_alias_streets` (alias_id, street_id, confidence, part, source_url; key alias_id + street_id) their streets: one district has many streets and a street may be in two (Herzoga: Mazury and Mazury VI), each with its own confidence (`high`, `medium`), source and, for a stretch only, `part` ("bloki 24–34A"). No foreign key to `localities` or `streets`, which hold only what the waste import brings; the seed checks every id against the TERYT snapshot instead. Written **only** by `npm run db:districts` (`web/scripts/districts-seed.ts`, from `web/lib/districts-seed.ts`: it replaces both tables in one transaction; without `--apply` it prints the difference); `npm run db:local` seeds it too. The water cron reads it (docs/zuk.md); a missing table fails its runs, so the migration and seed run on production **before** the code that reads them is merged.
+
 ## Schema changes
 
 Migrations only add what the code about to be deployed needs, and run before that deploy:
@@ -62,6 +66,8 @@ npm run db:migrate      # reads web/.env.local (Neon main)
 ```
 
 The code may also ship first when it tolerates the old schema, as for `0002_teryt_names` (task 67): merge (the site never reads the new columns, and a missing `place_redirects` means no redirects); then, after a backup, `db:migrate` and a data reload with `npm run db:import -- --from <etl out> --teryt ../.cache/sources/teryt/<day> --apply --yes-production` (`npm run sources:pull` fetches the TERYT files), which fills `nazwa_1` and `nazwa_2`. Both follow "Writing to production" above: by an agent only with Jakub's approval for that run.
+
+`0003_district_aliases` (task 151): not yet on production. Order: backup, `db:migrate`, `npm run db:districts` (dry run), `-- --apply --yes-production`, the dry run again (0 to add, 0 to remove), then merge; each step only with Jakub's approval for that run.
 
 Applied to production on 2026-10-23: `0002_teryt_names` at 10:06 UTC (11:06 UK time); the TERYT reload at 10:07 UTC filled `nazwa_1` for 276 streets and `nazwa_2` for 82; the dry run after it showed 0 changes. The 276 include 3 streets in no zone, which the search index leaves out (273 there).
 
