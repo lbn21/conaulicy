@@ -17,12 +17,13 @@ import { readZukFile, writeZukFile } from "@/lib/zuk-store";
 //
 // Outside the Basic Auth gate (proxy.ts matcher): it has its own secret.
 
-// A few model calls of up to 60 s each, every source's within one budget
-// (lib/zuk-cron.ts AI_BUDGET_MS, from `since`).
+// Model calls of up to lib/zuk-ai.ts TIMEOUT_MS each, every
+// source's within this one limit: a call starts only with its timeout
+// and a margin left before the deadline (lib/zuk-cron.ts AI_LEFT_MS).
 export const maxDuration = 300;
 
 export function GET(request: Request) {
-  const since = new Date();
+  const deadline = new Date(Date.now() + maxDuration * 1000);
   const run = (source: PostSource): ZukCronDeps => ({
     fetch,
     readFile: () => readZukFile(source.water.pathname),
@@ -45,7 +46,7 @@ export function GET(request: Request) {
     source,
     xaiKey: process.env.XAI_API_KEY,
     now: () => new Date(),
-    since,
+    deadline,
     log: (line) => console.log(JSON.stringify(line)),
   });
   return handleZukCron(request, process.env.CRON_SECRET, run(gminaLubaczow), [

@@ -15,7 +15,7 @@ import { WP_POSTS } from "./sources/gmina-lubaczow/fetch.ts";
 import { MZGKIM_FEED } from "./sources/mzgkim/fetch.ts";
 import { mzgkim } from "./sources/mzgkim/index.ts";
 import { MZGKIM, TOWN } from "./water-sources.ts";
-import type { AiInput, AiReading } from "./zuk-ai.ts";
+import { type AiInput, type AiReading, TIMEOUT_MS } from "./zuk-ai.ts";
 import { handleZukCron, runZuk, type ZukCronDeps } from "./zuk-cron.ts";
 import {
   AI_UNAVAILABLE,
@@ -256,15 +256,23 @@ test("xAI down: retried next run, never shown", async () => {
   assert.equal(saved(w).active.length, 1);
 });
 
-test("the model's budget counts from the route's start, every source's run in it", async () => {
+test("no model call with less than its timeout and the margin left", async () => {
   const w = world();
-  // The gmina's run took 201 s: no model call for MZGKiM this time.
-  const since = new Date(NOW.getTime() - 201_000);
-  const summary = await runZuk({ ...deps(w), since });
+  // The gmina's run left 269 s before the deadline: no call for MZGKiM.
+  const deadline = new Date(NOW.getTime() + TIMEOUT_MS + 29_000);
+  const summary = await runZuk({ ...deps(w), deadline });
   assert.equal(summary.aiCalls, 0);
   assert.deepEqual(w.aiCalls, []);
   // Not stored: read on a later run.
   assert.equal(saved(w).active.length, 0);
+});
+
+test("a model call starts with the timeout and the margin left", async () => {
+  const w = world();
+  const deadline = new Date(NOW.getTime() + TIMEOUT_MS + 31_000);
+  const summary = await runZuk({ ...deps(w), deadline });
+  assert.ok(summary.aiCalls > 0);
+  assert.ok(w.aiCalls.length > 0);
 });
 
 // The route: the gmina's run first, then MZGKiM's, each on its own.

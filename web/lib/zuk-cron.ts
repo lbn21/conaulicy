@@ -39,7 +39,12 @@ import {
   wall,
   type ZukPost,
 } from "./zuk.ts";
-import { type AiReading, InvalidReply, readWithAi } from "./zuk-ai.ts";
+import {
+  type AiReading,
+  InvalidReply,
+  readWithAi,
+  TIMEOUT_MS,
+} from "./zuk-ai.ts";
 import {
   AI_UNAVAILABLE,
   INVALID_REPLY,
@@ -66,8 +71,11 @@ import { Listed, type ZukPlaces } from "./zuk-resolve.ts";
 const WINDOW_DAYS = 14;
 /** At most this many model calls per run; the rest wait for the next. */
 const MAX_AI_CALLS = 4;
-/** No new model call after this long into the run (maxDuration 300 s). */
-const AI_BUDGET_MS = 200_000;
+/**
+ * A model call is started only with at least this long left before the
+ * deadline: its whole timeout plus a margin for the Blob write.
+ */
+const AI_LEFT_MS = TIMEOUT_MS + 30_000;
 /**
  * A reply off the schema: the post is tried again after these waits, one
  * per failure; one more failure and it is given up (the rejected list).
@@ -87,8 +95,11 @@ export type ZukCronDeps = {
   source?: PostSource;
   xaiKey: string | undefined;
   now: () => Date;
-  /** When the model-call budget started: the route's start; else the run's. */
-  since?: Date;
+  /**
+   * When the function is stopped: the route's start plus its maxDuration.
+   * None: no time limit on model calls (only MAX_AI_CALLS).
+   */
+  deadline?: Date;
   log: (line: Record<string, unknown>) => void;
 };
 
@@ -142,7 +153,6 @@ function gazetteerHash(districts: District[]): string {
 /** One run. Throws SourceDown, or anything else, without writing. */
 export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
   const started = deps.now();
-  const since = deps.since ?? started;
   const previousBody = await deps.readFile();
   const previous = previousBody ? parseZukFile(previousBody) : null;
   const today = todayInWarsaw(started);
@@ -240,7 +250,8 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     }
     if (
       aiCalls >= MAX_AI_CALLS ||
-      deps.now().getTime() - since.getTime() > AI_BUDGET_MS
+      (deps.deadline &&
+        deps.deadline.getTime() - deps.now().getTime() < AI_LEFT_MS)
     ) {
       wait(false);
       continue;

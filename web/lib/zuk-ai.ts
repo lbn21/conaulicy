@@ -9,7 +9,8 @@
 export const ZUK_MODEL = "grok-4.7";
 
 const XAI_URL = "https://api.x.ai/v1/chat/completions";
-const TIMEOUT_MS = 60_000;
+/** One model call at most this long (a real post took 161 s at medium). */
+export const TIMEOUT_MS = 240_000;
 // USD per token, list price; reasoning tokens are billed as output.
 const PRICE_IN = 2 / 1_000_000;
 const PRICE_OUT = 6 / 1_000_000;
