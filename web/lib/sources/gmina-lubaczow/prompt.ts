@@ -2,10 +2,12 @@
 // with it), v3.1: the rules (what a post is, post_type, Jakub's X8 text;
 // the item and place-name rules, every example name invented), then a
 // context of our own places built from the TERYT snapshot (systemPrompt):
-// the town, villages, village parts and every street per locality. The
+// the town, villages, village parts and every street per locality, then
+// the town's districts if given (the gazetteer, lib/districts.ts). The
 // rules are a fixed prefix, the context last. Measured offline on 263 real
 // posts (task 114b): 263/263 classified, 0 wrong places.
 
+import { districtLines } from "../../districts.ts";
 import type { ZukPlaces } from "../../zuk-resolve.ts";
 
 /** rules-v31.txt, byte for byte (8,029 bytes, no trailing newline). */
@@ -110,13 +112,26 @@ function context(places: ZukPlaces): string {
   const lines = order.map(
     (l) => `${l.name}: ${sorted(streets.get(l.id) ?? []).join(", ")}`,
   );
+  // The town's districts (the gazetteer, lib/districts.ts), if given: the
+  // rules above stay as they are, so the line says how to read one.
+  const town = places.localities.find((l) => l.kind === "miasto");
+  const districts = town
+    ? districtLines(
+        (places.districts ?? []).filter((d) => d.localityId === town.id),
+        places.streets,
+      )
+    : [];
+  const gazetteer =
+    town && districts.length > 0
+      ? `\nDistricts of the town ${town.name} (osiedla: informal names TERYT does not have). A district written in the post (as listed, in one of its forms, or "osiedle X", "os. X" with X its name) is ONE item: locality "${town.name}", street = the district's name as listed, street_verbatim = the post's exact words; never its streets unless the post names them. "ul. X" is the street X, never the district:\n${districts.join("\n")}`
+      : "";
   return `Context: the places in our database (TERYT). ZUK Mokrzyca supplies water to the villages of gmina Lubaczów and to some streets of the town Lubaczów.
 Town (miasto): ${names("miasto")}
 Villages (wieś): ${names("wies")}
 Village parts (część wsi, przysiółek), each with its village: ${parts}
 Names used more than once: ${twice.join(", ")}.
 Streets, by locality (canonical TERYT names; a locality not listed here has no streets in TERYT):
-${lines.join("\n")}`;
+${lines.join("\n")}${gazetteer}`;
 }
 
 /** The system prompt: the rules, then the context of `places`. */

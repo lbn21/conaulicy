@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   CUT_99,
   CUT_100,
+  MZGKIM_PLACES,
   MZGKIM_READINGS,
   realMzgkimPost,
   WHOLE_TOWN,
@@ -24,10 +25,36 @@ const SOBIESKIEGO = "0972447-20431";
 const NIEMIROWSKA = "0972447-14183";
 const STARZYNY = "0972447-21042";
 const MAZURY = "0972453";
+const UL_MAZURY = "0972447-12559";
+/** Osiedle Mazury in the gazetteer (lib/districts-seed.ts): 22 streets. */
+const ESTATE = [
+  "38139",
+  "29695",
+  "08179",
+  "22684",
+  "38140",
+  "15092",
+  "38137",
+  "38138",
+  "48939",
+  "44269",
+  "48377",
+  "24870",
+  "17390",
+  "38687",
+  "48412",
+  "38689",
+  "38690",
+  "24170",
+  "07290",
+  "08574",
+  "00157",
+  "02276",
+].map((u) => `0972447-${u}`);
 const OSIEDLE = "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej";
 
 const read = (post: ZukPost, ai: AiResult) =>
-  readPost(post, ai, ZUK_PLACES, CHECKED, {
+  readPost(post, ai, MZGKIM_PLACES, CHECKED, {
     source: MZGKIM,
     gate: mzgkim.gate,
   });
@@ -36,6 +63,16 @@ const parsed = (reading: PostReading) => {
   assert.equal(reading.status, "parsed", JSON.stringify(reading));
   return reading as Extract<PostReading, { status: "parsed" }>;
 };
+
+/** The real 5237 with one line of its list changed. */
+function withLine(from: string, to: string): ZukPost {
+  const post = realMzgkimPost(CUT_100);
+  assert.ok(post.content.rendered.includes(from), from);
+  return {
+    ...post,
+    content: { rendered: post.content.rendered.replace(from, to) },
+  };
+}
 
 /** The real post `id` read with its items changed by `edit`. */
 const readWith = (id: number, edit: (items: AiItem[]) => AiItem[]) =>
@@ -47,12 +84,13 @@ const readWith = (id: number, edit: (items: AiItem[]) => AiItem[]) =>
 test("5237: three streets as TERYT names them, declined or shortened", () => {
   const r = parsed(read(realMzgkimPost(CUT_100), MZGKIM_READINGS[CUT_100]));
   assert.deepEqual(
-    r.items.map((d) => [d.place.localityId, d.place.streetId, d.label?.street]),
+    r.items
+      .slice(0, 3)
+      .map((d) => [d.place.localityId, d.place.streetId, d.label?.street]),
     [
       ["0972447", SOBIESKIEGO, "Jana III Sobieskiego"],
       ["0972447", NIEMIROWSKA, "Niemirowska"],
       ["0972447", STARZYNY, "Starzyny"],
-      [MAZURY, null, null],
     ],
   );
   for (const d of r.items) {
@@ -69,17 +107,66 @@ test("5237: three streets as TERYT names them, declined or shortened", () => {
     });
     assert.equal(d.publishedAt, "2026-10-02 12:11:39");
   }
-  // "Osiedle Mazury": the town's part Mazury, never its ul. Mazury.
-  assert.deepEqual(r.items[3].label, {
-    locality: "Mazury",
-    parent: "Lubaczów",
-    street: null,
-  });
+});
+
+test("5237: Osiedle Mazury is its 22 streets, whole, in the post's words", () => {
+  const r = parsed(read(realMzgkimPost(CUT_100), MZGKIM_READINGS[CUT_100]));
+  const estate = r.items.slice(3);
+  assert.deepEqual(
+    estate.map((d) => d.place.streetId).sort(),
+    [...ESTATE].sort(),
+  );
+  for (const d of estate) {
+    assert.equal(d.place.localityId, "0972447");
+    assert.deepEqual(d.scope, { type: "whole" });
+    assert.equal(d.note, null);
+    assert.equal(d.where, "Osiedle Mazury");
+    assert.equal(d.label?.parent, null);
+  }
+  // Never ul. Mazury, Boczna Mazury, TERYT's part, nor the streets at its
+  // point (Podleśna, Łąkowa, Ustronna).
+  for (const id of [
+    UL_MAZURY,
+    "0972447-01533",
+    "0972447-16799",
+    "0972447-11596",
+    "0972447-23434",
+  ])
+    assert.equal(
+      r.items.some((d) => d.place.streetId === id),
+      false,
+      id,
+    );
+  assert.equal(
+    r.items.some((d) => d.place.localityId === MAZURY),
+    false,
+  );
+  // The model reading it as TERYT's part (the old prompt): the same.
+  const asPart = parsed(
+    readWith(CUT_100, (items) =>
+      items.map((i) =>
+        i.street === "Osiedle Mazury"
+          ? {
+              ...i,
+              locality: "Mazury",
+              locality_verbatim: "Mazury",
+              street: null,
+              street_verbatim: null,
+            }
+          : i,
+      ),
+    ),
+  );
+  assert.deepEqual(
+    asPart.items.slice(3).map((d) => [d.place.streetId, d.where]),
+    estate.map((d) => [d.place.streetId, "Osiedle Mazury"]),
+  );
+  assert.deepEqual(asPart.unmatched, [OSIEDLE]);
 });
 
 test("5237: the area off our list is kept as written, never its street", () => {
   const r = parsed(read(realMzgkimPost(CUT_100), MZGKIM_READINGS[CUT_100]));
-  assert.deepEqual(r.unmatched, [OSIEDLE, "Osiedle Mazury"]);
+  assert.deepEqual(r.unmatched, [OSIEDLE]);
   assert.equal(r.dropped.length, 1);
   // The model taking the area for ul. Niemirowska: dropped, never widened
   // to the whole street (the area's words are more than its name).
@@ -96,35 +183,41 @@ test("5237: the area off our list is kept as written, never its street", () => {
     widened.items.some((d) => d.place.streetId === NIEMIROWSKA),
     false,
   );
-  assert.deepEqual(widened.unmatched, [OSIEDLE, "Osiedle Mazury"]);
+  assert.deepEqual(widened.unmatched, [OSIEDLE]);
 });
 
-test("a part of the town: its cut kept and its words linked too, never lost", () => {
-  // TERYT's part Mazury (0972453) has no PRG address point, so no page in
-  // production: "Osiedle Mazury" is also linked on the town's other pages.
+test("a part of the town with no street: its cut kept and its words linked too", () => {
+  // TERYT's part Niwki (0972460, an abandoned farm) has no PRG address
+  // point, so no page in production: its words are linked on the town's
+  // other pages too.
   assert.equal(
-    PRG_NUMBERS.split("\n").some((line) => line.startsWith(`${MAZURY};`)),
+    PRG_NUMBERS.split("\n").some((line) => line.startsWith("0972460;")),
     false,
   );
-  const r = parsed(read(realMzgkimPost(CUT_100), MZGKIM_READINGS[CUT_100]));
-  assert.ok(r.items.some((d) => d.place.localityId === MAZURY));
-  assert.deepEqual(r.unmatched?.at(-1), "Osiedle Mazury");
-  // Its name alone where the post has no "Osiedle" before it.
-  const post = realMzgkimPost(CUT_100);
-  const bare = {
-    ...post,
-    content: {
-      rendered: post.content.rendered.replace(
-        "<li>Osiedle Mazury</li>",
-        "<li>Mazury</li>",
+  const r = parsed(
+    read(withLine("<li>Osiedle Mazury</li>", "<li>Niwki</li>"), {
+      ...MZGKIM_READINGS[CUT_100],
+      items: MZGKIM_READINGS[CUT_100].items.map((i) =>
+        i.street === "Osiedle Mazury"
+          ? {
+              ...i,
+              locality: "Niwki",
+              locality_verbatim: "Niwki",
+              street: null,
+              street_verbatim: null,
+            }
+          : i,
       ),
-    },
-  };
-  const named = parsed(read(bare, MZGKIM_READINGS[CUT_100]));
-  assert.deepEqual(named.unmatched, [OSIEDLE, "Mazury"]);
+    }),
+  );
+  assert.deepEqual(r.items.at(-1)?.place, {
+    localityId: "0972460",
+    streetId: null,
+  });
+  assert.deepEqual(r.unmatched, [OSIEDLE, "Niwki"]);
   // A street matched is never also linked.
   assert.equal(
-    named.unmatched?.some((w) => /Sobieskiego|Starzyny/.test(w)),
+    r.unmatched?.some((w) => /Sobieskiego|Starzyny/.test(w)),
     false,
   );
 });
@@ -284,27 +377,19 @@ test("the area's rules: never a village, an exact village before a street blocks
 
 test("the gmina's posts keep the gmina's rules: no area, no declined street", () => {
   // MZGKiM's post read as if the gmina's: the town is never named, so its
-  // streets fail the gate's locality checks; only Mazury, named, passes.
-  const r = parsed(
+  // streets fail the gate's locality checks, and so does Osiedle Mazury.
+  assert.deepEqual(
     readPost(
       realMzgkimPost(CUT_100),
       MZGKIM_READINGS[CUT_100],
-      ZUK_PLACES,
+      MZGKIM_PLACES,
       CHECKED,
     ),
+    {
+      status: "notice",
+      reason: "no place: item 1: locality_verbatim not literal",
+    },
   );
-  assert.deepEqual(
-    r.items.map((d) => d.uid),
-    ["zuk-5237-2026-10-06-0972453"],
-  );
-  assert.deepEqual(r.dropped, [
-    "item 1: locality_verbatim not literal",
-    "item 2: locality_verbatim not literal",
-    "item 3: locality_verbatim not literal",
-    "item 4: locality_verbatim not literal",
-  ]);
-  // Nothing of the area's: no unmatched places.
-  assert.equal(r.unmatched, undefined);
 });
 
 test("prompt: the town's parts and streets, a shared part name with its town", () => {

@@ -43,9 +43,14 @@
 // Niemirowskiej").
 
 import type { Locality } from "./data-model.ts";
+import type { District } from "./districts.ts";
 
-/** Our places: the TERYT snapshot (lib/zuk-places.generated.ts). */
+/**
+ * Our places: the TERYT snapshot (lib/zuk-places.generated.ts), and the
+ * town's district names (lib/districts.ts) where given.
+ */
 export type ZukPlaces = {
+  districts?: District[];
   localities: Array<{
     id: string;
     name: string;
@@ -154,6 +159,10 @@ export const MONTHS = [
   "listopada",
   "grudnia",
 ];
+
+/** Null if the day is written in the post's gate text, else why. */
+export const dayInText = (date: string, text: string) =>
+  guardDate(date, norm(text));
 
 /** Null if the day is written in `txt` (norm of the post), else why. */
 export function guardDate(date: string, txt: string): string | null {
