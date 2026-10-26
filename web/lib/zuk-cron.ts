@@ -3,7 +3,8 @@
 // read by an older reader (ZUK_READER) or whose last reading failed, keeps
 // every other post's stored result, and writes the file (lib/zuk-data.ts)
 // on every run that read the posts: checkedAt is that run, generatedAt the
-// last run that changed its content. The model
+// last run that changed its content (any checkedAt aside); only such a run
+// purges the WATER cache tag (deps.purge), never DATASET. The model
 // says what a post is: a water cut is read for its cuts, a water-quality
 // warning for its places (not shown yet), anything else is "not-water",
 // never read again; the old keyword filter only cross-checks it, in the
@@ -17,7 +18,7 @@
 // them.
 
 import { addDays, todayInWarsaw } from "./dates.ts";
-import { NO_STORE } from "./headers.ts";
+import { NO_STORE, WATER } from "./headers.ts";
 import { cronDenied } from "./secret.ts";
 import { gminaLubaczow } from "./sources/gmina-lubaczow/index.ts";
 import { type PostSource, SourceDown } from "./sources/source.ts";
@@ -62,6 +63,8 @@ export type ZukCronDeps = {
   /** The file's body, or null if there is none yet. Throws if unreadable. */
   readFile: () => Promise<string | null>;
   writeFile: (body: string) => Promise<void>;
+  /** Drops a cache tag's data cache and CDN copies: revalidateTag. */
+  purge: (tag: string) => void;
   places: () => Promise<ZukPlaces>;
   readAi?: typeof readWithAi;
   /** Whose posts: lib/sources; the gmina Lubaczów's by default. */
@@ -76,9 +79,19 @@ export type RunSummary = {
   active: number;
   aiCalls: number;
   costUsd: number;
-  /** The file's content changed (generatedAt moved). */
+  /** The file's content changed (generatedAt moved, WATER purged). */
   changed: boolean;
 };
+
+/**
+ * What the pages show, as a string to compare: every checkedAt left out (a
+ * post read again with the same result changes only its items' time).
+ */
+function content(active: StoredPost[], seen: SeenPost[]): string {
+  return JSON.stringify([active, seen], (key, value) =>
+    key === "checkedAt" ? undefined : value,
+  );
+}
 
 /** One run. Throws SourceDown, or anything else, without writing. */
 export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
@@ -247,8 +260,7 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
   const { active, seen } = settle(stored, today);
   const changed =
     !previous ||
-    JSON.stringify([previous.active, previous.seen]) !==
-      JSON.stringify([active, seen]);
+    content(previous.active, previous.seen) !== content(active, seen);
   // Written even when unchanged: checkedAt says we read the posts now.
   const file: ZukFile = {
     version: ZUK_FILE_VERSION,
@@ -258,6 +270,7 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     seen,
   };
   await deps.writeFile(JSON.stringify(file));
+  if (changed) deps.purge(WATER);
   const summary = {
     posts: posts.length,
     active: active.length,

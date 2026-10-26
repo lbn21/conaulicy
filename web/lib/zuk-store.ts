@@ -1,6 +1,7 @@
 import "server-only";
 import { get, put } from "@vercel/blob";
 import { unstable_cache } from "next/cache";
+import { WATER } from "./headers.ts";
 import {
   parseZukFile,
   ZUK_PATHNAME,
@@ -9,13 +10,19 @@ import {
 } from "./zuk-data.ts";
 
 // The ZUK file in the private Blob store (BLOB_READ_WRITE_TOKEN): read
-// through Next's data cache for the pages, fresh for the cron.
+// through Next's data cache for the pages, tagged WATER, so the cron's
+// purge (lib/zuk-cron.ts) drops it and every page rendered from it (the
+// tag is the pages' too). Each refill reads the Blob's origin, not its CDN
+// copy (up to 60 s old): a refill right after a purge gets the new file.
 
-/** The file's body, or null if there is none yet. Throws on other errors. */
-export async function readZukFile(fresh: boolean): Promise<string | null> {
+/**
+ * The file's body from the Blob's origin, or null if there is none yet.
+ * Throws on other errors.
+ */
+export async function readZukFile(): Promise<string | null> {
   const blob = await get(ZUK_PATHNAME, {
     access: "private",
-    useCache: !fresh,
+    useCache: false,
   });
   if (blob?.statusCode !== 200) return null;
   return new Response(blob.stream).text();
@@ -31,7 +38,8 @@ export async function writeZukFile(body: string): Promise<void> {
   });
 }
 
-const cached = unstable_cache(() => readZukFile(false), ["zuk-file"], {
+const cached = unstable_cache(readZukFile, ["zuk-file"], {
+  tags: [WATER],
   revalidate: 600,
 });
 

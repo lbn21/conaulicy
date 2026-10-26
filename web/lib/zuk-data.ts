@@ -4,7 +4,8 @@
 //
 // {
 //   version: 4,
-//   generatedAt,  // ISO: when `active` or `seen` last changed
+//   generatedAt,  // ISO: when `active` or `seen` last changed, any
+//                 // checkedAt in them aside
 //   checkedAt,    // ISO: the last successful read of the gmina's posts
 //   active: [{    // the water posts that still matter: all the pages read
 //     id, modified, reader, url, title, publishedAt, updatedAt,

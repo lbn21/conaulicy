@@ -29,6 +29,7 @@ import {
   zoneMembers,
   zones,
 } from "@/lib/db";
+import { DATASET } from "@/lib/headers";
 import { houseNumber } from "@/lib/house";
 import {
   gminaShortName,
@@ -56,7 +57,6 @@ import { sourcesOf } from "@/lib/waste-module";
 // Every read goes through Next's data cache, tagged DATASET: a traffic spike
 // hits the cache, not Neon. After an import, POST /api/revalidate purges the
 // tag. The hourly revalidate is only a safety net.
-export const DATASET = "dataset";
 const CACHE = { tags: [DATASET], revalidate: 3600 };
 
 type ZoneEvent = typeof events.$inferSelect & {
