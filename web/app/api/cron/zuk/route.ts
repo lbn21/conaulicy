@@ -1,4 +1,5 @@
 import { revalidateTag } from "next/cache";
+import { unknownStreets } from "@/lib/districts";
 import { loadDistricts } from "@/lib/districts-db";
 import { gminaLubaczow } from "@/lib/sources/gmina-lubaczow";
 import { mzgkim } from "@/lib/sources/mzgkim";
@@ -33,7 +34,14 @@ export function GET(request: Request) {
     // The TERYT snapshot, not the database: the prompt and the gate need
     // each street's CECHA and NAZWA_1 (lib/zuk-resolve.ts). The town's
     // district names (the gazetteer, lib/districts.ts) from the database.
-    places: async () => ({ ...ZUK_PLACES, districts: await loadDistricts() }),
+    // A district street the snapshot lacks is skipped by the gate: logged
+    // (ids only), so a stale seed or snapshot shows in the logs.
+    places: async () => {
+      const districts = await loadDistricts();
+      for (const u of unknownStreets(districts, ZUK_PLACES.streets))
+        console.log(JSON.stringify({ zuk: "district-street-unknown", ...u }));
+      return { ...ZUK_PLACES, districts };
+    },
     source,
     xaiKey: process.env.XAI_API_KEY,
     now: () => new Date(),

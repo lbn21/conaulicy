@@ -311,6 +311,22 @@ export function bareNamesake<
 }
 
 /**
+ * The district streets that are not ours (the TERYT snapshot) or not of
+ * the district's town: what the gate skips (lib/zuk.ts districtPlaces).
+ */
+export function unknownStreets(
+  districts: District[],
+  streets: Array<{ id: string; localityId: string }>,
+): Array<{ district: string; street: string }> {
+  const ours = new Map(streets.map((s) => [s.id, s.localityId]));
+  return districts.flatMap((d) =>
+    d.streets
+      .filter((s) => ours.get(s.id) !== d.localityId)
+      .map((s) => ({ district: d.id, street: s.id })),
+  );
+}
+
+/**
  * Every street id of every district is one of ours (the TERYT snapshot),
  * of the district's town; throws naming each that is not.
  */
@@ -318,11 +334,8 @@ export function checkDistricts(
   districts: District[],
   streets: Array<{ id: string; localityId: string }>,
 ): void {
-  const ours = new Map(streets.map((s) => [s.id, s.localityId]));
-  const bad = districts.flatMap((d) =>
-    d.streets
-      .filter((s) => ours.get(s.id) !== d.localityId)
-      .map((s) => `${d.id}: ${s.id}`),
+  const bad = unknownStreets(districts, streets).map(
+    (u) => `${u.district}: ${u.street}`,
   );
   const ids = districts.map((d) => d.id);
   const twice = ids.filter((id, i) => ids.indexOf(id) !== i);

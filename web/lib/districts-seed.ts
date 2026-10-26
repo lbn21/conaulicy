@@ -18,6 +18,8 @@ const PARISH_STANISLAW_2026 =
   "https://konkatedra.zamojskolubaczowska.pl/2026/01/06/plan-koledy-w-parafii-sw-stanislawa-bm-a-d-2025-2026/";
 const PARISH_KAROL =
   "https://zlubaczowa.pl/news/wydarzenia/14524-plan-koledy-w-parafii-pw-sw-karola-boromeusza-w-lubaczowie-harmonogram";
+const TOWN_ROADS =
+  "https://um.lubaczow.pl/aktualnosci/drogi-miejskie-do-przebudowy.html";
 const PRNG =
   "http://tools.wikimedia.pl/~malarz_pl/cgi-bin/polska.pl?teryt=1809011";
 
@@ -98,9 +100,9 @@ export const DISTRICTS: District[] = [
     name: "Osiedle Mazury VI",
     variants: ["os. Mazury VI", "osiedlu Mazury VI"],
     confidence: "high",
-    sourceUrl:
-      "https://um.lubaczow.pl/aktualnosci/drogi-miejskie-do-przebudowy.html",
-    streets: streets("high", null, "38687", "48412"),
+    sourceUrl: TOWN_ROADS,
+    // Named there explicitly, so high here (medium in Osiedle Mazury).
+    streets: streets("high", TOWN_ROADS, "38687", "48412"),
   }),
   // "ul. Piaski" is street 16027 only; a bare "Piaski" that street, in doubt.
   district({
