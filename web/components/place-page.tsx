@@ -440,6 +440,10 @@ export function WasteDetails({
 /** The waste subpage's h1. */
 const WASTE_H1 = "Odbiór śmieci";
 
+/** The printable schedule, for the address's own number. */
+const pdfHref = (place: PlaceView) =>
+  `${placePath(place.id)}/harmonogram.pdf${place.nr ? `?nr=${place.nr}` : ""}`;
+
 /** The street page's dates, files and sources, or why there are none. */
 function WasteBody({
   place,
@@ -473,14 +477,15 @@ function WasteBody({
           <CalendarBlock
             href={`/ics/${encodeURIComponent(place.zoneId)}`}
             label="Dodaj do kalendarza"
-            hint="Plik z datami. Telefon zapyta, czy wpisać je do kalendarza."
+            hint="Plik z datami wywozu."
             event="calendar_add"
             zone={place.zoneId}
             source="street"
+            pdfHref={pdfHref(place)}
           />
           <p className="govuk-body">
             <a
-              href={`${placePath(place.id)}/harmonogram.pdf${place.nr ? `?nr=${place.nr}` : ""}`}
+              href={pdfHref(place)}
               data-event="pdf_open"
               data-zone={place.zoneId}
               className="govuk-link"
