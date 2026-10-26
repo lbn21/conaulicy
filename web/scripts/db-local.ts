@@ -1,6 +1,7 @@
 // npm run db:local [-- reset | stop]: the local development database
 // (docker-compose.yml), with the CI fixture only. Starts Postgres, waits for
-// it, runs the migrations and scripts/ci-fixture.ts, then prints the row
+// it, runs the migrations, scripts/ci-fixture.ts and the gazetteer's seed
+// (scripts/districts-seed.ts), then prints the row
 // counts; safe to run again. `reset` drops the volume first, `stop` stops it.
 // The URL is fixed here and every database variable is set to it, so neither
 // .env.local nor the shell can point this at another database.
@@ -29,6 +30,8 @@ const url = localDatabaseUrl();
 run("docker", ["compose", "up", "--detach", "--wait"]);
 run("node", ["node_modules/drizzle-kit/bin.cjs", "migrate"]);
 run("node", ["scripts/ci-fixture.ts"]);
+// The gazetteer is code, not data (lib/districts-seed.ts): the same here.
+run("node", ["scripts/districts-seed.ts", "--apply"]);
 
 const client = new pg.Client({ connectionString: url });
 await client.connect();
