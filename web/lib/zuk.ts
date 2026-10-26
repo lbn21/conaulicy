@@ -181,7 +181,13 @@ function checkItems(
     pieces: ai.items.flatMap(quoted),
   };
   const checked = ai.items.map((item): Checked => {
-    const gated = gateItem(listed, text, item, source.implied);
+    const gated = gateItem(
+      listed,
+      text,
+      item,
+      source.implied,
+      post.date.slice(0, 10),
+    );
     const when = times ? checkWhen(item, context) : null;
     // A place rejected keeps its reason, but for a day out of the post's
     // window; its hours are on no line of its own to check.

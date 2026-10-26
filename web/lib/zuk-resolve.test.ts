@@ -22,7 +22,11 @@ const TOWN = "0972447";
 function gate(
   text: string,
   over: Partial<GateItem>,
-  { listed = ALL, implied = null as string | null } = {},
+  {
+    listed = ALL,
+    implied = null as string | null,
+    published = null as string | null,
+  } = {},
 ) {
   return gateItem(
     listed,
@@ -39,6 +43,7 @@ function gate(
       ...over,
     },
     implied,
+    published,
   );
 }
 
@@ -318,6 +323,29 @@ test("day: not written, or a weekday that disagrees, is 'date' first", () => {
   );
   assert.equal(
     reason(gate("W dniu 12.10.2026 (wtorek) brak wody: Opaka.", opaka)),
+    "date",
+  );
+});
+
+test("day: a post that writes no day speaks of its publish day", () => {
+  const opaka = { locality: "Opaka", locality_verbatim: "Opaka" };
+  const text = "Awaria sieci, brak wody: Opaka.";
+  assert.equal(reason(gate(text, opaka, { published: "2026-10-12" })), null);
+  // Any other unwritten day is still dropped.
+  assert.equal(reason(gate(text, opaka, { published: "2026-10-11" })), "date");
+  assert.equal(
+    reason(
+      gate(text, { ...opaka, date: "2026-10-13" }, { published: "2026-10-12" }),
+    ),
+    "date",
+  );
+  // A day written with a weekday that disagrees is still dropped.
+  assert.equal(
+    reason(
+      gate("W dniu 12.10.2026 (wtorek) brak wody: Opaka.", opaka, {
+        published: "2026-10-12",
+      }),
+    ),
     "date",
   );
 });

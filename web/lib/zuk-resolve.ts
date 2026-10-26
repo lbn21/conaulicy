@@ -282,13 +282,16 @@ export class Listed {
 
 /**
  * One item through every check, `text` from gateText; `implied` the
- * locality the source's posts concern without naming it.
+ * locality the source's posts concern without naming it; `published` the
+ * post's publish day (Warsaw, YYYY-MM-DD): a post that writes no day
+ * speaks of it.
  */
 export function gateItem(
   listed: Listed,
   text: string,
   item: GateItem,
   implied: string | null = null,
+  published: string | null = null,
 ): GateResult {
   let locality: ZukLocality | null = null;
   const drop = (reason: Reason): GateResult => ({
@@ -297,7 +300,12 @@ export function gateItem(
     locality,
   });
   locality = (item.locality && listed.localities.get(item.locality)) || null;
-  if (dayInText(item.date, text)) return drop("date");
+  const unwritten = dayInText(item.date, text);
+  if (
+    unwritten &&
+    !(item.date === published && unwritten.endsWith(" not in text"))
+  )
+    return drop("date");
   if (!locality) return drop("locality not listed");
   const lv = item.locality_verbatim;
   if (lv === null ? locality.id !== implied : !inPost(lv, text))
