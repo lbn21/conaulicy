@@ -283,7 +283,7 @@ export async function readWithAi(
     },
     body: JSON.stringify({
       model: ZUK_MODEL,
-      reasoning_effort: "low",
+      reasoning_effort: "medium",
       temperature: 0,
       messages: [
         { role: "system", content: system },

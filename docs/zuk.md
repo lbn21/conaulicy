@@ -12,7 +12,7 @@ Vercel Blob. No database writes.
    to the model. 14 days: in 18 months of the gmina's posts (54 outage
    posts), an outage was announced 0-4 days ahead and its last day was at
    most 6 days after the post.
-3. Has grok-4.7 (xAI, reasoning low) read only the posts that are new,
+3. Has grok-4.7 (xAI, reasoning medium) read only the posts that are new,
    edited (`modified`), read by an older reader (`reader` below
    `ZUK_READER`) or whose last reading failed, and the posts with rejected
    items when the districts changed (`gazetteer`, below): at most 4 per run

@@ -35,7 +35,7 @@ function xai(status: number, content: string) {
   return { calls, fetcher };
 }
 
-test("request: grok-4.7, reasoning low, temperature 0, strict schema", async () => {
+test("request: grok-4.7, reasoning medium, temperature 0, strict schema", async () => {
   const { calls, fetcher } = xai(200, JSON.stringify(reading(39865)));
   await readWithAi(INPUT, SYSTEM, "test-key", fetcher);
   assert.equal(calls.length, 1);
@@ -44,7 +44,7 @@ test("request: grok-4.7, reasoning low, temperature 0, strict schema", async () 
   assert.equal(headers.Authorization, "Bearer test-key");
   const body = JSON.parse(calls[0].init.body as string);
   assert.equal(body.model, "grok-4.7");
-  assert.equal(body.reasoning_effort, "low");
+  assert.equal(body.reasoning_effort, "medium");
   assert.equal(body.temperature, 0);
   assert.equal(body.response_format.json_schema.strict, true);
   const item = body.response_format.json_schema.schema.properties.items.items;
