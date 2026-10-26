@@ -10,7 +10,8 @@
 //   (role="region", aria-labelledby, no role="alert", no button), the title,
 //   one tag per warning with its level and colour, highest first, the time,
 //   the visible source line, the probability and footer sentences, the stale
-//   line, placed before the h1 in the two-thirds column; axe at 375 and 1280 px;
+//   line, placed first in <main> (after the breadcrumbs, where a page has
+//   them) and before the h1 in the two-thirds column; axe at 375 and 1280 px;
 // - a level-3 warning on the home page and /ulice (placement before the h1);
 // - stale (the copy kept from an earlier 10-minute slot), too old (3 hours)
 //   and a failing IMGW: the server's clock runs ahead (lib/fake-clock.mjs);
@@ -158,8 +159,13 @@ function readBanner() {
     titleTag: title?.tagName,
     title: title?.textContent.trim(),
     inHeader: !!title?.closest(".govuk-notification-banner__header"),
+    // First in <main>, or right after the breadcrumbs
+    // (components/breadcrumbs.tsx), themselves first: nothing else above it.
     firstInMain:
-      row?.parentElement?.id === "main-content" && !row.previousElementSibling,
+      row?.parentElement?.id === "main-content" &&
+      (!row.previousElementSibling ||
+        (row.previousElementSibling.matches("nav.govuk-breadcrumbs") &&
+          !row.previousElementSibling.previousElementSibling)),
     column: !!b.closest(".govuk-grid-column-two-thirds"),
     beforeH1:
       !!h1 &&
