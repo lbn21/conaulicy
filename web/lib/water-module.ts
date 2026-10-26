@@ -75,16 +75,19 @@ export function matches(address: Address, cut: Disruption): boolean {
 const STREETED = new Set(ZUK_PLACES.streets.map((s) => s.localityId));
 
 /**
- * Whether the house number is clearly outside the cut's houses. Compared on
- * whole numbers only ("30a" is inside 23–47, "7/22" is 7 and 22, each
- * inside or not); a village's range where the village has streets, any
- * scope but ranges or numbers, or anything that does not parse: never
- * outside, so the cut is shown.
+ * Where the house number falls in the cut's houses: "inside", "outside", or
+ * null when we cannot tell. Compared on whole numbers only ("30a" is inside
+ * 23–47, "7/22" is 7 and 22, either inside is enough); a village's range
+ * where the village has streets, any scope but ranges or numbers, or
+ * anything that does not parse: null.
  */
-export function outsideRange(cut: Disruption, nr: string | null): boolean {
-  if (nr === null) return false;
+function houseFit(
+  cut: Disruption,
+  nr: string | null,
+): "inside" | "outside" | null {
+  if (nr === null) return null;
   if (cut.place.streetId === null && STREETED.has(cut.place.localityId))
-    return false;
+    return null;
   const parts = (nr.match(/\d+/g) ?? []).map(Number);
   const { scope } = cut;
   const spans =
@@ -94,9 +97,16 @@ export function outsideRange(cut: Disruption, nr: string | null): boolean {
         ? scope.numbers.map((n) => [n, n])
         : [];
   const bounds = spans.map((span) => span.map((b) => Number.parseInt(b, 10)));
-  if (parts.length === 0 || bounds.length === 0) return false;
-  if (bounds.flat().some(Number.isNaN)) return false;
-  return !parts.some((p) => bounds.some(([from, to]) => from <= p && p <= to));
+  if (parts.length === 0 || bounds.length === 0) return null;
+  if (bounds.flat().some(Number.isNaN)) return null;
+  return parts.some((p) => bounds.some(([from, to]) => from <= p && p <= to))
+    ? "inside"
+    : "outside";
+}
+
+/** Whether the house number is clearly outside the cut's houses (houseFit). */
+export function outsideRange(cut: Disruption, nr: string | null): boolean {
+  return houseFit(cut, nr) === "outside";
 }
 
 const wholeLocality = (cut: Disruption) =>
@@ -203,6 +213,17 @@ export function scope(cut: Disruption): string {
 /** "1 dzień", "2 dni". */
 const days = (n: number) => `${n} ${n === 1 ? "dzień" : "dni"}`;
 
+/**
+ * " w części ulicy" or " w części miejscowości" when the cut may leave the
+ * address out: not the whole place, and not a house range that clearly
+ * includes the number as given; "" when certain.
+ */
+function part(cut: Disruption, nr: string | null): string {
+  if (cut.scope.type === "whole" && !cut.note) return "";
+  if (houseFit(cut, nr) === "inside") return "";
+  return ` w części ${cut.place.streetId ? "ulicy" : "miejscowości"}`;
+}
+
 /** The nearest cut, with how many more days follow; none without a cut. */
 export function waterAlerts(data: Water): Alert[] {
   const [next] = data.outages;
@@ -212,7 +233,7 @@ export function waterAlerts(data: Water): Alert[] {
   ).size;
   return [
     {
-      text: `przerwa w dostawie – ${when(next)}${more > 0 ? ` (i jeszcze ${days(more)})` : ""}.`,
+      text: `przerwa w dostawie${part(next, data.place.givenNr)} – ${when(next)}${more > 0 ? ` (i jeszcze ${days(more)})` : ""}.`,
       href: waterPath(data.place),
       // One water alert at most, so the name stays unique.
       link: "Więcej o tej przerwie",

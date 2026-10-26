@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 import { NUMBER_REWRITES } from "./lib/address-routes";
 import { SITE_URL } from "./lib/config.generated";
-import { headerList } from "./lib/headers";
+import { headerList, SECURITY } from "./lib/headers";
 import { indexable, NOINDEX, NOINDEX_NOFOLLOW } from "./lib/indexing";
 import { writeBrandAssets } from "./scripts/brand-assets";
 
@@ -33,10 +33,15 @@ const nextConfig: NextConfig = {
   // build, so this is right, but changing SITE_BASIC_AUTH needs a redeploy
   // to flip indexing (see lib/indexing.ts; pages rendered on demand read it
   // at runtime, which on Vercel sees the same values).
+  // The security headers (lib/headers.ts) on every path, either way.
   async headers() {
     // Search results are never search results (also meta robots).
     if (indexable()) {
       return [
+        {
+          source: "/:path*",
+          headers: headerList(SECURITY),
+        },
         {
           source: "/szukaj",
           headers: headerList(NOINDEX),
@@ -46,7 +51,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/:path*",
-        headers: headerList(NOINDEX_NOFOLLOW),
+        headers: headerList({ ...SECURITY, ...NOINDEX_NOFOLLOW }),
       },
     ];
   },

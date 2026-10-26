@@ -21,7 +21,8 @@
 // layout (lang, stylesheet), GOV.UK's "page not found" H1, its link home
 // („Przejdź na stronę główną”), robots meta noindex (one or more tags, every
 // one noindex, none index), and no description; an unknown module
-// (/adres/<id>/<slug>) and one without a subpage (/pogoda) too.
+// (/adres/<id>/<slug>) and one without a subpage (/pogoda) too. Both: /, an
+// address page, /szukaj and a calendar send the five security headers.
 //
 // Runs against `next start` on the current build and the CI fixture.
 import { readFileSync } from "node:fs";
@@ -60,6 +61,14 @@ const get = (origin, path, headers) =>
       .end();
   });
 
+const SECURITY = {
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "X-Frame-Options": "DENY",
+  "Permissions-Policy":
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  "Content-Security-Policy": "frame-ancestors 'none'",
+};
 const SITE = "https://conaulicy.pl";
 const STATIC = ["/", "/ulice", "/dostepnosc", "/prywatnosc", "/o-projekcie"];
 const SITEMAP_NS = "http://www.sitemaps.org/schemas/sitemap/0.9";
@@ -300,6 +309,18 @@ try {
     }
     if (!header.includes("noindex")) {
       failures.push(`${path}: X-Robots-Tag ${JSON.stringify(header)}`);
+    }
+  }
+
+  // The security headers (lib/headers.ts), written out again here: on a
+  // page, an address, search results and a calendar, either build.
+  for (const path of ["/", street, "/szukaj?q=adama", ...(ics ? [ics] : [])]) {
+    const response = await fetch(`${server.origin}${path}`);
+    await response.arrayBuffer();
+    for (const [name, value] of Object.entries(SECURITY)) {
+      const got = response.headers.get(name);
+      if (got !== value)
+        failures.push(`${path}: ${name} ${got}, want ${value}`);
     }
   }
 

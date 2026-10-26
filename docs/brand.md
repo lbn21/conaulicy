@@ -162,7 +162,7 @@ WCAG 2.x, computed by `node design/contrast.mjs`, which CI runs on every pull re
 
 ## Typography
 
-**Atkinson Hyperlegible Next**, 400 and 700, self-hosted (SIL Open Font License); no third-party font requests. The wordmark and "ul." are Atkinson 700, outlined. GOV.UK's type scale and sizes apply unchanged. Until the font loads, a metric-matched Arial fallback (`web/app/tokens.css`) holds the layout, so the swap moves nothing.
+**Atkinson Hyperlegible Next**, 400 and 700, self-hosted (SIL Open Font License); no third-party font requests. The wordmark and "ul." are Atkinson 700, outlined. GOV.UK's type scale and sizes apply unchanged. It loads with `font-display: optional`: a font that misses the first ~100 ms is not swapped in on that page view, so a late font moves nothing; until then, and on such a view, a metric-matched Arial fallback (`web/app/tokens.css`) holds the layout. A swap was not enough: a single line can be a few pixels wider or narrower in the fallback, so a breadcrumb or heading near the edge wrapped differently (task 141).
 
 ## Tone of voice
 

@@ -394,6 +394,88 @@ test("alert: the nearest cut, an absolute date, the subpage, the source", () => 
   assert.deepEqual(waterAlerts(waterAt(ASNYKA)), []);
 });
 
+test("alert: the whole place plainly, a part of it „w części”", () => {
+  const text = (address: PlaceView, posts?: StoredPost[]) =>
+    waterAlerts(waterAt(address, posts))[0]?.text;
+  // The whole village and the whole street: certain.
+  const dabkow = place({
+    id: "0606004",
+    kind: "wies",
+    localityId: "0606004",
+    streetId: null,
+  });
+  assert.equal(
+    text(dabkow),
+    "przerwa w dostawie – wtorek, 27 października, 8:00–16:00.",
+  );
+  assert.equal(
+    text(ZUKI),
+    "przerwa w dostawie – wtorek, 27 października, 8:00–16:00.",
+  );
+  // 39885: Załuże „Podłęże od numeru 44 do numeru 92”, a part of it.
+  assert.equal(
+    text(ZALUZE),
+    "przerwa w dostawie w części miejscowości – środa, 28 października, 8:00–16:00.",
+  );
+  // A whole scope with a note is not certain either.
+  const noted = cut({ ...SOBIESKIEGO_RANGE, scope: { type: "whole" } });
+  assert.equal(
+    text(sobieskiego(null), only(noted)),
+    "przerwa w dostawie w części ulicy – poniedziałek, 26 października, 8:00–16:00.",
+  );
+});
+
+test("alert: a street's range, certain only with a number inside it", () => {
+  // Sobieskiego 23–47 on Monday; on Wednesday a part we cannot compare.
+  const odd = cut({
+    ...SOBIESKIEGO_RANGE,
+    uid: "zuk-39885-2026-10-28-sobieskiego",
+    date: "2026-10-28",
+    start: "2026-10-28 08:00:00",
+    end: "2026-10-28 16:00:00",
+    scope: { type: "unknown" },
+    note: "numery nieparzyste",
+  });
+  const text = (nr: string | null) =>
+    waterAlerts(
+      waterAt(sobieskiego(nr), [post({ items: [SOBIESKIEGO, odd] })]),
+    )[0]?.text;
+  assert.equal(
+    text(null),
+    "przerwa w dostawie w części ulicy – poniedziałek, 26 października, 8:00–16:00 (i jeszcze 1 dzień).",
+  );
+  assert.equal(
+    text("30"),
+    "przerwa w dostawie – poniedziałek, 26 października, 8:00–16:00 (i jeszcze 1 dzień).",
+  );
+  // 5 is outside 23–47: that cut is left out, so Wednesday's is the nearest.
+  assert.equal(
+    text("5"),
+    "przerwa w dostawie w części ulicy – środa, 28 października, 8:00–16:00.",
+  );
+  // A streetless village's range, as 39885's Opaka 104–110.
+  const opaka = (givenNr: string | null) =>
+    place({
+      id: "0606317",
+      kind: "wies",
+      localityId: "0606317",
+      streetId: null,
+      givenNr,
+    });
+  const opakaCut = post().items.find((d) => d.place.localityId === "0606317");
+  assert.ok(opakaCut);
+  const opakaText = (nr: string | null) =>
+    waterAlerts(waterAt(opaka(nr), only(opakaCut as Disruption)))[0]?.text;
+  assert.equal(
+    opakaText(null),
+    "przerwa w dostawie w części miejscowości – wtorek, 27 października, 8:00–16:00.",
+  );
+  assert.equal(
+    opakaText("105"),
+    "przerwa w dostawie – wtorek, 27 października, 8:00–16:00.",
+  );
+});
+
 test("alert slot: water before the weather, at most 2, the rest counted", () => {
   const order = (id: (typeof MODULE_IDS)[number]) => MODULE_IDS.indexOf(id);
   const weather = (from: string): Alert => ({

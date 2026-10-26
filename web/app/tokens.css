@@ -7,8 +7,8 @@
 /*
   Atkinson Hyperlegible Next itself loads through next/font (app/fonts.ts).
   Until it arrives, text uses Arial (Liberation Sans and Arimo have the
-  same metrics) scaled to Atkinson's width and line metrics, so the swap
-  moves nothing. size-adjust: Atkinson's width over Arial's on the site's
+  same metrics) scaled to Atkinson's width and line metrics, so a page
+  view that never gets the font (display "optional") looks the same. size-adjust: Atkinson's width over Arial's on the site's
   own text, per weight (measured in Chromium). The overrides are Atkinson's
   ascent 984, descent 316, line gap 0 per 1000 units, divided by size-adjust.
 */
