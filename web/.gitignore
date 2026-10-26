@@ -46,7 +46,7 @@ next-env.d.ts
 /app/waste-colours.css
 /app/icon.svg
 /app/favicon.ico
-/app/apple-icon.png
+/public/apple-touch-icon.png
 /public/icon-192.png
 /public/icon-512.png
 /public/icon-maskable-512.png

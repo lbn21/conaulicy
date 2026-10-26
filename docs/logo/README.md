@@ -100,7 +100,7 @@ All three avoid the blue-and-white MSI street sign, the city's herb and any offi
 
 `web/scripts/brand-assets.ts` builds the web files at build time (task 92; `source/ship_a.mjs` wrote committed copies before), from the templates in `web/lib/brand/`: `favicon-32.svg` and `favicon-16.svg` (were `a-favicon.svg`, `a-favicon-16.svg` here) and `og.svg` (was `og-1200x630.svg`), with the plate as `currentColor`, painted `PLATE` from `web/lib/palette.ts`. `make_logo_a.py` reads `PLATE` from that file too; after re-running it, copy those three into `web/lib/brand/` with the plate's fill as `currentColor`. The light SVGs here (`a-logo-light.svg`, `a-mark-light.svg`) keep the colour in the file, for download: `node web/scripts/check-palette.mjs --fix` repaints them, and CI fails if they differ.
 - `web/app/favicon.ico` (16 + 32 from the two favicon drawings);
-- `web/app/icon.svg`, `web/app/apple-icon.png`;
+- `web/app/icon.svg`, `web/public/apple-touch-icon.png`;
 - `web/public/icon-{192,512}.png`, `icon-maskable-512.png`;
 - `web/public/og.png`: the flat plate on white, from `og_flat("light")` in `make_logo_a.py` (task 26, light-only site). The task-23 night card is `a-og-dark.*`.
 - `web/app/icon.svg`: `favicon-32.svg` painted, with no colour-scheme query.
