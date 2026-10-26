@@ -1,12 +1,13 @@
 // The checks of an item's day and times on top of the place gate
 // (lib/zuk-resolve.ts, which checks the day is written), and the houses
 // (the scope) read from its note. Pure. The day near the post's dates, the
-// times in the text, an end before the start on the next day. A day or
-// time that fails drops the post to a Notice (lib/zuk.ts).
+// times on the item's own lines, an end before the start on the next day.
+// A day or time that fails drops the post to a Notice (lib/zuk.ts).
 
 import { addDays } from "./dates.ts";
 import type { DisruptionScope } from "./disruptions.ts";
 import type { AiItem } from "./zuk-ai.ts";
+import { inPost } from "./zuk-resolve.ts";
 
 /** Lower case, one kind of dash and space: what the guards compare. */
 function normText(text: string): string {
@@ -71,13 +72,54 @@ type ItemContext = {
   text: string;
   publishedAt: string;
   updatedAt: string;
+  /** Every item's quoted pieces in the post (quoted()), this one's too. */
+  pieces: string[];
 };
+
+/** The item's own words in the post: the pieces the gate checks are in it. */
+export const quoted = (item: AiItem): string[] =>
+  [
+    item.locality_verbatim,
+    item.street_verbatim,
+    item.note,
+    item.whole_town_verbatim,
+  ].filter((p): p is string => p !== null && p.trim() !== "");
+
+/**
+ * The lines holding `piece`, as the quote check finds it: one line, or a
+ * run of up to three it spans (each line of the run needed).
+ */
+function linesOf(lines: string[], piece: string): number[] {
+  const out: number[] = [];
+  const spans = (from: number, to: number) =>
+    inPost(piece, lines.slice(from, to).join(" "));
+  for (let i = 0; i < lines.length; i++)
+    for (let k = 1; k <= 3 && i + k <= lines.length; k++)
+      if (spans(i, i + k)) {
+        if (k === 1 || !spans(i + 1, i + k))
+          for (let j = i; j < i + k; j++) out.push(j);
+        break;
+      }
+  return out;
+}
+
+/**
+ * The text an item's times may come from: the lines that quote it, and the
+ * lines that quote no item (a post's opening line with the hours for all);
+ * never a line only of other items, with hours of their own.
+ */
+function itemText(item: AiItem, context: ItemContext): string {
+  const lines = context.text.split("\n");
+  const own = new Set(quoted(item).flatMap((p) => linesOf(lines, p)));
+  const any = new Set(context.pieces.flatMap((p) => linesOf(lines, p)));
+  return lines.filter((_, i) => own.has(i) || !any.has(i)).join("\n");
+}
 
 /**
  * The item's day and times, or why not ("date", "time"). Days are checked
  * against the post's dates (Warsaw wall clock): from the day before it was
- * published to 31 days after it was last edited. An end before the start
- * is on the next day.
+ * published to 31 days after it was last edited; times against the item's
+ * own lines (itemText). An end before the start is on the next day.
  */
 export function checkWhen(
   item: AiItem,
@@ -88,8 +130,9 @@ export function checkWhen(
     item.date > addDays(context.updatedAt.slice(0, 10), 31)
   )
     return "date";
+  const own = itemText(item, context);
   for (const time of [item.start, item.end])
-    if (time !== null && !(validTime(time) && timeInText(time, context.text)))
+    if (time !== null && !(validTime(time) && timeInText(time, own)))
       return "time";
   if (item.start !== null && item.start === item.end) return "time";
   const endDay =

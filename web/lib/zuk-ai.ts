@@ -239,6 +239,20 @@ export function parseAiResult(content: string): AiResult | null {
   return v as AiResult;
 }
 
+/**
+ * The model answered, but not in the schema: a failure of that one post
+ * (lib/zuk-cron.ts backs off and gives up), never of the model.
+ */
+export class InvalidReply extends Error {
+  /** The reply as given. */
+  readonly content: string;
+
+  constructor(content: string) {
+    super("xAI: reply is not the schema");
+    this.content = content;
+  }
+}
+
 /** USD at list price, reasoning billed as output. */
 export function costUsd(usage: AiUsage): number {
   return (
@@ -251,8 +265,8 @@ const count = (v: unknown) => (typeof v === "number" ? v : 0);
 
 /**
  * One post read by the model, `system` the source's prompt. Throws on a
- * network or HTTP error, a timeout or a reply that is not the schema; never
- * logs the key.
+ * network or HTTP error or a timeout, InvalidReply on a reply that is not
+ * the schema; never logs the key.
  */
 export async function readWithAi(
   input: AiInput,
@@ -291,8 +305,9 @@ export async function readWithAi(
     usage?: Record<string, unknown>;
     choices?: Array<{ message?: { content?: string } }>;
   };
-  const result = parseAiResult(body.choices?.[0]?.message?.content ?? "");
-  if (!result) throw new Error("xAI: reply is not the schema");
+  const content = body.choices?.[0]?.message?.content ?? "";
+  const result = parseAiResult(content);
+  if (!result) throw new InvalidReply(content);
   const u = body.usage ?? {};
   const usage: AiUsage = {
     promptTokens: count(u.prompt_tokens),

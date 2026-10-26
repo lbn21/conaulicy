@@ -43,6 +43,11 @@
 //     item,       // the model's JSON as returned
 //     reason,     // lib/zuk-resolve.ts Reason: "street not listed", …
 //     suggested_places, // the model's, listed names only
+//   }],
+//   retries: [{   // posts whose reply was not the schema: tried
+//     postId, reader, modified, digest?, attempts, retryAt
+//                 // after 1 h, then 6 h; the third failure: given up,
+//                 // retryAt null, on `rejected` as "invalid reply"
 //   }]
 // }
 //
@@ -129,6 +134,9 @@ export type SeenPost = {
 /** A rejected item as the pages link it. */
 export type Unmatched = { words: string | null; localityId: string | null };
 
+/** The reason of a post the model never answered in the schema. */
+export const INVALID_REPLY = "invalid reply";
+
 /** An item that failed the gate, for review (never shown). */
 export type RejectedEntry = {
   postId: number;
@@ -137,9 +145,26 @@ export type RejectedEntry = {
   publishedAt: string;
   /** The run that read it (ISO). */
   readAt: string;
-  item: AiItem;
-  reason: Reason;
+  /** The model's item as returned; null for an invalid reply. */
+  item: AiItem | null;
+  reason: Reason | typeof INVALID_REPLY;
   suggested_places: string[];
+  /** An invalid reply: its first 2,000 characters. */
+  raw?: string;
+};
+
+/**
+ * A post whose reply was not the schema, by reader and version
+ * (`modified`, `digest`): tried `attempts` times, next not before
+ * `retryAt`; null: given up (on the rejected list).
+ */
+export type Retry = {
+  postId: number;
+  reader: number;
+  modified: string;
+  digest?: string;
+  attempts: number;
+  retryAt: string | null;
 };
 
 export type ZukFile = {
@@ -150,6 +175,7 @@ export type ZukFile = {
   active: StoredPost[];
   seen: SeenPost[];
   rejected: RejectedEntry[];
+  retries: Retry[];
 };
 
 /** The file, or null if it is not one of this version. */
@@ -161,7 +187,8 @@ export function parseZukFile(body: string): ZukFile | null {
       (file.gazetteer === null || typeof file.gazetteer === "string") &&
       Array.isArray(file.active) &&
       Array.isArray(file.seen) &&
-      Array.isArray(file.rejected)
+      Array.isArray(file.rejected) &&
+      Array.isArray(file.retries)
       ? file
       : null;
   } catch {
@@ -177,18 +204,34 @@ const seenAs = (post: StoredPost, reason: string): SeenPost => ({
   ...(post.digest === undefined ? {} : { digest: post.digest }),
 });
 
-/** Posts published before `change` with a cut in a locality it touches. */
-const changed = (change: StoredPost, posts: StoredPost[]) => {
-  const localities = new Set([
-    ...change.localityIds,
-    ...change.items.map((d) => d.place.localityId),
-  ]);
-  return posts.filter(
-    (post) =>
-      post.publishedAt < change.publishedAt &&
-      post.items.some((d) => localities.has(d.place.localityId)),
+/**
+ * The cuts of posts published before `change` that it may move or cancel:
+ * those still to come at a place it gives (its street; a whole place, any
+ * cut of that locality). A change post that gave no cut at all (a
+ * cancellation) reaches every cut of its localities.
+ */
+function changedCuts(change: StoredPost, posts: StoredPost[]): Disruption[] {
+  const own = change.itemCount > 0;
+  const streets = new Set(
+    change.items.flatMap((d) => (d.place.streetId ? [d.place.streetId] : [])),
   );
-};
+  const localities = new Set(
+    own
+      ? change.items
+          .filter((d) => d.place.streetId === null)
+          .map((d) => d.place.localityId)
+      : change.localityIds,
+  );
+  return posts
+    .filter((post) => post.publishedAt < change.publishedAt)
+    .flatMap((post) =>
+      post.items.filter(
+        (d) =>
+          localities.has(d.place.localityId) ||
+          (d.place.streetId !== null && streets.has(d.place.streetId)),
+      ),
+    );
+}
 
 /**
  * Where each post goes on `today`: `active` if the pages may still use it
@@ -225,7 +268,7 @@ export function settle(
     if (p.reason === AI_DEFERRED) continue;
     if (
       live.includes(p) ||
-      (p.change && water(p) && changed(p, parsed).length > 0)
+      (p.change && water(p) && changedCuts(p, parsed).length > 0)
     )
       active.push(p);
     else if ([NOT_WATER, AI_UNAVAILABLE, PAST].includes(p.reason ?? ""))
@@ -249,11 +292,14 @@ const dayAndPlace = (d: Disruption) =>
   `${d.date}|${d.place.streetId ?? d.place.localityId}`;
 
 /**
- * Posts whose cuts must not be shown as dates: two posts giving one place
- * and day different hours, and earlier posts sharing a locality with a
- * later post that changes dates.
+ * What must not be shown as dates: the posts of two that give one place
+ * and day different hours (`posts`), and the cuts a later post may move
+ * (`cuts`, changedCuts).
  */
-function doubted(posts: StoredPost[]): Set<number> {
+function doubted(posts: StoredPost[]): {
+  posts: Set<number>;
+  cuts: Set<string>;
+} {
   const out = new Set<number>();
   const hours = new Map<string, Map<string, number[]>>();
   for (const post of posts) {
@@ -267,9 +313,12 @@ function doubted(posts: StoredPost[]): Set<number> {
   for (const byHours of hours.values())
     if (byHours.size > 1)
       for (const ids of byHours.values()) for (const id of ids) out.add(id);
-  for (const change of posts.filter((p) => p.change))
-    for (const post of changed(change, posts)) out.add(post.id);
-  return out;
+  const cuts = new Set(
+    posts
+      .filter((p) => p.change)
+      .flatMap((change) => changedCuts(change, posts).map((d) => d.uid)),
+  );
+  return { posts: out, cuts };
 }
 
 /**
@@ -329,9 +378,18 @@ export function zukView(
   const disruptions: Disruption[] = [];
   const notices: Notice[] = [];
   for (const post of posts) {
-    if (post.status === "parsed" && !doubt.has(post.id)) {
+    if (post.status === "parsed" && !doubt.posts.has(post.id)) {
+      // Its cuts a later post may move: a link on their localities only.
+      const moved = post.items.filter((d) => doubt.cuts.has(d.uid));
+      if (moved.length > 0)
+        notices.push({
+          ...notice(post, "changed"),
+          localityIds: [...new Set(moved.map((d) => d.place.localityId))],
+        });
       disruptions.push(
-        ...post.items.map((d) => ({ ...d, source: from(post) })),
+        ...post.items
+          .filter((d) => !doubt.cuts.has(d.uid))
+          .map((d) => ({ ...d, source: from(post) })),
       );
       if (post.items.length > 0) notices.push(...rest(post));
       if (post.items.length > 0 && post.doubts?.length)

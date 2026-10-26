@@ -13,7 +13,7 @@ import type { Disruption, DisruptionLabel, Doubt } from "./disruptions.ts";
 import type { District } from "./districts.ts";
 import { GMINA, type WaterSource } from "./water-sources.ts";
 import type { AiItem, AiResult } from "./zuk-ai.ts";
-import { checkWhen, noteScope, type When } from "./zuk-guards.ts";
+import { checkWhen, noteScope, quoted, type When } from "./zuk-guards.ts";
 import {
   gateItem,
   gateText,
@@ -69,41 +69,6 @@ export function plainText(html: string): string {
 
 /** Site time "2026-10-23T18:59:43" as wall clock "2026-10-23 18:59:43". */
 export const wall = (wp: string) => wp.replace("T", " ").slice(0, 19);
-
-/** The post's title and body as plain text. */
-const fullText = (post: ZukPost) =>
-  `${plainText(post.title.rendered)}\n${plainText(post.content.rendered)}`;
-
-const namePattern = (name: string) =>
-  name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
-
-/**
- * Every locality the post may concern, by name: for a Notice. Namesakes all
- * count; a name inside a longer one ("Wzorowo" in "Wzorowo Dolne") does not.
- */
-export function mentionedLocalities(
-  post: ZukPost,
-  places: ZukPlaces,
-): string[] {
-  const line = fullText(post);
-  const hits = places.localities.flatMap((l) =>
-    [
-      ...line.matchAll(
-        new RegExp(`(?<![\\p{L}])${namePattern(l.name)}(?![\\p{L}])`, "giu"),
-      ),
-    ].map((m) => ({ id: l.id, from: m.index, to: m.index + m[0].length })),
-  );
-  const ids = hits
-    .filter(
-      (h) =>
-        !hits.some(
-          (o) =>
-            o.to - o.from > h.to - h.from && o.from <= h.from && o.to >= h.to,
-        ),
-    )
-    .map((h) => h.id);
-  return [...new Set(ids)].sort();
-}
 
 /** An item that failed, why, and where the pages link its post instead. */
 export type Rejection = {
@@ -197,7 +162,12 @@ function checkItems(
   places: ZukPlaces,
   rules: ReadRules,
   times: boolean,
-): { listed: Listed; text: string; checked: Checked[] } {
+): {
+  listed: Listed;
+  text: string;
+  checked: Checked[];
+  localityIds: string[];
+} {
   const source = rules.source ?? GMINA;
   const listed = new Listed(places, source.area);
   const text = gateText(
@@ -208,14 +178,17 @@ function checkItems(
     text,
     publishedAt: wall(post.date),
     updatedAt: wall(post.modified),
+    pieces: ai.items.flatMap(quoted),
   };
   const checked = ai.items.map((item): Checked => {
     const gated = gateItem(listed, text, item, source.implied);
     const when = times ? checkWhen(item, context) : null;
+    // A place rejected keeps its reason, but for a day out of the post's
+    // window; its hours are on no line of its own to check.
     const reason = !gated.kept
-      ? gated.reason === "date" || typeof when !== "string"
-        ? gated.reason
-        : when
+      ? when === "date"
+        ? when
+        : gated.reason
       : typeof when === "string"
         ? when
         : null;
@@ -233,7 +206,31 @@ function checkItems(
       },
     };
   });
-  return { listed, text, checked };
+  return {
+    listed,
+    text,
+    checked,
+    localityIds: postLocalities(checked, listed),
+  };
+}
+
+/**
+ * What a Notice of the post may concern: every listed locality of its
+ * items, passed or rejected, and of the listed names the model suggests
+ * for a place off the list; no place name is looked for in the text.
+ */
+function postLocalities(checked: Checked[], listed: Listed): string[] {
+  const ids = checked.flatMap((c) =>
+    c.ok
+      ? [c.gated.locality.id]
+      : [
+          ...(c.rejection.localityId ? [c.rejection.localityId] : []),
+          ...c.rejection.item.suggested_places.flatMap((n) =>
+            listed.localitiesOf(n),
+          ),
+        ],
+  );
+  return [...new Set(ids)].sort();
 }
 
 export type PostReading =
@@ -247,8 +244,15 @@ export type PostReading =
        * (its `doubt`): the pages say so on that district's streets.
        */
       doubts?: Doubt[];
+      /** Its items' listed localities (postLocalities). */
+      localityIds: string[];
     }
-  | { status: "notice"; reason: string; rejected: Rejection[] };
+  | {
+      status: "notice";
+      reason: string;
+      rejected: Rejection[];
+      localityIds: string[];
+    };
 
 /**
  * The model's reading of one post, checked and resolved: Disruptions for
@@ -262,16 +266,20 @@ export function readPost(
   checkedAt: string,
   rules: ReadRules = {},
 ): PostReading {
+  let localityIds: string[] = [];
   const notice = (reason: string, rejected: Rejection[] = []): PostReading => ({
     status: "notice",
     reason,
     rejected,
+    localityIds,
   });
   if (ai.post_type !== "water_outage") return notice("not an outage notice");
   if (ai.items.length === 0) return notice("no items");
   const quality = ai.items.findIndex((i) => i.kind === "quality");
   if (quality >= 0) return notice(`item ${quality + 1}: a quality item`);
-  const { listed, text, checked } = checkItems(post, ai, places, rules, true);
+  const read = checkItems(post, ai, places, rules, true);
+  const { listed, text, checked } = read;
+  localityIds = read.localityIds;
   const publishedAt = wall(post.date);
   const updatedAt = wall(post.modified);
   const { name, uid: prefix } = rules.source ?? GMINA;
@@ -359,6 +367,7 @@ export function readPost(
     status: "parsed",
     items,
     rejected,
+    localityIds,
     ...(doubts.length > 0
       ? {
           doubts: doubts.filter(
@@ -381,6 +390,8 @@ export type QualityReading = {
   places: WarningPlace[];
   /** Items whose place or day failed, with the reason. */
   rejected: Rejection[];
+  /** Its items' listed localities (postLocalities). */
+  localityIds: string[];
 };
 
 /**
@@ -394,7 +405,13 @@ export function readQualityPost(
   places: ZukPlaces,
   rules: ReadRules = {},
 ): QualityReading {
-  const { listed, text, checked } = checkItems(post, ai, places, rules, false);
+  const { listed, text, checked, localityIds } = checkItems(
+    post,
+    ai,
+    places,
+    rules,
+    false,
+  );
   const out: WarningPlace[] = [];
   const rejected: Rejection[] = [];
   const seen = new Set<string>();
@@ -430,7 +447,7 @@ export function readQualityPost(
       });
     }
   }
-  return { status: ai.quality_status, places: out, rejected };
+  return { status: ai.quality_status, places: out, rejected, localityIds };
 }
 
 /** The Warsaw day a cut is over after: its end's, else its start's. */

@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { AiItem } from "./zuk-ai.ts";
 import { AI_ITEM, reading } from "./zuk-fixture.ts";
-import { checkWhen, noteScope, timeInText, type When } from "./zuk-guards.ts";
+import {
+  checkWhen,
+  noteScope,
+  quoted,
+  timeInText,
+  type When,
+} from "./zuk-guards.ts";
 
 const item = (over: Partial<AiItem>): AiItem => ({
   date: "2026-10-27",
@@ -22,7 +28,7 @@ const POLNA =
   "Przerwa w dostawie wody – 27.10.2026\nw dniu 27.10.2026r. (wtorek) w godz. od 8:00 do godz. 16:00 nastąpi przerwa w dostawie wody dla mieszkańców miejscowości: Lisie Jamy: ul. Polna.";
 
 const check = (i: AiItem, text = POLNA, posted = "2026-10-26 14:00:00") =>
-  checkWhen(i, { text, publishedAt: posted, updatedAt: posted });
+  checkWhen(i, { text, publishedAt: posted, updatedAt: posted, pieces: [] });
 
 function passes(result: When | string): When {
   assert.equal(typeof result, "object", `rejected: ${result}`);
@@ -60,6 +66,7 @@ test("item: a night cut ends the next day (35690)", () => {
       text,
       publishedAt: "2025-12-19 14:48:38",
       updatedAt: "2025-12-29 14:26:47",
+      pieces: quoted(reading(35690).items[0]),
     }),
   );
   assert.equal(ok.start, "2025-12-21 22:00:00");
@@ -81,6 +88,7 @@ test("item: the end an estimate only as the model reads it (35661)", () => {
       text,
       publishedAt: "2025-12-16 16:01:29",
       updatedAt: "2025-12-19 14:46:40",
+      pieces: quoted(reading(35661).items[0]),
     }),
   );
   assert.equal(ok.start, null);
@@ -91,6 +99,63 @@ test("item: the end an estimate only as the model reads it (35661)", () => {
     false,
   );
   assert.equal(passes(check(item({ kind: "emergency" }))).endEstimated, false);
+});
+
+test("times: from the item's own lines, or from lines that quote no item", () => {
+  // Two groups with hours of their own, the day on a line of its own.
+  const text = [
+    "Przerwa w dostawie wody – 21.10.2026",
+    "w dniu: 21.10.2026r. (środa) nastąpi przerwa w dostawie wody:",
+    "Przykładów, Wzorowo od nr 1 do nr 9 w godz. – od 8:00 do 12:00",
+    "Testowo, Próbno – od 8:00 do 16:00",
+  ].join("\n");
+  const testowo = item({
+    date: "2026-10-21",
+    locality: "Testowo",
+    locality_verbatim: "Testowo",
+    street: null,
+    street_verbatim: null,
+  });
+  const wzorowo = {
+    ...testowo,
+    locality: "Wzorowo",
+    locality_verbatim: "Wzorowo",
+    note: "od nr 1 do nr 9",
+  };
+  const ctx = {
+    text,
+    publishedAt: "2026-10-20 11:00:00",
+    updatedAt: "2026-10-20 11:00:00",
+    pieces: [...quoted(testowo), ...quoted(wzorowo)],
+  };
+  assert.equal(typeof checkWhen(testowo, ctx), "object");
+  // Another group's hours: never this item's.
+  assert.equal(checkWhen({ ...testowo, end: "12:00" }, ctx), "time");
+  assert.equal(typeof checkWhen({ ...wzorowo, end: "12:00" }, ctx), "object");
+  assert.equal(checkWhen(wzorowo, ctx), "time");
+  // The hours for all on the opening line, the places listed below.
+  const list = [
+    "Przerwa w dostawie wody",
+    "w dniu 21 października w godzinach 08.30 – 15.00 nastąpi przerwa przy ulicach:",
+    "Próbnej",
+    "Wzorcowej",
+  ].join("\n");
+  const probna = {
+    ...testowo,
+    start: "08:30",
+    end: "15:00",
+    locality_verbatim: null,
+    street: "Próbna",
+    street_verbatim: "Próbnej",
+  };
+  assert.equal(
+    typeof checkWhen(probna, {
+      ...ctx,
+      text: list,
+      pieces: [...quoted(probna), "Wzorcowej"],
+    }),
+    "object",
+  );
 });
 
 test("item: a day far from the post's dates", () => {

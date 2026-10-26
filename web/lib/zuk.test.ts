@@ -3,12 +3,7 @@ import { test } from "node:test";
 import type { Disruption } from "./disruptions.ts";
 import { DISTRICTS } from "./districts-seed.ts";
 import { MZGKIM } from "./water-sources.ts";
-import {
-  mentionedLocalities,
-  plainText,
-  readPost,
-  type ZukPost,
-} from "./zuk.ts";
+import { plainText, readPost, type ZukPost } from "./zuk.ts";
 import type { AiItem, AiResult } from "./zuk-ai.ts";
 import {
   AI_ITEM,
@@ -374,10 +369,11 @@ test("a date or time the text does not have makes a Notice", () => {
       {
         item: ai.items[0],
         reason: "date",
-        localityId: null,
+        localityId: "0606441",
         words: "Wólka Krowicka",
       },
     ],
+    localityIds: ["0606441"],
   });
   const late = reading(39863);
   late.items[0] = { ...late.items[0], end: "17:00" };
@@ -407,7 +403,7 @@ test("no items, or not an outage notice", () => {
       PLACES,
       CHECKED,
     ),
-    { status: "notice", reason: "no items", rejected: [] },
+    { status: "notice", reason: "no items", rejected: [], localityIds: [] },
   );
 });
 
@@ -427,16 +423,35 @@ const inline = (title: string, text: string): ZukPost => ({
   content: { rendered: `<p>${text}</p>` },
 });
 
-test("a Notice's localities: every namesake, not a name inside a longer one", () => {
-  assert.deepEqual(mentionedLocalities(post(34394), PLACES), [
-    "0605967",
-    "0606010",
-    "0606168",
+test("a post's localities: its items', passed or rejected, and listed suggestions", () => {
+  const read = readPost(post(34394), reading(34394), PLACES, CHECKED);
+  assert.deepEqual(read.localityIds, ["0606010", "0606168"]);
+  // Only rejected items: their listed localities and suggestions, no
+  // name looked for in the text.
+  const ai = reading(39863);
+  ai.items = [
+    {
+      ...ai.items[0],
+      locality: null,
+      locality_verbatim: "Nowe Sioło",
+      suggested_places: ["Opaka", "Jana III Sobieskiego", "Nie Ma"],
+    },
+    { ...ai.items[0], street: "Nie Ma", street_verbatim: "Wólka Krowicka" },
+  ];
+  const notice = readPost(post(39863), ai, PLACES, CHECKED);
+  assert.equal(notice.status, "notice");
+  // A street name listed in three villages: all three.
+  assert.deepEqual(notice.localityIds, [
+    "0605890",
+    "0606116",
+    "0606234",
+    "0606317",
+    "0606441",
   ]);
-  const balaje = mentionedLocalities(post(39766), PLACES);
-  assert.ok(balaje.includes("0605890"));
-  // "Basznia" (a part of Basznia Dolna) is inside "Basznia Dolna".
-  assert.ok(!balaje.includes("0605909"));
+  assert.deepEqual(
+    readPost(post(39863), { ...ai, items: [] }, PLACES, CHECKED).localityIds,
+    [],
+  );
 });
 
 test("plain text: a line per paragraph and list item, entities decoded", () => {

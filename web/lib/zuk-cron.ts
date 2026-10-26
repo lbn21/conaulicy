@@ -32,7 +32,6 @@ import { cronDenied } from "./secret.ts";
 import { gminaLubaczow } from "./sources/gmina-lubaczow/index.ts";
 import { type PostSource, SourceDown } from "./sources/source.ts";
 import {
-  mentionedLocalities,
   plainText,
   type Rejection,
   readPost,
@@ -40,12 +39,14 @@ import {
   wall,
   type ZukPost,
 } from "./zuk.ts";
-import { type AiReading, readWithAi } from "./zuk-ai.ts";
+import { type AiReading, InvalidReply, readWithAi } from "./zuk-ai.ts";
 import {
   AI_UNAVAILABLE,
+  INVALID_REPLY,
   NOT_WATER,
   parseZukFile,
   type RejectedEntry,
+  type Retry,
   type SeenPost,
   type StoredPost,
   settle,
@@ -67,6 +68,11 @@ const WINDOW_DAYS = 14;
 const MAX_AI_CALLS = 4;
 /** No new model call after this long into the run (maxDuration 300 s). */
 const AI_BUDGET_MS = 200_000;
+/**
+ * A reply off the schema: the post is tried again after these waits, one
+ * per failure; one more failure and it is given up (the rejected list).
+ */
+const RETRY_AFTER_MS = [60 * 60_000, 6 * 60 * 60_000];
 
 export type ZukCronDeps = {
   fetch: typeof fetch;
@@ -106,7 +112,7 @@ function content(active: StoredPost[], seen: SeenPost[]): string {
 }
 
 /** Whether the post changed since it was decided: its digest, else `modified`. */
-const edited = (post: ZukPost, old: StoredPost | SeenPost) =>
+const edited = (post: ZukPost, old: Pick<SeenPost, "modified" | "digest">) =>
   post.digest === undefined
     ? old.modified !== post.modified
     : old.digest !== post.digest;
@@ -167,14 +173,24 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
   const kept = (previous?.rejected ?? []).filter((e) => window.has(e.postId));
   const places =
     toRead.length > 0 || kept.length > 0 ? await deps.places() : null;
-  const gazetteer = places
-    ? gazetteerHash(places.districts ?? [])
-    : (previous?.gazetteer ?? null);
-  // The districts changed: every post with a rejected item is read again.
-  if (places && previous && previous.gazetteer !== gazetteer)
-    for (const post of posts)
-      if (!toRead.includes(post) && kept.some((e) => e.postId === post.id))
-        toRead.push(post);
+  const hash = places ? gazetteerHash(places.districts ?? []) : null;
+  // The districts changed: every post with a rejected place is read again,
+  // and the new hash is kept only once each of them has been.
+  const flagged =
+    places && previous && previous.gazetteer !== hash
+      ? posts.filter((post) =>
+          kept.some((e) => e.postId === post.id && e.reason !== INVALID_REPLY),
+        )
+      : [];
+  for (const post of flagged) if (!toRead.includes(post)) toRead.push(post);
+  // A post whose reply was not the schema: its tries so far, if it is the
+  // same post read by the same reader.
+  const retryOf = (post: ZukPost) =>
+    (previous?.retries ?? []).find(
+      (r) =>
+        r.postId === post.id && r.reader === ZUK_READER && !edited(post, r),
+    );
+  const retries: Retry[] = [];
   const system = places && source.systemPrompt(places);
   const listed = places && new Listed(places, area);
   const read = new Set<number>();
@@ -209,6 +225,15 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
       if (old) stored.push(old);
       else if (failed) stored.push(seen(AI_UNAVAILABLE));
     };
+    const retry = retryOf(fed);
+    if (retry) retries.push(retry);
+    if (
+      retry &&
+      (retry.retryAt === null || started.getTime() < Date.parse(retry.retryAt))
+    ) {
+      wait(false);
+      continue;
+    }
     if (aiDown || !places || !system || !listed) {
       wait(true);
       continue;
@@ -249,6 +274,39 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
         deps.fetch,
       );
     } catch (error) {
+      if (error instanceof InvalidReply) {
+        // This post's failure alone: tried again later, then given up.
+        const attempts = (retry?.attempts ?? 0) + 1;
+        const after = RETRY_AFTER_MS[attempts - 1];
+        const next: Retry = {
+          postId: post.id,
+          reader: ZUK_READER,
+          modified: post.modified,
+          ...digest,
+          attempts,
+          retryAt:
+            after === undefined
+              ? null
+              : new Date(started.getTime() + after).toISOString(),
+        };
+        if (retry) retries.splice(retries.indexOf(retry), 1);
+        retries.push(next);
+        if (next.retryAt === null)
+          rejected.push({
+            postId: post.id,
+            url: post.link,
+            sourceId: source.id,
+            publishedAt: wall(post.date),
+            readAt: checkedAt,
+            item: null,
+            reason: INVALID_REPLY,
+            suggested_places: [],
+            raw: error.content.slice(0, 2000),
+          });
+        deps.log({ zuk: "ai-invalid", ...tag, post: post.id, attempts });
+        wait(true);
+        continue;
+      }
       aiDown = true;
       deps.log({
         zuk: "ai-error",
@@ -261,6 +319,7 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     }
     costUsd += reading.costUsd;
     read.add(post.id);
+    if (retry) retries.splice(retries.indexOf(retry), 1);
     const type = reading.result.post_type;
     // Its rejected items, for review, the model's suggestions listed only.
     const reject = (items: Rejection[]) => {
@@ -302,8 +361,6 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
       title,
       publishedAt: wall(post.date),
       updatedAt: wall(post.modified),
-      // An area's source concerns the area alone, named or not.
-      localityIds: area ? [...area].sort() : mentionedLocalities(post, places),
       ...(reading.result.changes_earlier_dates ? { change: true } : {}),
       ...(reading.result.is_past ? { past: true } : {}),
       ...digest,
@@ -311,6 +368,9 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     if (type === "water_quality") {
       const quality = readQualityPost(post, reading.result, places, rules);
       reject(quality.rejected);
+      // An area's source concerns the area alone, named or not; else the
+      // localities its items name.
+      const localityIds = area ? [...area].sort() : quality.localityIds;
       deps.log({
         ...usage,
         status: "notice",
@@ -320,6 +380,7 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
       });
       stored.push({
         ...base,
+        localityIds,
         status: "notice",
         reason: WATER_QUALITY,
         itemCount: 0,
@@ -348,6 +409,7 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     });
     stored.push({
       ...base,
+      localityIds: area ? [...area].sort() : result.localityIds,
       ...(result.status === "parsed"
         ? {
             status: "parsed",
@@ -373,6 +435,11 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     !previous ||
     content(previous.active, previous.seen) !== content(active, seen);
   // Written even when unchanged: checkedAt says we read the posts now.
+  // The new districts' hash only once every flagged post was read again.
+  const gazetteer =
+    hash !== null && flagged.every((p) => read.has(p.id))
+      ? hash
+      : (previous?.gazetteer ?? hash);
   const file: ZukFile = {
     version: ZUK_FILE_VERSION,
     generatedAt: changed ? checkedAt : previous.generatedAt,
@@ -381,6 +448,7 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     active,
     seen,
     rejected,
+    retries: retries.filter((r) => window.has(r.postId)),
   };
   await deps.writeFile(JSON.stringify(file));
   if (changed) deps.purge(WATER);

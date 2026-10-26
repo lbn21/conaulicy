@@ -14,12 +14,7 @@ import {
 } from "./mzgkim-fixture.ts";
 import type { PlaceView } from "./schedule.ts";
 import { MZGKIM, type WaterSourceId } from "./water-sources.ts";
-import {
-  mentionedLocalities,
-  type PostReading,
-  readPost,
-  type ZukPost,
-} from "./zuk.ts";
+import { type PostReading, readPost, type ZukPost } from "./zuk.ts";
 import type { AiResult } from "./zuk-ai.ts";
 import {
   STALE_MS,
@@ -149,7 +144,7 @@ export function storedPost(
   const read = readPost(post, reading(id), PLACES, checkedAt);
   return {
     ...stored(post, read, {
-      localityIds: mentionedLocalities(post, PLACES),
+      localityIds: read.localityIds,
       sourceId: "gmina-lubaczow",
     }),
     ...over,
@@ -182,6 +177,7 @@ export function zukFile(active: StoredPost[], checkedAt: string): ZukFile {
     active,
     seen: [],
     rejected: [],
+    retries: [],
   };
 }
 

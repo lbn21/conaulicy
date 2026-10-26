@@ -58,6 +58,21 @@ stale after an hour. xAI down: a new
 post is `seen` with `reason: "ai-unavailable"`, retried next run, never
 shown; a new post over the run's 4 calls is stored nowhere and read on a
 later run. Either way an edited post keeps its old reading until it is read.
+A reply off the schema is that post's failure alone, never the model's: it
+is tried again after an hour, then after six, and on a third failure given
+up (`retries`, and `rejected` as "invalid reply" with the reply's first
+2,000 characters) until the post is edited or the reader changes.
+
+A Notice (a post with no cut shown, or its rejected places) goes on the
+pages of the localities its items name, passed or rejected, and of the
+listed names the model suggests for a place off the list; an area's source
+(MZGKiM) on its area. No place name is looked for in the post's text. A
+post changing dates (`change`) makes a Notice, instead of dates, of the
+earlier posts' cuts still to come at its own places only (its streets; a
+whole place, any cut of that locality); a change post that gave no cut at
+all (a cancellation) reaches every cut of its localities. `past` (the
+model's `is_past`) is stored and changes nothing: cuts settle by their own
+days and hours, a failure still going on shown until its end.
 
 ## MZGKiM, the town's second source (task 150)
 
@@ -172,7 +187,7 @@ It prints the model's JSON and the gate's result (`scripts/lib/water-dry-run.ts`
 - `active`: what the pages read: parsed posts with cuts still to come
   (only those cuts), Notices (water posts that could not be read) within
   their 14 days, water-quality posts (not shown yet), and a date-change
-  post while it doubts an active one. `unmatched`: its rejected items, as
+  post while it doubts an active cut. `unmatched`: its rejected items, as
   the pages link them.
 - `seen`: one record per other decided post, for the cron only: `not-water`,
   `past` (its cuts are over), `expired` (a Notice past its 14 days),
@@ -180,14 +195,18 @@ It prints the model's JSON and the gate's result (`scripts/lib/water-dry-run.ts`
 - `rejected`: for review only, never read by the pages: every item of a
   post in the window that failed, the model's JSON as returned, a reason
   (`locality not listed`, `street not listed`, `district has no streets`,
-  `not in post`, `date`, `time`) and the model's `suggested_places` (listed
+  `not in post`, `date`, `time`, or `invalid reply`) and the model's
+  `suggested_places` (listed
   names only). Rebuilt each run: a post read again replaces its entries,
   a post out of the window takes them along. Never applied by itself: a
   fix is a data-table change (the gazetteer) or a prompt rewrite.
 - `gazetteer`: a short hash of the district rows the posts were read with.
-  When it differs, the posts with rejected items are read again; the
-  districts are loaded whenever a post is to be read or `rejected` is not
-  empty.
+  When it differs, the posts with rejected places are read again, and the
+  new hash is kept only once every one of them has been (a run over its
+  calls, or with xAI down, keeps the old one); the districts are loaded
+  whenever a post is to be read or `rejected` is not empty.
+- `retries`: a post whose reply was not the schema, by reader and version:
+  its tries and when it may be tried again (null: given up).
 - A post leaves `active` and `seen` when it leaves the 14-day window. The
   model's tokens and cost are in the log only.
 - The file version is the shape; `reader` (`ZUK_READER`, now 7: the shared
@@ -268,8 +287,10 @@ checks:
   b.M", "a.M - b.M", or "(od) D.M.YYYY do/- D.M.YYYY", ends included), a
   year written with it the item's, a bracketed weekday that matches; from
   the day before the post to 31 days after its last edit (`date`);
-- times: valid HH:MM, written in the post; an end before the start is the
-  next day; the same start and end none (`time`);
+- times: valid HH:MM, written on the item's own lines (those its quoted
+  pieces are on) or on a line that quotes no item (the opening line with
+  the hours for all), never only on another item's line; an end before the
+  start is the next day; the same start and end none (`time`);
 - `locality`: a listed name of the source's list, exactly (`locality not
   listed`); `locality_verbatim` in the post, empty only for the town of
   a source that never names it (`not in post`);

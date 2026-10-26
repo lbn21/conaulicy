@@ -4,7 +4,12 @@ import { WATER } from "./headers.ts";
 import { WP_POSTS } from "./sources/gmina-lubaczow/fetch.ts";
 import { gminaLubaczow } from "./sources/gmina-lubaczow/index.ts";
 import type { ZukPost } from "./zuk.ts";
-import type { AiInput, AiReading, AiResult } from "./zuk-ai.ts";
+import {
+  type AiInput,
+  type AiReading,
+  type AiResult,
+  InvalidReply,
+} from "./zuk-ai.ts";
 import { handleZukCron, runZuk, type ZukCronDeps } from "./zuk-cron.ts";
 import {
   AI_UNAVAILABLE,
@@ -48,6 +53,8 @@ type World = {
   /** Every cache tag purged (revalidateTag), in order. */
   purges: string[];
   places: ZukPlaces;
+  /** Posts the model answers off the schema. */
+  invalid: Set<number>;
 };
 
 function world(over: Partial<World> = {}): World {
@@ -64,6 +71,7 @@ function world(over: Partial<World> = {}): World {
     logs: [],
     purges: [],
     places: PLACES,
+    invalid: new Set(),
     ...over,
   };
 }
@@ -98,6 +106,7 @@ function deps(w: World): ZukCronDeps {
       assert.ok(post);
       w.aiCalls.push(post.id);
       if (w.aiFails) throw new Error("xAI: HTTP 503");
+      if (w.invalid.has(post.id)) throw new InvalidReply('{"items": "x"}');
       return {
         // A new post in the tests is a copy of 39885.
         result:
@@ -661,7 +670,7 @@ test("rejected: each failed item in the file and the log, the model's JSON kept"
   assert.equal(entry.publishedAt, "2026-10-23 18:59:43");
   assert.equal(entry.readAt, NOW.toISOString());
   assert.equal(entry.reason, "street not listed");
-  assert.equal(entry.item.street_verbatim, "ul. Żuki");
+  assert.equal(entry.item?.street_verbatim, "ul. Żuki");
   // Listed names only.
   assert.deepEqual(entry.suggested_places, ["Żuki"]);
   assert.equal(typeof file.gazetteer, "string");
@@ -809,4 +818,97 @@ test("40 posts, one live: a small file, one active", async () => {
   // a post.
   const rest = JSON.stringify(file.seen).length;
   assert.ok(rest < 39 * 80, String(rest));
+});
+
+test("the districts change: the new hash kept only once every flagged post is read", async () => {
+  const w = world({ posts: RECENT.slice(0, 5) });
+  for (let run = 0; run < 3; run++) await runZuk(deps(w));
+  const file = saved(w);
+  const entry = (postId: number) => ({
+    postId,
+    url: "https://example.invalid/",
+    sourceId: "gmina-lubaczow",
+    publishedAt: "2026-10-20 10:00:00",
+    readAt: NOW.toISOString(),
+    item: null,
+    reason: "street not listed" as const,
+    suggested_places: [],
+  });
+  w.file = JSON.stringify({
+    ...file,
+    gazetteer: "older",
+    rejected: RECENT.slice(0, 5).map((p) => entry(p.id)),
+  });
+  // Five flagged, four calls a run: the old hash stays.
+  w.aiCalls = [];
+  await runZuk(deps(w));
+  assert.equal(w.aiCalls.length, 4);
+  assert.equal(saved(w).gazetteer, "older");
+  // xAI down: still the old one.
+  w.aiCalls = [];
+  w.aiFails = true;
+  await runZuk(deps(w));
+  assert.equal(saved(w).gazetteer, "older");
+  // The last one read: the new hash.
+  w.aiFails = false;
+  w.aiCalls = [];
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, [RECENT[4].id]);
+  assert.notEqual(saved(w).gazetteer, "older");
+  w.aiCalls = [];
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, []);
+});
+
+test("a reply off the schema: that post alone, again after 1 h and 6 h, then given up", async () => {
+  const w = world({ posts: [RECENT[0], RECENT[2]], invalid: new Set([39885]) });
+  const at = (ms: number) => {
+    w.now = new Date(NOW.getTime() + ms);
+    w.aiCalls = [];
+  };
+  await runZuk(deps(w));
+  // Not the model down: the next post is still read.
+  assert.deepEqual(w.aiCalls, [39885, 39865]);
+  assert.deepEqual(
+    saved(w).retries.map((r) => [r.postId, r.attempts, r.retryAt]),
+    [[39885, 1, new Date(NOW.getTime() + 3_600_000).toISOString()]],
+  );
+  assert.ok(w.logs.some((l) => l.zuk === "ai-invalid" && l.attempts === 1));
+  assert.equal(byId(w, 39885), undefined);
+  at(15 * 60_000);
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, []);
+  at(61 * 60_000);
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, [39885]);
+  assert.equal(saved(w).retries[0].attempts, 2);
+  at(5 * 3_600_000);
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, []);
+  at(8 * 3_600_000);
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, [39885]);
+  const file = saved(w);
+  assert.deepEqual(
+    file.retries.map((r) => [r.attempts, r.retryAt]),
+    [[3, null]],
+  );
+  assert.deepEqual(
+    file.rejected.map((e) => [e.postId, e.reason, e.item, e.raw]),
+    [[39885, "invalid reply", null, '{"items": "x"}']],
+  );
+  // Given up: never read again, never shown, while it is this post.
+  at(30 * 3_600_000);
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, []);
+  assert.equal(byId(w, 39885), undefined);
+  assert.equal(saved(w).rejected.length, 1);
+  // Edited: a new post to read, its tries from zero.
+  w.invalid = new Set();
+  w.posts = [{ ...RECENT[0], modified: "2026-10-25T09:00:00" }, RECENT[2]];
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, [39885]);
+  assert.deepEqual(saved(w).retries, []);
+  assert.deepEqual(saved(w).rejected, []);
+  assert.equal(byId(w, 39885)?.status, "parsed");
 });

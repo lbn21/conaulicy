@@ -256,16 +256,25 @@ export class Listed {
       add(this.districts, d.localityId, d.name, d);
   }
 
+  /**
+   * The localities a listed name is, or lies in (a street or district of
+   * that name, in any of them); none if it is not listed.
+   */
+  localitiesOf(name: string): string[] {
+    const own = this.localities.get(name);
+    if (own) return [own.id];
+    return [...this.localities.values()]
+      .filter(
+        (l) =>
+          this.streets.get(l.id)?.has(name) ||
+          this.districts.get(l.id)?.has(name),
+      )
+      .map((l) => l.id);
+  }
+
   /** Every listed name: a locality, street or district. */
   has(name: string): boolean {
-    if (this.localities.has(name)) return true;
-    for (const l of this.localities.values())
-      if (
-        this.streets.get(l.id)?.has(name) ||
-        this.districts.get(l.id)?.has(name)
-      )
-        return true;
-    return false;
+    return this.localitiesOf(name).length > 0;
   }
 }
 
@@ -287,9 +296,8 @@ export function gateItem(
     reason,
     locality,
   });
-  const day = dayInText(item.date, text);
-  if (day) return drop("date");
   locality = (item.locality && listed.localities.get(item.locality)) || null;
+  if (dayInText(item.date, text)) return drop("date");
   if (!locality) return drop("locality not listed");
   const lv = item.locality_verbatim;
   if (lv === null ? locality.id !== implied : !inPost(lv, text))
