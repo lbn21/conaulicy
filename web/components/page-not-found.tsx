@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { ContactLink } from "@/components/contact-link";
-import { HOME_H1 } from "@/lib/share";
 
 /** Its H1 and title (GOV.UK: "Page not found"). */
 const NOT_FOUND_TITLE = "Nie znaleziono strony";
@@ -38,7 +37,7 @@ export function PageNotFound() {
         </p>
         <p className="govuk-body">
           <a href="/" className="govuk-link">
-            {HOME_H1}
+            Przejdź na stronę główną
           </a>
         </p>
       </div>

@@ -13,7 +13,7 @@ export const metadata: Metadata = pageMetadata({
   path: "/",
   title: { absolute: HOME_TITLE },
   description:
-    "Kiedy śmieciarka przyjedzie na Twoją ulicę w Lubaczowie albo do wsi w gminie? Terminy do kalendarza w telefonie i do wydruku.",
+    "Wywóz śmieci, zapowiedziane przez gminę przerwy w dostawie wody i ostrzeżenia IMGW. Wpisz ulicę w Lubaczowie albo wieś w gminie i sprawdź terminy.",
 });
 
 // For search engines: the site's name. No SearchAction: the results page
@@ -33,8 +33,8 @@ export default async function Home() {
     searchIndexUrl(),
   ]);
 
-  // A lookup page, as GOV.UK's "Find your local council": the service in the
-  // heading, one line of context, the field, then what you get.
+  // A lookup page, as GOV.UK's "Find your local council": the task in the
+  // heading, one line on what you will see, the field, then what you get.
   return (
     <>
       <ImgwBanner />
@@ -46,7 +46,10 @@ export default async function Home() {
         />
         <div className="govuk-grid-column-two-thirds">
           <h1 className="govuk-heading-xl">{HOME_H1}</h1>
-          <p className="govuk-body-l">Dla Lubaczowa i wsi w gminie Lubaczów.</p>
+          <p className="govuk-body-l">
+            Zobaczysz, kiedy przyjedzie śmieciarka, czy gmina zapowiedziała
+            przerwę w dostawie wody i czy IMGW ostrzega przed złą pogodą.
+          </p>
 
           <div className="govuk-!-margin-bottom-8">
             <AddressSearch indexUrl={indexUrl} />
@@ -54,9 +57,15 @@ export default async function Home() {
 
           <h2 className="govuk-heading-m">Co zobaczysz</h2>
           <ul className="govuk-list govuk-list--bullet govuk-!-margin-bottom-8">
-            <li>kiedy przyjedzie śmieciarka i co wystawić przed dom</li>
-            <li>wszystkie terminy do dodania do kalendarza w telefonie</li>
-            <li>harmonogram do wydrukowania (PDF)</li>
+            <li>
+              kiedy przyjedzie śmieciarka – osobno dla każdego rodzaju odpadów
+            </li>
+            <li>przerwy w dostawie wody zapowiedziane przez gminę</li>
+            <li>ostrzeżenia pogodowe IMGW dla powiatu lubaczowskiego</li>
+            <li>
+              terminy wywozu do kalendarza w telefonie jednym kliknięciem i
+              harmonogram do wydruku (PDF)
+            </li>
           </ul>
 
           <section aria-labelledby="sample-heading">
