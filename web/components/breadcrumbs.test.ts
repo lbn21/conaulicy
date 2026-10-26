@@ -8,12 +8,13 @@ import AboutPage from "../app/o-projekcie/page.tsx";
 import PrivacyPage from "../app/prywatnosc/page.tsx";
 import { testPlace } from "../lib/water-fixture.ts";
 import { Breadcrumbs, type Crumb, HOME_CRUMB } from "./breadcrumbs.tsx";
-import { PlaceBreadcrumbs } from "./place-page.tsx";
+import { PageMain } from "./page-main.tsx";
+import { AddressPage, PlaceBreadcrumbs } from "./place-page.tsx";
 
 // GOV.UK's breadcrumbs (components/breadcrumbs.tsx): every item a link, the
 // page itself left out, the same markup on every page that has them.
 const NAV =
-  '<nav class="govuk-breadcrumbs govuk-!-margin-top-0 govuk-!-margin-bottom-8" aria-label="Ścieżka nawigacyjna"><ol class="govuk-breadcrumbs__list">';
+  '<nav class="govuk-breadcrumbs govuk-!-margin-top-7" aria-label="Ścieżka nawigacyjna"><ol class="govuk-breadcrumbs__list">';
 const item = (href: string, text: string) =>
   `<li class="govuk-breadcrumbs__list-item"><a class="govuk-breadcrumbs__link" href="${href}">${text}</a></li>`;
 const crumbs = (...items: string[]) => `${NAV}${items.join("")}</ol></nav>`;
@@ -66,29 +67,40 @@ test("address pages: the same crumbs as before", () => {
   );
 });
 
-// The pages' own elements, not rendered: their async parts (the IMGW banner)
-// need the database. /szukaj, /ulice and / read it themselves; they, and
-// every page here, are checked in their HTML by scripts/check-modules.mjs.
-const first = (page: unknown) => {
-  assert.ok(isValidElement(page));
-  const children = (page as ReactElement<{ children: unknown }>).props.children;
-  return (Array.isArray(children) ? children : [children])[0];
-};
-
-test("the content pages: „Strona główna” first, above everything", () => {
-  for (const page of [AboutPage(), PrivacyPage(), AccessibilityPage()]) {
-    const crumb = first(page);
-    assert.ok(isValidElement(crumb));
-    assert.equal(crumb.type, Breadcrumbs);
-    assert.deepEqual((crumb.props as { items: Crumb[] }).items, [HOME_CRUMB]);
-  }
+// GOV.UK places breadcrumbs before <main>, so the skip link
+// (#main-content) skips them (task 149).
+test("address pages: the breadcrumbs, then <main>", () => {
+  const html = renderToStaticMarkup(
+    AddressPage({ place: testPlace(), children: null }),
+  );
+  assert.match(
+    html,
+    /^<nav class="govuk-breadcrumbs[^"]*"[^>]*>[\s\S]*?<\/nav><main class="govuk-main-wrapper" id="main-content"><div class="govuk-grid-row">/,
+  );
+  assert.equal(html.match(/class="govuk-breadcrumbs[ "]/g)?.length, 1);
 });
 
-test("the 404 page: no breadcrumbs", () => {
-  const page = NotFound();
-  assert.ok(isValidElement(page));
-  const children = (page.props as { children: unknown[] }).children;
-  assert.ok(
-    children.every((c) => !isValidElement(c) || c.type !== Breadcrumbs),
-  );
+// The flat pages (and the 404): no breadcrumbs (GOV.UK: none on a site with
+// a flat structure). Their elements, not rendered: their async parts (the
+// IMGW banner) need the database. /szukaj, /ulice and / read it
+// themselves; they, and every page here, are checked in their HTML by
+// scripts/check-modules.mjs.
+const elements = (node: unknown): ReactElement[] => {
+  if (Array.isArray(node)) return node.flatMap(elements);
+  if (!isValidElement(node)) return [];
+  const { children } = node.props as { children?: unknown };
+  return [node, ...elements(children)];
+};
+
+test("the flat pages and the 404: no breadcrumbs, <main> outermost", () => {
+  for (const page of [
+    AboutPage(),
+    PrivacyPage(),
+    AccessibilityPage(),
+    NotFound(),
+  ]) {
+    assert.ok(isValidElement(page));
+    assert.equal(page.type, PageMain);
+    assert.ok(elements(page).every((el) => el.type !== Breadcrumbs));
+  }
 });

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { Breadcrumbs, HOME_CRUMB } from "@/components/breadcrumbs";
 import { ContactLink } from "@/components/contact-link";
 import { ImgwBanner } from "@/components/imgw-banner";
+import { PageMain } from "@/components/page-main";
 import { pageMetadata } from "@/lib/share";
 import { ACCESSIBILITY } from "@/lib/static-pages";
 
@@ -14,8 +14,7 @@ export const metadata: Metadata = pageMetadata({
 
 export default function AccessibilityPage() {
   return (
-    <>
-      <Breadcrumbs items={[HOME_CRUMB]} />
+    <PageMain>
       <ImgwBanner />
       <div className="govuk-grid-row">
         <div className="govuk-grid-column-two-thirds">
@@ -146,6 +145,6 @@ export default function AccessibilityPage() {
           </div>
         </div>
       </div>
-    </>
+    </PageMain>
   );
 }

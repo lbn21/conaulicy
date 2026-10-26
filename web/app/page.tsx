@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AddressSearch } from "@/components/address-search";
 import { ImgwBanner } from "@/components/imgw-banner";
+import { PageMain } from "@/components/page-main";
 import { SITE_URL } from "@/lib/config.generated";
 import { HOME_EXAMPLES } from "@/lib/examples";
 import { LANG } from "@/lib/locale";
@@ -36,7 +37,7 @@ export default async function Home() {
   // A lookup page, as GOV.UK's "Find your local council": the task in the
   // heading, one line of what to do, the field, then what you get.
   return (
-    <>
+    <PageMain>
       <ImgwBanner />
       <div className="govuk-grid-row">
         <script
@@ -86,6 +87,6 @@ export default async function Home() {
           </section>
         </div>
       </div>
-    </>
+    </PageMain>
   );
 }
