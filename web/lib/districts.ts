@@ -181,9 +181,10 @@ export function districtNamed(
 }
 
 /** The street of the town spelled as the district's bare name ("Mazury"). */
-export function namesake<
-  S extends { id: string; localityId: string; name: string },
->(d: District, streets: S[]): S | null {
+function namesake<S extends { id: string; localityId: string; name: string }>(
+  d: District,
+  streets: S[],
+): S | null {
   const names = [d.name, ...d.variants]
     .map(nameWords)
     .filter((n): n is string[] => n !== null && n.length > 0);
@@ -197,7 +198,7 @@ export function namesake<
 }
 
 /** The namesake street is the district's only street: no doubt. */
-export const onlyStreet = (d: District, streetId: string) =>
+const onlyStreet = (d: District, streetId: string) =>
   d.streets.length === 1 && d.streets[0].id === streetId;
 
 export type DistrictReading =

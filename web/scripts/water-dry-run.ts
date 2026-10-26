@@ -15,7 +15,7 @@ import type { District } from "../lib/districts.ts";
 import { DISTRICTS } from "../lib/districts-seed.ts";
 import { gminaLubaczow } from "../lib/sources/gmina-lubaczow/index.ts";
 import { mzgkim } from "../lib/sources/mzgkim/index.ts";
-import { parseAiResult, readWithAi } from "../lib/zuk-ai.ts";
+import { type AiResult, parseAiResult, readWithAi } from "../lib/zuk-ai.ts";
 import { ZUK_PLACES } from "../lib/zuk-places.generated.ts";
 import { fail } from "./lib/import-data.ts";
 import { waterDryRun } from "./lib/water-dry-run.ts";
@@ -50,7 +50,7 @@ if (args.districts === "db") {
   districts = await loadDistricts();
 } else if (args.districts !== "seed") fail("--districts is seed or db.");
 
-let ai;
+let ai: AiResult | undefined;
 if (args.ai) {
   ai = parseAiResult(readFileSync(args.ai, "utf8")) ?? undefined;
   if (!ai) fail(`${args.ai} is not the model's schema.`);
