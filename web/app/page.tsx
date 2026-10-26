@@ -60,7 +60,7 @@ export default async function Home() {
             <li>zapowiedziane przez gminę przerwy w dostawie wody</li>
             <li>ostrzeżenia IMGW przed złą pogodą w powiecie lubaczowskim</li>
             <li>
-              terminy wywozu w kalendarzu telefonu i harmonogram do wydruku
+              terminy wywozu w kalendarzu w telefonie i harmonogram do wydruku
               (PDF)
             </li>
           </ul>
