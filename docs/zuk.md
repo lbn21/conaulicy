@@ -215,9 +215,9 @@ It prints the model's JSON and the gate's result (`scripts/lib/water-dry-run.ts`
   its tries and when it may be tried again (null: given up).
 - A post leaves `active` and `seen` when it leaves the 14-day window. The
   model's tokens and cost are in the log only.
-- The file version is the shape; `reader` (`ZUK_READER`, now 8: rules
-  revision 5, reasoning medium and the publish day, task 184c) is what read
-  the post.
+- The file version is the shape; `reader` (`ZUK_READER`, now 9:
+  date_verbatim and houses, a literal day and house gate, task 186) is what
+  read the post.
   Raise `ZUK_READER` and every post is read again, 4 a run. A file of an
   older version is no file: the pages show the source link and the cron
   reads the window afresh, 4 a run, and replaces it (never delete the
@@ -240,8 +240,9 @@ context is the source's area from the TERYT snapshot (towns, villages,
 parts as "Name (Village)", each locality's streets by TERYT name) and the
 districts, sorted, so it is byte-stable for the same places. An item gives
 the locality and street (or district) as listed, the post's own words for
-them, any limitation as one literal `note`, `end_estimated`, `whole_town`
-with its words, a `doubt` and `suggested_places`. The model never returns
+them, any limitation as one literal `note` and its house numbers
+(`houses`), the day's words (`date_verbatim`), `end_estimated`,
+`whole_town` with its words, a `doubt` and `suggested_places`. The model never returns
 ids; our code maps listed names to them.
 
 Each cut carries our names for its label (`label`: locality, its village
@@ -290,10 +291,8 @@ Generic, from the snapshot and the districts only: no place-specific code,
 list or alias, and no word rule on the post's text beyond these literal
 checks:
 
-- the day: written in the post (D.M, "D <month>", inside "a-b.M", "a do
-  b.M", "a.M - b.M", or "(od) D.M.YYYY do/- D.M.YYYY", ends included), a
-  year written with it the item's, a bracketed weekday that matches; or,
-  in a post that writes no day, its publish day (Warsaw); from the day
+- the day: a real date; `date_verbatim` (the post's words for it) in the
+  post; none only for a day that is the publish day (Warsaw); from the day
   before the post to 31 days after its last edit (`date`);
 - times: valid HH:MM, written on the item's own lines (those its quoted
   pieces are on) or on a line that quotes no item (the opening line with
@@ -313,8 +312,10 @@ checks:
 spaces aside. A village-wide cut covers the village and every street of
 its own, from our data, not its village parts. House numbers for a place
 with streets are the place only, never copied onto its streets. The houses
-come from the note: ranges or numbers if that is all it says, else
-"unknown" (part of the place), and so for a range it cannot read.
+are the model's `houses`, each end written in the note as a whole word
+and a range never reversed or open: ranges, or numbers if every one is a
+single house; any other, or a note with none, "unknown" (part of the
+place).
 
 ## Our places: the TERYT snapshot
 
