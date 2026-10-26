@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { NOT_FOUND_METADATA } from "@/components/page-not-found";
-import { Breadcrumbs, PlaceNotFound } from "@/components/place-page";
+import { PlaceBreadcrumbs, PlaceNotFound } from "@/components/place-page";
 import { findSubpage } from "@/lib/modules";
 import { getPlace } from "@/lib/schedule";
 
@@ -41,7 +41,7 @@ export async function ModuleMain({
   if (!module || !place || !data) return <PlaceNotFound />;
   return (
     <>
-      <Breadcrumbs place={place} subpage />
+      <PlaceBreadcrumbs place={place} subpage />
       <module.Details
         data={data}
         missing={missing}

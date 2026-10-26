@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Breadcrumbs, HOME_CRUMB } from "@/components/breadcrumbs";
 import { ContactLink } from "@/components/contact-link";
 import { ImgwBanner } from "@/components/imgw-banner";
 import { pageMetadata } from "@/lib/share";
@@ -19,6 +20,7 @@ const PRG_PAGE =
 export default function AboutPage() {
   return (
     <>
+      <Breadcrumbs items={[HOME_CRUMB]} />
       <ImgwBanner />
       <div className="govuk-grid-row">
         <div className="govuk-grid-column-two-thirds">

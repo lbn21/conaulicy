@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
+import { Breadcrumbs, type Crumb, HOME_CRUMB } from "@/components/breadcrumbs";
 import { CheckedLine } from "@/components/checked-line";
 import { ErrorSummary } from "@/components/error-summary";
 import { NOT_FOUND_METADATA, PageNotFound } from "@/components/page-not-found";
@@ -333,7 +334,7 @@ export function AddressPage({
 }) {
   return (
     <>
-      <Breadcrumbs place={place} />
+      <PlaceBreadcrumbs place={place} />
       <div className="govuk-grid-row">
         <div className="govuk-grid-column-two-thirds">
           <PlaceHeading
@@ -355,16 +356,13 @@ function placeCaption(place: PlaceView): string {
 }
 
 /**
- * GOV.UK's breadcrumbs, every item a link and the page itself left out: the
- * home page, the locality (its line on /ulice: a street's locality, a
- * village part's village; else the villages' list), and on a
- * module's subpage the address page. A village names
- * its gmina there, as the caption did, not itself again.
- * Inside <main> (the layout's), so its own margin-top gives way to main's
- * padding, and its margin-bottom adds main's: GOV.UK's 30/50 px to what
- * follows.
+ * The address pages' breadcrumbs (components/breadcrumbs.tsx): the home
+ * page, the locality (its line on /ulice: a street's locality, a village
+ * part's village; else the villages' list), and on a module's subpage the
+ * address page. A village names its gmina there, as the caption did, not
+ * itself again.
  */
-export function Breadcrumbs({
+export function PlaceBreadcrumbs({
   place,
   subpage = false,
 }: {
@@ -374,36 +372,25 @@ export function Breadcrumbs({
   const list = `${ALL_PLACES.path}#${
     place.group ? localityAnchor(place.group) : "wsie-heading"
   }`;
-  const items: Array<[string, string]> = [
-    ["Strona główna", "/"],
-    place.kind === "ulica"
-      ? [place.area, list]
-      : [place.area.charAt(0).toUpperCase() + place.area.slice(1), list],
+  const items: Crumb[] = [
+    HOME_CRUMB,
+    {
+      href: list,
+      label:
+        place.kind === "ulica"
+          ? place.area
+          : place.area.charAt(0).toUpperCase() + place.area.slice(1),
+    },
   ];
   if (subpage) {
-    items.push([
-      withHouseNumber(place.name, place.nr),
+    items.push({
+      label: withHouseNumber(place.name, place.nr),
       // The number as given, even where it changes nothing (the address
       // page then says so); none on /numer.
-      placePath(place.id, place.givenNr),
-    ]);
+      href: placePath(place.id, place.givenNr),
+    });
   }
-  return (
-    <nav
-      className="govuk-breadcrumbs govuk-!-margin-top-0 govuk-!-margin-bottom-8"
-      aria-label="Ścieżka nawigacyjna"
-    >
-      <ol className="govuk-breadcrumbs__list">
-        {items.map(([text, href]) => (
-          <li key={href} className="govuk-breadcrumbs__list-item">
-            <a className="govuk-breadcrumbs__link" href={href}>
-              {text}
-            </a>
-          </li>
-        ))}
-      </ol>
-    </nav>
-  );
+  return <Breadcrumbs items={items} />;
 }
 
 /**

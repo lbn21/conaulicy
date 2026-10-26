@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Breadcrumbs, HOME_CRUMB } from "@/components/breadcrumbs";
 import { ImgwBanner } from "@/components/imgw-banner";
 import { type ListedPlace, localityAnchor, placePath } from "@/lib/places";
 import { searchIndex } from "@/lib/schedule";
@@ -39,6 +40,7 @@ export default async function AllPlacesPage() {
 
   return (
     <>
+      <Breadcrumbs items={[HOME_CRUMB]} />
       <ImgwBanner />
       <div className="govuk-grid-row">
         <div className="govuk-grid-column-two-thirds">

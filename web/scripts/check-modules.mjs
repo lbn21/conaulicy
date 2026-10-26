@@ -450,6 +450,28 @@ try {
       [STREET, "ul. Adama Asnyka"],
     ]);
   }
+  // The content pages: „Strona główna” alone, the first thing in <main>,
+  // as on the address pages (task 146). None on the home page or a 404
+  // (GOV.UK: not on the start page or an error page).
+  for (const path of [
+    "/szukaj?q=",
+    "/szukaj?q=adama",
+    "/szukaj?q=xyzqq",
+    "/o-projekcie",
+    "/prywatnosc",
+    "/dostepnosc",
+    "/ulice",
+  ]) {
+    const page = (await main(path)).main;
+    crumbsAre(path, page, [HOME]);
+    if (!/^<main[^>]*><nav class="govuk-breadcrumbs/.test(page))
+      fail(path, "breadcrumbs not first in <main>");
+  }
+  for (const path of ["/", "/nie-ma-takiej-strony"]) {
+    if ((await main(path)).main.includes("govuk-breadcrumbs"))
+      fail(path, "breadcrumbs");
+  }
+
   // Never on a split street (asked, or a wrong number) or a village.
   for (const path of [
     SPLIT,
