@@ -308,7 +308,7 @@ test("a district: its streets, each its stretch; the note limits them all", () =
   // A district with no street: rejected, linked on the town's pages.
   ai.items[0] = {
     ...ai.items[0],
-    street: "Osiedle Folwarki",
+    street: "Osiedle za Koleją",
     street_verbatim: "osiedle",
     note: null,
   };
