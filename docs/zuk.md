@@ -80,7 +80,10 @@ schema, guards and gate (`lib/sources/mzgkim/`, `lib/water-sources.ts`):
 - **Places off our list** ("Osiedle domów jednorodzinnych na zapleczu ul.
   Niemirowskiej") are kept as written (`unmatched`, logged with the run):
   every town page without a cut from that post links it ("MZGKiM ogłosił też
-  przerwę w miejscu, którego nie umiemy dopasować do adresów: „…”").
+  przerwę w miejscu, którego nie umiemy dopasować do adresów: „…”"). So is
+  a place matched only to a part of the town ("Osiedle Mazury", TERYT part
+  0972453): such a part has no PRG address point and so no page, and the
+  post's words for it are what the town's pages can link.
 - **Year:** a day written without one ("6 października") takes the post's
   year, a day before the post the next year's (`inferYear`, every source).
 - **Failures stay its own:** the feed down, a page or Blob error: logged

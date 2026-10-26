@@ -140,6 +140,7 @@ test("a run: the water post read from its page, the rest never read", async () =
   assert.equal(post.itemCount, 4);
   assert.deepEqual(post.unmatched, [
     "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej",
+    "Osiedle Mazury",
   ]);
   // The town and its parts, never a village it names (Dąbrowa).
   assert.deepEqual(post.localityIds, [...TOWN].sort());
@@ -167,7 +168,7 @@ test("a run: the water post read from its page, the rest never read", async () =
         l.zuk === "ai" &&
         l.source === "mzgkim" &&
         Array.isArray(l.unmatched) &&
-        l.unmatched.length === 1,
+        l.unmatched.length === 2,
     ),
   );
   assert.deepEqual(w.purges, [WATER]);
@@ -179,7 +180,10 @@ test("a run: the water post read from its page, the rest never read", async () =
     [
       [
         "mzgkim-5237-rest",
-        ["Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej"],
+        [
+          "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej",
+          "Osiedle Mazury",
+        ],
       ],
     ],
   );

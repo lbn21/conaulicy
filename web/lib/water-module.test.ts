@@ -666,7 +666,7 @@ test("town, an MZGKiM area off our list: a link on every other town page", () =>
       [
         {
           href: POST_5237,
-          text: `MZGKiM ogłosił też przerwę w miejscu, którego nie umiemy dopasować do adresów: „${OSIEDLE}” – sprawdź komunikat`,
+          text: `MZGKiM ogłosił też przerwę w miejscach, których nie umiemy dopasować do adresów: „${OSIEDLE}”, „Osiedle Mazury” – sprawdź komunikat`,
           hidden: "„Przerwa w dostawie wody”",
         },
       ],
