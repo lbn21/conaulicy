@@ -11,10 +11,12 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
 import type { EventType, Locality } from "../data-model.ts";
+import type { Confidence } from "../districts.ts";
 
 // Optional house-number range, e.g. only the even numbers 2–40.
 const houseNumbers = {
@@ -262,5 +264,66 @@ export const importChanges = pgTable(
   (t) => [
     check("import_changes_op", sql`${t.op} in ('insert', 'update', 'delete')`),
     index().on(t.batchId),
+  ],
+);
+
+/**
+ * The gazetteer (lib/districts.ts): a town's informal district names,
+ * "osiedle Mazury", which TERYT lacks. Filled only by `npm run
+ * db:districts` (scripts/districts-seed.ts, from lib/districts-seed.ts);
+ * the water cron reads it. No foreign key to localities or streets: those
+ * tables hold only what the waste import brings, so the seed checks every
+ * id against the TERYT snapshot instead.
+ */
+export const districtAliases = pgTable(
+  "district_aliases",
+  {
+    /** "mazury". */
+    id: text().primaryKey(),
+    /** The town (SIMC): "0972447". */
+    localityId: text().notNull(),
+    /** TERYT's town part of that name (SIMC), if any: "0972453". */
+    terytSimc: text(),
+    /** "Osiedle Mazury". */
+    name: text().notNull(),
+    /** Every form it is written in, inflected ones too. */
+    variants: text().array().notNull(),
+    confidence: text().$type<Confidence>().notNull(),
+    sourceUrl: text().notNull(),
+  },
+  (t) => [
+    check(
+      "district_aliases_confidence",
+      sql`${t.confidence} in ('high', 'medium')`,
+    ),
+    index().on(t.localityId),
+  ],
+);
+
+/**
+ * A district's streets: many to many (Herzoga is in Mazury and in Mazury
+ * VI), each with its own confidence and source, whole or a stretch.
+ */
+export const districtAliasStreets = pgTable(
+  "district_alias_streets",
+  {
+    aliasId: text()
+      .notNull()
+      .references(() => districtAliases.id, { onDelete: "cascade" }),
+    /** Our street id, SIMC-SYM_UL (TERYT). */
+    streetId: text().notNull(),
+    confidence: text().$type<Confidence>().notNull(),
+    /** Only this stretch ("bloki 24–34A"); null: the whole street. */
+    part: text(),
+    /** Null: the alias's source. */
+    sourceUrl: text(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.aliasId, t.streetId] }),
+    check(
+      "district_alias_streets_confidence",
+      sql`${t.confidence} in ('high', 'medium')`,
+    ),
+    index().on(t.streetId),
   ],
 );
