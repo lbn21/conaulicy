@@ -82,4 +82,9 @@ export type Notice = {
   publishedAt: string;
   updatedAt: string;
   source: DisruptionSource;
+  /**
+   * A post read but for these places, as written: the rest of its cuts
+   * are shown, these are only linked (lib/zuk-data.ts).
+   */
+  where?: string[];
 };

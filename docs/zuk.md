@@ -1,7 +1,8 @@
 # ZUK water cuts
 
-Water cuts announced by ZUK Mokrzyca on gminalubaczow.pl, read every 15
-minutes into one JSON file in Vercel Blob. No database writes, no UI yet.
+Water cuts announced by ZUK Mokrzyca on gminalubaczow.pl, and in the town
+by MZGKiM (below), read every 15 minutes into one JSON file per source in
+Vercel Blob. No database writes.
 
 ## A run (`GET /api/cron/zuk`, Vercel Cron `7,22,37,52 * * * *`)
 
@@ -50,6 +51,53 @@ stale after an hour. xAI down: a new
 post is `seen` with `reason: "ai-unavailable"`, retried next run, never
 shown; a new post over the run's 4 calls is stored nowhere and read on a
 later run. Either way an edited post keeps its old reading until it is read.
+
+## MZGKiM, the town's second source (task 150)
+
+MZGKiM (Miejski Zakład Gospodarki Komunalnej i Mieszkaniowej,
+mzgkim.lubaczow.pl) supplies most of the town's water and posts its own
+cuts. The same route reads it right after the gmina's posts, into its own
+file of the same shape (`mzgkim/disruptions.json`), through the same model,
+schema, guards and gate (`lib/sources/mzgkim/`, `lib/water-sources.ts`):
+
+- **Feed, not REST:** its REST API is closed to the public, so the source
+  reads its RSS feed (`/category/komunikaty/feed/`, 10 posts a page, more
+  pages only while the 14-day window needs them). The feed has no edit time:
+  a hash of each item's title and summary (`digest`) tells an edit, and an
+  edited post's `modified` is the run that first saw it.
+- **Prefilter:** a post without a water word (`wody`, `wodę`,
+  `wodociągowej`…) in its title or summary is `seen` as `not-water` without
+  a model call (the PSZOK, opening hours, deratyzacja).
+- **The page:** the feed's summary flattens the street list, so a post the
+  model reads has its page fetched first (`fullPost`, one request); a page
+  that fails is retried next run, as xAI down.
+- **Gate rules of its own** (`GateRules`; none for the gmina): its posts
+  never name the town, so the town need not be written (a part, "Osiedle
+  Mazury", must be); only an exact mention of a place outside the town
+  blocks a street ("w kierunku Dąbrowy" is a direction); streets may be
+  written declined ("Niemirowskiej"), nothing but a type word before them;
+  the whole town only in the post's own words ("na terenie całego miasta").
+- **Places off our list** ("Osiedle domów jednorodzinnych na zapleczu ul.
+  Niemirowskiej") are kept as written (`unmatched`, logged with the run):
+  every town page without a cut from that post links it ("MZGKiM ogłosił też
+  przerwę w miejscu, którego nie umiemy dopasować do adresów: „…”").
+- **Year:** a day written without one ("6 października") takes the post's
+  year, a day before the post the next year's (`inferYear`, every source).
+- **Failures stay its own:** the feed down, a page or Blob error: logged
+  (`{zuk: "source-down", source: "mzgkim"}`) and listed under `sources` in
+  the reply, never the gmina's run or the status. Both runs share one
+  model-call budget from the route's start.
+
+Model calls: only new or edited posts that pass the prefilter, one each.
+In its last 20 posts (Nov 2025 to Oct 2026) that is 3 cuts and 2 other
+posts with a water word: about 5 calls a year, so 0 on almost every day and
+1 on a day it posts a cut. The feed costs 96 small requests a day.
+
+The pages (`lib/water-module.ts`): one logic and one set of texts for every
+address; only the list of sources differs (the gmina's everywhere, MZGKiM's
+in the town and its parts). A cut's „Źródło” is its own post only. A source
+stale or without a file is named in the texts when the address has another
+that is not.
 
 ## The file (version 4, `lib/zuk-data.ts`)
 
