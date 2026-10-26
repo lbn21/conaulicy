@@ -118,7 +118,8 @@ export const WATER_CASES: WaterCase[] = [
     source: "gmina-lubaczow",
     trap: '"Dąbków, Lubaczów ul. Żuki, Opaka od numeru 104 do 110": the town\'s ul. Żuki (Dąbków has one too, Opaka a part Żuki); "ul. Przemysłowa (Lubaczów)" the town\'s; Lisie Jamy whole on 26 and 29.10, four of its streets on 27.10 (the edit)',
     post: () => POST_39885_EDITED,
-    expected: reading39885Edited,
+    // The edit corrects the earlier version's 27.10 extent.
+    expected: () => ({ ...reading39885Edited(), changes_earlier_dates: true }),
   },
   {
     id: 39766,
