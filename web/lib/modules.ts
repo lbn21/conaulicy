@@ -118,8 +118,9 @@ const waste: Module<PlaceView> = {
   Details: WasteDetails,
 };
 
-// ZUK's planned water cuts at the address, from the ZUK file; no file, or
-// one that failed to load: the gmina's news link only.
+// The planned water cuts at the address, from each of its sources' files
+// (the gmina's posts; in the town MZGKiM's too); no file, or one that
+// failed to load: that source's news link.
 const woda: Module<Water> = {
   id: "woda",
   title: "Woda",

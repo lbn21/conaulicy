@@ -30,7 +30,7 @@
 // - a house number on a street with one schedule: both pages say, right
 //   under the h1, that it changes nothing; never on a split street, a
 //   village or without a number;
-// - /woda without a ZUK file: breadcrumbs, h1, the gmina's news (in the
+// - /woda without a water file: breadcrumbs, h1, the gmina's news (in the
 //   town, MZGKiM's posts too), noindex,
 //   no calendar button or its help; its woda.ics an empty calendar, noindex (an
 //   unknown address's a 404);
@@ -281,7 +281,8 @@ try {
     )
       fail(path, "a calendar or PDF link");
     if (/govuk-notification-banner/.test(hub)) fail(path, "the IMGW banner");
-    // No ZUK file in CI: water first, with the gmina's news; in the town,
+    // No water file in CI (neither the gmina's nor MZGKiM's): water first,
+    // "nie udało się nam sprawdzić", the gmina's news; in the town,
     // MZGKiM's posts too.
     const mzgkim =
       locality === TOWN
@@ -385,7 +386,7 @@ try {
     if (note && /\b12\b/.test(subTitle)) fail(waste, `title ${subTitle}`);
   }
 
-  // /woda without a ZUK file (CI): breadcrumbs, caption and h1, the gmina's
+  // /woda without a water file (CI): breadcrumbs, caption and h1, the gmina's
   // and MZGKiM's news (a town street), no checked line; never a search result.
   const waterPath = `${STREET}/woda`;
   const water = await main(waterPath);
