@@ -7,6 +7,7 @@ import {
   FEED_2026_10_26,
   feedItem,
   feedWith,
+  MZGKIM_PLACES,
   MZGKIM_READINGS,
   realPage,
 } from "./mzgkim-fixture.ts";
@@ -87,14 +88,14 @@ function deps(w: World): ZukCronDeps {
       w.file = body;
     },
     purge: (tag) => w.purges.push(tag),
-    places: async () => ZUK_PLACES,
+    places: async () => MZGKIM_PLACES,
     readAi: async (
       input: AiInput,
       system: string,
       key: string,
     ): Promise<AiReading> => {
       assert.equal(key, "xai-key");
-      assert.equal(system, systemPrompt(ZUK_PLACES));
+      assert.equal(system, systemPrompt(MZGKIM_PLACES));
       // The page's text, not the feed's flattened summary.
       assert.match(input.text, /\nStarzyny\n|^Miejski/);
       const id = input.published === "2026-10-02T12:11:39" ? CUT_100 : 0;
@@ -137,10 +138,10 @@ test("a run: the water post read from its page, the rest never read", async () =
   assert.equal(post.id, CUT_100);
   assert.equal(post.sourceId, "mzgkim");
   assert.equal(post.status, "parsed");
-  assert.equal(post.itemCount, 4);
+  // Three streets and the 22 of Osiedle Mazury (the gazetteer).
+  assert.equal(post.itemCount, 25);
   assert.deepEqual(post.unmatched, [
     "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej",
-    "Osiedle Mazury",
   ]);
   // The town and its parts, never a village it names (Dąbrowa).
   assert.deepEqual(post.localityIds, [...TOWN].sort());
@@ -168,22 +169,19 @@ test("a run: the water post read from its page, the rest never read", async () =
         l.zuk === "ai" &&
         l.source === "mzgkim" &&
         Array.isArray(l.unmatched) &&
-        l.unmatched.length === 2,
+        l.unmatched.length === 1,
     ),
   );
   assert.deepEqual(w.purges, [WATER]);
   // The pages: its cuts under MZGKiM's name, the area as a link.
   const view = zukView(file, NOW, MZGKIM);
-  assert.equal(view.disruptions.length, 4);
+  assert.equal(view.disruptions.length, 25);
   assert.deepEqual(
     view.notices.map((n) => [n.uid, n.where]),
     [
       [
         "mzgkim-5237-rest",
-        [
-          "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej",
-          "Osiedle Mazury",
-        ],
+        ["Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej"],
       ],
     ],
   );

@@ -2,9 +2,15 @@
 // lib/zuk-cron.test.ts): its real komunikaty feed and posts, fetched on
 // 26 Oct 2026, verbatim. A fixture, so code (scripts/check-tracked-data.mjs).
 
+import { DISTRICTS } from "./districts-seed.ts";
 import { pageText, parseFeed } from "./sources/mzgkim/fetch.ts";
 import type { ZukPost } from "./zuk.ts";
 import type { AiItem, AiResult } from "./zuk-ai.ts";
+import { ZUK_PLACES } from "./zuk-places.generated.ts";
+import type { ZukPlaces } from "./zuk-resolve.ts";
+
+/** Our places as the cron reads them: the TERYT snapshot and the gazetteer. */
+export const MZGKIM_PLACES: ZukPlaces = { ...ZUK_PLACES, districts: DISTRICTS };
 
 /**
  * Real: GET https://mzgkim.lubaczow.pl/category/komunikaty/feed/ on 26 Oct
@@ -21,6 +27,22 @@ export const FEED_2026_10_26 =
 const ITEM_4935 =
   '\t<item>\n\t\t<title>Przerwa w dostawie wody</title>\n\t\t<link>https://mzgkim.lubaczow.pl/przerwa-w-dostawie-wody-98/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Łukasz Baran]]></dc:creator>\n\t\t<pubDate>Thu, 13 Nov 2025 12:38:17 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Komunikaty]]></category>\n\t\t<category><![CDATA[Komunikat]]></category>\n\t\t<guid isPermaLink="false">https://mzgkim.lubaczow.pl/?p=4935</guid>\n\n\t\t\t\t\t<description><![CDATA[Miejski Zakład Gospodarki Komunalnej i Mieszkaniowej informuje, że w nocy z 14 na 15 listopada (z piątku na sobotę) w godzinach: 23.00 – 03.00 nastąpi przerwa w dostawie wody na terenie całego miasta.Przerwa spowodowana jest koniecznością przeprowadzenia prac konserwacyjnych na hydroforni miejskiej.Przepraszamy za utrudnienia i prosimy o wyrozumiałość.]]></description>\n\t\t\n\t\t\n\t\t\n\t\t\t</item>\n';
 
+/**
+ * Real: the items of posts 4799 (7 Jul 2025, "Mazury wraz z osiedlem") and
+ * 4744 (13 May 2025, "Cicha" before "ul. Młodowska") from the feed's page
+ * 3 (…/feed/?paged=3, GET on 26 Oct 2026), verbatim (task 151).
+ */
+const ITEM_4799 =
+  '\t<item>\n\t\t<title>Przerwa w dostawie wody</title>\n\t\t<link>https://mzgkim.lubaczow.pl/przerwa-w-dostawie-wody-96/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Łukasz Baran]]></dc:creator>\n\t\t<pubDate>Mon, 07 Jul 2025 07:20:06 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Komunikaty]]></category>\n\t\t<category><![CDATA[Komunikat]]></category>\n\t\t<guid isPermaLink="false">https://mzgkim.lubaczow.pl/?p=4799</guid>\n\n\t\t\t\t\t<description><![CDATA[Miejski Zakład Gospodarki Komunalnej i Mieszkaniowej informuje, że w dniu 08 lipca (wtorek) w godzinach 09.00 &#8211; 12.00 nastąpi przerwa w dostawie wody przy ulicach: Przerwa spowodowana jest koniecznością przeprowadzenia prac konserwacyjnych.]]></description>\n\t\t\n\t\t\n\t\t\n\t\t\t</item>\n';
+const ITEM_4744 =
+  '\t<item>\n\t\t<title>Przerwa w dostawie wody</title>\n\t\t<link>https://mzgkim.lubaczow.pl/przerwa-w-dostawie-wody-95/</link>\n\t\t\n\t\t<dc:creator><![CDATA[Łukasz Baran]]></dc:creator>\n\t\t<pubDate>Tue, 13 May 2025 08:14:03 +0000</pubDate>\n\t\t\t\t<category><![CDATA[Komunikaty]]></category>\n\t\t<category><![CDATA[Komunikat]]></category>\n\t\t<guid isPermaLink="false">https://mzgkim.lubaczow.pl/?p=4744</guid>\n\n\t\t\t\t\t<description><![CDATA[Miejski Zakład Gospodarki Komunalnej i Mieszkaniowej informuje, że w dniu 14 maja w godzinach 08.30 &#8211; 12.00 nastąpi przerwa w dostawie wody przy ulicach: Kościuszki – od numeru 229 (nieparzyste) oraz numeru 168 (parzyste) w stronę Młodowa, Myśliwskiej, Grzybowej, Żelichówka, Walecznych, Cicha, ul. Młodowska (Młodów). Przerwa spowodowana jest koniecznością przeprowadzenia prac przyłączeniowych.]]></description>\n\t\t\n\t\t\n\t\t\n\t\t\t</item>\n';
+
+const OLDER: Record<number, string> = {
+  4935: ITEM_4935,
+  4799: ITEM_4799,
+  4744: ITEM_4744,
+};
+
 /** The feed as one page holding `items` (the channel's head and tail kept). */
 export function feedWith(items: string[]): string {
   const head = FEED_2026_10_26.slice(0, FEED_2026_10_26.indexOf("\t<item>"));
@@ -29,7 +51,7 @@ export function feedWith(items: string[]): string {
 
 /** Each real item of the feed, by its post id (the guid's ?p=). */
 export function feedItem(id: number): string {
-  if (id === 4935) return ITEM_4935;
+  if (OLDER[id]) return OLDER[id];
   const item = FEED_2026_10_26.split("\t<item>")
     .slice(1)
     .map((body) => `\t<item>${body.slice(0, body.indexOf("</item>"))}</item>\n`)
@@ -51,6 +73,13 @@ const PAGES: Record<string, string> = {
     '<article id="post-4935" class="single_post post-4935 post type-post status-publish format-standard hentry category-komunikaty tag-komunikat">\n\n    <header class="entry-header">     \n    <h2 class="entry-title"><span>Przerwa w dostawie wody</span></h2> \n    </header><!-- .entry-header -->\t\n        \t\n    <div class="entry-content">\n        \n<p class="wp-block-paragraph">Miejski Zakład Gospodarki Komunalnej i Mieszkaniowej informuje, że w nocy z 14 na 15 listopada (z piątku na sobotę) w godzinach: 23.00 – 03.00 nastąpi przerwa w dostawie wody na terenie całego miasta.<br>Przerwa spowodowana jest koniecznością przeprowadzenia prac konserwacyjnych na hydroforni miejskiej.<br>Przepraszamy za utrudnienia i prosimy o wyrozumiałość.</p>\n\n\n\n        <div class="entry-meta single-meta">\n            <p><span class="byline"> Autor: <span class="author vcard"><a class="url fn n" href="https://mzgkim.lubaczow.pl/author/l-baran/">Łukasz Baran</a></span></span><span class="posted-on-text screen-reader-text">Opublikowano w dniu</span> <span class="posted-on"><time class="entry-date published updated" datetime="2025-11-13T14:38:17+02:00">13 listopada 2025</time></span></p>',
 };
 
+// Real: the pages of 4799 and 4744, GET on 26 Oct 2026, the same cut
+// (task 151).
+PAGES["https://mzgkim.lubaczow.pl/przerwa-w-dostawie-wody-96/"] =
+  '<article id="post-4799" class="single_post post-4799 post type-post status-publish format-standard hentry category-komunikaty tag-komunikat">\n\n    <header class="entry-header">     \n    <h2 class="entry-title"><span>Przerwa w dostawie wody</span></h2> \n    </header><!-- .entry-header -->\t\n        \t\n    <div class="entry-content">\n        \n<p class="wp-block-paragraph">Miejski Zakład Gospodarki Komunalnej i Mieszkaniowej informuje, że w dniu <strong>0</strong><strong>8</strong> <strong>lipca </strong><strong>(wtorek)</strong> <strong>w </strong><strong>godzin</strong><strong>ach</strong> <strong>0</strong><strong>9</strong><strong>.</strong><strong>0</strong><strong>0 &#8211; </strong><strong>1</strong><strong>2</strong><strong>.</strong><strong>0</strong><strong>0 </strong>nastąpi przerwa w dostawie wody przy ulicach:</p>\n\n\n\n<ul class="wp-block-list">\n<li>Sobieskiego</li>\n\n\n\n<li>Niemirowska wraz z osiedlem</li>\n\n\n\n<li>Mazury wraz z osiedlem</li>\n\n\n\n<li>Sudel, Sosnowa</li>\n</ul>\n\n\n\n<p class="wp-block-paragraph">Przerwa spowodowana jest koniecznością przeprowadzenia prac konserwacyjnych.</p>\n\n\n\n        <div class="entry-meta single-meta">\n            <p><span class="byline"> Autor: <span class="author vcard"><a class="url fn n" href="https://mzgkim.lubaczow.pl/author/l-baran/">Łukasz Baran</a></span></span><span class="posted-on-text screen-reader-text">Opublikowano w dniu</span> <span class="posted-on"><time class="entry-date published updated" datetime="2025-07-07T09:20:06+02:00">7 lipca 2025</time></span></p>';
+PAGES["https://mzgkim.lubaczow.pl/przerwa-w-dostawie-wody-95/"] =
+  '<article id="post-4744" class="single_post post-4744 post type-post status-publish format-standard hentry category-komunikaty tag-komunikat">\n\n    <header class="entry-header">     \n    <h2 class="entry-title"><span>Przerwa w dostawie wody</span></h2> \n    </header><!-- .entry-header -->\t\n        \t\n    <div class="entry-content">\n        \n<p>Miejski Zakład Gospodarki Komunalnej i Mieszkaniowej informuje, że w dniu <strong>14 maja w godzinach</strong> <strong>08.30 &#8211; 12.00 </strong>nastąpi przerwa w dostawie wody przy ulicach:</p>\n<ul>\n<li><strong>Kościuszki – od numeru 229 (nieparzyste) oraz numeru 168 (parzyste) w stronę Młodowa, </strong></li>\n<li><strong>Myśliwskiej, Grzybowej, Żelichówka, Walecznych, Cicha, </strong></li>\n<li><strong>ul. Młodowska (Młodów).</strong></li>\n</ul>\n<p>Przerwa spowodowana jest koniecznością przeprowadzenia prac przyłączeniowych.</p>\n\n        <div class="entry-meta single-meta">\n            <p><span class="byline"> Autor: <span class="author vcard"><a class="url fn n" href="https://mzgkim.lubaczow.pl/author/l-baran/">Łukasz Baran</a></span></span><span class="posted-on-text screen-reader-text">Opublikowano w dniu</span> <span class="posted-on"><time class="entry-date published" datetime="2025-05-13T10:14:03+02:00">13 maja 2025</time></span></p>';
+
 /** A real post's page as the site serves it: the theme around the article. */
 export function realPage(url: string): string | undefined {
   const article = PAGES[url];
@@ -65,6 +94,9 @@ export const CUT_100 = 5237;
 export const CUT_99 = 5108;
 export const DERATYZACJA = 5234;
 export const WHOLE_TOWN = 4935;
+/** 8 Jul 2025: "Mazury wraz z osiedlem"; 14 May 2025: "Cicha" before "ul. Młodowska". */
+export const WITH_ESTATE = 4799;
+export const CICHA = 4744;
 
 const street = (
   date: string,
@@ -87,12 +119,22 @@ const street = (
 
 const OSIEDLE = "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej";
 
+/** A district of the gazetteer as the prompt asks for it: by its name. */
+const district = (
+  date: string,
+  start: string,
+  end: string,
+  name: string,
+  verbatim: string,
+) => street(date, start, end, name, verbatim);
+
 /**
  * The model's reading of each real post, as the prompt asks for it
  * (lib/sources/mzgkim/prompt.ts): written by hand for the tests, never a
- * real call. 5237: three streets, an area off our list, the town's part
- * Mazury; 5108: Sobieskiego only in part; 4935: the whole town, at night;
- * 5234 (deratyzacja): not water.
+ * real call. 5237: three streets, an area off our list, Osiedle Mazury of
+ * the gazetteer; 5108: Sobieskiego only in part; 4935: the whole town, at
+ * night; 4799: two streets "wraz z osiedlem"; 4744: a street before
+ * "ul. Młodowska"; 5234 (deratyzacja): not water.
  */
 export const MZGKIM_READINGS: Record<number, AiResult> = {
   [CUT_100]: {
@@ -109,18 +151,14 @@ export const MZGKIM_READINGS: Record<number, AiResult> = {
       ),
       street("2026-10-06", "08:30", "15:00", "Niemirowska", "Niemirowskiej"),
       street("2026-10-06", "08:30", "15:00", "Starzyny", "Starzyny"),
-      street("2026-10-06", "08:30", "15:00", OSIEDLE, OSIEDLE),
-      {
-        date: "2026-10-06",
-        start: "08:30",
-        end: "15:00",
-        locality: "Mazury",
-        locality_verbatim: "Mazury",
-        street: null,
-        street_verbatim: null,
-        note: null,
-        kind: "planned",
-      },
+      district("2026-10-06", "08:30", "15:00", OSIEDLE, OSIEDLE),
+      district(
+        "2026-10-06",
+        "08:30",
+        "15:00",
+        "Osiedle Mazury",
+        "Osiedle Mazury",
+      ),
     ],
   },
   [CUT_99]: {
@@ -157,6 +195,59 @@ export const MZGKIM_READINGS: Record<number, AiResult> = {
         note: null,
         kind: "planned",
       },
+    ],
+  },
+  [WITH_ESTATE]: {
+    post_type: "water_outage",
+    quality_status: null,
+    is_past: false,
+    items: [
+      street(
+        "2025-07-08",
+        "09:00",
+        "12:00",
+        "Jana III Sobieskiego",
+        "Sobieskiego",
+      ),
+      street("2025-07-08", "09:00", "12:00", "Niemirowska", "Niemirowska"),
+      district(
+        "2025-07-08",
+        "09:00",
+        "12:00",
+        OSIEDLE,
+        "Niemirowska wraz z osiedlem",
+      ),
+      street("2025-07-08", "09:00", "12:00", "Mazury", "Mazury"),
+      district(
+        "2025-07-08",
+        "09:00",
+        "12:00",
+        "Osiedle Mazury",
+        "Mazury wraz z osiedlem",
+      ),
+      street("2025-07-08", "09:00", "12:00", "Sudel", "Sudel"),
+      street("2025-07-08", "09:00", "12:00", "Sosnowa", "Sosnowa"),
+    ],
+  },
+  [CICHA]: {
+    post_type: "water_outage",
+    quality_status: null,
+    is_past: false,
+    items: [
+      street(
+        "2025-05-14",
+        "08:30",
+        "12:00",
+        "Tadeusza Kościuszki",
+        "Kościuszki",
+        "od numeru 229 (nieparzyste) oraz numeru 168 (parzyste) w stronę Młodowa",
+      ),
+      street("2025-05-14", "08:30", "12:00", "Myśliwska", "Myśliwskiej"),
+      street("2025-05-14", "08:30", "12:00", "Grzybowa", "Grzybowej"),
+      street("2025-05-14", "08:30", "12:00", "Żelichówka", "Żelichówka"),
+      street("2025-05-14", "08:30", "12:00", "Walecznych", "Walecznych"),
+      street("2025-05-14", "08:30", "12:00", "Cicha", "Cicha"),
+      street("2025-05-14", "08:30", "12:00", "Młodowska", "ul. Młodowska"),
     ],
   },
   [DERATYZACJA]: {

@@ -1,4 +1,5 @@
 import { revalidateTag } from "next/cache";
+import { loadDistricts } from "@/lib/districts-db";
 import { gminaLubaczow } from "@/lib/sources/gmina-lubaczow";
 import { mzgkim } from "@/lib/sources/mzgkim";
 import type { PostSource } from "@/lib/sources/source";
@@ -30,8 +31,9 @@ export function GET(request: Request) {
     // Never DATASET: the waste data did not change.
     purge: (tag) => revalidateTag(tag, { expire: 0 }),
     // The TERYT snapshot, not the database: the prompt and the gate need
-    // each street's CECHA and NAZWA_1 (lib/zuk-resolve.ts).
-    places: async () => ZUK_PLACES,
+    // each street's CECHA and NAZWA_1 (lib/zuk-resolve.ts). The town's
+    // district names (the gazetteer, lib/districts.ts) from the database.
+    places: async () => ({ ...ZUK_PLACES, districts: await loadDistricts() }),
     source,
     xaiKey: process.env.XAI_API_KEY,
     now: () => new Date(),

@@ -585,6 +585,10 @@ const NIEMIROWSKA = place({
   id: "0972447-14183",
   streetId: "0972447-14183",
 });
+const LESZKA_BIALEGO = place({
+  id: "0972447-38139",
+  streetId: "0972447-38139",
+});
 const SOBIESKIEGO_TOWN = place({
   id: "0972447-20431",
   streetId: "0972447-20431",
@@ -648,12 +652,14 @@ test("town, an MZGKiM cut: shown as a ZUK cut, its own post the source", () => {
   );
   // Its area off our list is only linked, and not here: its cut is.
   assert.deepEqual(data.notices, []);
-  // The town's part Mazury: the whole part.
-  const mazury = townAt(MAZURY, cut, OCT_3, OCT_3_CHECKED);
-  assert.deepEqual(waterSummary(mazury)?.[1], [
+  // "Osiedle Mazury" (the gazetteer, task 151): each of its streets, whole.
+  const estate = townAt(LESZKA_BIALEGO, cut, OCT_3, OCT_3_CHECKED);
+  assert.deepEqual(waterSummary(estate)?.[1], [
     "Gdzie",
-    ["cała miejscowość Mazury"],
+    ["cała ulica Księcia Leszka Białego"],
   ]);
+  // TERYT's part Mazury (no address) is no longer cut.
+  assert.deepEqual(townAt(MAZURY, cut, OCT_3, OCT_3_CHECKED).outages, []);
 });
 
 test("town, an MZGKiM area off our list: a link on every other town page", () => {
@@ -666,7 +672,7 @@ test("town, an MZGKiM area off our list: a link on every other town page", () =>
       [
         {
           href: POST_5237,
-          text: `MZGKiM ogłosił też przerwę w miejscach, których nie umiemy dopasować do adresów: „${OSIEDLE}”, „Osiedle Mazury” – sprawdź komunikat`,
+          text: `MZGKiM ogłosił też przerwę w miejscu, którego nie umiemy dopasować do adresów: „${OSIEDLE}” – sprawdź komunikat`,
           hidden: "„Przerwa w dostawie wody”",
         },
       ],

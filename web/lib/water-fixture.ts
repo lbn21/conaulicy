@@ -6,7 +6,12 @@
 // (scripts/check-tracked-data.mjs).
 import { addDays, isoWithOffset, todayInWarsaw } from "./dates.ts";
 import type { Disruption } from "./disruptions.ts";
-import { CUT_100, MZGKIM_READINGS, realMzgkimPost } from "./mzgkim-fixture.ts";
+import {
+  CUT_100,
+  MZGKIM_PLACES,
+  MZGKIM_READINGS,
+  realMzgkimPost,
+} from "./mzgkim-fixture.ts";
 import type { PlaceView } from "./schedule.ts";
 import { mzgkim } from "./sources/mzgkim/index.ts";
 import { MZGKIM, type WaterSourceId } from "./water-sources.ts";
@@ -26,7 +31,6 @@ import {
   zukView,
 } from "./zuk-data.ts";
 import { PLACES, reading, realPosts } from "./zuk-fixture.ts";
-import { ZUK_PLACES } from "./zuk-places.generated.ts";
 import { MONTHS } from "./zuk-resolve.ts";
 
 export const POST_39885 = 39885;
@@ -186,7 +190,7 @@ export function mzgkimPost(
   post: ZukPost = realMzgkimPost(id),
   ai: AiResult = MZGKIM_READINGS[id],
 ): StoredPost {
-  const read = readPost(post, ai, ZUK_PLACES, checkedAt, {
+  const read = readPost(post, ai, MZGKIM_PLACES, checkedAt, {
     source: MZGKIM,
     gate: mzgkim.gate,
   });
