@@ -3,17 +3,15 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { SITE_URL } from "./config.generated.ts";
 import type { Disruption } from "./disruptions.ts";
-import { CUT_100 } from "./mzgkim-fixture.ts";
 import type { PlaceView } from "./schedule.ts";
 import {
-  bothViews,
   KROWICA_RANGE,
-  mzgkimPost,
   POST_39885,
   SOBIESKIEGO_RANGE,
   sobieskiego,
   storedPost,
   testPlace,
+  zukFile,
 } from "./water-fixture.ts";
 import {
   calendarCuts,
@@ -22,7 +20,7 @@ import {
   waterFilename,
 } from "./water-ics.ts";
 import { water } from "./water-module.ts";
-import type { StoredPost } from "./zuk-data.ts";
+import { type StoredPost, zukView } from "./zuk-data.ts";
 
 // Sunday 25 Oct 2026, 13:30 in Warsaw (CET since 3:00 today); 39885 cuts
 // ul. Żuki in Lubaczów on Tuesday 27 Oct, 8:00-16:00.
@@ -54,7 +52,7 @@ const at = (
   place: PlaceView = ZUKI,
   now = NOW,
   checkedAt = CHECKED,
-) => water(bothViews(posts, checkedAt, now), place);
+) => water(zukView(zukFile(posts, checkedAt), now), place);
 
 /** The file unfolded, one property per line. */
 const lines = (ics: string) => ics.replace(/\r\n /g, "").split("\r\n");
@@ -228,7 +226,7 @@ test("no cut here: an empty calendar, as a waste zone with no dates", () => {
     assert.equal(events(ics), 0);
     assert.match(ics, /^BEGIN:VCALENDAR\r\n[\s\S]*END:VCALENDAR\r\n$/);
   }
-  const none = water({}, ZUKI);
+  const none = water(zukView(null, NOW), ZUKI);
   assert.equal(events(waterCalendar(none, NOW)), 0);
 });
 
@@ -331,7 +329,7 @@ test("no dated cut, no button: an emergency, no hours, a Notice, none", () => {
     at([zukiPost({ end: null })]),
     at([notice]),
     at([post()], ASNYKA),
-    water({}, ZUKI),
+    water(zukView(null, NOW), ZUKI),
   ])
     assert.equal(waterCalendarHref(data), null);
 });
@@ -347,39 +345,4 @@ test("a house number outside a cut's range: no event; inside: the same UID", () 
   assert.deepEqual(value(inside, "UID"), [
     `woda-${POST_39885}-0606116-0606116-20431-${first.date}@conaulicy.pl`,
   ]);
-});
-
-test("an MZGKiM cut: its own UID, its post as the source and the note", () => {
-  // 5237's Niemirowska cut, 6 Oct 2026 8:30-15:00, seen on 3 Oct.
-  const checked = "2026-10-03T09:50:00.000Z";
-  const now = new Date("2026-10-03T10:00:00Z");
-  const niemirowska = testPlace({
-    id: "0972447-14183",
-    streetId: "0972447-14183",
-    label: "ul. Niemirowska, Lubaczów",
-  });
-  const data = water(
-    bothViews([], checked, now, [mzgkimPost(CUT_100, checked)]),
-    niemirowska,
-  );
-  const ics = waterCalendar(data, now);
-  assert.equal(events(ics), 1);
-  const all = lines(ics);
-  const url = "https://mzgkim.lubaczow.pl/przerwa-w-dostawie-wody-100/";
-  for (const line of [
-    "UID:woda-mzgkim-5237-0972447-0972447-14183-2026-10-06@conaulicy.pl",
-    "DTSTART;TZID=Europe/Warsaw:20261006T083000",
-    "DTEND;TZID=Europe/Warsaw:20261006T150000",
-    `URL:${url}`,
-  ])
-    assert.ok(all.includes(line), line);
-  const [description] = value(ics, "DESCRIPTION");
-  assert.match(description, /^Cała ulica Niemirowska\.\\n/);
-  assert.ok(description.includes(`Źródło: ${url}`));
-  assert.ok(
-    description.includes(
-      "Daty i godziny odczytaliśmy z komunikatu MZGKiM. Gdyby coś się nie zgadzało\\, rację ma komunikat.",
-    ),
-  );
-  folded(ics);
 });

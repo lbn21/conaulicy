@@ -16,16 +16,8 @@
 // reading until it is read again. A file of an older version: no
 // file, every post is read afresh. Dependencies come in, so the tests mock
 // them.
-//
-// One run reads one source (lib/sources) into its own file; the route runs
-// every source in turn (handleZukCron), each failing on its own: the
-// gmina's posts first, then MZGKiM's. A source's prefilter (a cheap word
-// test) keeps the model from posts plainly not about water; a source that
-// gives only a summary (MZGKiM's feed) has each post's page fetched right
-// before the model reads it; a source without edit times tells an edit by
-// its digest.
 
-import { addDays, isoWithOffset, todayInWarsaw } from "./dates.ts";
+import { addDays, todayInWarsaw } from "./dates.ts";
 import { NO_STORE, WATER } from "./headers.ts";
 import { cronDenied } from "./secret.ts";
 import { gminaLubaczow } from "./sources/gmina-lubaczow/index.ts";
@@ -38,7 +30,6 @@ import {
   readPost,
   readQualityPost,
   wall,
-  type ZukPost,
 } from "./zuk.ts";
 import { type AiReading, readWithAi } from "./zuk-ai.ts";
 import {
@@ -80,8 +71,6 @@ export type ZukCronDeps = {
   source?: PostSource;
   xaiKey: string | undefined;
   now: () => Date;
-  /** When the model-call budget started: the route's start; else the run's. */
-  since?: Date;
   log: (line: Record<string, unknown>) => void;
 };
 
@@ -104,37 +93,13 @@ function content(active: StoredPost[], seen: SeenPost[]): string {
   );
 }
 
-/** Whether the post changed since it was decided: its digest, else `modified`. */
-const edited = (post: ZukPost, old: StoredPost | SeenPost) =>
-  post.digest === undefined
-    ? old.modified !== post.modified
-    : old.digest !== post.digest;
-
-/**
- * The post's last change: its own `modified`; for a source without edit
- * times, the run that first saw its digest (the first: its publication).
- */
-function lastChange(
-  post: ZukPost,
-  old: StoredPost | SeenPost | undefined,
-  checkedAt: string,
-): string {
-  if (post.digest === undefined || !old) return post.modified;
-  if (old.digest === post.digest) return old.modified;
-  return isoWithOffset(Date.parse(checkedAt)).slice(0, 19);
-}
-
 /** One run. Throws SourceDown, or anything else, without writing. */
 export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
   const started = deps.now();
-  const since = deps.since ?? started;
   const previousBody = await deps.readFile();
   const previous = previousBody ? parseZukFile(previousBody) : null;
   const today = todayInWarsaw(started);
   const source = deps.source ?? gminaLubaczow;
-  const rules = { source: source.water, gate: source.gate };
-  const area = source.water.area;
-  const tag = { source: source.id };
   const posts = await source.fetchPosts(
     deps.fetch,
     addDays(today, -WINDOW_DAYS),
@@ -149,7 +114,7 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     const old = before.get(post.id);
     return (
       !old ||
-      edited(post, old) ||
+      old.modified !== post.modified ||
       old.reason === AI_UNAVAILABLE ||
       old.reader < ZUK_READER
     );
@@ -162,32 +127,20 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
   let costUsd = 0;
   let aiDown = !deps.xaiKey;
   const stored: Array<StoredPost | SeenPost> = [];
-  for (const fed of posts) {
-    const old = before.get(fed.id);
-    if (!toRead.includes(fed) && old) {
+  for (const post of posts) {
+    const old = before.get(post.id);
+    if (!toRead.includes(post) && old) {
       stored.push(old);
       continue;
     }
-    let post: ZukPost = {
-      ...fed,
-      modified: lastChange(fed, old, checkedAt),
-    };
-    const digest = post.digest === undefined ? {} : { digest: post.digest };
     const seen = (reason: string): SeenPost => ({
       id: post.id,
       modified: post.modified,
       reason,
       reader: ZUK_READER,
-      ...digest,
     });
     if (isPastPost(post, today)) {
       stored.push(seen(PAST));
-      continue;
-    }
-    // Plainly not about water (no water word at all): never read.
-    if (source.prefilter && !source.prefilter(post)) {
-      deps.log({ zuk: "skip", ...tag, post: post.id, reason: "prefilter" });
-      stored.push(seen(NOT_WATER));
       continue;
     }
     // Not read this run: its old record until it is, else for a new post
@@ -202,24 +155,10 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     }
     if (
       aiCalls >= MAX_AI_CALLS ||
-      deps.now().getTime() - since.getTime() > AI_BUDGET_MS
+      deps.now().getTime() - started.getTime() > AI_BUDGET_MS
     ) {
       wait(false);
       continue;
-    }
-    if (source.fullPost) {
-      try {
-        post = { ...(await source.fullPost(deps.fetch, post)), ...digest };
-      } catch (error) {
-        deps.log({
-          zuk: "page-error",
-          ...tag,
-          post: post.id,
-          error: (error as Error).message,
-        });
-        wait(true);
-        continue;
-      }
     }
     aiCalls++;
     const title = plainText(post.title.rendered);
@@ -239,7 +178,6 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
       aiDown = true;
       deps.log({
         zuk: "ai-error",
-        ...tag,
         post: post.id,
         error: (error as Error).message,
       });
@@ -252,14 +190,12 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     if (keywords !== undefined && keywords !== (type !== "other"))
       deps.log({
         zuk: "classify-disagree",
-        ...tag,
         post: post.id,
         kind: type,
         regex: keywords,
       });
     const usage = {
       zuk: "ai",
-      ...tag,
       post: post.id,
       model: reading.model,
       ...reading.usage,
@@ -281,14 +217,12 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
       title,
       publishedAt: wall(post.date),
       updatedAt: wall(post.modified),
-      // An area's source concerns the area alone, named or not.
-      localityIds: area ? [...area].sort() : mentionedLocalities(post, places),
+      localityIds: mentionedLocalities(post, places),
       ...(isChangePost(post) ? { change: true } : {}),
       ...(reading.result.is_past ? { past: true } : {}),
-      ...digest,
     };
     if (type === "water_quality") {
-      const quality = readQualityPost(post, reading.result, places, rules);
+      const quality = readQualityPost(post, reading.result, places);
       deps.log({
         ...usage,
         status: "notice",
@@ -307,27 +241,18 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
       });
       continue;
     }
-    const read = readPost(post, reading.result, places, checkedAt, rules);
+    const read = readPost(post, reading.result, places, checkedAt);
     deps.log({
       ...usage,
       status: read.status,
       ...(read.status === "notice"
         ? { reason: read.reason }
-        : {
-            items: read.items.length,
-            dropped: read.dropped,
-            ...(read.unmatched ? { unmatched: read.unmatched } : {}),
-          }),
+        : { items: read.items.length, dropped: read.dropped }),
     });
     stored.push({
       ...base,
       ...(read.status === "parsed"
-        ? {
-            status: "parsed",
-            itemCount: read.items.length,
-            items: read.items,
-            ...(read.unmatched ? { unmatched: read.unmatched } : {}),
-          }
+        ? { status: "parsed", itemCount: read.items.length, items: read.items }
         : { status: "notice", reason: read.reason, itemCount: 0, items: [] }),
     });
   }
@@ -353,56 +278,29 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     costUsd: Number(costUsd.toFixed(6)),
     changed,
   };
-  deps.log({ zuk: "run", ...tag, ...summary });
+  deps.log({ zuk: "run", ...summary });
   return summary;
 }
 
-/** One source's run, its failure logged and returned, never thrown. */
-async function runOne(
-  deps: ZukCronDeps,
-): Promise<RunSummary | { error: unknown; down: boolean }> {
-  try {
-    return await runZuk(deps);
-  } catch (error) {
-    const down = error instanceof SourceDown;
-    deps.log({
-      zuk: down ? "source-down" : "error",
-      source: (deps.source ?? gminaLubaczow).id,
-      error: (error as Error).message,
-    });
-    return { error, down };
-  }
-}
-
-/**
- * The route: Vercel Cron's `Authorization: Bearer ${CRON_SECRET}`. `deps`
- * is the gmina's run, whose result is the response's (502 or 500 if it
- * failed); then every source of `more`, each on its own: a failure is
- * logged and listed under `sources`, never the gmina's run's or the
- * response's status.
- */
+/** The route: Vercel Cron's `Authorization: Bearer ${CRON_SECRET}`. */
 export async function handleZukCron(
   request: Request,
   cronSecret: string | undefined,
   deps: ZukCronDeps,
-  more: ZukCronDeps[] = [],
 ): Promise<Response> {
   const denied = cronDenied(request, cronSecret);
   if (denied) return denied;
-  const main = await runOne(deps);
-  const sources: Record<string, unknown> = {};
-  for (const run of more) {
-    const result = await runOne(run);
-    sources[(run.source ?? gminaLubaczow).id] =
-      "error" in result
-        ? { error: result.down ? "source unavailable" : "failed" }
-        : result;
+  try {
+    return Response.json(await runZuk(deps), { headers: NO_STORE });
+  } catch (error) {
+    const down = error instanceof SourceDown;
+    deps.log({
+      zuk: down ? "source-down" : "error",
+      error: (error as Error).message,
+    });
+    return Response.json(
+      { error: down ? "source unavailable" : "failed" },
+      { status: down ? 502 : 500, headers: NO_STORE },
+    );
   }
-  const extra = more.length > 0 ? { sources } : {};
-  if (!("error" in main))
-    return Response.json({ ...main, ...extra }, { headers: NO_STORE });
-  return Response.json(
-    { error: main.down ? "source unavailable" : "failed", ...extra },
-    { status: main.down ? 502 : 500, headers: NO_STORE },
-  );
 }
