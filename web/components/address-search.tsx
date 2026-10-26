@@ -13,15 +13,13 @@ import {
   type SearchIndex,
   searchTerms,
 } from "@/lib/search";
+import { HINT } from "@/lib/search-hint";
 
 // One search per page (the home page or /szukaj), so fixed ids.
 const INPUT_ID = "adres";
 const LABEL_ID = "adres-label";
 const HINT_ID = "adres-hint";
 const ERROR_ID = "adres-error";
-
-const HINT =
-  "Na przykład Asnyka 12 albo Lisie Jamy – polskie znaki nie są potrzebne";
 
 type Note = "hint" | "loading" | "error" | "none";
 
@@ -94,19 +92,24 @@ function afterLoad(callback: () => void): () => void {
  * page has loaded and is idle, or on first focus if that comes first (only
  * then with Save-Data on), so suggestions are ready from the first letter;
  * then each keystroke is matched on the device
- * ("Asnyka 12" carries the house number to ?nr=). If the index cannot load,
- * settled queries go to /api/search. As GOV.UK's default (no onConfirm),
- * choosing a suggestion (tap, click, or arrows and Enter) only fills the
- * field with its text and closes the list; „Szukaj”, or Enter with the list
- * closed, submits the form, and /szukaj opens the place whose text it is.
- * With autoselect the first suggestion is highlighted, so Enter with the
- * list open picks it and the next Enter submits; with none (none found,
- * still loading) Enter submits at once. confirmOnBlur stays off: leaving the
- * field keeps what was typed rather than the highlighted suggestion.
+ * ("Asnyka 5" carries the house number to ?nr=). If the index cannot load,
+ * settled queries go to /api/search. The list opens inline, under the field
+ * and above „Szukaj”, pushing what follows down while it is open (GOV.UK's
+ * default), so it never covers the button. As GOV.UK's default (no
+ * onConfirm, no autoselect), nothing is highlighted until ArrowDown, which
+ * goes to the first suggestion. Enter: with a suggestion highlighted, it
+ * fills the field with its text and closes the list (as a tap or click
+ * does); with none highlighted (list open or closed, none found, still
+ * loading) it submits what was typed. The library alone would do nothing on
+ * Enter with the list open and nothing highlighted, so submitOnEnter does
+ * that. „Szukaj” always submits what is in the field, and /szukaj opens the
+ * place whose text it is. confirmOnBlur stays off: leaving the field keeps
+ * what was typed.
  *
  * The one search field: the home page and /szukaj both render it. On
  * /szukaj it holds the text searched for (`value`) and, for an empty search,
- * GOV.UK's error message (`error`).
+ * GOV.UK's error message (`error`). A field holding text (that value) stays
+ * the server's until its first focus, so the list does not open on load.
  */
 export function AddressSearch({
   indexUrl,
@@ -204,15 +207,60 @@ export function AddressSearch({
       }
     }
 
+    // Enter with the list open and no suggestion highlighted: the library
+    // stops the submit and does nothing, so submit what was typed. With one
+    // highlighted, focus is on that option (not the field) and the library
+    // fills the field with it.
+    const form = container.closest("form");
+    function submitOnEnter(event: KeyboardEvent) {
+      if (
+        event.key === "Enter" &&
+        event.defaultPrevented &&
+        event.target instanceof HTMLInputElement &&
+        event.target.id === INPUT_ID
+      ) {
+        form?.requestSubmit();
+      }
+    }
+    form?.addEventListener("keydown", submitOnEnter);
+    // A press on „Szukaj” with the field focused: the field keeps focus
+    // until the click, or its blur would close the list above the button,
+    // move the button up from under the pointer, and lose the click.
+    const button = form?.querySelector("button");
+    function keepFocus(event: MouseEvent) {
+      if (document.activeElement?.id === INPUT_ID) event.preventDefault();
+    }
+    button?.addEventListener("mousedown", keepFocus);
+
+    let cancelTakeover = () => {};
     async function start() {
       const { default: accessibleAutocomplete } = await import(
         "accessible-autocomplete"
       );
       const old = container?.querySelector("input");
       if (cancelled || !container || !old) return;
-      // Text in the field when the library loaded (the server's value on
-      // /szukaj, or what was typed meanwhile), and whether the field had
-      // focus (a tap before the page was idle).
+      // Text in the field (the server's value on /szukaj) with no focus: the
+      // library searches any text it is handed and opens the list, so the
+      // server's field stays until its first focus, and the library takes
+      // over in that focus event (the same task, so focus goes input to
+      // input, as for a tap before idle).
+      if (old.value && document.activeElement !== old) {
+        const onFocus = () => void takeover(accessibleAutocomplete, old);
+        old.addEventListener("focus", onFocus, { once: true });
+        cancelTakeover = () => old.removeEventListener("focus", onFocus);
+        return;
+      }
+      await takeover(accessibleAutocomplete, old);
+    }
+
+    async function takeover(
+      accessibleAutocomplete: typeof import("accessible-autocomplete").default,
+      old: HTMLInputElement,
+    ) {
+      if (cancelled || !container) return;
+      // Text in the field when the library takes over (the server's value
+      // on /szukaj, or what was typed meanwhile), and whether the field had
+      // focus (a tap before the page was idle, or the first focus above).
       const typed = old.value;
       const focused = document.activeElement === old;
       // Render next to the placeholder and move focus to the new field in the
@@ -230,12 +278,9 @@ export function AddressSearch({
         // source runs only when the query changes (l. 218–232). The server's
         // value is in the placeholder instead and is handed over below as
         // typed text, so it is searched for real places, and appears once.
-        // govuk-input--error survives the takeover (hintClasses, the
-        // autoselect hint's field, follows inputClasses).
+        // govuk-input--error survives the takeover.
         inputClasses,
         menuAttributes: { "aria-labelledby": LABEL_ID },
-        displayMenu: "overlay",
-        autoselect: true,
         confirmOnBlur: false,
         templates: {
           inputValue: optionText,
@@ -273,7 +318,10 @@ export function AddressSearch({
     return () => {
       cancelled = true;
       cancelIdle();
+      cancelTakeover();
       stopIndex();
+      form?.removeEventListener("keydown", submitOnEnter);
+      button?.removeEventListener("mousedown", keepFocus);
     };
   }, [indexUrl, error, inputClasses]);
 
