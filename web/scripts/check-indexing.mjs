@@ -19,9 +19,9 @@
 // itself, and has a title of its own. 404s (an unknown path, unknown
 // addresses) are whole pages in the raw HTML, no JS needed: status 404, the
 // layout (lang, stylesheet), GOV.UK's "page not found" H1, its link home
-// („Przejdź na stronę główną”), one robots meta, noindex, and no
-// description; an unknown module (/adres/<id>/<slug>) and one without a
-// subpage (/pogoda) too.
+// („Przejdź na stronę główną”), robots meta noindex (one or more tags, every
+// one noindex, none index), and no description; an unknown module
+// (/adres/<id>/<slug>) and one without a subpage (/pogoda) too.
 //
 // Runs against `next start` on the current build and the CI fixture.
 import { readFileSync } from "node:fs";
@@ -43,6 +43,11 @@ const PAGES = ["home", "city-street", "village", "accessibility"].map(
   (name) => ROUTES.find((route) => route.name === name).path,
 );
 const META = /<meta name="robots" content="([^"]*)"\/?>/g;
+// A robots tag that says noindex and never index.
+const noindexOnly = (content) => {
+  const directives = content.split(",").map((part) => part.trim());
+  return directives.includes("noindex") && !directives.includes("index");
+};
 
 // node:http, not fetch: fetch may not send a Host header of our own.
 const get = (origin, path, headers) =>
@@ -229,7 +234,10 @@ try {
   }
 
   // Not found: the whole page in the raw HTML, never Next.js's empty error
-  // shell, and one robots tag.
+  // shell, and noindex. Next.js 16.4 emits its own noindex on a 404, and on a
+  // cached dynamic 404 that is regenerated (ISR, after 10 minutes) it emits
+  // a second one: harmless, both say noindex. So one or more tags, every one
+  // noindex, none index.
   for (const path of [
     "/nie-ma-takiej-strony",
     "/adres/9999999",
@@ -261,8 +269,8 @@ try {
       missing.length > 0 ||
       html.includes('<meta name="description"') ||
       html.includes("__next_error__") ||
-      metas.length !== 1 ||
-      metas[0] !== "noindex"
+      metas.length === 0 ||
+      !metas.every(noindexOnly)
     ) {
       failures.push(
         `${path}: ${response.status}, missing ${JSON.stringify(missing)}, meta robots ${JSON.stringify(metas)}${html.includes("__next_error__") ? ", error shell" : ""}${html.includes('<meta name="description"') ? ", a description" : ""}`,
