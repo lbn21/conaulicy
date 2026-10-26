@@ -1,7 +1,8 @@
 // The IMGW banner (components/imgw-banner.tsx) in every state, from the mock
 // (IMGW_WARNINGS_URL=mock:…, lib/imgw-mock.ts), on the built site:
 // - mock:none (the build's own setting in CI): no banner on any route, no
-//   alert on the address page;
+//   alert on the address page; the breadcrumbs only on the address pages,
+//   right before <main> (task 149), so nothing precedes the banner in it;
 // - never the banner on an address page or its waste subpage: their alert
 //   slot (components/hub.tsx) for one warning, two (a gap between the
 //   lines), three (two lines, then „I jeszcze 1 ostrzeżenie”), and IMGW
@@ -10,8 +11,8 @@
 //   (role="region", aria-labelledby, no role="alert", no button), the title,
 //   one tag per warning with its level and colour, highest first, the time,
 //   the visible source line, the probability and footer sentences, the stale
-//   line, placed first in <main> (after the breadcrumbs, where a page has
-//   them) and before the h1 in the two-thirds column; axe at 375 and 1280 px;
+//   line, placed first in <main> and before the h1 in the two-thirds column;
+//   axe at 375 and 1280 px;
 // - a level-3 warning on the home page and /ulice (placement before the h1);
 // - stale (the copy kept from an earlier 10-minute slot), too old (3 hours)
 //   and a failing IMGW: the server's clock runs ahead (lib/fake-clock.mjs);
@@ -144,6 +145,22 @@ function forget(page) {
       rmSync(base + ext, { recursive: true, force: true });
 }
 
+// GOV.UK's breadcrumbs only on an address page (none on a flat site, the
+// home page or a 404), before <main>, as GOV.UK places them: the skip link
+// skips them and nothing stands above the banner in <main> (task 149).
+function crumbsPlaced(route, html) {
+  const address = route.path.startsWith("/adres/") && !route.status;
+  const main = html.slice(html.indexOf("<main"), html.indexOf("</main>"));
+  const before =
+    /<nav class="govuk-breadcrumbs[^"]*"[^>]*><ol class="govuk-breadcrumbs__list">(?:(?!<\/nav>)[\s\S])*<\/nav><main class="govuk-main-wrapper" id="main-content">/.test(
+      html,
+    );
+  if (main.includes("govuk-breadcrumbs") || before !== address)
+    failures.push(
+      `${route.path}: ${address ? "no breadcrumbs right before" : "breadcrumbs, or some in"} <main>`,
+    );
+}
+
 // What the page shows of the banner, or null.
 function readBanner() {
   const banners = [...document.querySelectorAll(".govuk-notification-banner")];
@@ -159,13 +176,8 @@ function readBanner() {
     titleTag: title?.tagName,
     title: title?.textContent.trim(),
     inHeader: !!title?.closest(".govuk-notification-banner__header"),
-    // First in <main>, or right after the breadcrumbs
-    // (components/breadcrumbs.tsx), themselves first: nothing else above it.
     firstInMain:
-      row?.parentElement?.id === "main-content" &&
-      (!row.previousElementSibling ||
-        (row.previousElementSibling.matches("nav.govuk-breadcrumbs") &&
-          !row.previousElementSibling.previousElementSibling)),
+      row?.parentElement?.id === "main-content" && !row.previousElementSibling,
     column: !!b.closest(".govuk-grid-column-two-thirds"),
     beforeH1:
       !!h1 &&
@@ -695,6 +707,7 @@ try {
         failures.push(
           `${route.path}: a banner with ${process.env.IMGW_WARNINGS_URL}`,
         );
+      crumbsPlaced(route, html);
     }
     const hub = await (await fetch(plain.origin + HUB)).text();
     if (

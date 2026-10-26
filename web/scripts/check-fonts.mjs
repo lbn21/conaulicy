@@ -1,5 +1,5 @@
 // Checks that the web font arriving late moves nothing: on the home page, an
-// address page and its waste and water subpages, the content pages, at 360px, 375px (where the
+// address page and its waste and water subpages, at 360px, 375px (where the
 // breadcrumbs once wrapped differently) and 1280px, every font request is
 // held back 1.5s (a slow first visit) and the summed layout shift, including
 // shifts CLS itself would forgive, must stay under 0.001. (0.01 is too loose:
@@ -21,19 +21,13 @@ const PAGES = [
   "/adres/0972447-00470",
   "/adres/0972447-00470/smieci",
   "/adres/0972447-00470/woda",
-  // The content pages, under their breadcrumbs (task 146).
-  "/szukaj",
-  "/o-projekcie",
-  "/prywatnosc",
-  "/dostepnosc",
-  "/ulice",
 ];
 const WIDTHS = [360, 375, 1280];
 const FONT_DELAY = 1500;
 const LIMIT = 0.001;
 
 // Each place's breadcrumbs on a subpage and its h1, roughly as
-// components/place-page.tsx Breadcrumbs builds them.
+// components/place-page.tsx PlaceBreadcrumbs builds them.
 const LOCALITY = new Map(ZUK_PLACES.localities.map((l) => [l.id, l]));
 const NAMES = [
   ...ZUK_PLACES.streets.map((s) => [

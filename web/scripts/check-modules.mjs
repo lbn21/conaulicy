@@ -1,12 +1,14 @@
 // The address page as a hub of modules (components/hub.tsx, lib/modules.ts)
 // and the waste subpage (/adres/<id>/smieci), on the CI fixture with the
 // build's IMGW setting (mock:none in CI; check-warnings.mjs covers warnings):
-// - breadcrumbs (GOV.UK's, every item a link, the page itself left out):
-//   the hub „Strona główna › <locality>” (a street's to its locality's
-//   line on /ulice, #m-<SIMC>; a village part's to its village's line;
+// - breadcrumbs (GOV.UK's, every item a link, the page itself left out),
+//   right before <main>, never inside it (task 149): the hub
+//   „Strona główna › <locality>” (a street's to its locality's line on
+//   /ulice, #m-<SIMC>; a village part's to its village's line;
 //   any other village's to the villages; a village names its gmina),
 //   /smieci adds the address page; the street page's
-//   error variants keep the hub's;
+//   error variants keep the hub's; none on the flat pages (/szukaj,
+//   /o-projekcie, /prywatnosc, /dostepnosc, /ulice), the home page or a 404;
 // - the hub: no caption (the locality is in its breadcrumbs), one h1,
 //   „Zmień adres”, no summary cards: a section per module (task 131), waste
 //   first (h2 „Śmieci”, its „Wszystkie odbiory śmieci” link to /smieci, ?nr= kept,
@@ -131,7 +133,16 @@ const TOWN = ["/ulice#m-0972447", "Lubaczów"];
 const VILLAGES = (text) => ["/ulice#wsie-heading", text];
 const GROUP = (simc, text) => [`/ulice#m-${simc}`, text];
 
+// The whole page's HTML: the breadcrumbs stand before <main>, as GOV.UK
+// places them, so the skip link (#main-content) skips them.
 function crumbsAre(path, html, want) {
+  if (
+    !/<\/ol><\/nav><main class="govuk-main-wrapper" id="main-content">/.test(
+      html,
+    ) ||
+    MAIN.exec(html)?.[0].includes("govuk-breadcrumbs")
+  )
+    fail(path, "breadcrumbs not right before <main>");
   const got = crumbs(html);
   if (JSON.stringify(got) !== JSON.stringify(want))
     fail(
@@ -235,13 +246,13 @@ try {
   ]) {
     const { status, main: hub, html } = await main(path);
     if (status !== 200) fail(path, `${status}, want 200`);
-    crumbsAre(path, hub, [HOME, locality]);
+    crumbsAre(path, html, [HOME, locality]);
     if (
-      !/<\/nav><div class="govuk-grid-row"><div class="govuk-grid-column-two-thirds"><h1 class="govuk-heading-l">[^<]+<\/h1>/.test(
+      !/^<main[^>]*><div class="govuk-grid-row"><div class="govuk-grid-column-two-thirds"><h1 class="govuk-heading-l">[^<]+<\/h1>/.test(
         hub,
       )
     )
-      fail(path, "not the breadcrumbs, then the h1 with no caption");
+      fail(path, "not the h1 first in <main>, with no caption");
     if (!hub.includes(">Zmień adres<")) fail(path, "no „Zmień adres”");
     hubOutline(path, hub);
     if (sections(hub)[0] !== "Śmieci") fail(path, `sections ${sections(hub)}`);
@@ -329,7 +340,7 @@ try {
 
     const sub = await main(waste);
     if (sub.status !== 200) fail(waste, `${sub.status}, want 200`);
-    crumbsAre(waste, sub.main, [HOME, locality, [links[0], name]]);
+    crumbsAre(waste, sub.html, [HOME, locality, [links[0], name]]);
     if (
       !/<span class="govuk-caption-l">[^<]+<\/span><h1 class="govuk-heading-l">Odbiór śmieci<\/h1>/.test(
         sub.main,
@@ -379,7 +390,7 @@ try {
   const waterPath = `${STREET}/woda`;
   const water = await main(waterPath);
   if (water.status !== 200) fail(waterPath, `${water.status}, want 200`);
-  crumbsAre(waterPath, water.main, [HOME, TOWN, [STREET, "ul. Adama Asnyka"]]);
+  crumbsAre(waterPath, water.html, [HOME, TOWN, [STREET, "ul. Adama Asnyka"]]);
   if (
     !/<span class="govuk-caption-l">[^<]+<\/span><h1 class="govuk-heading-l">Przerwy w dostawie wody<\/h1>/.test(
       water.main,
@@ -430,16 +441,16 @@ try {
   )
     fail(SPLIT, "no „Podaj numer domu” to /smieci");
   if (ask.main.includes('href="/ics/')) fail(SPLIT, "a calendar link");
-  crumbsAre(SPLIT, ask.main, [HOME, TOWN]);
+  crumbsAre(SPLIT, ask.html, [HOME, TOWN]);
   const wrong = await main(`${SPLIT}?nr=42`);
   if (
     !wrong.main.includes("govuk-error-summary") ||
     sections(wrong.main).length > 0
   )
     fail(`${SPLIT}?nr=42`, "not the street page's error");
-  crumbsAre(`${SPLIT}?nr=42`, wrong.main, [HOME, TOWN]);
+  crumbsAre(`${SPLIT}?nr=42`, wrong.html, [HOME, TOWN]);
   const askSub = `${SPLIT}/smieci`;
-  crumbsAre(askSub, (await main(askSub)).main, [
+  crumbsAre(askSub, (await main(askSub)).html, [
     HOME,
     TOWN,
     [SPLIT, "ul. Tadeusza Kościuszki"],
@@ -448,20 +459,19 @@ try {
   // no usable number (/numer) goes back without.
   crumbsAre(
     `${SPLIT}/smieci?nr=42`,
-    (await main(`${SPLIT}/smieci?nr=42`)).main,
+    (await main(`${SPLIT}/smieci?nr=42`)).html,
     [HOME, TOWN, [`${SPLIT}?nr=42`, "ul. Tadeusza Kościuszki"]],
   );
   for (const nr of ["", "x!"]) {
     const path = `${STREET}/smieci?nr=${nr}`;
-    crumbsAre(path, (await main(path)).main, [
+    crumbsAre(path, (await main(path)).html, [
       HOME,
       TOWN,
       [STREET, "ul. Adama Asnyka"],
     ]);
   }
-  // The content pages: „Strona główna” alone, the first thing in <main>,
-  // as on the address pages (task 146). None on the home page or a 404
-  // (GOV.UK: not on the start page or an error page).
+  // No breadcrumbs anywhere on the flat pages, the home page or a 404
+  // (GOV.UK: none on a site with a flat structure; task 149).
   for (const path of [
     "/szukaj?q=",
     "/szukaj?q=adama",
@@ -470,14 +480,11 @@ try {
     "/prywatnosc",
     "/dostepnosc",
     "/ulice",
+    "/",
+    "/nie-ma-takiej-strony",
+    "/adres/9999999",
   ]) {
-    const page = (await main(path)).main;
-    crumbsAre(path, page, [HOME]);
-    if (!/^<main[^>]*><nav class="govuk-breadcrumbs/.test(page))
-      fail(path, "breadcrumbs not first in <main>");
-  }
-  for (const path of ["/", "/nie-ma-takiej-strony"]) {
-    if ((await main(path)).main.includes("govuk-breadcrumbs"))
+    if ((await main(path)).html.includes("govuk-breadcrumbs"))
       fail(path, "breadcrumbs");
   }
 
@@ -558,7 +565,7 @@ async function shots(dir) {
       const gaps = await page.evaluate((note) => {
         const box = (selector) =>
           document.querySelector(selector).getBoundingClientRect();
-        const crumbs = box("main .govuk-breadcrumbs");
+        const crumbs = box(".govuk-breadcrumbs");
         const next = box("main .govuk-grid-row");
         const h1 = box("main h1");
         const gaps = {
