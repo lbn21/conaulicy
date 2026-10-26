@@ -7,6 +7,7 @@ import {
   realMzgkimPost,
   WHOLE_TOWN,
 } from "../../mzgkim-fixture.ts";
+import { PRG_NUMBERS } from "../../prg-numbers.generated.ts";
 import { MZGKIM } from "../../water-sources.ts";
 import { type PostReading, readPost, type ZukPost } from "../../zuk.ts";
 import type { AiItem, AiResult } from "../../zuk-ai.ts";
@@ -78,7 +79,7 @@ test("5237: three streets as TERYT names them, declined or shortened", () => {
 
 test("5237: the area off our list is kept as written, never its street", () => {
   const r = parsed(read(realMzgkimPost(CUT_100), MZGKIM_READINGS[CUT_100]));
-  assert.deepEqual(r.unmatched, [OSIEDLE]);
+  assert.deepEqual(r.unmatched, [OSIEDLE, "Osiedle Mazury"]);
   assert.equal(r.dropped.length, 1);
   // The model taking the area for ul. Niemirowska: dropped, never widened
   // to the whole street (the area's words are more than its name).
@@ -95,7 +96,37 @@ test("5237: the area off our list is kept as written, never its street", () => {
     widened.items.some((d) => d.place.streetId === NIEMIROWSKA),
     false,
   );
-  assert.deepEqual(widened.unmatched, [OSIEDLE]);
+  assert.deepEqual(widened.unmatched, [OSIEDLE, "Osiedle Mazury"]);
+});
+
+test("a part of the town: its cut kept and its words linked too, never lost", () => {
+  // TERYT's part Mazury (0972453) has no PRG address point, so no page in
+  // production: "Osiedle Mazury" is also linked on the town's other pages.
+  assert.equal(
+    PRG_NUMBERS.split("\n").some((line) => line.startsWith(`${MAZURY};`)),
+    false,
+  );
+  const r = parsed(read(realMzgkimPost(CUT_100), MZGKIM_READINGS[CUT_100]));
+  assert.ok(r.items.some((d) => d.place.localityId === MAZURY));
+  assert.deepEqual(r.unmatched?.at(-1), "Osiedle Mazury");
+  // Its name alone where the post has no "Osiedle" before it.
+  const post = realMzgkimPost(CUT_100);
+  const bare = {
+    ...post,
+    content: {
+      rendered: post.content.rendered.replace(
+        "<li>Osiedle Mazury</li>",
+        "<li>Mazury</li>",
+      ),
+    },
+  };
+  const named = parsed(read(bare, MZGKIM_READINGS[CUT_100]));
+  assert.deepEqual(named.unmatched, [OSIEDLE, "Mazury"]);
+  // A street matched is never also linked.
+  assert.equal(
+    named.unmatched?.some((w) => /Sobieskiego|Starzyny/.test(w)),
+    false,
+  );
 });
 
 test("5108: Sobieskiego in part, its words as the note; Dąbrowa only a direction", () => {
