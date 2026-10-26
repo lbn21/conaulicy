@@ -14,12 +14,12 @@ Vercel Blob. No database writes.
    most 6 days after the post.
 3. Has grok-4.7 (xAI, reasoning low) read only the posts that are new,
    edited (`modified`), read by an older reader (`reader` below
-   `ZUK_READER`) or whose last reading failed: at most 4 per run
-   (`lib/zuk-ai.ts`), one call per post. Every other post keeps its stored
-   result, and so does a post read before that is not read this run. A
-   post whose title's days are all before today (Warsaw) is not read
-   (`seen`, `reason: "past"`). The model says what the post is
-   (`post_type`):
+   `ZUK_READER`) or whose last reading failed, and the posts with rejected
+   items when the districts changed (`gazetteer`, below): at most 4 per run
+   (`lib/zuk-ai.ts`), one call per post. No word filter before the model:
+   every post is read once. Every other post keeps its stored result, and
+   so does a post read before that is not read this run. The model says
+   what the post is (`post_type`):
    - `water_outage`: read for its cuts (steps 4 and 5);
    - `water_quality` (boil-water, contamination, or its lifting,
      `quality_status`): `active` with `reason: "water-quality"`, its places
@@ -27,19 +27,23 @@ Vercel Blob. No database writes.
      passes), not shown yet;
    - `other`: `seen` with `reason: "not-water"`, never read again unless
      edited, never shown.
-   The old keyword filter (`matchesOutageKeywords`) only cross-checks: where
-   it and the model disagree, the log has `{zuk: "classify-disagree"}`.
-4. Runs each item through the place gate (v3.1, `lib/zuk-resolve.ts`, below)
-   and then the repo's own, stricter checks (`lib/zuk-guards.ts`: the day
-   near the post's dates, the times in the text, nothing left out when
-   there is no note, the houses from the note). A place that fails is
-   dropped, alone, and shown nowhere; a day or time that fails, or no place
-   left, makes the whole post a Notice: a link, no date.
+   It also says whether the post moves, extends or cancels the dates of an
+   earlier one (`changes_earlier_dates`, stored as `change`).
+4. Runs each item through the gate (`lib/zuk-resolve.ts`, below), which
+   checks only what is certain, and the day and time checks
+   (`lib/zuk-guards.ts`), then expands its place from our tables alone
+   (`lib/zuk.ts`). An item that fails is rejected, alone, with a short
+   reason (the `rejected` list, below); residents get a link to the post on
+   its locality's pages (else the post's localities) wherever none of its
+   cuts is shown. A day or time that fails, or no place left, makes the
+   whole post a Notice: a link, no date.
 5. Drops cuts that are over (`itemCount` keeps how many were read), sorts
    the posts into `active` and `seen` (below) and writes the file on every
    run: `checkedAt` is this run (the pages' „Ostatnio sprawdziliśmy”),
-   `generatedAt` the last run that changed its content (every `checkedAt`
-   in it aside). About 96 small Blob writes a day.
+   `generatedAt` the last run that changed what the pages read (every
+   `checkedAt` in it aside, and the `rejected` list). About 96 small Blob
+   writes a day. A run with rejected items logs them in one line,
+   `{zuk: "rejected", source, gazetteer, entries}`.
 6. Only a run that changed the content purges the `water` cache tag
    (`revalidateTag("water", { expire: 0 })`, `lib/headers.ts`), after the
    write: the file's cached copy and every response tagged with it, below.
@@ -65,52 +69,21 @@ schema, guards and gate (`lib/sources/mzgkim/`, `lib/water-sources.ts`):
   pages only while the 14-day window needs them). The feed has no edit time:
   a hash of each item's title and summary (`digest`) tells an edit, and an
   edited post's `modified` is the run that first saw it.
-- **Prefilter:** a post without a water word (`wody`, `wodę`,
-  `wodociągowej`…) in its title or summary is `seen` as `not-water` without
-  a model call (the PSZOK, opening hours, deratyzacja).
 - **The page:** the feed's summary flattens the street list, so a post the
   model reads has its page fetched first (`fullPost`, one request); a page
   that fails is retried next run, as xAI down.
-- **Gate rules of its own** (`GateRules`; none for the gmina): its posts
-  never name the town, so the town need not be written (a part, "Niwki",
-  must be); only an exact mention of a place outside the town
-  blocks a street ("w kierunku Dąbrowy" is a direction); streets may be
-  written declined ("Niemirowskiej"), nothing but a type word before them;
-  the whole town only in the post's own words ("na terenie całego miasta").
-- **Districts (the gazetteer, task 151):** see below; "Osiedle Mazury" is
-  its 22 streets.
-- **Places off our list** ("Osiedle domów jednorodzinnych na zapleczu ul.
-  Niemirowskiej") are kept as written (`unmatched`, logged with the run):
-  every town page without a cut from that post links it ("MZGKiM ogłosił też
-  przerwę w miejscu, którego nie umiemy dopasować do adresów: „…”"). So is
-  a place matched only to a part of the town with no street ("Niwki", TERYT
-  part 0972460): such a part has no PRG address point and so no page, and
-  the post's words for it are what the town's pages can link; and a doubt
-  (a bare "Mazury", below).
-- **"X wraz z osiedlem"** is never a limit: the street X whole, and the
-  estate a place of its own (the gazetteer's, else linked as written). The
-  prompt says so; the gate also reads such a note as the whole street.
-- **A street then another of the town** ("Cicha, ul. Młodowska", 4744): the
-  second is not a limit the first leaves out (`checkOmission`'s `others`
-  take the same place's other streets for a street, never for a whole
-  place).
-- **A village in a bracket after a town street** ("ul. Młodowska
-  (Młodów)", 4744): where it leads, not where it lies. A street of the town
-  written whole with its type word is kept whole, the bracket in its words
-  (`where`), never a note ("in part"); a street not written whole ("ul.
-  Sobieskiego (Dąbrowa)") is still dropped. The gmina's posts: unchanged,
-  the bracket decides.
-- **Year:** a day written without one ("6 października") takes the post's
-  year, a day before the post the next year's (`inferYear`, every source).
+- **Its area:** only the town and its parts are on its list
+  (`lib/water-sources.ts` `area`), and its posts never name the town: an
+  item of the town itself may leave `locality_verbatim` empty (`implied`);
+  a part must be written.
 - **Failures stay its own:** the feed down, a page or Blob error: logged
   (`{zuk: "source-down", source: "mzgkim"}`) and listed under `sources` in
   the reply, never the gmina's run or the status. Both runs share one
   model-call budget from the route's start.
 
-Model calls: only new or edited posts that pass the prefilter, one each.
-In its last 20 posts (Nov 2025 to Oct 2026) that is 3 cuts and 2 other
-posts with a water word: about 5 calls a year, so 0 on almost every day and
-1 on a day it posts a cut. The feed costs 96 small requests a day.
+Model calls: every new or edited post, one each: about 20 a year (it
+posts 10 in a few months), so 0 on almost every day. The feed costs 96
+small requests a day.
 
 The pages (`lib/water-module.ts`): one logic and one set of texts for every
 address; only the list of sources differs (the gmina's everywhere, MZGKiM's
@@ -131,38 +104,26 @@ district). It lives in the database (`district_aliases`,
 `district_alias_streets`, docs/database.md), which the cron reads
 (`lib/districts-db.ts`) for both prompts and the gate:
 
-- **The prompts:** both list the districts with their forms and streets
-  after the streets. MZGKiM's rules: a district is ONE item, `street` its
-  name as listed, `street_verbatim` the post's words; never its streets.
-  The gmina's rules stay byte for byte; one line in its context says it.
-- **The gate:** an item whose words spell a district (case and diacritics
-  aside, "osiedle" in any form or "os.", "X wraz z osiedlem" for X its
-  name; a name inside a longer one, "os. Mazury" in "os. Mazury VI", is
-  not it), or whose `street` or town part names one, is the district: each
-  of its streets, whole (a stretch where the gazetteer gives one, "bloki
-  24–34A": in part, houses unknown), with the post's words as `where`. A
-  street an item names itself wins over the district's: never twice, never
-  wider. A district the post limits (a note) is left out and linked; one
-  with no street is its TERYT part if it has one (as before), else only
-  linked.
-- **Misspellings:** the code never guesses. Both prompts ask the model to
-  map an obvious misspelling of a listed district ("osiedle Mazóry") to its
-  listed name, keeping the post's words; the gate takes the district the
-  model names when those words are in the post. A name the model does not
-  map stays unmatched, linked as written.
-- **"ul. Mazury" is the street** 12559 only; "ul. Mazury, osiedle Mazury"
-  both. A **bare "Mazury"** (no "ul.", no "osiedle") is the street too, kept
-  as a doubt; so is a bare "Piaski" (16027). Not for a one-street estate
-  whose street has its name (Żelichówka, Pod Borem, Mały Łążek): no doubt
-  there. "Boczna Mazury" is its own street, never "Mazury".
-- **Where a doubt is said:** each doubt in the file (`doubts`) keeps the
-  post's words and the streets of the district it may mean, from the
-  gazetteer as the cron read it. Only the pages of those streets, and only
-  where that post shows no cut of its own, say it in one line linking the
-  post: „MZGKiM pisze tylko „Mazury”, więc nie wiemy na pewno, czy chodzi o
-  ulicę, czy o całe osiedle – zajrzyj do komunikatu” (two names on one
-  street: „Mazury” i „Piaski”, „ulice … osiedla”). No other town page
-  shows it (`water` in `lib/water-module.ts`; no names in code).
+- **The prompt:** lists the districts once, in the context, with their
+  forms and streets. The model names a district by its listed name; it
+  maps the post's words (a form, "osiedle X", "X wraz z osiedlem", a
+  misspelling) to it, never the code.
+- **The gate:** a `street` that is a listed district of the item's town is
+  that district: each of its streets, whole (a stretch where the gazetteer
+  gives one, "bloki 24–34A": in part, houses unknown; the item's note
+  limits them all), with the post's words as `where`. A street an item
+  names itself wins over the district's: never twice, never wider. A
+  district with no street known is rejected ("district has no streets")
+  and linked.
+- **Doubts:** the model's `doubt` is the listed district a bare street
+  name may mean instead (a bare "Mazury": the street, or the estate). The
+  gate checks only that it is a listed district with streets; the file
+  keeps the post's words and that district's streets (`doubts`). Only the
+  pages of those streets, and only where that post shows no cut of its
+  own, say it in one line linking the post: „MZGKiM pisze tylko „Mazury”,
+  więc nie wiemy na pewno, czy chodzi o ulicę, czy o całe osiedle –
+  zajrzyj do komunikatu” (`water` in `lib/water-module.ts`; no names in
+  code).
 
 A district street the TERYT snapshot lacks is skipped by the gate and
 logged by the cron (`{zuk: "district-street-unknown", district, street}`,
@@ -178,6 +139,7 @@ To try a post on the real model on your own computer (no write anywhere):
 ```sh
 cd web
 npm run water:dry-run -- --source mzgkim --file post.txt --published 2026-10-02T12:11:39
+npm run water:dry-run -- --case 39885   # a prompt regression case, its expected reading too
 # --ai reading.json: gate a saved model reading again, no call
 # --districts db: the gazetteer from DATABASE_URL instead of the seed
 ```
@@ -185,55 +147,72 @@ npm run water:dry-run -- --source mzgkim --file post.txt --published 2026-10-02T
 It prints the model's JSON and the gate's result (`scripts/lib/water-dry-run.ts`
 `waterDryRun`, the same prompt, schema and gate as the cron).
 
-## The file (version 4, `lib/zuk-data.ts`)
+## The file (version 5, `lib/zuk-data.ts`)
 
 ```json
 {
-  "version": 4,
+  "version": 5,
   "generatedAt": "2026-10-25T08:00:00.000Z",
   "checkedAt": "2026-10-25T08:00:00.000Z",
-  "active": [{ "id": 39885, "modified": "…", "reader": 3, "url": "…",
+  "gazetteer": "3f2a9c01b7d4",
+  "active": [{ "id": 39885, "modified": "…", "reader": 6, "url": "…",
                "title": "…", "status": "parsed", "localityIds": ["…"],
-               "itemCount": 76, "items": ["…"], "sourceId": "gmina-lubaczow" }],
-  "seen": [{ "id": 39868, "modified": "…", "reason": "not-water", "reader": 3 }]
+               "itemCount": 76, "items": ["…"], "sourceId": "gmina-lubaczow",
+               "unmatched": [{ "words": "ul. Próbna", "localityId": "…" }] }],
+  "seen": [{ "id": 39868, "modified": "…", "reason": "not-water", "reader": 6 }],
+  "rejected": [{ "postId": 39885, "url": "…", "sourceId": "gmina-lubaczow",
+                 "publishedAt": "…", "readAt": "…", "item": {"…": "…"},
+                 "reason": "street not listed", "suggested_places": ["…"] }]
 }
 ```
 
 - `active`: what the pages read: parsed posts with cuts still to come
   (only those cuts), Notices (water posts that could not be read) within
   their 14 days, water-quality posts (not shown yet), and a date-change
-  post while it doubts an active one.
+  post while it doubts an active one. `unmatched`: its rejected items, as
+  the pages link them.
 - `seen`: one record per other decided post, for the cron only: `not-water`,
-  `past` (its title's days or its cuts are over), `expired` (a Notice past
-  its 14 days), `ai-unavailable`. No title, url, places or cuts.
-- A post leaves both when it leaves the 14-day window. The model's tokens
-  and cost are in the log only.
-- The file version is the shape; `reader` (`ZUK_READER`, now 3: the v3.1
-  prompt, schema and gate) is what read the post. Raise `ZUK_READER` and
-  every post is read again, 4 a run. A file of an older version is no
-  file: the pages show the
-  source link and the cron reads the window afresh, 4 a run, and replaces
-  it (never delete the Blob by hand).
+  `past` (its cuts are over), `expired` (a Notice past its 14 days),
+  `ai-unavailable`. No title, url, places or cuts.
+- `rejected`: for review only, never read by the pages: every item of a
+  post in the window that failed, the model's JSON as returned, a reason
+  (`locality not listed`, `street not listed`, `district has no streets`,
+  `not in post`, `date`, `time`) and the model's `suggested_places` (listed
+  names only). Rebuilt each run: a post read again replaces its entries,
+  a post out of the window takes them along. Never applied by itself: a
+  fix is a data-table change (the gazetteer) or a prompt rewrite.
+- `gazetteer`: a short hash of the district rows the posts were read with.
+  When it differs, the posts with rejected items are read again; the
+  districts are loaded whenever a post is to be read or `rejected` is not
+  empty.
+- A post leaves `active` and `seen` when it leaves the 14-day window. The
+  model's tokens and cost are in the log only.
+- The file version is the shape; `reader` (`ZUK_READER`, now 6: the shared
+  prompt and the gate of certain checks, task 182) is what read the post.
+  Raise `ZUK_READER` and every post is read again, 4 a run. A file of an
+  older version is no file: the pages show the source link and the cron
+  reads the window afresh, 4 a run, and replaces it (never delete the
+  Blob by hand).
 
-## The prompt (v3.1)
+## The prompt (task 182)
 
-One module per source (`lib/sources/<id>/prompt.ts`; a new source is a
-prompt plus a fetch adapter, `lib/sources/source.ts`); the schema
-(`schema-v31.json` of the X8 handoff), the reply check, the guards and the
-place gate are shared. Each active post keeps its `sourceId`. The gmina
-Lubaczów's prompt is the rules (what a post is, `post_type`, Jakub's X8
-text; the item and place-name rules, every example name invented) and
-then the context, built from the TERYT snapshot (`systemPrompt`): our town,
-villages, village parts (with their village) and every street of each
-locality, by its TERYT name, in a fixed order, so the rules are a fixed
-prefix and the context follows the data. For the full snapshot it is
-14,125 bytes, SHA-256 `b8675dd3…faba6`, byte for byte the prompt measured
-offline (task 114b: 263 real posts, 263/263 classified, 0 wrong places;
-the recorded replies are `lib/zuk-golden.ts`). An item gives the locality
-and street as on our list, the post's own words for them
-(`locality_verbatim`, `street_verbatim`), and any limitation (house
-ranges, "w części", an unlisted part's name, "(przysiółek …)") as one
-literal `note`. The model never returns ids; our code decides.
+One prompt for every source (`lib/water-prompt.ts`): a short header of the
+source's own, saying how it writes (`lib/sources/<id>/index.ts`; from the
+style analysis of both sources' posts), the shared rules, then the context.
+The rules are general principles only: copy the post's words verbatim, use
+only listed names, never invent places, days or times, put every
+limitation in the note, return a place not on the list with
+`suggested_places`. No rule is written for one post: a post the model
+reads wrongly becomes a regression case (`lib/water-cases.ts`, run by
+`--case` on the real model) and the fix is a rewrite of the prompt or a
+data-table change, then a dry run. Every example name is invented. The
+context is the source's area from the TERYT snapshot (towns, villages,
+parts as "Name (Village)", each locality's streets by TERYT name) and the
+districts, sorted, so it is byte-stable for the same places. An item gives
+the locality and street (or district) as listed, the post's own words for
+them, any limitation as one literal `note`, `end_estimated`, `whole_town`
+with its words, a `doubt` and `suggested_places`. The model never returns
+ids; our code maps listed names to them.
 
 Each cut carries our names for its label (`label`: locality, its village
 for a village part, street) and its houses (`scope`); the source's own
@@ -275,42 +254,34 @@ The reply is the run's summary: posts, model calls, cost, whether it wrote.
 Each model call logs its post, tokens, latency and cost (USD, $2/1M in,
 $6/1M out and reasoning) in the function log.
 
-## Fail closed (the gate, gate-spec v3.1, then the repo's checks)
+## Fail closed (the gate: certain checks only)
 
-Generic, from the snapshot only: no place-specific code, list or alias.
+Generic, from the snapshot and the districts only: no place-specific code,
+list or alias, and no word rule on the post's text beyond these literal
+checks:
 
-- a day not written in the post (D.M, "D <month>", inside "a-b.M", "a do
+- the day: written in the post (D.M, "D <month>", inside "a-b.M", "a do
   b.M", "a.M - b.M", or "(od) D.M.YYYY do/- D.M.YYYY", ends included), a
-  year written with it that is not the item's, a bracketed weekday that
-  does not match, a day far from the post's dates, a time not in the text;
-- a locality not ours, or a name two places share without the village;
-  `locality_verbatim` not in the text, not exactly the locality's name
-  (case and diacritics aside: an inflected "w Lubaczowie" alone is
-  dropped), or only inside a longer name of ours ("Basznia" in "Basznia
-  Dolna"); a whole place named only as a street ("ul. Żuki"), or
-  "przysiółek X" without X's village;
-- a street not exactly one of that locality's, by its name or CECHA form
-  ("os. Wolności"), else a unique end ("Sobieskiego"); `street_verbatim` not
-  in the text or not pointing at this street alone ("Mickiewicza" with no
-  type word: ul. or os.?; "ul. Kurierów Armii Krajowej" for "Armii
-  Krajowej"); the locality that decides for it (a bracket right after it,
-  "ul. Przemysłowa (Lubaczów)", else the nearest before, else the nearest
-  after in its sentence) not this one, or only inflected;
-- all of Lubaczów;
-- a note not one literal piece of the post, or naming another place of
-  ours; with no note, the place in the text with something left out (house
-  numbers, "w części", a bracket) that no other item's note has.
+  year written with it the item's, a bracketed weekday that matches; from
+  the day before the post to 31 days after its last edit (`date`);
+- times: valid HH:MM, written in the post; an end before the start is the
+  next day; the same start and end none (`time`);
+- `locality`: a listed name of the source's list, exactly (`locality not
+  listed`); `locality_verbatim` in the post, empty only for the town of
+  a source that never names it (`not in post`);
+- `street`: a listed street of that locality or a listed district of it,
+  exactly (`street not listed`); its words in the post (`not in post`);
+  words of a street with no listed `street` are a street not listed;
+- the town without a street only with `whole_town` and its words in the
+  post;
+- the note: in the post, one literal piece.
 
-A mention of our place is a capitalised run of words matching one of our
-names by stem (a word less up to 3 final letters, at least 3 left), an
-all-caps word only exactly ("ZUK" is not Żuki), and a look-alike that is a
-street ("Piaskowa") none; only an exact mention approves. A name a village
-and a village part share is the village, unless written with its village
-("Dąbrowa (Basznia Górna)"). A village-wide cut covers the village and
-every street of its own, from our data, not its village parts. House
-numbers for a village with streets are the village only, never copied onto
-its streets. The houses come from the note: ranges or numbers if that is all it says, else
-"unknown" (part of the place).
+"In the post": a substring of the title and text, case, dashes and runs of
+spaces aside. A village-wide cut covers the village and every street of
+its own, from our data, not its village parts. House numbers for a place
+with streets are the place only, never copied onto its streets. The houses
+come from the note: ranges or numbers if that is all it says, else
+"unknown" (part of the place), and so for a range it cannot read.
 
 ## Our places: the TERYT snapshot
 
@@ -318,10 +289,8 @@ its streets. The houses come from the note: ranges or numbers if that is all it 
 street TERYT has for our gminy (69 and 276), each street with its TERYT
 CECHA and NAZWA_1. It is what the prompt and the gate read, in production
 (`app/api/cron/zuk/route.ts`, not the database, which has no CECHA forms)
-and in CI, with no database or network: every one of our names resolves to
-one place, the one named, or is dropped; no two of our names match each
-other under the stem rule; the golden set gives its hand-checked result
-item by item (`lib/zuk-resolve.test.ts`). It is built only from the public
+and in CI, with no database or network (`lib/zuk-resolve.test.ts`,
+`lib/water-cases.test.ts`). It is built only from the public
 GUS TERYT files archived in `etl/sources.yaml`. Refresh it whenever those
 change (a reviewed TERYT difference):
 
