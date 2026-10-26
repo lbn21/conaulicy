@@ -167,6 +167,39 @@ test("omission: a village never named on its own (39495)", () => {
   );
 });
 
+test("omission: each dated line is its own (39885 as edited, task 152)", () => {
+  const text = [
+    "Przerwy w dostawie wody: 26-29.10.2026 (uwaga aktualizacja)",
+    "Zakład Usług Komunalnych Sp. z o. o. w Mokrzycy informuje, że w związku z trwającymi pracami modernizacyjnymi (wymiana węzłów i hydrantów) w dniach od 26.10.2026r. (poniedziałek) do 29.10.2026r. (czwartek) nastąpi przerwa w dostawie wody dla mieszkańców miejscowości:",
+    "-26.10.2026 (poniedziałek): Lisie Jamy w godz. od 8:00 do 16:00",
+    "-27.10.2026 (wtorek): Lisie Jamy, ul. Długa, Wąska, Leśna, Zielona w godz. od 8:00 do 12:00",
+    "-27.10.2026 (wtorek): Dąbków, Lubaczów ul. Żuki, Opaka od numeru 104 do 110 w godz. od 8:00 do 16:00",
+    "-29.10.2026 (czwartek): Wólka Krowicka, Lisie Jamy – w godz. od 8:00 do 16:00",
+  ].join("\n");
+  const lisie = (date?: string) =>
+    checkOmission("Lisie Jamy", "Lisie Jamy", [], [], text, date);
+  // 26.10 and 29.10: the whole village on their own lines.
+  assert.equal(lisie("2026-10-26"), null);
+  assert.equal(lisie("2026-10-29"), null);
+  // 27.10: its own line adds streets, so the whole village is out.
+  assert.match(lisie("2026-10-27") ?? "", /leaves out/);
+  // No day: the whole post, as before.
+  assert.match(lisie() ?? "", /leaves out/);
+  // A line of two days counts for both ("26-27.10"); a line of none, for
+  // every day.
+  const both = "-26-27.10.2026: Lisie Jamy, ul. Długa\n-29.10.2026: Lisie Jamy";
+  assert.match(
+    checkOmission("Lisie Jamy", "Lisie Jamy", [], [], both, "2026-10-26") ?? "",
+    /leaves out/,
+  );
+  const undated = "w dniu 26.10.2026r.:\nLisie Jamy, ul. Długa";
+  assert.match(
+    checkOmission("Lisie Jamy", "Lisie Jamy", [], [], undated, "2026-10-26") ??
+      "",
+    /leaves out/,
+  );
+});
+
 test("scope: house ranges or numbers from the note, else the whole place", () => {
   assert.deepEqual(noteScope(null), {
     scope: { type: "whole" },
