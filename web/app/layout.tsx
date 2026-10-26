@@ -82,11 +82,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Przejdź do treści
         </a>
         <SiteHeader />
-        <div className="govuk-width-container">
-          <main className="govuk-main-wrapper" id="main-content">
-            {children}
-          </main>
-        </div>
+        {/* Each page renders its own <main> (components/page-main.tsx),
+            after its breadcrumbs where it has them. */}
+        <div className="govuk-width-container">{children}</div>
         <SiteFooter />
         <GovukFrontend />
         {/* Production deployments only, never previews or local builds. */}

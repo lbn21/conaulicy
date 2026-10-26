@@ -6,7 +6,7 @@ Every page follows one consistent layout (Jakub's decision, task 125). Read this
 
 Every `/adres/<id>/<module>` page (`smieci`, `woda`, and later `prad` or any new module) has the same skeleton, in this order:
 
-1. Breadcrumbs: `PlaceBreadcrumbs` (`web/components/place-page.tsx`, built on the shared `Breadcrumbs`, below), rendered by `ModuleMain` (`web/components/module-page.tsx`).
+1. Breadcrumbs: `PlaceBreadcrumbs` (`web/components/place-page.tsx`, built on the shared `Breadcrumbs`, below), rendered by `ModuleMain` (`web/components/module-page.tsx`) before `<main>`; everything below is inside it.
 2. Caption (place, street) + h1: `SubpageHeading` (`web/components/place-page.tsx`).
 3. „Zmień adres”: part of the same heading (GOV.UK "Change" pattern).
 4. „Ostatnio sprawdziliśmy …”: `CheckedLine` (`web/components/checked-line.tsx`), from the module's `checkedAt` (`web/lib/modules.ts`).
@@ -30,13 +30,14 @@ Each needs Jakub's OK; listed here so nothing drifts silently.
 
 ## Breadcrumbs
 
-One component, `Breadcrumbs` (`web/components/breadcrumbs.tsx`), GOV.UK's breadcrumbs: every item a link, the page itself left out, `aria-label` „Ścieżka nawigacyjna”. Always the first thing in `<main>`, above everything else (the IMGW banner included), with the same spacing on every page.
+One component, `Breadcrumbs` (`web/components/breadcrumbs.tsx`), GOV.UK's breadcrumbs: every item a link, the page itself left out, `aria-label` „Ścieżka nawigacyjna”.
 
-- Address pages: „Strona główna”, the locality, and on a module's subpage the address page (`PlaceBreadcrumbs`, `web/components/place-page.tsx`).
-- `/szukaj`, `/o-projekcie`, `/prywatnosc`, `/dostepnosc`, `/ulice`: „Strona główna” alone (`HOME_CRUMB`; task 146).
-- None on the home page or an error page (404), as GOV.UK.
+- Only on the address pages (`/adres/<id>` and its subpages): „Strona główna”, the locality, and on a module's subpage the address page (`PlaceBreadcrumbs`, `web/components/place-page.tsx`).
+- None anywhere else: `/szukaj`, `/o-projekcie`, `/prywatnosc`, `/dostepnosc`, `/ulice`, the home page and the 404. GOV.UK: „Do not use the breadcrumbs component on websites with a flat structure”, and the rest of the site is flat (Jakub's decision, task 149; task 146 had added „Strona główna” there).
+- Before `<main>`, inside `govuk-width-container`, as GOV.UK places them: „Always place breadcrumbs at the top of a page, before the `<main>` element”, so the skip link („Przejdź do treści”, `#main-content`) skips them along with the header. So each page renders its own `<main>` (`PageMain`, `web/components/page-main.tsx`); the layout has only the container. The IMGW banner is the first thing in `<main>` on every page that has it.
+- Spacing as when they were inside `<main>`: `govuk-!-margin-top-7` stands in for main's top padding, and GOV.UK's own 10 px margin-bottom plus main's padding give the 30/50 px gap to the h1. GOV.UK's spacing scale has no 20/40 px step, so on mobile they sit 5 px lower than before (25 px under the header, not 20); identical from tablet up.
 
-`web/components/breadcrumbs.test.ts` renders the component; `web/scripts/check-modules.mjs` checks every page's crumbs in its HTML.
+`web/components/breadcrumbs.test.ts` renders the component and the address page's frame; `web/scripts/check-modules.mjs` checks the crumbs and their place in each page's HTML; `web/scripts/check-warnings.mjs` checks on every route that they appear only on address pages, right before `<main>`.
 
 ## Titles
 

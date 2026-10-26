@@ -4,6 +4,7 @@ import { type ReactNode, Suspense } from "react";
 import { Breadcrumbs, type Crumb, HOME_CRUMB } from "@/components/breadcrumbs";
 import { CheckedLine } from "@/components/checked-line";
 import { ErrorSummary } from "@/components/error-summary";
+import { PageMain } from "@/components/page-main";
 import { NOT_FOUND_METADATA, PageNotFound } from "@/components/page-not-found";
 import { PickupSchedule } from "@/components/pickup-schedule";
 import {
@@ -230,7 +231,13 @@ function HouseNumberQuestion({
 /** The 404 page for an unknown place or module (see NotFound). */
 export function PlaceNotFound() {
   return (
-    <Suspense fallback={<PageNotFound />}>
+    <Suspense
+      fallback={
+        <PageMain>
+          <PageNotFound />
+        </PageMain>
+      }
+    >
       <NotFound />
     </Suspense>
   );
@@ -321,7 +328,8 @@ export function StreetPage({
 
 /**
  * The address page's frame (the hub, and StreetPage): its breadcrumbs, then
- * the two-thirds column with its heading, the place's name as the h1.
+ * <main> with the two-thirds column and its heading, the place's name as the
+ * h1.
  */
 export function AddressPage({
   place,
@@ -335,16 +343,18 @@ export function AddressPage({
   return (
     <>
       <PlaceBreadcrumbs place={place} />
-      <div className="govuk-grid-row">
-        <div className="govuk-grid-column-two-thirds">
-          <PlaceHeading
-            place={place}
-            heading={withHouseNumber(place.name, place.nr)}
-            error={error}
-          />
-          {children}
+      <PageMain>
+        <div className="govuk-grid-row">
+          <div className="govuk-grid-column-two-thirds">
+            <PlaceHeading
+              place={place}
+              heading={withHouseNumber(place.name, place.nr)}
+              error={error}
+            />
+            {children}
+          </div>
         </div>
-      </div>
+      </PageMain>
     </>
   );
 }
