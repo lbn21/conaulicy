@@ -2,11 +2,15 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { MODULE_IDS } from "./address-routes.ts";
 import type { Disruption } from "./disruptions.ts";
+import { DISTRICTS } from "./districts-seed.ts";
 import { type Alert, alertSlot, checkedLine } from "./hub.ts";
+import { CUT_99, CUT_100 } from "./mzgkim-fixture.ts";
 import type { PlaceView } from "./schedule.ts";
 import {
+  bothViews,
   KROWICA_RANGE,
   mockFile,
+  mzgkimPost,
   POST_39885,
   SOBIESKIEGO_RANGE,
   sobieskiego,
@@ -16,15 +20,18 @@ import {
 } from "./water-fixture.ts";
 import {
   GMINA_NEWS,
-  inTown,
   MZGKIM_NEWS,
   matches,
+  noticeLink,
   outsideRange,
   scope,
   staleNote,
+  WATER_AI_NOTE,
   type Water,
   water,
+  waterAiNote,
   waterAlerts,
+  waterCalendarHint,
   waterChecked,
   waterEmpty,
   waterNone,
@@ -32,6 +39,7 @@ import {
   waterSummary,
   waterTrace,
 } from "./water-module.ts";
+import { MZGKIM as MZGKIM_SOURCE, sourcesAt } from "./water-sources.ts";
 import {
   AI_DEFERRED,
   NOT_WATER,
@@ -108,7 +116,7 @@ function waterAt(
   now = NOW,
   checkedAt = CHECKED,
 ): Water {
-  return water(zukView(zukFile(posts, checkedAt), now), address);
+  return water(bothViews(posts, checkedAt, now), address);
 }
 
 const cut = (over: Partial<Disruption>): Disruption => ({
@@ -548,51 +556,307 @@ test("/woda empty: a warm sentence and the gmina's news; none with a cut", () =>
   assert.equal(waterEmpty(waterAt(ZUKI)), null);
 });
 
-test("town: the town and its parts from TERYT, never a village or its part", () => {
+test("sources: the town and its parts have MZGKiM too, never a village or its part", () => {
   for (const address of [ZUKI, ASNYKA, MAZURY])
-    assert.equal(inTown({ place: address }), true, address.id);
+    assert.deepEqual(
+      sourcesAt(address.localityId).map((s) => s.id),
+      ["gmina-lubaczow", "mzgkim"],
+      address.id,
+    );
   for (const address of [SMOLINCE, ZALUZE, LISIE_JAMY_CICHA, DABKOW_ZUKI])
-    assert.equal(inTown({ place: address }), false, address.id);
+    assert.deepEqual(
+      sourcesAt(address.localityId).map((s) => s.id),
+      ["gmina-lubaczow"],
+      address.id,
+    );
 });
 
-test("town, no cut: the gmina's none, MZGKiM's posts not read yet", () => {
+// MZGKiM's file with `posts`, read at CHECKED, as the pages get it at NOW.
+const townAt = (
+  address: PlaceView,
+  town: StoredPost[],
+  now = NOW,
+  checkedAt = CHECKED,
+) => water(bothViews([], checkedAt, now, town), address);
+// 5237's cut (6 Oct 2026), seen on 3 Oct; 5108's (2 Jun 2026), on 1 Jun.
+const OCT_3 = new Date("2026-10-03T10:00:00Z");
+const OCT_3_CHECKED = "2026-10-03T09:50:00.000Z";
+const JUN_1 = new Date("2026-06-01T10:00:00Z");
+const JUN_1_CHECKED = "2026-06-01T09:50:00.000Z";
+const NIEMIROWSKA = place({
+  id: "0972447-14183",
+  streetId: "0972447-14183",
+});
+const PIASKOWA = place({
+  id: "0972447-16033",
+  streetId: "0972447-16033",
+});
+const LESZKA_BIALEGO = place({
+  id: "0972447-38139",
+  streetId: "0972447-38139",
+});
+const SOBIESKIEGO_TOWN = place({
+  id: "0972447-20431",
+  streetId: "0972447-20431",
+});
+const POST_5237 = "https://mzgkim.lubaczow.pl/przerwa-w-dostawie-wody-100/";
+const POST_5108 = "https://mzgkim.lubaczow.pl/przerwa-w-dostawie-wody-99/";
+const OSIEDLE = "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej";
+
+test("town, fresh, no cut: the villages' none, both sources' posts", () => {
   for (const address of [ASNYKA, MAZURY]) {
-    const data = waterAt(address);
+    const data = townAt(address, []);
     assert.deepEqual(data.outages, []);
     assert.equal(waterSummary(data), null);
-    assert.equal(
-      waterNone(data),
-      "gmina nie zapowiada przerw, ale w mieście przerwy ogłasza też MZGKiM – tych komunikatów jeszcze nie sprawdzamy",
-    );
+    assert.equal(staleNote(data), null);
+    assert.equal(waterNone(data), "brak zapowiedzianych przerw w dostawie");
     assert.deepEqual(waterEmpty(data), [
-      "Gmina nie zapowiada przerw pod tym adresem. W mieście przerwy w dostawie wody ogłasza też MZGKiM, a jego komunikatów jeszcze tu nie pokazujemy. Sprawdź ",
-      MZGKIM,
-      " i ",
+      "Nie wiemy o żadnej zapowiedzianej przerwie w dostawie wody pod tym adresem. Gmina ogłasza je w ",
       GMINA,
+      ", a MZGKiM – w ",
+      { href: MZGKIM_NEWS, text: "komunikatach MZGKiM" },
       ".",
     ]);
     assert.deepEqual(waterSources(data), [[GMINA], [MZGKIM]]);
+    assert.equal(
+      checkedLine(waterChecked(data)),
+      "Ostatnio sprawdziliśmy: 25 października, 13:20",
+    );
   }
 });
 
-test("town, a ZUK cut: shown as anywhere, MZGKiM's posts after its post", () => {
+test("town, an MZGKiM cut: shown as a ZUK cut, its own post the source", () => {
+  const cut = [mzgkimPost(CUT_100, OCT_3_CHECKED)];
+  const data = townAt(NIEMIROWSKA, cut, OCT_3, OCT_3_CHECKED);
+  assert.deepEqual(waterAlerts(data), [
+    {
+      text: "przerwa w dostawie – wtorek, 6 października, 8:30–15:00.",
+      href: "/adres/0972447-14183/woda",
+      link: "Więcej o tej przerwie",
+      short: "MZGKiM",
+      from: "2026-10-06T08:30:00+02:00",
+    },
+  ]);
+  assert.deepEqual(waterSummary(data), [
+    ["Najbliższa przerwa", ["wtorek, 6 października, 8:30–15:00"]],
+    ["Gdzie", ["cała ulica Niemirowska"]],
+  ]);
+  assert.deepEqual(waterSources(data), [
+    [{ href: POST_5237, text: "Komunikat MZGKiM z 2 października 2026" }],
+  ]);
+  assert.equal(
+    data.outages[0].source.name,
+    "Miejski Zakład Gospodarki Komunalnej i Mieszkaniowej w Lubaczowie",
+  );
+  assert.equal(
+    waterAiNote(data),
+    "Te daty i godziny odczytaliśmy automatycznie z komunikatu MZGKiM i nikt ich jeszcze nie sprawdził drugi raz. Gdyby coś się nie zgadzało, rację ma komunikat MZGKiM.",
+  );
+  assert.equal(
+    waterCalendarHint(data),
+    "Plik z przerwami. Jeśli MZGKiM zmieni godziny, pobierz go jeszcze raz.",
+  );
+  // Its area off our list is only linked, and not here: its cut is.
+  assert.deepEqual(data.notices, []);
+  // "Osiedle Mazury" (the gazetteer, task 151): each of its streets, whole.
+  const estate = townAt(LESZKA_BIALEGO, cut, OCT_3, OCT_3_CHECKED);
+  assert.deepEqual(waterSummary(estate)?.[1], [
+    "Gdzie",
+    ["cała ulica Księcia Leszka Białego"],
+  ]);
+  // TERYT's part Mazury (no address) is no longer cut.
+  assert.deepEqual(townAt(MAZURY, cut, OCT_3, OCT_3_CHECKED).outages, []);
+});
+
+test("town, a bare 'Mazury' read as the street: one line, on its estate's streets only", () => {
+  // 5108's cuts (Sobieskiego, Niemirowska, Starzyny) with doubts as the
+  // gate writes them (lib/zuk.ts): each with its district's streets, from
+  // the gazetteer.
+  const streetsOf = (key: string) =>
+    DISTRICTS.find((d) => d.id === key)?.streets.map((s) => s.id) ?? [];
+  const mazury = { words: "Mazury", streetIds: streetsOf("mazury") };
+  const piaski = { words: "Piaski", streetIds: streetsOf("piaski") };
+  const at = (address: PlaceView, doubts = [mazury, piaski]) =>
+    townAt(
+      address,
+      [{ ...mzgkimPost(CUT_99, JUN_1_CHECKED), doubts }],
+      JUN_1,
+      JUN_1_CHECKED,
+    ).notices.filter((n) => n.doubt);
+  // A street of Osiedle Mazury: the line, naming Mazury only.
+  const [line] = at(LESZKA_BIALEGO);
+  assert.deepEqual(noticeLink(line), {
+    href: POST_5108,
+    text: "MZGKiM pisze tylko „Mazury”, więc nie wiemy na pewno, czy chodzi o ulicę, czy o całe osiedle – zajrzyj do komunikatu",
+    hidden: "„Przerwa w dostawie wody”",
+  });
+  // A street of Osiedle Piaski: Piaski only.
+  assert.deepEqual(
+    at(PIASKOWA).flatMap((n) => n.doubt?.map((d) => d.words)),
+    ["Piaski"],
+  );
+  // Any other town street, and the town's part: never.
+  for (const address of [ASNYKA, MAZURY]) assert.deepEqual(at(address), []);
+  // A street of both (none in the seed): both names, plural.
+  assert.deepEqual(
+    noticeLink({
+      ...line,
+      doubt: [
+        mazury,
+        { ...piaski, streetIds: [LESZKA_BIALEGO.streetId as string] },
+      ],
+    }),
+    {
+      href: POST_5108,
+      text: "MZGKiM pisze tylko „Mazury” i „Piaski”, więc nie wiemy na pewno, czy chodzi o ulice, czy o całe osiedla – zajrzyj do komunikatu",
+      hidden: "„Przerwa w dostawie wody”",
+    },
+  );
+  assert.equal(
+    at(LESZKA_BIALEGO, [
+      mazury,
+      { ...piaski, streetIds: [LESZKA_BIALEGO.streetId as string] },
+    ])[0].doubt?.length,
+    2,
+  );
+});
+
+test("town, an MZGKiM area off our list: a link on every other town page", () => {
+  const cut = [mzgkimPost(CUT_100, OCT_3_CHECKED)];
+  const data = townAt(ASNYKA, cut, OCT_3, OCT_3_CHECKED);
+  assert.deepEqual(data.outages, []);
+  assert.deepEqual(waterSummary(data), [
+    [
+      "Komunikat",
+      [
+        {
+          href: POST_5237,
+          text: `MZGKiM ogłosił też przerwę w miejscu, którego nie umiemy dopasować do adresów: „${OSIEDLE}” – sprawdź komunikat`,
+          hidden: "„Przerwa w dostawie wody”",
+        },
+      ],
+    ],
+  ]);
+  assert.deepEqual(waterSources(data), [
+    [{ href: POST_5237, text: "Komunikat MZGKiM z 2 października 2026" }],
+  ]);
+  // Never in a village.
+  assert.deepEqual(townAt(SMOLINCE, cut, OCT_3, OCT_3_CHECKED).notices, []);
+});
+
+test("town, an MZGKiM street in part: „w części ulicy”, its words as written", () => {
+  const cut = [mzgkimPost(CUT_99, JUN_1_CHECKED)];
+  const data = townAt(SOBIESKIEGO_TOWN, cut, JUN_1, JUN_1_CHECKED);
+  assert.equal(
+    waterAlerts(data)[0].text,
+    "przerwa w dostawie w części ulicy – wtorek, 2 czerwca, 8:30–13:00.",
+  );
+  assert.deepEqual(waterSummary(data)?.[1], [
+    "Gdzie",
+    [
+      "ulica Jana III Sobieskiego: od siedziby Straży Pożarnej w kierunku Dąbrowy",
+    ],
+  ]);
+  assert.deepEqual(waterSources(data), [
+    [{ href: POST_5108, text: "Komunikat MZGKiM z 1 czerwca 2026" }],
+  ]);
+  // Never a village's Sobieskiego, nor Dąbrowa (only a direction).
+  const basznia = place({
+    id: "0605890-20431",
+    localityId: "0605890",
+    streetId: "0605890-20431",
+  });
+  assert.deepEqual(townAt(basznia, cut, JUN_1, JUN_1_CHECKED).outages, []);
+});
+
+test("town, a ZUK cut: its post the only „Źródło”, never MZGKiM's page", () => {
   const data = waterAt(ZUKI);
   assert.deepEqual(waterSummary(data), [
     ["Najbliższa przerwa", ["wtorek, 27 października, 8:00–16:00"]],
     ["Gdzie", ["cała ulica Żuki"]],
   ]);
-  assert.equal(waterAlerts(data).length, 1);
+  assert.equal(waterAlerts(data)[0].short, "ZUK Mokrzyca");
   assert.equal(waterEmpty(data), null);
   assert.deepEqual(waterSources(data), [
     [{ href: POST_URL, text: "Komunikat gminy z 23 października 2026" }],
-    [MZGKIM],
+  ]);
+  assert.equal(waterAiNote(data), WATER_AI_NOTE);
+});
+
+test("town, both sources' cuts: both posts, both in the AI note", () => {
+  // 5237's Niemirowska cut moved to 28 Oct and to ul. Żuki (made up).
+  const [, niemirowska] = mzgkimPost(CUT_100, CHECKED).items;
+  const town = mzgkimPost(CUT_100, CHECKED, {
+    items: [
+      {
+        ...niemirowska,
+        date: "2026-10-28",
+        start: "2026-10-28 08:30:00",
+        end: "2026-10-28 15:00:00",
+        place: { localityId: "0972447", streetId: "0972447-26555" },
+      },
+    ],
+  });
+  const both = water(bothViews([post()], CHECKED, NOW, [town]), ZUKI);
+  assert.deepEqual(
+    both.outages.map((d) => [d.date, d.uid.split("-")[0]]),
+    [
+      ["2026-10-27", "zuk"],
+      ["2026-10-28", "mzgkim"],
+    ],
+  );
+  assert.equal(
+    waterAiNote(both),
+    "Te daty i godziny odczytaliśmy automatycznie z komunikatów gminy i MZGKiM i nikt ich jeszcze nie sprawdził drugi raz. Gdyby coś się nie zgadzało, rację mają komunikaty.",
+  );
+  assert.equal(
+    waterCalendarHint(both),
+    "Plik z przerwami. Jeśli gmina lub MZGKiM zmieni godziny, pobierz go jeszcze raz.",
+  );
+  assert.equal(waterSources(both).length, 2);
+});
+
+/**
+ * A town street without a cut and ul. Żuki with ZUK's, from `views`: no
+ * cut, both sources' posts and the oldest read in the checked line.
+ */
+function quietAndCut(views: Parameters<typeof water>[0]) {
+  const quiet = water(views, ASNYKA);
+  assert.deepEqual(waterSources(quiet), [[GMINA], [MZGKIM]]);
+  assert.equal(waterChecked(quiet)?.toISOString(), CHECKED);
+  return { quiet, cut: water(views, ZUKI) };
+}
+
+test("town, MZGKiM stale: „przy ostatnim sprawdzeniu”, its posts named", () => {
+  const late = new Date(Date.parse(CHECKED) + STALE_MS + 1);
+  const views = {
+    "gmina-lubaczow": zukView(zukFile([post()], late.toISOString()), late),
+    mzgkim: zukView(zukFile([], CHECKED), late, MZGKIM_SOURCE),
+  };
+  const { quiet, cut } = quietAndCut(views);
+  assert.equal(
+    waterNone(quiet),
+    "brak zapowiedzianych przerw przy ostatnim sprawdzeniu, ale od ponad godziny nie udało się nam sprawdzić nowych komunikatów MZGKiM",
+  );
+  assert.deepEqual(staleNote(quiet), [
+    "Od ponad godziny nie udało się nam sprawdzić nowych komunikatów MZGKiM. Zajrzyj też do ",
+    MZGKIM_OF,
+    ".",
+  ]);
+  // A ZUK cut: the note joins the card, the source is still its post only.
+  assert.deepEqual(waterSummary(cut)?.at(-1), ["Uwaga", staleNote(cut)]);
+  assert.deepEqual(waterSources(cut), [
+    [{ href: POST_URL, text: "Komunikat gminy z 23 października 2026" }],
   ]);
 });
 
-test("town, stale: its own none text, MZGKiM's posts in the note", () => {
+test("town, both stale: as a village, both sources' posts", () => {
   const late = new Date(Date.parse(CHECKED) + STALE_MS + 1);
   const quiet = waterAt(ASNYKA, [post()], late);
-  assert.match(waterNone(quiet), /przy ostatnim sprawdzeniu/);
+  assert.equal(
+    waterNone(quiet),
+    "brak zapowiedzianych przerw przy ostatnim sprawdzeniu, ale od ponad godziny nie udało się nam sprawdzić nowych",
+  );
   assert.deepEqual(staleNote(quiet), [
     "Od ponad godziny nie udało się nam sprawdzić nowych komunikatów. Zajrzyj też do ",
     GMINA,
@@ -600,15 +864,35 @@ test("town, stale: its own none text, MZGKiM's posts in the note", () => {
     MZGKIM_OF,
     ".",
   ]);
-  assert.deepEqual(waterSources(quiet), [[GMINA], [MZGKIM]]);
-  // With the cut, the note joins the card as before.
-  const cut = waterAt(ZUKI, [post()], late);
+});
+
+test("town, MZGKiM unavailable: said, with its posts; the gmina's none kept", () => {
+  const views = { "gmina-lubaczow": zukView(zukFile([post()], CHECKED), NOW) };
+  const { quiet, cut } = quietAndCut(views);
+  assert.equal(
+    waterNone(quiet),
+    "nie udało się nam sprawdzić komunikatów MZGKiM",
+  );
+  assert.deepEqual(waterEmpty(quiet), [
+    "Nie wiemy o żadnej zapowiedzianej przerwie w dostawie wody pod tym adresem. Gmina ogłasza je w ",
+    GMINA,
+    ". Nie udało się nam jednak teraz sprawdzić komunikatów MZGKiM. Zajrzyj do ",
+    MZGKIM_OF,
+    ".",
+  ]);
+  assert.equal(staleNote(quiet), null);
+  // Beside a ZUK cut: the note says it.
+  assert.deepEqual(staleNote(cut), [
+    "Nie udało się nam teraz sprawdzić komunikatów MZGKiM. Zajrzyj też do ",
+    MZGKIM_OF,
+    ".",
+  ]);
   assert.deepEqual(waterSummary(cut)?.at(-1), ["Uwaga", staleNote(cut)]);
 });
 
-test("town, no file: the gmina's and MZGKiM's posts to check", () => {
+test("town, no file at all: the gmina's and MZGKiM's posts to check", () => {
   for (const address of [ZUKI, MAZURY]) {
-    const data = water(zukView(null, NOW), address);
+    const data = water({}, address);
     assert.equal(waterNone(data), "nie udało się nam sprawdzić komunikatów");
     assert.deepEqual(waterEmpty(data), [
       "Nie udało się nam teraz sprawdzić komunikatów o wodzie. Zajrzyj do ",
@@ -618,6 +902,7 @@ test("town, no file: the gmina's and MZGKiM's posts to check", () => {
       ".",
     ]);
     assert.deepEqual(waterSources(data), [[GMINA], [MZGKIM]]);
+    assert.equal(waterChecked(data), null);
   }
 });
 
@@ -683,7 +968,7 @@ test("checked line: null renders nothing; Warsaw time over midnight and DST", ()
 });
 
 test("no file: the gmina's news only, no cut, no checked line", () => {
-  const data = water(zukView(null, NOW), SMOLINCE);
+  const data = water({}, SMOLINCE);
   assert.deepEqual(data.outages, []);
   assert.equal(waterSummary(data), null);
   assert.deepEqual(waterAlerts(data), []);
@@ -784,4 +1069,31 @@ test("dev mock: fresh, stale or no file; anything else is no mock", () => {
   assert.equal(zukView(stale, NOW).stale, true);
   assert.equal(mockFile("none", now), null);
   assert.equal(mockFile("39886", now), undefined);
+});
+
+test("dev mock: MZGKiM's 5237 moved to now, its cut the day after tomorrow", () => {
+  const now = NOW.getTime();
+  const fresh = mockFile("5237", now);
+  const stale = mockFile("5237-stale", now);
+  assert.ok(fresh && stale);
+  assert.equal(zukView(stale, NOW, MZGKIM_SOURCE).stale, true);
+  const view = zukView(fresh, NOW, MZGKIM_SOURCE);
+  assert.equal(view.stale, false);
+  // Sunday 25 Oct: Tuesday 27 Oct, 8:30-15:00, as the moved text says.
+  const data = water(
+    { "gmina-lubaczow": zukView(zukFile([], CHECKED), NOW), mzgkim: view },
+    NIEMIROWSKA,
+  );
+  assert.deepEqual(waterSummary(data)?.slice(0, 2), [
+    ["Najbliższa przerwa", ["wtorek, 27 października, 8:30–15:00"]],
+    ["Gdzie", ["cała ulica Niemirowska"]],
+  ]);
+  // Starzyny swapped for Asnyka, a street of the CI fixture.
+  const asnyka = water(
+    { "gmina-lubaczow": zukView(zukFile([], CHECKED), NOW), mzgkim: view },
+    ASNYKA,
+  );
+  assert.equal(asnyka.outages.length, 1);
+  assert.equal(asnyka.outages[0].label?.street, "Adama Asnyka");
+  assert.equal(mockFile("5238", now), undefined);
 });

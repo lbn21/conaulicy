@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { test } from "node:test";
+import { DISTRICTS } from "../../districts-seed.ts";
 import { PLACES } from "../../zuk-fixture.ts";
 import { ZUK_PLACES } from "../../zuk-places.generated.ts";
 import { systemPrompt } from "./prompt.ts";
@@ -144,4 +145,23 @@ test("prompt: follows the data", () => {
   );
   assert.match(prompt, /, Opaka \(Nowa Wieś\),/);
   assert.match(prompt, /Names used more than once: Dąbrowa, Mielniki, Opaka\./);
+});
+
+test("the gazetteer: appended to the context, the rules byte for byte", () => {
+  const withDistricts = systemPrompt({ ...ZUK_PLACES, districts: DISTRICTS });
+  const plain = systemPrompt(ZUK_PLACES);
+  // Everything before stays; the districts follow the streets.
+  assert.ok(withDistricts.startsWith(plain.trimEnd()));
+  const added = withDistricts.slice(plain.trimEnd().length);
+  assert.match(
+    added,
+    /^\nDistricts of the town Lubaczów \(osiedla: informal names TERYT does not have\)\. A district written in the post .*"ul\. X" is the street X, never the district:\n- Niwki; forms: Niwkach; no streets\n/,
+  );
+  assert.match(added, /\n- Osiedle Mazury; forms: os\. Mazury, /);
+  // A misspelt district: the listed name, the post's words; never a guess.
+  assert.match(
+    added,
+    /An obvious misspelling of a listed district \("osiedle Wzorcowo" for "Osiedle Wzorcowe"\) is that district: street = its name exactly as listed, street_verbatim = the post's exact words, misspelling kept; a name not plainly on the list is never mapped to it\./,
+  );
+  assert.ok(withDistricts.endsWith("\n"));
 });

@@ -20,12 +20,14 @@ import {
   noticeLink,
   scope,
   staleNote,
-  WATER_AI_NOTE,
   type Water,
+  waterAiNote,
+  waterCalendarHint,
   waterEmpty,
   waterSources,
   waterTrace,
 } from "@/lib/water-module";
+import { sourcesAt } from "@/lib/water-sources";
 
 // The water module's subpage, /adres/<id>/woda (lib/modules.ts), under
 // ModuleMain's breadcrumbs, in the subpages' one layout (docs/layout.md):
@@ -33,7 +35,7 @@ import {
 // (lib/water-ics.ts), then every planned cut still to come at this
 // address, a day each, with its hours and what is cut, then posts we could
 // not match to addresses, as links only, then the AI-read note and the
-// gmina's posts as the source. Dates are absolute, so a cached copy stays
+// posts as the source. Dates are absolute, so a cached copy stays
 // true.
 
 const H1 = "Przerwy w dostawie wody";
@@ -53,7 +55,11 @@ export async function waterMetadata(
     ...pageMetadata({
       path: `${placePath(id)}/woda`,
       title: `${H1} – ${withHouseNumber(titleLabel(place.label), place.nr)}`,
-      description: `Zapowiedziane przerwy w dostawie wody: ${place.label}. Daty i godziny z komunikatów gminy.`,
+      description: `Zapowiedziane przerwy w dostawie wody: ${place.label}. Daty i godziny z komunikatów ${sourcesAt(
+        place.localityId,
+      )
+        .map((s) => s.of)
+        .join(" i ")}.`,
     }),
     robots: { index: false, follow: indexable() },
   };
@@ -87,7 +93,7 @@ export function WaterDetails({
           <CalendarBlock
             href={calendar}
             label="Dodaj przerwy do kalendarza"
-            hint="Plik z przerwami. Jeśli gmina zmieni godziny, pobierz go jeszcze raz."
+            hint={waterCalendarHint(data)}
             event="water_calendar_add"
             place={data.place.id}
           />
@@ -138,7 +144,7 @@ export function WaterDetails({
         )}
         {!empty && (
           <>
-            <AiReadNote text={WATER_AI_NOTE} />
+            <AiReadNote text={waterAiNote(data)} />
             <SourceInset>
               {waterSources(data).map((parts) => (
                 <p key={textOf(parts)} className="govuk-body">

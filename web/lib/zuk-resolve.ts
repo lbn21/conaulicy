@@ -6,7 +6,8 @@
 // no place-specific code, list or alias. An item is kept only if every
 // check passes, in order; the first that fails is the reason:
 // 1. the day is written in the post (D.M, "D <month>", inside "a-b.M",
-//    "a do b.M", "a.M - b.M"), a weekday in brackets after it agreeing;
+//    "a do b.M", "a.M - b.M", "a-b <month>", "z a na b <month>"), a
+//    weekday in brackets after it agreeing;
 // 2. locality is one of ours ("Name (Village)" for a part; a bare name a
 //    village and a part share is the village);
 // 3. locality_verbatim is in the text, 4. exactly the locality's name (case
@@ -29,11 +30,27 @@
 // letters, at least 3 left); all-caps words only exactly ("ZUK" is not
 // "Żuki"), and an inflected look-alike that is a street ("Piaskowa") is
 // none.
+//
+// A source that serves one area (lib/sources: MZGKiM, the town) may give
+// rules of its own (GateRules), all off for the gmina's posts: its items
+// lie in the area or one of its parts, else dropped; the area itself need
+// not be written (its posts never name the town), so checks 3-5 hold for a
+// part only; in 9 only an exact mention of a place outside it blocks (a
+// direction, "w kierunku Dąbrowy", is no place of the cut); 10 lets the
+// whole area through when the post says so in its own words (`whole`); and
+// with `declined`, 8 also takes the street's last word declined, the post
+// writing nothing but its type word before it ("przy ulicach:
+// Niemirowskiej").
 
 import type { Locality } from "./data-model.ts";
+import type { District } from "./districts.ts";
 
-/** Our places: the TERYT snapshot (lib/zuk-places.generated.ts). */
+/**
+ * Our places: the TERYT snapshot (lib/zuk-places.generated.ts), and the
+ * town's district names (lib/districts.ts) where given.
+ */
 export type ZukPlaces = {
+  districts?: District[];
   localities: Array<{
     id: string;
     name: string;
@@ -70,9 +87,25 @@ export type GateResult =
       kept: true;
       locality: ZukLocality;
       street: ZukStreet | null;
+      /**
+       * A source with an area: the village in a bracket after a street of
+       * the area written whole ("ul. Młodowska (Młodów)"), which decides
+       * nothing there; the street is kept with it as its words.
+       */
+      bracket?: string;
     }
   /** `date`: the day failed (check 1); else the place. */
   | { kept: false; reason: string; date: boolean };
+
+/** A source's own rules (see the top of this file); none for the gmina. */
+export type GateRules = {
+  /** The locality its posts concern, named or not: "0972447", the town. */
+  area?: string;
+  /** The post's own words for the whole area: "na terenie całego miasta". */
+  whole?: RegExp;
+  /** Streets may be written declined: "Niemirowskiej" for Niemirowska. */
+  declined?: boolean;
+};
 
 const MIN_STEM = 3;
 const MAX_CUT = 3;
@@ -133,6 +166,10 @@ export const MONTHS = [
   "grudnia",
 ];
 
+/** Null if the day is written in the post's gate text, else why. */
+export const dayInText = (date: string, text: string) =>
+  guardDate(date, norm(text));
+
 /** Null if the day is written in `txt` (norm of the post), else why. */
 export function guardDate(date: string, txt: string): string | null {
   const day = /^\d{4}-\d{2}-\d{2}$/.test(date)
@@ -182,6 +219,12 @@ export function guardDate(date: string, txt: string): string | null {
     within(
       new RegExp(
         `(?<!\\d)(\\d{1,2})\\.0?${M}\\.?\\s*(?:-|do|i)\\s*(\\d{1,2})\\.0?${M}(?:\\.(\\d{4}))?(?!\\d)`,
+        "g",
+      ),
+    ) ||
+    within(
+      new RegExp(
+        `(?<!\\d)(\\d{1,2})\\s*(?:-|do|na)\\s*(\\d{1,2})\\s+${MONTHS[M - 1]}(?:\\s+(\\d{4}))?`,
         "g",
       ),
     ) ||
@@ -410,7 +453,15 @@ function sentenceEnd(text: string, pos: number): number {
   return lineEnd;
 }
 
-type Decided = { how: string; good: boolean; name: string | null };
+type Decided = {
+  how: string;
+  good: boolean;
+  name: string | null;
+  /** The deciding mention is written exactly. */
+  exact: boolean;
+  /** The bracket right after street_verbatim, its words, if any. */
+  bracket: string | null;
+};
 
 /** 9: the deciding mention for each occurrence of street_verbatim. */
 function proximity(
@@ -438,7 +489,13 @@ function proximity(
       const end = sentenceEnd(text, e);
       const after = found.filter((m) => m.start >= e && m.end <= end);
       if (after.length === 0) {
-        res.push({ how: "none", good: false, name: null });
+        res.push({
+          how: "none",
+          good: false,
+          name: null,
+          exact: false,
+          bracket: null,
+        });
         continue;
       }
       n = after.reduce((a, m) => (m.start < a.start ? m : a));
@@ -448,11 +505,19 @@ function proximity(
       how,
       good: places.compatible(n.name, loc) && n.exact,
       name: n.name,
+      exact: n.exact,
+      bracket: br ? br[1] : null,
     });
   }
   return (
     res.find((r) => r.good) ??
-    res[0] ?? { how: "noocc", good: false, name: null }
+    res[0] ?? {
+      how: "noocc",
+      good: false,
+      name: null,
+      exact: false,
+      bracket: null,
+    }
   );
 }
 
@@ -479,12 +544,60 @@ function typeFits(svw: string, at: number, s: ZukStreet): boolean {
   return stem !== "" && dl(before[before.length - 1]).startsWith(dl(stem));
 }
 
+/**
+ * `verbatim` is the street's type word, then one of its forms, whole:
+ * "ul. Młodowska"; never an end of a longer name ("ul. Sobieskiego").
+ */
+function writtenWhole(s: ZukStreet, verbatim: string): boolean {
+  const [type, ...rest] = wnorm(verbatim).trim().split(" ");
+  const stem = (s.cecha ?? "").replace(/\.+$/, "").toLowerCase();
+  return (
+    rest.length > 0 &&
+    TYPE_WORD.test(type) &&
+    stem !== "" &&
+    type.startsWith(dl(stem)) &&
+    streetForms(s).some((f) => wnorm(f) === ` ${rest.join(" ")} `)
+  );
+}
+
+/** A type word written before a street's name: "ul.", "ulicy", "os.". */
+const TYPE_WORD = /^(?:ul|ulica|ulicy|ulic|al|aleja|alei|os|osiedle|osiedla)$/;
+
+/**
+ * `verbatim` is one of the street's forms with its last word declined,
+ * at most a type word before it: "Niemirowskiej", "ul. Niemirowskiej" (a
+ * whole form or its end, "Sobieskiego"); never a phrase around it ("na
+ * zapleczu ul. Niemirowskiej").
+ */
+function declinedForm(s: ZukStreet, verbatim: string): boolean {
+  const vw = wnorm(verbatim).trim().split(" ");
+  return streetForms(s).some((f) => {
+    const fw = wnorm(f).trim().split(" ");
+    for (let k = 0; k < fw.length; k++) {
+      const end = fw.slice(k);
+      const lead = vw.slice(0, vw.length - end.length);
+      if (lead.length > 1 || (lead.length === 1 && !TYPE_WORD.test(lead[0])))
+        continue;
+      const tail = vw.slice(vw.length - end.length);
+      if (tail.length !== end.length) continue;
+      const last = end.length - 1;
+      if (
+        tail.slice(0, last).every((w, i) => w === end[i]) &&
+        wordMatch(tail[last], end[last]) !== null
+      )
+        return true;
+    }
+    return false;
+  });
+}
+
 /** 8: street_verbatim writes this street, and only it. */
 function streetInVerbatim(
   places: GatePlaces,
   loc: ZukLocality,
   street: ZukStreet,
   verbatim: string,
+  declined = false,
 ): boolean {
   const svw = wnorm(verbatim);
   const own = places.streets.get(loc.id) ?? [];
@@ -512,20 +625,22 @@ function streetInVerbatim(
         return true;
     }
   }
-  return false;
+  if (!declined || !declinedForm(street, verbatim)) return false;
+  return !own.some((s) => s.id !== street.id && declinedForm(s, verbatim));
 }
 
 // ---------- the gate ----------
 
 /**
  * One item through every check, `text` from gateText and `found` its
- * mentions (computed once per post).
+ * mentions (computed once per post); `rules` the source's own.
  */
 export function gateItem(
   places: GatePlaces,
   text: string,
   found: Mention[],
   item: GateItem,
+  rules: GateRules = {},
 ): GateResult {
   const drop = (reason: string, date = false): GateResult => ({
     kept: false,
@@ -537,23 +652,29 @@ export function gateItem(
   if (day) return drop(day, true);
   const [loc, name] = places.resolve(item.locality);
   if (!loc) return drop(`locality '${item.locality}' not ours/ambiguous`);
-  const lv = item.locality_verbatim ?? "";
-  if (!(lv.trim() && txt.includes(norm(lv))))
-    return drop("locality_verbatim not literal");
-  if (nameMatch(lv, name) !== "exact")
-    return drop("locality_verbatim does not match locality");
-  const own = occurrences(text, lv).some(
-    ([s, e]) =>
-      !found.some(
-        (m) =>
-          m.start <= s &&
-          m.end >= e &&
-          m.end - m.start > e - s &&
-          m.name !== loc.name,
-      ),
-  );
-  if (!own) return drop("locality_verbatim only inside a longer place name");
+  const area = rules.area ? (places.byId.get(rules.area) ?? null) : null;
+  if (area && loc.id !== area.id && loc.parentId !== area.id)
+    return drop(`locality '${loc.name}' outside the source's area`);
+  if (loc !== area) {
+    const lv = item.locality_verbatim ?? "";
+    if (!(lv.trim() && txt.includes(norm(lv))))
+      return drop("locality_verbatim not literal");
+    if (nameMatch(lv, name) !== "exact")
+      return drop("locality_verbatim does not match locality");
+    const own = occurrences(text, lv).some(
+      ([s, e]) =>
+        !found.some(
+          (m) =>
+            m.start <= s &&
+            m.end >= e &&
+            m.end - m.start > e - s &&
+            m.name !== loc.name,
+        ),
+    );
+    if (!own) return drop("locality_verbatim only inside a longer place name");
+  }
   let street: ZukStreet | null = null;
+  let bracket: string | undefined;
   const sv = item.street_verbatim;
   if (item.street) {
     if (!(sv && txt.includes(norm(sv))))
@@ -564,14 +685,27 @@ export function gateItem(
         `street '${item.street}' matches ${candidates.length} in ${loc.name}`,
       );
     street = candidates[0];
-    if (!streetInVerbatim(places, loc, street, sv))
+    if (!streetInVerbatim(places, loc, street, sv, rules.declined))
       return drop("street_verbatim lacks street name");
     const decided = proximity(text, found, sv, loc, places);
-    if (!decided.good)
+    // In a source's area, a village in a bracket after one of its streets
+    // written whole ("ul. Młodowska (Młodów)") is where it leads, not where
+    // it lies.
+    const toward =
+      area !== null &&
+      decided.how === "bracket" &&
+      decided.bracket !== null &&
+      writtenWhole(street, sv);
+    if (!toward && (area ? decided.exact && !decided.good : !decided.good))
       return drop(
         `proximity: deciding mention ${decided.name ?? "None"} (${decided.how})`,
       );
-  } else if (loc.kind === "miasto") return drop("town without street");
+    if (toward && !decided.good) bracket = (decided.bracket as string).trim();
+  } else if (
+    loc.kind === "miasto" &&
+    !(loc === area && item.note === null && rules.whole?.test(text))
+  )
+    return drop("town without street");
   if (item.note !== null) {
     if (!txt.includes(norm(item.note))) return drop("note not literal");
     if (
@@ -581,5 +715,5 @@ export function gateItem(
     )
       return drop("note names another place");
   }
-  return { kept: true, locality: loc, street };
+  return { kept: true, locality: loc, street, ...(bracket ? { bracket } : {}) };
 }
