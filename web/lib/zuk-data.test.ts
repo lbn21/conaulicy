@@ -43,11 +43,13 @@ function stored(id: number, over: Partial<StoredPost> = {}): StoredPost {
 }
 
 const file = (posts: StoredPost[], checkedAt = CHECKED): ZukFile => ({
-  version: 4,
+  version: 5,
   generatedAt: checkedAt,
   checkedAt,
+  gazetteer: null,
   active: posts,
   seen: [],
+  rejected: [],
 });
 
 test("no file: empty, the source unavailable, stale", () => {
@@ -70,12 +72,12 @@ test("stale: data last checked more than 60 minutes ago", () => {
   assert.equal(view(0).checkedAt, CHECKED);
 });
 
-test("parse: only a file we wrote, of version 4", () => {
+test("parse: only a file we wrote, of version 5", () => {
   assert.deepEqual(parseZukFile(JSON.stringify(file([]))), file([]));
   assert.equal(parseZukFile("not json"), null);
-  assert.equal(parseZukFile(JSON.stringify({ ...file([]), version: 5 })), null);
+  assert.equal(parseZukFile(JSON.stringify({ ...file([]), version: 6 })), null);
   // Older versions are no file: the cron reads the window afresh.
-  for (const version of [1, 2, 3])
+  for (const version of [1, 2, 3, 4])
     assert.equal(
       parseZukFile(
         JSON.stringify({
@@ -88,6 +90,12 @@ test("parse: only a file we wrote, of version 4", () => {
       null,
     );
   assert.equal(parseZukFile(JSON.stringify({ ...file([]), seen: null })), null);
+  const { rejected: _, ...noRejected } = file([]);
+  assert.equal(parseZukFile(JSON.stringify(noRejected)), null);
+  assert.equal(
+    parseZukFile(JSON.stringify({ ...file([]), gazetteer: 1 })),
+    null,
+  );
   assert.equal(parseZukFile("null"), null);
 });
 

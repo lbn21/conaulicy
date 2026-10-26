@@ -58,8 +58,8 @@ const local = (wall: string) =>
   `${icsDate(wall.slice(0, 10))}T${wall.slice(11, 19).replaceAll(":", "")}`;
 
 /**
- * "zuk-39885-2026-10-27-…" → "39885" (the gmina's, as ever);
- * "mzgkim-5237-…" → "mzgkim-5237".
+ * "zuk-12345-2026-10-27-…" → "12345" (the gmina's, as ever);
+ * "mzgkim-678-…" → "mzgkim-678".
  */
 function postId(cut: Disruption): string {
   const [, prefix, id] = /^([a-z]+)-(\d+)-/.exec(cut.uid) ?? [];

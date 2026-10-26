@@ -20,7 +20,6 @@ import {
   pageText,
   parseFeed,
 } from "./fetch.ts";
-import { aboutWater, mzgkim } from "./index.ts";
 
 test("feed: every real item, its id, Warsaw time, link and summary", () => {
   const posts = parseFeed(FEED_2026_10_26);
@@ -178,30 +177,4 @@ test("fullPost: the page fetched from MZGKiM only; a failure throws", async () =
     }),
     /not on mzgkim\.lubaczow\.pl/,
   );
-});
-
-test("prefilter: only posts with a water word reach the model", () => {
-  const posts = parseFeed(FEED_2026_10_26);
-  const passed = posts.filter(aboutWater).map((p) => p.id);
-  // The two cuts; not deratyzacja, the PSZOK, opening hours or holidays.
-  assert.deepEqual(passed, [CUT_100, CUT_99]);
-  assert.equal(mzgkim.prefilter, aboutWater);
-  const [night] = parseFeed(feedWith([feedItem(WHOLE_TOWN)]));
-  assert.equal(aboutWater(night), true);
-  const words = (text: string) =>
-    aboutWater({ ...night, content: { rendered: text } });
-  // The title "Przerwa w dostawie wody" alone passes; so must the text.
-  const untitled = (text: string) =>
-    aboutWater({
-      ...night,
-      title: { rendered: "Informacja" },
-      content: { rendered: text },
-    });
-  assert.equal(
-    untitled("Awaria sieci wodociągowej przy ul. Kościuszki."),
-    true,
-  );
-  assert.equal(untitled("Brak wody na osiedlu."), true);
-  assert.equal(untitled("PSZOK będzie nieczynny. Prosimy o dowody."), false);
-  assert.equal(words("anything"), true);
 });

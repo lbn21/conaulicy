@@ -14,7 +14,6 @@ import {
 import { WP_POSTS } from "./sources/gmina-lubaczow/fetch.ts";
 import { MZGKIM_FEED } from "./sources/mzgkim/fetch.ts";
 import { mzgkim } from "./sources/mzgkim/index.ts";
-import { systemPrompt } from "./sources/mzgkim/prompt.ts";
 import { MZGKIM, TOWN } from "./water-sources.ts";
 import type { AiInput, AiReading } from "./zuk-ai.ts";
 import { handleZukCron, runZuk, type ZukCronDeps } from "./zuk-cron.ts";
@@ -95,10 +94,15 @@ function deps(w: World): ZukCronDeps {
       key: string,
     ): Promise<AiReading> => {
       assert.equal(key, "xai-key");
-      assert.equal(system, systemPrompt(MZGKIM_PLACES));
+      assert.equal(system, mzgkim.systemPrompt(MZGKIM_PLACES));
+      const id =
+        input.published === "2026-10-02T12:11:39"
+          ? CUT_100
+          : input.published === "2026-09-21T09:16:47"
+            ? DERATYZACJA
+            : 0;
       // The page's text, not the feed's flattened summary.
-      assert.match(input.text, /\nStarzyny\n|^Miejski/);
-      const id = input.published === "2026-10-02T12:11:39" ? CUT_100 : 0;
+      if (id === CUT_100) assert.match(input.text, /\nStarzyny\n/);
       w.aiCalls.push(id);
       if (w.aiFails) throw new Error("xAI: HTTP 503");
       return { ...READING, result: MZGKIM_READINGS[id] };
@@ -117,22 +121,23 @@ function saved(w: World): ZukFile {
   return file;
 }
 
-test("a run: the water post read from its page, the rest never read", async () => {
+test("a run: every post read by the model from its page", async () => {
   const w = world();
   const summary = await runZuk(deps(w));
   assert.deepEqual(summary, {
     posts: 2,
     active: 1,
-    aiCalls: 1,
-    costUsd: 0.0026,
+    aiCalls: 2,
+    costUsd: 0.0052,
     changed: true,
   });
-  // The feed once, then the page of the one post the model reads.
+  // The feed once, then the page of each post the model reads.
   assert.deepEqual(w.urls, [
     MZGKIM_FEED,
     "https://mzgkim.lubaczow.pl/przerwa-w-dostawie-wody-100/",
+    "https://mzgkim.lubaczow.pl/komunikat-4/",
   ]);
-  assert.deepEqual(w.aiCalls, [CUT_100]);
+  assert.deepEqual(w.aiCalls, [CUT_100, DERATYZACJA]);
   const file = saved(w);
   const [post] = file.active;
   assert.equal(post.id, CUT_100);
@@ -141,13 +146,16 @@ test("a run: the water post read from its page, the rest never read", async () =
   // Three streets and the 22 of Osiedle Mazury (the gazetteer).
   assert.equal(post.itemCount, 25);
   assert.deepEqual(post.unmatched, [
-    "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej",
+    {
+      words: "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej",
+      localityId: "0972447",
+    },
   ]);
   // The town and its parts, never a village it names (Dąbrowa).
   assert.deepEqual(post.localityIds, [...TOWN].sort());
   assert.match(post.digest ?? "", /^[0-9a-f]{16}$/);
   assert.ok(post.items.every((d) => d.uid.startsWith("mzgkim-5237-")));
-  // Deratyzacja: no water word, never read.
+  // Deratyzacja: not about water, the model says.
   assert.deepEqual(file.seen, [
     {
       id: DERATYZACJA,
@@ -159,17 +167,7 @@ test("a run: the water post read from its page, the rest never read", async () =
   ]);
   assert.ok(
     w.logs.some(
-      (l) =>
-        l.zuk === "skip" && l.post === DERATYZACJA && l.source === "mzgkim",
-    ),
-  );
-  assert.ok(
-    w.logs.some(
-      (l) =>
-        l.zuk === "ai" &&
-        l.source === "mzgkim" &&
-        Array.isArray(l.unmatched) &&
-        l.unmatched.length === 1,
+      (l) => l.zuk === "ai" && l.source === "mzgkim" && l.rejected === 1,
     ),
   );
   assert.deepEqual(w.purges, [WATER]);
@@ -180,7 +178,7 @@ test("a run: the water post read from its page, the rest never read", async () =
     view.notices.map((n) => [n.uid, n.where]),
     [
       [
-        "mzgkim-5237-rest",
+        "mzgkim-5237-rest-0972447",
         ["Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej"],
       ],
     ],
@@ -233,9 +231,9 @@ test("an edit (its summary changed): read again, its last change that run", asyn
 test("its page down: no model call, retried next run", async () => {
   const link = "https://mzgkim.lubaczow.pl/przerwa-w-dostawie-wody-100/";
   const w = world({ pages: { [link]: "down" } });
-  const summary = await runZuk(deps(w));
-  assert.equal(summary.aiCalls, 0);
-  assert.deepEqual(w.aiCalls, []);
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, [DERATYZACJA]);
+  w.aiCalls = [];
   assert.equal(
     saved(w).seen.find((p) => p.id === CUT_100)?.reason,
     AI_UNAVAILABLE,
@@ -254,7 +252,7 @@ test("xAI down: retried next run, never shown", async () => {
   w.aiFails = false;
   w.aiCalls = [];
   await runZuk(deps(w));
-  assert.deepEqual(w.aiCalls, [CUT_100]);
+  assert.deepEqual(w.aiCalls, [CUT_100, DERATYZACJA]);
   assert.equal(saved(w).active.length, 1);
 });
 
@@ -321,7 +319,7 @@ test("the route: the gmina down is 502 as ever, MZGKiM still read", async () => 
   assert.equal(response.status, 502);
   const body = await response.json();
   assert.equal(body.error, "source unavailable");
-  assert.equal(body.sources.mzgkim.aiCalls, 1);
+  assert.equal(body.sources.mzgkim.aiCalls, 2);
   assert.equal(saved(w).active.length, 1);
 });
 

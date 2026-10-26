@@ -33,11 +33,11 @@ type DisruptionPlace = {
  * houses are the scope.
  */
 export type DisruptionLabel = {
-  /** "Dąbrowa". */
+  /** "Wzorowo". */
   locality: string;
-  /** A village part's village, "Basznia Górna"; else null. */
+  /** A village part's village, "Przykładów"; else null. */
   parent: string | null;
-  /** "Jana III Sobieskiego"; null for the whole locality. */
+  /** "Jana Próbnego"; null for the whole locality. */
   street: string | null;
 };
 
@@ -57,10 +57,10 @@ export type Disruption = {
   place: DisruptionPlace;
   /** Our names for the place (lib/zuk-resolve.ts). */
   label?: DisruptionLabel;
-  /** The source's own wording for the place: "Opaka od nr 104 do nr 110". */
+  /** The source's own wording for the place: "Wzorowo od nr 104 do nr 110". */
   where: string;
   scope: DisruptionScope;
-  /** The source's own qualifier: "gospodarstwa zasilane z SUW Mokrzyca". */
+  /** The source's own qualifier: "gospodarstwa zasilane z SUW Wzorowo". */
   note: string | null;
   /** Warsaw wall clock. */
   publishedAt: string;
@@ -88,7 +88,7 @@ export type Notice = {
    */
   where?: string[];
   /**
-   * A post read, one of whose bare names ("Mazury") we took for the street
+   * A post read, one of whose bare names ("Próbna") we took for the street
    * though it may mean the estate of that name: shown on that estate's
    * streets only.
    */
@@ -96,7 +96,7 @@ export type Notice = {
 };
 
 /**
- * A bare name read as the street of that name ("Mazury") that may mean the
+ * A bare name read as the street of that name ("Próbna") that may mean the
  * district of that name instead: the post's words, and that district's
  * streets (the gazetteer, lib/districts.ts), where it is said.
  */

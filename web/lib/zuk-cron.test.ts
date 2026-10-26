@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { WATER } from "./headers.ts";
 import { WP_POSTS } from "./sources/gmina-lubaczow/fetch.ts";
-import { systemPrompt } from "./sources/gmina-lubaczow/prompt.ts";
+import { gminaLubaczow } from "./sources/gmina-lubaczow/index.ts";
 import type { ZukPost } from "./zuk.ts";
 import type { AiInput, AiReading, AiResult } from "./zuk-ai.ts";
 import { handleZukCron, runZuk, type ZukCronDeps } from "./zuk-cron.ts";
@@ -16,7 +16,8 @@ import {
   type ZukFile,
   zukView,
 } from "./zuk-data.ts";
-import { PLACES, reading, realPosts } from "./zuk-fixture.ts";
+import { AI_ITEM, PLACES, reading, realPosts } from "./zuk-fixture.ts";
+import type { ZukPlaces } from "./zuk-resolve.ts";
 
 const SECRET = "cron-secret";
 // Sunday 25 Oct 2026: 39885's cuts (26-29 Oct) are still to come, the
@@ -46,6 +47,7 @@ type World = {
   logs: Array<Record<string, unknown>>;
   /** Every cache tag purged (revalidateTag), in order. */
   purges: string[];
+  places: ZukPlaces;
 };
 
 function world(over: Partial<World> = {}): World {
@@ -61,6 +63,7 @@ function world(over: Partial<World> = {}): World {
     readings: {},
     logs: [],
     purges: [],
+    places: PLACES,
     ...over,
   };
 }
@@ -81,7 +84,7 @@ function deps(w: World): ZukCronDeps {
     purge: (tag) => w.purges.push(tag),
     places: async () => {
       w.placesLoads++;
-      return PLACES;
+      return w.places;
     },
     readAi: async (
       input: AiInput,
@@ -89,7 +92,7 @@ function deps(w: World): ZukCronDeps {
       key: string,
     ): Promise<AiReading> => {
       assert.equal(key, "xai-key");
-      assert.equal(system, systemPrompt(PLACES));
+      assert.equal(system, gminaLubaczow.systemPrompt(w.places));
       const posts = w.posts === "down" ? [] : w.posts;
       const post = posts.find((p) => p.date === input.published);
       assert.ok(post);
@@ -154,6 +157,16 @@ test("auth: Vercel Cron's bearer secret, nothing else", async () => {
   assert.equal(ok.headers.get("cache-control"), "no-store");
 });
 
+/** The next run reads the other four posts, the one after none. */
+async function readsTheRest(w: World) {
+  w.aiCalls = [];
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, [39857, 39855, 39766, FOX]);
+  w.aiCalls = [];
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, []);
+}
+
 test("first run: every new post read, at most four, the rest next run", async () => {
   const w = world({ now: EARLIER });
   const summary = await runZuk(deps(w));
@@ -161,7 +174,7 @@ test("first run: every new post read, at most four, the rest next run", async ()
   assert.equal(summary.aiCalls, 4);
   assert.equal(w.writes.length, 1);
   const file = saved(w);
-  assert.equal(file.version, 4);
+  assert.equal(file.version, 5);
   assert.equal(file.checkedAt, EARLIER.toISOString());
   assert.equal(file.generatedAt, EARLIER.toISOString());
   assert.deepEqual(ids(file.active), [39885, 39872, 39865, 39863]);
@@ -187,11 +200,11 @@ test("first run: every new post read, at most four, the rest next run", async ()
   assert.equal(byId(w, 39857)?.status, "parsed");
 });
 
-test("past posts: every title day over, seen without a model call", async () => {
+test("past posts: read like any other, their cuts over, seen", async () => {
   const w = world();
   const summary = await runZuk(deps(w));
-  assert.deepEqual(w.aiCalls, [39885, FOX]);
-  assert.equal(summary.costUsd, 0.0076);
+  assert.deepEqual(w.aiCalls, [39885, 39872, 39865, 39863]);
+  assert.equal(summary.costUsd, 0.0152);
   assert.equal(byId(w, 39872), undefined);
   assert.deepEqual(seenOf(w, 39872), {
     id: 39872,
@@ -199,10 +212,8 @@ test("past posts: every title day over, seen without a model call", async () => 
     reason: PAST,
     reader: ZUK_READER,
   });
-  // Not read again on the next run.
-  w.aiCalls = [];
-  await runZuk(deps(w));
-  assert.deepEqual(w.aiCalls, []);
+  // Not read again; the rest of the window on the next run.
+  await readsTheRest(w);
 });
 
 test("cuts all over: the parsed post moves to seen on the next write", async () => {
@@ -212,9 +223,8 @@ test("cuts all over: the parsed post moves to seen on the next write", async () 
   w.aiCalls = [];
   w.now = NOW;
   await runZuk(deps(w));
-  // The deferred posts are over by now (past); the fox post has no title
-  // day, so it is read.
-  assert.deepEqual(w.aiCalls, [FOX]);
+  // The deferred posts are read now, whatever their days.
+  assert.deepEqual(w.aiCalls, [39857, 39855, 39766, FOX]);
   // 39872 (22 Oct) is over: seen, not read again.
   assert.equal(byId(w, 39872), undefined);
   assert.equal(seenOf(w, 39872)?.reason, PAST);
@@ -222,7 +232,7 @@ test("cuts all over: the parsed post moves to seen on the next write", async () 
 });
 
 test("a file of an older version: the window read afresh, four a run", async () => {
-  for (const version of [1, 2, 3]) {
+  for (const version of [1, 2, 3, 4]) {
     const w = world({ now: EARLIER });
     w.file = JSON.stringify({
       version,
@@ -233,7 +243,7 @@ test("a file of an older version: the window read afresh, four a run", async () 
     const summary = await runZuk(deps(w));
     assert.equal(summary.aiCalls, 4, String(version));
     assert.deepEqual(w.aiCalls, [39885, 39872, 39865, 39863]);
-    assert.equal(saved(w).version, 4);
+    assert.equal(saved(w).version, 5);
     w.aiCalls = [];
     await runZuk(deps(w));
     assert.deepEqual(w.aiCalls, [39857, 39855, 39766, FOX]);
@@ -258,12 +268,7 @@ test("an older reader: every post read again, four a run", async () => {
   assert.deepEqual(w.aiCalls, [39885, 39872, 39865, 39863]);
   // The posts not read yet keep their old reading until their turn.
   assert.equal(byId(w, 39857)?.reader, ZUK_READER - 1);
-  w.aiCalls = [];
-  await runZuk(deps(w));
-  assert.deepEqual(w.aiCalls, [39857, 39855, 39766, FOX]);
-  w.aiCalls = [];
-  await runZuk(deps(w));
-  assert.deepEqual(w.aiCalls, []);
+  await readsTheRest(w);
 });
 
 test("unchanged posts: no model call, no places query, results kept", async () => {
@@ -320,7 +325,7 @@ test("purge: a run that changes the file purges WATER once, after the write", as
   w.purges = [];
   w.posts = RECENT.map((p) =>
     p.id === 39885 ? { ...p, modified: "2026-10-24T09:00:00" } : p,
-  );
+  ).filter((p) => p.id === 39885);
   w.now = new Date(NOW.getTime() + 15 * 60_000);
   await cron(w);
   assert.deepEqual(w.purges, [WATER]);
@@ -370,7 +375,7 @@ test("an edited post is read again", async () => {
   w.aiCalls = [];
   w.posts = RECENT.map((p) =>
     p.id === 39885 ? { ...p, modified: "2026-10-24T09:00:00" } : p,
-  );
+  ).filter((p) => p.id === 39885);
   w.now = new Date(NOW.getTime() + 60_000);
   const summary = await runZuk(deps(w));
   assert.deepEqual(w.aiCalls, [39885]);
@@ -380,13 +385,13 @@ test("an edited post is read again", async () => {
 });
 
 test("an edited post not read this run: its old reading kept, read later", async () => {
-  const w = world();
+  const w = world({ posts: [RECENT[0]] });
   await runZuk(deps(w));
   const kept = byId(w, 39885);
   assert.ok(kept);
   w.posts = RECENT.map((p) =>
     p.id === 39885 ? { ...p, modified: "2026-10-24T09:00:00" } : p,
-  );
+  ).filter((p) => p.id === 39885);
   w.aiFails = true;
   w.aiCalls = [];
   w.now = new Date(NOW.getTime() + 60_000);
@@ -491,7 +496,7 @@ test("the file unreadable: the run stops, nothing written", async () => {
 });
 
 test("post_type other: seen as not-water, never read again, never shown", async () => {
-  const w = world();
+  const w = world({ posts: [RECENT[7]] });
   await runZuk(deps(w));
   assert.equal(byId(w, FOX), undefined);
   // No title, url, localityIds or items.
@@ -534,6 +539,7 @@ const qualityItem = (locality: string, date = "2026-10-24") => ({
   street_verbatim: null,
   note: null,
   kind: "quality" as const,
+  ...AI_ITEM,
 });
 
 const qualityReading = (
@@ -543,6 +549,7 @@ const qualityReading = (
   post_type: "water_quality",
   quality_status: status,
   is_past: false,
+  changes_earlier_dates: false,
   items,
 });
 
@@ -602,62 +609,155 @@ test("post_type water_quality: a day not in the text drops that place", async ()
   const post = byId(w, NEW);
   assert.equal(post?.qualityStatus, "lifted");
   assert.deepEqual(post?.places, []);
-  assert.ok(
-    w.logs.some(
-      (l) =>
-        l.zuk === "ai" &&
-        JSON.stringify(l.dropped) === '["item 1: 30.10 not in text"]',
-    ),
-  );
+  assert.ok(w.logs.some((l) => l.zuk === "ai" && l.rejected === 1));
 });
 
-test("keywords and the model disagree: logged, the model decides", async () => {
-  const other: AiResult = {
-    post_type: "other",
-    quality_status: null,
-    is_past: false,
-    items: [],
-  };
+test("the model decides what a post is: no word filter before it", async () => {
+  const other: AiResult = { ...reading(FOX), post_type: "other" };
   const w = world({
-    readings: {
-      39885: other,
-      [FOX]: qualityReading([]),
-    },
+    posts: [RECENT[0], RECENT[7]],
+    readings: { 39885: other, [FOX]: qualityReading([]) },
   });
   await runZuk(deps(w));
-  const disagree = w.logs.filter((l) => l.zuk === "classify-disagree");
-  assert.deepEqual(disagree, [
-    {
-      zuk: "classify-disagree",
-      source: "gmina-lubaczow",
-      post: 39885,
-      kind: "other",
-      regex: true,
-    },
-    {
-      zuk: "classify-disagree",
-      source: "gmina-lubaczow",
-      post: FOX,
-      kind: "water_quality",
-      regex: false,
-    },
-  ]);
-  assert.equal(byId(w, 39885), undefined);
+  assert.deepEqual(w.aiCalls, [39885, FOX]);
   assert.equal(seenOf(w, 39885)?.reason, NOT_WATER);
   assert.equal(byId(w, FOX)?.reason, WATER_QUALITY);
-  // Not about water: no localityIds anywhere in the file.
-  assert.deepEqual(Object.keys(seenOf(w, 39885) ?? {}).sort(), [
-    "id",
-    "modified",
-    "reader",
-    "reason",
-  ]);
+  assert.ok(!w.logs.some((l) => l.zuk === "classify-disagree"));
 });
 
-test("keywords and the model agree: nothing logged", async () => {
-  const w = world();
+test("changes_earlier_dates: the model's field marks the post, nothing else", async () => {
+  const w = world({
+    posts: [RECENT[0]],
+    readings: { 39885: { ...reading(39885), changes_earlier_dates: true } },
+  });
   await runZuk(deps(w));
-  assert.ok(!w.logs.some((l) => l.zuk === "classify-disagree"));
+  assert.equal(byId(w, 39885)?.change, true);
+  const plain = world({ posts: [RECENT[0]] });
+  await runZuk(deps(plain));
+  assert.equal(byId(plain, 39885)?.change, undefined);
+});
+
+/** 39885 read with one item off the list: a street not listed. */
+function withRejected(): AiResult {
+  const ai = reading(39885);
+  const zuki = ai.items.findIndex((i) => i.street === "Żuki");
+  ai.items[zuki] = {
+    ...ai.items[zuki],
+    street: null,
+    suggested_places: ["Żuki", "Nie Ma Takiej"],
+  };
+  return ai;
+}
+
+test("rejected: each failed item in the file and the log, the model's JSON kept", async () => {
+  const w = world({ posts: [RECENT[0]], readings: { 39885: withRejected() } });
+  await runZuk(deps(w));
+  const file = saved(w);
+  assert.equal(file.rejected.length, 1);
+  const [entry] = file.rejected;
+  assert.equal(entry.postId, 39885);
+  assert.equal(entry.url, RECENT[0].link);
+  assert.equal(entry.sourceId, "gmina-lubaczow");
+  assert.equal(entry.publishedAt, "2026-10-23 18:59:43");
+  assert.equal(entry.readAt, NOW.toISOString());
+  assert.equal(entry.reason, "street not listed");
+  assert.equal(entry.item.street_verbatim, "ul. Żuki");
+  // Listed names only.
+  assert.deepEqual(entry.suggested_places, ["Żuki"]);
+  assert.equal(typeof file.gazetteer, "string");
+  const log = w.logs.find((l) => l.zuk === "rejected");
+  assert.deepEqual(log, {
+    zuk: "rejected",
+    source: "gmina-lubaczow",
+    gazetteer: file.gazetteer,
+    entries: file.rejected,
+  });
+  // The pages: a link on the town's pages, never the rejected list.
+  const view = zukView(file, NOW);
+  const rest = view.notices.find((n) => n.uid === "zuk-39885-rest-0972447");
+  assert.deepEqual(rest?.localityIds, ["0972447"]);
+  assert.deepEqual(rest?.where, ["ul. Żuki"]);
+  assert.ok(!JSON.stringify(view).includes("suggested_places"));
+});
+
+test("rejected: kept while its post is in the window, replaced when re-read", async () => {
+  const w = world({ posts: [RECENT[0]], readings: { 39885: withRejected() } });
+  await runZuk(deps(w));
+  const first = saved(w);
+  // Next run, nothing read: the entries stay; generatedAt too.
+  w.aiCalls = [];
+  w.now = new Date(NOW.getTime() + 15 * 60_000);
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, []);
+  assert.deepEqual(saved(w).rejected, first.rejected);
+  // Edited and read again, now with no rejection: its entries go, and the
+  // pages' content (and generatedAt) does not change for that alone.
+  w.posts = [{ ...RECENT[0], modified: "2026-10-25T09:00:00" }];
+  w.readings = {};
+  const before = saved(w).generatedAt;
+  w.now = new Date(NOW.getTime() + 30 * 60_000);
+  await runZuk(deps(w));
+  assert.deepEqual(saved(w).rejected, []);
+  assert.notEqual(saved(w).generatedAt, before, "its cut shown now");
+  // Out of the window: gone.
+  w.file = JSON.stringify({ ...saved(w), rejected: first.rejected });
+  w.posts = [];
+  await runZuk(deps(w));
+  assert.deepEqual(saved(w).rejected, []);
+});
+
+test("rejected only: generatedAt and the purge stay", async () => {
+  const w = world({ posts: [RECENT[0]], readings: { 39885: withRejected() } });
+  await runZuk(deps(w));
+  const file = saved(w);
+  w.purges = [];
+  w.now = new Date(NOW.getTime() + 15 * 60_000);
+  // Read again (other districts) with the same reading: only the
+  // rejected list is rebuilt.
+  w.file = JSON.stringify({ ...file, gazetteer: "older" });
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, [39885, 39885]);
+  assert.equal(saved(w).rejected.length, 1);
+  assert.equal(saved(w).generatedAt, file.generatedAt);
+  assert.deepEqual(w.purges, []);
+});
+
+test("the districts change: only posts with rejected items are read again", async () => {
+  const w = world({
+    posts: [RECENT[0], RECENT[2]],
+    readings: { 39885: withRejected() },
+  });
+  await runZuk(deps(w));
+  w.aiCalls = [];
+  w.placesLoads = 0;
+  w.now = new Date(NOW.getTime() + 15 * 60_000);
+  // Same districts: loaded (rejected entries exist), nothing read.
+  await runZuk(deps(w));
+  assert.equal(w.placesLoads, 1);
+  assert.deepEqual(w.aiCalls, []);
+  // New district rows: 39885 alone read again.
+  const districts = [
+    {
+      id: "nowe",
+      localityId: "0972447",
+      simc: null,
+      name: "Osiedle Nowe",
+      variants: [],
+      confidence: "medium" as const,
+      sourceUrl: "https://example.invalid/",
+      streets: [],
+    },
+  ];
+  w.places = { ...PLACES, districts };
+  await runZuk(deps(w));
+  assert.deepEqual(w.aiCalls, [39885]);
+  assert.notEqual(saved(w).gazetteer, null);
+  // Nothing rejected and nothing to read: the districts are not loaded.
+  const clean = world({ posts: [RECENT[0]] });
+  await runZuk(deps(clean));
+  clean.placesLoads = 0;
+  await runZuk(deps(clean));
+  assert.equal(clean.placesLoads, 0);
 });
 
 test("many new posts: still four model calls a run, the rest deferred", async () => {
@@ -691,16 +791,17 @@ test("40 posts, one live: a small file, one active", async () => {
     ...Array.from({ length: 9 }, (_, n) => copy(RECENT[7], 30 + n)),
   ];
   assert.equal(posts.length, 40);
-  const readings = Object.fromEntries(
-    posts.slice(31).map((p) => [p.id, reading(FOX)]),
-  );
+  const readings = Object.fromEntries([
+    ...posts.slice(1, 31).map((p) => [p.id, reading(39872)]),
+    ...posts.slice(31).map((p) => [p.id, reading(FOX)]),
+  ]);
   const w = world({ posts, readings });
-  for (let run = 0; run < 3; run++) {
+  for (let run = 0; run < 10; run++) {
     await runZuk(deps(w));
     w.now = new Date(w.now.getTime() + 15 * 60_000);
   }
-  // 10 posts to read: three runs.
-  assert.equal(w.aiCalls.length, 10);
+  // 40 posts to read, four a run.
+  assert.equal(w.aiCalls.length, 40);
   const file = saved(w);
   assert.deepEqual(ids(file.active), [39885]);
   assert.equal(file.seen.length, 39);

@@ -257,8 +257,8 @@ function when(cut: Disruption): string {
 
 /**
  * What is cut, in our names, with the source's own words on the houses as
- * written: "cała miejscowość Lisie Jamy", "cała ulica Żuki", "Załuże:
- * Podłęże od numeru 44 do numeru 92".
+ * written: "cała miejscowość Wzorowo", "cała ulica Próbna", "Wzorowo:
+ * Górki od numeru 44 do numeru 92".
  */
 export function scope(cut: Disruption): string {
   const label = cut.label;

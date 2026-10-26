@@ -2,7 +2,7 @@
 // cron reads (lib/sources/<id>, lib/zuk-cron.ts). Pure, for the cron and
 // the pages alike. The pages' logic and texts are one for every address
 // (lib/water-module.ts); only an address's list of sources differs: the
-// gmina's posts (ZUK Mokrzyca, the wójt) everywhere, MZGKiM's in the town
+// gmina's posts (ZUK, the wójt) everywhere, MZGKiM's in the town
 // and its parts, where MZGKiM supplies most of the water.
 
 import type { Part } from "./hub.ts";
@@ -12,16 +12,18 @@ export type WaterSourceId = "gmina-lubaczow" | "mzgkim";
 
 export type WaterSource = {
   id: WaterSourceId;
-  /** Its cuts' and notices' uid prefix: "zuk-39885-…" (lib/zuk.ts). */
+  /** Its cuts' and notices' uid prefix: "zuk-12345-…" (lib/zuk.ts). */
   uid: string;
   /** In each cut's source (the hard rule): who announced it. */
   name: string;
-  /** After an alert: "ZUK Mokrzyca". */
+  /** After an alert: its short name. */
   short: string;
   /** The file in the private Blob store (lib/zuk-store.ts). */
   pathname: string;
   /** The localities it reads posts for; null: every one of ours. */
   area: ReadonlySet<string> | null;
+  /** The locality its posts concern without naming it; null: none. */
+  implied: string | null;
   /** Who, as a sentence starts: "Gmina", "MZGKiM"; and inside one. */
   who: string;
   inline: string;
@@ -30,9 +32,9 @@ export type WaterSource = {
   foretold: string;
   /** Whose posts, after „komunikatu”: "gminy", "MZGKiM". */
   of: string;
-  /** Its posts' page, as „Źródło” names it: "aktualności gminy Lubaczów". */
+  /** Its posts' page, as „Źródło” names it: "aktualności gminy …". */
   news: Part;
-  /** The same after „do”: "aktualności gminy Lubaczów", "komunikatów MZGKiM". */
+  /** The same after „do”: "aktualności gminy …", "komunikatów MZGKiM". */
   newsOf: Part;
   /** Where it announces cuts, as a sentence: "Gmina ogłasza je w …". */
   announces: Part[];
@@ -51,6 +53,8 @@ export const MZGKIM_NEWS = "https://mzgkim.lubaczow.pl/category/komunikaty/";
 const TOWNS = new Set(
   ZUK_PLACES.localities.filter((l) => l.kind === "miasto").map((l) => l.id),
 );
+/** The town (TERYT SIMC): every MZGKiM post concerns it, never naming it. */
+const [TOWN_ID] = TOWNS;
 export const TOWN: ReadonlySet<string> = new Set(
   ZUK_PLACES.localities
     .filter((l) => TOWNS.has(l.id) || TOWNS.has(l.parentId ?? ""))
@@ -64,6 +68,7 @@ export const GMINA: WaterSource = {
   short: "ZUK Mokrzyca",
   pathname: "zuk/disruptions.json",
   area: null,
+  implied: null,
   who: "Gmina",
   inline: "gmina",
   announced: "ogłosiła",
@@ -82,6 +87,7 @@ export const MZGKIM: WaterSource = {
   short: "MZGKiM",
   pathname: "mzgkim/disruptions.json",
   area: TOWN,
+  implied: TOWN_ID,
   who: "MZGKiM",
   inline: "MZGKiM",
   announced: "ogłosił",

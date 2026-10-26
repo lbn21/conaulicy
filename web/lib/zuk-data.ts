@@ -4,41 +4,52 @@
 // Every source's file has this one shape. Pure, so the tests run it as is.
 //
 // {
-//   version: 4,
+//   version: 5,
 //   generatedAt,  // ISO: when `active` or `seen` last changed, any
 //                 // checkedAt in them aside
-//   checkedAt,    // ISO: the last successful read of the gmina's posts
+//   checkedAt,    // ISO: the last successful read of the source's posts
+//   gazetteer,    // a short hash of the district rows the posts were
+//                 // read with, null if none were loaded yet
 //   active: [{    // the water posts that still matter: all the pages read
 //     id, modified, reader, url, title, publishedAt, updatedAt,
 //     status: "parsed" | "notice",
 //     reason?,            // why a Notice: the post could not be read
 //                         // (shown for 14 days), or "water-quality" (no
 //                         // UI yet, never shown)
-//     past?, change?,     // a report of a past cut; a date-change post
+//     past?, change?,     // a report of a past cut; a post moving an
+//                         // earlier one's dates (the model's
+//                         // changes_earlier_dates)
 //     localityIds,        // what a Notice may concern
 //     itemCount,          // items read, before those already over went
 //     items: Disruption[] // parsed only; cuts already over are dropped
 //     sourceId,           // lib/sources: "gmina-lubaczow", "mzgkim"
 //     qualityStatus?, places?  // "water-quality" only: warning or lifted,
 //                         // the places that passed the gate, each its day
-//     unmatched?,         // a source with an area: the post's words for
-//                         // places in it we could not match (lib/zuk.ts)
-//     doubts?,            // and bare names read as a street that may mean
-//                         // the estate of that name ("Mazury"), with
-//                         // that estate's streets
+//     unmatched?,         // its rejected items: their words, if in the
+//                         // post, and locality, if listed (lib/zuk.ts)
+//     doubts?,            // bare names read as a street that may mean a
+//                         // district, with that district's streets
 //     digest?,            // a source without edit times: what changed
 //   }],
 //   seen: [{      // the cron's memory of every other post it decided
 //     id, modified, reader, digest?,
 //     reason,     // "not-water" (the model's post_type "other"), "past"
-//                 // (its days or cuts are over), "expired" (a Notice
-//                 // past its 14 days), "ai-unavailable" (retried next run)
+//                 // (its cuts are over), "expired" (a Notice past its 14
+//                 // days), "ai-unavailable" (retried next run)
+//   }],
+//   rejected: [{  // for review, never read by the pages: every item of a
+//                 // post in the window that failed the gate
+//     postId, url, sourceId, publishedAt, readAt,
+//     item,       // the model's JSON as returned
+//     reason,     // lib/zuk-resolve.ts Reason: "street not listed", …
+//     suggested_places, // the model's, listed names only
 //   }]
 // }
 //
 // A post over the run's model calls is in neither: read on a later run.
-// A post is read again when it is edited, its reading failed, or its
-// `reader` is older than ZUK_READER. A file of an older version (1-3) is
+// A post is read again when it is edited, its reading failed, its
+// `reader` is older than ZUK_READER, or it has rejected items and the
+// districts changed (`gazetteer`). A file of an older version (1-4) is
 // no file: the pages show the source link and the cron reads the window
 // afresh. The version is the file's shape; the reader is what read it.
 
@@ -46,15 +57,18 @@ import { todayInWarsaw } from "./dates.ts";
 import type { Disruption, Doubt, Notice } from "./disruptions.ts";
 import { GMINA, type WaterSource } from "./water-sources.ts";
 import { current, noticeUntil, type WarningPlace } from "./zuk.ts";
+import type { AiItem } from "./zuk-ai.ts";
+import type { Reason } from "./zuk-resolve.ts";
 
-export const ZUK_FILE_VERSION = 4;
+export const ZUK_FILE_VERSION = 5;
 /**
  * What reads a post: the prompt, schema and place gate. 3 is v3.1 (task
  * 114b), 4 the omission guard per dated line (task 152), 5 the town's
- * districts (the gazetteer, task 151); raise it when they change, and
- * every post is read again.
+ * districts (the gazetteer, task 151), 6 the shared prompt and the gate of
+ * certain checks only (task 182); raise it when they change, and every
+ * post is read again.
  */
-export const ZUK_READER = 5;
+export const ZUK_READER = 6;
 
 /** Older than this, the data may be out of date: show the source link. */
 export const STALE_MS = 60 * 60_000;
@@ -63,7 +77,7 @@ export const STALE_MS = 60 * 60_000;
 export const AI_UNAVAILABLE = "ai-unavailable";
 /** Over the run's model calls: not stored, read next run. */
 export const AI_DEFERRED = "ai-deferred";
-/** Its title's days or its cuts are all over. */
+/** Its cuts are all over. */
 export const PAST = "past";
 /** A Notice past its 14 days (noticeUntil). */
 export const EXPIRED = "expired";
@@ -94,9 +108,9 @@ export type StoredPost = {
   /** "water-quality" only. */
   qualityStatus?: "warning" | "lifted" | null;
   places?: WarningPlace[];
-  /** Places in the source's area we could not match, as written. */
-  unmatched?: string[];
-  /** A bare name read as the street, which may mean the estate (lib/zuk.ts). */
+  /** Its rejected items: linked on their locality's pages, else the post's. */
+  unmatched?: Unmatched[];
+  /** A bare name read as the street, which may mean a district (lib/zuk.ts). */
   doubts?: Doubt[];
   /** lib/zuk.ts ZukPost digest. */
   digest?: string;
@@ -111,12 +125,30 @@ export type SeenPost = {
   digest?: string;
 };
 
+/** A rejected item as the pages link it. */
+export type Unmatched = { words: string | null; localityId: string | null };
+
+/** An item that failed the gate, for review (never shown). */
+export type RejectedEntry = {
+  postId: number;
+  url: string;
+  sourceId: string;
+  publishedAt: string;
+  /** The run that read it (ISO). */
+  readAt: string;
+  item: AiItem;
+  reason: Reason;
+  suggested_places: string[];
+};
+
 export type ZukFile = {
   version: typeof ZUK_FILE_VERSION;
   generatedAt: string;
   checkedAt: string;
+  gazetteer: string | null;
   active: StoredPost[];
   seen: SeenPost[];
+  rejected: RejectedEntry[];
 };
 
 /** The file, or null if it is not one of this version. */
@@ -125,8 +157,10 @@ export function parseZukFile(body: string): ZukFile | null {
     const file = JSON.parse(body) as ZukFile;
     return file?.version === ZUK_FILE_VERSION &&
       typeof file.checkedAt === "string" &&
+      (file.gazetteer === null || typeof file.gazetteer === "string") &&
       Array.isArray(file.active) &&
-      Array.isArray(file.seen)
+      Array.isArray(file.seen) &&
+      Array.isArray(file.rejected)
       ? file
       : null;
   } catch {
@@ -216,7 +250,7 @@ const dayAndPlace = (d: Disruption) =>
 /**
  * Posts whose cuts must not be shown as dates: two posts giving one place
  * and day different hours, and earlier posts sharing a locality with a
- * later date-change post ("aktualizacja dat").
+ * later post that changes dates.
  */
 function doubted(posts: StoredPost[]): Set<number> {
   const out = new Set<number>();
@@ -238,8 +272,9 @@ function doubted(posts: StoredPost[]): Set<number> {
 }
 
 /**
- * What the pages get from `source`'s file at `now`. A post with places we
- * could not match gives a Notice too, naming them (`where`): the pages
+ * What the pages get from `source`'s file at `now` (never its `rejected`).
+ * A post with rejected items gives a Notice too, naming their words
+ * (`where`): on their locality's pages, else on the post's; the pages
  * link it where none of its cuts is shown (lib/water-module.ts).
  */
 export function zukView(
@@ -261,20 +296,31 @@ export function zukView(
     url: post.url,
     checkedAt: file.checkedAt,
   });
-  const notice = (
-    post: StoredPost,
-    rest: "rest" | "doubt" | null = null,
-  ): Notice => ({
-    uid: `${source.uid}-${post.id}${rest ? `-${rest}` : ""}`,
+  const notice = (post: StoredPost, suffix: string | null = null): Notice => ({
+    uid: `${source.uid}-${post.id}${suffix ? `-${suffix}` : ""}`,
     kind: "water",
     title: post.title,
     localityIds: post.localityIds,
     publishedAt: post.publishedAt,
     updatedAt: post.updatedAt,
     source: from(post),
-    ...(rest === "rest" ? { where: post.unmatched } : {}),
-    ...(rest === "doubt" ? { doubt: post.doubts } : {}),
+    ...(suffix === "doubt" ? { doubt: post.doubts } : {}),
   });
+  // One Notice per locality of the rejected items; those with none on the
+  // post's localities.
+  const rest = (post: StoredPost): Notice[] => {
+    const groups = new Map<string | null, string[]>();
+    for (const u of post.unmatched ?? [])
+      groups.set(u.localityId, [
+        ...(groups.get(u.localityId) ?? []),
+        ...(u.words === null ? [] : [u.words]),
+      ]);
+    return [...groups].map(([id, words]) => ({
+      ...notice(post, id === null ? "rest" : `rest-${id}`),
+      ...(id === null ? {} : { localityIds: [id] }),
+      where: [...new Set(words)],
+    }));
+  };
   const posts = file.active
     .filter((p) => !HIDDEN.has(p.reason ?? ""))
     .map((p) => ({ ...p, items: current(p.items, today) }));
@@ -286,8 +332,7 @@ export function zukView(
       disruptions.push(
         ...post.items.map((d) => ({ ...d, source: from(post) })),
       );
-      if (post.items.length > 0 && post.unmatched?.length)
-        notices.push(notice(post, "rest"));
+      if (post.items.length > 0) notices.push(...rest(post));
       if (post.items.length > 0 && post.doubts?.length)
         notices.push(notice(post, "doubt"));
       continue;

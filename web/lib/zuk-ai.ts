@@ -1,11 +1,10 @@
 // Grok reads one post (xAI chat/completions, structured output): what it is
 // (post_type) and, for a water post, its items. Shared by every source: the
-// schema, the reply check and the call; the prompt is the source's own
-// (lib/sources/<id>/prompt.ts). What it returns is a claim, not a fact:
-// lib/zuk-guards.ts checks every value against the post's own text and
-// lib/zuk-resolve.ts maps the places to ours; a place that fails is
-// dropped, a date or time that fails makes the post a Notice. It never
-// returns ids: our code has the last word (lib/zuk-resolve.ts).
+// schema, the reply check and the call; the prompt is lib/water-prompt.ts.
+// What it returns is a claim, not a fact: lib/zuk-resolve.ts checks only
+// what is certain (listed names, words in the post, days and times); a
+// place that fails is rejected, a date or time that fails makes the post a
+// Notice. It never returns ids: our code maps listed names to them.
 
 export const ZUK_MODEL = "grok-4.7";
 
@@ -24,18 +23,27 @@ export type AiItem = {
   /** HH:MM or null. */
   start: string | null;
   end: string | null;
-  /** Our name from the prompt's list: "Lubaczów", "Dąbrowa (Basznia Górna)". */
-  locality: string;
-  /** The post's own words for it, exactly: "Lubaczów". */
-  locality_verbatim: string;
-  /** Our street name from the list ("Jana III Sobieskiego"); null if none. */
+  /** The listed name ("Name (Village)" for a part); null if not listed. */
+  locality: string | null;
+  /** The post's own words for it; null where the source never names it. */
+  locality_verbatim: string | null;
+  /** A listed street or district of that locality; null if none. */
   street: string | null;
-  /** The post's own words for it: "ul. Sobieskiego"; null if no street. */
+  /** The post's own words for the street, or for an unlisted one. */
   street_verbatim: string | null;
   /** The place's limitation, one exact quote: "od nr 104 do nr 110". */
   note: string | null;
   /** "quality" for a water_quality post's places. */
   kind: "planned" | "emergency" | "quality";
+  /** The end is an expected restore time, not a set one. */
+  end_estimated: boolean;
+  /** The whole town, in the post's words (whole_town_verbatim). */
+  whole_town: boolean;
+  whole_town_verbatim: string | null;
+  /** A listed district a bare street name may mean instead; else null. */
+  doubt: string | null;
+  /** For a place not on the list: listed names it may cover. */
+  suggested_places: string[];
 };
 
 /** What the post is: only a water_outage is read for cuts. */
@@ -46,6 +54,8 @@ export type AiResult = {
   /** water_quality only, else null. */
   quality_status: "warning" | "lifted" | null;
   is_past: boolean;
+  /** It moves, extends or cancels the dates of an earlier post. */
+  changes_earlier_dates: boolean;
   items: AiItem[];
 };
 
@@ -63,11 +73,22 @@ export type AiReading = {
   latencyMs: number;
 };
 
-/** schema-v31.json (task 114b), as is. */
+const nullable = (description: string) => ({
+  type: ["string", "null"],
+  description,
+});
+
+/** The output schema; the prompt (lib/water-prompt.ts) says how to fill it. */
 const SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["post_type", "quality_status", "is_past", "items"],
+  required: [
+    "post_type",
+    "quality_status",
+    "is_past",
+    "changes_earlier_dates",
+    "items",
+  ],
   properties: {
     post_type: {
       type: "string",
@@ -81,7 +102,12 @@ const SCHEMA = {
     is_past: {
       type: "boolean",
       description:
-        "true if the text reports an interruption that already happened (past tense, e.g. 'nastąpiła'), not one announced for the future",
+        "the post reports an interruption that already happened, not one announced",
+    },
+    changes_earlier_dates: {
+      type: "boolean",
+      description:
+        "this post moves, extends or cancels dates of an earlier announcement for the same places",
     },
     items: {
       type: "array",
@@ -98,49 +124,49 @@ const SCHEMA = {
           "street_verbatim",
           "note",
           "kind",
+          "end_estimated",
+          "whole_town",
+          "whole_town_verbatim",
+          "doubt",
+          "suggested_places",
         ],
         properties: {
           date: {
             type: "string",
             format: "date",
-            description: "day the interruption starts, YYYY-MM-DD",
+            description: "the day, YYYY-MM-DD",
           },
-          start: {
-            type: ["string", "null"],
-            description: "HH:MM, null if not stated",
-          },
-          end: {
-            type: ["string", "null"],
-            description:
-              "HH:MM, null if not stated; may be on the next day for night spans",
-          },
-          locality: {
-            type: "string",
-            description: "canonical locality name from the context list",
-          },
-          locality_verbatim: {
-            type: "string",
-            description:
-              "exact substring of the post naming the locality as written, may be inflected",
-          },
-          street: {
-            type: ["string", "null"],
-            description:
-              "canonical street name from the context list for that locality (as written if not listed); null if the whole locality",
-          },
-          street_verbatim: {
-            type: ["string", "null"],
-            description:
-              "exact substring of the post naming the street, e.g. 'ul. Polna', 'os. Testowe'; no house numbers; null if street is null",
-          },
-          note: {
-            type: ["string", "null"],
-            description:
-              "the place's limitation as ONE continuous exact quote from the post (house ranges, 'w części miejscowości', unlisted part name, '(przysiółek …)'); never another place; null if none",
-          },
+          start: nullable("HH:MM, null if not written"),
+          end: nullable("HH:MM, null if not written"),
+          locality: nullable("listed locality name, null if not listed"),
+          locality_verbatim: nullable(
+            "exact words of the post naming the locality",
+          ),
+          street: nullable("listed street or district name of the locality"),
+          street_verbatim: nullable(
+            "exact words of the post naming the street or district",
+          ),
+          note: nullable("the place's limitation, one exact quote"),
           kind: {
             type: "string",
             enum: ["planned", "emergency", "quality"],
+          },
+          end_estimated: {
+            type: "boolean",
+            description: "the end is an expected, not a set, time",
+          },
+          whole_town: {
+            type: "boolean",
+            description: "the post says the whole town",
+          },
+          whole_town_verbatim: nullable("exact words saying the whole town"),
+          doubt: nullable(
+            "listed district name a bare street name may mean instead",
+          ),
+          suggested_places: {
+            type: "array",
+            items: { type: "string" },
+            description: "listed names an unlisted place may cover",
           },
         },
       },
@@ -170,12 +196,18 @@ function isItem(v: unknown): v is AiItem {
     /^\d{4}-\d{2}-\d{2}$/.test(i.date) &&
     isTime(i.start) &&
     isTime(i.end) &&
-    isText(i.locality) &&
-    isText(i.locality_verbatim) &&
+    orNull(i.locality) &&
+    orNull(i.locality_verbatim) &&
     orNull(i.street) &&
     orNull(i.street_verbatim) &&
     orNull(i.note) &&
-    (i.kind === "planned" || i.kind === "emergency" || i.kind === "quality")
+    (i.kind === "planned" || i.kind === "emergency" || i.kind === "quality") &&
+    typeof i.end_estimated === "boolean" &&
+    typeof i.whole_town === "boolean" &&
+    orNull(i.whole_town_verbatim) &&
+    orNull(i.doubt) &&
+    Array.isArray(i.suggested_places) &&
+    i.suggested_places.every(isText)
   );
 }
 
@@ -199,6 +231,7 @@ export function parseAiResult(content: string): AiResult | null {
       v.quality_status === "lifted"
     ) ||
     typeof v.is_past !== "boolean" ||
+    typeof v.changes_earlier_dates !== "boolean" ||
     !Array.isArray(v.items) ||
     !v.items.every(isItem)
   )

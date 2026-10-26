@@ -2,18 +2,16 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Disruption } from "./disruptions.ts";
 import { DISTRICTS } from "./districts-seed.ts";
-import { matchesOutageKeywords } from "./sources/gmina-lubaczow/index.ts";
+import { MZGKIM } from "./water-sources.ts";
 import {
-  isChangePost,
-  isPastPost,
   mentionedLocalities,
   plainText,
   readPost,
-  titleDays,
   type ZukPost,
 } from "./zuk.ts";
 import type { AiItem, AiResult } from "./zuk-ai.ts";
 import {
+  AI_ITEM,
   PLACES,
   POST_39885_EDITED,
   READINGS,
@@ -56,18 +54,12 @@ test("real: every post the model read, checked and resolved", () => {
   assert.equal(Object.keys(READINGS).length, posts.length);
 });
 
-// What the gate (gate-spec v3.1) drops of the truth, by its own rules:
-// left out, never wrong.
+// What the truth has that the readings cannot give: left out, never wrong.
 const LOST_POSTS: Record<number, string> = {
   39868: "not a water cut",
 };
-const LOST_ITEMS: Record<number, string[]> = {
-  // "ul. Przemysłowa (gospodarstwa zasilane z SUW Mokrzyca)": the bracket
-  // after the street names Mokrzyca, so Mokrzyca decides, not Lubaczów.
-  26028: ["item 2: proximity: deciding mention Mokrzyca (bracket)"],
-};
 
-test("real, v3.1 items: all 24 posts, every place-day right, none wrong", () => {
+test("real items: all 24 posts, every place-day right, none wrong", () => {
   const ids = posts.map((p) => p.id);
   const hhmm = (wall: string | null) => wall?.slice(11, 16) ?? null;
   const got = new Set<string>();
@@ -79,7 +71,7 @@ test("real, v3.1 items: all 24 posts, every place-day right, none wrong", () => 
     }
     assert.equal(read.status, "parsed", `${id}: ${JSON.stringify(read)}`);
     if (read.status !== "parsed") continue;
-    assert.deepEqual(read.dropped, LOST_ITEMS[id] ?? [], String(id));
+    assert.deepEqual(read.rejected, [], String(id));
     for (const d of read.items)
       got.add(
         [
@@ -95,7 +87,6 @@ test("real, v3.1 items: all 24 posts, every place-day right, none wrong", () => 
   const want = new Set<string>();
   for (const [id, date, start, end, localityId, streetId, houses] of TRUTH) {
     if (id in LOST_POSTS) continue;
-    if (id === 26028 && streetId === "0972447-17742") continue;
     // A whole village is the village and each of its streets.
     const places = streetId
       ? [streetId]
@@ -115,7 +106,7 @@ test("real, v3.1 items: all 24 posts, every place-day right, none wrong", () => 
   assert.equal(TRUTH.length, 117);
 });
 
-test("real 39885 as edited (14:41): each dated line its own, Lisie Jamy whole on 26 and 29.10", () => {
+test("real 39885 as edited (14:41): Lisie Jamy whole on 26 and 29.10, four streets on 27.10", () => {
   const read = readPost(
     POST_39885_EDITED,
     reading39885Edited(),
@@ -124,7 +115,7 @@ test("real 39885 as edited (14:41): each dated line its own, Lisie Jamy whole on
   );
   assert.equal(read.status, "parsed", JSON.stringify(read));
   if (read.status !== "parsed") return;
-  assert.deepEqual(read.dropped, []);
+  assert.deepEqual(read.rejected, []);
   const lisie = [
     "0606234",
     ...ZUK_PLACES.streets
@@ -151,24 +142,14 @@ test("real 39885 as edited (14:41): each dated line its own, Lisie Jamy whole on
   // 29.10: the whole village again, and Wólka Krowicka.
   assert.deepEqual(ofLisie("2026-10-29"), lisie);
   assert.ok(at(read.items, "2026-10-29").includes("0606441"));
-  // The 27.10 line still guards its own day: the whole village read for
-  // it is dropped, its streets left out.
-  const widened = reading39885Edited();
-  widened.items.splice(1, 4, {
-    ...widened.items[1],
-    street: null,
-    street_verbatim: null,
-  });
-  const wide = readPost(POST_39885_EDITED, widened, ZUK_PLACES, CHECKED);
-  assert.equal(wide.status, "parsed");
-  if (wide.status !== "parsed") return;
-  assert.deepEqual(wide.dropped, [
-    'item 2: "Lisie Jamy" leaves out what the text adds to it',
-  ]);
-  assert.deepEqual(
-    at(wide.items, "2026-10-27").filter((id) => id.startsWith("0606234")),
-    [],
+  // "Lubaczów ul. Żuki": the town's street, never Dąbków's or Opaka's part.
+  assert.ok(at(read.items, "2026-10-27").includes("0972447-26555"));
+  // Dąbków's own ul. Żuki only as the whole village Dąbków.
+  const dabkow = read.items.find(
+    (d) => d.uid === "zuk-39885-2026-10-27-0606004-26555",
   );
+  assert.equal(dabkow?.where, "Dąbków");
+  assert.ok(at(read.items, "2026-10-28").includes("0972447-17742"));
 });
 
 test("the gazetteer changes no gmina post: every real one reads the same with it", () => {
@@ -254,33 +235,92 @@ test("real 39885: four days, villages expanded, a street of the town", () => {
   });
 });
 
-test("real 39865: the reading that dropped ul. Pilipy loses only that place", () => {
-  // grok-4.7, the first prompt (before the place rule): all of Młodów.
-  const ai = reading(39865);
-  const pilipy = ai.items.findIndex((i) => i.street === "Pilipy");
-  ai.items[pilipy] = {
-    ...ai.items[pilipy],
-    street: null,
-    street_verbatim: null,
-  };
-  const read = readPost(post(39865), ai, PLACES, CHECKED);
-  assert.equal(read.status, "parsed");
-  if (read.status !== "parsed") return;
-  assert.equal(read.dropped.length, 1);
-  assert.match(read.dropped[0], /^item 8: "Młodów" leaves out/);
-  // Neither Młodów nor any of its streets: never widened.
-  assert.ok(read.items.every((d) => d.place.localityId !== "0606286"));
-  assert.ok(read.items.some((d) => d.place.localityId === "0605890"));
-});
-
-test("a post with no place left is a Notice", () => {
+test("a post with no place left is a Notice, its items rejected", () => {
   const ai = reading(39863);
   ai.items = ai.items.map((i) => ({ ...i, locality: "Podłęże" }));
   const read = readPost(post(39863), ai, PLACES, CHECKED);
   assert.equal(read.status, "notice");
-  assert.match(
+  assert.equal(
     read.status === "notice" ? read.reason : "",
-    /^no place: item 1:/,
+    "no place: locality not listed",
+  );
+  assert.deepEqual(
+    read.rejected.map((r) => [r.reason, r.localityId, r.words]),
+    [["locality not listed", null, "Wólka Krowicka"]],
+  );
+});
+
+test("rejected: the reason, the locality if listed, the words if in the post", () => {
+  const ai = reading(39885);
+  const zuki = ai.items.findIndex((i) => i.street === "Żuki");
+  ai.items[zuki] = { ...ai.items[zuki], street: "Żukowska" };
+  ai.items.push({
+    ...ai.items[0],
+    locality: null,
+    locality_verbatim: "Nowe Sioło",
+    suggested_places: ["Opaka"],
+  });
+  const read = readPost(post(39885), ai, PLACES, CHECKED);
+  assert.equal(read.status, "parsed");
+  assert.deepEqual(
+    read.rejected.map((r) => [r.reason, r.localityId, r.words]),
+    [
+      ["street not listed", "0972447", "ul. Żuki"],
+      ["locality not listed", null, null],
+    ],
+  );
+  assert.equal(read.rejected[1].item.suggested_places[0], "Opaka");
+});
+
+test("a district: its streets, each its stretch; the note limits them all", () => {
+  const text =
+    "W dniu 2.09.2026r. (środa) od 8:00 do 16:00 brak wody: osiedle Mazury.";
+  const ai: AiResult = {
+    post_type: "water_outage",
+    quality_status: null,
+    is_past: false,
+    changes_earlier_dates: false,
+    items: [
+      {
+        date: "2026-09-02",
+        start: "08:00",
+        end: "16:00",
+        kind: "planned",
+        locality: "Lubaczów",
+        locality_verbatim: null,
+        street: "Osiedle Mazury",
+        street_verbatim: "osiedle Mazury",
+        note: null,
+        ...AI_ITEM,
+      },
+    ],
+  };
+  const places = { ...ZUK_PLACES, districts: DISTRICTS };
+  const mzgkim = { source: MZGKIM };
+  const whole = readPost(inline("Przerwa", text), ai, places, CHECKED, mzgkim);
+  assert.equal(whole.status, "parsed");
+  if (whole.status !== "parsed") return;
+  assert.equal(whole.items.length, 22);
+  assert.ok(whole.items.every((d) => d.where === "osiedle Mazury"));
+  ai.items[0].note = "osiedle";
+  const part = readPost(inline("Przerwa", text), ai, places, CHECKED, mzgkim);
+  assert.ok(
+    part.status === "parsed" &&
+      part.items.every(
+        (d) => d.scope.type === "unknown" && d.note === "osiedle",
+      ),
+  );
+  // A district with no street: rejected, linked on the town's pages.
+  ai.items[0] = {
+    ...ai.items[0],
+    street: "Osiedle Folwarki",
+    street_verbatim: "osiedle",
+    note: null,
+  };
+  const none = readPost(inline("Przerwa", text), ai, places, CHECKED, mzgkim);
+  assert.deepEqual(
+    none.rejected.map((r) => [r.reason, r.localityId]),
+    [["district has no streets", "0972447"]],
   );
 });
 
@@ -305,11 +345,11 @@ test("real 26028: 'w części' and the SUW note are only part of the place", () 
   const balaje = items.find((d) => d.uid === "zuk-26028-2024-04-09-0605878");
   assert.deepEqual(balaje?.scope, { type: "unknown" });
   assert.equal(balaje?.note, "w części miejscowości");
-  // The bracket after ul. Przemysłowa names Mokrzyca: dropped (the gate's
-  // bracket rule), never Mokrzyca's.
-  assert.ok(
-    !items.some((d) => d.uid.startsWith("zuk-26028-2024-04-09-0972447")),
-  );
+  // The bracket after ul. Przemysłowa is its note: the town's street in
+  // part, never Mokrzyca.
+  const suw = items.find((d) => d.uid === "zuk-26028-2024-04-09-0972447-17742");
+  assert.deepEqual(suw?.scope, { type: "unknown" });
+  assert.equal(suw?.note, "gospodarstwa zasilane z SUW Mokrzyca");
   assert.ok(!items.some((d) => d.place.localityId === "0605884"));
   const zaluze = items.find((d) => d.uid === "zuk-26028-2024-04-10-0606464");
   assert.deepEqual(zaluze?.scope, { type: "unknown" });
@@ -318,7 +358,7 @@ test("real 26028: 'w części' and the SUW note are only part of the place", () 
   assert.deepEqual(later?.scope, { type: "whole" });
 });
 
-test("real 39699: '(przysiółek Dąbrowa)' is Basznia Górna's Dąbrowa", () => {
+test("real 39699: the hamlet in its bracket is its own listed part", () => {
   const [only, ...rest] = cuts(post(39699));
   assert.equal(rest.length, 0);
   assert.deepEqual(only.place, { localityId: "0605967", streetId: null });
@@ -329,14 +369,21 @@ test("a date or time the text does not have makes a Notice", () => {
   ai.items[0] = { ...ai.items[0], date: "2026-10-21" };
   assert.deepEqual(readPost(post(39863), ai, PLACES, CHECKED), {
     status: "notice",
-    reason: "item 1: 21.10 not in text",
+    reason: "item 1: date",
+    rejected: [
+      {
+        item: ai.items[0],
+        reason: "date",
+        localityId: null,
+        words: "Wólka Krowicka",
+      },
+    ],
   });
   const late = reading(39863);
   late.items[0] = { ...late.items[0], end: "17:00" };
-  assert.deepEqual(readPost(post(39863), late, PLACES, CHECKED), {
-    status: "notice",
-    reason: "item 1: 17:00 not in the text",
-  });
+  const read = readPost(post(39863), late, PLACES, CHECKED);
+  assert.equal(read.status === "notice" && read.reason, "item 1: time");
+  assert.deepEqual(read.rejected[0].localityId, "0606441");
 });
 
 test("one place and day twice in a post makes a Notice", () => {
@@ -354,12 +401,13 @@ test("no items, or not an outage notice", () => {
         post_type: "water_outage",
         quality_status: null,
         is_past: false,
+        changes_earlier_dates: false,
         items: [],
       },
       PLACES,
       CHECKED,
     ),
-    { status: "notice", reason: "no items" },
+    { status: "notice", reason: "no items", rejected: [] },
   );
 });
 
@@ -370,12 +418,6 @@ test("uid: the same across re-reads", () => {
   assert.ok(a.includes("zuk-39872-2026-10-22-0606116-20431"));
 });
 
-test("keyword cross-check: water cut notices only", () => {
-  const zuk = posts.filter(matchesOutageKeywords).map((p) => p.id);
-  assert.equal(zuk.length, posts.length - 1);
-  assert.ok(!zuk.includes(39868));
-});
-
 const inline = (title: string, text: string): ZukPost => ({
   id: 1,
   date: "2026-08-28T10:00:00",
@@ -383,49 +425,6 @@ const inline = (title: string, text: string): ZukPost => ({
   link: "https://www.gminalubaczow.pl/",
   title: { rendered: title },
   content: { rendered: `<p>${text}</p>` },
-});
-
-test("keyword cross-check: an outage phrase and its source, in any case ending", () => {
-  // Post 38847: "Zakładu" was missed by a match on "Zakład Usług".
-  assert.ok(
-    matchesOutageKeywords(
-      inline(
-        "Przerwa w dostawie wody - Młodów i Karolówka (31.08 i 1.09.2026)",
-        "Prezes Zakładu Usług Komunalnych Sp. z o.o. w Mokrzycy informuje, że nastąpi przerwa w dostawie wody.",
-      ),
-    ),
-  );
-  assert.ok(
-    matchesOutageKeywords(
-      inline(
-        "Awaria sieci wodociągowej – Basznia Dolna",
-        "Zakład Usług Komunalnych informuje o awarii. Awaria sieci wodociągowej usuwana jest na bieżąco.",
-      ),
-    ),
-  );
-  for (const [title, text] of [
-    [
-      "Upały – apel o oszczędzanie wody",
-      "Wójt Gminy Lubaczów apeluje o rozsądne korzystanie z wody w czasie upałów.",
-    ],
-    [
-      "Zawody wędkarskie",
-      "Koło wędkarskie zaprasza nad wodę w Mokrzycy na zawody.",
-    ],
-    [
-      "Wymiana wodomierzy",
-      "Zakład Usług Komunalnych informuje, że prowadzi wymianę wodomierzy.",
-    ],
-  ]) {
-    assert.ok(!matchesOutageKeywords(inline(title, text)), title);
-  }
-});
-
-test("date-change posts", () => {
-  const change = posts
-    .filter((p) => matchesOutageKeywords(p) && isChangePost(p))
-    .map((p) => p.id);
-  assert.deepEqual(change.sort(), [23860, 24161, 26028]);
 });
 
 test("a Notice's localities: every namesake, not a name inside a longer one", () => {
@@ -438,30 +437,6 @@ test("a Notice's localities: every namesake, not a name inside a longer one", ()
   assert.ok(balaje.includes("0605890"));
   // "Basznia" (a part of Basznia Dolna) is inside "Basznia Dolna".
   assert.ok(!balaje.includes("0605909"));
-});
-
-test("title days: in full, a range, none without a year", () => {
-  assert.deepEqual(titleDays("Przerwy w dostawie wody: 26-29.10.2026"), [
-    "2026-10-26",
-    "2026-10-29",
-  ]);
-  assert.deepEqual(
-    titleDays("Przerwa w dostawie wody – Młodów, ul. Floriana (7-8.09.2026)"),
-    ["2026-09-07", "2026-09-08"],
-  );
-  assert.deepEqual(titleDays("(awaria 16.12.2025)"), ["2025-12-16"]);
-  assert.deepEqual(titleDays("Budomierz (noc 21/22 grudnia)"), []);
-  assert.deepEqual(titleDays("Przerwa w dostawie wody – aktualizacja dat"), []);
-});
-
-test("past post: every title day before today, and only then", () => {
-  assert.equal(isPastPost(post(39885), "2026-10-29"), false);
-  assert.equal(isPastPost(post(39885), "2026-10-30"), true);
-  assert.equal(isPastPost(post(39872), "2026-10-22"), false);
-  assert.equal(isPastPost(post(39872), "2026-10-23"), true);
-  // No day in the title: read it.
-  assert.equal(isPastPost(post(26028), "2026-10-25"), false);
-  assert.equal(isPastPost(post(35690), "2026-10-25"), false);
 });
 
 test("plain text: a line per paragraph and list item, entities decoded", () => {
@@ -488,12 +463,14 @@ function readOne(
     post_type: "water_outage",
     quality_status: null,
     is_past: false,
+    changes_earlier_dates: false,
     items: [
       {
         date: "2026-09-02",
         start: "08:00",
         end: "16:00",
         kind: "planned",
+        ...AI_ITEM,
         ...item,
       },
     ],
@@ -511,7 +488,7 @@ function readOne(
 
 const parsed = (read: ReturnType<typeof readPost>) => {
   assert.equal(read.status, "parsed", JSON.stringify(read));
-  return read.status === "parsed" ? read : { items: [], dropped: [] };
+  return read.status === "parsed" ? read : { items: [], rejected: [] };
 };
 
 test("house numbers in a village with streets: the village only, never its streets", () => {
@@ -524,7 +501,7 @@ test("house numbers in a village with streets: the village only, never its stree
       note: "od nr 10 do nr 50",
     }),
   );
-  assert.deepEqual(krowica.dropped, []);
+  assert.deepEqual(krowica.rejected, []);
   assert.equal(krowica.items.length, 1);
   const [cut] = krowica.items;
   assert.deepEqual(cut.place, { localityId: "0606180", streetId: null });
@@ -546,7 +523,7 @@ test("house numbers in a village with streets: the village only, never its stree
       note: "nr 12",
     }),
   );
-  assert.deepEqual(mlodow.dropped, []);
+  assert.deepEqual(mlodow.rejected, []);
   assert.equal(mlodow.items.length, 1);
   assert.deepEqual(mlodow.items[0].place, {
     localityId: "0606286",
@@ -598,7 +575,7 @@ test("house numbers on a village's street: that street only, as before", () => {
   );
 });
 
-test("house numbers in the town without a street: dropped", () => {
+test("the town without a street or whole_town: rejected, never the town", () => {
   const read = readOne("Lubaczów od nr 1 do nr 20", {
     locality: "Lubaczów",
     locality_verbatim: "Lubaczów",
@@ -606,7 +583,9 @@ test("house numbers in the town without a street: dropped", () => {
     street_verbatim: null,
     note: "od nr 1 do nr 20",
   });
-  const items = read.status === "parsed" ? read.items : [];
-  if (read.status === "parsed") assert.equal(read.dropped.length, 1);
-  assert.ok(!items.some((d) => d.place.localityId === "0972447"));
+  assert.equal(read.status, "notice");
+  assert.deepEqual(
+    read.rejected.map((r) => r.reason),
+    ["street not listed"],
+  );
 });

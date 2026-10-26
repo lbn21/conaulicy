@@ -51,9 +51,9 @@ const cached = unstable_cache(readZukFile, ["zuk-file"], {
 });
 
 /**
- * `next dev` only: ZUK_MOCK=39885|39885-stale|none (the gmina's) and
- * MZGKIM_MOCK=5237|5237-stale|none serve a fixture file
- * (lib/water-fixture.ts) instead of the Blob. Any build (Vercel's
+ * `next dev` only: ZUK_MOCK (the gmina's) and MZGKIM_MOCK, each a fixture
+ * post's id, its id with "-stale", or "none", serve a fixture file
+ * (lib/water-fixture.ts mockFile) instead of the Blob. Any build (Vercel's
  * included) runs with NODE_ENV=production, so it can never be on there.
  */
 async function mockView(

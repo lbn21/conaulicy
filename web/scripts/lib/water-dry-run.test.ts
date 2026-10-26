@@ -28,7 +28,10 @@ test("dry run: the model's reading as given, gated as the cron would", async () 
   assert.equal(run.gate.status, "parsed");
   if (run.gate.status !== "parsed") return;
   assert.equal(run.gate.items.length, 4 + 1 + 22);
-  assert.deepEqual(run.gate.unmatched, ["Niemirowska wraz z osiedlem"]);
+  assert.deepEqual(
+    run.gate.rejected.map((r) => r.words),
+    ["Niemirowska wraz z osiedlem"],
+  );
 });
 
 test("dry run: the model called with the cron's input, its prompt and key", async () => {

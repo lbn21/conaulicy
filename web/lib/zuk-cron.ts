@@ -1,40 +1,40 @@
-// The ZUK cron (app/api/cron/zuk/route.ts, every 15 minutes): reads the
-// gmina's recent posts, has the model read every post that is new, edited,
-// read by an older reader (ZUK_READER) or whose last reading failed, keeps
-// every other post's stored result, and writes the file (lib/zuk-data.ts)
-// on every run that read the posts: checkedAt is that run, generatedAt the
-// last run that changed its content (any checkedAt aside); only such a run
-// purges the WATER cache tag (deps.purge), never DATASET. The model
-// says what a post is: a water cut is read for its cuts, a water-quality
+// The water cron (app/api/cron/zuk/route.ts, every 15 minutes): reads a
+// source's recent posts, has the model read every post that is new,
+// edited, read by an older reader (ZUK_READER) or whose last reading
+// failed, and every post with rejected items when the districts changed
+// (the gazetteer hash); keeps every other post's stored result, and writes
+// the file (lib/zuk-data.ts) on every run that read the posts: checkedAt
+// is that run, generatedAt the last run that changed what the pages read
+// (any checkedAt aside, the rejected list too); only such a run purges the
+// WATER cache tag (deps.purge), never DATASET. The model reads every post
+// and says what it is: a water cut is read for its cuts, a water-quality
 // warning for its places (not shown yet), anything else is "not-water",
-// never read again; the old keyword filter only cross-checks it, in the
-// log. A post whose title's days are all over is not read ("past"). Only
-// the water posts that still matter are `active`; the rest is a slim
-// `seen` record. The gmina's site down: the old file stays, unchanged, and
-// turns stale. xAI down: new and edited posts are retried next run, never
-// shown; so are those over the run's cap. A post read before keeps that
-// reading until it is read again. A file of an older version: no
-// file, every post is read afresh. Dependencies come in, so the tests mock
-// them.
+// never read again. Only the water posts that still matter are `active`;
+// the rest is a slim `seen` record. Every item that fails the gate goes to
+// the `rejected` list, rebuilt each run from the posts in the window and
+// logged. The source's site down: the old file stays, unchanged, and turns
+// stale. xAI down: new and edited posts are retried next run, never shown;
+// so are those over the run's cap. A post read before keeps that reading
+// until it is read again. A file of an older version: no file, every post
+// is read afresh. Dependencies come in, so the tests mock them.
 //
 // One run reads one source (lib/sources) into its own file; the route runs
 // every source in turn (handleZukCron), each failing on its own: the
-// gmina's posts first, then MZGKiM's. A source's prefilter (a cheap word
-// test) keeps the model from posts plainly not about water; a source that
-// gives only a summary (MZGKiM's feed) has each post's page fetched right
-// before the model reads it; a source without edit times tells an edit by
-// its digest.
+// gmina's posts first, then MZGKiM's. A source that gives only a summary
+// (MZGKiM's feed) has each post's page fetched right before the model
+// reads it; a source without edit times tells an edit by its digest.
 
+import { createHash } from "node:crypto";
 import { addDays, isoWithOffset, todayInWarsaw } from "./dates.ts";
+import type { District } from "./districts.ts";
 import { NO_STORE, WATER } from "./headers.ts";
 import { cronDenied } from "./secret.ts";
 import { gminaLubaczow } from "./sources/gmina-lubaczow/index.ts";
 import { type PostSource, SourceDown } from "./sources/source.ts";
 import {
-  isChangePost,
-  isPastPost,
   mentionedLocalities,
   plainText,
+  type Rejection,
   readPost,
   readQualityPost,
   wall,
@@ -44,17 +44,18 @@ import { type AiReading, readWithAi } from "./zuk-ai.ts";
 import {
   AI_UNAVAILABLE,
   NOT_WATER,
-  PAST,
   parseZukFile,
+  type RejectedEntry,
   type SeenPost,
   type StoredPost,
   settle,
+  type Unmatched,
   WATER_QUALITY,
   ZUK_FILE_VERSION,
   ZUK_READER,
   type ZukFile,
 } from "./zuk-data.ts";
-import type { ZukPlaces } from "./zuk-resolve.ts";
+import { Listed, type ZukPlaces } from "./zuk-resolve.ts";
 
 /**
  * Posts published in the last this many days are read. In 18 months of
@@ -76,7 +77,7 @@ export type ZukCronDeps = {
   purge: (tag: string) => void;
   places: () => Promise<ZukPlaces>;
   readAi?: typeof readWithAi;
-  /** Whose posts: lib/sources; the gmina Lubaczów's by default. */
+  /** Whose posts: lib/sources; the gmina's by default. */
   source?: PostSource;
   xaiKey: string | undefined;
   now: () => Date;
@@ -124,6 +125,14 @@ function lastChange(
   return isoWithOffset(Date.parse(checkedAt)).slice(0, 19);
 }
 
+/** A short hash of the district rows: a change re-reads rejected posts. */
+function gazetteerHash(districts: District[]): string {
+  return createHash("sha256")
+    .update(JSON.stringify(districts))
+    .digest("hex")
+    .slice(0, 12);
+}
+
 /** One run. Throws SourceDown, or anything else, without writing. */
 export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
   const started = deps.now();
@@ -132,7 +141,7 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
   const previous = previousBody ? parseZukFile(previousBody) : null;
   const today = todayInWarsaw(started);
   const source = deps.source ?? gminaLubaczow;
-  const rules = { source: source.water, gate: source.gate };
+  const rules = { source: source.water };
   const area = source.water.area;
   const tag = { source: source.id };
   const posts = await source.fetchPosts(
@@ -154,8 +163,22 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
       old.reader < ZUK_READER
     );
   });
-  const places = toRead.length > 0 ? await deps.places() : null;
+  const window = new Set(posts.map((p) => p.id));
+  const kept = (previous?.rejected ?? []).filter((e) => window.has(e.postId));
+  const places =
+    toRead.length > 0 || kept.length > 0 ? await deps.places() : null;
+  const gazetteer = places
+    ? gazetteerHash(places.districts ?? [])
+    : (previous?.gazetteer ?? null);
+  // The districts changed: every post with a rejected item is read again.
+  if (places && previous && previous.gazetteer !== gazetteer)
+    for (const post of posts)
+      if (!toRead.includes(post) && kept.some((e) => e.postId === post.id))
+        toRead.push(post);
   const system = places && source.systemPrompt(places);
+  const listed = places && new Listed(places, area);
+  const read = new Set<number>();
+  const rejected: RejectedEntry[] = [];
   const readAi = deps.readAi ?? readWithAi;
 
   let aiCalls = 0;
@@ -180,23 +203,13 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
       reader: ZUK_READER,
       ...digest,
     });
-    if (isPastPost(post, today)) {
-      stored.push(seen(PAST));
-      continue;
-    }
-    // Plainly not about water (no water word at all): never read.
-    if (source.prefilter && !source.prefilter(post)) {
-      deps.log({ zuk: "skip", ...tag, post: post.id, reason: "prefilter" });
-      stored.push(seen(NOT_WATER));
-      continue;
-    }
     // Not read this run: its old record until it is, else for a new post
     // a retry (xAI failed) or nothing (over the cap: read on a later run).
     const wait = (failed: boolean) => {
       if (old) stored.push(old);
       else if (failed) stored.push(seen(AI_UNAVAILABLE));
     };
-    if (aiDown || !places || !system) {
+    if (aiDown || !places || !system || !listed) {
       wait(true);
       continue;
     }
@@ -247,16 +260,24 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
       continue;
     }
     costUsd += reading.costUsd;
+    read.add(post.id);
     const type = reading.result.post_type;
-    const keywords = source.keywords?.(post);
-    if (keywords !== undefined && keywords !== (type !== "other"))
-      deps.log({
-        zuk: "classify-disagree",
-        ...tag,
-        post: post.id,
-        kind: type,
-        regex: keywords,
-      });
+    // Its rejected items, for review, the model's suggestions listed only.
+    const reject = (items: Rejection[]) => {
+      for (const r of items)
+        rejected.push({
+          postId: post.id,
+          url: post.link,
+          sourceId: source.id,
+          publishedAt: wall(post.date),
+          readAt: checkedAt,
+          item: r.item,
+          reason: r.reason,
+          suggested_places: r.item.suggested_places.filter((n) =>
+            listed.has(n),
+          ),
+        });
+    };
     const usage = {
       zuk: "ai",
       ...tag,
@@ -283,18 +304,19 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
       updatedAt: wall(post.modified),
       // An area's source concerns the area alone, named or not.
       localityIds: area ? [...area].sort() : mentionedLocalities(post, places),
-      ...(isChangePost(post) ? { change: true } : {}),
+      ...(reading.result.changes_earlier_dates ? { change: true } : {}),
       ...(reading.result.is_past ? { past: true } : {}),
       ...digest,
     };
     if (type === "water_quality") {
       const quality = readQualityPost(post, reading.result, places, rules);
+      reject(quality.rejected);
       deps.log({
         ...usage,
         status: "notice",
         reason: WATER_QUALITY,
         places: quality.places.length,
-        dropped: quality.dropped,
+        rejected: quality.rejected.length,
       });
       stored.push({
         ...base,
@@ -307,33 +329,45 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
       });
       continue;
     }
-    const read = readPost(post, reading.result, places, checkedAt, rules);
+    const result = readPost(post, reading.result, places, checkedAt, rules);
+    reject(result.rejected);
+    const unmatched: Unmatched[] = result.rejected.map((r) => ({
+      words: r.words,
+      localityId: r.localityId,
+    }));
     deps.log({
       ...usage,
-      status: read.status,
-      ...(read.status === "notice"
-        ? { reason: read.reason }
+      status: result.status,
+      rejected: result.rejected.length,
+      ...(result.status === "notice"
+        ? { reason: result.reason }
         : {
-            items: read.items.length,
-            dropped: read.dropped,
-            ...(read.unmatched ? { unmatched: read.unmatched } : {}),
-            ...(read.doubts ? { doubts: read.doubts } : {}),
+            items: result.items.length,
+            ...(result.doubts ? { doubts: result.doubts } : {}),
           }),
     });
     stored.push({
       ...base,
-      ...(read.status === "parsed"
+      ...(result.status === "parsed"
         ? {
             status: "parsed",
-            itemCount: read.items.length,
-            items: read.items,
-            ...(read.unmatched ? { unmatched: read.unmatched } : {}),
-            ...(read.doubts ? { doubts: read.doubts } : {}),
+            itemCount: result.items.length,
+            items: result.items,
+            ...(unmatched.length > 0 ? { unmatched } : {}),
+            ...(result.doubts ? { doubts: result.doubts } : {}),
           }
-        : { status: "notice", reason: read.reason, itemCount: 0, items: [] }),
+        : {
+            status: "notice",
+            reason: result.reason,
+            itemCount: 0,
+            items: [],
+          }),
     });
   }
 
+  // A post read this run replaces its own entries; the rest stay while
+  // their post is in the window.
+  rejected.unshift(...kept.filter((e) => !read.has(e.postId)));
   const { active, seen } = settle(stored, today);
   const changed =
     !previous ||
@@ -343,11 +377,15 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     version: ZUK_FILE_VERSION,
     generatedAt: changed ? checkedAt : previous.generatedAt,
     checkedAt,
+    gazetteer,
     active,
     seen,
+    rejected,
   };
   await deps.writeFile(JSON.stringify(file));
   if (changed) deps.purge(WATER);
+  if (rejected.length > 0)
+    deps.log({ zuk: "rejected", ...tag, gazetteer, entries: rejected });
   const summary = {
     posts: posts.length,
     active: active.length,

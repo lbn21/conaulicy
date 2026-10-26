@@ -1,8 +1,8 @@
 // What the 24 real posts of lib/zuk-fixture.ts say, checked by hand (the
 // prompt A/B test of 25 Oct 2026, task 112). The v1 replies recorded with
 // it are gone (task 114b): they had the v1 schema (place_verbatim), which
-// the gate no longer reads; the recorded v3.1 replies are
-// lib/zuk-golden.ts. A fixture, so code (scripts/check-tracked-data.mjs).
+// the gate no longer reads. A fixture, so code
+// (scripts/check-tracked-data.mjs).
 
 /**
  * What the posts say, by hand: [post, date, start, end, locality id,
