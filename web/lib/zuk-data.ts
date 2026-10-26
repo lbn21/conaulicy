@@ -24,7 +24,8 @@
 //     unmatched?,         // a source with an area: the post's words for
 //                         // places in it we could not match (lib/zuk.ts)
 //     doubts?,            // and bare names read as a street that may mean
-//                         // the estate of that name ("Mazury")
+//                         // the estate of that name ("Mazury"), with
+//                         // that estate's streets
 //     digest?,            // a source without edit times: what changed
 //   }],
 //   seen: [{      // the cron's memory of every other post it decided
@@ -42,7 +43,7 @@
 // afresh. The version is the file's shape; the reader is what read it.
 
 import { todayInWarsaw } from "./dates.ts";
-import type { Disruption, Notice } from "./disruptions.ts";
+import type { Disruption, Doubt, Notice } from "./disruptions.ts";
 import { GMINA, type WaterSource } from "./water-sources.ts";
 import { current, noticeUntil, type WarningPlace } from "./zuk.ts";
 
@@ -96,7 +97,7 @@ export type StoredPost = {
   /** Places in the source's area we could not match, as written. */
   unmatched?: string[];
   /** A bare name read as the street, which may mean the estate (lib/zuk.ts). */
-  doubts?: string[];
+  doubts?: Doubt[];
   /** lib/zuk.ts ZukPost digest. */
   digest?: string;
 };

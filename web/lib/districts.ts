@@ -260,9 +260,9 @@ export function readDistrict<
 
 /**
  * A street written bare where a district of its name has other streets
- * ("Mazury"): the text may mean either. Not when the post writes a street
- * word before it ("ul. Mazury") or "wraz z osiedlem" after it (the street
- * and the estate, both named).
+ * ("Mazury"): the text may mean either, and that district is returned.
+ * Null when the post writes a street word before it ("ul. Mazury") or
+ * "wraz z osiedlem" after it (the street and the estate, both named).
  */
 export function bareNamesake<
   S extends { id: string; localityId: string; name: string },
@@ -272,11 +272,11 @@ export function bareNamesake<
   streetId: string,
   districts: District[],
   streets: S[],
-): boolean {
+): District | null {
   const d = districts.find((x) => namesake(x, streets)?.id === streetId);
-  if (!d || onlyStreet(d, streetId)) return false;
+  if (!d || onlyStreet(d, streetId)) return null;
   const keys = tokens(verbatim).map((t) => t.key);
-  if (keys.length === 0) return false;
+  if (keys.length === 0) return null;
   const toks = tokens(text);
   const at = (p: string[], i: number) =>
     i >= 0 &&
@@ -307,7 +307,7 @@ export function bareNamesake<
     if (isEstateWord(before)) continue;
     bare = true;
   }
-  return bare;
+  return bare ? d : null;
 }
 
 /**

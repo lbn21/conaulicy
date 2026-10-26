@@ -152,12 +152,17 @@ district). It lives in the database (`district_aliases`,
   map stays unmatched, linked as written.
 - **"ul. Mazury" is the street** 12559 only; "ul. Mazury, osiedle Mazury"
   both. A **bare "Mazury"** (no "ul.", no "osiedle") is the street too, kept
-  as a doubt (`doubts` in the file): every other town page without a cut
-  from that post says so in one line, linking the post: „MZGKiM pisze tylko
-  „Mazury”, więc nie wiemy na pewno, czy chodzi o ulicę, czy o całe
-  osiedle – zajrzyj do komunikatu” (two names: „Mazury” i „Piaski”). The same for "Piaski" (16027). Not for a
-  one-street estate whose street has its name (Żelichówka, Pod Borem, Mały
-  Łążek): no doubt there. "Boczna Mazury" is its own street, never "Mazury".
+  as a doubt; so is a bare "Piaski" (16027). Not for a one-street estate
+  whose street has its name (Żelichówka, Pod Borem, Mały Łążek): no doubt
+  there. "Boczna Mazury" is its own street, never "Mazury".
+- **Where a doubt is said:** each doubt in the file (`doubts`) keeps the
+  post's words and the streets of the district it may mean, from the
+  gazetteer as the cron read it. Only the pages of those streets, and only
+  where that post shows no cut of its own, say it in one line linking the
+  post: „MZGKiM pisze tylko „Mazury”, więc nie wiemy na pewno, czy chodzi o
+  ulicę, czy o całe osiedle – zajrzyj do komunikatu” (two names on one
+  street: „Mazury” i „Piaski”, „ulice … osiedla”). No other town page
+  shows it (`water` in `lib/water-module.ts`; no names in code).
 
 A district street the TERYT snapshot lacks is skipped by the gate and
 logged by the cron (`{zuk: "district-street-unknown", district, street}`,

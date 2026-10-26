@@ -784,7 +784,8 @@ test("a bare 'Mazury': the street, its words linked as a doubt", () => {
     assert.deepEqual(r.unmatched, [
       "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej",
     ]);
-    assert.deepEqual(r.doubts, ["Mazury"]);
+    // With the streets of Osiedle Mazury: where the doubt is said.
+    assert.deepEqual(r.doubts, [{ words: "Mazury", streetIds: ESTATE }]);
   }
   // "Boczna Mazury" is its own street, never the bare name.
   const boczna = parsed(
@@ -809,7 +810,12 @@ test("Piaski: 'ul. Piaski' the street, bare a doubt, 'osiedle Piaski' its six st
     mazuryAs("<li>Piaski</li>", (b) => [item(b, "Piaski", "Piaski")]),
   );
   assert.ok(streetsOf(bare).includes(PIASKI));
-  assert.deepEqual(bare.doubts, ["Piaski"]);
+  assert.deepEqual(bare.doubts, [
+    {
+      words: "Piaski",
+      streetIds: ["16027", "16033", "18819", "24550", "26081", "14834"].map(id),
+    },
+  ]);
   const estate = parsed(
     mazuryAs("<li>osiedle Piaski</li>", (b) => [
       item(b, "Osiedle Piaski", "osiedle Piaski"),

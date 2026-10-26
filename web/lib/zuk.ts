@@ -9,7 +9,7 @@
 // cron that runs it: lib/zuk-cron.ts.
 
 import { addDays } from "./dates.ts";
-import type { Disruption, DisruptionLabel } from "./disruptions.ts";
+import type { Disruption, DisruptionLabel, Doubt } from "./disruptions.ts";
 import {
   bareNamesake,
   type District,
@@ -185,7 +185,7 @@ type ItemPlaces = {
   /** The post's words to link on the area's pages: a part, an estate. */
   unmatched?: string[];
   /** A bare name that is a street and a district's: the street, in doubt. */
-  doubts?: string[];
+  doubts?: Doubt[];
   /** The item's note as read: none for "wraz z osiedlem". */
   note?: null;
 };
@@ -222,23 +222,25 @@ function itemPlaces(read: AiItem, ctx: PostContext): ItemPlaces | Failed {
   const result = gatedPlaces(item, ctx);
   if ("reason" in result || !ctx.gate.area) return result;
   const unmatched = [...(result.unmatched ?? [])];
-  const doubts: string[] = [];
+  const doubts: Doubt[] = [];
   const places = [...result.places];
   const sv = item.street_verbatim;
   const streetId = places[0]?.place.streetId;
-  if (
-    sv &&
-    streetId &&
-    !LEADING_STREET_WORD.test(normalize(sv)) &&
-    bareNamesake(
-      ctx.text,
-      sv,
-      streetId,
-      ctx.data.districts ?? [],
-      ctx.data.streets,
-    )
-  )
-    doubts.push(sv.replace(/\s+/g, " ").trim());
+  const doubted =
+    sv && streetId && !LEADING_STREET_WORD.test(normalize(sv))
+      ? bareNamesake(
+          ctx.text,
+          sv,
+          streetId,
+          ctx.data.districts ?? [],
+          ctx.data.streets,
+        )
+      : null;
+  if (sv && doubted)
+    doubts.push({
+      words: sv.replace(/\s+/g, " ").trim(),
+      streetIds: doubted.streets.map((s) => s.id),
+    });
   if (along) {
     // The estate the post adds to the street, if the gazetteer has it.
     const has = (s: DistrictSpan, w: string) =>
@@ -548,9 +550,9 @@ export type PostReading =
       /**
        * A source with an area: a bare name that is both a street and a
        * district's ("Mazury"), read as the street; the area's pages say the
-       * post may mean the estate. Never empty.
+       * post may mean the estate, on that estate's streets. Never empty.
        */
-      doubts?: string[];
+      doubts?: Doubt[];
     }
   | { status: "notice"; reason: string };
 
@@ -584,7 +586,7 @@ export function readPost(
   const items: Disruption[] = [];
   const dropped: string[] = [];
   const unmatched: string[] = [];
-  const doubts: string[] = [];
+  const doubts: Doubt[] = [];
   const seen = new Set<string>();
   // A district's streets come after every place an item names itself, and
   // give way to them: "osiedle Mazury, ul. Zibura od nr 1 do 9" is Zibura
@@ -662,7 +664,13 @@ export function readPost(
     items,
     dropped,
     ...(unmatched.length > 0 ? { unmatched: [...new Set(unmatched)] } : {}),
-    ...(doubts.length > 0 ? { doubts: [...new Set(doubts)] } : {}),
+    ...(doubts.length > 0
+      ? {
+          doubts: doubts.filter(
+            (d, i) => doubts.findIndex((o) => o.words === d.words) === i,
+          ),
+        }
+      : {}),
   };
 }
 

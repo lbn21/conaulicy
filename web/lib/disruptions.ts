@@ -89,7 +89,15 @@ export type Notice = {
   where?: string[];
   /**
    * A post read, one of whose bare names ("Mazury") we took for the street
-   * though it may mean the estate of that name: shown elsewhere in the area.
+   * though it may mean the estate of that name: shown on that estate's
+   * streets only.
    */
-  doubt?: string[];
+  doubt?: Doubt[];
 };
+
+/**
+ * A bare name read as the street of that name ("Mazury") that may mean the
+ * district of that name instead: the post's words, and that district's
+ * streets (the gazetteer, lib/districts.ts), where it is said.
+ */
+export type Doubt = { words: string; streetIds: string[] };

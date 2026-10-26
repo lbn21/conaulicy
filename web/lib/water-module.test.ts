@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { MODULE_IDS } from "./address-routes.ts";
 import type { Disruption } from "./disruptions.ts";
+import { DISTRICTS } from "./districts-seed.ts";
 import { type Alert, alertSlot, checkedLine } from "./hub.ts";
 import { CUT_99, CUT_100 } from "./mzgkim-fixture.ts";
 import type { PlaceView } from "./schedule.ts";
@@ -586,6 +587,10 @@ const NIEMIROWSKA = place({
   id: "0972447-14183",
   streetId: "0972447-14183",
 });
+const PIASKOWA = place({
+  id: "0972447-16033",
+  streetId: "0972447-16033",
+});
 const LESZKA_BIALEGO = place({
   id: "0972447-38139",
   streetId: "0972447-38139",
@@ -663,28 +668,57 @@ test("town, an MZGKiM cut: shown as a ZUK cut, its own post the source", () => {
   assert.deepEqual(townAt(MAZURY, cut, OCT_3, OCT_3_CHECKED).outages, []);
 });
 
-test("town, a bare 'Mazury' read as the street: one friendly line elsewhere in town", () => {
-  // The cut read as ul. Mazury, in doubt (lib/zuk.ts doubts).
-  const cut = [{ ...mzgkimPost(CUT_100, OCT_3_CHECKED), doubts: ["Mazury"] }];
-  // A town street with no cut from that post (in a real post with a bare
-  // "Mazury", the estate's streets are such streets).
-  const estate = townAt(ASNYKA, cut, OCT_3, OCT_3_CHECKED);
-  const links = estate.notices.map(noticeLink);
-  assert.deepEqual(links.at(-1), {
-    href: POST_5237,
+test("town, a bare 'Mazury' read as the street: one line, on its estate's streets only", () => {
+  // 5108's cuts (Sobieskiego, Niemirowska, Starzyny) with doubts as the
+  // gate writes them (lib/zuk.ts): each with its district's streets, from
+  // the gazetteer.
+  const streetsOf = (key: string) =>
+    DISTRICTS.find((d) => d.id === key)?.streets.map((s) => s.id) ?? [];
+  const mazury = { words: "Mazury", streetIds: streetsOf("mazury") };
+  const piaski = { words: "Piaski", streetIds: streetsOf("piaski") };
+  const at = (address: PlaceView, doubts = [mazury, piaski]) =>
+    townAt(
+      address,
+      [{ ...mzgkimPost(CUT_99, JUN_1_CHECKED), doubts }],
+      JUN_1,
+      JUN_1_CHECKED,
+    ).notices.filter((n) => n.doubt);
+  // A street of Osiedle Mazury: the line, naming Mazury only.
+  const [line] = at(LESZKA_BIALEGO);
+  assert.deepEqual(noticeLink(line), {
+    href: POST_5108,
     text: "MZGKiM pisze tylko „Mazury”, więc nie wiemy na pewno, czy chodzi o ulicę, czy o całe osiedle – zajrzyj do komunikatu",
     hidden: "„Przerwa w dostawie wody”",
   });
-  // Not where the post's cut is shown (it is linked there already).
-  for (const shown of [NIEMIROWSKA, LESZKA_BIALEGO])
-    assert.deepEqual(townAt(shown, cut, OCT_3, OCT_3_CHECKED).notices, []);
-  // Two names: plural.
-  const [doubt] = estate.notices.filter((n) => n.doubt);
-  assert.deepEqual(noticeLink({ ...doubt, doubt: ["Mazury", "Piaski"] }), {
-    href: POST_5237,
-    text: "MZGKiM pisze tylko „Mazury” i „Piaski”, więc nie wiemy na pewno, czy chodzi o ulice, czy o całe osiedla – zajrzyj do komunikatu",
-    hidden: "„Przerwa w dostawie wody”",
-  });
+  // A street of Osiedle Piaski: Piaski only.
+  assert.deepEqual(
+    at(PIASKOWA).flatMap((n) => n.doubt?.map((d) => d.words)),
+    ["Piaski"],
+  );
+  // Any other town street, and the town's part: never.
+  for (const address of [ASNYKA, MAZURY]) assert.deepEqual(at(address), []);
+  // A street of both (none in the seed): both names, plural.
+  assert.deepEqual(
+    noticeLink({
+      ...line,
+      doubt: [
+        mazury,
+        { ...piaski, streetIds: [LESZKA_BIALEGO.streetId as string] },
+      ],
+    }),
+    {
+      href: POST_5108,
+      text: "MZGKiM pisze tylko „Mazury” i „Piaski”, więc nie wiemy na pewno, czy chodzi o ulice, czy o całe osiedla – zajrzyj do komunikatu",
+      hidden: "„Przerwa w dostawie wody”",
+    },
+  );
+  assert.equal(
+    at(LESZKA_BIALEGO, [
+      mazury,
+      { ...piaski, streetIds: [LESZKA_BIALEGO.streetId as string] },
+    ])[0].doubt?.length,
+    2,
+  );
 });
 
 test("town, an MZGKiM area off our list: a link on every other town page", () => {

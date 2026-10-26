@@ -198,6 +198,16 @@ export function water(
     hiddenForNr: hidden.length > 0,
     notices: states
       .flatMap(({ view }) => view.notices)
+      .flatMap((notice) => {
+        // A doubt only on the streets of the district it may mean, naming
+        // only that district's words.
+        if (!notice.doubt) return [notice];
+        const here = notice.doubt.filter(
+          (d) =>
+            place.streetId !== null && d.streetIds.includes(place.streetId),
+        );
+        return here.length > 0 ? [{ ...notice, doubt: here }] : [];
+      })
       .filter(
         (notice) =>
           notice.localityIds.some(
@@ -315,7 +325,7 @@ export function noticeLink(notice: Notice): Part {
     const one = doubt.length === 1;
     return {
       href: notice.source.url,
-      text: `${who} pisze tylko ${doubt.map((w) => `„${w}”`).join(" i ")}, więc nie wiemy na pewno, czy chodzi o ${one ? "ulicę, czy o całe osiedle" : "ulice, czy o całe osiedla"} – zajrzyj do komunikatu`,
+      text: `${who} pisze tylko ${doubt.map((d) => `„${d.words}”`).join(" i ")}, więc nie wiemy na pewno, czy chodzi o ${one ? "ulicę, czy o całe osiedle" : "ulice, czy o całe osiedla"} – zajrzyj do komunikatu`,
       hidden: `„${notice.title}”`,
     };
   }
