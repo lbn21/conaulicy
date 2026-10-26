@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: "backup-only: a Neon backup branch, nothing else; migrate: backup, then npm run db:migrate"
+        description: "backup-only: a Neon backup branch, nothing else; migrate: backup, then npm run db:migrate; migrate-districts: backup, db:migrate, then the district seed (dry run, apply, check)"
         type: choice
-        options: [backup-only, migrate]
+        options: [backup-only, migrate, migrate-districts]
         default: backup-only
 
 permissions:
@@ -43,7 +43,7 @@ jobs:
 
       # Before the backup, so a broken install never leaves a pointless one.
       - name: Install
-        if: inputs.task != 'backup-only'
+        if: inputs.task == 'migrate' || inputs.task == 'migrate-districts'
         working-directory: web
         run: npm ci --no-audit --no-fund
 
@@ -130,7 +130,7 @@ jobs:
       # The production URL only here. It must be the direct (unpooled)
       # connection string of the default branch, as the owner role (DDL).
       - name: Migrate
-        if: inputs.task == 'migrate'
+        if: inputs.task == 'migrate' || inputs.task == 'migrate-districts'
         working-directory: web
         env:
           DATABASE_URL_UNPOOLED: ${{ secrets.PROD_DATABASE_URL }}
@@ -145,3 +145,23 @@ jobs:
           fi
           echo "Target: Neon endpoint $endpoint (default branch). Backup: $BACKUP."
           npm run db:migrate
+
+      # The gazetteer (web/lib/districts-seed.ts), after its tables exist.
+      - name: Districts seed
+        if: inputs.task == 'migrate-districts'
+        working-directory: web
+        env:
+          DATABASE_URL_UNPOOLED: ${{ secrets.PROD_DATABASE_URL }}
+          DEFAULT_ENDPOINTS: ${{ steps.backup.outputs.endpoints }}
+          BACKUP: ${{ steps.backup.outputs.name }}
+        run: |
+          # The backup must cover the database written to.
+          endpoint=$(node -e 'console.log(new URL(process.env.DATABASE_URL_UNPOOLED).hostname.split(".")[0].replace(/-pooler$/, ""))')
+          if [ -z "$endpoint" ] || [[ " $DEFAULT_ENDPOINTS " != *" $endpoint "* ]]; then
+            echo "::error::PROD_DATABASE_URL is not an endpoint of the default branch; nothing applied."
+            exit 1
+          fi
+          echo "Target: Neon endpoint $endpoint (default branch). Backup: $BACKUP."
+          npm run db:districts
+          npm run db:districts -- --apply --yes-production
+          npm run db:districts -- --expect-no-changes

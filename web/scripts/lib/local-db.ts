@@ -18,10 +18,14 @@ export function databaseUrl(
 // other shared database.
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 
+/** The URL's host is this machine (localhost, 127.0.0.1, ::1). */
+export const isLocalDatabaseUrl = (url: string) =>
+  LOCAL_HOSTS.has(new URL(url).hostname);
+
 export function localDatabaseUrl(): string {
   const url = databaseUrl();
   if (!url) throw new Error("DATABASE_URL is not set.");
-  if (!LOCAL_HOSTS.has(new URL(url).hostname)) {
+  if (!isLocalDatabaseUrl(url)) {
     throw new Error(
       "Refusing to run: DATABASE_URL is not a local database (only CI or a local container).",
     );
