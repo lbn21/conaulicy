@@ -123,7 +123,7 @@ function context(places: ZukPlaces): string {
     : [];
   const gazetteer =
     town && districts.length > 0
-      ? `\nDistricts of the town ${town.name} (osiedla: informal names TERYT does not have). A district written in the post (as listed, in one of its forms, or "osiedle X", "os. X" with X its name) is ONE item: locality "${town.name}", street = the district's name as listed, street_verbatim = the post's exact words; never its streets unless the post names them. "ul. X" is the street X, never the district:\n${districts.join("\n")}`
+      ? `\nDistricts of the town ${town.name} (osiedla: informal names TERYT does not have). A district written in the post (as listed, in one of its forms, or "osiedle X", "os. X" with X its name) is ONE item: locality "${town.name}", street = the district's name as listed, street_verbatim = the post's exact words; never its streets unless the post names them. An obvious misspelling of a listed district ("osiedle Wzorcowo" for "Osiedle Wzorcowe") is that district: street = its name exactly as listed, street_verbatim = the post's exact words, misspelling kept; a name not plainly on the list is never mapped to it. "ul. X" is the street X, never the district:\n${districts.join("\n")}`
       : "";
   return `Context: the places in our database (TERYT). ZUK Mokrzyca supplies water to the villages of gmina Lubaczów and to some streets of the town Lubaczów.
 Town (miasto): ${names("miasto")}

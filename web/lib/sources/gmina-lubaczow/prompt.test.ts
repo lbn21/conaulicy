@@ -158,5 +158,10 @@ test("the gazetteer: appended to the context, the rules byte for byte", () => {
     /^\nDistricts of the town Lubaczów \(osiedla: informal names TERYT does not have\)\. A district written in the post .*"ul\. X" is the street X, never the district:\n- Niwki; forms: Niwkach; no streets\n/,
   );
   assert.match(added, /\n- Osiedle Mazury; forms: os\. Mazury, /);
+  // A misspelt district: the listed name, the post's words; never a guess.
+  assert.match(
+    added,
+    /An obvious misspelling of a listed district \("osiedle Wzorcowo" for "Osiedle Wzorcowe"\) is that district: street = its name exactly as listed, street_verbatim = the post's exact words, misspelling kept; a name not plainly on the list is never mapped to it\./,
+  );
   assert.ok(withDistricts.endsWith("\n"));
 });
