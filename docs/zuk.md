@@ -16,7 +16,11 @@ Vercel Blob. No database writes.
    edited (`modified`), read by an older reader (`reader` below
    `ZUK_READER`) or whose last reading failed, and the posts with rejected
    items when the districts changed (`gazetteer`, below): at most 4 per run
-   (`lib/zuk-ai.ts`), one call per post. No word filter before the model:
+   (`lib/zuk-ai.ts`), one call per post. A call times out after 240 s
+   (`TIMEOUT_MS`; a real post took 161 s at medium) and is started only
+   with at least that plus 30 s for the Blob write left before the route's
+   `maxDuration` (300 s, from the route's start, shared by every source);
+   otherwise the post waits for the next run. No word filter before the model:
    every post is read once. Every other post keeps its stored result, and
    so does a post read before that is not read this run. The model says
    what the post is (`post_type`):
@@ -97,7 +101,7 @@ schema, guards and gate (`lib/sources/mzgkim/`, `lib/water-sources.ts`):
 - **Failures stay its own:** the feed down, a page or Blob error: logged
   (`{zuk: "source-down", source: "mzgkim"}`) and listed under `sources` in
   the reply, never the gmina's run or the status. Both runs share one
-  model-call budget from the route's start.
+  deadline, the route's start plus its `maxDuration` (step 3).
 
 Model calls: every new or edited post, one each: about 20 a year (it
 posts 10 in a few months), so 0 on almost every day. The feed costs 96
@@ -173,11 +177,11 @@ It prints the model's JSON and the gate's result (`scripts/lib/water-dry-run.ts`
   "generatedAt": "2026-10-25T08:00:00.000Z",
   "checkedAt": "2026-10-25T08:00:00.000Z",
   "gazetteer": "3f2a9c01b7d4",
-  "active": [{ "id": 39885, "modified": "…", "reader": 7, "url": "…",
+  "active": [{ "id": 39885, "modified": "…", "reader": 8, "url": "…",
                "title": "…", "status": "parsed", "localityIds": ["…"],
                "itemCount": 76, "items": ["…"], "sourceId": "gmina-lubaczow",
                "unmatched": [{ "words": "ul. Próbna", "localityId": "…" }] }],
-  "seen": [{ "id": 39868, "modified": "…", "reason": "not-water", "reader": 7 }],
+  "seen": [{ "id": 39868, "modified": "…", "reason": "not-water", "reader": 8 }],
   "rejected": [{ "postId": 39885, "url": "…", "sourceId": "gmina-lubaczow",
                  "publishedAt": "…", "readAt": "…", "item": {"…": "…"},
                  "reason": "street not listed", "suggested_places": ["…"] }]
@@ -209,8 +213,9 @@ It prints the model's JSON and the gate's result (`scripts/lib/water-dry-run.ts`
   its tries and when it may be tried again (null: given up).
 - A post leaves `active` and `seen` when it leaves the 14-day window. The
   model's tokens and cost are in the log only.
-- The file version is the shape; `reader` (`ZUK_READER`, now 7: the shared
-  prompt and the gate of certain checks, task 182) is what read the post.
+- The file version is the shape; `reader` (`ZUK_READER`, now 8: rules
+  revision 5, reasoning medium and the publish day, task 184c) is what read
+  the post.
   Raise `ZUK_READER` and every post is read again, 4 a run. A file of an
   older version is no file: the pages show the source link and the cron
   reads the window afresh, 4 a run, and replaces it (never delete the
@@ -285,8 +290,9 @@ checks:
 
 - the day: written in the post (D.M, "D <month>", inside "a-b.M", "a do
   b.M", "a.M - b.M", or "(od) D.M.YYYY do/- D.M.YYYY", ends included), a
-  year written with it the item's, a bracketed weekday that matches; from
-  the day before the post to 31 days after its last edit (`date`);
+  year written with it the item's, a bracketed weekday that matches; or,
+  in a post that writes no day, its publish day (Warsaw); from the day
+  before the post to 31 days after its last edit (`date`);
 - times: valid HH:MM, written on the item's own lines (those its quoted
   pieces are on) or on a line that quotes no item (the opening line with
   the hours for all), never only on another item's line; an end before the
