@@ -72,18 +72,28 @@ schema, guards and gate (`lib/sources/mzgkim/`, `lib/water-sources.ts`):
   model reads has its page fetched first (`fullPost`, one request); a page
   that fails is retried next run, as xAI down.
 - **Gate rules of its own** (`GateRules`; none for the gmina): its posts
-  never name the town, so the town need not be written (a part, "Osiedle
-  Mazury", must be); only an exact mention of a place outside the town
+  never name the town, so the town need not be written (a part, "Niwki",
+  must be); only an exact mention of a place outside the town
   blocks a street ("w kierunku Dąbrowy" is a direction); streets may be
   written declined ("Niemirowskiej"), nothing but a type word before them;
   the whole town only in the post's own words ("na terenie całego miasta").
+- **Districts (the gazetteer, task 151):** see below; "Osiedle Mazury" is
+  its 22 streets.
 - **Places off our list** ("Osiedle domów jednorodzinnych na zapleczu ul.
   Niemirowskiej") are kept as written (`unmatched`, logged with the run):
   every town page without a cut from that post links it ("MZGKiM ogłosił też
   przerwę w miejscu, którego nie umiemy dopasować do adresów: „…”"). So is
-  a place matched only to a part of the town ("Osiedle Mazury", TERYT part
-  0972453): such a part has no PRG address point and so no page, and the
-  post's words for it are what the town's pages can link.
+  a place matched only to a part of the town with no street ("Niwki", TERYT
+  part 0972460): such a part has no PRG address point and so no page, and
+  the post's words for it are what the town's pages can link; and a doubt
+  (a bare "Mazury", below).
+- **"X wraz z osiedlem"** is never a limit: the street X whole, and the
+  estate a place of its own (the gazetteer's, else linked as written). The
+  prompt says so; the gate also reads such a note as the whole street.
+- **A street then another of the town** ("Cicha, ul. Młodowska", 4744): the
+  second is not a limit the first leaves out (`checkOmission`'s `others`
+  take the same place's other streets for a street, never for a whole
+  place).
 - **Year:** a day written without one ("6 października") takes the post's
   year, a day before the post the next year's (`inferYear`, every source).
 - **Failures stay its own:** the feed down, a page or Blob error: logged
@@ -101,6 +111,57 @@ address; only the list of sources differs (the gmina's everywhere, MZGKiM's
 in the town and its parts). A cut's „Źródło” is its own post only. A source
 stale or without a file is named in the texts when the address has another
 that is not.
+
+## The town's districts: the gazetteer (task 151)
+
+Residents and MZGKiM name estates TERYT lacks ("osiedle Mazury", "os.
+Jagiellonów"), or has only as a town part with no street (Mazury 0972453 has
+no address, its point 0.5–0.8 km south of the estate). The gazetteer gives
+each a name, the forms it is written in, and its streets
+(`lib/districts.ts`; the data, Jakub's approved list of 26 Oct 2026 from the
+research (Jakub's file, not in git), in `lib/districts-seed.ts`: high and
+medium confidence in, low out; Załuże and Bałaje are villages, never a town
+district). It lives in the database (`district_aliases`,
+`district_alias_streets`, docs/database.md), which the cron reads
+(`lib/districts-db.ts`) for both prompts and the gate:
+
+- **The prompts:** both list the districts with their forms and streets
+  after the streets. MZGKiM's rules: a district is ONE item, `street` its
+  name as listed, `street_verbatim` the post's words; never its streets.
+  The gmina's rules stay byte for byte; one line in its context says it.
+- **The gate:** an item whose words spell a district (case and diacritics
+  aside, "osiedle" in any form or "os.", "X wraz z osiedlem" for X its
+  name; a name inside a longer one, "os. Mazury" in "os. Mazury VI", is
+  not it), or whose `street` or town part names one, is the district: each
+  of its streets, whole (a stretch where the gazetteer gives one, "bloki
+  24–34A": in part, houses unknown), with the post's words as `where`. A
+  street an item names itself wins over the district's: never twice, never
+  wider. A district the post limits (a note) is left out and linked; one
+  with no street is its TERYT part if it has one (as before), else only
+  linked.
+- **"ul. Mazury" is the street** 12559 only; "ul. Mazury, osiedle Mazury"
+  both. A **bare "Mazury"** (no "ul.", no "osiedle") is the street too, and
+  its words are linked on the town's pages as a doubt (`unmatched`): the
+  post may mean the estate. The same for "Piaski" (16027). Not for a
+  one-street estate whose street has its name (Żelichówka, Pod Borem, Mały
+  Łążek): no doubt there. "Boczna Mazury" is its own street, never "Mazury".
+
+Adding a district is a new entry in `lib/districts-seed.ts`, then `npm run
+db:districts` (dry run, then `-- --apply`; production only with Jakub's
+approval for that run). The tests read the seed; `checkDistricts` fails on
+any street id not in the TERYT snapshot.
+
+To try a post on the real model on your own computer (no write anywhere):
+
+```sh
+cd web
+npm run water:dry-run -- --source mzgkim --file post.txt --published 2026-10-02T12:11:39
+# --ai reading.json: gate a saved model reading again, no call
+# --districts db: the gazetteer from DATABASE_URL instead of the seed
+```
+
+It prints the model's JSON and the gate's result (`scripts/lib/water-dry-run.ts`
+`waterDryRun`, the same prompt, schema and gate as the cron).
 
 ## The file (version 4, `lib/zuk-data.ts`)
 
