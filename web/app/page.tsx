@@ -34,7 +34,7 @@ export default async function Home() {
   ]);
 
   // A lookup page, as GOV.UK's "Find your local council": the task in the
-  // heading, one line on what you will see, the field, then what you get.
+  // heading, one line of what to do, the field, then what you get.
   return (
     <>
       <ImgwBanner />
@@ -47,8 +47,7 @@ export default async function Home() {
         <div className="govuk-grid-column-two-thirds">
           <h1 className="govuk-heading-xl">{HOME_H1}</h1>
           <p className="govuk-body-l">
-            Zobaczysz, kiedy przyjedzie śmieciarka, czy gmina zapowiedziała
-            przerwę w dostawie wody i czy IMGW ostrzega przed złą pogodą.
+            Wpisz ulicę albo wieś i sprawdź, co Cię czeka.
           </p>
 
           <div className="govuk-!-margin-bottom-8">
@@ -57,14 +56,12 @@ export default async function Home() {
 
           <h2 className="govuk-heading-m">Co zobaczysz</h2>
           <ul className="govuk-list govuk-list--bullet govuk-!-margin-bottom-8">
+            <li>dni wywozu śmieci – dla każdego rodzaju odpadów osobno</li>
+            <li>zapowiedziane przez gminę przerwy w dostawie wody</li>
+            <li>ostrzeżenia IMGW przed złą pogodą w powiecie lubaczowskim</li>
             <li>
-              kiedy przyjedzie śmieciarka – osobno dla każdego rodzaju odpadów
-            </li>
-            <li>przerwy w dostawie wody zapowiedziane przez gminę</li>
-            <li>ostrzeżenia pogodowe IMGW dla powiatu lubaczowskiego</li>
-            <li>
-              terminy wywozu do kalendarza w telefonie jednym kliknięciem i
-              harmonogram do wydruku (PDF)
+              terminy wywozu w kalendarzu telefonu i harmonogram do wydruku
+              (PDF)
             </li>
           </ul>
 
