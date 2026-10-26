@@ -20,6 +20,12 @@ const PARISH_KAROL =
   "https://zlubaczowa.pl/news/wydarzenia/14524-plan-koledy-w-parafii-pw-sw-karola-boromeusza-w-lubaczowie-harmonogram";
 const TOWN_ROADS =
   "https://um.lubaczow.pl/aktualnosci/drogi-miejskie-do-przebudowy.html";
+const TOWN_LIGHTING =
+  "https://um.lubaczow.pl/aktualnosci/rusza-modernizacja-oswietlenia-w-lubaczowie.html";
+const LIGHTING_TENDER =
+  "https://przetargi.favore.pl/zamowienia/naprawy-i-instalacje,1012/budowa-i-przebudowa-oswietlenia-ulicznego-w-lubaczowie,2989036.html";
+const PLOTS_FOR_SALE =
+  "https://elubaczow.com/2025/04/04/atrakcyjne-dzialki-budowlane-w-lubaczowie-na-sprzedaz/";
 const PRNG =
   "http://tools.wikimedia.pl/~malarz_pl/cgi-bin/polska.pl?teryt=1809011";
 
@@ -285,17 +291,25 @@ export const DISTRICTS: District[] = [
     confidence: "medium",
     sourceUrl: `${MZGKIM}/informacja-o-przerwach-w-dostawie-wody-3/`,
   }),
-  // "Niemirowska wraz z osiedlem": post 4799 (8 Jul 2025).
+  // "Niemirowska wraz z osiedlem" (post 4799, 8 Jul 2025) is the street
+  // and this estate: a variant names the estate, never a street with it.
   district({
     id: "za-niemirowska",
     name: "Osiedle domów jednorodzinnych na zapleczu ul. Niemirowskiej",
     variants: [
       "osiedle na zapleczu ul. Niemirowskiej",
-      "Niemirowska wraz z osiedlem",
-      "ul. Niemirowska (wraz z przyległymi ulicami)",
-      "Niemirowska z ulicami przyległymi",
+      "osiedle Niemirowska II",
     ],
     confidence: "medium",
     sourceUrl: `${MZGKIM}/przerwa-w-dostawie-wody-100/`,
+    // Never ul. Niemirowska (14183) or Starzyny: post 100 lists them apart.
+    streets: [
+      // "na os. Niemirowska - ulica Kwiatowa / Konwaliowa / Zielna".
+      ...streets("high", TOWN_LIGHTING, "10562", "09223", "26077"),
+      // "os. Niemirowska II: ul. Tulipanowa, ul. Różana, ul. Fiołkowa".
+      ...streets("high", LIGHTING_TENDER, "23129", "19000", "05027"),
+      // "Działki położone są na osiedlu „Niemirowska II”".
+      ...streets("medium", PLOTS_FOR_SALE, "07059", "12991", "13998"),
+    ],
   }),
 ];
