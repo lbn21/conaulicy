@@ -16,7 +16,7 @@ import { water } from "../lib/water-module.ts";
 import { zukView } from "../lib/zuk-data.ts";
 import { Trace } from "./hub.tsx";
 import { WasteDetails } from "./place-page.tsx";
-import { CALENDAR_CHECK, CALENDAR_HOW } from "./subpage-parts.tsx";
+import { CALENDAR_CHECK, CALENDAR_STEPS } from "./subpage-parts.tsx";
 import { WaterDetails } from "./water-page.tsx";
 import { eventProperties } from "./web-analytics.tsx";
 
@@ -103,7 +103,7 @@ test("/woda: a primary button and its hint before the cuts", () => {
   assert.match(block, />Dodaj przerwy do kalendarza</);
   assert.match(
     block,
-    /<p class="govuk-body">Plik z przerwami\. Jeśli gmina zmieni godziny, pobierz go jeszcze raz\. Na iPhonie/,
+    /<p class="govuk-body">Plik z przerwami\. Jeśli gmina zmieni godziny, pobierz go jeszcze raz\.<\/p>/,
   );
   assert.doesNotMatch(block, /poprawi wpis|PDF/);
   assert.ok(
@@ -150,23 +150,40 @@ test("/smieci and /woda: the same skeleton and calendar block", () => {
   assert.equal(shape(waste), shape(waterPage()));
   assert.equal(
     shape(waste),
-    '<a role="button" draggable="false" class="govuk-button" data-module="govuk-button"></a><p class="govuk-body"></p><details class="govuk-details"><summary class="govuk-details__summary"><span class="govuk-details__summary-text"></span></summary><div class="govuk-details__text"><ul class="govuk-list govuk-list--bullet"><li></li><li></li><li></li></ul></div></details>',
+    '<a role="button" draggable="false" class="govuk-button" data-module="govuk-button"></a><p class="govuk-body"></p><details class="govuk-details"><summary class="govuk-details__summary"><span class="govuk-details__summary-text"></span></summary><div class="govuk-details__text"><ul class="govuk-list govuk-list--bullet"><li></li><li></li><li></li><li></li><li></li></ul></div></details>',
   );
 });
 
 test("the calendar's help is CalendarBlock's: the same words on both pages", () => {
   const waste = calendarBlock(wastePage());
   const water = calendarBlock(waterPage());
-  // Each page's own: its first sentence only.
-  const own = (block: string) =>
-    block
-      .replace(/<p class="govuk-body">[^<]*?(?= Na iPhonie)/, "")
-      .replace(/^<a [^>]*>[^<]*/, "");
-  assert.ok(waste.includes(">Plik z datami wywozu. Na iPhonie "), waste);
-  assert.ok(waste.includes(` ${CALENDAR_HOW}</p>`), waste);
-  assert.ok(water.includes(` ${CALENDAR_HOW}</p>`), water);
-  assert.ok(waste.includes(`>${CALENDAR_CHECK}<`), waste);
-  assert.equal(own(waste), own(water));
+  // Each page's own: the paragraph, its hint only.
+  assert.ok(waste.includes('<p class="govuk-body">Plik z datami wywozu.</p>'));
+  assert.ok(
+    water.includes(
+      '<p class="govuk-body">Plik z przerwami. Jeśli gmina zmieni godziny, pobierz go jeszcze raz.</p>',
+    ),
+  );
+  // The rest is CalendarBlock's: the same summary and bullets, in order.
+  const help = (block: string) => block.slice(block.indexOf("<details"));
+  const bullets = CALENDAR_STEPS.map((step) => `<li>${step}</li>`).join("");
+  assert.equal(CALENDAR_STEPS.length, 5);
+  for (const block of [waste, water]) {
+    assert.ok(block.includes(`>${CALENDAR_CHECK}<`), block);
+    assert.ok(
+      block.includes(
+        `<ul class="govuk-list govuk-list--bullet">${bullets}</ul>`,
+      ),
+      block,
+    );
+  }
+  assert.equal(help(waste), help(water));
+  // The old sentences are gone: no Android advice outside the details, and
+  // Google Calendar is not „only on a computer”.
+  for (const block of [waste, water]) {
+    assert.doesNotMatch(block, /Na iPhonie|Na Androidzie|tylko na komputerze/);
+    assert.doesNotMatch(block.slice(0, block.indexOf("<details")), /Android/);
+  }
   // The PDF stays the page's own link, under the block.
   assert.doesNotMatch(waste, /PDF/);
   // The details are closed until opened.

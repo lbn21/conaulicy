@@ -335,11 +335,11 @@ try {
       !sub.main.includes("harmonogram.pdf")
     )
       fail(waste, "no calendar or PDF");
-    // The calendar's help (CalendarBlock): the shared sentence, then the
-    // closed details.
+    // The calendar's help (CalendarBlock): the page's hint, then the closed
+    // details with the steps.
     if (
-      !sub.main.includes("Na iPhonie telefon pokaże daty") ||
-      !/<details class="govuk-details"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">Nie wiesz, czy się udało\?<\/span>[\s\S]*?calendar\.google\.com[^<]*<\/li><\/ul><\/div><\/details>/.test(
+      !sub.main.includes('<p class="govuk-body">Plik z datami wywozu.</p>') ||
+      !/<details class="govuk-details"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">Jak dodać i sprawdzić, czy się udało\?<\/span>[\s\S]*?iPhone: telefon pokaże daty[\s\S]*?calendar\.google\.com[^<]*<\/li><\/ul><\/div><\/details>/.test(
         sub.main,
       ) ||
       sub.main.includes("Dodano")
