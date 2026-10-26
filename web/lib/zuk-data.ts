@@ -43,9 +43,10 @@ export const ZUK_PATHNAME = "zuk/disruptions.json";
 export const ZUK_FILE_VERSION = 4;
 /**
  * What reads a post: the prompt, schema and place gate. 3 is v3.1 (task
- * 114b); raise it when they change, and every post is read again.
+ * 114b), 4 the omission guard per dated line (task 152); raise it when
+ * they change, and every post is read again.
  */
-export const ZUK_READER = 3;
+export const ZUK_READER = 4;
 
 /** Older than this, the data may be out of date: show the source link. */
 export const STALE_MS = 60 * 60_000;
