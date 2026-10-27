@@ -7,7 +7,6 @@ import { plainText, readPost, type ZukPost } from "./zuk.ts";
 import type { AiItem, AiResult } from "./zuk-ai.ts";
 import {
   AI_ITEM,
-  housesOf,
   PLACES,
   POST_39885_EDITED,
   READINGS,
@@ -37,30 +36,20 @@ const at = (items: Disruption[], date: string) =>
     .filter((d) => d.date === date)
     .map((d) => d.place.streetId ?? d.place.localityId);
 
-test("real: every post the model read, checked and resolved", () => {
-  const notices: Record<number, string> = {};
-  for (const p of posts) {
-    const read = readPost(p, reading(p.id), PLACES, CHECKED);
-    if (read.status === "notice") notices[p.id] = read.reason;
-  }
-  assert.deepEqual(notices, {
-    // The fox vaccination post: not a water cut.
-    39868: "not an outage notice",
-  });
-  assert.equal(Object.keys(READINGS).length, posts.length);
-});
-
 // What the truth has that the readings cannot give: left out, never wrong.
 const LOST_POSTS: Record<number, string> = {
   39868: "not a water cut",
 };
 
-test("real items: all 24 posts, every place-day right, none wrong", () => {
+test("real items: all 24 posts read, every place-day right, none wrong", () => {
+  assert.equal(Object.keys(READINGS).length, posts.length);
   const ids = posts.map((p) => p.id);
   const hhmm = (wall: string | null) => wall?.slice(11, 16) ?? null;
   const got = new Set<string>();
+  const notices: Record<number, string> = {};
   for (const id of ids) {
     const read = readPost(post(id), reading(id), PLACES, CHECKED);
+    if (read.status === "notice") notices[id] = read.reason;
     if (id in LOST_POSTS) {
       assert.equal(read.status, "notice");
       continue;
@@ -97,6 +86,10 @@ test("real items: all 24 posts, every place-day right, none wrong", () => {
   }
   assert.deepEqual([...got].sort(), [...want].sort());
   assert.equal(TRUTH.length, 117);
+  assert.deepEqual(notices, {
+    // The fox vaccination post: not a water cut.
+    39868: "not an outage notice",
+  });
 });
 
 test("real 39885 as edited (14:41): Lisie Jamy whole on 26 and 29.10, four streets on 27.10", () => {
@@ -477,7 +470,12 @@ function readOne(
   where: string,
   item: Pick<
     AiItem,
-    "locality" | "locality_verbatim" | "street" | "street_verbatim" | "note"
+    | "locality"
+    | "locality_verbatim"
+    | "street"
+    | "street_verbatim"
+    | "note"
+    | "houses"
   >,
 ) {
   const ai: AiResult = {
@@ -493,7 +491,6 @@ function readOne(
         kind: "planned",
         ...AI_ITEM,
         date_verbatim: "2.09.2026r.",
-        houses: housesOf(item.note),
         ...item,
       },
     ],
@@ -514,7 +511,7 @@ const parsed = (read: ReturnType<typeof readPost>) => {
   return read.status === "parsed" ? read : { items: [], rejected: [] };
 };
 
-test("house numbers in a village with streets: the village only, never its streets", () => {
+test("a village with streets: its numbers the village only, whole the village and each street, a street's numbers that street only", () => {
   const krowica = parsed(
     readOne("Krowica Sama od nr 10 do nr 50", {
       locality: "Krowica Sama",
@@ -522,6 +519,7 @@ test("house numbers in a village with streets: the village only, never its stree
       street: null,
       street_verbatim: null,
       note: "od nr 10 do nr 50",
+      houses: [{ from: "10", to: "50" }],
     }),
   );
   assert.deepEqual(krowica.rejected, []);
@@ -544,6 +542,7 @@ test("house numbers in a village with streets: the village only, never its stree
       street: null,
       street_verbatim: null,
       note: "nr 12",
+      houses: [{ from: "12", to: "12" }],
     }),
   );
   assert.deepEqual(mlodow.rejected, []);
@@ -556,46 +555,49 @@ test("house numbers in a village with streets: the village only, never its stree
   assert.ok(
     !mlodow.items.some((d) => d.place.streetId?.startsWith("0606286-")),
   );
-});
 
-test("a whole village with streets: the village and each street, as before", () => {
-  const read = parsed(
-    readOne("Krowica Sama", {
-      locality: "Krowica Sama",
-      locality_verbatim: "Krowica Sama",
-      street: null,
-      street_verbatim: null,
-      note: null,
-    }),
-  );
-  assert.deepEqual(
-    read.items.map((d) => [d.place.streetId ?? d.place.localityId, d.scope]),
-    [
-      ["0606180", { type: "whole" }],
-      ["0606180-51473", { type: "whole" }],
-    ],
-  );
-});
-
-test("house numbers on a village's street: that street only, as before", () => {
-  const read = parsed(
-    readOne("Lisie Jamy ul. Długa od nr 40 do nr 145", {
-      locality: "Lisie Jamy",
-      locality_verbatim: "Lisie Jamy",
-      street: "Długa",
-      street_verbatim: "ul. Długa",
-      note: "od nr 40 do nr 145",
-    }),
-  );
-  assert.deepEqual(
-    read.items.map((d) => [d.place.streetId, d.scope]),
-    [
+  // The whole village: the village and each of its streets.
+  {
+    const read = parsed(
+      readOne("Krowica Sama", {
+        locality: "Krowica Sama",
+        locality_verbatim: "Krowica Sama",
+        street: null,
+        street_verbatim: null,
+        note: null,
+        houses: [],
+      }),
+    );
+    assert.deepEqual(
+      read.items.map((d) => [d.place.streetId ?? d.place.localityId, d.scope]),
       [
-        "0606234-03839",
-        { type: "ranges", ranges: [{ from: "40", to: "145" }] },
+        ["0606180", { type: "whole" }],
+        ["0606180-51473", { type: "whole" }],
       ],
-    ],
-  );
+    );
+  }
+  // House numbers on a village's street: that street only.
+  {
+    const read = parsed(
+      readOne("Lisie Jamy ul. Długa od nr 40 do nr 145", {
+        locality: "Lisie Jamy",
+        locality_verbatim: "Lisie Jamy",
+        street: "Długa",
+        street_verbatim: "ul. Długa",
+        note: "od nr 40 do nr 145",
+        houses: [{ from: "40", to: "145" }],
+      }),
+    );
+    assert.deepEqual(
+      read.items.map((d) => [d.place.streetId, d.scope]),
+      [
+        [
+          "0606234-03839",
+          { type: "ranges", ranges: [{ from: "40", to: "145" }] },
+        ],
+      ],
+    );
+  }
 });
 
 test("the town without a street or whole_town: rejected, never the town", () => {
@@ -605,6 +607,7 @@ test("the town without a street or whole_town: rejected, never the town", () => 
     street: null,
     street_verbatim: null,
     note: "od nr 1 do nr 20",
+    houses: [{ from: "1", to: "20" }],
   });
   assert.equal(read.status, "notice");
   assert.deepEqual(
