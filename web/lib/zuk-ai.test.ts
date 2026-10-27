@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { test } from "node:test";
 import { gminaLubaczow } from "./sources/gmina-lubaczow/index.ts";
 import { costUsd, parseAiResult, readWithAi, ZUK_MODEL } from "./zuk-ai.ts";
@@ -61,6 +62,24 @@ test("request: grok-4.7, reasoning medium, temperature 0, strict schema", async 
     /^Publish date: 2026-10-20T11:40:25\nTitle: Przerwa/,
   );
   assert.ok(calls[0].init.signal, "a timeout");
+});
+
+// The body readWithAi sent before callXai was factored out (task 191),
+// byte for byte: the water request must not change.
+test("request: the water body is byte-identical (pinned)", async () => {
+  const { calls, fetcher } = xai(200, JSON.stringify(reading(39865)));
+  await readWithAi(INPUT, SYSTEM, "test-key", fetcher);
+  const body = calls[0].init.body as string;
+  assert.equal(Buffer.byteLength(body), 11981);
+  assert.equal(
+    createHash("sha256").update(body).digest("hex"),
+    "e8cce9e84b9b5bbfdf035a70b7314f771769c06f30f6f697691fd648cbf9afc1",
+  );
+  assert.equal(calls[0].init.method, "POST");
+  assert.deepEqual(calls[0].init.headers, {
+    Authorization: "Bearer test-key",
+    "Content-Type": "application/json",
+  });
 });
 
 test("reply: the reading, tokens and cost (reasoning billed as output)", async () => {

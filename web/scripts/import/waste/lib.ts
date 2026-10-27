@@ -1,33 +1,38 @@
-// The pure parts of the waste schedule domain (docs/import.md): parsing,
-// events, validation, comparing vision passes. No network, no database: the
-// core does those, tested end to end by scripts/check-import-run.mjs; this
-// file by lib.test.ts.
+// The pure parts of the waste schedule domain (docs/import.md): events from
+// a reading, validation, the literal checks of Grok's reply, the review PR's
+// table and reviewed-data file. Code never parses, cleans or reinterprets
+// source text or model text: it checks literally what the model returned
+// (=== only) and a person reviews every new schedule. No network, no
+// database: the core does those, tested end to end by
+// scripts/check-import-run.mjs; this file by lib.test.ts.
 import { FRACTIONS } from "../../../lib/waste-bin.ts";
 import { type Etl, eventId } from "../../lib/import-data.ts";
-import { extractJson } from "../core/vision.ts";
+import type { Layout } from "./prompts.ts";
 
+/** Our month names (the review table and reviewed-data file's keys). */
 export const MONTHS = [
-  "STYCZEŃ",
-  "LUTY",
-  "MARZEC",
-  "KWIECIEŃ",
-  "MAJ",
-  "CZERWIEC",
-  "LIPIEC",
-  "SIERPIEŃ",
-  "WRZESIEŃ",
-  "PAŹDZIERNIK",
-  "LISTOPAD",
-  "GRUDZIEŃ",
+  "styczeń",
+  "luty",
+  "marzec",
+  "kwiecień",
+  "maj",
+  "czerwiec",
+  "lipiec",
+  "sierpień",
+  "wrzesień",
+  "październik",
+  "listopad",
+  "grudzień",
 ];
 
 /** Each schedule row and the fractions it stands for. */
-export const GMINA_ROWS: Record<string, string[]> = {
+const GMINA_ROWS: Record<string, string[]> = {
   "zmieszane+bio": ["zmieszane", "bio"],
   selektywne: ["tworzywa_metale", "papier", "szklo"],
   wielkogabarytowe: ["wielkogabarytowe"],
 };
-export const MIASTO_ROWS: Record<string, string[]> = {
+/** The city's bands, top to bottom (the order "above" refers to). */
+const MIASTO_ROWS: Record<string, string[]> = {
   "zmieszane+popiol": ["zmieszane", "popiol"],
   "papier+tworzywa_metale+szklo": ["papier", "tworzywa_metale", "szklo"],
   bio: ["bio"],
@@ -38,70 +43,16 @@ export const MIASTO_ROWS: Record<string, string[]> = {
     "tekstylia",
   ],
 };
+export const LAYOUT_ROWS: Record<Layout, Record<string, string[]>> = {
+  gmina: GMINA_ROWS,
+  miasto: MIASTO_ROWS,
+};
 const LABELS: Record<string, string> = Object.fromEntries(
   FRACTIONS.map((f) => [f.subtype, f.label]),
 );
 
 /** Days per month, per schedule row: rows[row][month 0–11] = [days]. */
 export type Rows = Record<string, number[][]>;
-
-// ------------------------------------------------------------------ gmina
-
-const MONTH_RE = new RegExp(
-  `(?<!\\p{L})(?:${MONTHS.join("|")})(?!\\p{L})`,
-  "u",
-);
-const DATE_RE = /(?<![\d,])(?:\d{1,2}(?:,\d{1,2})*|-)(?![\d,])/g;
-
-/**
- * A gmina PDF's text layer (pdftotext -layout): the places in the left
- * column and three date columns per month. "-" is no date, "2,20" two.
- * Throws with the reason when the layout is not the expected one.
- */
-export function parseGminaLayout(text: string): {
-  places: string[];
-  rows: Rows;
-} {
-  const lines = text.split(/\r?\n/);
-  const start = lines.findIndex(
-    (line) => line.includes("MIEJSCOWOŚCI") && line.includes("MIESIĄC"),
-  );
-  if (start < 0) throw new Error("no header row (MIEJSCOWOŚCI … MIESIĄC)");
-  const fragments: string[] = [];
-  const found = new Map<string, string[]>();
-  for (const line of lines.slice(start + 1)) {
-    if (line.includes("WSZYSTKIE")) break;
-    const match = MONTH_RE.exec(line);
-    if (!match) {
-      if (line.trim()) fragments.push(line.trim());
-      continue;
-    }
-    const left = line.slice(0, match.index).trim();
-    if (left) fragments.push(left);
-    const tokens =
-      line.slice(match.index + match[0].length).match(DATE_RE) ?? [];
-    if (tokens.length !== 3) {
-      throw new Error(`${match[0]}: ${tokens.length} date columns, expected 3`);
-    }
-    found.set(match[0], tokens);
-  }
-  const missing = MONTHS.filter((month) => !found.has(month));
-  if (missing.length > 0)
-    throw new Error(`missing months: ${missing.join(", ")}`);
-  const days = (token: string) =>
-    token === "-" ? [] : token.split(",").map((part) => Number(part));
-  const names = Object.keys(GMINA_ROWS);
-  const rows: Rows = {};
-  names.forEach((name, column) => {
-    rows[name] = MONTHS.map((month) => days((found.get(month) ?? [])[column]));
-  });
-  const places = fragments
-    .join(" ")
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean);
-  return { places, rows };
-}
 
 // ------------------------------------------------------------------ events
 
@@ -308,197 +259,281 @@ export function validateSchedule(input: ValidationInput): string[] {
   return problems;
 }
 
-/** Names compared without case, diacritics, punctuation (ł → l). */
-export function fold(value: string): string {
-  return value
-    .replaceAll("ł", "l")
-    .replaceAll("Ł", "L")
-    .normalize("NFKD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-}
+// ------------------------------------------------------------------ the reading
 
-// Street types and ranks the schedules and TERYT spell differently, or omit.
-const RANKS = new Set([
-  "ul",
-  "al",
-  "pl",
-  "gen",
-  "ks",
-  "mjr",
-  "rtm",
-  "plk",
-  "pplk",
-  "kard",
-  "abp",
-  "arcybiskupa",
-  "prof",
-  "dr",
-  "het",
-  "sw",
-  "ksiecia",
-  "wojewody",
-]);
+/** A listed place as the model returned it: its words and the id it chose. */
+export type Place = { as_written: string; id: string | null };
 
-/** A street name as the schedules and TERYT can both be matched on. */
-export function streetKey(value: string): string {
-  const kept: string[] = [];
-  for (const part of fold(value).split(" ")) {
-    if (!part || RANKS.has(part) || (part.length === 1 && /\p{L}/u.test(part)))
-      continue;
-    if ((part === "go" || part === "ego") && /^\d+$/.test(kept.at(-1) ?? ""))
-      continue;
-    kept.push(part);
-  }
-  return kept.join(" ");
-}
-
-/** Places or streets the source lists against the zone's members now. */
-export function compareMembers(
-  zoneId: string,
-  listed: string[],
-  members: Array<{ id: string; names: string[] }>,
-  key: (name: string) => string,
-  aliases: Record<string, string> = {},
-): string[] {
-  const problems: string[] = [];
-  const matched = new Set<string>();
-  for (const name of listed) {
-    const k = key(aliases[name] ?? name);
-    // An exact match wins over a longer name ending in it (Mazury, Boczna Mazury).
-    const exact = members.filter((m) => m.names.some((n) => key(n) === k));
-    const hits = exact.length
-      ? exact
-      : members.filter((m) => m.names.some((n) => key(n).endsWith(` ${k}`)));
-    if (hits.length === 1) matched.add(hits[0].id);
-    else
-      problems.push(
-        `${zoneId}: „${name}” ${hits.length === 0 ? "is not a member now" : "matches several members"}`,
-      );
-  }
-  for (const m of members) {
-    if (!matched.has(m.id))
-      problems.push(`${zoneId}: „${m.names[0]}” is no longer listed`);
-  }
-  return problems;
-}
-
-// ------------------------------------------------------------------ vision passes
-
-export type VisionReading = {
-  sector: number;
+/** One reading (Grok's reply, or a merged review), its rows by month. */
+export type Reading = {
+  sector: number | null;
   year: number;
-  streets: string[];
+  /** The month headers as read (a merged review has none). */
+  months: string[];
+  places: Place[];
   rows: Rows;
+  unplaced: Array<{ row: string; day: number }>;
+};
+
+type Json = Record<string, unknown>;
+const isObject = (value: unknown): value is Json =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+const isDay = (value: unknown): value is number => Number.isInteger(value);
+
+/** Exactly these keys: one finding per missing or extra key. */
+function keyFindings(value: Json, keys: string[], at: string): string[] {
+  const findings: string[] = [];
+  for (const key of keys)
+    if (!Object.hasOwn(value, key)) findings.push(`${at}: no key "${key}"`);
+  for (const key of Object.keys(value))
+    if (!keys.includes(key))
+      findings.push(`${at}: unexpected key ${JSON.stringify(key)}`);
+  return findings;
+}
+
+/** Sector and year against the file name's (sector null for the gmina). */
+function fileFindings(
+  value: Json,
+  layout: Layout,
+  file: { sector: number; year: number },
+): string[] {
+  const findings: string[] = [];
+  if (layout === "gmina" && value.sector !== null)
+    findings.push(
+      `sector ${JSON.stringify(value.sector)}, expected null (the gmina PDFs print no sector)`,
+    );
+  if (layout === "miasto" && value.sector !== file.sector)
+    findings.push(
+      `sector ${JSON.stringify(value.sector)}, the file name says ${file.sector}`,
+    );
+  if (value.year !== file.year)
+    findings.push(
+      `year ${JSON.stringify(value.year)}, the file name says ${file.year}`,
+    );
+  return findings;
+}
+
+/** Places' shape: a list of {as_written: string, id: string | null}. */
+function placeShape(places: unknown): string[] {
+  if (!Array.isArray(places)) return ["places: not a list"];
+  const findings: string[] = [];
+  places.forEach((place, i) => {
+    const at = `places[${i}]`;
+    if (!isObject(place)) {
+      findings.push(`${at}: not an object`);
+      return;
+    }
+    findings.push(...keyFindings(place, ["as_written", "id"], at));
+    if (typeof place.as_written !== "string")
+      findings.push(`${at}: as_written is not a string`);
+    if (place.id !== null && typeof place.id !== "string")
+      findings.push(`${at}: id is not a string or null`);
+  });
+  return findings;
+}
+
+/** Places' values: as_written non-empty, id null or one of the list sent. */
+function placeValues(places: Place[], ids: string[]): string[] {
+  const findings: string[] = [];
+  places.forEach((place, i) => {
+    if (place.as_written === "")
+      findings.push(`places[${i}]: as_written is empty`);
+    if (place.id !== null && !ids.includes(place.id))
+      findings.push(
+        `places[${i}] ${JSON.stringify(place.as_written)}: id ${JSON.stringify(place.id)} is not in the list sent`,
+      );
+  });
+  return findings;
+}
+
+const emptyRows = (rowNames: string[]): Rows =>
+  Object.fromEntries(
+    rowNames.map((row) => [row, Array.from({ length: 12 }, () => [])]),
+  );
+const sortDays = (rows: Rows) => {
+  for (const months of Object.values(rows))
+    months.forEach((days, i) => {
+      months[i] = [...new Set(days)].sort((a, b) => a - b);
+    });
+  return rows;
 };
 
 /**
- * One vision pass's JSON, checked against the strict schema: exactly these
- * keys, 12 months per row, days 1–31 as integers. Throws with the reason.
+ * Grok's reply, checked literally against the layout's shape (the prompt
+ * files') and against itself: JSON.parse as given, exact keys and types,
+ * month_header === months[month - 1], each city "above" a date of the band
+ * above in that month, ids only from the list sent, sector and year as the
+ * file name says, unplaced empty. Every finding is for the review PR; none
+ * is ever fixed here. reading is null when the reply has not the shape.
  */
-export function parseVisionJson(
-  text: string,
-  rowNames: string[],
-): VisionReading {
-  const value = JSON.parse(extractJson(text)) as Record<string, unknown>;
-  const keys = Object.keys(value).sort().join(",");
-  if (keys !== "rows,sector,streets,year")
-    throw new Error(`keys ${keys}, expected rows, sector, streets, year`);
-  const { sector, year, streets, rows } = value as {
-    sector: unknown;
-    year: unknown;
-    streets: unknown;
-    rows: Record<string, unknown>;
-  };
-  if (!Number.isInteger(sector) || !Number.isInteger(year))
-    throw new Error("sector and year must be integers");
-  if (
-    !Array.isArray(streets) ||
-    !streets.every((s) => typeof s === "string" && s.trim())
-  )
-    throw new Error("streets must be non-empty strings");
-  if (
-    Object.keys(rows ?? {})
-      .sort()
-      .join(",") !== [...rowNames].sort().join(",")
-  )
-    throw new Error(`rows must be exactly: ${rowNames.join(", ")}`);
-  const parsed: Rows = {};
-  for (const name of rowNames) {
-    const months = rows[name];
-    if (!Array.isArray(months) || months.length !== 12)
-      throw new Error(`${name}: 12 months expected`);
-    parsed[name] = months.map((days, i) => {
-      if (
-        !Array.isArray(days) ||
-        !days.every((d) => Number.isInteger(d) && d >= 1 && d <= 31)
-      )
-        throw new Error(`${name}, month ${i + 1}: days must be integers 1–31`);
-      return [...new Set(days as number[])].sort((a, b) => a - b);
-    });
+export function checkReply(
+  content: string,
+  layout: Layout,
+  ids: string[],
+  file: { sector: number; year: number },
+): { reading: Reading | null; findings: string[] } {
+  let value: unknown;
+  try {
+    value = JSON.parse(content);
+  } catch {
+    return { reading: null, findings: ["reply is not JSON"] };
   }
-  return {
-    sector: sector as number,
-    year: year as number,
-    streets: (streets as string[]).map((s) => s.trim()).sort(),
-    rows: parsed,
-  };
-}
+  if (!isObject(value))
+    return { reading: null, findings: ["reply is not a JSON object"] };
+  const rowNames = Object.keys(LAYOUT_ROWS[layout]);
+  const entryKeys =
+    layout === "miasto"
+      ? ["month", "month_header", "above", "day"]
+      : ["month", "month_header", "day"];
+  const keys = ["sector", "year", "months", "places", "rows", "unplaced"];
+  const shape = keyFindings(value, keys, "reply");
+  if (shape.length) return { reading: null, findings: shape };
 
-/**
- * Every difference in sector, year and dates between two readings; empty
- * when they agree 100%. Streets are not compared: the database owns them
- * (streetReview).
- */
-export function compareReadings(a: VisionReading, b: VisionReading): string[] {
-  const diffs: string[] = [];
-  if (a.sector !== b.sector) diffs.push(`sector: ${a.sector} vs ${b.sector}`);
-  if (a.year !== b.year) diffs.push(`year: ${a.year} vs ${b.year}`);
-  for (const row of Object.keys(a.rows)) {
-    a.rows[row].forEach((days, i) => {
-      const other = b.rows[row]?.[i] ?? [];
-      if (days.join(",") !== other.join(","))
-        diffs.push(
-          `${row}, ${MONTHS[i].toLowerCase()}: [${days.join(", ")}] vs [${other.join(", ")}]`,
+  // The shape: types only.
+  if (value.sector !== null && !Number.isInteger(value.sector))
+    shape.push("sector: not an integer or null");
+  if (!Number.isInteger(value.year)) shape.push("year: not an integer");
+  const months = value.months;
+  if (
+    !Array.isArray(months) ||
+    months.length !== 12 ||
+    !months.every((m) => typeof m === "string")
+  )
+    shape.push("months: not 12 strings");
+  shape.push(...placeShape(value.places));
+  const rows = value.rows;
+  if (!isObject(rows)) shape.push("rows: not an object");
+  else {
+    shape.push(...keyFindings(rows, rowNames, "rows"));
+    for (const row of rowNames) {
+      const entries = rows[row];
+      if (!Array.isArray(entries)) {
+        if (Object.hasOwn(rows, row)) shape.push(`rows.${row}: not a list`);
+        continue;
+      }
+      entries.forEach((entry, i) => {
+        const at = `rows.${row}[${i}]`;
+        if (!isObject(entry)) {
+          shape.push(`${at}: not an object`);
+          return;
+        }
+        shape.push(...keyFindings(entry, entryKeys, at));
+        if (
+          !Number.isInteger(entry.month) ||
+          (entry.month as number) < 1 ||
+          (entry.month as number) > 12
+        )
+          shape.push(`${at}: month is not an integer 1–12`);
+        if (typeof entry.month_header !== "string")
+          shape.push(`${at}: month_header is not a string`);
+        if (!isDay(entry.day)) shape.push(`${at}: day is not an integer`);
+        if (
+          layout === "miasto" &&
+          Object.hasOwn(entry, "above") &&
+          entry.above !== null &&
+          !isDay(entry.above)
+        )
+          shape.push(`${at}: above is not an integer or null`);
+      });
+    }
+  }
+  const unplaced = value.unplaced;
+  if (!Array.isArray(unplaced)) shape.push("unplaced: not a list");
+  else
+    unplaced.forEach((u, i) => {
+      const at = `unplaced[${i}]`;
+      if (!isObject(u)) {
+        shape.push(`${at}: not an object`);
+        return;
+      }
+      shape.push(...keyFindings(u, ["row", "day"], at));
+      if (typeof u.row !== "string") shape.push(`${at}: row is not a string`);
+      if (!isDay(u.day)) shape.push(`${at}: day is not an integer`);
+    });
+  if (shape.length) return { reading: null, findings: shape };
+
+  // The values, each against the file or against the reply itself.
+  const findings = [
+    ...fileFindings(value, layout, file),
+    ...placeValues(value.places as Place[], ids),
+  ];
+  type Entry = {
+    month: number;
+    month_header: string;
+    above?: number | null;
+    day: number;
+  };
+  const bands = rows as Record<string, Entry[]>;
+  const headers = months as string[];
+  const built = emptyRows(rowNames);
+  rowNames.forEach((row, band) => {
+    for (const e of bands[row]) {
+      const at = `${row}, month ${e.month}, day ${e.day}`;
+      if (e.month_header !== headers[e.month - 1])
+        findings.push(
+          `${at}: month_header ${JSON.stringify(e.month_header)} is not months[${e.month - 1}] ${JSON.stringify(headers[e.month - 1])}`,
         );
-    });
-  }
-  return diffs;
+      if (layout === "miasto") {
+        if (band === 0 && e.above !== null)
+          findings.push(`${at}: above is ${e.above} in the top band`);
+        if (
+          band > 0 &&
+          e.above !== null &&
+          !bands[rowNames[band - 1]].some(
+            (u) => u.month === e.month && u.day === e.above,
+          )
+        )
+          findings.push(
+            `${at}: above ${e.above} is not a date of ${rowNames[band - 1]} in that month`,
+          );
+      }
+      built[row][e.month - 1].push(e.day);
+    }
+  });
+  const left = unplaced as Reading["unplaced"];
+  for (const u of left)
+    findings.push(`unplaced: ${JSON.stringify(u.row)}, day ${u.day}`);
+  return {
+    reading: {
+      sector: value.sector as number | null,
+      year: value.year as number,
+      months: headers,
+      places: value.places as Place[],
+      rows: sortDays(built),
+      unplaced: left,
+    },
+    findings,
+  };
 }
 
 /**
- * Each pass's street list against the zone's streets in the database
- * (compareMembers, streetKey only). Model spelling is never applied; any
- * difference is for a person to check. Empty when every pass matches.
+ * The places read against the zone's members in the database, by id only:
+ * on the file but not in the zone, in the zone but not on the file, and
+ * places with no id (never guessed). The import never changes membership.
  */
-export function streetReview(
-  zoneId: string,
-  readings: string[][],
-  members: Array<{ id: string; names: string[] }>,
-  aliases: Record<string, string> = {},
-  /** Each pass's name in the messages (its id); 1, 2… by default. */
-  names: string[] = readings.map((_, i) => String(i + 1)),
-): string[] {
-  const passes = new Map<string, string[]>();
-  readings.forEach((streets, i) => {
-    for (const p of compareMembers(
-      zoneId,
-      streets,
-      members,
-      streetKey,
-      aliases,
-    ))
-      passes.set(p, [...(passes.get(p) ?? []), names[i]]);
-  });
-  return [...passes].map(([p, n]) => `${p} (pass ${n.join(", ")})`);
+export function memberLists(
+  places: Place[],
+  members: Array<{ id: string; name: string }>,
+): {
+  notInZone: Place[];
+  notOnFile: Array<{ id: string; name: string }>;
+  noId: Place[];
+} {
+  return {
+    notInZone: places.filter(
+      (p) => p.id !== null && !members.some((m) => m.id === p.id),
+    ),
+    notOnFile: members.filter((m) => !places.some((p) => p.id === m.id)),
+    noId: places.filter((p) => p.id === null),
+  };
 }
 
 // ------------------------------------------------------------------ review PRs
 
 const days = (list: number[] | undefined) =>
   list?.length ? list.join(", ") : "—";
+const sameDays = (a: number[] = [], b: number[] = []) =>
+  a.length === b.length && a.every((d, i) => d === b[i]);
 
 /** Days per row and month already in the database (each row's first fraction). */
 export function databaseRows(
@@ -519,98 +554,124 @@ export function databaseRows(
 }
 
 /**
- * A review PR's table (Polish markdown): every sector, year, row and month
- * where the passes differ, each pass's value and the database's.
+ * A review PR's table (Polish markdown): every row and month, the reading's
+ * days and the database's, each difference marked; the month header as read.
  */
-export function disagreementTable(
-  readings: VisionReading[],
-  names: string[],
-  current: Rows,
-): string {
+export function readingTable(reading: Reading | null, current: Rows): string {
   const lines = [
-    `| Wiersz | Miesiąc | ${names.join(" | ")} | w bazie |`,
-    `|---|---|${names.map(() => "---|").join("")}---|`,
+    "| Wiersz | Miesiąc | Nagłówek z odczytu | odczyt | w bazie | |",
+    "|---|---|---|---|---|---|",
   ];
-  for (const field of ["sector", "year"] as const)
-    if (new Set(readings.map((r) => r[field])).size > 1)
-      lines.push(
-        `| ${field === "sector" ? "sektor" : "rok"} | | ${readings.map((r) => r[field]).join(" | ")} | |`,
-      );
-  for (const row of Object.keys(readings[0].rows))
+  for (const row of Object.keys(current))
     MONTHS.forEach((month, i) => {
-      const values = readings.map((r) => days(r.rows[row]?.[i]));
-      if (new Set(values).size > 1)
-        lines.push(
-          `| ${row} | ${month.toLowerCase()} | ${values.join(" | ")} | ${days(current[row]?.[i])} |`,
-        );
+      const read = reading?.rows[row]?.[i];
+      const differs = !reading || !sameDays(read, current[row][i]);
+      lines.push(
+        `| ${row} | ${month} | ${reading?.months[i] ?? ""} | ${reading ? days(read) : "?"} | ${days(current[row][i])} | ${differs ? "**różnica**" : ""} |`,
+      );
     });
   return lines.join("\n");
 }
 
-/** streetReview's findings for a review PR, in Polish. */
-export function streetLines(review: string[]): string[] {
-  return review.map(
-    (p) =>
-      `- ${p
-        .replace(/^\S+: /, "")
-        .replace(
-          "is not a member now",
-          "z obrazka: nie ma jej w tej strefie w bazie",
-        )
-        .replace("is no longer listed", "z bazy: nie ma jej na obrazku")
-        .replace(
-          "matches several members",
-          "z obrazka: pasuje do kilku ulic w bazie",
-        )
-        .replace(/\(pass /, "(przebieg ")}`,
-  );
-}
+const REVIEWED_KEYS = [
+  "sha256",
+  "file",
+  "from",
+  "sector",
+  "year",
+  "rows",
+  "places",
+];
 
-/** The reviewed-data file a review PR proposes (YAML, easy to edit by hand). */
+/**
+ * The reviewed-data file a review PR proposes (YAML, easy to edit by hand):
+ * the reading's dates, sector and year, and its places as returned. With no
+ * reading (a reply without the shape): the file name's sector and year, no
+ * dates, for the person to fill in.
+ */
 export function reviewedYaml(
-  reading: VisionReading,
-  from: string,
-  fileName: string,
+  reading: Reading | null,
+  layout: Layout,
+  file: { name: string; sector: number; year: number },
+  model: string,
   digest: string,
 ): string {
+  const rows = reading?.rows ?? emptyRows(Object.keys(LAYOUT_ROWS[layout]));
   return [
-    `# Przejrzane daty z pliku ${fileName}, wstępnie z przebiegu „${from}”.`,
-    "# Popraw dni miesiąca, jeśli trzeba. Scalenie PR zatwierdza je dla pliku",
-    "# o tym sha256; ulice zawsze bierzemy z bazy, nie stąd.",
+    `# Przejrzane daty z pliku ${file.name}, wstępnie z odczytu ${model}${reading ? "" : " (odczyt bez wymaganego kształtu: daty do wpisania)"}.`,
+    "# Porównaj z obrazem i popraw dni miesiąca, jeśli trzeba. Scalenie PR",
+    "# zatwierdza je dla pliku o tym sha256. places to tylko informacja,",
+    "# skopiowana z odczytu: przynależność do stref bierze się wyłącznie z bazy.",
     `sha256: ${digest}`,
-    `file: ${JSON.stringify(fileName)}`,
-    `from: ${from}`,
-    `sector: ${reading.sector}`,
-    `year: ${reading.year}`,
+    `file: ${JSON.stringify(file.name)}`,
+    `from: ${JSON.stringify(model)}`,
+    `sector: ${JSON.stringify(reading ? reading.sector : layout === "gmina" ? null : file.sector)}`,
+    `year: ${JSON.stringify(reading ? reading.year : file.year)}`,
     "rows:",
-    ...Object.entries(reading.rows).flatMap(([row, months]) => [
+    ...Object.entries(rows).flatMap(([row, months]) => [
       `  ${JSON.stringify(row)}:`,
-      ...months.map(
-        (d, i) => `    ${MONTHS[i].toLowerCase()}: [${d.join(", ")}]`,
-      ),
+      ...months.map((d, i) => `    ${MONTHS[i]}: [${d.join(", ")}]`),
     ]),
+    `places:${reading?.places.length ? "" : " []"}`,
+    ...(reading?.places ?? []).map(
+      (p) =>
+        `  - { as_written: ${JSON.stringify(p.as_written)}, id: ${JSON.stringify(p.id)} }`,
+    ),
     "",
   ].join("\n");
 }
 
-/** A merged reviewed-data file as a reading, checked like a vision pass. */
+/**
+ * A merged reviewed-data file as a reading, with the same literal checks as
+ * a reply: exact keys, sector and year as the file name says, every month
+ * of every row a list of integer days, places as returned (ids from the
+ * list sent). Findings block it (an issue), never fixed here.
+ */
 export function parseReviewed(
-  value: Record<string, unknown>,
-  rowNames: string[],
-): VisionReading {
-  const rows = (value.rows ?? {}) as Record<string, Record<string, unknown>>;
-  return parseVisionJson(
-    JSON.stringify({
-      sector: value.sector,
-      year: value.year,
-      streets: [],
-      rows: Object.fromEntries(
-        Object.entries(rows).map(([row, months]) => [
-          row,
-          MONTHS.map((m) => months?.[m.toLowerCase()]),
-        ]),
-      ),
-    }),
-    rowNames,
+  value: unknown,
+  layout: Layout,
+  ids: string[],
+  file: { sector: number; year: number },
+): { reading: Reading | null; findings: string[] } {
+  if (!isObject(value))
+    return { reading: null, findings: ["reviewed: not an object"] };
+  const findings = keyFindings(value, REVIEWED_KEYS, "reviewed");
+  findings.push(...fileFindings(value, layout, file));
+  const places = placeShape(value.places);
+  findings.push(
+    ...places,
+    ...(places.length ? [] : placeValues(value.places as Place[], ids)),
   );
+  const rowNames = Object.keys(LAYOUT_ROWS[layout]);
+  const rows = emptyRows(rowNames);
+  if (!isObject(value.rows)) findings.push("rows: not an object");
+  else {
+    findings.push(...keyFindings(value.rows, rowNames, "rows"));
+    for (const row of rowNames) {
+      const months = value.rows[row];
+      if (!isObject(months)) {
+        findings.push(`rows.${row}: not an object`);
+        continue;
+      }
+      findings.push(...keyFindings(months, MONTHS, `rows.${row}`));
+      MONTHS.forEach((month, i) => {
+        const list = months[month];
+        if (!Array.isArray(list) || !list.every(isDay))
+          findings.push(`rows.${row}.${month}: not a list of integer days`);
+        else rows[row][i].push(...list);
+      });
+    }
+  }
+  if (findings.length) return { reading: null, findings };
+  return {
+    reading: {
+      sector: value.sector as number | null,
+      year: value.year as number,
+      months: [],
+      places: value.places as Place[],
+      rows: sortDays(rows),
+      unplaced: [],
+    },
+    findings,
+  };
 }

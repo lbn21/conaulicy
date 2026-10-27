@@ -297,6 +297,71 @@ export function costUsd(usage: AiUsage): number {
 
 const count = (v: unknown) => (typeof v === "number" ? v : 0);
 
+/** One xAI reply: its content as given, the model, tokens, cost and time. */
+export type XaiReply = {
+  content: string;
+  model: string;
+  usage: AiUsage;
+  costUsd: number;
+  latencyMs: number;
+};
+
+/**
+ * One chat/completions call to Grok (ZUK_MODEL, reasoning medium), shared by
+ * the water reader and the waste import. The body is exactly what is given:
+ * temperature and response_format only when set. Throws on a network or HTTP
+ * error or a timeout; never logs the key. No retries.
+ */
+export async function callXai(
+  request: {
+    messages: unknown[];
+    temperature?: number;
+    responseFormat?: unknown;
+  },
+  apiKey: string,
+  fetcher: typeof fetch = fetch,
+  timeoutMs: number = TIMEOUT_MS,
+): Promise<XaiReply> {
+  const started = Date.now();
+  const response = await fetcher(XAI_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: ZUK_MODEL,
+      reasoning_effort: "medium",
+      temperature: request.temperature,
+      messages: request.messages,
+      response_format: request.responseFormat,
+    }),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!response.ok) throw new Error(`xAI: HTTP ${response.status}`);
+  const body = (await response.json()) as {
+    model?: string;
+    usage?: Record<string, unknown>;
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const u = body.usage ?? {};
+  const usage: AiUsage = {
+    promptTokens: count(u.prompt_tokens),
+    completionTokens: count(u.completion_tokens),
+    reasoningTokens: count(
+      (u.completion_tokens_details as Record<string, unknown> | undefined)
+        ?.reasoning_tokens,
+    ),
+  };
+  return {
+    content: body.choices?.[0]?.message?.content ?? "",
+    model: body.model ?? ZUK_MODEL,
+    usage,
+    costUsd: costUsd(usage),
+    latencyMs: Date.now() - started,
+  };
+}
+
 /**
  * One post read by the model, `system` the source's prompt. Throws on a
  * network or HTTP error or a timeout, InvalidReply on a reply that is not
@@ -308,16 +373,8 @@ export async function readWithAi(
   apiKey: string,
   fetcher: typeof fetch = fetch,
 ): Promise<AiReading> {
-  const started = Date.now();
-  const response = await fetcher(XAI_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: ZUK_MODEL,
-      reasoning_effort: "medium",
+  const reply = await callXai(
+    {
       temperature: 0,
       messages: [
         { role: "system", content: system },
@@ -326,36 +383,16 @@ export async function readWithAi(
           content: `Publish date: ${input.published}\nTitle: ${input.title}\n\nText:\n${input.text}`,
         },
       ],
-      response_format: {
+      responseFormat: {
         type: "json_schema",
         json_schema: { name: "zuk", schema: SCHEMA, strict: true },
       },
-    }),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
-  if (!response.ok) throw new Error(`xAI: HTTP ${response.status}`);
-  const body = (await response.json()) as {
-    model?: string;
-    usage?: Record<string, unknown>;
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const content = body.choices?.[0]?.message?.content ?? "";
-  const result = parseAiResult(content);
-  if (!result) throw new InvalidReply(content);
-  const u = body.usage ?? {};
-  const usage: AiUsage = {
-    promptTokens: count(u.prompt_tokens),
-    completionTokens: count(u.completion_tokens),
-    reasoningTokens: count(
-      (u.completion_tokens_details as Record<string, unknown> | undefined)
-        ?.reasoning_tokens,
-    ),
-  };
-  return {
-    result,
-    model: body.model ?? ZUK_MODEL,
-    usage,
-    costUsd: costUsd(usage),
-    latencyMs: Date.now() - started,
-  };
+    },
+    apiKey,
+    fetcher,
+  );
+  const result = parseAiResult(reply.content);
+  if (!result) throw new InvalidReply(reply.content);
+  const { content: _, ...rest } = reply;
+  return { result, ...rest };
 }

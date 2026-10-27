@@ -41,7 +41,7 @@ In the private S3 bucket under `sources/<origin>/<fetch date>/`; keys, public UR
 ### 1b. Gmina Lubaczów (wiejska) [F]
 - Post: https://www.gminalubaczow.pl/2026/01/02/harmonogram-odbioru-odpadow-komunalnych-na-rok-2026/ (published 02.01.2026; contractor **F.H.U.P. MASTER Stanisław Cygan**; fee 23/28 zł per person per month).
 - Files (`https://www.gminalubaczow.pl/wp-content/uploads/2026/01/`): `1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf`, `2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf` (sic, double extension), `3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf`, `4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf`, `5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf`. Created by PDF-XChange on 02.01.2026, A3, 1 page.
-- Format: **text PDF**, parses cleanly with `pdftotext -layout`. Columns: `ODPADY KOMUNALNE ZMIESZANE I BIO` | selective (yellow plastics/metal, blue paper, green glass bags) | `WIELKOGABARYTOWE` (March + September). Village names are wrapped across lines in the left column.
+- Format: **text PDF**, one page; the import renders it to a PNG and Grok reads it (docs/import.md), no text parsing. Columns: `ODPADY KOMUNALNE ZMIESZANE I BIO` | selective (yellow plastics/metal, blue paper, green glass bags) | `WIELKOGABARYTOWE` (March + September). Village names are wrapped across lines in the left column.
 - Sectors → villages (24 of 24 parent villages from SIMC are covered) [F]:
   - S1 (Mon): Lisie Jamy, Dąbrowa, Szczutków
   - S2 (Tue): Wólka Krowicka, Budomierz, Krowica Hołodowska, Krowica Sama, Krowica Lasowa

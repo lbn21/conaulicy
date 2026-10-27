@@ -15,19 +15,20 @@
 // domain that opts in: an issue while any of its zones' dates run out within
 // domains.<domain>.coverageMinDays.
 //
-// --dry-run: no data written (the import_runs row still is). --read-only:
-// nothing written at all. --force-extract: extract known files too (proves
-// the extraction reproduces the database). --extract-only: no database at
-// all: detect, download, extract and validate, print, exit 1 on any problem
-// (tests the vision passes).
+// --dry-run: no data written (the import_runs row still is; review PRs are
+// opened). --read-only: nothing written at all. --force-extract: extract
+// known and settled files too (each waste file is read again and gets a
+// review PR, unless its sha256 has a merged review). --extract-only: no
+// database and no review PR: detect, download, extract and validate, print,
+// exit 1 on any problem (tests the reading).
 //
 // Env: IMPORT_DATABASE_URL (or DATABASE_URL_UNPOOLED / DATABASE_URL);
-// CURSOR_API_KEY (vision passes, Actions only); REVALIDATE_SECRET (site:
-// site.url, or SITE_URL); GH_TOKEN
+// XAI_API_KEY (Grok reads the waste schedules, Actions only);
+// REVALIDATE_SECRET (site: site.url, or SITE_URL); GH_TOKEN
 // (issues, review PRs); AWS credentials (archive); ACTIONS_RUN_URL. Tests:
 // IMPORT_CONFIG (another config file), IMPORT_NOW (the clock), ARCHIVE_DIR
 // (instead of S3), ISSUES_FILE and REVIEWS_FILE (instead of GitHub),
-// IMPORT_REVIEW_DIR (instead of etl/review), CURSOR_AGENT_MOCK (pass outputs).
+// IMPORT_REVIEW_DIR (instead of etl/review), XAI_MOCK_DIR (Grok's replies).
 import { randomUUID } from "node:crypto";
 import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
@@ -127,6 +128,7 @@ if (extractOnly) {
           body,
           doc: file.name,
           digest: sha256(body),
+          reviews,
         });
         const found = [
           ...out.problems,
@@ -367,7 +369,7 @@ async function importSource(source: Source): Promise<Outcome> {
     [];
   const held: string[] = [];
   for (const { file, body, digest, doc, checkedAt } of work) {
-    // No connection waits idle through the vision passes (minutes).
+    // No connection waits idle through the model's reading (minutes).
     await db.close();
     let out: Extracted;
     try {
@@ -378,6 +380,7 @@ async function importSource(source: Source): Promise<Outcome> {
         body,
         doc,
         digest,
+        reviews,
       });
     } catch (error) {
       problems.push(

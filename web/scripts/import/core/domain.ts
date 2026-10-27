@@ -46,6 +46,8 @@ export type Extractor = (input: {
   body: Buffer;
   doc: string;
   digest: string;
+  /** The file's review PRs, looked up before any paid call. */
+  reviews: Reviews;
 }) => Promise<Extracted>;
 
 export type Domain = {

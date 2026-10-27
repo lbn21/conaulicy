@@ -1,39 +1,46 @@
 // The waste domain's source adapters, by the type names used in
-// etl/sources.yaml. A detector finds a source's published files; an extractor
-// turns one file into events for one zone and a date range (its scope, which
-// the import diffs and replaces). Fetching, logging, issues, batches and
-// revert are the core's (../core/), so a new kind of waste source is a new
-// detector or extractor here plus config; a new domain is its own folder
-// (docs/import.md).
+// etl/sources.yaml. A detector finds a source's published files; the one
+// extractor (waste-ai) has Grok read a file into events for one zone and a
+// date range (its scope, which the import diffs and replaces). Fetching,
+// logging, issues, batches and revert are the core's (../core/), so a new
+// kind of waste source is a new detector or layout here plus config; a new
+// domain is its own folder (docs/import.md).
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import type { AiUsage } from "../../../lib/zuk-ai.ts";
 import type { Etl } from "../../lib/import-data.ts";
-import type { Config, Source } from "../core/config.ts";
+import type { Source } from "../core/config.ts";
 import type {
   Detection as CoreDetection,
   Extracted as CoreExtracted,
   Found as CoreFound,
 } from "../core/domain.ts";
 import type { Http } from "../core/http.ts";
-import { readReviewed } from "../core/review.ts";
-import { visionPasses } from "../core/vision.ts";
+import { type Reviews, readReviewed } from "../core/review.ts";
 import {
-  compareReadings,
-  GMINA_ROWS,
-  MIASTO_ROWS,
-  parseGminaLayout,
+  checkReply,
+  LAYOUT_ROWS,
   parseReviewed,
-  parseVisionJson,
+  type Reading,
   rowsToEvents,
-  type VisionReading,
 } from "./lib.ts";
+import { type Layout, schedulePrompt } from "./prompts.ts";
+import { readSchedule } from "./xai.ts";
 
 // ------------------------------------------------------------------ detect
 
 /** A waste source: its detector's settings, and its waste block. */
 export type WasteSource = Source & {
+  extract: { type: string; layout: Layout };
   detect: {
     site: string;
     parent?: number;
@@ -45,7 +52,6 @@ export type WasteSource = Source & {
     gmina: { id: string; teryt: string };
     zone: string;
     validate: string[];
-    aliases?: Record<string, string>;
   };
 };
 
@@ -217,19 +223,34 @@ export function detectFromPages(
 export type Extracted = CoreExtracted & {
   year: number;
   events: Etl["events"];
-  /** Vision only: vision.streetCheckFrom's streets, checked for review, never applied. */
-  streetReadings?: string[][];
-  /** Vision only: each pass's reading; disagree: a review PR decides. */
-  readings?: VisionReading[];
-  disagree?: boolean;
+  /** Dates from the file's merged review: they apply as usual. */
+  reviewed: boolean;
+  /**
+   * Not read: this sha256 already has a review PR (open, merged but not in
+   * this checkout, or rejected), so no xAI call and the PR is left as it is.
+   */
+  pending?: { state: "open" | "merged" | "rejected"; url: string };
+  /** Else Grok's fresh reading, for its review PR (check.ts). */
+  read?: {
+    /** The reply as given. */
+    content: string;
+    /** null when the reply has not the layout's shape. */
+    reading: Reading | null;
+    /** What the literal checks found (and dates that are not dates). */
+    findings: string[];
+    model: string;
+    usage: AiUsage;
+    costUsd: number;
+    latencyMs: number;
+  };
 };
 type Extractor = (input: {
   source: WasteSource;
-  config: Config;
   file: Found;
   body: Buffer;
   doc: string;
   digest: string;
+  reviews: Reviews;
 }) => Promise<Extracted>;
 
 const schedule = (
@@ -239,7 +260,7 @@ const schedule = (
   rows: Record<string, number[][]>,
   fractions: Record<string, string[]>,
   listed: string[],
-): Extracted => {
+) => {
   const zoneId = source.waste.zone.replace("{sector}", String(file.sector));
   const built = rowsToEvents(zoneId, file.year, rows, fractions, ref);
   return {
@@ -252,104 +273,146 @@ const schedule = (
   };
 };
 
-export const EXTRACTORS: Record<string, Extractor> = {
-  /** The PDF's text layer, parsed deterministically (pdftotext -layout). */
-  async "gmina-pdf-text"({ source, file, body, doc, digest }) {
-    const dir = mkdtempSync(path.join(tmpdir(), "pdf-"));
-    writeFileSync(path.join(dir, "source.pdf"), body);
-    const run = spawnSync(
-      "pdftotext",
-      ["-layout", path.join(dir, "source.pdf"), "-"],
-      { encoding: "utf8" },
-    );
-    // The message without the temporary path, so the same problem keeps its issue.
-    if (run.status !== 0)
-      throw new Error(
-        `pdftotext cannot read it: ${(run.stderr ?? "").split("\n")[0]}`,
-      );
-    const text = run.stdout;
-    const table = parseGminaLayout(text);
-    return schedule(
-      source,
-      file,
-      { doc, url: file.url, sha256: digest },
-      table.rows,
-      GMINA_ROWS,
-      table.places,
-    );
-  },
+/** One pdftoppm run at most this long (a schedule page takes about a second). */
+const RENDER_TIMEOUT_MS = 60_000;
 
-  /**
-   * Two independent Cursor CLI vision passes; their dates apply only if they
-   * agree, else a review PR (check.ts) proposes vision.reviewFrom's reading.
-   * A merged review of this exact file (sha256) replaces the passes.
-   */
-  async "miasto-jpg-vision"({ source, config, file, body, doc, digest }) {
-    const rows = Object.keys(MIASTO_ROWS);
-    const ref = { doc, url: file.url, sha256: digest };
-    const sameFile = (r: VisionReading) => {
-      if (r.sector !== file.sector || r.year !== file.year)
-        throw new Error(`the image says sector ${r.sector}, ${r.year}`);
+/**
+ * A one-page PDF as a PNG for Grok (image preparation only, no text layer):
+ * pdftoppm -r 150 -png -singlefile. The page count is the number of pages
+ * pdftoppm renders (small, into an empty directory), so no text tool reads it.
+ */
+export function renderPdf(body: Buffer): Buffer {
+  const dir = mkdtempSync(path.join(tmpdir(), "pdf-"));
+  try {
+    const pdf = path.join(dir, "source.pdf");
+    writeFileSync(pdf, body);
+    const pages = path.join(dir, "pages");
+    mkdirSync(pages);
+    const pdftoppm = (args: string[]) => {
+      const run = spawnSync("pdftoppm", args, { timeout: RENDER_TIMEOUT_MS });
+      if (run.error && "code" in run.error && run.error.code === "ETIMEDOUT")
+        throw new Error(
+          `pdftoppm did not finish within ${RENDER_TIMEOUT_MS / 1000} s`,
+        );
+      // The message without the temporary path, so the same problem keeps its issue.
+      if (run.status !== 0)
+        throw new Error(
+          `pdftoppm cannot render it (exit ${run.status ?? run.error?.message})`,
+        );
     };
+    pdftoppm(["-r", "10", "-png", pdf, path.join(pages, "page")]);
+    const count = readdirSync(pages).length;
+    if (count !== 1) throw new Error(`${count} pages, expected 1`);
+    pdftoppm(["-r", "150", "-png", "-singlefile", pdf, path.join(dir, "out")]);
+    return readFileSync(path.join(dir, "out.png"));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Grok reads the file once (layout gmina: the PDF rendered to PNG; miasto:
+ * the JPG as is); its reply is checked literally and always goes to a review
+ * PR (check.ts). A merged review of this exact file (sha256) replaces the
+ * reading: no call, its dates apply. A sha256 that already has a review PR
+ * (open, merged but not checked out, rejected) is not read again: no call,
+ * and check.ts leaves the PR alone. deps: tests inject the network, the key
+ * and the renderer.
+ */
+export function wasteAi(
+  deps: {
+    fetcher?: typeof fetch;
+    apiKey?: string;
+    render?: (pdf: Buffer) => Buffer;
+  } = {},
+): Extractor {
+  return async ({ source, file, body, doc, digest, reviews }) => {
+    const { layout } = source.extract;
+    const rows = LAYOUT_ROWS[layout];
+    const ref = { doc, url: file.url, sha256: digest };
+    const prompt = schedulePrompt(layout);
     const approved = readReviewed(source.id, file.name, digest);
     if (approved) {
-      const reading = parseReviewed(approved, rows);
-      sameFile(reading);
+      const { reading, findings } = parseReviewed(
+        approved,
+        layout,
+        prompt.ids,
+        file,
+      );
+      if (!reading)
+        throw new Error(
+          `its merged review does not pass the checks: ${findings.join("; ")}`,
+        );
       console.log(`${file.name}: dates from its merged review.`);
-      // Reviewed by a person: no street review again.
       return {
-        ...schedule(source, file, ref, reading.rows, MIASTO_ROWS, []),
-        streetReadings: [],
+        ...schedule(
+          source,
+          file,
+          ref,
+          reading.rows,
+          rows,
+          reading.places.map((p) => p.as_written),
+        ),
+        reviewed: true,
       };
     }
-    const outputs = await visionPasses(
-      config,
-      body,
-      path.extname(file.name),
-      (image) => VISION_PROMPT(image, rows),
-      `${source.id}-s${file.sector}-${file.year}`,
+    // Its review is already open, merged or rejected: never a second call.
+    const { sameOpen, merged, rejected } = reviews.status(
+      source.id,
+      file.name,
+      digest,
     );
-    const ids = config.vision.passes.map((p) => p.id);
-    const readings = outputs.map((o, i) => {
-      try {
-        return parseVisionJson(o, rows);
-      } catch (error) {
-        throw new Error(
-          `vision pass ${ids[i]} (${config.vision.passes[i].model}) is not valid JSON for the schema: ${(error as Error).message}`,
-        );
-      }
-    });
-    const disagree = compareReadings(readings[0], readings[1]).length > 0;
-    const reading = disagree
-      ? readings[ids.indexOf(config.vision.reviewFrom)]
-      : readings[0];
-    if (!disagree) sameFile(reading);
+    const review = sameOpen
+      ? { state: "open" as const, url: sameOpen.url }
+      : merged
+        ? { state: "merged" as const, url: merged.url }
+        : rejected
+          ? { state: "rejected" as const, url: rejected.url }
+          : null;
+    if (review) {
+      console.log(
+        `${file.name}: not read again, its review is ${review.state} (${review.url}).`,
+      );
+      return {
+        ...schedule(source, file, ref, {}, rows, []),
+        reviewed: false,
+        pending: review,
+      };
+    }
+    const image =
+      layout === "gmina"
+        ? { body: (deps.render ?? renderPdf)(body), mime: "image/png" as const }
+        : { body, mime: "image/jpeg" as const };
+    const reply = await readSchedule(
+      prompt.text,
+      image,
+      `${source.id}-s${file.sector}-${file.year}`,
+      deps,
+    );
+    const { reading, findings } = checkReply(
+      reply.content,
+      layout,
+      prompt.ids,
+      file,
+    );
+    const built = schedule(
+      source,
+      file,
+      ref,
+      reading?.rows ?? {},
+      rows,
+      reading?.places.map((p) => p.as_written) ?? [],
+    );
+    // Every finding goes to the review PR, dates that are not dates too.
     return {
-      ...schedule(
-        source,
-        file,
-        ref,
-        reading.rows,
-        MIASTO_ROWS,
-        reading.streets,
-      ),
-      // Only vision.streetCheckFrom's streets are checked: the other passes
-      // count for dates, sector and year only.
-      streetReadings: [
-        readings[ids.indexOf(config.vision.streetCheckFrom)].streets,
-      ],
-      readings,
-      disagree,
+      ...built,
+      problems: [],
+      reviewed: false,
+      read: { ...reply, reading, findings: [...findings, ...built.problems] },
     };
-  },
-};
+  };
+}
 
-const VISION_PROMPT = (image: string, rows: string[]) =>
-  [
-    `Read the waste collection schedule image ${image}. Do not modify any file and do not run commands.`,
-    "Respond with the JSON object only, no other text. Exactly this shape:",
-    `{"sector": <sector number>, "year": <year>, "streets": [<every street name listed, as written>], "rows": {${rows
-      .map((r) => `"${r}": [12 arrays of day numbers, January to December]`)
-      .join(", ")}}}`,
-    `Rows in table order: ${rows.join("; ")}. A cell with no date is []. Days are integers.`,
-  ].join("\n");
+export const EXTRACTORS: Record<string, Extractor> = {
+  "waste-ai": wasteAi(),
+};
