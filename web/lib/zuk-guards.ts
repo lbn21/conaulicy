@@ -31,15 +31,40 @@ const validTime = (t: string) =>
 const HOUSE = /^\d{1,4}[a-z]?$/i;
 
 /**
+ * The note's numbers that are not houses, gone: the literal names of the
+ * locality's streets ("3 Maja"), the hours after „godz.” ("8-16"), clock
+ * times ("8:00", "12.00"), dates ("26.10", "26.10.2026") and postcodes
+ * ("37-600").
+ */
+function houseWords(words: string, streets: readonly string[]): string {
+  let out = words;
+  for (const name of streets) {
+    const literal = normText(name);
+    if (/\d/.test(literal)) out = out.split(literal).join(" ");
+  }
+  return out
+    .replace(
+      /godz(?:in[aiy]?)?\.?\s*(?:od\s*)?\d{1,2}(?:[:.]\d{2})?(?:\s*(?:-|do)\s*\d{1,2}(?:[:.]\d{2})?)?/gu,
+      " ",
+    )
+    .replace(/(?<!\d)\d{1,2}[:.]\d{2}(?:\.\d{2,4})?(?!\d)/gu, " ")
+    .replace(/(?<!\d)\d{2}-\d{3}(?!\d)/gu, " ");
+}
+
+/**
  * The houses the model read from the item's note (`houses`), each checked
  * against the note: digits and at most one letter, both ends written in
- * the note as whole words, `from` not above `to`. No note and no houses:
- * the whole place. A house that fails, an open range, or a note with no
- * houses: part of the place, houses unknown.
+ * the note as whole words, `from` not above `to`; and every other number
+ * in the note an end of one of them (houseWords: not a street's name, an
+ * hour, a date or a postcode). No note and no houses: the whole place. A
+ * house that fails, an open range, a number no house covers ("44–92 oraz
+ * 100" read as 44–92 only), or a note with no houses: part of the place,
+ * houses unknown. `streets`: the names of the locality's streets.
  */
 export function houseScope(
   note: string | null,
   houses: AiItem["houses"],
+  streets: readonly string[] = [],
 ): DisruptionScope {
   if (note === null)
     return houses.length === 0 ? { type: "whole" } : { type: "unknown" };
@@ -56,6 +81,13 @@ export function houseScope(
     written(h.to) &&
     Number.parseInt(h.from, 10) <= Number.parseInt(h.to, 10);
   if (houses.length === 0 || !houses.every(ok)) return { type: "unknown" };
+  const ends = new Set(houses.flatMap((h) => [h.from, h.to]));
+  const numbers =
+    houseWords(words, streets).match(
+      /(?<![\p{L}\d])\d{1,4}[a-z]?(?![\p{L}\d])/gu,
+    ) ?? [];
+  if (numbers.some((n) => ![...ends].some((e) => e.toLowerCase() === n)))
+    return { type: "unknown" };
   if (houses.every((h) => h.from === h.to))
     return { type: "numbers", numbers: houses.map((h) => h.from) };
   return { type: "ranges", ranges: houses };
