@@ -88,10 +88,25 @@ function AlertSlot({
             className={i > 0 ? NEXT_LINE : LINE}
           >
             {`${title}: ${alert.text} `}
-            <a href={alert.href} className="govuk-link">
-              {alert.link}
-            </a>{" "}
-            <span className="govuk-!-font-weight-regular">{`(${alert.short})`}</span>
+            {alert.sourceHref ? (
+              <>
+                {"Źródło: "}
+                <a href={alert.sourceHref} className="govuk-link">
+                  {`komunikat ${alert.short}`}
+                </a>
+                {". "}
+                <a href={alert.href} className="govuk-link">
+                  {alert.link}
+                </a>
+              </>
+            ) : (
+              <>
+                <a href={alert.href} className="govuk-link">
+                  {alert.link}
+                </a>{" "}
+                <span className="govuk-!-font-weight-regular">{`(${alert.short})`}</span>
+              </>
+            )}
           </span>
         ))}
         {more > 0 && (

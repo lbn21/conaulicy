@@ -7,19 +7,27 @@
 //
 // Matching, from the data alone: a cut applies when its locality is the
 // address's locality and it names no street (the whole locality) or this
-// street. A village part (a TERYT part with a parent) also gets its
-// village's cut when the post names the whole village and nothing more: no
-// street, scope whole, no note. Not a village's cut "w części", by house
-// ranges or numbers, with a note, or on a street: we cannot tell whether
-// the part is in it. Notices (posts we could not read safely) are matched
-// by the localities the gate found in them, the part's village included; a
-// post read but for some places (Notice `where`) is linked only where none
-// of its cuts is shown.
+// street. A village's own page also gets the cuts on some of its streets,
+// one per post, day and hours, the streets named (`Cut.streets`, „w części
+// miejscowości”); never a parent's streets. A village part (a TERYT part
+// with a parent) also gets every cut of its village that names no street:
+// the whole village plainly, anything less „w części miejscowości” with
+// the village named and a hint to check its page, as we cannot tell
+// whether the part is in it. A part whose addresses are all on a street of
+// its village (lib/part-streets.ts) gets that street's cuts too. Notices
+// (posts we could not read safely) are matched by the localities the gate
+// found in them, the part's village included; a post read but for some
+// places (Notice `where`) is linked only where none of its cuts is shown.
 //
 // With a house number, a cut by house ranges or numbers that clearly leaves
-// it out is not shown (outsideRange), and the page says one was left out.
-// Anything we cannot compare (no number, parity, "w części", an odd bound, a
-// village's range where its streets number on their own) is always shown.
+// it out is not shown (outsideRange), and the page says one was left out;
+// one that clearly includes it says so („pod nr 44”). Anything we cannot
+// compare (no number, parity, "w części", an odd bound, a village's range
+// where its streets number on their own) is always shown. Only a cut on
+// the address's own locality is compared at all: its own street, or its
+// own village with no streets. A cut that reaches it from elsewhere (its
+// village's, a linked street's, a village's grouped streets) is never
+// hidden for a number and never certain for one.
 //
 // Each source's file is fresh, stale (last read over an hour ago) or
 // unavailable (none): the texts say which, naming the sources only when
@@ -29,6 +37,7 @@ import { longDate } from "./date-labels.ts";
 import { absoluteDay, warsawToIso } from "./dates.ts";
 import type { Disruption, Notice } from "./disruptions.ts";
 import type { Alert, Part, SummaryRow } from "./hub.ts";
+import { PART_STREETS } from "./part-streets.ts";
 import { placePath } from "./places.ts";
 import {
   GMINA,
@@ -53,12 +62,22 @@ type SourceState = {
   unavailable: boolean;
 };
 
+/** A street of a village's grouped cut, with its houses as written. */
+type CutStreet = { id: string; name: string; note: string | null };
+
+/**
+ * A cut as the pages show it; on a village's own page, the cuts on some of
+ * its streets of one post, day and hours as one, its `streets` in the
+ * post's order.
+ */
+export type Cut = Disruption & { streets?: CutStreet[] };
+
 export type Water = {
   place: PlaceView;
   /** Cuts still to come here, the soonest first, one per day and hours. */
-  outages: Disruption[];
+  outages: Cut[];
   /** Cuts here left out for the house number as given (outsideRange). */
-  hidden: Disruption[];
+  hidden: Cut[];
   hiddenForNr: boolean;
   /** Water posts we could not read safely that may concern this locality. */
   notices: Notice[];
@@ -81,17 +100,23 @@ for (const l of ZUK_PLACES.localities)
 
 /** Whether a cut applies to the address (see the top of this file). */
 export function matches(address: Address, cut: Disruption): boolean {
-  if (cut.place.localityId === address.localityId)
+  const { localityId, streetId } = cut.place;
+  if (localityId === address.localityId)
     return (
-      cut.place.streetId === null || cut.place.streetId === address.streetId
+      streetId === null ||
+      address.streetId === null ||
+      streetId === address.streetId
     );
+  if (streetId === null) return localityId === PARENT.get(address.localityId);
   return (
-    cut.place.localityId === PARENT.get(address.localityId) &&
-    cut.place.streetId === null &&
-    cut.scope.type === "whole" &&
-    cut.note === null
+    address.streetId === null &&
+    (PART_STREETS.get(address.localityId)?.includes(streetId) ?? false)
   );
 }
+
+/** A cut on the address's own locality: the only one a number can filter. */
+const own = (cut: Disruption, address: Address) =>
+  cut.place.localityId === address.localityId;
 
 /** Localities with streets of their own (the town among them). */
 const STREETED = new Set(ZUK_PLACES.streets.map((s) => s.localityId));
@@ -103,11 +128,8 @@ const STREETED = new Set(ZUK_PLACES.streets.map((s) => s.localityId));
  * where the village has streets, any scope but ranges or numbers, or
  * anything that does not parse: null.
  */
-function houseFit(
-  cut: Disruption,
-  nr: string | null,
-): "inside" | "outside" | null {
-  if (nr === null) return null;
+function houseFit(cut: Cut, nr: string | null): "inside" | "outside" | null {
+  if (nr === null || cut.streets) return null;
   if (cut.place.streetId === null && STREETED.has(cut.place.localityId))
     return null;
   const parts = (nr.match(/\d+/g) ?? []).map(Number);
@@ -127,7 +149,7 @@ function houseFit(
 }
 
 /** Whether the house number is clearly outside the cut's houses (houseFit). */
-export function outsideRange(cut: Disruption, nr: string | null): boolean {
+export function outsideRange(cut: Cut, nr: string | null): boolean {
   return houseFit(cut, nr) === "outside";
 }
 
@@ -136,11 +158,55 @@ const wholeLocality = (cut: Disruption) =>
 
 const slot = (cut: Disruption) => `${cut.date}|${cut.start}|${cut.end}`;
 
+/** "zuk-39885-2026-10-27-…" → "zuk-39885": the source's post. */
+const postOf = (cut: Disruption) => /^[a-z]+-\d+/.exec(cut.uid)?.[0] ?? cut.uid;
+
+/**
+ * On a village's own page, its streets' cuts of one post, day, hours and
+ * cause as one cut, where the first of them was, the streets named.
+ */
+function grouped(address: Address, cuts: Disruption[]): Cut[] {
+  if (address.streetId !== null) return cuts;
+  const groups = new Map<string, Cut & { streets: CutStreet[] }>();
+  const out: Cut[] = [];
+  for (const cut of cuts) {
+    const { localityId, streetId } = cut.place;
+    if (localityId !== address.localityId || streetId === null) {
+      out.push(cut);
+      continue;
+    }
+    const key = `${postOf(cut)}|${slot(cut)}|${cut.cause}`;
+    let group = groups.get(key);
+    if (!group) {
+      const hhmm = (cut.start ?? "").slice(11, 16).replace(":", "");
+      group = {
+        ...cut,
+        uid: `${cut.uid}-ulice-${hhmm}`,
+        place: { localityId, streetId: null },
+        ...(cut.label && { label: { ...cut.label, street: null } }),
+        scope: { type: "unknown" },
+        note: null,
+        streets: [],
+      };
+      groups.set(key, group);
+      out.push(group);
+    }
+    if (!group.streets.some((s) => s.id === streetId))
+      group.streets.push({
+        id: streetId,
+        name: cut.label?.street ?? cut.where,
+        note: cut.note,
+      });
+  }
+  return out;
+}
+
 /**
  * The cuts at the address: the soonest first, and where the whole locality
- * is cut, not again for its street on the same day and hours.
+ * is cut, not again for its street on the same day and hours; on a
+ * village's page, its streets' cuts grouped (grouped).
  */
-function atAddress(address: Address, cuts: Disruption[]): Disruption[] {
+function atAddress(address: Address, cuts: Disruption[]): Cut[] {
   const found = cuts
     .filter((cut) => matches(address, cut))
     .toSorted(
@@ -150,12 +216,13 @@ function atAddress(address: Address, cuts: Disruption[]): Disruption[] {
     );
   const whole = new Set<string>();
   const uids = new Set<string>();
-  return found.filter((cut) => {
+  const kept = found.filter((cut) => {
     if (uids.has(cut.uid) || whole.has(slot(cut))) return false;
     uids.add(cut.uid);
     if (wholeLocality(cut)) whole.add(slot(cut));
     return true;
   });
+  return grouped(address, kept);
 }
 
 /** No file: what a source without one gives (zukView). */
@@ -178,8 +245,10 @@ export function water(
     states.flatMap(({ view }) => view.disruptions),
   );
   const village = PARENT.get(place.localityId);
-  const outages = here.filter((cut) => !outsideRange(cut, place.givenNr));
-  const hidden = here.filter((cut) => outsideRange(cut, place.givenNr));
+  const left = (cut: Cut) =>
+    own(cut, place) && outsideRange(cut, place.givenNr);
+  const outages = here.filter((cut) => !left(cut));
+  const hidden = here.filter(left);
   const shownPosts = new Set(outages.map((cut) => cut.source.url));
   const sources = states.map(({ source, view }) => ({
     source,
@@ -250,26 +319,45 @@ export function hours(cut: Disruption): string | null {
 }
 
 /** The day and hours: "wtorek, 27 października, 8:00–16:00". */
-function when(cut: Disruption): string {
+function when(cut: Cut): string {
   const time = hours(cut);
   return `${absoluteDay(cut.date)}${time ? `, ${time}` : ""}`;
 }
 
+/** The source's note without a leading dash or colon: "–Górki" → "Górki". */
+const cleanNote = (note: string | null) =>
+  note?.replace(/^[\s\-‐–—−:,;]+/u, "").trim() || null;
+
+/** "a", "a i b", "a, b i c". */
+const listed = (items: string[]) =>
+  items.length > 1
+    ? `${items.slice(0, -1).join(", ")} i ${items.at(-1)}`
+    : (items[0] ?? "");
+
 /**
  * What is cut, in our names, with the source's own words on the houses as
  * written: "cała miejscowość Wzorowo", "cała ulica Próbna", "Wzorowo:
- * Górki od numeru 44 do numeru 92".
+ * Górki od numeru 44 do numeru 92", "część miejscowości Wzorowo: ulice
+ * Próbna i Górna (od nr 26 do nr 42)".
  */
-export function scope(cut: Disruption): string {
+export function scope(cut: Cut): string {
   const label = cut.label;
   const street = label?.street ?? null;
   const name = street ? `ulica ${street}` : (label?.locality ?? cut.where);
+  if (cut.streets) {
+    const names = cut.streets.map((s) => {
+      const houses = cleanNote(s.note);
+      return houses ? `${s.name} (${houses})` : s.name;
+    });
+    return `część miejscowości ${label?.locality ?? cut.where}: ${names.length === 1 ? "ulica" : "ulice"} ${listed(names)}`;
+  }
   if (cut.scope.type === "whole" && !cut.note) {
     return street
       ? `cała ulica ${street}`
       : `cała miejscowość ${label?.locality ?? cut.where}`;
   }
-  if (cut.note) return `${name}: ${cut.note}`;
+  const note = cleanNote(cut.note);
+  if (note) return `${name}: ${note}`;
   if (cut.scope.type === "ranges") {
     const ranges = cut.scope.ranges.map((r) => `od ${r.from} do ${r.to}`);
     return `${name}: numery ${ranges.join(" i ")}`;
@@ -282,15 +370,43 @@ export function scope(cut: Disruption): string {
 /** "1 dzień", "2 dni". */
 const days = (n: number) => `${n} ${n === 1 ? "dzień" : "dni"}`;
 
+/** The whole place, nothing more: certain wherever it applies. */
+const certain = (cut: Cut) => cut.scope.type === "whole" && !cut.note;
+
+/** The address's own cut that clearly includes the number as given. */
+const inside = (cut: Cut, place: Water["place"]) =>
+  own(cut, place) && houseFit(cut, place.givenNr) === "inside";
+
+/**
+ * A cut of the address's village that may leave its part out: the
+ * village's name, else null.
+ */
+export function parentPart(cut: Cut, place: Address): string | null {
+  if (certain(cut) || cut.place.streetId !== null) return null;
+  if (cut.place.localityId !== PARENT.get(place.localityId)) return null;
+  return cut.label?.locality ?? cut.where;
+}
+
 /**
  * " w części ulicy" or " w części miejscowości" when the cut may leave the
  * address out: not the whole place, and not a house range that clearly
- * includes the number as given; "" when certain.
+ * includes the number as given (then " pod nr 44"); a cut from elsewhere
+ * names its place (" w części miejscowości Wzorowo"); "" when certain.
  */
-function part(cut: Disruption, nr: string | null): string {
-  if (cut.scope.type === "whole" && !cut.note) return "";
-  if (houseFit(cut, nr) === "inside") return "";
+function part(cut: Cut, place: Water["place"]): string {
+  if (certain(cut)) return "";
+  if (cut.streets) return " w części miejscowości";
+  if (!own(cut, place))
+    return ` w części miejscowości ${cut.label?.locality ?? cut.where}`;
+  if (inside(cut, place)) return ` pod nr ${place.givenNr}`;
   return ` w części ${cut.place.streetId ? "ulicy" : "miejscowości"}`;
+}
+
+/** „Gdzie”: scope, and the number as given when the cut clearly has it. */
+export function cutWhere(cut: Cut, place: Water["place"]): string {
+  return inside(cut, place)
+    ? `${scope(cut)} (obejmuje nr ${place.givenNr})`
+    : scope(cut);
 }
 
 /** The nearest cut, with how many more days follow; none without a cut. */
@@ -302,11 +418,12 @@ export function waterAlerts(data: Water): Alert[] {
   ).size;
   return [
     {
-      text: `przerwa w dostawie${part(next, data.place.givenNr)} – ${when(next)}${more > 0 ? ` (i jeszcze ${days(more)})` : ""}.`,
+      text: `przerwa w dostawie${part(next, data.place)} – ${when(next)}${more > 0 ? ` (i jeszcze ${days(more)})` : ""}.`,
       href: waterPath(data.place),
       // One water alert at most, so the name stays unique.
       link: "Więcej o tej przerwie",
       short: sourceOf(next.uid).short,
+      sourceHref: next.source.url,
       from:
         warsawToIso(next.start ?? `${next.date} 00:00:00`) ??
         `${next.date}T00:00:00`,
@@ -398,14 +515,35 @@ export function staleNote(data: Water): Part[] | null {
   return parts.length > 0 ? merged(parts) : null;
 }
 
-/** The card: the nearest cut, any more days, notices; null with nothing. */
+/** "w tej miejscowości" or "na tej ulicy": the address's place. */
+const placeWords = (data: Water) =>
+  data.place.streetId === null ? "w tej miejscowości" : "na tej ulicy";
+
+/**
+ * The card: the nearest cut, any more days, notices; with a cut here left
+ * out for the number only, that it was; null with nothing.
+ */
 export function waterSummary(data: Water): SummaryRow[] | null {
-  if (data.outages.length === 0 && data.notices.length === 0) return null;
-  const rows: SummaryRow[] = [];
   const [next, ...rest] = data.outages;
+  const [left] = data.hidden;
+  if (!next && !left && data.notices.length === 0) return null;
+  const rows: SummaryRow[] = [];
   if (next) {
     rows.push(["Najbliższa przerwa", [when(next)]]);
-    rows.push(["Gdzie", [scope(next)]]);
+    rows.push(["Gdzie", [cutWhere(next, data.place)]]);
+    const parent = parentPart(next, data.place);
+    if (parent)
+      rows.push([
+        "Sprawdź",
+        [
+          `Komunikat dotyczy części miejscowości ${parent}, do której należy ${data.place.name}. Sprawdź, czy przerwa obejmuje Twój dom, na `,
+          {
+            href: placePath(next.place.localityId),
+            text: `stronie miejscowości ${parent}`,
+          },
+          ".",
+        ],
+      ]);
     const later = rest.filter((cut) => cut.date !== next.date);
     if (later.length > 0)
       rows.push([
@@ -413,9 +551,23 @@ export function waterSummary(data: Water): SummaryRow[] | null {
         [[...new Set(later.map((cut) => absoluteDay(cut.date)))].join("; ")],
       ]);
   }
+  if (!next && left) {
+    const { who, foretold } = sourceOf(left.uid);
+    const nr = data.place.givenNr;
+    rows.push(
+      [`Pod nr ${nr}`, [waterNone(data)]],
+      [
+        "Inne numery",
+        [
+          `${who} ${foretold} przerwę ${placeWords(data)} – ${when(left)} – ale według komunikatu nie obejmuje nr ${nr}.`,
+        ],
+      ],
+    );
+  }
   for (const notice of data.notices)
     rows.push(["Komunikat", [noticeLink(notice)]]);
-  const note = staleNote(data);
+  // With nothing but the number's row, that row says it (waterNone).
+  const note = next || data.notices.length > 0 ? staleNote(data) : null;
   if (note) rows.push(["Uwaga", note]);
   return rows;
 }
@@ -493,9 +645,7 @@ export function waterTrace(data: Water): string | null {
   const [cut] = data.hidden;
   if (!cut) return null;
   const { who, foretold } = sourceOf(cut.uid);
-  const where =
-    data.place.streetId === null ? "w tej miejscowości" : "na tej ulicy";
-  return `${who} ${foretold} też przerwę ${where}, ale według komunikatu nie obejmuje nr ${data.place.givenNr}.`;
+  return `${who} ${foretold} też przerwę ${placeWords(data)}, ale według komunikatu nie obejmuje nr ${data.place.givenNr}.`;
 }
 
 /** What „Bez zapowiedzi” says: none announced, or we could not check. */

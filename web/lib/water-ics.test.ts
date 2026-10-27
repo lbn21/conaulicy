@@ -402,3 +402,105 @@ test("an MZGKiM cut: its own UID, its post as the source and the note", () => {
   );
   folded(ics);
 });
+
+// Task 188: a village's grouped streets, a part's village, the note's dash.
+
+const villagePlace = (
+  id: string,
+  name: string,
+  givenNr: string | null = null,
+) =>
+  testPlace({
+    id,
+    kind: "wies",
+    name,
+    label: name,
+    localityId: id,
+    streetId: null,
+    givenNr,
+  });
+
+test("a village's streets in one post and hours: one event, its own UID", () => {
+  const [base] = post().items;
+  const street = (sym: string, name: string): Disruption => ({
+    ...base,
+    uid: `zuk-39885-2026-10-27-0606234-${sym}`,
+    date: "2026-10-27",
+    start: "2026-10-27 08:00:00",
+    end: "2026-10-27 12:00:00",
+    place: { localityId: "0606234", streetId: `0606234-${sym}` },
+    label: { locality: "Lisie Jamy", parent: null, street: name },
+    scope: { type: "whole" },
+    note: null,
+  });
+  const items = [
+    street("03839", "Długa"),
+    street("23795", "Wąska"),
+    street("10898", "Leśna"),
+    street("26081", "Zielona"),
+  ];
+  const ics = waterCalendar(
+    at([post({ items })], villagePlace("0606234", "Lisie Jamy")),
+    NOW,
+  );
+  assert.equal(events(ics), 1);
+  assert.deepEqual(value(ics, "UID"), [
+    "woda-39885-0606234-ulice-2026-10-27-0800@conaulicy.pl",
+  ]);
+  assert.match(
+    value(ics, "DESCRIPTION")[0] as string,
+    /^Część miejscowości Lisie Jamy: ulice Długa\\, Wąska\\, Leśna i Zielona\.\\n/,
+  );
+  // The street's own file: its UID as ever.
+  const dluga = testPlace({
+    id: "0606234-03839",
+    localityId: "0606234",
+    streetId: "0606234-03839",
+  });
+  assert.deepEqual(
+    value(waterCalendar(at([post({ items })], dluga), NOW), "UID"),
+    ["woda-39885-0606234-0606234-03839-2026-10-27@conaulicy.pl"],
+  );
+});
+
+test("a part: its village's partial cut, the village's UID, a line to check", () => {
+  const ics = waterCalendar(
+    at([post()], villagePlace("0606470", "Czarne")),
+    NOW,
+  );
+  assert.deepEqual(value(ics, "UID"), [
+    "woda-39885-0606464-all-2026-10-28@conaulicy.pl",
+  ]);
+  assert.equal(
+    value(ics, "DESCRIPTION")[0]?.split("\\n").slice(0, 2).join("\n"),
+    "Załuże: Podłęże od numeru 44 do numeru 92.\nCzarne należy do miejscowości Załuże – sprawdź\\, czy przerwa obejmuje Twój dom.",
+  );
+  const zaluze = (nr: string) =>
+    waterCalendar(at([post()], villagePlace("0606464", "Załuże", nr)), NOW);
+  assert.deepEqual(value(zaluze("44"), "UID"), [
+    "woda-39885-0606464-all-2026-10-28@conaulicy.pl",
+  ]);
+  assert.doesNotMatch(zaluze("44"), /należy do miejscowości/);
+  assert.equal(events(zaluze("43")), 0);
+  // Smolińce: Lisie Jamy's whole cuts, no line to check.
+  assert.doesNotMatch(
+    waterCalendar(at([post()], villagePlace("0606257", "Smolińce")), NOW),
+    /należy do miejscowości/,
+  );
+});
+
+test("the note's leading dash is not in the description", () => {
+  const items = post().items.map((d) =>
+    d.place.localityId === "0606464"
+      ? { ...d, note: "–Podłęże od numeru 44 do numeru 92" }
+      : d,
+  );
+  const ics = waterCalendar(
+    at([post({ items })], villagePlace("0606464", "Załuże")),
+    NOW,
+  );
+  assert.match(
+    value(ics, "DESCRIPTION")[0] as string,
+    /^Załuże: Podłęże od numeru 44 do numeru 92\.\\n/,
+  );
+});

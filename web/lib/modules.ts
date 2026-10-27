@@ -131,7 +131,8 @@ const woda: Module<Water> = {
   alerts: waterAlerts,
   summary: waterSummary,
   none: waterNone,
-  trace: waterTrace,
+  // With no cut shown, the card says it (waterSummary's „Inne numery”).
+  trace: (d) => (d.outages.length > 0 ? waterTrace(d) : null),
   sources: waterSources,
   checkedAt: waterChecked,
   metadata: waterMetadata,
