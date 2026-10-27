@@ -1,7 +1,8 @@
 # The unattended import (docs/import.md), every domain: GitHub-hosted
-# runner, no approvals, no people. A change that passes every check is
-# applied; anything else becomes an issue, closed by the next clean run,
-# or a review PR for a file a person must look at (docs/import.md).
+# runner. Every new waste schedule is read once by Grok (xAI) and waits for
+# its review PR; a merged review's dates are applied when they pass the date
+# rules; anything else becomes an issue, closed by the next clean run
+# (docs/import.md).
 # Configured in etl/sources.yaml. Started by workflow_dispatch only: no GitHub
 # schedule (it never fired in this repo); daily runs come from Vercel Cron
 # (/api/cron/import, daily 04:17 UTC) dispatching mode=apply.
@@ -11,12 +12,12 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "extract-only: no database (tests the vision passes); dry-run: report, write only the import_runs row; apply: the real import"
+        description: "extract-only: no database, no review PR (tests the reading); dry-run: report and open review PRs, write only the import_runs row; apply: the real import"
         type: choice
         options: [extract-only, dry-run, apply]
         default: extract-only
       force_extract:
-        description: "Extract known files too (proves the extraction reproduces the database)"
+        description: "Read known and settled files again too: each gets a review PR, unless its sha256 has a merged review"
         type: boolean
         default: false
 
@@ -48,7 +49,6 @@ jobs:
       - name: Config
         id: config
         run: |
-          echo "cli=$(yq '.vision.cli' etl/sources.yaml)" >> "$GITHUB_OUTPUT"
           echo "role=$(yq '.archive.role' etl/sources.yaml)" >> "$GITHUB_OUTPUT"
           echo "region=$(yq '.archive.region' etl/sources.yaml)" >> "$GITHUB_OUTPUT"
 
@@ -56,17 +56,8 @@ jobs:
         working-directory: web
         run: |
           npm ci --no-audit --no-fund
-          command -v pdftotext || (sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils)
-          # Cursor CLI, the build pinned in etl/sources.yaml (vision.cli).
-          mkdir -p "$HOME/cursor-agent"
-          curl -fsSL --retry 4 "https://downloads.cursor.com/lab/$CLI/linux/x64/agent-cli-package.tar.gz" \
-            | tar --strip-components=1 -xzf - -C "$HOME/cursor-agent"
-          # The package's binary is cursor-agent; the CLI is called agent.
-          ln -sf "$HOME/cursor-agent/cursor-agent" "$HOME/cursor-agent/agent"
-          "$HOME/cursor-agent/agent" --version
-          echo "$HOME/cursor-agent" >> "$GITHUB_PATH"
-        env:
-          CLI: ${{ steps.config.outputs.cli }}
+          # pdftoppm renders a gmina PDF to the PNG Grok reads.
+          command -v pdftoppm || (sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils)
 
       - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         if: inputs.mode == 'apply'
@@ -89,7 +80,7 @@ jobs:
           MODE: ${{ inputs.mode }}
           FORCE: ${{ inputs.force_extract }}
           IMPORT_DATABASE_URL: ${{ inputs.mode != 'extract-only' && secrets.IMPORT_DATABASE_URL || '' }}
-          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
           GH_TOKEN: ${{ github.token }}
           ACTIONS_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
