@@ -33,8 +33,8 @@ const HOUSE = /^\d{1,4}[a-z]?$/i;
 /**
  * The note's numbers that are not houses, gone: the literal names of the
  * locality's streets ("3 Maja"), the hours after „godz.” ("8-16"), clock
- * times ("8:00", "12.00"), dates ("26.10", "26.10.2026") and postcodes
- * ("37-600").
+ * times ("8:00", "12.00"), dates ("26.10", "26.10.2026") and our area's
+ * postcodes ("37-600"; never "10-100", a house range).
  */
 function houseWords(words: string, streets: readonly string[]): string {
   let out = words;
@@ -48,7 +48,7 @@ function houseWords(words: string, streets: readonly string[]): string {
       " ",
     )
     .replace(/(?<!\d)\d{1,2}[:.]\d{2}(?:\.\d{2,4})?(?!\d)/gu, " ")
-    .replace(/(?<!\d)\d{2}-\d{3}(?!\d)/gu, " ");
+    .replace(/\b37-\d{3}\b/gu, " ");
 }
 
 /**

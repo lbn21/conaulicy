@@ -16,6 +16,7 @@ import type { PlaceView } from "./schedule.ts";
 import {
   bothViews,
   KROWICA_RANGE,
+  lisiePartly,
   mockFile,
   mzgkimPost,
   POST_39885,
@@ -200,6 +201,31 @@ test("matching: a village part takes its own cuts and its whole village's", () =
     ["zuk-39885-2026-10-28-0606286-39507"],
   );
   assert.equal(scope(outages[0] as Disruption), "cała ulica Pilipy");
+  // The part's own words: the street with its village.
+  assert.equal(
+    cutWhere(outages[0] as Cut, PILIPY_PART),
+    "ulica Pilipy w Młodowie",
+  );
+  assert.deepEqual(waterSummary(waterAt(PILIPY_PART))?.[1], [
+    "Gdzie",
+    ["ulica Pilipy w Młodowie"],
+  ]);
+  // In part: „w części ulicy Pilipy”, the street's words with its village.
+  const pilipyPart = cut({
+    ...villageStreet,
+    label: { locality: "Młodów", parent: null, street: "Pilipy" },
+    scope: { type: "unknown" },
+    note: "od nr 1 do nr 9",
+  });
+  const inPart = waterAt(PILIPY_PART, only(pilipyPart));
+  assert.equal(
+    waterAlerts(inPart)[0]?.text,
+    "przerwa w dostawie w części ulicy Pilipy – poniedziałek, 26 października, 8:00–16:00.",
+  );
+  assert.equal(
+    cutWhere(inPart.outages[0] as Cut, PILIPY_PART),
+    "ulica Pilipy w Młodowie: od nr 1 do nr 9",
+  );
   assert.equal(
     waterAlerts(waterAt(PILIPY_PART))[0]?.text,
     "przerwa w dostawie – środa, 28 października, 8:00–16:00.",
@@ -315,7 +341,7 @@ test("house number: outside a street's range, the cut is not shown", () => {
   assert.deepEqual(waterAlerts(five), []);
   // task 188: was no card; now the card says the cut leaves nr 5 out.
   assert.deepEqual(waterSummary(five), [
-    ["Pod nr 5", ["brak zapowiedzianych przerw w dostawie"]],
+    ["Pod nr 5", ["Brak zapowiedzianych przerw w dostawie."]],
     [
       "Inne numery",
       [
@@ -1258,7 +1284,10 @@ test("village: its streets' cuts of one post and hours as one, „w części”"
   );
   assert.equal(data.outages.length, 1);
   const [group] = data.outages as [Cut];
-  assert.equal(group.uid, "zuk-39885-2026-10-27-0606234-03839-ulice-0800");
+  assert.equal(
+    group.uid,
+    "zuk-39885-2026-10-27-0606234-03839-ulice-planned-0800",
+  );
   assert.deepEqual(group.place, { localityId: "0606234", streetId: null });
   assert.equal(
     scope(group),
@@ -1358,8 +1387,8 @@ test("village: a whole-village cut in the same slot hides the group; notes kept"
       post({ items: [FOUR[0] as Disruption, later] }),
     ]).outages.map((d) => d.uid),
     [
-      "zuk-39885-2026-10-27-0606234-03839-ulice-0800",
-      "zuk-39885-2026-10-27-0606234-23795-ulice-1200",
+      "zuk-39885-2026-10-27-0606234-03839-ulice-planned-0800",
+      "zuk-39885-2026-10-27-0606234-23795-ulice-planned-1200",
     ],
   );
 });
@@ -1416,8 +1445,8 @@ test("part: its village's partial cut, the village named, a hint to check", () =
         [
           "Sprawdź",
           [
-            `Komunikat dotyczy części miejscowości Załuże, do której należy ${part.name}. Sprawdź, czy przerwa obejmuje Twój dom, na `,
-            { href: "/adres/0606464", text: "stronie miejscowości Załuże" },
+            `${part.name} należy do miejscowości Załuże, a komunikat dotyczy tylko jej części. Sprawdź, czy obejmuje Twój dom. Zobacz `,
+            { href: "/adres/0606464", text: "stronę miejscowości Załuże" },
             ".",
           ],
         ],
@@ -1475,7 +1504,7 @@ test("nr: a cut that covers it says so; one that leaves it out, in the card", ()
   );
   const data = zaluze("43");
   assert.deepEqual(waterSummary(data), [
-    ["Pod nr 43", ["brak zapowiedzianych przerw w dostawie"]],
+    ["Pod nr 43", ["Brak zapowiedzianych przerw w dostawie."]],
     [
       "Inne numery",
       [
@@ -1483,6 +1512,19 @@ test("nr: a cut that covers it says so; one that leaves it out, in the card", ()
       ],
     ],
   ]);
+  // Stale: a full sentence too, and no second „Uwaga” row.
+  const late = waterAt(
+    { ...ZALUZE, givenNr: "43" },
+    [post()],
+    new Date(Date.parse(CHECKED) + STALE_MS + 1),
+  );
+  assert.deepEqual(waterSummary(late)?.[0], [
+    "Pod nr 43",
+    [
+      "Brak zapowiedzianych przerw przy ostatnim sprawdzeniu, ale od ponad godziny nie udało się nam sprawdzić nowych.",
+    ],
+  ]);
+  assert.equal(waterSummary(late)?.length, 2);
   // The hub: the card says it, so no trace; /woda keeps its trace line.
   assert.equal(MODULES.woda.trace?.(data), null);
   assert.equal(
@@ -1549,4 +1591,50 @@ test("copy: no leading dash in the note; the alert links its post", () => {
     "część miejscowości Lisie Jamy: ulica Lwowska (od nr 26)",
   );
   assert.equal(waterAlerts(waterAt(ZUKI))[0]?.sourceHref, POST_URL);
+});
+
+test("village: its own cut in part and the gate's street copies, shown once", () => {
+  // A cut on Lisie Jamy „częściowo”: the gate puts it on the village and
+  // on every street of its own; the village page shows the village's.
+  const base = post().items[0] as Disruption;
+  const items = [
+    lisiePartly(base, null),
+    lisiePartly(base, "0606234-03839", "Długa"),
+    lisiePartly(base, "0606234-23795", "Wąska"),
+  ];
+  const data = waterAt(LISIE_JAMY, [post({ items })]);
+  assert.deepEqual(
+    data.outages.map((d) => scope(d)),
+    ["Lisie Jamy: częściowo"],
+  );
+  // Another post's street cut in the same slot is still its own group.
+  const other = cut({
+    ...(FOUR[0] as Disruption),
+    uid: "zuk-40001-2026-10-27-0606234-03839",
+  });
+  assert.deepEqual(
+    waterAt(LISIE_JAMY, [post({ items: [...items, other] })]).outages.map(
+      (d) => d.uid,
+    ),
+    [
+      "zuk-39885-2026-10-27-0606234",
+      "zuk-40001-2026-10-27-0606234-03839-ulice-planned-0800",
+    ],
+  );
+});
+
+test("village: a planned and an emergency group of one post and slot stay apart", () => {
+  const emergency = lisieStreet("03839", "Długa", {
+    uid: "zuk-39885-2026-10-27-0606234-03839-e",
+    cause: "emergency",
+  });
+  assert.deepEqual(
+    waterAt(LISIE_JAMY, [
+      post({ items: [FOUR[0] as Disruption, emergency] }),
+    ]).outages.map((d) => d.uid),
+    [
+      "zuk-39885-2026-10-27-0606234-03839-ulice-planned-0800",
+      "zuk-39885-2026-10-27-0606234-03839-e-ulice-emergency-0800",
+    ],
+  );
 });

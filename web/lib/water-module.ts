@@ -37,7 +37,7 @@ import { longDate } from "./date-labels.ts";
 import { absoluteDay, warsawToIso } from "./dates.ts";
 import type { Disruption, Notice } from "./disruptions.ts";
 import type { Alert, Part, SummaryRow } from "./hub.ts";
-import { PART_STREETS } from "./part-streets.ts";
+import { PART_STREETS, VILLAGE_IN } from "./part-streets.ts";
 import { placePath } from "./places.ts";
 import {
   GMINA,
@@ -163,10 +163,22 @@ const postOf = (cut: Disruption) => /^[a-z]+-\d+/.exec(cut.uid)?.[0] ?? cut.uid;
 
 /**
  * On a village's own page, its streets' cuts of one post, day, hours and
- * cause as one cut, where the first of them was, the streets named.
+ * cause as one cut, where the first of them was, the streets named; none
+ * where the post cuts the village itself then, in any scope (the gate's
+ * copies of a village's cut on its streets).
  */
 function grouped(address: Address, cuts: Disruption[]): Cut[] {
   if (address.streetId !== null) return cuts;
+  const at = (cut: Disruption) => `${postOf(cut)}|${slot(cut)}`;
+  const village = new Set(
+    cuts
+      .filter(
+        (cut) =>
+          cut.place.localityId === address.localityId &&
+          cut.place.streetId === null,
+      )
+      .map(at),
+  );
   const groups = new Map<string, Cut & { streets: CutStreet[] }>();
   const out: Cut[] = [];
   for (const cut of cuts) {
@@ -175,13 +187,14 @@ function grouped(address: Address, cuts: Disruption[]): Cut[] {
       out.push(cut);
       continue;
     }
-    const key = `${postOf(cut)}|${slot(cut)}|${cut.cause}`;
+    if (village.has(at(cut))) continue;
+    const key = `${at(cut)}|${cut.cause}`;
     let group = groups.get(key);
     if (!group) {
       const hhmm = (cut.start ?? "").slice(11, 16).replace(":", "");
       group = {
         ...cut,
-        uid: `${cut.uid}-ulice-${hhmm}`,
+        uid: `${cut.uid}-ulice-${cut.cause}-${hhmm}`,
         place: { localityId, streetId: null },
         ...(cut.label && { label: { ...cut.label, street: null } }),
         scope: { type: "unknown" },
@@ -367,6 +380,10 @@ export function scope(cut: Cut): string {
   return `${name}, w części`;
 }
 
+/** "przerwa" → "Przerwa". */
+export const capitalised = (text: string) =>
+  text.charAt(0).toUpperCase() + text.slice(1);
+
 /** "1 dzień", "2 dni". */
 const days = (n: number) => `${n} ${n === 1 ? "dzień" : "dni"}`;
 
@@ -388,6 +405,19 @@ export function parentPart(cut: Cut, place: Address): string | null {
 }
 
 /**
+ * What a part's page says of its village's cut that may leave it out:
+ * "Czarne należy do miejscowości Załuże, a komunikat dotyczy tylko jej
+ * części. Sprawdź, czy obejmuje Twój dom."
+ */
+export function parentHint(name: string, parent: string): string {
+  return `${name} należy do miejscowości ${parent}, a komunikat dotyczy tylko jej części. Sprawdź, czy obejmuje Twój dom.`;
+}
+
+/** A street of the part's village it is on (lib/part-streets.ts). */
+const linked = (cut: Cut, place: Address) =>
+  cut.place.streetId !== null && !own(cut, place);
+
+/**
  * " w części ulicy" or " w części miejscowości" when the cut may leave the
  * address out: not the whole place, and not a house range that clearly
  * includes the number as given (then " pod nr 44"); a cut from elsewhere
@@ -396,17 +426,25 @@ export function parentPart(cut: Cut, place: Address): string | null {
 function part(cut: Cut, place: Water["place"]): string {
   if (certain(cut)) return "";
   if (cut.streets) return " w części miejscowości";
+  if (linked(cut, place)) return ` w części ulicy ${cut.label?.street}`;
   if (!own(cut, place))
     return ` w części miejscowości ${cut.label?.locality ?? cut.where}`;
   if (inside(cut, place)) return ` pod nr ${place.givenNr}`;
   return ` w części ${cut.place.streetId ? "ulicy" : "miejscowości"}`;
 }
 
-/** „Gdzie”: scope, and the number as given when the cut clearly has it. */
+/**
+ * „Gdzie”: scope, and the number as given when the cut clearly has it; on
+ * a part, a street of its village with the village: "ulica Pilipy w
+ * Młodowie".
+ */
 export function cutWhere(cut: Cut, place: Water["place"]): string {
-  return inside(cut, place)
-    ? `${scope(cut)} (obejmuje nr ${place.givenNr})`
-    : scope(cut);
+  if (inside(cut, place)) return `${scope(cut)} (obejmuje nr ${place.givenNr})`;
+  if (!linked(cut, place) || !cut.label) return scope(cut);
+  const { locality, street } = cut.label;
+  const named = `${street} ${VILLAGE_IN.get(cut.place.localityId) ?? `w miejscowości ${locality}`}`;
+  if (certain(cut)) return `ulica ${named}`;
+  return scope({ ...cut, label: { ...cut.label, street: named } });
 }
 
 /** The nearest cut, with how many more days follow; none without a cut. */
@@ -536,10 +574,10 @@ export function waterSummary(data: Water): SummaryRow[] | null {
       rows.push([
         "Sprawdź",
         [
-          `Komunikat dotyczy części miejscowości ${parent}, do której należy ${data.place.name}. Sprawdź, czy przerwa obejmuje Twój dom, na `,
+          `${parentHint(data.place.name, parent)} Zobacz `,
           {
             href: placePath(next.place.localityId),
-            text: `stronie miejscowości ${parent}`,
+            text: `stronę miejscowości ${parent}`,
           },
           ".",
         ],
@@ -555,7 +593,7 @@ export function waterSummary(data: Water): SummaryRow[] | null {
     const { who, foretold } = sourceOf(left.uid);
     const nr = data.place.givenNr;
     rows.push(
-      [`Pod nr ${nr}`, [waterNone(data)]],
+      [`Pod nr ${nr}`, [`${capitalised(waterNone(data))}.`]],
       [
         "Inne numery",
         [

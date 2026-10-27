@@ -10,6 +10,15 @@
 //
 // TODO(Smolińce 0606257 -> 0606234-27260): add after a map/PRG check, Jakub to confirm.
 
+/**
+ * A linked street's village in the locative, written by hand (code never
+ * declines a name): "ulica Pilipy w Młodowie". Without one, "w
+ * miejscowości Młodów".
+ */
+export const VILLAGE_IN: ReadonlyMap<string, string> = new Map([
+  ["0606286", "w Młodowie"],
+]);
+
 /** A part's SIMC → the streets (SIMC-SYM_UL) of its village it is on. */
 export const PART_STREETS: ReadonlyMap<string, readonly string[]> = new Map([
   ["0606300", ["0606286-39507"]],

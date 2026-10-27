@@ -231,6 +231,9 @@ test("scope: houses not certain from the note are houses unknown", () => {
     ["Podłęże od numeru 44 do numeru 92 oraz 100", [{ from: "44", to: "92" }]],
     ["44–92 oraz 100", [{ from: "44", to: "92" }]],
     ["od nr 1 do nr 5 i nr 9", [{ from: "1", to: "5" }]],
+    // A house range shaped like a postcode is still a number to cover.
+    ["44-92 oraz 10-100", [{ from: "44", to: "92" }]],
+    ["nr 1-20 i 25-120", [{ from: "1", to: "20" }]],
   ];
   for (const [note, houses] of cases)
     assert.deepEqual(

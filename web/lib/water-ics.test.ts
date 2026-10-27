@@ -8,6 +8,7 @@ import type { PlaceView } from "./schedule.ts";
 import {
   bothViews,
   KROWICA_RANGE,
+  lisiePartly,
   mzgkimPost,
   POST_39885,
   SOBIESKIEGO_RANGE,
@@ -473,7 +474,7 @@ test("a part: its village's partial cut, the village's UID, a line to check", ()
   ]);
   assert.equal(
     value(ics, "DESCRIPTION")[0]?.split("\\n").slice(0, 2).join("\n"),
-    "Załuże: Podłęże od numeru 44 do numeru 92.\nCzarne należy do miejscowości Załuże – sprawdź\\, czy przerwa obejmuje Twój dom.",
+    "Załuże: Podłęże od numeru 44 do numeru 92.\nCzarne należy do miejscowości Załuże\\, a komunikat dotyczy tylko jej części. Sprawdź\\, czy obejmuje Twój dom.",
   );
   const zaluze = (nr: string) =>
     waterCalendar(at([post()], villagePlace("0606464", "Załuże", nr)), NOW);
@@ -502,5 +503,40 @@ test("the note's leading dash is not in the description", () => {
   assert.match(
     value(ics, "DESCRIPTION")[0] as string,
     /^Załuże: Podłęże od numeru 44 do numeru 92\.\\n/,
+  );
+});
+
+test("a village cut in part and the gate's street copies: one event", () => {
+  const [base] = post().items;
+  const ics = waterCalendar(
+    at(
+      [
+        post({
+          items: [
+            lisiePartly(base, null),
+            lisiePartly(base, "0606234-03839", "Długa"),
+          ],
+        }),
+      ],
+      villagePlace("0606234", "Lisie Jamy"),
+    ),
+    NOW,
+  );
+  assert.deepEqual(value(ics, "UID"), [
+    "woda-39885-0606234-all-2026-10-27@conaulicy.pl",
+  ]);
+});
+
+test("a part's linked street: its village named, the street page's UID", () => {
+  const ics = waterCalendar(
+    at([post()], villagePlace("0606300", "Pilipy")),
+    NOW,
+  );
+  assert.deepEqual(value(ics, "UID"), [
+    "woda-39885-0606286-0606286-39507-2026-10-28@conaulicy.pl",
+  ]);
+  assert.match(
+    value(ics, "DESCRIPTION")[0] as string,
+    /^Ulica Pilipy w Młodowie\.\\n/,
   );
 });

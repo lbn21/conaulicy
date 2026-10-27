@@ -62,6 +62,27 @@ export const SOBIESKIEGO_RANGE: Pick<
   note: "od nr 23 do nr 47",
 };
 
+/**
+ * A made-up cut on Lisie Jamy „częściowo”, 27 Oct 8:00-12:00, from `base`,
+ * as the gate puts it on the village (`streetId` null) and on each street
+ * of its own.
+ */
+export const lisiePartly = (
+  base: Disruption,
+  streetId: string | null,
+  street: string | null = null,
+): Disruption => ({
+  ...base,
+  uid: `zuk-39885-2026-10-27-0606234${streetId ? `-${streetId.slice(8)}` : ""}`,
+  date: "2026-10-27",
+  start: "2026-10-27 08:00:00",
+  end: "2026-10-27 12:00:00",
+  place: { localityId: "0606234", streetId },
+  label: { locality: "Lisie Jamy", parent: null, street },
+  scope: { type: "unknown" },
+  note: "częściowo",
+});
+
 /** ul. Jana III Sobieskiego in Karolówka, with the house number as given. */
 export const sobieskiego = (givenNr: string | null): PlaceView =>
   testPlace({

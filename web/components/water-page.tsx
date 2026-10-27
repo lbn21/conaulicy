@@ -16,6 +16,7 @@ import { getPlace } from "@/lib/schedule";
 import { pageMetadata } from "@/lib/share";
 import { waterCalendarHref } from "@/lib/water-ics";
 import {
+  capitalised,
   cutWhere,
   hours,
   noticeLink,
@@ -64,9 +65,6 @@ export async function waterMetadata(
     robots: { index: false, follow: indexable() },
   };
 }
-
-const capitalised = (text: string) =>
-  text.charAt(0).toUpperCase() + text.slice(1);
 
 export function WaterDetails({
   data,

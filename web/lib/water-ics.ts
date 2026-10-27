@@ -29,9 +29,11 @@ import { fileSlug } from "./normalize.ts";
 import { placePath } from "./places.ts";
 import {
   type Cut,
+  capitalised,
+  cutWhere,
   hours,
+  parentHint,
   parentPart,
-  scope,
   type Water,
   waterPath,
 } from "./water-module.ts";
@@ -122,9 +124,6 @@ const VTIMEZONE = [
   "END:VTIMEZONE",
 ];
 
-const capitalised = (text: string) =>
-  text.charAt(0).toUpperCase() + text.slice(1);
-
 /** The address with the house number as given, split street or not. */
 const address = (data: Water) =>
   withHouseNumber(data.place.label, data.place.givenNr);
@@ -142,12 +141,8 @@ export function waterCalendar(data: Water, now: Date): string {
   for (const cut of calendarCuts(data)) {
     const parent = parentPart(cut, data.place);
     const description = [
-      `${capitalised(scope(cut))}.`,
-      ...(parent
-        ? [
-            `${data.place.name} należy do miejscowości ${parent} – sprawdź, czy przerwa obejmuje Twój dom.`,
-          ]
-        : []),
+      `${capitalised(cutWhere(cut, data.place))}.`,
+      ...(parent ? [parentHint(data.place.name, parent)] : []),
       `Źródło: ${cut.source.url}`,
       `Daty i godziny odczytaliśmy z komunikatu ${sourceOf(cut.uid).of}. Gdyby coś się nie zgadzało, rację ma komunikat.`,
       check,
