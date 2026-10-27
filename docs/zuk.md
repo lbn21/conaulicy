@@ -215,9 +215,9 @@ It prints the model's JSON and the gate's result (`scripts/lib/water-dry-run.ts`
   its tries and when it may be tried again (null: given up).
 - A post leaves `active` and `seen` when it leaves the 14-day window. The
   model's tokens and cost are in the log only.
-- The file version is the shape; `reader` (`ZUK_READER`, now 9:
-  date_verbatim and houses, a literal day and house gate, task 186) is what
-  read the post.
+- The file version is the shape; `reader` (`ZUK_READER`, now 10: rules
+  revision rev8c, the note without the joining dash, task 189) is what read
+  the post.
   Raise `ZUK_READER` and every post is read again, 4 a run. A file of an
   older version is no file: the pages show the source link and the cron
   reads the window afresh, 4 a run, and replaces it (never delete the
