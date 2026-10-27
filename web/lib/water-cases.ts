@@ -20,12 +20,10 @@ import type { ZukPost } from "./zuk.ts";
 import type { AiItem, AiResult } from "./zuk-ai.ts";
 import {
   AI_ITEM,
-  housesOf,
   POST_39885_EDITED,
   reading,
   reading39885Edited,
   realPosts,
-  writtenDay,
 } from "./zuk-fixture.ts";
 
 export type WaterCase = {
@@ -45,7 +43,10 @@ const TYMCE = {
     title:
       "Przerwa w dostawie wody (Tymce, Załuże od 263 do 344 oraz Nowe Sioło od 161 do 163)",
     when: "w dniach 29.04.2025 (wtorek) i 30.04.2025 (środa)",
-    days: ["2025-04-29", "2025-04-30"],
+    days: [
+      ["2025-04-29", "29.04.2025"],
+      ["2025-04-30", "30.04.2025"],
+    ],
   },
   31782: {
     date: "2025-05-05T13:25:27",
@@ -53,7 +54,7 @@ const TYMCE = {
     title:
       "Przerwa w dostawie wody 7.05.2025 r. (Tymce, Załuże od 263 do 344 oraz Nowe Sioło od 161 do 163)",
     when: "w dniu 7.05.2025 (środa)",
-    days: ["2025-05-07"],
+    days: [["2025-05-07", "7.05.2025"]],
   },
 };
 
@@ -81,10 +82,11 @@ function tymcePost(id: keyof typeof TYMCE): ZukPost {
  */
 function tymceReading(id: keyof typeof TYMCE): AiResult {
   const place = (
-    date: string,
+    [date, written]: string[],
     locality: string | null,
     verbatim: string,
     note: string | null,
+    houses: AiItem["houses"],
   ): AiItem => ({
     date,
     start: "08:00",
@@ -96,18 +98,22 @@ function tymceReading(id: keyof typeof TYMCE): AiResult {
     note,
     kind: "planned",
     ...AI_ITEM,
-    date_verbatim: writtenDay(date, TYMCE[id].when),
-    houses: housesOf(note),
+    date_verbatim: written,
+    houses,
   });
   return {
     post_type: "water_outage",
     quality_status: null,
     is_past: false,
     changes_earlier_dates: false,
-    items: TYMCE[id].days.flatMap((date) => [
-      place(date, "Tymce", "Tymce", null),
-      place(date, "Załuże", "Załuże", "od numeru 263 do numeru 344"),
-      place(date, null, "Nowe Sioło", "od numeru 161 do numeru 163"),
+    items: TYMCE[id].days.flatMap((day) => [
+      place(day, "Tymce", "Tymce", null, []),
+      place(day, "Załuże", "Załuże", "od numeru 263 do numeru 344", [
+        { from: "263", to: "344" },
+      ]),
+      place(day, null, "Nowe Sioło", "od numeru 161 do numeru 163", [
+        { from: "161", to: "163" },
+      ]),
     ]),
   };
 }

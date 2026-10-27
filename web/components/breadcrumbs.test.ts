@@ -37,9 +37,9 @@ test("breadcrumbs: the current page is never an item", () => {
   assert.equal(html.match(/<a /g)?.length, 1);
 });
 
-// The address pages' crumbs, exactly as before the shared component
-// (task 146).
-test("address pages: the same crumbs as before", () => {
+// The address pages' crumbs: home, the town or gmina, and on a subpage
+// the address itself.
+test("address pages: home, the place's list, the address on a subpage", () => {
   const place = (subpage: boolean, over = {}) =>
     renderToStaticMarkup(
       createElement(PlaceBreadcrumbs, { place: testPlace(over), subpage }),

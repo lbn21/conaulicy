@@ -244,23 +244,25 @@ test("xAI down: retried next run, never shown", async () => {
   assert.equal(saved(w).active.length, 1);
 });
 
-test("no model call with less than its timeout and the margin left", async () => {
-  const w = world();
-  // The gmina's run left 269 s before the deadline: no call for MZGKiM.
-  const deadline = new Date(NOW.getTime() + TIMEOUT_MS + 29_000);
-  const summary = await runZuk({ ...deps(w), deadline });
-  assert.equal(summary.aiCalls, 0);
-  assert.deepEqual(w.aiCalls, []);
-  // Not stored: read on a later run.
-  assert.equal(saved(w).active.length, 0);
-});
-
-test("a model call starts with the timeout and the margin left", async () => {
-  const w = world();
-  const deadline = new Date(NOW.getTime() + TIMEOUT_MS + 31_000);
-  const summary = await runZuk({ ...deps(w), deadline });
-  assert.ok(summary.aiCalls > 0);
-  assert.ok(w.aiCalls.length > 0);
+test("a model call starts only with its timeout and the margin left", async () => {
+  {
+    const w = world();
+    // The gmina's run left 269 s before the deadline: no call for MZGKiM.
+    const deadline = new Date(NOW.getTime() + TIMEOUT_MS + 29_000);
+    const summary = await runZuk({ ...deps(w), deadline });
+    assert.equal(summary.aiCalls, 0);
+    assert.deepEqual(w.aiCalls, []);
+    // Not stored: read on a later run.
+    assert.equal(saved(w).active.length, 0);
+  }
+  {
+    // 271 s left: the call starts.
+    const w = world();
+    const deadline = new Date(NOW.getTime() + TIMEOUT_MS + 31_000);
+    const summary = await runZuk({ ...deps(w), deadline });
+    assert.ok(summary.aiCalls > 0);
+    assert.ok(w.aiCalls.length > 0);
+  }
 });
 
 // The route: the gmina's run and MZGKiM's at once, each on its own.
@@ -292,22 +294,6 @@ const route = (main: ZukCronDeps, more: ZukCronDeps[]) =>
     more,
   );
 
-test("the route: MZGKiM down never breaks the gmina's run or the status", async () => {
-  const g = { gminaDown: false, gminaFile: null as string | null };
-  const w = world({ feed: "down" });
-  const response = await route(gmina(g), [deps(w)]);
-  assert.equal(response.status, 200);
-  const body = await response.json();
-  assert.equal(body.posts, 0);
-  assert.deepEqual(body.sources, { mzgkim: { error: "source unavailable" } });
-  assert.ok(g.gminaFile, "the gmina's file written");
-  assert.equal(w.file, null);
-  assert.deepEqual(
-    w.logs.filter((l) => l.zuk === "source-down").map((l) => l.source),
-    ["mzgkim"],
-  );
-});
-
 test("the route: the gmina down is 502 as ever, MZGKiM still read", async () => {
   const g = { gminaDown: true, gminaFile: null as string | null };
   const w = world();
@@ -317,28 +303,6 @@ test("the route: the gmina down is 502 as ever, MZGKiM still read", async () => 
   assert.equal(body.error, "source unavailable");
   assert.equal(body.sources.mzgkim.aiCalls, 2);
   assert.equal(saved(w).active.length, 1);
-});
-
-test("the route: an MZGKiM failure of any kind is caught and reported", async () => {
-  const g = { gminaDown: false, gminaFile: null as string | null };
-  const w = world();
-  const broken = {
-    ...deps(w),
-    readFile: async () => {
-      throw new Error("blob: 500");
-    },
-  };
-  const response = await route(gmina(g), [broken]);
-  assert.equal(response.status, 200);
-  assert.deepEqual((await response.json()).sources, {
-    mzgkim: { error: "failed" },
-  });
-  assert.ok(
-    w.logs.some(
-      (l) =>
-        l.zuk === "error" && l.source === "mzgkim" && l.error === "blob: 500",
-    ),
-  );
 });
 
 test("the route: the sources run at once, a slow gmina call never starves MZGKiM's", async () => {
@@ -397,35 +361,78 @@ test("the route: the sources run at once, a slow gmina call never starves MZGKiM
   assert.ok(g.gminaFile, "the gmina's file written");
 });
 
-test("the route: either source throwing, the other still writes its file", async () => {
-  // The gmina's Blob broken: 500, MZGKiM's file written.
-  const g1 = { gminaDown: false, gminaFile: null as string | null };
-  const w1 = world();
-  const brokenGmina = {
-    ...gmina(g1),
-    writeFile: async () => {
-      throw new Error("blob: 500");
-    },
-  };
-  const r1 = await route(brokenGmina, [deps(w1)]);
-  assert.equal(r1.status, 500);
-  const b1 = await r1.json();
-  assert.equal(b1.error, "failed");
-  assert.equal(b1.sources.mzgkim.aiCalls, 2);
-  assert.equal(saved(w1).active.length, 1);
-  // MZGKiM's Blob broken: 200, the gmina's file written.
-  const g2 = { gminaDown: false, gminaFile: null as string | null };
-  const w2 = world();
-  const r2 = await route(gmina(g2), [
-    {
-      ...deps(w2),
+test("the route: a source down or throwing never stops the other", async () => {
+  // MZGKiM down: the gmina's run and the status as ever.
+  {
+    const g = { gminaDown: false, gminaFile: null as string | null };
+    const w = world({ feed: "down" });
+    const response = await route(gmina(g), [deps(w)]);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.posts, 0);
+    assert.deepEqual(body.sources, { mzgkim: { error: "source unavailable" } });
+    assert.ok(g.gminaFile, "the gmina's file written");
+    assert.equal(w.file, null);
+    assert.deepEqual(
+      w.logs.filter((l) => l.zuk === "source-down").map((l) => l.source),
+      ["mzgkim"],
+    );
+  }
+  // An MZGKiM failure of any kind: caught and reported.
+  {
+    const g = { gminaDown: false, gminaFile: null as string | null };
+    const w = world();
+    const broken = {
+      ...deps(w),
+      readFile: async () => {
+        throw new Error("blob: 500");
+      },
+    };
+    const response = await route(gmina(g), [broken]);
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()).sources, {
+      mzgkim: { error: "failed" },
+    });
+    assert.ok(
+      w.logs.some(
+        (l) =>
+          l.zuk === "error" && l.source === "mzgkim" && l.error === "blob: 500",
+      ),
+    );
+  }
+  // Either source's Blob throwing: the other still writes its file.
+  {
+    // The gmina's Blob broken: 500, MZGKiM's file written.
+    const g1 = { gminaDown: false, gminaFile: null as string | null };
+    const w1 = world();
+    const brokenGmina = {
+      ...gmina(g1),
       writeFile: async () => {
         throw new Error("blob: 500");
       },
-    },
-  ]);
-  assert.equal(r2.status, 200);
-  assert.deepEqual((await r2.json()).sources, { mzgkim: { error: "failed" } });
-  assert.ok(g2.gminaFile, "the gmina's file written");
-  assert.equal(w2.file, null);
+    };
+    const r1 = await route(brokenGmina, [deps(w1)]);
+    assert.equal(r1.status, 500);
+    const b1 = await r1.json();
+    assert.equal(b1.error, "failed");
+    assert.equal(b1.sources.mzgkim.aiCalls, 2);
+    assert.equal(saved(w1).active.length, 1);
+    // MZGKiM's Blob broken: 200, the gmina's file written.
+    const g2 = { gminaDown: false, gminaFile: null as string | null };
+    const w2 = world();
+    const r2 = await route(gmina(g2), [
+      {
+        ...deps(w2),
+        writeFile: async () => {
+          throw new Error("blob: 500");
+        },
+      },
+    ]);
+    assert.equal(r2.status, 200);
+    assert.deepEqual((await r2.json()).sources, {
+      mzgkim: { error: "failed" },
+    });
+    assert.ok(g2.gminaFile, "the gmina's file written");
+    assert.equal(w2.file, null);
+  }
 });

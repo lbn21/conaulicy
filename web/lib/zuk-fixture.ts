@@ -4,10 +4,10 @@
 
 import type { Locality } from "./data-model.ts";
 import { terytName } from "./places.ts";
-import { plainText, type ZukPost } from "./zuk.ts";
+import type { ZukPost } from "./zuk.ts";
 import type { AiItem, AiResult } from "./zuk-ai.ts";
 import { ZUK_PLACES } from "./zuk-places.generated.ts";
-import { gateText, type ZukPlaces } from "./zuk-resolve.ts";
+import type { ZukPlaces } from "./zuk-resolve.ts";
 
 /**
  * Real: GET https://www.gminalubaczow.pl/wp-json/wp/v2/posts?include=39885,
@@ -234,6 +234,8 @@ type Reading = [
   street_verbatim: string | null,
   note: string | null,
   kind: AiItem["kind"],
+  date_verbatim: string | null,
+  houses: AiItem["houses"],
 ];
 
 /** An item's fields a plain place leaves at their default. */
@@ -256,81 +258,12 @@ export const AI_ITEM: Pick<
   suggested_places: [],
 };
 
-const MONTHS = [
-  "stycznia",
-  "lutego",
-  "marca",
-  "kwietnia",
-  "maja",
-  "czerwca",
-  "lipca",
-  "sierpnia",
-  "września",
-  "października",
-  "listopada",
-  "grudnia",
-];
-
-/**
- * The post's words for the day, as the prompt asks the model to copy them
- * (date_verbatim): the day ("27.10.2026", "8 czerwca"), or a written range
- * holding it ("26-29.10.2026"); null if the post writes neither.
- */
-export function writtenDay(date: string, text: string): string | null {
-  const [Y, M, D] = date.split("-").map(Number);
-  const month = `(?:\\.0?${M}|\\s+${MONTHS[M - 1]})`;
-  const year = String.raw`(?:\.|\s+)(\d{4})`;
-  const t = text.replace(/[–—]/g, "-").replace(/\s+/g, " ");
-  const found = (re: RegExp, holds: (m: RegExpMatchArray) => boolean) =>
-    [...t.matchAll(re)].find(
-      (m) => holds(m) && (m.at(-1) === undefined || Number(m.at(-1)) === Y),
-    )?.[0] ?? null;
-  return (
-    found(
-      new RegExp(`(?<!\\d)0?${D}${month}(?:${year})?(?!\\d)`, "giu"),
-      () => true,
-    ) ??
-    found(
-      new RegExp(
-        `(?<!\\d)(\\d{1,2})(?:${month}(?:[.\\s]+${Y})?)?\\.?\\s*(?:-|do|na)\\s*(\\d{1,2})${month}(?:${year})?(?!\\d)`,
-        "giu",
-      ),
-      ([, a, b]) => Number(a) <= D && D <= Number(b),
-    )
-  );
-}
-
-/**
- * The note's house numbers, as the prompt asks the model to list them
- * (houses): each "od X do Y" a range, each "nr X" a house; none if the note
- * limits them any other way (parity, a direction, "w części").
- */
-export function housesOf(note: string | null): AiItem["houses"] {
-  if (note === null || /parzyst|części|stronę|kierunku/iu.test(note)) return [];
-  const nr = String.raw`(?:nr\.?|numeru?)?\s*(\d{1,4}[a-z]?)`;
-  const range = new RegExp(`od\\s+${nr}\\s+do\\s+${nr}`, "giu");
-  const ranges = [...note.matchAll(range)].map(([, from, to]) => ({
-    from,
-    to,
-  }));
-  const houses = [
-    ...note
-      .replace(range, " ")
-      .matchAll(/(?:nr\.?|numer)\s*(\d{1,4}[a-z]?)(?!\d)/giu),
-  ].map(([, n]) => ({ from: n, to: n }));
-  return [...ranges, ...houses];
-}
-
 /** The posts that move an earlier one's dates ("aktualizacja dat"). */
 const CHANGES = new Set([23860, 24161, 26028]);
 
 /** The model's reading of a real post, as the API returns it. */
 export function reading(id: number): AiResult {
   const r = READINGS[id];
-  const post = realPosts().find((p) => p.id === id);
-  const text = post
-    ? gateText(plainText(post.title.rendered), plainText(post.content.rendered))
-    : "";
   return {
     post_type: r.outage ? "water_outage" : "other",
     quality_status: null,
@@ -347,6 +280,8 @@ export function reading(id: number): AiResult {
         street_verbatim,
         note,
         kind,
+        date_verbatim,
+        houses,
       ]) => ({
         date,
         start,
@@ -358,8 +293,8 @@ export function reading(id: number): AiResult {
         note,
         kind,
         ...AI_ITEM,
-        date_verbatim: writtenDay(date, text),
-        houses: housesOf(note),
+        date_verbatim,
+        houses,
         // An emergency's end is the expected restore (14117, 34394, 35661).
         end_estimated: kind === "emergency" && end !== null,
       }),
@@ -501,11 +436,13 @@ const REAL_TEXTS: Array<{
 /**
  * grok-4.7's readings of every real post (reasoning low, 25 Oct 2026), hand
  * checked, in the v3.1 item shape: [date, start, end, locality,
- * locality_verbatim, street, street_verbatim, note, kind]. Recorded before
- * the v3.1 schema, so the verbatim fields and the note were converted from
- * the hand-filled place phrase (task 114b) and checked against TRUTH
- * (lib/zuk-fixture-b.ts); street names and 39699's hamlet as the shared
- * prompt asks for them (task 182, lib/water-prompt.ts). The new fields:
+ * locality_verbatim, street, street_verbatim, note, kind, date_verbatim,
+ * houses]. Recorded before the v3.1 schema, so the verbatim fields and the
+ * note were converted from the hand-filled place phrase (task 114b) and
+ * checked against TRUTH (lib/zuk-fixture-b.ts); street names and 39699's
+ * hamlet as the shared prompt asks for them (task 182, lib/water-prompt.ts).
+ * date_verbatim and houses are written out, each as the post and the note
+ * have it (task 190), never derived by a word rule. The other new fields:
  * reading() (AI_ITEM, CHANGES).
  */
 export const READINGS: Record<
@@ -526,6 +463,8 @@ export const READINGS: Record<
         null,
         null,
         "emergency",
+        "15.12.2021",
+        [],
       ],
       [
         "2021-12-15",
@@ -537,6 +476,8 @@ export const READINGS: Record<
         null,
         null,
         "emergency",
+        "15.12.2021",
+        [],
       ],
     ],
   },
@@ -554,6 +495,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "2.11.2023",
+        [],
       ],
       [
         "2023-11-02",
@@ -565,6 +508,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "2.11.2023",
+        [],
       ],
       [
         "2023-11-03",
@@ -576,6 +521,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "3.11.2023",
+        [],
       ],
       [
         "2023-11-03",
@@ -587,6 +534,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "3.11.2023",
+        [],
       ],
       [
         "2023-11-06",
@@ -598,6 +547,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "06.11.2023",
+        [],
       ],
       [
         "2023-11-06",
@@ -609,6 +560,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "06.11.2023",
+        [],
       ],
       [
         "2023-11-07",
@@ -620,6 +573,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "06.11.2023 do 10.11.2023",
+        [],
       ],
       [
         "2023-11-07",
@@ -631,6 +586,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "06.11.2023 do 10.11.2023",
+        [],
       ],
       [
         "2023-11-08",
@@ -642,6 +599,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "06.11.2023 do 10.11.2023",
+        [],
       ],
       [
         "2023-11-08",
@@ -653,6 +612,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "06.11.2023 do 10.11.2023",
+        [],
       ],
       [
         "2023-11-09",
@@ -664,6 +625,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "06.11.2023 do 10.11.2023",
+        [],
       ],
       [
         "2023-11-09",
@@ -675,6 +638,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "06.11.2023 do 10.11.2023",
+        [],
       ],
       [
         "2023-11-10",
@@ -686,6 +651,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "10.11.2023",
+        [],
       ],
       [
         "2023-11-10",
@@ -697,6 +664,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "10.11.2023",
+        [],
       ],
     ],
   },
@@ -714,6 +683,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "23.11.2023",
+        [],
       ],
       [
         "2023-11-23",
@@ -725,6 +696,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "23.11.2023",
+        [],
       ],
       [
         "2023-11-24",
@@ -736,6 +709,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "24.11.2023",
+        [],
       ],
       [
         "2023-11-24",
@@ -747,6 +722,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "24.11.2023",
+        [],
       ],
       [
         "2023-11-27",
@@ -758,6 +735,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "27.11.2023",
+        [],
       ],
       [
         "2023-11-27",
@@ -769,6 +748,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "27.11.2023",
+        [],
       ],
       [
         "2023-11-28",
@@ -780,6 +761,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "28.11.2023",
+        [],
       ],
       [
         "2023-11-28",
@@ -791,6 +774,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "28.11.2023",
+        [],
       ],
     ],
   },
@@ -808,6 +793,8 @@ export const READINGS: Record<
         null,
         "w części miejscowości",
         "planned",
+        "09.04.2024",
+        [],
       ],
       [
         "2024-04-09",
@@ -819,6 +806,8 @@ export const READINGS: Record<
         "ul. Przemysłowa",
         "gospodarstwa zasilane z SUW Mokrzyca",
         "planned",
+        "09.04.2024",
+        [],
       ],
       [
         "2024-04-10",
@@ -830,6 +819,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "10.04.2024",
+        [],
       ],
       [
         "2024-04-10",
@@ -841,6 +832,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "10.04.2024",
+        [],
       ],
       [
         "2024-04-10",
@@ -852,6 +845,8 @@ export const READINGS: Record<
         "ul. Pilipy",
         null,
         "planned",
+        "10.04.2024",
+        [],
       ],
       [
         "2024-04-10",
@@ -863,6 +858,8 @@ export const READINGS: Record<
         null,
         "Podłęże",
         "planned",
+        "10.04.2024",
+        [],
       ],
       [
         "2024-04-12",
@@ -874,6 +871,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "12.04.2024",
+        [],
       ],
       [
         "2024-04-12",
@@ -885,6 +884,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "12.04.2024",
+        [],
       ],
       [
         "2024-04-12",
@@ -896,6 +897,8 @@ export const READINGS: Record<
         "ul. Pilipy",
         null,
         "planned",
+        "12.04.2024",
+        [],
       ],
       [
         "2024-04-12",
@@ -907,6 +910,8 @@ export const READINGS: Record<
         null,
         "Podłęże",
         "planned",
+        "12.04.2024",
+        [],
       ],
       [
         "2024-04-11",
@@ -918,6 +923,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "11.04.2024",
+        [],
       ],
     ],
   },
@@ -935,6 +942,8 @@ export const READINGS: Record<
         null,
         null,
         "emergency",
+        "9.10.2025",
+        [],
       ],
       [
         "2025-10-09",
@@ -946,6 +955,8 @@ export const READINGS: Record<
         null,
         null,
         "emergency",
+        "9.10.2025",
+        [],
       ],
     ],
   },
@@ -963,6 +974,8 @@ export const READINGS: Record<
         null,
         null,
         "emergency",
+        "16.12.2025",
+        [],
       ],
       [
         "2025-12-16",
@@ -974,6 +987,8 @@ export const READINGS: Record<
         null,
         null,
         "emergency",
+        "16.12.2025",
+        [],
       ],
       [
         "2025-12-16",
@@ -985,6 +1000,8 @@ export const READINGS: Record<
         null,
         null,
         "emergency",
+        "16.12.2025",
+        [],
       ],
       [
         "2025-12-16",
@@ -996,6 +1013,8 @@ export const READINGS: Record<
         null,
         null,
         "emergency",
+        "16.12.2025",
+        [],
       ],
       [
         "2025-12-16",
@@ -1007,6 +1026,8 @@ export const READINGS: Record<
         null,
         null,
         "emergency",
+        "16.12.2025",
+        [],
       ],
     ],
   },
@@ -1024,6 +1045,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "21.12.2025",
+        [],
       ],
       [
         "2025-12-21",
@@ -1035,6 +1058,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "21.12.2025",
+        [],
       ],
       [
         "2025-12-21",
@@ -1046,6 +1071,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "21.12.2025",
+        [],
       ],
       [
         "2025-12-21",
@@ -1057,6 +1084,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "21.12.2025",
+        [],
       ],
       [
         "2025-12-21",
@@ -1068,6 +1097,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "21.12.2025",
+        [],
       ],
     ],
   },
@@ -1085,6 +1116,11 @@ export const READINGS: Record<
         "ul. Sobieskiego",
         "numery: od 1 do 15 i od 16 do 54",
         "planned",
+        "2.09.2026",
+        [
+          { from: "1", to: "15" },
+          { from: "16", to: "54" },
+        ],
       ],
     ],
   },
@@ -1102,6 +1138,8 @@ export const READINGS: Record<
         "ul. Floriana",
         null,
         "planned",
+        "07.09.2026",
+        [],
       ],
       [
         "2026-09-08",
@@ -1113,6 +1151,8 @@ export const READINGS: Record<
         "ul. Floriana",
         null,
         "planned",
+        "8.09.2026",
+        [],
       ],
     ],
   },
@@ -1130,6 +1170,8 @@ export const READINGS: Record<
         "ul. Długa",
         "od nr 40 do nr 145",
         "planned",
+        "14.09.2026",
+        [{ from: "40", to: "145" }],
       ],
     ],
   },
@@ -1147,6 +1189,8 @@ export const READINGS: Record<
         "ul. Leśna",
         null,
         "planned",
+        "15.09.2026",
+        [],
       ],
       [
         "2026-09-15",
@@ -1158,6 +1202,8 @@ export const READINGS: Record<
         "Warszawska",
         null,
         "planned",
+        "15.09.2026",
+        [],
       ],
       [
         "2026-09-15",
@@ -1169,6 +1215,8 @@ export const READINGS: Record<
         "Rzeczna",
         null,
         "planned",
+        "15.09.2026",
+        [],
       ],
       [
         "2026-09-15",
@@ -1180,6 +1228,8 @@ export const READINGS: Record<
         "Wodna",
         null,
         "planned",
+        "15.09.2026",
+        [],
       ],
       [
         "2026-09-15",
@@ -1191,6 +1241,8 @@ export const READINGS: Record<
         "Błonie",
         null,
         "planned",
+        "15.09.2026",
+        [],
       ],
       [
         "2026-09-15",
@@ -1202,6 +1254,8 @@ export const READINGS: Record<
         "Sąsiedzka",
         null,
         "planned",
+        "15.09.2026",
+        [],
       ],
       [
         "2026-09-15",
@@ -1213,6 +1267,8 @@ export const READINGS: Record<
         "Słoneczna",
         null,
         "planned",
+        "15.09.2026",
+        [],
       ],
       [
         "2026-09-15",
@@ -1224,6 +1280,8 @@ export const READINGS: Record<
         "Piaskowa",
         null,
         "planned",
+        "15.09.2026",
+        [],
       ],
       [
         "2026-09-15",
@@ -1235,6 +1293,8 @@ export const READINGS: Record<
         "Krótka",
         null,
         "planned",
+        "15.09.2026",
+        [],
       ],
       [
         "2026-09-15",
@@ -1246,6 +1306,8 @@ export const READINGS: Record<
         "ul. Sobieskiego",
         "od nr 27 do nr 47",
         "planned",
+        "15.09.2026",
+        [{ from: "27", to: "47" }],
       ],
     ],
   },
@@ -1263,6 +1325,8 @@ export const READINGS: Record<
         "ul. Lwowska",
         "od nr 26 do nr 42",
         "planned",
+        "24.09.2026",
+        [{ from: "26", to: "42" }],
       ],
       [
         "2026-09-24",
@@ -1274,6 +1338,8 @@ export const READINGS: Record<
         "Długa",
         null,
         "planned",
+        "24.09.2026",
+        [],
       ],
       [
         "2026-09-24",
@@ -1285,6 +1351,8 @@ export const READINGS: Record<
         "Polna",
         null,
         "planned",
+        "24.09.2026",
+        [],
       ],
       [
         "2026-09-24",
@@ -1296,6 +1364,8 @@ export const READINGS: Record<
         "Leśna",
         null,
         "planned",
+        "24.09.2026",
+        [],
       ],
       [
         "2026-09-24",
@@ -1307,6 +1377,8 @@ export const READINGS: Record<
         "Wąska",
         null,
         "planned",
+        "24.09.2026",
+        [],
       ],
       [
         "2026-09-24",
@@ -1318,6 +1390,8 @@ export const READINGS: Record<
         "Zielona",
         null,
         "planned",
+        "24.09.2026",
+        [],
       ],
     ],
   },
@@ -1335,6 +1409,8 @@ export const READINGS: Record<
         "ul. Polna",
         null,
         "planned",
+        "29.09.2026",
+        [],
       ],
       [
         "2026-09-29",
@@ -1346,6 +1422,8 @@ export const READINGS: Record<
         null,
         "od nr 92 do nr 120",
         "planned",
+        "29.09.2026",
+        [{ from: "92", to: "120" }],
       ],
       [
         "2026-09-29",
@@ -1357,6 +1435,8 @@ export const READINGS: Record<
         null,
         "od nr 40 do nr 42",
         "planned",
+        "29.09.2026",
+        [{ from: "40", to: "42" }],
       ],
     ],
   },
@@ -1374,6 +1454,8 @@ export const READINGS: Record<
         null,
         "od numeru 121 do numeru 144",
         "planned",
+        "2.10.2026",
+        [{ from: "121", to: "144" }],
       ],
     ],
   },
@@ -1391,6 +1473,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "8.10.2026",
+        [],
       ],
       [
         "2026-10-08",
@@ -1402,6 +1486,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "8.10.2026",
+        [],
       ],
     ],
   },
@@ -1419,6 +1505,8 @@ export const READINGS: Record<
         null,
         "od nr 1 do nr 69",
         "planned",
+        "14.10.2026",
+        [{ from: "1", to: "69" }],
       ],
     ],
   },
@@ -1436,6 +1524,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "15.10.2026",
+        [],
       ],
       [
         "2026-10-15",
@@ -1447,6 +1537,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "15.10.2026",
+        [],
       ],
       [
         "2026-10-15",
@@ -1458,6 +1550,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "15.10.2026",
+        [],
       ],
       [
         "2026-10-15",
@@ -1469,6 +1563,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "15.10.2026",
+        [],
       ],
       [
         "2026-10-15",
@@ -1480,6 +1576,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "15.10.2026",
+        [],
       ],
       [
         "2026-10-15",
@@ -1491,6 +1589,8 @@ export const READINGS: Record<
         null,
         "od nr 144 do nr 159",
         "planned",
+        "15.10.2026",
+        [{ from: "144", to: "159" }],
       ],
     ],
   },
@@ -1508,6 +1608,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "16.10.2026",
+        [],
       ],
       [
         "2026-10-16",
@@ -1519,6 +1621,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "16.10.2026",
+        [],
       ],
     ],
   },
@@ -1536,6 +1640,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "19.10.2026",
+        [],
       ],
       [
         "2026-10-19",
@@ -1547,6 +1653,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "19.10.2026",
+        [],
       ],
       [
         "2026-10-19",
@@ -1558,6 +1666,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "19.10.2026",
+        [],
       ],
       [
         "2026-10-19",
@@ -1569,6 +1679,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "19.10.2026",
+        [],
       ],
       [
         "2026-10-19",
@@ -1580,6 +1692,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "19.10.2026",
+        [],
       ],
     ],
   },
@@ -1597,6 +1711,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "20.10.2026",
+        [],
       ],
     ],
   },
@@ -1614,6 +1730,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "21.10.2026",
+        [],
       ],
       [
         "2026-10-21",
@@ -1625,6 +1743,8 @@ export const READINGS: Record<
         "ul. Żuki",
         null,
         "planned",
+        "21.10.2026",
+        [],
       ],
       [
         "2026-10-21",
@@ -1636,6 +1756,8 @@ export const READINGS: Record<
         null,
         "od nr 104 do nr 110",
         "planned",
+        "21.10.2026",
+        [{ from: "104", to: "110" }],
       ],
       [
         "2026-10-21",
@@ -1647,6 +1769,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "21.10.2026",
+        [],
       ],
       [
         "2026-10-21",
@@ -1658,6 +1782,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "21.10.2026",
+        [],
       ],
       [
         "2026-10-21",
@@ -1669,6 +1795,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "21.10.2026",
+        [],
       ],
       [
         "2026-10-21",
@@ -1680,6 +1808,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "21.10.2026",
+        [],
       ],
       [
         "2026-10-21",
@@ -1691,14 +1821,12 @@ export const READINGS: Record<
         "ul. Pilipy",
         null,
         "planned",
+        "21.10.2026",
+        [],
       ],
     ],
   },
-  39868: {
-    outage: false,
-    past: false,
-    items: [],
-  },
+  39868: { outage: false, past: false, items: [] },
   39872: {
     outage: true,
     past: false,
@@ -1713,6 +1841,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "22.10.2026",
+        [],
       ],
       [
         "2026-10-22",
@@ -1724,6 +1854,8 @@ export const READINGS: Record<
         "ul. Sobieskiego",
         "od nr 23 do nr 47",
         "planned",
+        "22.10.2026",
+        [{ from: "23", to: "47" }],
       ],
       [
         "2026-10-22",
@@ -1735,6 +1867,8 @@ export const READINGS: Record<
         "ul. Warszawska",
         null,
         "planned",
+        "22.10.2026",
+        [],
       ],
       [
         "2026-10-22",
@@ -1746,6 +1880,8 @@ export const READINGS: Record<
         "Rzeczna",
         null,
         "planned",
+        "22.10.2026",
+        [],
       ],
       [
         "2026-10-22",
@@ -1757,6 +1893,8 @@ export const READINGS: Record<
         "Krótka",
         null,
         "planned",
+        "22.10.2026",
+        [],
       ],
       [
         "2026-10-22",
@@ -1768,6 +1906,8 @@ export const READINGS: Record<
         "Wodna",
         null,
         "planned",
+        "22.10.2026",
+        [],
       ],
     ],
   },
@@ -1785,6 +1925,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "26.10.2026",
+        [],
       ],
       [
         "2026-10-27",
@@ -1796,6 +1938,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "27.10.2026",
+        [],
       ],
       [
         "2026-10-27",
@@ -1807,6 +1951,8 @@ export const READINGS: Record<
         "ul. Żuki",
         null,
         "planned",
+        "27.10.2026",
+        [],
       ],
       [
         "2026-10-27",
@@ -1818,6 +1964,8 @@ export const READINGS: Record<
         null,
         "od numeru 104 do 110",
         "planned",
+        "27.10.2026",
+        [{ from: "104", to: "110" }],
       ],
       [
         "2026-10-28",
@@ -1829,6 +1977,8 @@ export const READINGS: Record<
         null,
         "Podłęże od numeru 44 do numeru 92",
         "planned",
+        "28.10.2026",
+        [{ from: "44", to: "92" }],
       ],
       [
         "2026-10-28",
@@ -1840,6 +1990,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "28.10.2026",
+        [],
       ],
       [
         "2026-10-28",
@@ -1851,6 +2003,8 @@ export const READINGS: Record<
         "ul. Przemysłowa",
         null,
         "planned",
+        "28.10.2026",
+        [],
       ],
       [
         "2026-10-28",
@@ -1862,6 +2016,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "28.10.2026",
+        [],
       ],
       [
         "2026-10-28",
@@ -1873,6 +2029,8 @@ export const READINGS: Record<
         "ul. Pilipy",
         null,
         "planned",
+        "28.10.2026",
+        [],
       ],
       [
         "2026-10-28",
@@ -1884,6 +2042,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "28.10.2026",
+        [],
       ],
       [
         "2026-10-28",
@@ -1895,6 +2055,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "28.10.2026",
+        [],
       ],
       [
         "2026-10-28",
@@ -1906,6 +2068,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "28.10.2026",
+        [],
       ],
       [
         "2026-10-28",
@@ -1917,6 +2081,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "28.10.2026",
+        [],
       ],
       [
         "2026-10-29",
@@ -1928,6 +2094,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "29.10.2026",
+        [],
       ],
       [
         "2026-10-29",
@@ -1939,6 +2107,8 @@ export const READINGS: Record<
         null,
         null,
         "planned",
+        "29.10.2026",
+        [],
       ],
     ],
   },

@@ -7,41 +7,46 @@ const clean = (url: string) => {
   return cleanQuery(pathname, searchParams);
 };
 
-test("a street page keeps only nr", () => {
-  assert.equal(clean("/adres/X?x=1"), "");
-  assert.equal(clean("/adres/X?nr=12&x=1"), "?nr=12");
-  assert.equal(clean("/adres/X?x=1&nr=12"), "?nr=12");
-  assert.equal(clean("/adres/X?nr=12"), null);
-  assert.equal(clean("/adres/X?nr=7/22"), null);
-  assert.equal(clean("/adres/X?nr="), null);
-  assert.equal(clean("/adres/X?nr=&x=1"), "?nr=");
-  assert.equal(clean("/adres/X?nr=1&nr=2"), "?nr=1");
+test("the street page, its PDF, water calendar and module subpages keep only nr", () => {
+  const cases: Array<[string, string | null]> = [
+    // The street page.
+    ["/adres/X?x=1", ""],
+    ["/adres/X?nr=12&x=1", "?nr=12"],
+    ["/adres/X?x=1&nr=12", "?nr=12"],
+    ["/adres/X?nr=12", null],
+    ["/adres/X?nr=7/22", null],
+    ["/adres/X?nr=", null],
+    ["/adres/X?nr=&x=1", "?nr="],
+    ["/adres/X?nr=1&nr=2", "?nr=1"],
+    // The PDF, re-encoded.
+    ["/adres/X/harmonogram.pdf?nr=7%2F22&utm_source=a", "?nr=7%2F22"],
+    ["/adres/X/harmonogram.pdf?nr=7a", null],
+    // The water calendar.
+    ["/adres/X/woda.ics?nr=7a&utm_source=a", "?nr=7a"],
+    ["/adres/X/woda.ics?nr=7a", null],
+    ["/adres/X/woda.ics?x=1", ""],
+    // A module subpage, as the street page.
+    ["/adres/X/smieci?x=1", ""],
+    ["/adres/X/smieci?nr=12&x=1", "?nr=12"],
+    ["/adres/X/smieci?nr=7/22", null],
+    ["/adres/X/smieci?nr=", null],
+    ["/adres/X/smieci/nr/12?x=1", ""],
+    ["/adres/X/smieci/nr/7/22", null],
+    ["/adres/X/smieci/numer?nr=1", ""],
+  ];
+  for (const [url, expected] of cases) assert.equal(clean(url), expected, url);
 });
 
-test("a street PDF keeps only nr, re-encoded", () => {
-  assert.equal(
-    clean("/adres/X/harmonogram.pdf?nr=7%2F22&utm_source=a"),
-    "?nr=7%2F22",
-  );
-  assert.equal(clean("/adres/X/harmonogram.pdf?nr=7a"), null);
-});
-
-test("a water calendar keeps only nr", () => {
-  assert.equal(clean("/adres/X/woda.ics?nr=7a&utm_source=a"), "?nr=7a");
-  assert.equal(clean("/adres/X/woda.ics?nr=7a"), null);
-  assert.equal(clean("/adres/X/woda.ics?x=1"), "");
-});
-
-test("the search page keeps only q, empty included", () => {
-  assert.equal(clean("/szukaj?q=asnyka+12"), null);
-  assert.equal(clean("/szukaj?q="), null);
-  assert.equal(clean("/szukaj?q=rynek&utm_source=a"), "?q=rynek");
-  assert.equal(clean("/szukaj?x=1"), "");
-});
-
-test("the search API keeps only q", () => {
-  assert.equal(clean("/api/search?q=asn"), null);
-  assert.equal(clean("/api/search?q=asn&x=1"), "?q=asn");
+test("the search page and the search API keep only q, empty included", () => {
+  const cases: Array<[string, string | null]> = [
+    ["/szukaj?q=asnyka+12", null],
+    ["/szukaj?q=", null],
+    ["/szukaj?q=rynek&utm_source=a", "?q=rynek"],
+    ["/szukaj?x=1", ""],
+    ["/api/search?q=asn", null],
+    ["/api/search?q=asn&x=1", "?q=asn"],
+  ];
+  for (const [url, expected] of cases) assert.equal(clean(url), expected, url);
 });
 
 test("the other cacheable routes take no parameters", () => {
@@ -84,16 +89,6 @@ test("internal paths are never touched", () => {
   assert.equal(clean("/_vercel/insights/script.js?x=1"), null);
   assert.equal(clean("/.well-known/security.txt?x=1"), null);
   assert.equal(clean("/api/revalidate?x=1"), null);
-});
-
-test("a module subpage keeps only nr, as the street page", () => {
-  assert.equal(clean("/adres/X/smieci?x=1"), "");
-  assert.equal(clean("/adres/X/smieci?nr=12&x=1"), "?nr=12");
-  assert.equal(clean("/adres/X/smieci?nr=7/22"), null);
-  assert.equal(clean("/adres/X/smieci?nr="), null);
-  assert.equal(clean("/adres/X/smieci/nr/12?x=1"), "");
-  assert.equal(clean("/adres/X/smieci/nr/7/22"), null);
-  assert.equal(clean("/adres/X/smieci/numer?nr=1"), "");
 });
 
 test("an unknown module is not a route of ours", () => {

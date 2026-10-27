@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { SITE_URL } from "./config.generated.ts";
 import type { Disruption } from "./disruptions.ts";
@@ -319,20 +318,6 @@ test("house numbers in a village with streets: the village's UID, the range as w
   );
 });
 
-test("the page and the file share the loader and the cut list", () => {
-  const read = (path: string) =>
-    readFileSync(new URL(path, import.meta.url), "utf8");
-  assert.match(read("./modules.ts"), /\bload: loadWater,/);
-  const route = read("../app/adres/[id]/woda.ics/route.ts");
-  assert.match(route, /from "@\/lib\/water-load"/);
-  assert.match(route, /await loadWater\(/);
-  // The button shows exactly when the file has an event.
-  assert.match(
-    read("../components/water-page.tsx"),
-    /const calendar = waterCalendarHref\(data\);/,
-  );
-});
-
 test("the button's link: the file, with the house number as given", () => {
   assert.equal(
     waterCalendarHref(at([post()])),
@@ -464,7 +449,7 @@ test("a village's streets in one post and hours: one event, its own UID", () => 
   );
 });
 
-test("a part: its village's partial cut, the village's UID, a line to check", () => {
+test("a part: its village's partial cut, the village's UID, a line to check; the village's own, once", () => {
   const ics = waterCalendar(
     at([post()], villagePlace("0606470", "Czarne")),
     NOW,
@@ -488,11 +473,9 @@ test("a part: its village's partial cut, the village's UID, a line to check", ()
     waterCalendar(at([post()], villagePlace("0606257", "Smolińce")), NOW),
     /należy do miejscowości/,
   );
-});
-
-test("a village cut in part and the gate's street copies: one event", () => {
+  // The village cut in part and the gate's street copies: one event.
   const [base] = post().items;
-  const ics = waterCalendar(
+  const lisie = waterCalendar(
     at(
       [
         post({
@@ -506,7 +489,7 @@ test("a village cut in part and the gate's street copies: one event", () => {
     ),
     NOW,
   );
-  assert.deepEqual(value(ics, "UID"), [
+  assert.deepEqual(value(lisie, "UID"), [
     "woda-39885-0606234-all-2026-10-27@conaulicy.pl",
   ]);
 });

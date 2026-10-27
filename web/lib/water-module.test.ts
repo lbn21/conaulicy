@@ -1069,38 +1069,6 @@ test("freshness: the checked line always, the stale note only after 1 h", () => 
   assert.match(waterNone(at(STALE_MS + 1)), /przy ostatnim sprawdzeniu/);
 });
 
-test("checked line: null renders nothing; Warsaw time over midnight and DST", () => {
-  assert.equal(checkedLine(null), null);
-  const line = (iso: string) => checkedLine(new Date(iso));
-  // Summer time until 3:00 on 25 Oct: midnight is 22:00 UTC the day before.
-  assert.equal(
-    line("2026-10-24T21:59:00Z"),
-    "Ostatnio sprawdziliśmy: 24 października, 23:59",
-  );
-  assert.equal(
-    line("2026-10-24T22:00:00Z"),
-    "Ostatnio sprawdziliśmy: 25 października, 0:00",
-  );
-  // 2:30 happens twice: CEST (0:30 UTC), then CET (1:30 UTC).
-  assert.equal(
-    line("2026-10-25T00:30:00Z"),
-    "Ostatnio sprawdziliśmy: 25 października, 2:30",
-  );
-  assert.equal(
-    line("2026-10-25T01:30:00Z"),
-    "Ostatnio sprawdziliśmy: 25 października, 2:30",
-  );
-  // From then on, CET: midnight is 23:00 UTC.
-  assert.equal(
-    line("2026-10-25T22:59:00Z"),
-    "Ostatnio sprawdziliśmy: 25 października, 23:59",
-  );
-  assert.equal(
-    line("2026-10-25T23:00:00Z"),
-    "Ostatnio sprawdziliśmy: 26 października, 0:00",
-  );
-});
-
 test("no file: the gmina's news only, no cut, no checked line", () => {
   const data = water({}, SMOLINCE);
   assert.deepEqual(data.outages, []);
@@ -1560,10 +1528,6 @@ test("part streets: every key a TERYT part, every street its village's", () => {
       assert.equal(street?.localityId, part.parentId, id);
     }
   }
-});
-
-test("copy: the alert links its post", () => {
-  assert.equal(waterAlerts(waterAt(ZUKI))[0]?.sourceHref, POST_URL);
 });
 
 test("village: its own cut in part and the gate's street copies, shown once", () => {

@@ -151,7 +151,7 @@ test("the PDF's QR code and link: the waste subpage, with the number", () => {
   );
 });
 
-test("checked line: no source_files row: events.checkedAt, a day, no time", () => {
+test("checked line: events.checkedAt, a day; source_files.lastSeenAt, Warsaw day and time", () => {
   assert.equal(wasteChecked(place()), "2026-10-20");
   assert.equal(
     checkedLine(wasteChecked(place())),
@@ -164,28 +164,8 @@ test("checked line: no source_files row: events.checkedAt, a day, no time", () =
         typeof part === "string" ? part : JSON.stringify(part),
         /sprawdz|Stan na/,
       );
-});
 
-test("checked line: the oldest of several sources; none without a date", () => {
-  const sources = [
-    { label: "Sektor 1", url: null, checkedAt: "2026-10-23", seenAt: null },
-    {
-      label: "Sektor 1, papier",
-      url: null,
-      checkedAt: "2026-09-30",
-      seenAt: null,
-    },
-    { label: "Sektor 1, szkło", url: null, checkedAt: null, seenAt: null },
-  ];
-  assert.equal(
-    checkedLine(wasteChecked(place({ sources }))),
-    "Ostatnio sprawdziliśmy: 30 września",
-  );
-  assert.equal(wasteChecked(place({ sources: [sources[2]] })), null);
-  assert.equal(wasteChecked(place({ sources: [] })), null);
-});
-
-test("checked line: the import's source_files.lastSeenAt, Warsaw day and time", () => {
+  // The import's source_files.lastSeenAt: Warsaw day and time.
   const sources = [
     {
       label: "Sektor 1",
@@ -202,7 +182,25 @@ test("checked line: the import's source_files.lastSeenAt, Warsaw day and time", 
   );
 });
 
-test("checked line: the oldest wins, times and days alike", () => {
+test("checked line: the oldest of several sources, times and days alike; none without a date", () => {
+  const sources = [
+    { label: "Sektor 1", url: null, checkedAt: "2026-10-23", seenAt: null },
+    {
+      label: "Sektor 1, papier",
+      url: null,
+      checkedAt: "2026-09-30",
+      seenAt: null,
+    },
+    { label: "Sektor 1, szkło", url: null, checkedAt: null, seenAt: null },
+  ];
+  assert.equal(
+    checkedLine(wasteChecked(place({ sources }))),
+    "Ostatnio sprawdziliśmy: 30 września",
+  );
+  assert.equal(wasteChecked(place({ sources: [sources[2]] })), null);
+  assert.equal(wasteChecked(place({ sources: [] })), null);
+
+  // The oldest wins, times and days alike.
   const seen = (seenAt: string | null, checkedAt = "2026-10-01") => ({
     label: "Sektor",
     url: null,

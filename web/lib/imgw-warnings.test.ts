@@ -239,32 +239,7 @@ test("our powiats come from our gminas: 1809 only", () => {
   assert.deepEqual([...POWIATS], ["1809"]);
 });
 
-test("upstream: the env var, and the mock is refused in production", async () => {
-  assert.equal((await upstream({})).url, IMGW_URL);
-  assert.equal((await upstream({})).fetch, fetch);
-  assert.equal(
-    (await upstream({ IMGW_WARNINGS_URL: "https://example.test/w" })).url,
-    "https://example.test/w",
-  );
-  const preview = await upstream({
-    IMGW_WARNINGS_URL: "mock:1809",
-    VERCEL_ENV: "preview",
-  });
-  assert.equal(preview.fetch, mockFetch);
-  const warn = console.warn;
-  console.warn = quiet;
-  try {
-    const production = await upstream({
-      IMGW_WARNINGS_URL: "mock:1809",
-      VERCEL_ENV: "production",
-    });
-    assert.deepEqual(production, { url: IMGW_URL, fetch });
-  } finally {
-    console.warn = warn;
-  }
-});
-
-test("the mock answers from the fixtures, and never in production", async () => {
+test("the mock answers from the fixtures, never in production; upstream from the env var", async () => {
   const feed = (url: string) => fetchFeed(url, { fetch: mockFetch });
   assert.deepEqual((await feed("mock:none")).items, []);
   assert.equal((await feed("mock:real")).items.length, 8);
@@ -331,6 +306,29 @@ test("the mock answers from the fixtures, and never in production", async () => 
   } finally {
     if (env === undefined) delete process.env.VERCEL_ENV;
     else process.env.VERCEL_ENV = env;
+  }
+  // upstream: the env var, and the mock refused in production.
+  assert.equal((await upstream({})).url, IMGW_URL);
+  assert.equal((await upstream({})).fetch, fetch);
+  assert.equal(
+    (await upstream({ IMGW_WARNINGS_URL: "https://example.test/w" })).url,
+    "https://example.test/w",
+  );
+  const preview = await upstream({
+    IMGW_WARNINGS_URL: "mock:1809",
+    VERCEL_ENV: "preview",
+  });
+  assert.equal(preview.fetch, mockFetch);
+  const warn = console.warn;
+  console.warn = quiet;
+  try {
+    const production = await upstream({
+      IMGW_WARNINGS_URL: "mock:1809",
+      VERCEL_ENV: "production",
+    });
+    assert.deepEqual(production, { url: IMGW_URL, fetch });
+  } finally {
+    console.warn = warn;
   }
 });
 
