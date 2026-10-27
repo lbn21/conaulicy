@@ -1,0 +1,88 @@
+# Przejrzane daty z pliku harmonogram-2026-s3.jpg, wstępnie z odczytu grok-4.7.
+# Porównaj z obrazem i popraw dni miesiąca, jeśli trzeba. Scalenie PR
+# zatwierdza je dla pliku o tym sha256. places to tylko informacja,
+# skopiowana z odczytu: przynależność do stref bierze się wyłącznie z bazy.
+sha256: af55af4e1b8f16e093d9ce13dcace64b201be708857fa00837a0a1a43f1d5bce
+file: "harmonogram-2026-s3.jpg"
+from: "grok-4.7"
+sector: 3
+year: 2026
+rows:
+  "zmieszane+popiol":
+    styczeń: [13, 27]
+    luty: [10, 24]
+    marzec: [10, 24]
+    kwiecień: [7, 21]
+    maj: [5, 19]
+    czerwiec: [2, 16, 30]
+    lipiec: [14, 28]
+    sierpień: [11, 25]
+    wrzesień: [8, 22]
+    październik: [6, 20]
+    listopad: [3, 17]
+    grudzień: [1, 15, 29]
+  "papier+tworzywa_metale+szklo":
+    styczeń: [13]
+    luty: [10]
+    marzec: [10]
+    kwiecień: [7]
+    maj: [12]
+    czerwiec: [2, 16]
+    lipiec: [7, 21]
+    sierpień: [4, 18]
+    wrzesień: [8]
+    październik: [13]
+    listopad: [10]
+    grudzień: [15]
+  "bio":
+    styczeń: [7]
+    luty: [3]
+    marzec: [3]
+    kwiecień: [2, 14, 28]
+    maj: [12, 26]
+    czerwiec: [9, 23]
+    lipiec: [7, 21]
+    sierpień: [4, 18]
+    wrzesień: [1, 15, 29]
+    październik: [13, 27]
+    listopad: [10]
+    grudzień: [8]
+  "wielkogabarytowe+elektro+opony+tekstylia":
+    styczeń: []
+    luty: []
+    marzec: [16]
+    kwiecień: []
+    maj: []
+    czerwiec: []
+    lipiec: []
+    sierpień: []
+    wrzesień: [16]
+    październik: []
+    listopad: []
+    grudzień: []
+places:
+  - { as_written: "Abp. Eugeniusza Baziaka", id: "48369" }
+  - { as_written: "Armii Krajowej", id: "00432" }
+  - { as_written: "Batalionów Chłopskich", id: "00868" }
+  - { as_written: "Bohaterów Września 1939", id: "28038" }
+  - { as_written: "Bolesława Chrobrego", id: "01742" }
+  - { as_written: "Bolesława Krzywoustego", id: "01749" }
+  - { as_written: "Gen. Grota-Roweckiego", id: "48370" }
+  - { as_written: "Gen. Józefa Kustronia", id: "48935" }
+  - { as_written: "Jagiellonów", id: "45843" }
+  - { as_written: "Józefa Conrada-Korzeniowskiego", id: "46105" }
+  - { as_written: "Józefa Pluchy", id: "44268" }
+  - { as_written: "Kombatantów", id: "09043" }
+  - { as_written: "Marii Konopnickiej", id: "09186" }
+  - { as_written: "Obrońców Lubaczowa", id: "14624" }
+  - { as_written: "Partyzantów", id: "15733" }
+  - { as_written: "Prof. Franciszka Misztala", id: "48936" }
+  - { as_written: "Prof. Władysława Witwickiego", id: "48938" }
+  - { as_written: "Pszennego", id: "18050" }
+  - { as_written: "Unii Lubelskiej", id: "23367" }
+  - { as_written: "Wincentego Witosa", id: "24459" }
+  - { as_written: "Władysława Jagiełły", id: "24494" }
+  - { as_written: "Władysława Łokietka", id: "11653" }
+  - { as_written: "Wojska Polskiego", id: "24628" }
+  - { as_written: "Okrężna", id: "14907" }
+  - { as_written: "Zygmunta Nowickiego", id: "14396" }
