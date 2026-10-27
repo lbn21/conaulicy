@@ -105,12 +105,7 @@ function itemPlaces(
   { locality, street, district }: Gated,
   listed: Listed,
 ): { places: Placed[]; scope: Disruption["scope"] } | Reason {
-  const own = listed.data.streets.filter((s) => s.localityId === locality.id);
-  const scope = houseScope(
-    item.note,
-    item.houses,
-    own.map((s) => s.name),
-  );
+  const scope = houseScope(item.note, item.houses);
   const parent = locality.parentId
     ? (listed.byId.get(locality.parentId)?.name ?? null)
     : null;
@@ -118,6 +113,7 @@ function itemPlaces(
     place: { localityId: locality.id, streetId },
     label: { locality: locality.name, parent, street: name },
   });
+  const own = listed.data.streets.filter((s) => s.localityId === locality.id);
   if (district) {
     const places = district.streets.flatMap((s): Placed[] => {
       const known = own.find((o) => o.id === s.id);

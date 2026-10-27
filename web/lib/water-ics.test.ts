@@ -490,22 +490,6 @@ test("a part: its village's partial cut, the village's UID, a line to check", ()
   );
 });
 
-test("the note's leading dash is not in the description", () => {
-  const items = post().items.map((d) =>
-    d.place.localityId === "0606464"
-      ? { ...d, note: "–Podłęże od numeru 44 do numeru 92" }
-      : d,
-  );
-  const ics = waterCalendar(
-    at([post({ items })], villagePlace("0606464", "Załuże")),
-    NOW,
-  );
-  assert.match(
-    value(ics, "DESCRIPTION")[0] as string,
-    /^Załuże: Podłęże od numeru 44 do numeru 92\.\\n/,
-  );
-});
-
 test("a village cut in part and the gate's street copies: one event", () => {
   const [base] = post().items;
   const ics = waterCalendar(

@@ -1562,34 +1562,7 @@ test("part streets: every key a TERYT part, every street its village's", () => {
   }
 });
 
-test("copy: no leading dash in the note; the alert links its post", () => {
-  for (const note of [
-    "–Podłęże od numeru 44 do numeru 92",
-    " - Podłęże od numeru 44 do numeru 92",
-  ])
-    assert.equal(
-      scope(cut({ ...KROWICA_RANGE, note })),
-      "Krowica Sama: Podłęże od numeru 44 do numeru 92",
-      note,
-    );
-  assert.equal(
-    scope(cut({ ...KROWICA_RANGE, note: " - x" })),
-    "Krowica Sama: x",
-  );
-  const group = waterAt(LISIE_JAMY, [
-    post({
-      items: [
-        lisieStreet("11467", "Lwowska", {
-          scope: { type: "unknown" },
-          note: "– od nr 26",
-        }),
-      ],
-    }),
-  ]).outages[0];
-  assert.equal(
-    scope(group as Cut),
-    "część miejscowości Lisie Jamy: ulica Lwowska (od nr 26)",
-  );
+test("copy: the alert links its post", () => {
   assert.equal(waterAlerts(waterAt(ZUKI))[0]?.sourceHref, POST_URL);
 });
 

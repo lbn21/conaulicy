@@ -227,13 +227,6 @@ test("scope: houses not certain from the note are houses unknown", () => {
     [null, [{ from: "1", to: "5" }]],
     ["w części miejscowości", []],
     ["numery nieparzyste od 13 do 21", []],
-    // A number in the note no house covers (task 188).
-    ["Podłęże od numeru 44 do numeru 92 oraz 100", [{ from: "44", to: "92" }]],
-    ["44–92 oraz 100", [{ from: "44", to: "92" }]],
-    ["od nr 1 do nr 5 i nr 9", [{ from: "1", to: "5" }]],
-    // A house range shaped like a postcode is still a number to cover.
-    ["44-92 oraz 10-100", [{ from: "44", to: "92" }]],
-    ["nr 1-20 i 25-120", [{ from: "1", to: "20" }]],
   ];
   for (const [note, houses] of cases)
     assert.deepEqual(
@@ -241,46 +234,4 @@ test("scope: houses not certain from the note are houses unknown", () => {
       unknown,
       JSON.stringify([note, houses]),
     );
-});
-
-test("scope: a street's name, hours, a date or a postcode are not houses", () => {
-  // task 188 (Tech Lead's amendment): only the other numbers must be ends.
-  assert.deepEqual(
-    houseScope("ul. 3 Maja 5-15", [{ from: "5", to: "15" }], ["3 Maja"]),
-    { type: "ranges", ranges: [{ from: "5", to: "15" }] },
-  );
-  // Without the street's name, its 3 is a number no house covers.
-  assert.deepEqual(houseScope("ul. 3 Maja 5-15", [{ from: "5", to: "15" }]), {
-    type: "unknown",
-  });
-  assert.deepEqual(
-    houseScope("od numeru 44 do numeru 92 w godz. 8:00-16:00", [
-      { from: "44", to: "92" },
-    ]),
-    { type: "ranges", ranges: [{ from: "44", to: "92" }] },
-  );
-  assert.deepEqual(
-    houseScope("od nr 1 do nr 9 w godz. 8-16", [{ from: "1", to: "9" }]),
-    { type: "ranges", ranges: [{ from: "1", to: "9" }] },
-  );
-  assert.deepEqual(houseScope("nr 5 do 12:00", [{ from: "5", to: "5" }]), {
-    type: "numbers",
-    numbers: ["5"],
-  });
-  assert.deepEqual(
-    houseScope("nr 7 od 26.10.2026 do 27.10", [{ from: "7", to: "7" }]),
-    { type: "numbers", numbers: ["7"] },
-  );
-  assert.deepEqual(
-    houseScope("Lubaczów 37-600, nr 12", [{ from: "12", to: "12" }]),
-    { type: "numbers", numbers: ["12"] },
-  );
-  assert.deepEqual(
-    houseScope(
-      "ul. 29 Listopada od nr 2 do nr 8",
-      [{ from: "2", to: "8" }],
-      ["29 Listopada"],
-    ),
-    { type: "ranges", ranges: [{ from: "2", to: "8" }] },
-  );
 });

@@ -337,10 +337,6 @@ function when(cut: Cut): string {
   return `${absoluteDay(cut.date)}${time ? `, ${time}` : ""}`;
 }
 
-/** The source's note without a leading dash or colon: "–Górki" → "Górki". */
-const cleanNote = (note: string | null) =>
-  note?.replace(/^[\s\-‐–—−:,;]+/u, "").trim() || null;
-
 /** "a", "a i b", "a, b i c". */
 const listed = (items: string[]) =>
   items.length > 1
@@ -358,10 +354,9 @@ export function scope(cut: Cut): string {
   const street = label?.street ?? null;
   const name = street ? `ulica ${street}` : (label?.locality ?? cut.where);
   if (cut.streets) {
-    const names = cut.streets.map((s) => {
-      const houses = cleanNote(s.note);
-      return houses ? `${s.name} (${houses})` : s.name;
-    });
+    const names = cut.streets.map((s) =>
+      s.note ? `${s.name} (${s.note})` : s.name,
+    );
     return `część miejscowości ${label?.locality ?? cut.where}: ${names.length === 1 ? "ulica" : "ulice"} ${listed(names)}`;
   }
   if (cut.scope.type === "whole" && !cut.note) {
@@ -369,8 +364,7 @@ export function scope(cut: Cut): string {
       ? `cała ulica ${street}`
       : `cała miejscowość ${label?.locality ?? cut.where}`;
   }
-  const note = cleanNote(cut.note);
-  if (note) return `${name}: ${note}`;
+  if (cut.note) return `${name}: ${cut.note}`;
   if (cut.scope.type === "ranges") {
     const ranges = cut.scope.ranges.map((r) => `od ${r.from} do ${r.to}`);
     return `${name}: numery ${ranges.join(" i ")}`;
