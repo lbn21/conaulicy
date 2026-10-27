@@ -1,0 +1,55 @@
+# Przejrzane daty z pliku 2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf, wstępnie z odczytu grok-4.7.
+# Porównaj z obrazem i popraw dni miesiąca, jeśli trzeba. Scalenie PR
+# zatwierdza je dla pliku o tym sha256. places to tylko informacja,
+# skopiowana z odczytu: przynależność do stref bierze się wyłącznie z bazy.
+sha256: 9ede01e712ca718ae57cfb737bca9672fb4afde13c2ee231eacd901364417ee2
+file: "2_2026_WolkaKrowicka_Budomierz_Krowica.pdf.pdf"
+from: "grok-4.7"
+sector: null
+year: 2026
+rows:
+  "zmieszane+bio":
+    styczeń: [20]
+    luty: [17]
+    marzec: [17]
+    kwiecień: [7, 21]
+    maj: [5, 19]
+    czerwiec: [2, 16]
+    lipiec: [7, 21]
+    sierpień: [4, 18]
+    wrzesień: [2, 15]
+    październik: [6, 20]
+    listopad: [17]
+    grudzień: [15]
+  "selektywne":
+    styczeń: [20]
+    luty: [17]
+    marzec: [17]
+    kwiecień: [21]
+    maj: [19]
+    czerwiec: [16]
+    lipiec: [21]
+    sierpień: [18]
+    wrzesień: [15]
+    październik: [20]
+    listopad: [17]
+    grudzień: [15]
+  "wielkogabarytowe":
+    styczeń: []
+    luty: []
+    marzec: [25]
+    kwiecień: []
+    maj: []
+    czerwiec: []
+    lipiec: []
+    sierpień: []
+    wrzesień: [23]
+    październik: []
+    listopad: []
+    grudzień: []
+places:
+  - { as_written: "WÓLKA KROWICKA", id: "0606441" }
+  - { as_written: "BUDOMIERZ", id: "0605996" }
+  - { as_written: "KROWICA HOŁODOWSKA", id: "0606122" }
+  - { as_written: "KROWICA SAMA", id: "0606180" }
+  - { as_written: "KROWICA LASOWA", id: "0606168" }
