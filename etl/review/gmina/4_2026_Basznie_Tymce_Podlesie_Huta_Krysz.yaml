@@ -1,0 +1,55 @@
+# Przejrzane daty z pliku 4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf, wstępnie z odczytu grok-4.7.
+# Porównaj z obrazem i popraw dni miesiąca, jeśli trzeba. Scalenie PR
+# zatwierdza je dla pliku o tym sha256. places to tylko informacja,
+# skopiowana z odczytu: przynależność do stref bierze się wyłącznie z bazy.
+sha256: efbad93c131426210ec7b2c68c1ebc406664d40168a9d9c24c83d3f4dcde863a
+file: "4_2026_Basznie_Tymce_Podlesie_Huta_Krysz.pdf"
+from: "grok-4.7"
+sector: null
+year: 2026
+rows:
+  "zmieszane+bio":
+    styczeń: [22]
+    luty: [19]
+    marzec: [19]
+    kwiecień: [9, 23]
+    maj: [7, 21]
+    czerwiec: [8, 18]
+    lipiec: [9, 23]
+    sierpień: [6, 20]
+    wrzesień: [4, 17]
+    październik: [8, 22]
+    listopad: [19]
+    grudzień: [17]
+  "selektywne":
+    styczeń: [22]
+    luty: [19]
+    marzec: [19]
+    kwiecień: [23]
+    maj: [21]
+    czerwiec: [18]
+    lipiec: [23]
+    sierpień: [20]
+    wrzesień: [17]
+    październik: [22]
+    listopad: [19]
+    grudzień: [17]
+  "wielkogabarytowe":
+    styczeń: []
+    luty: []
+    marzec: [27]
+    kwiecień: []
+    maj: []
+    czerwiec: []
+    lipiec: []
+    sierpień: []
+    wrzesień: [25]
+    październik: []
+    listopad: []
+    grudzień: []
+places:
+  - { as_written: "BASZNIA DOLNA", id: "0605890" }
+  - { as_written: "TYMCE", id: "0606435" }
+  - { as_written: "BASZNIA GÓRNA", id: "0605950" }
+  - { as_written: "PODLESIE", id: "0606369" }
+  - { as_written: "HUTA KRYSZTAŁOWA", id: "0606100" }
