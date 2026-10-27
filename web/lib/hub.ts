@@ -28,6 +28,8 @@ export type Alert = {
   link: string;
   /** The source, short: "IMGW-PIB". */
   short: string;
+  /** The source's own post, if any: then linked as „Źródło: komunikat …”. */
+  sourceHref?: string;
   /** When it starts (ISO): the soonest first. */
   from: string;
 };

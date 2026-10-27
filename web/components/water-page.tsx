@@ -16,9 +16,10 @@ import { getPlace } from "@/lib/schedule";
 import { pageMetadata } from "@/lib/share";
 import { waterCalendarHref } from "@/lib/water-ics";
 import {
+  capitalised,
+  cutWhere,
   hours,
   noticeLink,
-  scope,
   staleNote,
   type Water,
   waterAiNote,
@@ -64,9 +65,6 @@ export async function waterMetadata(
     robots: { index: false, follow: indexable() },
   };
 }
-
-const capitalised = (text: string) =>
-  text.charAt(0).toUpperCase() + text.slice(1);
 
 export function WaterDetails({
   data,
@@ -121,7 +119,7 @@ export function WaterDetails({
                     <div className="govuk-summary-list__row">
                       <dt className="govuk-summary-list__key">Gdzie</dt>
                       <dd className="govuk-summary-list__value">
-                        {scope(cut)}
+                        {cutWhere(cut, data.place)}
                       </dd>
                     </div>
                   </dl>

@@ -322,7 +322,15 @@ test("a number outside a cut's range: one trace line, hub and /woda", () => {
     renderToStaticMarkup(
       createElement(Trace, { module: MODULES.woda, data: data(nr) } as never),
     );
-  assert.equal(hub("5"), SOB_TRACE);
+  // task 188: with no cut shown, the hub's card says it („Inne numery”),
+  // so no trace line under it.
+  assert.equal(hub("5"), "");
+  assert.deepEqual(waterSummary(data("5"))?.[1], [
+    "Inne numery",
+    [
+      "Gmina zapowiedziała przerwę na tej ulicy – poniedziałek, 26 października, 8:00–16:00 – ale według komunikatu nie obejmuje nr 5.",
+    ],
+  ]);
   // /woda: right after the empty text, before the AI note and source.
   const five = waterPage(posts, sobieskiego("5"));
   assert.match(
@@ -375,6 +383,8 @@ test("village: the hub's water and /woda unchanged in every state", () => {
           href: "/adres/0606257/woda",
           link: "Więcej o tej przerwie",
           short: "ZUK Mokrzyca",
+          sourceHref:
+            "https://www.gminalubaczow.pl/2026/10/23/przerwy-w-dostawie-wody-26-29-10-2026/",
           from: "2026-10-26T08:00:00+01:00",
         },
       ],

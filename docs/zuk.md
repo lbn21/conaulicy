@@ -317,6 +317,16 @@ and a range never reversed or open: ranges, or numbers if every one is a
 single house; any other, or a note with none, "unknown" (part of the
 place).
 
+On the pages (`web/lib/water-module.ts`, task 188): a village's own page
+also lists its streets' cuts, one per post, day and hours, „w części
+miejscowości” with the streets named; a village part gets every cut of its
+village that names no street (anything less than the whole village „w
+części miejscowości <village>”, with a link to check the village's page);
+a part whose addresses are all on a street of its village gets that
+street's cuts (`web/lib/part-streets.ts`, each link checked in PRG). A
+house number filters, or makes certain („pod nr 44”), only a cut on the
+address's own locality.
+
 ## Our places: the TERYT snapshot
 
 `web/lib/zuk-places.generated.ts` holds every locality, village part and

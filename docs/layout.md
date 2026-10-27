@@ -26,7 +26,7 @@ Each needs Jakub's OK; listed here so nothing drifts silently.
 - `/smieci`: „Harmonogram do druku (PDF)” between the calendar block and the pickup list. Existing before task 125.
 - `/woda`: when a source's posts were last read over an hour ago (or, beside a cut or notice, one of the address's sources could not be read), an inset with the stale note (`staleNote`, `web/lib/water-module.ts`) between the checked line and the calendar block. Existing before task 125.
 - `/woda` with no cut here: no AI-read note and no source inset; the empty text links each source's news itself (`waterEmpty`: the gmina's; in the town MZGKiM's too).
-- `/woda` and the hub's water card or „Bez zapowiedzi” line: with a house number, when a cut here was left out because its houses clearly exclude that number, one `govuk-body` line after the cuts or the empty text (`waterTrace`, `web/lib/water-module.ts`; on the hub the module's `trace`, `web/lib/modules.ts`). Jakub's decision, task 129.
+- `/woda` and the hub's water card or „Bez zapowiedzi” line: with a house number, when a cut here was left out because its houses clearly exclude that number, one `govuk-body` line after the cuts or the empty text (`waterTrace`, `web/lib/water-module.ts`; on the hub the module's `trace`, `web/lib/modules.ts`). Jakub's decision, task 129. On the hub, when no cut is left to show, the water card itself says it instead („Pod nr N” and „Inne numery” rows, `waterSummary`), so water keeps its own section and no trace line follows (task 188).
 
 ## Breadcrumbs
 
@@ -61,7 +61,7 @@ GOV.UK's title is the page's h1, then „ – conaulicy.pl”. A place's pages a
 Across the whole site the same job always uses the same component and style:
 
 - one button style per action (adding to a calendar: the primary `govuk-button`, `CalendarBlock`);
-- one alert component (the hub's alert slot, `AlertSlot` in `web/components/hub.tsx`);
+- one alert component (the hub's alert slot, `AlertSlot` in `web/components/hub.tsx`): each line its text, then, for an alert with its own post (`Alert.sourceHref`, water), „Źródło: komunikat <source>.” linking the post and our „Więcej o tej przerwie”; otherwise the details link and „(<source>)” (task 188);
 - one freshness line (`CheckedLine`).
 - Link text says where it goes (e.g. „Wszystkie odbiory śmieci”); never a bare „Szczegóły” or „Kliknij tutaj” (`web/scripts/check-modules.mjs` fails on one).
 

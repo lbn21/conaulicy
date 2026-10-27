@@ -27,13 +27,22 @@ import {
 } from "./ics.ts";
 import { fileSlug } from "./normalize.ts";
 import { placePath } from "./places.ts";
-import { hours, scope, type Water, waterPath } from "./water-module.ts";
+import {
+  type Cut,
+  capitalised,
+  cutWhere,
+  hours,
+  parentHint,
+  parentPart,
+  type Water,
+  waterPath,
+} from "./water-module.ts";
 import { sourceOf } from "./water-sources.ts";
 
 const SUMMARY = "Przerwa w dostawie wody";
 
 /** A cut with a confirmed day and hours, planned. */
-type CalendarCut = Disruption & { start: string; end: string };
+type CalendarCut = Cut & { start: string; end: string };
 
 /** The cuts at the address that go in the calendar, soonest first. */
 export function calendarCuts(data: Water): CalendarCut[] {
@@ -67,9 +76,17 @@ function postId(cut: Disruption): string {
   return prefix === "zuk" ? id : `${prefix}-${id}`;
 }
 
-/** Stable across downloads: the post, the place, the day. */
-function cutUid(cut: Disruption): string {
+/**
+ * Stable across downloads: the post, the place, the day; a village's
+ * grouped streets (Cut.streets) "ulice" and the start, so two groups of
+ * one post on one day stay apart.
+ */
+function cutUid(cut: CalendarCut): string {
   const { localityId, streetId } = cut.place;
+  if (cut.streets) {
+    const start = cut.start.slice(11, 16).replace(":", "");
+    return `woda-${postId(cut)}-${localityId}-ulice-${cut.date}-${start}@conaulicy.pl`;
+  }
   return `woda-${postId(cut)}-${localityId}-${streetId ?? "all"}-${cut.date}@conaulicy.pl`;
 }
 
@@ -107,9 +124,6 @@ const VTIMEZONE = [
   "END:VTIMEZONE",
 ];
 
-const capitalised = (text: string) =>
-  text.charAt(0).toUpperCase() + text.slice(1);
-
 /** The address with the house number as given, split street or not. */
 const address = (data: Water) =>
   withHouseNumber(data.place.label, data.place.givenNr);
@@ -125,8 +139,10 @@ export function waterCalendar(data: Water, now: Date): string {
   ];
   const check = `Sprawdź, czy przerwa jest aktualna: ${SITE_URL}${waterPath(data.place)}`;
   for (const cut of calendarCuts(data)) {
+    const parent = parentPart(cut, data.place);
     const description = [
-      `${capitalised(scope(cut))}.`,
+      `${capitalised(cutWhere(cut, data.place))}.`,
+      ...(parent ? [parentHint(data.place.name, parent)] : []),
       `Źródło: ${cut.source.url}`,
       `Daty i godziny odczytaliśmy z komunikatu ${sourceOf(cut.uid).of}. Gdyby coś się nie zgadzało, rację ma komunikat.`,
       check,
