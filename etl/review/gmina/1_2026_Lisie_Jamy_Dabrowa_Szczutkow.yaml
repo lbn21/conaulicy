@@ -1,0 +1,53 @@
+# Przejrzane daty z pliku 1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf, wstępnie z odczytu grok-4.7.
+# Porównaj z obrazem i popraw dni miesiąca, jeśli trzeba. Scalenie PR
+# zatwierdza je dla pliku o tym sha256. places to tylko informacja,
+# skopiowana z odczytu: przynależność do stref bierze się wyłącznie z bazy.
+sha256: 139159406cbc20a5227225a428d65ee94962f55383ea0f3e235ef2d2ca760fcc
+file: "1_2026_Lisie_Jamy_Dabrowa_Szczutkow.pdf"
+from: "grok-4.7"
+sector: null
+year: 2026
+rows:
+  "zmieszane+bio":
+    styczeń: [19]
+    luty: [16]
+    marzec: [16]
+    kwiecień: [2, 20]
+    maj: [4, 18]
+    czerwiec: [1, 15]
+    lipiec: [6, 20]
+    sierpień: [3, 14]
+    wrzesień: [1, 14]
+    październik: [5, 19]
+    listopad: [16]
+    grudzień: [14]
+  "selektywne":
+    styczeń: [19]
+    luty: [16]
+    marzec: [16]
+    kwiecień: [20]
+    maj: [18]
+    czerwiec: [15]
+    lipiec: [20]
+    sierpień: [14]
+    wrzesień: [14]
+    październik: [19]
+    listopad: [16]
+    grudzień: [14]
+  "wielkogabarytowe":
+    styczeń: []
+    luty: []
+    marzec: [24]
+    kwiecień: []
+    maj: []
+    czerwiec: []
+    lipiec: []
+    sierpień: []
+    wrzesień: [22]
+    październik: []
+    listopad: []
+    grudzień: []
+places:
+  - { as_written: "LISIE JAMY", id: "0606234" }
+  - { as_written: "DĄBROWA", id: "0606010" }
+  - { as_written: "SZCZUTKÓW", id: "0606375" }
