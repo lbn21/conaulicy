@@ -313,9 +313,22 @@ spaces aside. A village-wide cut covers the village and every street of
 its own, from our data, not its village parts. House numbers for a place
 with streets are the place only, never copied onto its streets. The houses
 are the model's `houses`, each end written in the note as a whole word
-and a range never reversed or open: ranges, or numbers if every one is a
-single house; any other, or a note with none, "unknown" (part of the
-place).
+and a range never reversed or open, and every other number in the note an
+end of one of them (task 188: "44–92 oraz 100" read as 44–92 only is
+"unknown"; the locality's street names such as "3 Maja", hours after
+„godz.”, clock times, dates and postcodes are not house numbers): ranges,
+or numbers if every one is a single house; any other, or a note with none,
+"unknown" (part of the place).
+
+On the pages (`web/lib/water-module.ts`, task 188): a village's own page
+also lists its streets' cuts, one per post, day and hours, „w części
+miejscowości” with the streets named; a village part gets every cut of its
+village that names no street (anything less than the whole village „w
+części miejscowości <village>”, with a link to check the village's page);
+a part whose addresses are all on a street of its village gets that
+street's cuts (`web/lib/part-streets.ts`, each link checked in PRG). A
+house number filters, or makes certain („pod nr 44”), only a cut on the
+address's own locality.
 
 ## Our places: the TERYT snapshot
 
