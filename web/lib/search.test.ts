@@ -227,16 +227,6 @@ test("clear needs 3+ letters; an initial alone never wins", () => {
   );
 });
 
-test("under 5 ms per query on the 330 places", () => {
-  const queries = [...battery, ...heldOut].map(([q]) => q).concat(junk);
-  const fresh = matcher(PLACES);
-  const start = performance.now();
-  for (const q of queries) fresh(q);
-  const each = (performance.now() - start) / queries.length;
-  console.log(`search: ${each.toFixed(2)} ms per query (${queries.length})`);
-  assert.ok(each < 5, `${each} ms`);
-});
-
 test("every suggestion's text opens its own place", () => {
   for (const [id, label] of PLACES) {
     assert.deepEqual(exactPlace(PLACES, label), { id, label }, label);

@@ -55,14 +55,13 @@ test("the pages: the ZUK file's cache is tagged WATER, so is every page reading 
   assert.match(read("./zuk-store.ts"), /await cached\(source\.pathname\)/);
 });
 
-test("the ZUK cron purges WATER, never DATASET", () => {
+test("the ZUK cron's route purges by revalidateTag, never DATASET", () => {
+  // What lib/zuk-cron.ts purges, and when, is behaviour: zuk-cron.test.ts
+  // ("purge: …"). Only the route's wiring to Next is read here.
   const route = read("../app/api/cron/zuk/route.ts");
   assert.match(
     route,
     /purge: \(tag\) => revalidateTag\(tag, \{ expire: 0 \}\),/,
   );
   assert.doesNotMatch(route, /import \{[^}]*\bDATASET\b/);
-  const cron = read("./zuk-cron.ts");
-  assert.doesNotMatch(cron, /import \{[^}]*\bDATASET\b/);
-  assert.match(cron, /if \(changed\) deps\.purge\(WATER\);/);
 });
