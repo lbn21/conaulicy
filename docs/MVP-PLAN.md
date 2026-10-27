@@ -55,7 +55,7 @@ Other gminas in the powiat. Push/app. User accounts. News/editorial content. Tra
 | Source | v | Format | Updates | Extraction | Status |
 |---|---|---|---|---|---|
 | City waste, czystylubaczow.info | v1 | 5× JPG (no text) | once a year, mid-Dec (sometimes half-yearly) | vision-LLM + OCR, 2 passes, human review | 2026 downloaded; S2=S3 flag; 2027 not yet published |
-| Gmina waste, gminalubaczow.pl | v1 | 5× text PDF | once a year, ~20.12–10.01 + "częstotliwość" posts | pdftotext parser (deterministic) | 2026 downloaded; column 1 semantics to confirm |
+| Gmina waste, gminalubaczow.pl | v1 | 5× text PDF | once a year, ~20.12–10.01 + "częstotliwość" posts | rendered to PNG, one Grok reading, human review (task 191) | 2026 downloaded; column 1 semantics to confirm |
 | TERYT ULIC/SIMC (GUS) | v1 | CSV | monthly | filter + matching + aliases | done (206 + 70 streets, 69 places) |
 | IMGW warningsmeteo | next release | JSON API | fetched by `/api/warnings`, revalidate 10 min | filter TERYT 1809 | API OK; schema with `teryt` to confirm on a live warning; **not built in the first release** |
 | Water, gmina (ZUK) | v1.1 | WP REST API, fixed template | 1–3 days ahead, often | regex + LLM fallback | samples saved |
