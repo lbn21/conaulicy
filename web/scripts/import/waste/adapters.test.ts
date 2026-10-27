@@ -1,6 +1,6 @@
 // The gmina PDF as Grok sees it: one page rendered by pdftoppm, nothing read
-// from its text. Needs poppler-utils (CI installs it after the unit tests,
-// so there the e2e, scripts/check-import-run.mjs, renders a PDF instead).
+// from its text. Needs poppler-utils (CI installs it before the unit
+// tests; the e2e, scripts/check-import-run.mjs, renders one too).
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { test } from "node:test";

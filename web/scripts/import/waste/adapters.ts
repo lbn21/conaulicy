@@ -25,7 +25,7 @@ import type {
   Found as CoreFound,
 } from "../core/domain.ts";
 import type { Http } from "../core/http.ts";
-import { readReviewed } from "../core/review.ts";
+import { type Reviews, readReviewed } from "../core/review.ts";
 import {
   checkReply,
   LAYOUT_ROWS,
@@ -225,6 +225,11 @@ export type Extracted = CoreExtracted & {
   events: Etl["events"];
   /** Dates from the file's merged review: they apply as usual. */
   reviewed: boolean;
+  /**
+   * Not read: this sha256 already has a review PR (open, merged but not in
+   * this checkout, or rejected), so no xAI call and the PR is left as it is.
+   */
+  pending?: { state: "open" | "merged" | "rejected"; url: string };
   /** Else Grok's fresh reading, for its review PR (check.ts). */
   read?: {
     /** The reply as given. */
@@ -245,6 +250,7 @@ type Extractor = (input: {
   body: Buffer;
   doc: string;
   digest: string;
+  reviews: Reviews;
 }) => Promise<Extracted>;
 
 const schedule = (
@@ -267,6 +273,9 @@ const schedule = (
   };
 };
 
+/** One pdftoppm run at most this long (a schedule page takes about a second). */
+const RENDER_TIMEOUT_MS = 60_000;
+
 /**
  * A one-page PDF as a PNG for Grok (image preparation only, no text layer):
  * pdftoppm -r 150 -png -singlefile. The page count is the number of pages
@@ -280,7 +289,11 @@ export function renderPdf(body: Buffer): Buffer {
     const pages = path.join(dir, "pages");
     mkdirSync(pages);
     const pdftoppm = (args: string[]) => {
-      const run = spawnSync("pdftoppm", args);
+      const run = spawnSync("pdftoppm", args, { timeout: RENDER_TIMEOUT_MS });
+      if (run.error && "code" in run.error && run.error.code === "ETIMEDOUT")
+        throw new Error(
+          `pdftoppm did not finish within ${RENDER_TIMEOUT_MS / 1000} s`,
+        );
       // The message without the temporary path, so the same problem keeps its issue.
       if (run.status !== 0)
         throw new Error(
@@ -301,7 +314,9 @@ export function renderPdf(body: Buffer): Buffer {
  * Grok reads the file once (layout gmina: the PDF rendered to PNG; miasto:
  * the JPG as is); its reply is checked literally and always goes to a review
  * PR (check.ts). A merged review of this exact file (sha256) replaces the
- * reading: no call, its dates apply. deps: tests inject the network, the key
+ * reading: no call, its dates apply. A sha256 that already has a review PR
+ * (open, merged but not checked out, rejected) is not read again: no call,
+ * and check.ts leaves the PR alone. deps: tests inject the network, the key
  * and the renderer.
  */
 export function wasteAi(
@@ -311,7 +326,7 @@ export function wasteAi(
     render?: (pdf: Buffer) => Buffer;
   } = {},
 ): Extractor {
-  return async ({ source, file, body, doc, digest }) => {
+  return async ({ source, file, body, doc, digest, reviews }) => {
     const { layout } = source.extract;
     const rows = LAYOUT_ROWS[layout];
     const ref = { doc, url: file.url, sha256: digest };
@@ -339,6 +354,29 @@ export function wasteAi(
           reading.places.map((p) => p.as_written),
         ),
         reviewed: true,
+      };
+    }
+    // Its review is already open, merged or rejected: never a second call.
+    const { sameOpen, merged, rejected } = reviews.status(
+      source.id,
+      file.name,
+      digest,
+    );
+    const review = sameOpen
+      ? { state: "open" as const, url: sameOpen.url }
+      : merged
+        ? { state: "merged" as const, url: merged.url }
+        : rejected
+          ? { state: "rejected" as const, url: rejected.url }
+          : null;
+    if (review) {
+      console.log(
+        `${file.name}: not read again, its review is ${review.state} (${review.url}).`,
+      );
+      return {
+        ...schedule(source, file, ref, {}, rows, []),
+        reviewed: false,
+        pending: review,
       };
     }
     const image =

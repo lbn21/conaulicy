@@ -22,7 +22,12 @@ import { loadConfig } from "../core/config.ts";
 import type { Queryable } from "../core/db.ts";
 import { Issues } from "../core/issues.ts";
 import { Reviews } from "../core/review.ts";
-import { type Found, type WasteSource, wasteAi } from "./adapters.ts";
+import {
+  type Extracted,
+  type Found,
+  type WasteSource,
+  wasteAi,
+} from "./adapters.ts";
 import { check } from "./check.ts";
 import { EXPECTED_2026 } from "./expected.ts";
 import { FIXTURES, fixtureFetcher } from "./fixtures.ts";
@@ -136,6 +141,11 @@ function productionDb(zone: string, layout: Layout): Queryable {
   };
 }
 
+/** xAI that must not be called: it fails the test if it is. */
+const unreachable = (async () => {
+  throw new Error("xAI was called");
+}) as unknown as typeof fetch;
+
 /** One run: a fresh Reviews (its holds are per run), the reading, the check. */
 async function readAndCheck(
   fetcher: typeof fetch,
@@ -150,7 +160,14 @@ async function readAndCheck(
     fetcher,
     apiKey: "test-key",
     render: () => TINY_PNG,
-  })({ source, file, body: Buffer.from(zone), doc: file.name, digest });
+  })({
+    source,
+    file,
+    body: Buffer.from(zone),
+    doc: file.name,
+    digest,
+    reviews,
+  });
   const db = productionDb(zone, layout);
   const problems = await check({
     db,
@@ -220,9 +237,9 @@ for (const [name, zone, layout] of CORRECT)
   });
 
 test("the S2 slips: every literal check passes, the review shows September and October, nothing applies", async () => {
-  // S2 on first sight (its own review PRs file), read wrong.
-  process.env.REVIEWS_FILE = path.join(dir, "reviews-slip.json");
   for (const name of ["miasto-s2-slip-r1", "miasto-s2-slip-r2"]) {
+    // S2 on first sight (its own review PRs file), read wrong.
+    process.env.REVIEWS_FILE = path.join(dir, `reviews-${name}.json`);
     const { out, problems, held } = await readAndCheck(
       fixtureFetcher(name),
       "waste:miasto-s2",
@@ -247,12 +264,8 @@ test("the S2 slips: every literal check passes, the review shows September and O
     );
     assert.equal(body.split("**różnica**").length - 1, 2);
   }
-  // One PR per source file, updated for the second run.
-  assert.equal(
-    reviewPrs().filter((p) => p.title.includes("harmonogram-2026-s2.jpg"))
-      .length,
-    1,
-  );
+  // Each slip opened one review PR in its own file.
+  assert.equal(reviewPrs().length, 1);
 });
 
 test("a merged review of the slip, corrected by a person: its days apply, no new PR", async () => {
@@ -273,9 +286,6 @@ test("a merged review of the slip, corrected by a person: its days apply, no new
   writeFileSync(target, stringify(reviewed));
   const count = reviewPrs().length;
   // No call to xAI at all: the merged file replaces the reading.
-  const unreachable = (async () => {
-    throw new Error("xAI was called");
-  }) as unknown as typeof fetch;
   const { out, problems, held } = await readAndCheck(
     unreachable,
     "waste:miasto-s2",
@@ -292,6 +302,58 @@ test("a merged review of the slip, corrected by a person: its days apply, no new
   assert.equal(reviewPrs().length, count);
 });
 
+test("an open review of this sha256: no xAI call, the PR left exactly as it is", async () => {
+  process.env.REVIEWS_FILE = path.join(dir, "reviews.json");
+  const before = readFileSync(process.env.REVIEWS_FILE, "utf8");
+  const { out, problems, held } = await readAndCheck(
+    unreachable,
+    "waste:gmina-s2",
+    "gmina",
+  );
+  assert.equal(out.pending?.state, "open");
+  assert.equal(out.read, undefined);
+  assert.deepEqual(problems, []);
+  assert.equal(held?.blocks, true);
+  assert.match(held?.note ?? "", /^waiting for its review PR: /);
+  assert.equal(readFileSync(process.env.REVIEWS_FILE, "utf8"), before);
+});
+
+test("no reading and no merged review: held, never applied", async () => {
+  process.env.REVIEWS_FILE = path.join(dir, "reviews.json");
+  const before = readFileSync(process.env.REVIEWS_FILE, "utf8");
+  const reviews = new Reviews(http);
+  const zone = "waste:gmina-s3";
+  const { file, digest } = fileOf(zone, "gmina", 3);
+  const out: Extracted = {
+    zoneId: zone,
+    scope: { from: "2026-01-01", to: "2026-12-31" },
+    year: 2026,
+    events: [],
+    listed: [],
+    problems: [],
+    reviewed: false,
+  };
+  const problems = await check({
+    db: productionDb(zone, "gmina"),
+    config,
+    source: SOURCES.gmina,
+    file,
+    digest,
+    out,
+    zoneName: zone,
+    issues,
+    reviews,
+    dryRun: false,
+    runUrl: "",
+  });
+  assert.deepEqual(problems, []);
+  assert.deepEqual(reviews.held(digest), {
+    note: "neither a reading nor a merged review; nothing applies",
+    blocks: true,
+  });
+  assert.equal(readFileSync(process.env.REVIEWS_FILE, "utf8"), before);
+});
+
 test("a rejected review keeps the database; a merged one not checked out yet waits", async () => {
   process.env.REVIEWS_FILE = path.join(dir, "reviews.json");
   const doc = EXPECTED_2026["waste:gmina-s1"].source_doc;
@@ -304,19 +366,12 @@ test("a rejected review keeps the database; a merged one not checked out yet wai
   };
   const count = reviewPrs().length;
   decide("closed");
-  const rejected = await readAndCheck(
-    fixtureFetcher("gmina-s1"),
-    "waste:gmina-s1",
-    "gmina",
-  );
+  // Neither costs an xAI call.
+  const rejected = await readAndCheck(unreachable, "waste:gmina-s1", "gmina");
   assert.equal(rejected.held?.blocks, false);
   assert.match(rejected.held?.note ?? "", /its review was rejected/);
   decide("merged");
-  const merged = await readAndCheck(
-    fixtureFetcher("gmina-s1"),
-    "waste:gmina-s1",
-    "gmina",
-  );
+  const merged = await readAndCheck(unreachable, "waste:gmina-s1", "gmina");
   assert.equal(merged.held?.blocks, true);
   assert.match(merged.held?.note ?? "", /merged .* but not in this checkout/);
   assert.equal(reviewPrs().length, count);

@@ -481,10 +481,20 @@ await step(
 );
 
 await step(
-  "the next run, reviews still open: read again, the same PRs, nothing applied",
+  "the next run, reviews still open: no xAI call, the PRs untouched, nothing applied",
   async () => {
+    const before = JSON.stringify(prs());
+    for (const source of ["gmina", "miasto"])
+      rmSync(join(mock, `${source}-s1-${year}.request.json`));
     await bothHeld(await run());
-    check(prs().length === 2, `PRs: ${prs().length}`);
+    check(
+      ["gmina", "miasto"].every(
+        (source) =>
+          !existsSync(join(mock, `${source}-s1-${year}.request.json`)),
+      ),
+      "a file with an open review was read again",
+    );
+    check(JSON.stringify(prs()) === before, "an open review PR was changed");
   },
 );
 
@@ -706,10 +716,10 @@ await step(
     const members = async () =>
       (await db.query("select count(*)::int as n from zone_members")).rows[0].n;
     const memberCount = await members();
-    // The same file read again, now with 3-go Maja (listed, not in the zone)
-    // instead of Cicha, and one name it gave no id.
-    reply(
-      "miasto",
+    // A new version of the file (its own read, the same PR updated), now
+    // with 3-go Maja (listed, not in the zone) instead of Cicha, and one name
+    // it gave no id.
+    setJpg(
       cityReply(cityRows(), [
         { as_written: "Adama Asnyka", id: "00470" },
         { as_written: "3-go Maja", id: "29830" },
@@ -818,6 +828,21 @@ await step(
     const before = issues().length;
     const events = await snapshot();
     const count = prs().length;
+    // extract-only first: once the dry run opens its review, the file is
+    // not read again.
+    const only = await run(["--extract-only"]);
+    check(
+      only.code === 0 && /All files extracted/.test(only.out),
+      `extract-only on clean readings:\n${only.out}`,
+    );
+    check(prs().length === count, "extract-only opened a review PR");
+    reply("gmina", "Sorry, I cannot read this image.");
+    const bad = await run(["--extract-only"]);
+    check(
+      bad.code === 1 && /reply is not JSON/.test(bad.out),
+      `extract-only did not report the reply:\n${bad.out}`,
+    );
+    reply("gmina", gminaReply(bulky));
     const dry = await run(["--dry-run"]);
     const { gmina } = await lastRuns();
     check(
@@ -831,18 +856,8 @@ await step(
     check((await snapshot()) === events, "a dry run changed events");
     check(issues().length === before, "a dry run opened an issue");
     const after = JSON.stringify(prs());
-    const only = await run(["--extract-only"]);
-    check(
-      only.code === 0 && /All files extracted/.test(only.out),
-      `extract-only on clean readings:\n${only.out}`,
-    );
+    await run(["--extract-only"]);
     check(JSON.stringify(prs()) === after, "extract-only touched a review PR");
-    reply("gmina", "Sorry, I cannot read this image.");
-    const bad = await run(["--extract-only"]);
-    check(
-      bad.code === 1 && /reply is not JSON/.test(bad.out),
-      `extract-only did not report the reply:\n${bad.out}`,
-    );
     // The site goes back to the reviewed second version: read through its
     // merged review (force_extract, as it is settled), the open review of
     // the other version closed.

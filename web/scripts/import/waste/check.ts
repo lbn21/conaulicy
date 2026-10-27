@@ -93,12 +93,28 @@ export const check: Domain["check"] = async ({
       previous,
       anomalies,
     });
+  // Its review PR already exists (adapters.ts did not read it again): the
+  // PR is left exactly as it is.
+  if (out.pending) {
+    const { state, url } = out.pending;
+    if (db)
+      reviews.hold(
+        digest,
+        state === "rejected"
+          ? `its review was rejected (${url}); the database keeps its dates`
+          : state === "merged"
+            ? `its review is merged (${url}) but not in this checkout yet`
+            : `waiting for its review PR: ${url}`,
+        state !== "rejected",
+      );
+    return [];
+  }
   // --extract-only: no database and no review PR; findings are problems.
   if (!db) return [...(out.read?.findings ?? []), ...validate(null)];
   const previous = await lastYear(db, out, rules.counts.minMonths);
 
   // A merged review: a person approved these dates; the date rules apply.
-  if (out.reviewed || !out.read) {
+  if (out.reviewed) {
     reviews.supersede(
       source.id,
       file.name,
@@ -107,25 +123,17 @@ export const check: Domain["check"] = async ({
     );
     return validate(previous);
   }
-
-  // A fresh reading: nothing applies until a person merges its review PR.
-  const { rejected, merged } = reviews.status(source.id, file.name, digest);
-  if (rejected) {
+  // Neither a merged review nor a reading: never applied.
+  if (!out.read) {
     reviews.hold(
       digest,
-      `its review was rejected (${rejected.url}); the database keeps its dates`,
-      false,
-    );
-    return [];
-  }
-  if (merged) {
-    reviews.hold(
-      digest,
-      `its review is merged (${merged.url}) but not in this checkout yet`,
+      "neither a reading nor a merged review; nothing applies",
       true,
     );
     return [];
   }
+
+  // A fresh reading: nothing applies until a person merges its review PR.
   const { layout } = source.extract;
   const { reading, findings, content, model, usage, costUsd, latencyMs } =
     out.read;
@@ -160,6 +168,8 @@ export const check: Domain["check"] = async ({
     blocking: true,
     markdown: [
       "### Odczyt",
+      "",
+      "Dopóki ten plik czeka na przegląd, z całego źródła nie stosuje się nic (także z jego innych plików), aż wszystkie jego przeglądy zostaną scalone.",
       "",
       `Jeden odczyt: **${model}** (xAI, reasoning medium): tokeny ${usage.promptTokens} wejścia, ${usage.completionTokens} wyjścia, ${usage.reasoningTokens} rozumowania; $${costUsd.toFixed(4)}; ${Math.round(latencyMs / 1000)} s. Każdy nowy harmonogram sprawdza człowiek, także gdy wszystkie kontrole przeszły i odczyt zgadza się z bazą: porównaj daty z obrazem.`,
       "",

@@ -128,6 +128,7 @@ if (extractOnly) {
           body,
           doc: file.name,
           digest: sha256(body),
+          reviews,
         });
         const found = [
           ...out.problems,
@@ -379,6 +380,7 @@ async function importSource(source: Source): Promise<Outcome> {
         body,
         doc,
         digest,
+        reviews,
       });
     } catch (error) {
       problems.push(
