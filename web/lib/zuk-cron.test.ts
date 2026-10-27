@@ -176,7 +176,7 @@ async function readsTheRest(w: World) {
   assert.deepEqual(w.aiCalls, []);
 }
 
-test("first run: every new post read, at most four, the rest next run", async () => {
+test("first run: every new post read, at most four a run, the rest deferred", async () => {
   const w = world({ now: EARLIER });
   const summary = await runZuk(deps(w));
   assert.deepEqual(w.aiCalls, [39885, 39872, 39865, 39863]);
@@ -207,6 +207,22 @@ test("first run: every new post read, at most four, the rest next run", async ()
   await runZuk(deps(w));
   assert.deepEqual(w.aiCalls, [39857, 39855, 39766, FOX]);
   assert.equal(byId(w, 39857)?.status, "parsed");
+
+  // Many new posts: still four model calls a run, the rest deferred.
+  const many = Array.from({ length: 10 }, (_, n) => ({
+    ...RECENT[0],
+    id: NEW + n,
+    date: `2026-10-24T0${n}:00:00`,
+  }));
+  const crowd = world({ posts: many });
+  const crowded = await runZuk(deps(crowd));
+  assert.equal(crowded.aiCalls, 4);
+  assert.deepEqual(crowd.aiCalls, [NEW, NEW + 1, NEW + 2, NEW + 3]);
+  // The six deferred: in neither list, no Notice.
+  assert.deepEqual(ids(saved(crowd).active), [NEW, NEW + 1, NEW + 2, NEW + 3]);
+  assert.deepEqual(saved(crowd).seen, []);
+  const view = zukView(saved(crowd), NOW);
+  assert.deepEqual(view.notices, []);
 });
 
 test("past posts: read like any other, their cuts over, seen", async () => {
@@ -241,22 +257,19 @@ test("cuts all over: the parsed post moves to seen on the next write", async () 
 });
 
 test("a file of an older version: the window read afresh, four a run", async () => {
-  for (const version of [1, 2, 3, 4]) {
-    const w = world({ now: EARLIER });
-    w.file = JSON.stringify({
-      version,
-      generatedAt: EARLIER.toISOString(),
-      checkedAt: EARLIER.toISOString(),
-      posts: [],
-    });
-    const summary = await runZuk(deps(w));
-    assert.equal(summary.aiCalls, 4, String(version));
-    assert.deepEqual(w.aiCalls, [39885, 39872, 39865, 39863]);
-    assert.equal(saved(w).version, 5);
-    w.aiCalls = [];
-    await runZuk(deps(w));
-    assert.deepEqual(w.aiCalls, [39857, 39855, 39766, FOX]);
-  }
+  // One older version; which versions parse is zuk-data.test's.
+  const w = world({ now: EARLIER });
+  w.file = JSON.stringify({
+    version: 4,
+    generatedAt: EARLIER.toISOString(),
+    checkedAt: EARLIER.toISOString(),
+    posts: [],
+  });
+  const summary = await runZuk(deps(w));
+  assert.equal(summary.aiCalls, 4, "version 4");
+  assert.deepEqual(w.aiCalls, [39885, 39872, 39865, 39863]);
+  assert.equal(saved(w).version, 5);
+  await readsTheRest(w);
 });
 
 test("an older reader: every post read again, four a run", async () => {
@@ -367,16 +380,6 @@ test("purge: the write fails, nothing purged", async () => {
   assert.deepEqual(w.purges, []);
 });
 
-test("purge: the gmina's site down, nothing written or purged", async () => {
-  const w = world();
-  await cron(w);
-  w.purges = [];
-  w.posts = "down";
-  w.now = new Date(NOW.getTime() + 15 * 60_000);
-  assert.equal((await cron(w)).status, 502);
-  assert.deepEqual(w.purges, []);
-});
-
 test("an edited post is read again", async () => {
   const w = world();
   await runZuk(deps(w));
@@ -451,26 +454,22 @@ test("no XAI_API_KEY: new posts retried, nothing called", async () => {
   assert.ok(saved(w).seen.every((p) => p.reason === AI_UNAVAILABLE));
 });
 
-test("the gmina's site down: 502, the old file and checkedAt untouched", async () => {
+test("the gmina's site down: 502, the old file and checkedAt untouched, nothing purged", async () => {
   const w = world();
-  await runZuk(deps(w));
+  await cron(w);
   const before = w.file;
   const checked = saved(w).checkedAt;
   w.writes = [];
+  w.purges = [];
   w.posts = "down";
   w.now = new Date(NOW.getTime() + 2 * 3600_000);
-  const response = await handleZukCron(
-    new Request("https://conaulicy.pl/api/cron/zuk", {
-      headers: { authorization: `Bearer ${SECRET}` },
-    }),
-    SECRET,
-    deps(w),
-  );
+  const response = await cron(w);
   assert.equal(response.status, 502);
   assert.deepEqual(await response.json(), { error: "source unavailable" });
   assert.equal(w.writes.length, 0);
   assert.equal(w.file, before);
   assert.equal(saved(w).checkedAt, checked);
+  assert.deepEqual(w.purges, []);
 });
 
 test("the gmina's site answers with something else: the same", async () => {
@@ -767,23 +766,6 @@ test("the districts change: only posts with rejected items are read again", asyn
   clean.placesLoads = 0;
   await runZuk(deps(clean));
   assert.equal(clean.placesLoads, 0);
-});
-
-test("many new posts: still four model calls a run, the rest deferred", async () => {
-  const many = Array.from({ length: 10 }, (_, n) => ({
-    ...RECENT[0],
-    id: NEW + n,
-    date: `2026-10-24T0${n}:00:00`,
-  }));
-  const w = world({ posts: many });
-  const summary = await runZuk(deps(w));
-  assert.equal(summary.aiCalls, 4);
-  assert.deepEqual(w.aiCalls, [NEW, NEW + 1, NEW + 2, NEW + 3]);
-  // The six deferred: in neither list, no Notice.
-  assert.deepEqual(ids(saved(w).active), [NEW, NEW + 1, NEW + 2, NEW + 3]);
-  assert.deepEqual(saved(w).seen, []);
-  const view = zukView(saved(w), NOW);
-  assert.deepEqual(view.notices, []);
 });
 
 test("40 posts, one live: a small file, one active", async () => {

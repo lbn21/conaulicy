@@ -73,7 +73,7 @@ test("their number and error variants", () => {
   assert.ok(!variant("/adres/X/smieci"));
 });
 
-test("a valid ?nr= becomes a path, for the street page and a module", () => {
+test("a valid ?nr= becomes a path, for the street page and a module; any other, the error variant", () => {
   assert.deepEqual(
     NUMBER_REWRITES.map(({ source, destination }) => [source, destination]),
     [
@@ -94,9 +94,7 @@ test("a valid ?nr= becomes a path, for the street page and a module", () => {
       assert.ok(!value.test(nr), nr);
     }
   }
-});
-
-test("any other ?nr= goes to the page's own error variant", () => {
+  // Any other ?nr= goes to the page's own error variant.
   assert.equal(numberErrorPath("/adres/X"), "/adres/X/numer");
   assert.equal(numberErrorPath("/adres/X/"), "/adres/X/numer");
   assert.equal(numberErrorPath("/adres/X/smieci"), "/adres/X/smieci/numer");

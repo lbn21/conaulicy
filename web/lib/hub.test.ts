@@ -56,7 +56,7 @@ test("Polish plurals for the count", () => {
   ]);
 });
 
-test("checked line: a day alone, an instant with its Warsaw time", () => {
+test("checked line: a day alone, an instant with its Warsaw time, over midnight and DST", () => {
   assert.equal(
     checkedLine("2026-10-23"),
     "Ostatnio sprawdziliśmy: 23 października",
@@ -71,4 +71,32 @@ test("checked line: a day alone, an instant with its Warsaw time", () => {
     "Ostatnio sprawdziliśmy: 25 października, 15:42",
   );
   assert.equal(checkedLine(null), null);
+  const line = (iso: string) => checkedLine(new Date(iso));
+  // Summer time until 3:00 on 25 Oct: midnight is 22:00 UTC the day before.
+  assert.equal(
+    line("2026-10-24T21:59:00Z"),
+    "Ostatnio sprawdziliśmy: 24 października, 23:59",
+  );
+  assert.equal(
+    line("2026-10-24T22:00:00Z"),
+    "Ostatnio sprawdziliśmy: 25 października, 0:00",
+  );
+  // 2:30 happens twice: CEST (0:30 UTC), then CET (1:30 UTC).
+  assert.equal(
+    line("2026-10-25T00:30:00Z"),
+    "Ostatnio sprawdziliśmy: 25 października, 2:30",
+  );
+  assert.equal(
+    line("2026-10-25T01:30:00Z"),
+    "Ostatnio sprawdziliśmy: 25 października, 2:30",
+  );
+  // From then on, CET: midnight is 23:00 UTC.
+  assert.equal(
+    line("2026-10-25T22:59:00Z"),
+    "Ostatnio sprawdziliśmy: 25 października, 23:59",
+  );
+  assert.equal(
+    line("2026-10-25T23:00:00Z"),
+    "Ostatnio sprawdziliśmy: 26 października, 0:00",
+  );
 });
