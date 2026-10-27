@@ -7,6 +7,7 @@ import { plainText, readPost, type ZukPost } from "./zuk.ts";
 import type { AiItem, AiResult } from "./zuk-ai.ts";
 import {
   AI_ITEM,
+  housesOf,
   PLACES,
   POST_39885_EDITED,
   READINGS,
@@ -91,11 +92,8 @@ test("real items: all 24 posts, every place-day right, none wrong", () => {
             .filter((s) => s.localityId === localityId)
             .map((s) => s.id),
         ];
-    // The note names the part ("Podłęże od numeru 44 do numeru 92"), so
-    // the houses are not read: part of Załuże, never wider.
-    const read = id === 39885 && localityId === "0606464" ? "unknown" : houses;
     for (const place of places)
-      want.add([id, date, start, end, place, read].join(" "));
+      want.add([id, date, start, end, place, houses].join(" "));
   }
   assert.deepEqual([...got].sort(), [...want].sort());
   assert.equal(TRUTH.length, 117);
@@ -180,11 +178,14 @@ test("real 34394: bare Dąbrowa is the village, Krowica Lasowa kept", () => {
   });
 });
 
-test("real 39885: Załuże–Podłęże is part of Załuże, the part in the note, no alias", () => {
+test("real 39885: Załuże–Podłęże is part of Załuże, its houses 44–92, no alias", () => {
   const zaluze = cuts(post(39885)).find(
     (d) => d.uid === "zuk-39885-2026-10-28-0606464",
   );
-  assert.deepEqual(zaluze?.scope, { type: "unknown" });
+  assert.deepEqual(zaluze?.scope, {
+    type: "ranges",
+    ranges: [{ from: "44", to: "92" }],
+  });
   assert.equal(zaluze?.note, "Podłęże od numeru 44 do numeru 92");
   assert.equal(zaluze?.where, "Załuże");
 });
@@ -287,6 +288,7 @@ test("a district: its streets, each its stretch; the note limits them all", () =
         street_verbatim: "osiedle Mazury",
         note: null,
         ...AI_ITEM,
+        date_verbatim: "2.09.2026r.",
       },
     ],
   };
@@ -361,7 +363,11 @@ test("real 39699: the hamlet in its bracket is its own listed part", () => {
 
 test("a date or time the text does not have makes a Notice", () => {
   const ai = reading(39863);
-  ai.items[0] = { ...ai.items[0], date: "2026-10-21" };
+  ai.items[0] = {
+    ...ai.items[0],
+    date: "2026-10-21",
+    date_verbatim: "21.10.2026",
+  };
   assert.deepEqual(readPost(post(39863), ai, PLACES, CHECKED), {
     status: "notice",
     reason: "item 1: date",
@@ -486,6 +492,8 @@ function readOne(
         end: "16:00",
         kind: "planned",
         ...AI_ITEM,
+        date_verbatim: "2.09.2026r.",
+        houses: housesOf(item.note),
         ...item,
       },
     ],

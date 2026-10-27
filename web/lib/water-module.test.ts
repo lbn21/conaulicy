@@ -402,6 +402,31 @@ test("house number: one trace line when a cut was left out", () => {
   assert.equal(waterTrace(waterAt(sobieskiego("999"), only(odd))), null);
 });
 
+test("house number: 39885's Załuże, Podłęże 44–92, by its houses", () => {
+  const zaluze = (givenNr: string | null) => waterAt({ ...ZALUZE, givenNr });
+  const text = (nr: string | null) => waterAlerts(zaluze(nr))[0]?.text;
+  // 50 is inside: the cut, certain.
+  assert.deepEqual(
+    zaluze("50").outages.map((d) => d.uid),
+    ["zuk-39885-2026-10-28-0606464"],
+  );
+  assert.equal(
+    text("50"),
+    "przerwa w dostawie – środa, 28 października, 8:00–16:00.",
+  );
+  // 10 is outside: left out, with the trace line.
+  assert.deepEqual(zaluze("10").outages, []);
+  assert.equal(
+    waterTrace(zaluze("10")),
+    "Gmina zapowiedziała też przerwę w tej miejscowości, ale według komunikatu nie obejmuje nr 10.",
+  );
+  // No number: part of the village.
+  assert.equal(
+    text(null),
+    "przerwa w dostawie w części miejscowości – środa, 28 października, 8:00–16:00.",
+  );
+});
+
 test("alert: the nearest cut, an absolute date, the subpage, the source", () => {
   assert.deepEqual(waterAlerts(waterAt(ZUKI)), [
     {

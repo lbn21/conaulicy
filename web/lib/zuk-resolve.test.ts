@@ -8,10 +8,10 @@ import { DISTRICTS } from "./districts-seed.ts";
 import { PLACES } from "./zuk-fixture.ts";
 import { ZUK_PLACES } from "./zuk-places.generated.ts";
 import {
+  dayCheck,
   type GateItem,
   gateItem,
   gateText,
-  guardDate,
   Listed,
 } from "./zuk-resolve.ts";
 
@@ -25,7 +25,7 @@ function gate(
   {
     listed = ALL,
     implied = null as string | null,
-    published = null as string | null,
+    published = "2026-10-11",
   } = {},
 ) {
   return gateItem(
@@ -33,6 +33,7 @@ function gate(
     gateText("Przerwa w dostawie wody", text),
     {
       date: "2026-10-12",
+      date_verbatim: "12.10.2026",
       locality: null,
       locality_verbatim: null,
       street: null,
@@ -49,93 +50,57 @@ function gate(
 
 const reason = (r: ReturnType<typeof gate>) => (r.kept ? null : r.reason);
 
-test("day: D.M, D <month>, inside a-b.M, a do b.M, a.M - b.M", () => {
-  const t = (s: string) => s.toLowerCase();
-  assert.equal(guardDate("2026-10-12", t("w dniu 12.10.2026r.")), null);
-  assert.equal(guardDate("2026-10-02", t("w dniu 02.10")), null);
-  assert.equal(guardDate("2026-06-08", t("w dniu 8 czerwca 2026 r.")), null);
-  assert.equal(guardDate("2026-10-27", t("w dniach 26-29.10.2026")), null);
-  assert.equal(guardDate("2026-10-27", t("od 26 do 29.10.2026")), null);
-  assert.equal(guardDate("2026-10-27", t("od 26.10 - 29.10.2026")), null);
+test("day: date_verbatim, the post's words for it, in the post", () => {
+  const day = (date: string, words: string | null, text: string) =>
+    dayCheck(
+      date,
+      words,
+      gateText("Przerwa w dostawie wody", text),
+      "2026-10-11",
+    );
+  assert.equal(day("2026-10-12", "12.10", "W dniu 12.10 brak wody."), null);
   assert.equal(
-    guardDate("2026-10-13", t("w dniu 12.10.2026")),
-    "13.10 not in text",
-  );
-  // Both ends full dates (post 23860): accepted since task 114b.
-  assert.equal(guardDate("2023-11-07", t("od 06.11.2023 do 10.11.2023")), null);
-});
-
-test("day: a range of two full dates, 'do' or a dash, optional 'od'", () => {
-  for (const text of [
-    "od 06.11.2023 do 10.11.2023",
-    "06.11.2023 do 10.11.2023",
-    "6.11.2023-10.11.2023",
-    "od 6.11.2023 - 10.11.2023r.",
-    "od 28.10.2023 do 10.11.2023",
-  ])
-    assert.equal(guardDate("2023-11-07", text), null, text);
-  // Both ends are in the range.
-  assert.equal(guardDate("2023-11-06", "od 06.11.2023 do 10.11.2023"), null);
-  assert.equal(guardDate("2023-11-10", "od 06.11.2023 do 10.11.2023"), null);
-  // A day outside it, a reversed range, another year.
-  assert.equal(
-    guardDate("2023-11-11", "od 06.11.2023 do 10.11.2023"),
-    "11.11 not in text",
-  );
-  assert.equal(
-    guardDate("2023-11-07", "od 10.11.2023 do 06.11.2023"),
-    "7.11 not in text",
-  );
-  assert.equal(
-    guardDate("2024-11-07", "od 06.11.2023 do 10.11.2023"),
-    "7.11 not in text",
-  );
-  // An en dash with spaces, through the gate (the post's dashes become "-").
-  const r = gate("Brak wody od 06.11.2023 – 10.11.2023 w miejscowości Opaka.", {
-    date: "2023-11-07",
-    locality: "Opaka",
-    locality_verbatim: "Opaka",
-  });
-  assert.equal(r.kept, true, JSON.stringify(r));
-});
-
-test("day: a year written with the day must be the item's", () => {
-  assert.equal(
-    guardDate("2026-10-12", "w dniu 12.10.2025r."),
-    "12.10 not in text",
-  );
-  assert.equal(guardDate("2026-10-12", "w dniu 12.10.2026r."), null);
-  // No year written: as before.
-  assert.equal(guardDate("2026-10-12", "w dniu 12.10"), null);
-  assert.equal(
-    guardDate("2026-06-08", "w dniu 8 czerwca 2025 r."),
-    "8.6 not in text",
-  );
-  assert.equal(guardDate("2026-06-08", "w dniu 8 czerwca"), null);
-  assert.equal(
-    guardDate("2026-10-27", "w dniach 26-29.10.2025"),
-    "27.10 not in text",
-  );
-  assert.equal(
-    guardDate("2026-10-27", "od 26.10 - 29.10.2025"),
-    "27.10 not in text",
-  );
-  // The right year elsewhere still counts.
-  assert.equal(guardDate("2026-10-12", "12.10.2025 i 12.10.2026"), null);
-});
-
-test("day: a weekday in brackets must agree; no such day", () => {
-  assert.equal(
-    guardDate("2026-10-12", "w dniu 12.10.2026 (wtorek)"),
-    "weekday mismatch 2026-10-12",
-  );
-  assert.equal(
-    guardDate("2026-10-12", "w dniu 12.10.2026r. (poniedziałek)"),
+    day("2026-06-08", "8 czerwca", "W dniu 8 czerwca brak wody."),
     null,
   );
-  assert.equal(guardDate("2026-10-12", "12.10.2026r.(poniedziałek)"), null);
-  assert.equal(guardDate("2026-02-30", "30.02.2026"), "bad date");
-  assert.equal(guardDate("30.10.2026", "30.10.2026"), "bad date");
+  assert.equal(
+    day("2026-10-12", "12.10.2026r.", "W dniu 12.10.2026r. brak wody."),
+    null,
+  );
+  assert.equal(
+    day("2026-06-08", "8  CZERWCA 2026", "w dniu 8 czerwca 2026 r."),
+    null,
+    "case and spaces aside",
+  );
+  // A day inside a written range: the range's words.
+  assert.equal(
+    day("2026-10-27", "26-29.10.2026", "W dniach 26–29.10.2026 brak wody."),
+    null,
+  );
+  assert.equal(
+    day("2026-10-12", "13.10.2026", "W dniu 12.10.2026 brak wody."),
+    "date_verbatim not in post",
+  );
+  assert.equal(
+    day("2026-10-12", "", "W dniu 12.10 brak wody."),
+    "date_verbatim not in post",
+  );
+  // Which day the words mean is the model's: no day-number check.
+  assert.equal(day("2026-10-13", "12.10", "W dniu 12.10 brak wody."), null);
+});
+
+test("day: none written only on the publish day; a real date", () => {
+  const text = gateText("Awaria", "Awaria sieci, brak wody: Opaka.");
+  assert.equal(dayCheck("2026-10-12", null, text, "2026-10-12"), null);
+  assert.equal(
+    dayCheck("2026-10-13", null, text, "2026-10-12"),
+    "no day written, not the publish day",
+  );
+  assert.equal(
+    dayCheck("2026-02-30", "30.02", "30.02", "2026-02-28"),
+    "bad date",
+  );
+  assert.equal(dayCheck("30.10.2026", null, text, "30.10.2026"), "bad date");
 });
 
 test("locality: a listed name, exactly; a part as 'Name (Village)'", () => {
@@ -315,39 +280,19 @@ test("note: one literal piece of the post", () => {
   );
 });
 
-test("day: not written, or a weekday that disagrees, is 'date' first", () => {
+test("day: words not in post are 'date', first", () => {
   const opaka = { locality: "Nowe Sioło", locality_verbatim: "Opaka" };
+  const text = "W dniu 12.10.2026 brak wody: Opaka.";
   assert.equal(
-    reason(gate("W dniu 13.10.2026 brak wody: Opaka.", opaka)),
+    reason(gate(text, { ...opaka, date_verbatim: "13.10.2026" })),
     "date",
   );
-  assert.equal(
-    reason(gate("W dniu 12.10.2026 (wtorek) brak wody: Opaka.", opaka)),
-    "date",
-  );
-});
-
-test("day: a post that writes no day speaks of its publish day", () => {
-  const opaka = { locality: "Opaka", locality_verbatim: "Opaka" };
-  const text = "Awaria sieci, brak wody: Opaka.";
-  assert.equal(reason(gate(text, opaka, { published: "2026-10-12" })), null);
-  // Any other unwritten day is still dropped.
-  assert.equal(reason(gate(text, opaka, { published: "2026-10-11" })), "date");
-  assert.equal(
-    reason(
-      gate(text, { ...opaka, date: "2026-10-13" }, { published: "2026-10-12" }),
-    ),
-    "date",
-  );
-  // A day written with a weekday that disagrees is still dropped.
-  assert.equal(
-    reason(
-      gate("W dniu 12.10.2026 (wtorek) brak wody: Opaka.", opaka, {
-        published: "2026-10-12",
-      }),
-    ),
-    "date",
-  );
+  assert.equal(reason(gate(text, opaka)), "locality not listed");
+  // No words: kept only on the publish day.
+  const ok = { locality: "Opaka", locality_verbatim: "Opaka" };
+  const none = { ...ok, date_verbatim: null };
+  assert.equal(reason(gate(text, none, { published: "2026-10-12" })), null);
+  assert.equal(reason(gate(text, none)), "date");
 });
 
 test("listed names: every locality, street and district of the list", () => {

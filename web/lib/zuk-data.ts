@@ -71,11 +71,12 @@ export const ZUK_FILE_VERSION = 5;
  * 114b), 4 the omission guard per dated line (task 152), 5 the town's
  * districts (the gazetteer, task 151), 6 the shared prompt and the gate of
  * certain checks only (task 182), 7 its rules' revision 2, 8 rules
- * revision 5, reasoning medium and the publish day (task 184c); raise it
- * when they change (the prompt is not part of the key), and every post is
+ * revision 5, reasoning medium and the publish day (task 184c), 9
+ * date_verbatim and houses, a literal day and house gate (task 186); raise
+ * it when they change (the prompt is not part of the key), and every post is
  * read again.
  */
-export const ZUK_READER = 8;
+export const ZUK_READER = 9;
 
 /** Older than this, the data may be out of date: show the source link. */
 export const STALE_MS = 60 * 60_000;

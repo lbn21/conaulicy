@@ -6,9 +6,7 @@
 // place a word means, a qualifier, a doubt) is the model's
 // (lib/water-prompt.ts). An item is kept only if every check passes, in
 // order; the first that fails is the reason (Reason):
-// 1. the day is written in the post (D.M, "D <month>", inside "a-b.M",
-//    "a do b.M", "a.M - b.M", "a-b <month>", "z a na b <month>", a range
-//    of two full dates), a year and a weekday in brackets after it agreeing;
+// 1. date_verbatim is in the post; none only for a day that is the publish day;
 // 2. locality is a listed name of the source's list (Listed), exactly;
 // 3. locality_verbatim is in the post; none only for the locality the
 //    source's posts concern without naming it (`implied`);
@@ -62,6 +60,7 @@ export type Reason =
 /** What the gate reads of an item (lib/zuk-ai.ts AiItem). */
 export type GateItem = {
   date: string;
+  date_verbatim: string | null;
   locality: string | null;
   locality_verbatim: string | null;
   street: string | null;
@@ -101,35 +100,17 @@ export const inPost = (words: string, text: string) =>
 
 // ---------- the day ----------
 
-const WEEKDAYS = [
-  "poniedziałek",
-  "wtorek",
-  "środa",
-  "czwartek",
-  "piątek",
-  "sobota",
-  "niedziela",
-];
-export const MONTHS = [
-  "stycznia",
-  "lutego",
-  "marca",
-  "kwietnia",
-  "maja",
-  "czerwca",
-  "lipca",
-  "sierpnia",
-  "września",
-  "października",
-  "listopada",
-  "grudnia",
-];
-
-/** Null if the day is written in the post (gateText), else why. */
-const dayInText = (date: string, text: string) => guardDate(date, norm(text));
-
-/** Null if the day is written in `txt` (norm of the post), else why. */
-export function guardDate(date: string, txt: string): string | null {
+/**
+ * Null if the item's day is certain, else why: its words (`verbatim`) are
+ * in the post (gateText), or it writes none and the day is the publish
+ * day (`published`, YYYY-MM-DD). Which day the words mean is the model's.
+ */
+export function dayCheck(
+  date: string,
+  verbatim: string | null,
+  text: string,
+  published: string,
+): string | null {
   const day = /^\d{4}-\d{2}-\d{2}$/.test(date)
     ? new Date(`${date}T12:00:00Z`)
     : null;
@@ -139,78 +120,10 @@ export function guardDate(date: string, txt: string): string | null {
     day.toISOString().slice(0, 10) !== date
   )
     return "bad date";
-  const D = day.getUTCDate();
-  const M = day.getUTCMonth() + 1;
-  const weekday = (day.getUTCDay() + 6) % 7;
-  const Y = date.slice(0, 4);
-  // A year written with the day must be the item's year (task 114b).
-  const ofYear = (m: RegExpMatchArray) => m[1] === undefined || m[1] === Y;
-  const hits = [
-    new RegExp(`(?<!\\d)0?${D}\\.0?${M}(?:\\.(\\d{4}))?(?!\\d)`, "g"),
-    new RegExp(`(?<!\\d)0?${D}\\s+${MONTHS[M - 1]}(?:\\s+(\\d{4}))?`, "g"),
-  ]
-    .flatMap((p) => [...txt.matchAll(p)])
-    .filter(ofYear);
-  if (hits.length > 0) {
-    for (const h of hits) {
-      const named = /^[.\s]*\d{0,4}\s*r?\.?\s*\(([^)]*)\)/.exec(
-        txt.slice(h.index + h[0].length),
-      )?.[1];
-      const n = named?.trim() ?? "";
-      if (WEEKDAYS.includes(n) && WEEKDAYS.indexOf(n) !== weekday)
-        return `weekday mismatch ${date}`;
-    }
-    return null;
-  }
-  const within = (re: RegExp) =>
-    [...txt.matchAll(re)].some(
-      ([, a, b, y]) =>
-        Number(a) <= D && D <= Number(b) && (y === undefined || y === Y),
-    );
-  if (
-    within(
-      new RegExp(
-        `(?<!\\d)(\\d{1,2})\\s*(?:-|do)\\s*(\\d{1,2})\\.0?${M}(?:\\.(\\d{4}))?(?!\\d)`,
-        "g",
-      ),
-    ) ||
-    within(
-      new RegExp(
-        `(?<!\\d)(\\d{1,2})\\.0?${M}\\.?\\s*(?:-|do|i)\\s*(\\d{1,2})\\.0?${M}(?:\\.(\\d{4}))?(?!\\d)`,
-        "g",
-      ),
-    ) ||
-    within(
-      new RegExp(
-        `(?<!\\d)(\\d{1,2})\\s*(?:-|do|na)\\s*(\\d{1,2})\\s+${MONTHS[M - 1]}(?:\\s+(\\d{4}))?`,
-        "g",
-      ),
-    ) ||
-    inFullRange(date, txt)
-  )
-    return null;
-  return `${D}.${M} not in text`;
-}
-
-const FULL = String.raw`(\d{1,2})\.(\d{1,2})\.(\d{4})`;
-/** "(od) D.M.YYYY do D.M.YYYY", "D.M.YYYY - D.M.YYYY" (dashes are "-"). */
-const FULL_RANGE = new RegExp(
-  `(?<!\\d)(?:od\\s+)?${FULL}\\s*(?:do|-)\\s*${FULL}(?!\\d)`,
-  "g",
-);
-
-/**
- * The day is inside a range of two full dates (task 114b:
- * "od 06.11.2023 do 10.11.2023"), both ends included; a reversed range
- * holds no day.
- */
-function inFullRange(date: string, txt: string): boolean {
-  const iso = (d: string, m: string, y: string) =>
-    `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
-  return [...txt.matchAll(FULL_RANGE)].some(([, d1, m1, y1, d2, m2, y2]) => {
-    const [from, to] = [iso(d1, m1, y1), iso(d2, m2, y2)];
-    return from <= date && date <= to;
-  });
+  if (verbatim === null)
+    return date === published ? null : "no day written, not the publish day";
+  if (!inPost(verbatim, text)) return "date_verbatim not in post";
+  return null;
 }
 
 // ---------- the list ----------
@@ -290,8 +203,8 @@ export function gateItem(
   listed: Listed,
   text: string,
   item: GateItem,
-  implied: string | null = null,
-  published: string | null = null,
+  implied: string | null,
+  published: string,
 ): GateResult {
   let locality: ZukLocality | null = null;
   const drop = (reason: Reason): GateResult => ({
@@ -300,11 +213,7 @@ export function gateItem(
     locality,
   });
   locality = (item.locality && listed.localities.get(item.locality)) || null;
-  const unwritten = dayInText(item.date, text);
-  if (
-    unwritten &&
-    !(item.date === published && unwritten.endsWith(" not in text"))
-  )
+  if (dayCheck(item.date, item.date_verbatim, text, published))
     return drop("date");
   if (!locality) return drop("locality not listed");
   const lv = item.locality_verbatim;
