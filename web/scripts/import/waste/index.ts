@@ -1,5 +1,5 @@
-// The waste schedule domain: the gmina's PDFs and the city's JPGs
-// (docs/import.md).
+// The waste schedule domain: the gmina's PDFs and the city's JPGs, each
+// read once by Grok and reviewed by a person (docs/import.md).
 import { transform } from "../../lib/import-data.ts";
 import type { Domain, Extractor } from "../core/domain.ts";
 import type { EventRow } from "../core/events.ts";
@@ -48,6 +48,8 @@ export const waste: Domain = {
       !/\(\?<year>/.test(s.detect.file)
     )
       errors.push(`${s.id}.detect.file: needs (?<sector>…) and (?<year>…)`);
+    if (!["gmina", "miasto"].includes(s.extract.layout))
+      errors.push(`${s.id}.extract.layout: gmina or miasto`);
     if (s.detect.type === "wp-media" && !s.detect.parent)
       errors.push(`${s.id}.detect: wp-media needs parent`);
     if (

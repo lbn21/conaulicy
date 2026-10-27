@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=./sources.schema.json
 #
 # THE configuration of conaulicy.pl's data: sources, their public pages, how
-# changes are detected, read and checked, the AI models, alert rules, the
+# changes are detected, read and checked, alert rules, the
 # source archive, and the site's feature links. Everything else is derived
 # from this file and CI fails on drift (npm run config:check):
 # docs/data/sources.md, web/lib/config.generated.ts (site). Schema:
@@ -35,22 +35,6 @@ domains:
       # compared only when last year has data in at least minMonths months.
       counts: { factor: 0.5, slack: 2, minMonths: 10 }
 
-vision:
-  # Cursor CLI build installed by the workflow (downloads.cursor.com/lab/<cli>).
-  cli: 2026.10.19-6bbf2c4
-  # Two independent reads by two vendors, each a fresh agent in its own
-  # workspace; dates apply only if they agree 100%. Distinct ids; never
-  # "auto" or a -fast model.
-  passes:
-    - { id: grok-a, vendor: xai, model: grok-4.7-medium }
-    - { id: opus, vendor: anthropic, model: claude-opus-5-5-medium }
-  # When the passes disagree, a review PR proposes this pass's dates
-  # (docs/import.md, "Review pull requests").
-  reviewFrom: opus
-  # The only pass whose street list is checked against the database; the
-  # other passes count for dates, sector and year only (docs/import.md).
-  streetCheckFrom: opus
-
 archive:
   bucket: conaulicy-sources-aaed02
   region: eu-central-1
@@ -83,11 +67,14 @@ sources:
       # Search, newest first: a new yearly post shows up here.
       - url: https://www.gminalubaczow.pl/?s=harmonogram+odbioru&orderby=date&order=DESC
         links: '^https://www\.gminalubaczow\.pl/\d{4}/\d{2}/\d{2}/harmonogram-odbioru-odpadow[^/]*/$'
-    extract: { type: gmina-pdf-text }
+    # Grok 4.7 (xAI) reads the PDF rendered to one PNG, once; every new
+    # schedule goes to a review PR (docs/import.md). The prompt and its
+    # list of villages: web/scripts/import/waste/prompts.ts.
+    extract: { type: waste-ai, layout: gmina }
     waste:
       gmina: { id: lubaczow-gmina, teryt: "1809042" }
       zone: waste:gmina-s{sector}
-      validate: [year, weekday, counts, villages]
+      validate: [year, weekday, counts, members]
 
   - id: miasto
     domain: waste
@@ -105,18 +92,12 @@ sources:
         links: '^https://czystylubaczow\.info/wp-content/uploads/.+(?<!-\d+x\d+)\.(jpe?g|png|pdf)$'
       - url: https://czystylubaczow.info/?s=harmonogram&orderby=date&order=DESC
         links: '^https://czystylubaczow\.info/[^?#]*harmonogram[^?#]*/$'
-    # No text layer: the vision passes above; applied only if they agree 100%.
-    extract: { type: miasto-jpg-vision }
+    # The JPG as is, read once by Grok; always a review PR (as above).
+    extract: { type: waste-ai, layout: miasto }
     waste:
       gmina: { id: lubaczow-miasto, teryt: "1809011" }
       zone: waste:miasto-s{sector}
-      validate: [year, weekday, counts, streets]
-      aliases:
-        Monte Casino: Monte Cassino
-        Józefa Conrada-Korzeniowskiego: Józefa Conrad-Korzeniowskiego
-        Jagiellonów: Osiedle Jagiellonów
-        Gen. Józefa Hallera: gen. Hallera
-        Mjr. Henryka Hubala: Mjr. Hubala
+      validate: [year, weekday, counts, members]
 
 # The initial archive (Oct 2026), in the private bucket under
 # sources/<origin>/<fetched>/<file>; `npm run sources:pull` fetches it.

@@ -1,5 +1,5 @@
 // Review pull requests (docs/import.md, "Review pull requests"): when a file
-// needs a person (e.g. vision passes that disagree), its domain opens one PR
+// needs a person (e.g. every new waste schedule), its domain opens one PR
 // per source file instead of an issue.
 // The PR's diff is a reviewed-data file, etl/review/<source>/<stem>.yaml,
 // pre-filled by the domain: merging it approves it (the next run uses it for
@@ -214,7 +214,7 @@ export class Reviews {
     const isImage = /\.(jpe?g|png|gif|webp)$/i.test(req.file.name);
     const body = [
       req.blocking
-        ? `Cześć! Import nie jest pewny odczytu pliku **${req.file.name}** (${req.source.name}) i niczego z niego nie zastosował. Potrzebne jest Twoje spojrzenie.`
+        ? `Cześć! Import odczytał plik **${req.file.name}** (${req.source.name}) i niczego z niego nie zastosował. Potrzebne jest Twoje spojrzenie.`
         : `Cześć! Daty z pliku **${req.file.name}** (${req.source.name}) się zgadzają i idą zwykłą drogą. Coś jednak warto sprawdzić:`,
       "",
       `- Plik na stronie źródła: ${req.file.url}`,

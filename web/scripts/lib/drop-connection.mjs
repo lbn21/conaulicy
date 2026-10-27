@@ -19,7 +19,7 @@ pg.Client.prototype.query = async function (text, ...rest) {
     ]);
     await killer.end();
     // Let the closed socket arrive first ('error' event), as it would after
-    // minutes of vision passes.
+    // minutes of the model's reading.
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
   return query.call(this, text, ...rest);

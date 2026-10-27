@@ -1,7 +1,7 @@
-// Made-up schedules for scripts/check-import-run.mjs: a gmina PDF with
-// a real text layer (pdfkit, laid out like the published ones, so the real
-// pdftotext parser runs) and the two vision readings of a city JPG. Never
-// real data.
+// Made-up schedules for scripts/check-import-run.mjs: a one-page gmina PDF
+// laid out like the published ones (pdfkit), which the import renders with
+// pdftoppm for Grok (whose reply the e2e mocks), and the dates per row for
+// those replies. Never real data.
 import path from "node:path";
 import PDFDocument from "pdfkit";
 import { MONTHS } from "../import/waste/lib.ts";
@@ -28,6 +28,15 @@ export function fortnightly(
   return months;
 }
 
+/** The PDF's bytes, once doc.end() is called. */
+export function pdfBytes(doc: PDFKit.PDFDocument): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  doc.on("data", (c: Buffer) => chunks.push(c));
+  return new Promise<Buffer>((resolve) =>
+    doc.on("end", () => resolve(Buffer.concat(chunks))),
+  );
+}
+
 /** A gmina-style PDF: places in the left column, three date columns. */
 export function gminaPdf(
   places: string[],
@@ -41,11 +50,7 @@ export function gminaPdf(
     info: { CreationDate: fixed, ModDate: fixed },
   });
   doc.registerFont("r", FONT).font("r").fontSize(9);
-  const chunks: Buffer[] = [];
-  doc.on("data", (c: Buffer) => chunks.push(c));
-  const done = new Promise<Buffer>((resolve) =>
-    doc.on("end", () => resolve(Buffer.concat(chunks))),
-  );
+  const done = pdfBytes(doc);
   const x = [30, 260, 400, 540, 680];
   let y = 40;
   const line = (cells: string[]) => {
@@ -64,7 +69,11 @@ export function gminaPdf(
   const left = places.join(", ");
   MONTHS.forEach((month, i) => {
     const cell = (days: number[]) => (days.length ? days.join(",") : "-");
-    line([i === 0 ? left : "", month, ...rows.map((r) => cell(r[i]))]);
+    line([
+      i === 0 ? left : "",
+      month.toUpperCase(),
+      ...rows.map((r) => cell(r[i])),
+    ]);
   });
   line(["ODPADY WYSTAWIAMY DO GODZ. 6:00 – WSZYSTKIE FRAKCJE"]);
   doc.end();

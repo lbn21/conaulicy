@@ -1,5 +1,5 @@
 // Loads etl/sources.yaml, the one configuration (sources, public pages,
-// detection, models, thresholds, alerts, archive, site features),
+// detection, extraction, thresholds, alerts, archive, site features),
 // and checks it against etl/sources.schema.json plus the rules a schema
 // cannot express (the core's, and each source's domain's). Everything derived
 // from it is in scripts/config-sync.ts. Each domain's own settings
@@ -27,7 +27,8 @@ export type Source = {
   /** The detector by type, with its own settings (typed by the domain). */
   detect: { type: string } & Record<string, unknown>;
   watch?: Array<{ url: string; links: string; ignore?: string[] }>;
-  extract: { type: string };
+  /** The extractor by type, with its own settings (typed by the domain). */
+  extract: { type: string } & Record<string, unknown>;
 };
 
 export type Config = {
@@ -43,14 +44,6 @@ export type Config = {
   };
   /** Each domain's settings; coverageMinDays opts it in to the dead-man switch. */
   domains: Record<string, { coverageMinDays?: number }>;
-  vision: {
-    cli: string;
-    passes: Array<{ id: string; vendor: string; model: string }>;
-    /** The pass whose reading pre-fills a review PR's reviewed-data file. */
-    reviewFrom: string;
-    /** The only pass whose list of what the file covers the domain checks. */
-    streetCheckFrom: string;
-  };
   archive: { bucket: string; region: string; role: string };
   sources: Source[];
   archived: Array<{
@@ -147,12 +140,6 @@ export function configErrors(config: Config): string[] {
   const errors: string[] = [];
   const ids = config.sources.map((s) => s.id);
   if (new Set(ids).size !== ids.length) errors.push("sources: duplicate id");
-  const passIds = config.vision.passes.map((p) => p.id);
-  if (new Set(passIds).size !== passIds.length)
-    errors.push("vision.passes: duplicate pass id");
-  for (const key of ["reviewFrom", "streetCheckFrom"] as const)
-    if (!passIds.includes(config.vision[key]))
-      errors.push(`vision.${key}: ${config.vision[key]} is not a pass id`);
   for (const s of config.sources) {
     for (const w of s.watch ?? []) {
       try {

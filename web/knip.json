@@ -7,5 +7,5 @@
   ],
   "project": ["**/*.{ts,tsx,mjs,scss,sass}"],
   "ignoreDependencies": ["server-only"],
-  "ignoreBinaries": ["agent", "pdftotext"]
+  "ignoreBinaries": ["pdftoppm"]
 }

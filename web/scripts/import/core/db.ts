@@ -1,6 +1,6 @@
 // The import's Postgres connection. It is opened by the first query and
-// closed with close() before long work without the database (the vision
-// passes take minutes, and Neon drops an idle connection), so no connection
+// closed with close() before long work without the database (the model's
+// reading takes minutes, and Neon drops an idle connection), so no connection
 // sits idle. A dropped connection never kills the process (every client has
 // an 'error' listener): outside a transaction it is opened again and the
 // query retried once; inside one the transaction is lost, so the query

@@ -1,16 +1,19 @@
 // End-to-end check of the unattended import (scripts/import/, its waste
-// domain; docs/import.md) on made-up schedules, never the real ones: a
-// first import, a quiet day, a changed file applied automatically and
-// reverted; every road to an issue instead of an apply (a broken PDF, vision
-// pass that is not JSON, a date off its weekday, a new link on a watched
-// page, both sites down) and each issue closed by the next clean run; review
-// PRs for passes that disagree and for streets (one per file, updated, a
-// merged review applied for its sha256 only, a rejected one keeping the
-// database); the page fallback when the WordPress API is down; the dead-man
-// switch; a dry run; a dropped database connection (retried
-// once, else the failure path, never a crash). The two sites are local HTTP servers, the
-// config a copy of etl/sources.yaml pointing at them (IMPORT_CONFIG), the
-// vision passes mocked files, the archive a directory, GitHub issues and
+// domain; docs/import.md) on made-up schedules, never the real ones: every
+// new file read once by (mocked) Grok and held for its review PR, even when
+// clean; a merged review applied for its sha256 only, a rejected one keeping
+// the database; force_extract on a settled file opening a review too; a
+// quiet day, a changed file reviewed, applied as one batch and reverted;
+// what a review PR shows (a reply that is not JSON, a street not in the
+// zone, a date off its weekday); every road to an issue instead of an apply
+// (a broken PDF, a new link on a watched page, both sites down) and each
+// issue closed by the next clean run; the page fallback when the WordPress
+// API is down; the dead-man switch; a dry run and extract-only; a dropped
+// database connection (retried once, else the failure path, never a crash).
+// The two sites are local HTTP servers, the config a copy of
+// etl/sources.yaml pointing at them (IMPORT_CONFIG), Grok's replies files
+// (XAI_MOCK_DIR; every run also loads scripts/lib/no-network.mjs, so
+// api.x.ai cannot be reached), the archive a directory, GitHub issues and
 // review PRs files (merging one: its reviewed file into IMPORT_REVIEW_DIR),
 // the clock IMPORT_NOW. Empties and writes the database, so it refuses any
 // database but a local one (CI, a local container).
@@ -28,8 +31,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import pg from "pg";
 import { stringify } from "yaml";
+import { normalize } from "../lib/normalize.ts";
 import { loadConfig } from "./import/core/config.ts";
-import { fold, MIASTO_ROWS } from "./import/waste/lib.ts";
+import { LAYOUT_ROWS, MONTHS } from "./import/waste/lib.ts";
 import { localDatabaseUrl } from "./lib/local-db.ts";
 import { fortnightly, gminaPdf } from "./lib/schedule-fixture.ts";
 
@@ -46,7 +50,7 @@ const day = `${year}-03-02`;
 const NOW = `${day}T10:00:00Z`; // 11:00 in Warsaw
 const dir = mkdtempSync(join(tmpdir(), "conaulicy-schedules-"));
 const archive = join(dir, "archive");
-const mock = join(dir, "agent");
+const mock = join(dir, "xai");
 const issuesFile = join(dir, "issues.json");
 const reviewsFile = join(dir, "reviews.json");
 const reviewDir = join(dir, "review");
@@ -107,8 +111,18 @@ pages.miasto["/?s=harmonogram"] = `<a href="${M}${cityPage}">Harmonogram</a>`;
 
 let gminaVersion = 0;
 let miastoVersion = 0;
-const setPdf = (body) => {
+// Grok's reply for each file (XAI_MOCK_DIR/<source>-s<sector>-<year>.json).
+const reply = (source, content) =>
+  writeFileSync(
+    join(mock, `${source}-s1-${year}.json`),
+    typeof content === "string" ? content : JSON.stringify(content),
+  );
+const request = (source) =>
+  JSON.parse(readFileSync(join(mock, `${source}-s1-${year}.request.json`)));
+/** A PDF, and Grok's reading of it (by default its rows, read right). */
+const setPdf = (body, rows = gminaRows) => {
   pages.gmina[pdfPath] = body;
+  reply("gmina", gminaReply(rows));
   gminaVersion++;
   pages.gmina["/wp-json/wp/v2/media"] = JSON.stringify([
     {
@@ -118,24 +132,20 @@ const setPdf = (body) => {
     },
   ]);
 };
-const setJpg = (passes) => {
-  miastoVersion++;
-  pages.miasto[jpgPath] = `JPEG ${miastoVersion}`;
+/** A new version of the JPG, and Grok's reply for it. */
+const setJpg = (content = cityReply()) => {
+  const version = ++miastoVersion;
+  pages.miasto[jpgPath] = `JPEG ${version}`;
   pages.miasto["/wp-json/wp/v2/media"] = JSON.stringify([
     {
       id: 20,
-      modified_gmt: `${year - 1}-12-1${miastoVersion}T10:00:00`,
+      modified_gmt: `${year - 1}-12-${String(10 + version).padStart(2, "0")}T10:00:00`,
       source_url: `${M}${jpgPath.replace(".jpg", "-scaled.jpg")}`,
       mime_type: "image/jpeg",
       media_details: { original_image: `harmonogram-${year}-s1.jpg` },
     },
   ]);
-  passes.forEach((reading, i) => {
-    writeFileSync(
-      join(mock, `miasto-s1-${year}.pass-${i + 1}.json`),
-      typeof reading === "string" ? reading : JSON.stringify(reading),
-    );
-  });
+  reply("miasto", content);
 };
 
 // ------------------------------------------------------------ the config
@@ -191,17 +201,46 @@ writeConfig();
 const quarterly = (weekday) =>
   fortnightly(year, weekday).map((m, i) => (i % 3 === 0 ? m.slice(0, 1) : []));
 const gminaRows = [fortnightly(year, 1), fortnightly(year, 1, 1), quarterly(4)];
-const reading = () => ({
-  sector: 1,
+const cityRows = () =>
+  Object.keys(LAYOUT_ROWS.miasto).map((_, i) =>
+    i === 3 ? quarterly(5) : fortnightly(year, 2, i % 2),
+  );
+// Replies in the prompts' shape, as Grok would give them for these files.
+const HEADERS = MONTHS.map((m) => m.toUpperCase());
+const entries = (months, city) =>
+  months.flatMap((days, i) =>
+    days.map((day) => ({
+      month: i + 1,
+      month_header: HEADERS[i],
+      ...(city ? { above: null } : {}),
+      day,
+    })),
+  );
+const reading = (layout, rows, places) => ({
+  sector: layout === "gmina" ? null : 1,
   year,
-  streets: ["Adama Asnyka", "Osiedle Testowe"],
+  months: HEADERS,
+  places,
   rows: Object.fromEntries(
-    Object.keys(MIASTO_ROWS).map((row, i) => [
+    Object.keys(LAYOUT_ROWS[layout]).map((row, i) => [
       row,
-      i === 3 ? quarterly(5) : fortnightly(year, 2, i % 2),
+      entries(rows[i], layout === "miasto"),
     ]),
   ),
+  unplaced: [],
 });
+const gminaReply = (rows = gminaRows) =>
+  reading("gmina", rows, [
+    { as_written: "DĄBROWA", id: "0606010" },
+    { as_written: "BASZNIA GÓRNA", id: "0605950" },
+  ]);
+const cityReply = (
+  rows = cityRows(),
+  places = [
+    { as_written: "Adama Asnyka", id: "00470" },
+    { as_written: "Cicha", id: "02974" },
+  ],
+) => reading("miasto", rows, places);
 
 // ------------------------------------------------------------ database
 
@@ -212,22 +251,23 @@ await db.query(
   `insert into gminy (id, teryt, name) values
      ('lubaczow-miasto', '1809011', 'Lubaczów (miasto)'), ('lubaczow-gmina', '1809042', 'Lubaczów (gmina)')`,
 );
+// Real TERYT ids (lib/zuk-places.generated.ts), as the database holds them.
 for (const [id, gmina, name, kind] of [
-  ["simc-0972447", "lubaczow-miasto", "Lubaczów", "miasto"],
-  ["simc-0606010", "lubaczow-gmina", "Dąbrowa", "wies"],
-  ["simc-0605950", "lubaczow-gmina", "Basznia Górna", "wies"],
+  ["0972447", "lubaczow-miasto", "Lubaczów", "miasto"],
+  ["0606010", "lubaczow-gmina", "Dąbrowa", "wies"],
+  ["0605950", "lubaczow-gmina", "Basznia Górna", "wies"],
 ])
   await db.query(
     "insert into localities (id, gmina_id, teryt, name, kind, search) values ($1, $2, $3, $4, $5, $6)",
-    [id, gmina, id.slice(5), name, kind, fold(name)],
+    [id, gmina, id, name, kind, normalize(name)],
   );
 for (const [sym, prefix, name] of [
   ["00470", "ul.", "Adama Asnyka"],
-  ["90101", "os.", "Osiedle Testowe"],
+  ["02974", "ul.", "Cicha"],
 ])
   await db.query(
-    "insert into streets (id, locality_id, teryt, prefix, name, search) values ($1, 'simc-0972447', $2, $3, $4, $5)",
-    [`ulic-0972447-${sym}`, sym, prefix, name, fold(name)],
+    "insert into streets (id, locality_id, teryt, prefix, name, search) values ($1, '0972447', $2, $3, $4, $5)",
+    [`0972447-${sym}`, sym, prefix, name, normalize(name)],
   );
 await db.query(
   `insert into zones (id, type, name) values
@@ -235,10 +275,10 @@ await db.query(
 );
 await db.query(
   `insert into zone_members (zone_id, locality_id, street_id) values
-     ('waste:miasto-s1', 'simc-0972447', 'ulic-0972447-00470'),
-     ('waste:miasto-s1', 'simc-0972447', 'ulic-0972447-90101'),
-     ('waste:gmina-s1', 'simc-0606010', null),
-     ('waste:gmina-s1', 'simc-0605950', null)`,
+     ('waste:miasto-s1', '0972447', '0972447-00470'),
+     ('waste:miasto-s1', '0972447', '0972447-02974'),
+     ('waste:gmina-s1', '0606010', null),
+     ('waste:gmina-s1', '0605950', null)`,
 );
 
 // ------------------------------------------------------------ helpers
@@ -252,8 +292,10 @@ const env = {
   ISSUES_FILE: issuesFile,
   REVIEWS_FILE: reviewsFile,
   IMPORT_REVIEW_DIR: reviewDir,
-  CURSOR_AGENT_MOCK: mock,
-  CURSOR_API_KEY: "",
+  XAI_MOCK_DIR: mock,
+  XAI_API_KEY: "",
+  // Nothing but loopback: Grok's replies come from XAI_MOCK_DIR only.
+  NODE_OPTIONS: `--import=${new URL("./lib/no-network.mjs", import.meta.url).href}`,
   GH_TOKEN: "",
   REVALIDATE_SECRET: "",
   ACTIONS_RUN_URL: "https://github.com/example/run/1",
@@ -277,7 +319,7 @@ const run = (args = [], extra = {}) =>
 // (scripts/lib/drop-connection.mjs), `times` times (default: always).
 const runDropping = (query, times, args = []) =>
   run(args, {
-    NODE_OPTIONS: `--import=${new URL("./lib/drop-connection.mjs", import.meta.url).href}`,
+    NODE_OPTIONS: `${env.NODE_OPTIONS} --import=${new URL("./lib/drop-connection.mjs", import.meta.url).href}`,
     DROP_QUERY: query,
     DROP_TIMES: times ? String(times) : "",
   });
@@ -306,28 +348,39 @@ const prs = () =>
   existsSync(reviewsFile) ? JSON.parse(readFileSync(reviewsFile, "utf8")) : [];
 const openPrs = () => prs().filter((p) => p.state === "open");
 const savePrs = (all) => writeFileSync(reviewsFile, JSON.stringify(all));
-const reviewedPath = `etl/review/miasto/harmonogram-${year}-s1.yaml`;
+const reviewedPath = {
+  gmina: `etl/review/gmina/1_${year}_Dabrowa_Basznia.yaml`,
+  miasto: `etl/review/miasto/harmonogram-${year}-s1.yaml`,
+};
+const openPr = (source) =>
+  openPrs().find((p) => p.branch.startsWith(`import-review/${source}/`));
 /** Merges (true) or closes (false) a review PR, as a person would. */
 const decide = (number, merge) => {
   const all = prs();
   const pr = all.find((p) => p.number === number);
   pr.state = merge ? "merged" : "closed";
   savePrs(all);
-  if (merge) {
-    const target = join(reviewDir, reviewedPath.slice("etl/review/".length));
-    mkdirSync(join(target, ".."), { recursive: true });
-    writeFileSync(target, pr.files[reviewedPath]);
-  }
+  if (merge)
+    for (const [file, content] of Object.entries(pr.files)) {
+      const target = join(reviewDir, file.slice("etl/review/".length));
+      mkdirSync(join(target, ".."), { recursive: true });
+      writeFileSync(target, content);
+    }
 };
-const marchDays = async (subtype) =>
-  (
-    await db.query(
-      "select start from events where zone_id = 'waste:miasto-s1' and subtype = $1 and start like $2 order by start",
-      [subtype, `${year}-03-%`],
-    )
-  ).rows
-    .map((r) => r.start.slice(8, 10))
-    .join(",");
+/** Merges every open review PR as it stands. */
+const mergeAll = () => {
+  for (const pr of openPrs()) decide(pr.number, true);
+};
+/** Both sources waited for their review PRs: nothing applied. */
+const bothHeld = async (r) => {
+  const runs = await lastRuns();
+  check(
+    runs.gmina?.status === "needs_review" &&
+      runs.miasto?.status === "needs_review",
+    `statuses ${runs.gmina?.status}/${runs.miasto?.status}\n${r.out}`,
+  );
+  return runs;
+};
 const step = async (name, fn) => {
   const before = failures.length;
   await fn();
@@ -336,23 +389,19 @@ const step = async (name, fn) => {
 
 // ------------------------------------------------------------ scenarios
 
+// The first January Monday a week later: the PDF's second version.
+const moved = gminaRows.map((r) => r.map((m) => [...m]));
+moved[0][0][0] += 7;
+
 setPdf(await gminaPdf(["Dąbrowa", "Basznia Górna"], gminaRows));
-setJpg([reading(), reading()]);
+setJpg();
 
 await step(
-  "first import: both sources applied, archived, logged, page link synced",
+  "first sight: each file read once, a blocking review PR, nothing applied",
   async () => {
     const r = await run();
     check(r.code === 0, `first run exited ${r.code}:\n${r.out}`);
-    const runs = await lastRuns();
-    check(
-      runs.gmina?.status === "applied",
-      `gmina: ${runs.gmina?.status}\n${r.out}`,
-    );
-    check(
-      runs.miasto?.status === "applied",
-      `miasto: ${runs.miasto?.status}\n${r.out}`,
-    );
+    const runs = await bothHeld(r);
     check(runs.gmina?.detected_via === "api", "detected_via is not api");
     check(
       runs.gmina?.actions_run_url === env.ACTIONS_RUN_URL,
@@ -360,28 +409,61 @@ await step(
     );
     const n = (await db.query("select count(*)::int as n from events")).rows[0]
       .n;
+    check(n === 0, `events applied before any review: ${n}`);
+    const [gmina, miasto] = [openPr("gmina"), openPr("miasto")];
     check(
-      n > 100 && n === runs.gmina.events_added + runs.miasto.events_added,
-      `events: ${n}`,
+      openPrs().length === 2 &&
+        /nowy harmonogram do sprawdzenia/.test(gmina?.title) &&
+        /nowy harmonogram do sprawdzenia/.test(miasto?.title) &&
+        gmina?.body.includes("- wszystkie przeszły") &&
+        miasto?.body.includes("- wszystkie przeszły") &&
+        miasto?.body.includes(
+          `[![harmonogram-${year}-s1.jpg](${M}${jpgPath})](${M}${jpgPath})`,
+        ) &&
+        !miasto?.body.includes("Uwaga:") &&
+        miasto?.branch === `import-review/miasto/harmonogram-${year}-s1`,
+      `not one clean, blocking review PR per file: ${JSON.stringify(prs().map((p) => [p.title, p.body.slice(0, 300)]))}`,
     );
+    // The review PRs are the notice (no dates yet: the dead-man switch's
+    // coverage issue is right).
+    check(
+      open(/^(gmina|miasto):/).length === 0,
+      `issues: ${JSON.stringify(issues())}`,
+    );
+    // One request each: the prompt, then the image (gmina rendered to PNG).
+    for (const [source, mime] of [
+      ["gmina", "image/png"],
+      ["miasto", "image/jpeg"],
+    ]) {
+      const body = request(source);
+      const [text, image] = body.messages[0].content;
+      check(
+        body.model === "grok-4.7" &&
+          body.reasoning_effort === "medium" &&
+          body.messages.length === 1 &&
+          !("temperature" in body) &&
+          !("response_format" in body) &&
+          text.type === "text" &&
+          image.image_url.detail === "high" &&
+          image.image_url.url.startsWith(`data:${mime};base64,`),
+        `${source}: not the dry run's request: ${JSON.stringify(body).slice(0, 300)}`,
+      );
+    }
     check(
       existsSync(
         join(archive, `sources/gmina/${day}/1_${year}_Dabrowa_Basznia.pdf`),
-      ),
-      "PDF not archived",
-    );
-    check(
-      existsSync(
-        join(archive, `sources/miasto/${day}/harmonogram-${year}-s1.jpg`),
-      ),
-      "JPG not archived",
+      ) &&
+        existsSync(
+          join(archive, `sources/miasto/${day}/harmonogram-${year}-s1.jpg`),
+        ),
+      "files not archived",
     );
     const settled = (
       await db.query(
-        "select count(*)::int as n from source_files where s3_key is not null and settled_at is not null",
+        "select count(*)::int as n from source_files where settled_at is not null",
       )
     ).rows[0].n;
-    check(settled === 2, `settled, archived source_files: ${settled}`);
+    check(settled === 0, `settled before a review: ${settled}`);
     const link = (
       await db.query(
         "select schedule_url from gminy where id = 'lubaczow-gmina'",
@@ -395,7 +477,52 @@ await step(
       await db.query("select count(*)::int as n from source_pages")
     ).rows[0].n;
     check(pagesSeen === 4, `watched pages stored: ${pagesSeen}`);
-    check(issues().length === 0, `issues: ${JSON.stringify(issues())}`);
+  },
+);
+
+await step(
+  "the next run, reviews still open: read again, the same PRs, nothing applied",
+  async () => {
+    await bothHeld(await run());
+    check(prs().length === 2, `PRs: ${prs().length}`);
+  },
+);
+
+await step(
+  "merged reviews: their dates applied, archived, settled, logged",
+  async () => {
+    mergeAll();
+    const r = await run();
+    const runs = await lastRuns();
+    check(
+      runs.gmina?.status === "applied" && runs.miasto?.status === "applied",
+      `statuses ${runs.gmina?.status}/${runs.miasto?.status}\n${r.out}`,
+    );
+    check(
+      /dates from its merged review/.test(r.out),
+      "the merged review was not used",
+    );
+    const n = (await db.query("select count(*)::int as n from events")).rows[0]
+      .n;
+    check(
+      n > 100 && n === runs.gmina.events_added + runs.miasto.events_added,
+      `events: ${n}`,
+    );
+    const settled = (
+      await db.query(
+        "select count(*)::int as n from source_files where s3_key is not null and settled_at is not null",
+      )
+    ).rows[0].n;
+    check(settled === 2, `settled, archived source_files: ${settled}`);
+    check(
+      openPrs().length === 0 && prs().length === 2,
+      "a review PR was opened again",
+    );
+    check(
+      open(/./).length === 0 &&
+        issues().every((i) => i.key === "coverage:waste"),
+      `issues: ${JSON.stringify(issues())}`,
+    );
   },
 );
 
@@ -436,46 +563,89 @@ await step(
   },
 );
 
-await step("a changed PDF is applied as one batch, and reverted", async () => {
-  const moved = gminaRows.map((r) => r.map((m) => [...m]));
-  moved[0][0][0] += 7; // the first January Monday moves a week later
-  setPdf(await gminaPdf(["Dąbrowa", "Basznia Górna"], moved));
-  await run();
-  const { gmina } = await lastRuns();
-  check(
-    gmina?.status === "applied" && gmina.batch_id,
-    `status ${gmina?.status}`,
-  );
-  check(
-    gmina?.events_added === 2 && gmina?.events_removed === 2,
-    `+${gmina?.events_added} −${gmina?.events_removed}`,
-  );
-  // Every other event now cites the new file: changed, not added or removed.
-  check(gmina?.events_changed > 0, "events still cite the old file");
-  const logged = (
-    await db.query(
-      "select count(*)::int as n from import_changes where batch_id = $1",
-      [gmina.batch_id],
-    )
-  ).rows[0].n;
-  check(
-    logged === gmina.events_added + gmina.events_removed + gmina.events_changed,
-    `import_changes: ${logged}`,
-  );
-  const r = await revert(gmina.batch_id);
-  check(r.code === 0, `revert exited ${r.code}: ${r.out}`);
-  check(
-    (await snapshot()) === settled,
-    "the revert did not restore the events",
-  );
-  const again = await revert(gmina.batch_id);
-  check(
-    again.code !== 0 && /already reverted/.test(again.out),
-    "a second revert was not refused",
-  );
-});
+await step(
+  "force_extract on settled files: read again, a review PR each, nothing applied",
+  async () => {
+    // As for a file imported before this import was automated: settled,
+    // with no review of its own anywhere.
+    savePrs([]);
+    rmSync(reviewDir, { recursive: true, force: true });
+    await bothHeld(await run(["--force-extract"]));
+    check(
+      openPrs().length === 2 &&
+        openPrs().every((p) => !p.body.includes("**różnica**")),
+      `no review PR per file, or a difference shown: ${JSON.stringify(openPrs().map((p) => p.title))}`,
+    );
+    check((await snapshot()) === settled, "events changed");
+    // Merged: the next force_extract uses them, no call, no new PR.
+    mergeAll();
+    await run(["--force-extract"]);
+    const after = await lastRuns();
+    check(
+      after.gmina?.status === "no_change" &&
+        after.miasto?.status === "no_change" &&
+        prs().length === 2 &&
+        openPrs().length === 0,
+      `with merged reviews: ${after.gmina?.status}/${after.miasto?.status}, PRs ${prs().length}`,
+    );
+  },
+);
 
-let beforeReview = await snapshot();
+await step(
+  "a changed PDF: a review PR, then applied as one batch, and reverted",
+  async () => {
+    setPdf(await gminaPdf(["Dąbrowa", "Basznia Górna"], moved), moved);
+    await run();
+    check(
+      (await lastRuns()).gmina?.status === "needs_review" &&
+        (await snapshot()) === settled,
+      "applied before its review",
+    );
+    const pr = openPr("gmina");
+    check(
+      /\| zmieszane\+bio \| styczeń \| STYCZEŃ \| [\d, ]+ \| [\d, ]+ \| \*\*różnica\*\* \|/.test(
+        pr?.body,
+      ),
+      `the review does not show the moved date: ${pr?.body}`,
+    );
+    decide(pr.number, true);
+    await run();
+    const { gmina } = await lastRuns();
+    check(
+      gmina?.status === "applied" && gmina.batch_id,
+      `status ${gmina?.status}`,
+    );
+    check(
+      gmina?.events_added === 2 && gmina?.events_removed === 2,
+      `+${gmina?.events_added} −${gmina?.events_removed}`,
+    );
+    // Every other event now cites the new file: changed, not added or removed.
+    check(gmina?.events_changed > 0, "events still cite the old file");
+    const logged = (
+      await db.query(
+        "select count(*)::int as n from import_changes where batch_id = $1",
+        [gmina.batch_id],
+      )
+    ).rows[0].n;
+    check(
+      logged ===
+        gmina.events_added + gmina.events_removed + gmina.events_changed,
+      `import_changes: ${logged}`,
+    );
+    const r = await revert(gmina.batch_id);
+    check(r.code === 0, `revert exited ${r.code}: ${r.out}`);
+    check(
+      (await snapshot()) === settled,
+      "the revert did not restore the events",
+    );
+    const again = await revert(gmina.batch_id);
+    check(
+      again.code !== 0 && /already reverted/.test(again.out),
+      "a second revert was not refused",
+    );
+  },
+);
+
 await step(
   "a broken PDF: an issue, not the database; retried; closed when fixed",
   async () => {
@@ -487,17 +657,19 @@ await step(
     );
     const opened = open(/^gmina:review:/);
     check(
-      opened.length === 1 && /extraction failed/.test(opened[0].body),
-      "no issue explaining the extraction",
+      opened.length === 1 &&
+        /extraction failed: pdftoppm cannot render it/.test(opened[0].body),
+      `no issue explaining the extraction: ${JSON.stringify(opened)}`,
     );
-    check((await snapshot()) === beforeReview, "events changed");
+    check((await snapshot()) === settled, "events changed");
     await run();
     check(
       open(/^gmina:review:/).length === 1 &&
         issues().filter((i) => i.key.startsWith("gmina:review:")).length === 1,
       `the same problem opened a second issue: ${JSON.stringify(issues().map((i) => [i.key, i.state, i.body.slice(0, 400)]))}`,
     );
-    setPdf(await gminaPdf(["Dąbrowa", "Basznia Górna"], gminaRows));
+    // The second version again: reviewed and settled, nothing to do.
+    setPdf(await gminaPdf(["Dąbrowa", "Basznia Górna"], moved), moved);
     await run();
     check(
       (await lastRuns()).gmina?.status === "no_change",
@@ -511,103 +683,55 @@ await step(
 );
 
 await step(
-  "vision passes that disagree: a review PR, not an issue; nothing applied",
+  "the review PR shows what Grok read: a reply that is not JSON, then a street not in the zone",
   async () => {
-    const other = reading();
-    other.rows.bio[5] = [...other.rows.bio[5], 30];
-    setJpg([reading(), other]);
+    const before = await snapshot();
+    const count = prs().length;
+    const prose = `I'll read the schedule.${JSON.stringify(cityReply())}`;
+    setJpg(prose);
     await run();
     check(
       (await lastRuns()).miasto?.status === "needs_review",
       "not needs_review",
     );
     check(open(/^miasto:/).length === 0, "an issue was opened too");
-    const pr = openPrs()[0];
+    let pr = openPr("miasto");
     check(
-      openPrs().length === 1 &&
-        /\| bio \| czerwiec \|/.test(pr.body) &&
-        pr.body.includes(
-          `[![harmonogram-${year}-s1.jpg](${M}${jpgPath})](${M}${jpgPath})`,
+      prs().length === count + 1 &&
+        pr?.body.includes("- reply is not JSON") &&
+        pr?.body.includes(`~~~~~~\n${prose}\n~~~~~~`) &&
+        pr?.files[reviewedPath.miasto].includes("daty do wpisania"),
+      `the PR does not show the reply: ${pr?.body}`,
+    );
+    const members = async () =>
+      (await db.query("select count(*)::int as n from zone_members")).rows[0].n;
+    const memberCount = await members();
+    // The same file read again, now with 3-go Maja (listed, not in the zone)
+    // instead of Cicha, and one name it gave no id.
+    reply(
+      "miasto",
+      cityReply(cityRows(), [
+        { as_written: "Adama Asnyka", id: "00470" },
+        { as_written: "3-go Maja", id: "29830" },
+        { as_written: "Os. Nowe", id: null },
+      ]),
+    );
+    await run();
+    pr = openPr("miasto");
+    check(
+      prs().length === count + 1 &&
+        pr?.body.includes(
+          "**Na pliku, nie w tej strefie w bazie:**\n\n- „3-go Maja” (id 29830)",
         ) &&
-        !pr.body.includes("Uwaga:") &&
-        pr.branch === `import-review/miasto/harmonogram-${year}-s1`,
-      `no review PR: ${JSON.stringify(prs())}`,
-    );
-    check((await snapshot()) === beforeReview, "events changed");
-  },
-);
-
-let disagreeing;
-await step(
-  "Grok and Opus one date apart: one PR, updated in place, the person's edits kept",
-  async () => {
-    disagreeing = reading();
-    disagreeing.rows["zmieszane+popiol"][2] =
-      disagreeing.rows["zmieszane+popiol"][2].slice(1);
-    setJpg([reading(), disagreeing]);
-    await run();
-    const [pr] = openPrs();
-    check(
-      prs().length === 1 &&
-        /\| grok-a \| opus \| w bazie \|/.test(pr?.body) &&
-        /\| zmieszane\+popiol \| marzec \| [\d, ]+ \| [\d, ]+ \| [\d, ]+ \|/.test(
-          pr?.body,
+        pr?.body.includes(
+          "**W tej strefie w bazie, nie na pliku:**\n\n- Cicha (id 02974)",
         ) &&
-        !/\| bio \| czerwiec \|/.test(pr?.body),
-      `not one updated PR with the table: ${JSON.stringify(prs().map((p) => p.body))}`,
+        pr?.body.includes("**Bez id (null):**\n\n- „Os. Nowe” (id null)") &&
+        pr?.body.includes("- wszystkie przeszły"),
+      `the street lists are not in the one PR: ${pr?.body}`,
     );
-    const file = pr?.files[reviewedPath] ?? "";
-    check(
-      file.includes(`from: opus`) &&
-        new RegExp(
-          `marzec: \\[${disagreeing.rows["zmieszane+popiol"][2].join(", ")}\\]`,
-        ).test(file),
-      `the reviewed file is not opus's reading:\n${file}`,
-    );
-    // A person edits the reviewed file; the next run keeps the edit.
-    const all = prs();
-    all[0].files[reviewedPath] = `${file}# checked\n`;
-    savePrs(all);
-    await run();
-    check(
-      prs().length === 1 &&
-        prs()[0].files[reviewedPath].endsWith("# checked\n"),
-      "the next run opened another PR or overwrote the edit",
-    );
-    check((await snapshot()) === beforeReview, "events changed");
-  },
-);
-
-await step(
-  "a merged review applies its dates, for that sha256 only",
-  async () => {
-    decide(prs()[0].number, true);
-    await run();
-    check(
-      (await lastRuns()).miasto?.status === "applied",
-      `not applied: ${(await lastRuns()).miasto?.error}`,
-    );
-    const expected = disagreeing.rows["zmieszane+popiol"][2]
-      .map((d) => String(d).padStart(2, "0"))
-      .join(",");
-    check(
-      (await marchDays("zmieszane")) === expected,
-      `March is not the reviewed dates: ${await marchDays("zmieszane")} vs ${expected}`,
-    );
-    const applied = await snapshot();
-    // A new version of the file: the old review no longer counts.
-    setJpg([reading(), disagreeing]);
-    const r = await run();
-    check(
-      (await lastRuns()).miasto?.status === "needs_review" &&
-        /reviewed for another version/.test(r.out),
-      "the review was used for another version of the file",
-    );
-    check((await snapshot()) === applied, "events changed");
-    check(
-      openPrs().length === 1 && prs().length === 2,
-      "no new review PR for the new version",
-    );
+    check((await members()) === memberCount, "zone members changed");
+    check((await snapshot()) === before, "events changed");
   },
 );
 
@@ -615,7 +739,8 @@ await step(
   "a rejected review: the database keeps its dates, no new PR",
   async () => {
     const before = await snapshot();
-    decide(openPrs()[0].number, false);
+    const count = prs().length;
+    decide(openPr("miasto").number, false);
     await run();
     check(
       (await lastRuns()).miasto?.status === "no_change",
@@ -623,85 +748,44 @@ await step(
     );
     check((await snapshot()) === before, "events changed");
     check(
-      openPrs().length === 0 && prs().length === 2,
+      openPrs().length === 0 && prs().length === count,
       "a rejected review was opened again",
     );
     check(open(/^miasto:/).length === 0, "an issue was opened");
-    // Back to the agreed reading for the steps below.
-    setJpg([reading(), reading()]);
-    await run();
-    beforeReview = await snapshot();
   },
 );
 
 await step(
-  "a pass that is not valid JSON: an issue (the earlier one closed)",
+  "a date off its weekday: shown in the review PR; merged, an issue until approved",
   async () => {
-    setJpg([reading(), "Sorry, I cannot read this image."]);
-    await run();
-    const now = open(/^miasto:review:/);
-    check(
-      now.length === 1 && /not valid JSON/.test(now[0].body),
-      "no single issue for the current problem",
-    );
-  },
-);
-
-await step(
-  "a date off its weekday: an issue, even when both passes agree",
-  async () => {
-    const odd = reading();
+    const odd = cityRows();
     const march4 = new Date(Date.UTC(year, 2, 4)).getUTCDay();
-    odd.rows.bio[2] = [...odd.rows.bio[2], 4 + ((8 - march4) % 7)]; // a Monday in March
-    setJpg([odd, odd]);
+    odd[2][2] = [...odd[2][2], 4 + ((8 - march4) % 7)].sort((a, b) => a - b); // a Monday in March
+    setJpg(cityReply(odd));
+    await run();
+    const pr = openPr("miasto");
+    check(
+      /### Reguły dat\n\n- waste:miasto-s1: \S+ \(bio\) is not on the row's usual weekday/.test(
+        pr?.body,
+      ),
+      `the review does not show the weekday: ${pr?.body}`,
+    );
+    decide(pr.number, true);
     await run();
     check(
       open(/^miasto:review:/).some((i) => /usual weekday/.test(i.body)),
       "no issue about the weekday",
     );
-    check((await snapshot()) === beforeReview, "events changed");
-    setJpg([reading(), reading()]);
+    check((await snapshot()) === settled, "events changed");
+    // A corrected version, reviewed and merged: applied, the issue closed.
+    setJpg(cityReply());
     await run();
-    check(open(/^miasto:/).length === 0, "not closed by the clean run");
-  },
-);
-
-await step(
-  "prose around the JSON and a different street: dates apply, streets to review",
-  async () => {
-    const [one, two] = [reading(), reading()];
-    one.streets = ["ul. Adama Asnyka", "os. Osiedle Testowe"];
-    two.streets = ["Adama Asnyka", "Osiedle Nowe"];
-    setJpg([
-      `I'll read the schedule image and return only the JSON.${JSON.stringify(one)}`,
-      `\`\`\`json\n${JSON.stringify(two)}\n\`\`\`\nDone.`,
-    ]);
-    const members = async () =>
-      (await db.query("select count(*)::int as n from zone_members")).rows[0].n;
-    const before = await members();
+    mergeAll();
     await run();
     check(
-      (await lastRuns()).miasto?.status === "applied",
-      `not applied: ${(await lastRuns()).miasto?.error}`,
-    );
-    check((await snapshot()) !== beforeReview, "the new file was not applied");
-    check((await members()) === before, "zone members changed");
-    const review = () =>
-      openPrs().filter((p) => /ulice do sprawdzenia/.test(p.title));
-    check(
-      review().length === 1 &&
-        /„Osiedle Nowe” z obrazka: nie ma jej w tej strefie w bazie \(przebieg opus\)/.test(
-          review()[0].body,
-        ) &&
-        open(/^streets:/).length === 0,
-      `no street review PR: ${JSON.stringify(prs().map((p) => [p.title, p.body.slice(0, 600)]))}`,
-    );
-    await run();
-    check(
-      (await lastRuns()).miasto?.status === "no_change" &&
-        review().length === 1 &&
-        prs().length === 3,
-      "the street review PR was closed or opened again",
+      (await lastRuns()).miasto?.status === "applied" &&
+        open(/^miasto:/).length === 0,
+      `not applied and closed: ${(await lastRuns()).miasto?.status}`,
     );
   },
 );
@@ -727,54 +811,50 @@ await step(
 );
 
 await step(
-  "dry run: a good change is reported, not applied, no issue",
+  "dry run and extract-only: a new PDF gets its review PR from the dry run only; superseded by a reviewed version",
   async () => {
-    setPdf(
-      await gminaPdf(
-        ["Dąbrowa", "Basznia Górna"],
-        gminaRows.map((r, i) => (i === 2 ? quarterly(3) : r)),
-      ),
-    );
+    const bulky = gminaRows.map((r, i) => (i === 2 ? quarterly(3) : r));
+    setPdf(await gminaPdf(["Dąbrowa", "Basznia Górna"], bulky), bulky);
     const before = issues().length;
     const events = await snapshot();
-    const r = await run(["--dry-run"]);
+    const count = prs().length;
+    const dry = await run(["--dry-run"]);
     const { gmina } = await lastRuns();
     check(
-      r.code === 0 && gmina?.dry_run === true,
+      dry.code === 0 && gmina?.dry_run === true,
       `dry run row: ${JSON.stringify(gmina)}`,
+    );
+    check(
+      prs().length === count + 1 && openPr("gmina"),
+      "the dry run opened no review PR",
     );
     check((await snapshot()) === events, "a dry run changed events");
     check(issues().length === before, "a dry run opened an issue");
-    setPdf(await gminaPdf(["Dąbrowa", "Basznia Górna"], gminaRows));
-  },
-);
-
-await step(
-  "review PRs: opened by a dry run, not by extract-only; superseded when clean",
-  async () => {
-    const before = prs().length;
-    const events = await snapshot();
-    setJpg([reading(), disagreeing]);
-    const dry = await run(["--dry-run"]);
-    check(
-      dry.code === 0 &&
-        openPrs().length === 1 &&
-        /odczyty się różnią/.test(openPrs()[0].title),
-      `the dry run opened no review PR: ${JSON.stringify(openPrs().map((p) => p.title))}`,
-    );
-    check((await snapshot()) === events, "a dry run changed events");
     const after = JSON.stringify(prs());
     const only = await run(["--extract-only"]);
     check(
-      only.code === 1 && /disagree/.test(only.out),
-      `extract-only did not report the disagreement:\n${only.out}`,
+      only.code === 0 && /All files extracted/.test(only.out),
+      `extract-only on clean readings:\n${only.out}`,
     );
     check(JSON.stringify(prs()) === after, "extract-only touched a review PR");
-    setJpg([reading(), reading()]);
-    await run();
+    reply("gmina", "Sorry, I cannot read this image.");
+    const bad = await run(["--extract-only"]);
     check(
-      openPrs().length === 0 && prs().length === before,
-      "the review of the old version was not superseded",
+      bad.code === 1 && /reply is not JSON/.test(bad.out),
+      `extract-only did not report the reply:\n${bad.out}`,
+    );
+    // The site goes back to the reviewed second version: read through its
+    // merged review (force_extract, as it is settled), the open review of
+    // the other version closed.
+    setPdf(await gminaPdf(["Dąbrowa", "Basznia Górna"], moved), moved);
+    await run(["--force-extract"]);
+    check(
+      openPrs().length === 0 && prs().length === count + 1,
+      "the review of the other version was not superseded",
+    );
+    check(
+      (await lastRuns()).gmina?.status === "applied",
+      `the reviewed version was not applied: ${(await lastRuns()).gmina?.status}`,
     );
   },
 );
@@ -785,21 +865,16 @@ await step(
     const late = { IMPORT_NOW: `${year}-12-20T10:00:00Z` };
     await run([], late);
     await run([], late);
-    const coverage = issues().filter((i) => i.key === "coverage:waste");
-    check(
-      coverage.length === 1 && coverage[0].state === "open",
-      `coverage issues: ${coverage.length}`,
-    );
+    // Open, once (the first run's, before any dates, is closed).
+    const coverage = open(/^coverage:waste$/);
+    check(coverage.length === 1, `open coverage issues: ${coverage.length}`);
     check(
       /waste:gmina-s1/.test(coverage[0]?.body) &&
         /waste:miasto-s1/.test(coverage[0]?.body),
       "zones not listed",
     );
     await run();
-    check(
-      issues().find((i) => i.key === "coverage:waste")?.state === "closed",
-      "not closed when covered",
-    );
+    check(open(/^coverage:waste$/).length === 0, "not closed when covered");
   },
 );
 
@@ -834,6 +909,7 @@ const crashed = (out) => /Unhandled 'error' event|node:events/.test(out);
 await step(
   "a dropped connection: reconnected, the query retried once, the run completes",
   async () => {
+    // Both files have merged reviews: force_extract uses them, no PR.
     const r = await runDropping("from zones where id", 1, ["--force-extract"]);
     const runs = await lastRuns();
     check(
@@ -870,12 +946,10 @@ await step(
 await step(
   "a drop inside the apply: the transaction is lost, nothing half-applied, applied next run",
   async () => {
-    setPdf(
-      await gminaPdf(
-        ["Dąbrowa", "Basznia Górna"],
-        gminaRows.map((r, i) => (i === 2 ? quarterly(3) : r)),
-      ),
-    );
+    const bulky = gminaRows.map((r, i) => (i === 2 ? quarterly(2) : r));
+    setPdf(await gminaPdf(["Dąbrowa", "Basznia Górna"], bulky), bulky);
+    await run();
+    decide(openPr("gmina").number, true);
     const events = await snapshot();
     const r = await runDropping("insert into import_changes", 1);
     check(r.code === 1 && !crashed(r.out), `exited ${r.code}:\n${r.out}`);
@@ -901,5 +975,5 @@ if (failures.length > 0) {
   process.exit(1);
 }
 console.log(
-  "\nSchedule import: auto-apply, revert, fallback, dead-man switch, and every issue path work.",
+  "\nSchedule import: always reviewed, merged reviews applied, revert, fallback, dead-man switch, and every issue path work.",
 );
