@@ -1,0 +1,55 @@
+# Przejrzane daty z pliku 3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf, wstępnie z odczytu grok-4.7.
+# Porównaj z obrazem i popraw dni miesiąca, jeśli trzeba. Scalenie PR
+# zatwierdza je dla pliku o tym sha256. places to tylko informacja,
+# skopiowana z odczytu: przynależność do stref bierze się wyłącznie z bazy.
+sha256: 2472148475fe77cfce5261197cb5f126beaaff8eeabe71665961ee1f53a10054
+file: "3_2026_BorowaGora_Karolowka_Hurcze_Opaka.pdf"
+from: "grok-4.7"
+sector: null
+year: 2026
+rows:
+  "zmieszane+bio":
+    styczeń: [21]
+    luty: [18]
+    marzec: [18]
+    kwiecień: [8, 22]
+    maj: [6, 20]
+    czerwiec: [3, 17]
+    lipiec: [8, 22]
+    sierpień: [5, 19]
+    wrzesień: [3, 16]
+    październik: [7, 21]
+    listopad: [18]
+    grudzień: [16]
+  "selektywne":
+    styczeń: [21]
+    luty: [18]
+    marzec: [18]
+    kwiecień: [22]
+    maj: [20]
+    czerwiec: [17]
+    lipiec: [22]
+    sierpień: [19]
+    wrzesień: [16]
+    październik: [21]
+    listopad: [18]
+    grudzień: [16]
+  "wielkogabarytowe":
+    styczeń: []
+    luty: []
+    marzec: [26]
+    kwiecień: []
+    maj: []
+    czerwiec: []
+    lipiec: []
+    sierpień: []
+    wrzesień: [24]
+    październik: []
+    listopad: []
+    grudzień: []
+places:
+  - { as_written: "BOROWA GÓRA", id: "0605980" }
+  - { as_written: "KAROLÓWKA", id: "0606116" }
+  - { as_written: "MŁODÓW", id: "0606286" }
+  - { as_written: "HURCZE", id: "0606091" }
+  - { as_written: "OPAKA", id: "0606317" }
