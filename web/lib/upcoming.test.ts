@@ -110,11 +110,29 @@ test("water: tomorrow, later, an estimate, a failure", () => {
   );
   assert.equal(
     said(about, at("2026-10-28T09:00:00+01:00")),
-    "Teraz awaria – nie ma wody – do ok. 16:00. | Cała wieś Wzorowo.",
+    "Teraz nie ma wody (awaria) – do ok. 16:00. | Cała wieś Wzorowo.",
   );
   assert.equal(
     said(about, now),
-    "Jutro awaria – od 8:00 do ok. 16:00 nie będzie wody. | Cała wieś Wzorowo.",
+    "Jutro od 8:00 do ok. 16:00 nie będzie wody (awaria). | Cała wieś Wzorowo.",
+  );
+});
+
+test("water: a failure, one form for every lead", () => {
+  const failure = (start: string | null, end: string | null) =>
+    cut("2026-10-30", start, end, { emergency: true, second: null });
+  const now = at("2026-10-28T12:00:00+01:00");
+  assert.equal(
+    said(failure("2026-10-30 08:00:00", "2026-10-30 16:00:00"), now),
+    "Piątek, 30 października: od 8:00 do 16:00 nie będzie wody (awaria).",
+  );
+  assert.equal(
+    said(failure(null, null), now),
+    "Piątek, 30 października: będzie przerwa w dostawie wody (awaria). Komunikat nie podaje godzin.",
+  );
+  assert.equal(
+    said(failure("2026-10-30 08:00:00", null), at("2026-10-30T09:00:00+01:00")),
+    "Teraz nie ma wody (awaria). Komunikat nie podaje, do której.",
   );
 });
 
@@ -208,6 +226,21 @@ test("IMGW: in force, tomorrow, later, over", () => {
     "Dziś od 13:00: ostrzeżenie IMGW – silny wiatr [Stopień 1 z 3], do 19:00. | Cały powiat.",
   );
   assert.equal(said(storm, at("2026-10-31T19:00:00+01:00")), null);
+});
+
+test("IMGW without times: no „od”, no „do”, as the water's", () => {
+  const bare: Item = {
+    ...warning("2026-10-31 13:00:00", "2026-10-31 19:00:00"),
+  };
+  bare.span = { ...bare.span, from: null, to: null };
+  assert.equal(
+    said(bare, at("2026-10-30T12:00:00+01:00")),
+    "Jutro: ostrzeżenie IMGW – silny wiatr [Stopień 1 z 3]. | Cały powiat.",
+  );
+  assert.equal(
+    said(bare, at("2026-10-28T12:00:00+01:00")),
+    "Sobota, 31 października: ostrzeżenie IMGW – silny wiatr [Stopień 1 z 3]. | Cały powiat.",
+  );
 });
 
 test("pickups: today and tomorrow only; put out until its time", () => {

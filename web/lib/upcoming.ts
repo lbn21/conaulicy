@@ -121,31 +121,39 @@ export function words(item: Item, now: number): Words {
   const lead = going ? "Teraz" : (day ?? `${capitalised(span.date)}:`);
   switch (item.module) {
     case "woda": {
-      const cut = item.emergency ? "awaria – " : "";
+      // A failure: „(awaria)” right after what happens, for every lead.
+      const cut = item.emergency ? " (awaria)" : "";
       const until = end
         ? ` – do ${end}.`
         : ". Komunikat nie podaje, do której.";
-      if (going) return { lead, text: [`${cut}nie ma wody${until}`], second };
+      if (going) return { lead, text: [`nie ma wody${cut}${until}`], second };
       const text =
         span.from && end
-          ? `od ${span.from} do ${end} nie będzie wody.`
+          ? `od ${span.from} do ${end} nie będzie wody${cut}.`
           : span.from
-            ? `od ${span.from} nie będzie wody. Komunikat nie podaje, do której.`
+            ? `od ${span.from} nie będzie wody${cut}. Komunikat nie podaje, do której.`
             : end
-              ? `do ${end} nie będzie wody.`
-              : "będzie przerwa w dostawie wody. Komunikat nie podaje godzin.";
-      return { lead, text: [`${cut}${text}`], second };
+              ? `do ${end} nie będzie wody${cut}.`
+              : `będzie przerwa w dostawie wody${cut}. Komunikat nie podaje godzin.`;
+      return { lead, text: [text], second };
     }
-    case "pogoda":
+    case "pogoda": {
+      // A missing time left out, as the water's: no „od”, no „do”.
+      const from = span.from ? ` od ${span.from}` : "";
       return {
         lead: going
           ? "Teraz:"
           : day
-            ? `${day} od ${span.from}:`
-            : `${capitalised(span.date)}, od ${span.from}:`,
-        text: [`ostrzeżenie IMGW – ${item.event} `, item.level, `, do ${end}.`],
+            ? `${day}${from}:`
+            : `${capitalised(span.date)}${from && `,${from}`}:`,
+        text: [
+          `ostrzeżenie IMGW – ${item.event} `,
+          item.level,
+          end ? `, do ${end}.` : ".",
+        ],
         second,
       };
+    }
     case "smieci":
       return { lead, text: [`odbiór śmieci: ${item.bins}.`], second };
   }
