@@ -856,8 +856,16 @@ await step(
     check((await snapshot()) === events, "a dry run changed events");
     check(issues().length === before, "a dry run opened an issue");
     const after = JSON.stringify(prs());
-    await run(["--extract-only"]);
+    const heldRun = await run(["--extract-only"]);
     check(JSON.stringify(prs()) === after, "extract-only touched a review PR");
+    // Not read because of its open review: said plainly, never "ok".
+    check(
+      heldRun.code === 0 &&
+        /: held, not read: waiting for its review PR: /.test(heldRun.out) &&
+        /1 file\(s\) held for their review PR, not read/.test(heldRun.out) &&
+        !/\.pdf: .*, ok$/m.test(heldRun.out),
+      `extract-only did not say the file was held:\n${heldRun.out}`,
+    );
     // The site goes back to the reviewed second version: read through its
     // merged review (force_extract, as it is settled), the open review of
     // the other version closed.

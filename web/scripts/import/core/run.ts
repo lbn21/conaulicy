@@ -18,9 +18,11 @@
 // --dry-run: no data written (the import_runs row still is; review PRs are
 // opened). --read-only: nothing written at all. --force-extract: extract
 // known and settled files too (each waste file is read again and gets a
-// review PR, unless its sha256 has a merged review). --extract-only: no
+// review PR, unless its sha256 has a merged or open review, or a rejected
+// one read with the same prompt and model). --extract-only: no
 // database and no review PR: detect, download, extract and validate, print,
-// exit 1 on any problem (tests the reading).
+// exit 1 on any problem (tests the reading); a file held for its review PR
+// is not read, and is printed as held, with why.
 //
 // Env: IMPORT_DATABASE_URL (or DATABASE_URL_UNPOOLED / DATABASE_URL);
 // XAI_API_KEY (Grok reads the waste schedules, Actions only);
@@ -104,6 +106,7 @@ async function detect(source: Source): Promise<{
 
 if (extractOnly) {
   let problems = 0;
+  let held = 0;
   for (const source of config.sources) {
     // An unreachable site or file is a problem, not the end of the run.
     let detection: Detection;
@@ -147,6 +150,13 @@ if (extractOnly) {
           })),
         ];
         problems += found.length;
+        // Not read because of its review PR: never reported as ok.
+        const hold = reviews.held(sha256(body));
+        if (hold) {
+          held++;
+          console.log(`  ${file.name}: held, not read: ${hold.note}`);
+          continue;
+        }
         console.log(
           `  ${file.name}: ${out.events.length} events, ${out.listed.length} listed${found.length ? `\n  - ${found.join("\n  - ")}` : ", ok"}`,
         );
@@ -156,10 +166,15 @@ if (extractOnly) {
       }
     }
   }
+  const notRead = held
+    ? ` ${held} file(s) held for their review PR, not read (see above).`
+    : "";
   console.log(
     problems
-      ? `\n${problems} problem(s).`
-      : "\nAll files extracted and agreed.",
+      ? `\n${problems} problem(s).${notRead}`
+      : held
+        ? `\nEvery file read agreed.${notRead}`
+        : "\nAll files extracted and agreed.",
   );
   process.exit(problems ? 1 : 0);
 }

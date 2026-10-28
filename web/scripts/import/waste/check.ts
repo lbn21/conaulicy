@@ -94,19 +94,19 @@ export const check: Domain["check"] = async ({
       anomalies,
     });
   // Its review PR already exists (adapters.ts did not read it again): the
-  // PR is left exactly as it is.
+  // PR is left exactly as it is. Held with --extract-only too, so it says
+  // why the file was not read.
   if (out.pending) {
     const { state, url } = out.pending;
-    if (db)
-      reviews.hold(
-        digest,
-        state === "rejected"
-          ? `its review was rejected (${url}); the database keeps its dates`
-          : state === "merged"
-            ? `its review is merged (${url}) but not in this checkout yet`
-            : `waiting for its review PR: ${url}`,
-        state !== "rejected",
-      );
+    reviews.hold(
+      digest,
+      state === "rejected"
+        ? `its review was rejected for a reading with this same prompt and model (${url}); the database keeps its dates`
+        : state === "merged"
+          ? `its review is merged (${url}) but not in this checkout yet`
+          : `waiting for its review PR: ${url}`,
+      state !== "rejected",
+    );
     return [];
   }
   // --extract-only: no database and no review PR; findings are problems.
@@ -233,6 +233,7 @@ export const check: Domain["check"] = async ({
     ].join("\n"),
     pageLabel: "Strona harmonogramu",
     reviewed: reviewedYaml(reading, layout, file, model, digest),
+    readWith: out.read.readWith,
     runUrl,
   });
   reviews.hold(digest, `a new schedule; its review PR: ${url}`, true);
