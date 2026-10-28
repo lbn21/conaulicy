@@ -1,0 +1,102 @@
+# Przejrzane daty z pliku harmonogram-2026-s1.jpg, wstępnie z odczytu grok-4.7.
+# Porównaj z obrazem i popraw dni miesiąca, jeśli trzeba. Scalenie PR
+# zatwierdza je dla pliku o tym sha256. places to tylko informacja,
+# skopiowana z odczytu: przynależność do stref bierze się wyłącznie z bazy.
+sha256: cd2dabc9053dc72111495a8ac4bcf1af36f0a7366af452b40806368fafaad624
+file: "harmonogram-2026-s1.jpg"
+from: "grok-4.7"
+sector: 1
+year: 2026
+rows:
+  "zmieszane+popiol":
+    styczeń: [12, 26]
+    luty: [9, 23]
+    marzec: [9, 23]
+    kwiecień: [8, 20]
+    maj: [4, 18]
+    czerwiec: [1, 15, 29]
+    lipiec: [13, 27]
+    sierpień: [10, 24]
+    wrzesień: [7, 21]
+    październik: [5, 19]
+    listopad: [2, 16, 30]
+    grudzień: [14, 28]
+  "papier+tworzywa_metale+szklo":
+    styczeń: [5]
+    luty: [2]
+    marzec: [2]
+    kwiecień: [1]
+    maj: [4]
+    czerwiec: [1, 15]
+    lipiec: [6, 20]
+    sierpień: [3, 17]
+    wrzesień: [1]
+    październik: [5]
+    listopad: [2]
+    grudzień: [7]
+  "bio":
+    styczeń: [5]
+    luty: [2]
+    marzec: [2]
+    kwiecień: [1, 13, 27]
+    maj: [11, 25]
+    czerwiec: [8, 22]
+    lipiec: [6, 20]
+    sierpień: [3, 17]
+    wrzesień: [2, 14, 28]
+    październik: [12, 26]
+    listopad: [9]
+    grudzień: [7]
+  "wielkogabarytowe+elektro+opony+tekstylia":
+    styczeń: []
+    luty: []
+    marzec: [5]
+    kwiecień: []
+    maj: []
+    czerwiec: []
+    lipiec: []
+    sierpień: []
+    wrzesień: [3]
+    październik: []
+    listopad: []
+    grudzień: []
+places:
+  - { as_written: "Adama Asnyka", id: "00470" }
+  - { as_written: "Cicha", id: "02974" }
+  - { as_written: "Cypriana Kamila Norwida", id: "14319" }
+  - { as_written: "Dolna", id: "04034" }
+  - { as_written: "Elizy Orzeszkowej", id: "15211" }
+  - { as_written: "Jana Kasprowicza", id: "08153" }
+  - { as_written: "Juliusza Słowackiego", id: "20291" }
+  - { as_written: "Gabrieli Zapolskiej", id: "25632" }
+  - { as_written: "Gen. Nakoniecznikoffa", id: "48942" }
+  - { as_written: "Kamila Baczyńskiego", id: "28484" }
+  - { as_written: "Kazimierza Przerwy-Tetmajera", id: "17755" }
+  - { as_written: "Kurierów Armii Krajowej", id: "10439" }
+  - { as_written: "Kolejowa", id: "08828" }
+  - { as_written: "Ks. Haasa Paneckiego", id: "46055" }
+  - { as_written: "Leopolda Staffa", id: "20798" }
+  - { as_written: "Marii Dąbrowskiej", id: "03691" }
+  - { as_written: "Mjr. Henryka Sucharskiego", id: "48937" }
+  - { as_written: "Mjr. Henryka Hubala", id: "48371" }
+  - { as_written: "Młodowska", id: "13080" }
+  - { as_written: "Myśliwska", id: "13563" }
+  - { as_written: "Łowiecka", id: "11695" }
+  - { as_written: "Ofiar Katynia", id: "14793" }
+  - { as_written: "Rtm. Pileckiego", id: "16225" }
+  - { as_written: "Rynek", id: "19253" }
+  - { as_written: "Stanisława Konery", id: "09127" }
+  - { as_written: "Szarych Szeregów", id: "21787" }
+  - { as_written: "Tadeusza Kościuszki", id: "09582" }
+  - { as_written: "Techniczna", id: "22727" }
+  - { as_written: "Towarowa", id: "22907" }
+  - { as_written: "Walecznych", id: "23527" }
+  - { as_written: "Władysława Broniewskiego", id: "02125" }
+  - { as_written: "Zofii Nałkowskiej", id: "13967" }
+  - { as_written: "Zygmunta Krasińskiego", id: "09848" }
+  - { as_written: "Żelichówka", id: "26445" }
+  - { as_written: "Żwirki i Wigury", id: "26608" }
+  - { as_written: "Grzybowa", id: "06341" }
+  - { as_written: "Leśników", id: "10955" }
+  - { as_written: "Inżynierska", id: "06923" }
+  - { as_written: "Fabryczna", id: "04863" }
