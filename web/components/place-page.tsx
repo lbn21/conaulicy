@@ -282,8 +282,10 @@ function PlaceHeading({
       {caption && <span className="govuk-caption-l">{caption}</span>}
       <h1 className="govuk-heading-l">{heading}</h1>
       {note && <p className="govuk-body">{note}</p>}
-      {/* Like GOV.UK's "Change": back to the search on the home page. */}
-      <p className="govuk-body">
+      {/* Like GOV.UK's "Change": back to the search on the home page. Spaced
+          like the section breaks below (--l), so the first h2 never sits
+          right under it. */}
+      <p className="govuk-body govuk-!-margin-bottom-6">
         <a href="/" className="govuk-link govuk-link--no-visited-state">
           Zmień adres<span className="govuk-visually-hidden"> {name}</span>
         </a>
