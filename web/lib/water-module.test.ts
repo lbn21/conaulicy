@@ -290,7 +290,7 @@ test("matching: 39885's whole villages reach their parts, one cut a day", () => 
   assert.deepEqual(at(BASZNIA), [day("2026-10-28", "0605890")]);
   assert.equal(
     scope(waterAt(SMOLINCE).outages[0] as Disruption),
-    "cała miejscowość Lisie Jamy",
+    "cała wieś Lisie Jamy",
   );
   // The part's own cut on the same day and hours: still one.
   const own = cut({
@@ -589,6 +589,28 @@ test("block's where: from the scope and our names, never the note", () => {
     where(sobieskiego(null), only(numbers)),
     "Ulica Jana III Sobieskiego, numery 3, 5, 7.",
   );
+});
+
+test("one whole-place word from TERYT's kind, the block and the section alike", () => {
+  // Wieś (Dąbków), miasto (Lubaczów), część wsi (Mazury): the kind alone.
+  for (const [localityId, locality, word] of [
+    ["0606004", "Dąbków", "wieś"],
+    ["0972447", "Lubaczów", "miejscowość"],
+    ["0972453", "Mazury", "miejscowość"],
+  ]) {
+    const whole = cut({
+      place: { localityId, streetId: null },
+      label: { locality, parent: null, street: null },
+      scope: { type: "whole" },
+      note: null,
+    });
+    const address = place({ id: localityId, localityId, streetId: null });
+    assert.equal(scope(whole as Cut), `cała ${word} ${locality}`);
+    assert.equal(
+      whereOf(waterAt(address, only(whole))),
+      `Cała ${word} ${locality}.`,
+    );
+  }
 });
 
 test("block's where: a street's range, „Obejmuje Twój dom” only inside it", () => {
@@ -1267,7 +1289,7 @@ test("village: its streets' cuts of one post and hours as one, „w części”"
   assert.deepEqual(group.place, { localityId: "0606234", streetId: null });
   assert.equal(
     scope(group),
-    "część miejscowości Lisie Jamy: ulice Długa, Wąska, Leśna i Zielona",
+    "część wsi Lisie Jamy: ulice Długa, Wąska, Leśna i Zielona",
   );
   assert.equal(whereOf(data), "Ulice Długa, Wąska, Leśna i Zielona.");
   // A number on a village page: we cannot tell its street, so shown.
@@ -1304,17 +1326,15 @@ test("village: 39885 as edited, the group on 27.10, the whole village on 29.10",
     [
       [
         "2026-10-27",
-        "część miejscowości Lisie Jamy: ulice Długa, Wąska, Leśna i Zielona",
+        "część wsi Lisie Jamy: ulice Długa, Wąska, Leśna i Zielona",
       ],
-      ["2026-10-29", "cała miejscowość Lisie Jamy"],
+      ["2026-10-29", "cała wieś Lisie Jamy"],
     ],
   );
   assert.equal(whereOf(data), "Ulice Długa, Wąska, Leśna i Zielona.");
   assert.deepEqual(lines(data).slice(0, 2), [
     [{ day: "2026-10-27", text: "wtorek, 27 października, 8:00–12:00" }],
-    [
-      "Gdzie: część miejscowości Lisie Jamy: ulice Długa, Wąska, Leśna i Zielona",
-    ],
+    ["Gdzie: część wsi Lisie Jamy: ulice Długa, Wąska, Leśna i Zielona"],
   ]);
 });
 
@@ -1340,7 +1360,7 @@ test("village: a whole-village cut in the same slot hides the group; notes kept"
   ]).outages;
   assert.equal(
     scope(group as Cut),
-    "część miejscowości Lisie Jamy: ulice Długa i Lwowska (od nr 26 do nr 42)",
+    "część wsi Lisie Jamy: ulice Długa i Lwowska (od nr 26 do nr 42)",
   );
   // Another post, or other hours: a group of its own.
   const later = lisieStreet("23795", "Wąska", {
@@ -1374,7 +1394,7 @@ test("village: 39885's Młodów shows its ul. Pilipy on 28.10", () => {
   const data = waterAt(MLODOW);
   assert.deepEqual(
     data.outages.map((d) => [d.date, scope(d)]),
-    [["2026-10-28", "część miejscowości Młodów: ulica Pilipy"]],
+    [["2026-10-28", "część wsi Młodów: ulica Pilipy"]],
   );
   assert.equal(whereOf(data), "Ulica Pilipy.");
 });

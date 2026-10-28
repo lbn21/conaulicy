@@ -403,7 +403,7 @@ test("village: the hub's water in every state, /woda never MZGKiM", () => {
               text: "poniedziałek, 26 października, 8:00–16:00",
             },
           ],
-          ["Gdzie: cała miejscowość Lisie Jamy"],
+          ["Gdzie: cała wieś Lisie Jamy"],
         ],
         [["Kolejne dni: czwartek, 29 października"]],
       ],

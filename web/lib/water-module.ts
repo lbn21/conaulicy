@@ -344,10 +344,24 @@ const listed = (items: string[]) =>
     ? `${items.slice(0, -1).join(", ")} i ${items.at(-1)}`
     : (items[0] ?? "");
 
+/** TERYT's kind of each locality (SIMC). */
+const KIND = new Map(ZUK_PLACES.localities.map((l) => [l.id, l.kind]));
+
+/**
+ * The word for a whole locality, from its TERYT kind: „wieś” (genitive
+ * „wsi”) for a village, „miejscowość” („miejscowości”) for anything else.
+ * One rule for the Woda section (scope) and „Najbliższe dni”.
+ */
+function placeWord(localityId: string): { is: string; of: string } {
+  return KIND.get(localityId) === "wies"
+    ? { is: "wieś", of: "wsi" }
+    : { is: "miejscowość", of: "miejscowości" };
+}
+
 /**
  * What is cut, in our names, with the source's own words on the houses as
- * written: "cała miejscowość Wzorowo", "cała ulica Próbna", "Wzorowo:
- * Górki od numeru 44 do numeru 92", "część miejscowości Wzorowo: ulice
+ * written: "cała wieś Wzorowo", "cała ulica Próbna", "Wzorowo:
+ * Górki od numeru 44 do numeru 92", "część wsi Wzorowo: ulice
  * Próbna i Górna (od nr 26 do nr 42)".
  */
 export function scope(cut: Cut): string {
@@ -358,12 +372,12 @@ export function scope(cut: Cut): string {
     const names = cut.streets.map((s) =>
       s.note ? `${s.name} (${s.note})` : s.name,
     );
-    return `część miejscowości ${label?.locality ?? cut.where}: ${names.length === 1 ? "ulica" : "ulice"} ${listed(names)}`;
+    return `część ${placeWord(cut.place.localityId).of} ${label?.locality ?? cut.where}: ${names.length === 1 ? "ulica" : "ulice"} ${listed(names)}`;
   }
   if (cut.scope.type === "whole" && !cut.note) {
     return street
       ? `cała ulica ${street}`
-      : `cała miejscowość ${label?.locality ?? cut.where}`;
+      : `cała ${placeWord(cut.place.localityId).is} ${label?.locality ?? cut.where}`;
   }
   if (cut.note) return `${name}: ${cut.note}`;
   if (cut.scope.type === "ranges") {
@@ -419,10 +433,6 @@ export function cutWhere(cut: Cut, place: Water["place"]): string {
   return scope({ ...cut, label: { ...cut.label, street: named } });
 }
 
-/** TERYT's kind of a locality: „wieś” for a village, else „miejscowość”. */
-const KIND = new Map(ZUK_PLACES.localities.map((l) => [l.id, l.kind]));
-const village = (id: string) => KIND.get(id) === "wies";
-
 /** „44–92 i 100–110”, „3, 5, 7”: the houses as the scope has them. */
 function houses(cut: Cut): string | null {
   const { scope } = cut;
@@ -438,22 +448,20 @@ function houses(cut: Cut): string | null {
  * source's own words (`note`), whose presence only keeps it from „Cała”.
  */
 function upcomingWhere(cut: Cut, place: Water["place"]): string {
-  const { localityId } = cut.place;
+  const word = placeWord(cut.place.localityId);
   const locality = cut.label?.locality ?? cut.where;
   const street = cut.label?.street ?? null;
   if (cut.streets)
     return `${cut.streets.length === 1 ? "Ulica" : "Ulice"} ${listed(cut.streets.map((s) => s.name))}.`;
   const parent = parentPart(cut, place);
   if (parent)
-    return `Część ${village(localityId) ? "wsi" : "miejscowości"} ${parent} – może nie obejmować tej miejscowości. Sprawdź niżej.`;
+    return `Część ${word.of} ${parent} – może nie obejmować tej miejscowości. Sprawdź niżej.`;
   if (inside(cut, place)) return `Obejmuje Twój dom (nr ${place.givenNr}).`;
   if (certain(cut))
-    return street
-      ? `Cała ulica ${street}.`
-      : `Cała ${village(localityId) ? "wieś" : "miejscowość"} ${locality}.`;
+    return street ? `Cała ulica ${street}.` : `Cała ${word.is} ${locality}.`;
   const nrs = houses(cut);
   if (nrs) return `${street ? `Ulica ${street}` : locality}, numery ${nrs}.`;
-  return `Część ${street ? "ulicy" : village(localityId) ? "wsi" : "miejscowości"} – sprawdź niżej, których domów dotyczy.`;
+  return `Część ${street ? "ulicy" : word.of} – sprawdź niżej, których domów dotyczy.`;
 }
 
 /** The block's items: every cut still to come here, each its own. */
