@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { ContactLink } from "@/components/contact-link";
 
 /** Its H1 and title (GOV.UK: "Page not found"). */
 const NOT_FOUND_TITLE = "Nie znaleziono strony";
@@ -28,10 +27,6 @@ export function PageNotFound() {
         <p className="govuk-body">
           Nie ma takiej strony. Może w adresie jest literówka albo link jest
           nieaktualny.
-        </p>
-        <p className="govuk-body">
-          Jeśli adres jest poprawny albo kliknięto link lub przycisk, napisz do
-          nas: <ContactLink />
         </p>
         <p className="govuk-body">
           <a href="/" className="govuk-link">
