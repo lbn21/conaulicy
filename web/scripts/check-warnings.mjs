@@ -41,6 +41,8 @@ import { finish, ROUTES, startServer } from "./lib/server.mjs";
 // carries the warnings in its alert slot instead (HUB, below).
 const PAGE = "/o-projekcie";
 const HUB = "/adres/0972447-00470";
+// The hub's weather section with no warning (lib/weather-module.ts).
+const NO_WARNINGS = "Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.";
 const WIDTHS = [375, 1280];
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const MINUTE = 60_000;
@@ -550,7 +552,7 @@ async function hubChecks(origin, state) {
       hub,
     )?.[1];
   if (state.hub === null) {
-    if (slot || /Pogoda/.test(hub) || cards.join() !== "Śmieci")
+    if (slot || /Pogoda/.test(hub) || cards.join() !== "Śmieci,Woda")
       failures.push(`${label}: weather shown while IMGW fails (${cards})`);
     else console.log(`ok    ${label}: rendered without the weather`);
     return;
@@ -583,11 +585,10 @@ async function hubChecks(origin, state) {
         ) && `overflow ${JSON.stringify(more)}`
       : more.length > 0 && "an overflow link",
     gaps.some((gap, i) => gap !== i > 0) && `line gaps ${gaps}`,
-    cards.join() !== "Śmieci,Pogoda" && `sections ${cards}`,
+    cards.join() !== "Śmieci,Woda,Pogoda" && `sections ${cards}`,
     !target && "no #co-cie-czeka around the module sections",
-    // Water may be there (no ZUK file in CI); the weather never is.
-    /<p class="govuk-body">Pogoda: /.test(hub) &&
-      "„Nic nie zapowiedziano” with a warning",
+    // Every section, always (task 207); the weather's says the warning.
+    hub.includes(NO_WARNINGS) && "„Brak ostrzeżeń” with a warning",
   ].filter(Boolean);
   if (problems.length > 0) failures.push(`${label}: ${problems.join("; ")}`);
   else console.log(`ok    ${label}: alert slot, ${alerts.length} lines`);
@@ -717,9 +718,9 @@ try {
     const hub = await (await fetch(plain.origin + HUB)).text();
     if (
       /govuk-warning-text/.test(hub) ||
-      !hub.includes("Pogoda: brak ostrzeżeń IMGW.")
+      !hub.includes(`<p class="govuk-body">${NO_WARNINGS}</p>`)
     )
-      failures.push(`${HUB}: an alert, or no „Pogoda: brak ostrzeżeń IMGW.”`);
+      failures.push(`${HUB}: an alert, or no „${NO_WARNINGS}”`);
     await hubShot(browser, plain.origin, "none");
     console.log(
       `ok    ${process.env.IMGW_WARNINGS_URL}: no banner on ${ROUTES.length} routes, no alert on ${HUB}`,
