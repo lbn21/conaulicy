@@ -17,6 +17,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { parse as parseYaml, stringify } from "yaml";
+import { ZUK_MODEL } from "../../../lib/zuk-ai.ts";
 import { ZUK_PLACES } from "../../../lib/zuk-places.generated.ts";
 import { loadConfig } from "../core/config.ts";
 import type { Queryable } from "../core/db.ts";
@@ -32,7 +33,7 @@ import { check } from "./check.ts";
 import { EXPECTED_2026 } from "./expected.ts";
 import { FIXTURES, fixtureFetcher } from "./fixtures.ts";
 import { databaseRows, LAYOUT_ROWS, memberLists } from "./lib.ts";
-import type { Layout } from "./prompts.ts";
+import { type Layout, schedulePrompt } from "./prompts.ts";
 
 const dir = mkdtempSync(path.join(tmpdir(), "waste-fixtures-"));
 process.env.REVIEWS_FILE = path.join(dir, "reviews.json");
@@ -263,9 +264,9 @@ test("the S2 slips: every literal check passes, the review shows September and O
       ),
     );
     assert.equal(body.split("**różnica**").length - 1, 2);
+    // Each slip opened one review PR in its own file (r1's and r2's).
+    assert.equal(reviewPrs().length, 1, name);
   }
-  // Each slip opened one review PR in its own file.
-  assert.equal(reviewPrs().length, 1);
 });
 
 test("a merged review of the slip, corrected by a person: its days apply, no new PR", async () => {
@@ -375,4 +376,47 @@ test("a rejected review keeps the database; a merged one not checked out yet wai
   assert.equal(merged.held?.blocks, true);
   assert.match(merged.held?.note ?? "", /merged .* but not in this checkout/);
   assert.equal(reviewPrs().length, count);
+});
+
+test("a rejected review of another reading (another prompt, or none recorded): read again, a new review PR", async () => {
+  process.env.REVIEWS_FILE = path.join(dir, "reviews.json");
+  const now = `prompt:${sha256(schedulePrompt("gmina").text)} model:${ZUK_MODEL}`;
+  const cases: Array<[string, string, string]> = [
+    // A PR read with another prompt; one from before prompts were recorded.
+    ["waste:gmina-s3", now, `prompt:${"0".repeat(64)} model:${ZUK_MODEL}`],
+    ["waste:gmina-s4", ` ${now}`, ""],
+  ];
+  for (const [zone, from, to] of cases) {
+    const doc = EXPECTED_2026[zone].source_doc;
+    const all = reviewPrs();
+    const old = all.find((p) => p.title.includes(doc));
+    assert.ok(old);
+    assert.ok(old.body.includes(now), "the PR records the prompt and model");
+    old.state = "closed";
+    old.body = old.body.replace(from, to);
+    writeFileSync(process.env.REVIEWS_FILE, JSON.stringify(all));
+    const { out, problems, held } = await readAndCheck(
+      fixtureFetcher(`gmina-s${zone.at(-1)}`),
+      zone,
+      "gmina",
+    );
+    assert.ok(out.read, zone);
+    assert.deepEqual(problems, []);
+    assert.equal(held?.blocks, true);
+    assert.match(held?.note ?? "", /^a new schedule; its review PR: /);
+    const after = reviewPrs();
+    assert.equal(after.length, all.length + 1, zone);
+    const pr = after.at(-1);
+    assert.ok(pr);
+    assert.equal(pr.state, "open");
+    assert.ok(pr.title.includes(doc));
+    assert.ok(pr.body.includes(` ${now} -->`), zone);
+    // That one rejected too: same prompt and model, so held, no xAI call.
+    pr.state = "closed";
+    writeFileSync(process.env.REVIEWS_FILE, JSON.stringify(after));
+    const again = await readAndCheck(unreachable, zone, "gmina");
+    assert.equal(again.out.pending?.state, "rejected");
+    assert.equal(again.held?.blocks, false);
+    assert.equal(reviewPrs().length, after.length);
+  }
 });

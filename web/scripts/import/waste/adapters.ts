@@ -16,7 +16,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import type { AiUsage } from "../../../lib/zuk-ai.ts";
+import { type AiUsage, ZUK_MODEL } from "../../../lib/zuk-ai.ts";
 import type { Etl } from "../../lib/import-data.ts";
 import type { Source } from "../core/config.ts";
 import type {
@@ -24,8 +24,9 @@ import type {
   Extracted as CoreExtracted,
   Found as CoreFound,
 } from "../core/domain.ts";
+import { sha256 } from "../core/hash.ts";
 import type { Http } from "../core/http.ts";
-import { type Reviews, readReviewed } from "../core/review.ts";
+import { type ReadWith, type Reviews, readReviewed } from "../core/review.ts";
 import {
   checkReply,
   LAYOUT_ROWS,
@@ -227,11 +228,14 @@ export type Extracted = CoreExtracted & {
   reviewed: boolean;
   /**
    * Not read: this sha256 already has a review PR (open, merged but not in
-   * this checkout, or rejected), so no xAI call and the PR is left as it is.
+   * this checkout, or rejected for a reading with this same prompt and
+   * model), so no xAI call and the PR is left as it is.
    */
   pending?: { state: "open" | "merged" | "rejected"; url: string };
   /** Else Grok's fresh reading, for its review PR (check.ts). */
   read?: {
+    /** The prompt's sha256 and the model asked, recorded in the PR. */
+    readWith: ReadWith;
     /** The reply as given. */
     content: string;
     /** null when the reply has not the layout's shape. */
@@ -274,14 +278,15 @@ const schedule = (
 };
 
 /** One pdftoppm run at most this long (a schedule page takes about a second). */
-const RENDER_TIMEOUT_MS = 60_000;
+export const RENDER_TIMEOUT_MS = 60_000;
 
 /**
  * A one-page PDF as a PNG for Grok (image preparation only, no text layer):
  * pdftoppm -r 150 -png -singlefile. The page count is the number of pages
  * pdftoppm renders (small, into an empty directory), so no text tool reads it.
+ * timeoutMs: tests shorten it.
  */
-export function renderPdf(body: Buffer): Buffer {
+export function renderPdf(body: Buffer, timeoutMs = RENDER_TIMEOUT_MS): Buffer {
   const dir = mkdtempSync(path.join(tmpdir(), "pdf-"));
   try {
     const pdf = path.join(dir, "source.pdf");
@@ -289,11 +294,9 @@ export function renderPdf(body: Buffer): Buffer {
     const pages = path.join(dir, "pages");
     mkdirSync(pages);
     const pdftoppm = (args: string[]) => {
-      const run = spawnSync("pdftoppm", args, { timeout: RENDER_TIMEOUT_MS });
+      const run = spawnSync("pdftoppm", args, { timeout: timeoutMs });
       if (run.error && "code" in run.error && run.error.code === "ETIMEDOUT")
-        throw new Error(
-          `pdftoppm did not finish within ${RENDER_TIMEOUT_MS / 1000} s`,
-        );
+        throw new Error(`pdftoppm did not finish within ${timeoutMs / 1000} s`);
       // The message without the temporary path, so the same problem keeps its issue.
       if (run.status !== 0)
         throw new Error(
@@ -315,9 +318,11 @@ export function renderPdf(body: Buffer): Buffer {
  * the JPG as is); its reply is checked literally and always goes to a review
  * PR (check.ts). A merged review of this exact file (sha256) replaces the
  * reading: no call, its dates apply. A sha256 that already has a review PR
- * (open, merged but not checked out, rejected) is not read again: no call,
- * and check.ts leaves the PR alone. deps: tests inject the network, the key
- * and the renderer.
+ * (open, merged but not checked out, or rejected for a reading with this
+ * same prompt sha256 and model) is not read again: no call, and check.ts
+ * leaves the PR alone. A rejected review of another reading (another prompt
+ * or model, or none recorded) is read again and gets a new PR. deps: tests
+ * inject the network, the key and the renderer.
  */
 export function wasteAi(
   deps: {
@@ -356,11 +361,14 @@ export function wasteAi(
         reviewed: true,
       };
     }
-    // Its review is already open, merged or rejected: never a second call.
-    const { sameOpen, merged, rejected } = reviews.status(
+    // Its review is already open, merged, or rejected for this same
+    // reading: never a second call.
+    const readWith = { prompt: sha256(prompt.text), model: ZUK_MODEL };
+    const { sameOpen, merged, rejected, rejectedOther } = reviews.status(
       source.id,
       file.name,
       digest,
+      readWith,
     );
     const review = sameOpen
       ? { state: "open" as const, url: sameOpen.url }
@@ -379,6 +387,10 @@ export function wasteAi(
         pending: review,
       };
     }
+    if (rejectedOther)
+      console.log(
+        `${file.name}: its review ${rejectedOther.url} was rejected for another reading (prompt sha256 ${rejectedOther.prompt ?? "not recorded"}, model ${rejectedOther.model ?? "not recorded"}); read again with prompt sha256 ${readWith.prompt}, model ${readWith.model}.`,
+      );
     const image =
       layout === "gmina"
         ? { body: (deps.render ?? renderPdf)(body), mime: "image/png" as const }
@@ -408,7 +420,12 @@ export function wasteAi(
       ...built,
       problems: [],
       reviewed: false,
-      read: { ...reply, reading, findings: [...findings, ...built.problems] },
+      read: {
+        ...reply,
+        readWith,
+        reading,
+        findings: [...findings, ...built.problems],
+      },
     };
   };
 }

@@ -8,6 +8,8 @@
 // it on web and mobile); no source file is ever pushed to git. The bot
 // force-updates only import-review/* branches. REVIEWS_FILE replaces GitHub
 // in tests; IMPORT_REVIEW_DIR replaces etl/review (where merged files are read).
+// The PR's marker records the prompt's sha256 and the model it was read
+// with, so a rejected review blocks a second read only of that same reading.
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -24,9 +26,12 @@ type Pr = {
   number: number;
   state: "open" | "closed" | "merged";
   sha256: string | null;
+  /** What it was read with (its marker); null in a review from before task 199. */
+  prompt: string | null;
+  model: string | null;
   url: string;
 };
-type Stored = Pr & {
+type Stored = Omit<Pr, "prompt" | "model"> & {
   branch: string;
   title: string;
   body: string;
@@ -37,10 +42,22 @@ type Stored = Pr & {
 const reviewKey = (sourceId: string, fileName: string) =>
   `${sourceId}/${fileName.replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9._-]/g, "-")}`;
 const reviewedFile = (key: string) => `etl/review/${key}.yaml`;
-const marker = (key: string, digest: string) =>
-  `<!-- import-review: ${key} sha256:${digest} -->`;
-const shaOf = (body: string) =>
-  /<!-- import-review: \S+ sha256:([0-9a-f]+) -->/.exec(body)?.[1] ?? null;
+/** The prompt's sha256 and the model a reading was asked of. */
+export type ReadWith = { prompt: string; model: string };
+const marker = (key: string, digest: string, readWith?: ReadWith) =>
+  `<!-- import-review: ${key} sha256:${digest}${readWith ? ` prompt:${readWith.prompt} model:${readWith.model}` : ""} -->`;
+/** The marker's fields as written; a part it does not have is null. */
+function markerOf(body: string) {
+  const m =
+    /<!-- import-review: \S+ sha256:([0-9a-f]+)(?: prompt:([0-9a-f]+) model:(\S+))? -->/.exec(
+      body,
+    );
+  return {
+    sha256: m?.[1] ?? null,
+    prompt: m?.[2] ?? null,
+    model: m?.[3] ?? null,
+  };
+}
 
 /**
  * The merged reviewed-data file for this source file, if it is for this
@@ -90,6 +107,8 @@ export type ReviewRequest = {
   ackNote?: string;
   /** The reviewed-data file's content (YAML). */
   reviewed: string;
+  /** What the reading was asked of: in the body and its marker. */
+  readWith?: ReadWith;
   runUrl: string;
 };
 
@@ -120,6 +139,7 @@ export class Reviews {
     if (this.#file)
       return loadList<Stored>(this.#file)
         .filter((p) => p.branch === branch)
+        .map((p) => ({ ...p, ...markerOf(p.body), sha256: p.sha256 }))
         .reverse();
     if (!this.#gh) return [];
     return (
@@ -140,7 +160,7 @@ export class Reviews {
     ).map((p) => ({
       number: p.number,
       state: p.state.toLowerCase() as Pr["state"],
-      sha256: shaOf(p.body),
+      ...markerOf(p.body),
       url: p.url,
     }));
   }
@@ -176,15 +196,27 @@ export class Reviews {
 
   /**
    * What happened to this exact file's review: open (waiting), rejected
-   * (closed without merging), merged, or null (no review yet).
+   * (closed without merging), merged, or null (no review yet). Given
+   * `readWith`, rejected is only a review read with that same prompt and
+   * model; one read otherwise, or before they were recorded, is
+   * rejectedOther.
    */
-  status(sourceId: string, fileName: string, digest: string) {
+  status(
+    sourceId: string,
+    fileName: string,
+    digest: string,
+    readWith?: ReadWith,
+  ) {
     const prs = this.#prs(`import-review/${reviewKey(sourceId, fileName)}`);
     const same = prs.filter((p) => p.sha256 === digest);
+    const closed = same.filter((p) => p.state === "closed");
+    const sameReading = (p: Pr) =>
+      !readWith || (p.prompt === readWith.prompt && p.model === readWith.model);
     return {
       open: prs.find((p) => p.state === "open") ?? null,
       sameOpen: same.find((p) => p.state === "open") ?? null,
-      rejected: same.find((p) => p.state === "closed") ?? null,
+      rejected: closed.find(sameReading) ?? null,
+      rejectedOther: closed.find((p) => !sameReading(p)) ?? null,
       merged: same.find((p) => p.state === "merged") ?? null,
     };
   }
@@ -220,6 +252,9 @@ export class Reviews {
       `- Plik na stronie źródła: ${req.file.url}`,
       `- ${req.pageLabel ?? "Strona źródła"}: ${req.source.page}`,
       `- SHA-256: \`${req.digest}\``,
+      req.readWith
+        ? `- Odczyt: model \`${req.readWith.model}\`, SHA-256 promptu \`${req.readWith.prompt}\``
+        : "",
       req.runUrl ? `- Przebieg importu: ${req.runUrl}` : "",
       "",
       req.markdown,
@@ -249,7 +284,7 @@ export class Reviews {
       "",
       "PR otworzył import (GITHUB_TOKEN), więc CI na nim nie rusza. To w porządku: plik sprawdza następny import.",
       "",
-      marker(key, req.digest),
+      marker(key, req.digest, req.readWith),
     ].join("\n");
 
     if (this.#file) {
