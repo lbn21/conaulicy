@@ -18,6 +18,7 @@
 // the clock IMPORT_NOW. Empties and writes the database, so it refuses any
 // database but a local one (CI, a local container).
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
@@ -447,6 +448,18 @@ await step(
           image.image_url.detail === "high" &&
           image.image_url.url.startsWith(`data:${mime};base64,`),
         `${source}: not the dry run's request: ${JSON.stringify(body).slice(0, 300)}`,
+      );
+      // The review records what was sent: the sha256 of every text part (the
+      // prompt with its TERYT list), the model and the effort.
+      const sent = body.messages
+        .flatMap((m) => m.content)
+        .filter((c) => c.type === "text")
+        .map((c) => c.text)
+        .join("");
+      const marker = ` prompt:${createHash("sha256").update(sent).digest("hex")} model:${body.model} effort:${body.reasoning_effort} -->`;
+      check(
+        openPr(source)?.body.includes(marker),
+        `${source}: the review's marker is not what was sent (${marker})`,
       );
     }
     check(

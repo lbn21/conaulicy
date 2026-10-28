@@ -4,7 +4,14 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { test } from "node:test";
-import { INSTRUCTIONS, listedPlaces, schedulePrompt } from "./prompts.ts";
+import { ZUK_PLACES } from "../../../lib/zuk-places.generated.ts";
+import type { ZukPlaces } from "../../../lib/zuk-resolve.ts";
+import {
+  INSTRUCTIONS,
+  listedPlaces,
+  schedulePrompt,
+  TOWN_SIMC,
+} from "./prompts.ts";
 
 const sha256 = (text: string) =>
   createHash("sha256").update(text).digest("hex");
@@ -50,4 +57,33 @@ test("prompts: the listed places and the ids the model may answer", () => {
     schedulePrompt("miasto").ids,
     streets.map((p) => p.id),
   );
+});
+
+test("prompts: a change to the TERYT list changes the prompt's sha256 (the review fingerprint)", () => {
+  const changed = (places: ZukPlaces) => ({
+    gmina: sha256(schedulePrompt("gmina", places).text),
+    miasto: sha256(schedulePrompt("miasto", places).text),
+  });
+  const now = changed(ZUK_PLACES);
+  const [village] = ZUK_PLACES.localities.filter((l) => l.kind === "wies");
+  const [street] = ZUK_PLACES.streets.filter((s) => s.localityId === TOWN_SIMC);
+  const renamedVillage = changed({
+    ...ZUK_PLACES,
+    localities: ZUK_PLACES.localities.map((l) =>
+      l === village ? { ...l, name: `${l.name}x` } : l,
+    ),
+  });
+  assert.notEqual(renamedVillage.gmina, now.gmina);
+  const renamedStreet = changed({
+    ...ZUK_PLACES,
+    streets: ZUK_PLACES.streets.map((s) =>
+      s === street ? { ...s, name: `${s.name}x` } : s,
+    ),
+  });
+  assert.notEqual(renamedStreet.miasto, now.miasto);
+  const addedStreet = changed({
+    ...ZUK_PLACES,
+    streets: [...ZUK_PLACES.streets, { ...street, id: `${TOWN_SIMC}-99999` }],
+  });
+  assert.notEqual(addedStreet.miasto, now.miasto);
 });
