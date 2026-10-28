@@ -1,61 +1,60 @@
 // The address page's modules: waste, water and the weather today; power and
 // others later (docs/tasks T102). Each one has a section on the address
-// page (components/hub.tsx), always, in registry order, and a subpage of its
-// own, /adres/<id>/<id of the module>, if it has one. The ids and their order live in lib/address-routes.ts, so the
-// unit tests and the URL rules can read them without Next.js; this registry
-// must list exactly those.
+// page (components/hub.tsx), always, in registry order, and a subpage of
+// its own, /adres/<id>/<id of the module>, if it has one. The ids and their
+// order live in lib/address-routes.ts, so the unit tests and the URL rules
+// can read them without Next.js; this registry must list exactly those.
 import type { Metadata } from "next";
 import type { ComponentType } from "react";
 import { imgwCopy } from "@/components/imgw-banner";
 import { WasteDetails, wasteMetadata } from "@/components/place-page";
 import { WaterDetails, waterMetadata } from "@/components/water-page";
-import {
-  isModuleId,
-  MODULE_IDS,
-  type ModuleId,
-  SUBPAGE_IDS,
-} from "@/lib/address-routes";
-import type { Alert, Checked, Group, Part } from "@/lib/hub";
+import { isModuleId, type ModuleId, SUBPAGE_IDS } from "@/lib/address-routes";
+import type { Checked, Group, Part } from "@/lib/hub";
 import { getPlace, type PlaceView } from "@/lib/schedule";
+import type { Item } from "@/lib/upcoming";
 import {
   wasteChecked,
   wasteNote,
   wasteSources,
   wasteStatus,
+  wasteUpcoming,
 } from "@/lib/waste-module";
 import { loadWater } from "@/lib/water-load";
 import {
   type Water,
-  waterAlerts,
   waterChecked,
   waterSources,
   waterStatus,
+  waterUpcoming,
 } from "@/lib/water-module";
 import {
   type Weather,
   weather,
-  weatherAlerts,
   weatherChecked,
   weatherSources,
   weatherStatus,
+  weatherUpcoming,
 } from "@/lib/weather-module";
 
 export type Module<D> = {
   id: ModuleId;
   /** Its section's h2. */
   title: string;
-  /** Registry order, from 0. */
-  order: number;
   /**
    * `place` is the place id, `nr` a house number. null: no such place
    * (waste: a 404), or nothing we may show (any other: left out).
    */
   load(place: string, nr: string | null): Promise<D | null>;
-  /** Today's and the coming warnings, for the slot above the sections. */
-  alerts(data: D): Alert[];
+  /**
+   * Its lines for the „Najbliższe dni” block (lib/upcoming.ts), structured:
+   * the island words them and hides those over.
+   */
+  upcoming(data: D): Item[];
   /**
    * Its section's lines, under the h2, always at least one: what is next,
-   * or that nothing is (absolute dates only, so a cached copy stays true).
+   * or that nothing is (absolute dates only, so a cached copy stays true;
+   * a first line's day lead is the island's).
    */
   status(data: D): Group[];
   /** Its sources, in its section's meta line: a link each. */
@@ -109,10 +108,8 @@ const waste: Module<PlaceView> = {
   title: "Śmieci",
   more: "Wszystkie odbiory śmieci",
   pageTitle: "Odbiór śmieci",
-  order: MODULE_IDS.indexOf("smieci"),
   load: getPlace,
-  // A pickup is routine, never a warning.
-  alerts: () => [],
+  upcoming: wasteUpcoming,
   status: wasteStatus,
   sources: wasteSources,
   note: wasteNote,
@@ -129,9 +126,8 @@ const woda: Module<Water> = {
   title: "Woda",
   more: "Wszystkie przerwy w wodzie",
   pageTitle: "Przerwy w dostawie wody",
-  order: MODULE_IDS.indexOf("woda"),
   load: loadWater,
-  alerts: waterAlerts,
+  upcoming: waterUpcoming,
   status: waterStatus,
   sources: waterSources,
   checkedAt: waterChecked,
@@ -145,7 +141,6 @@ const woda: Module<Water> = {
 const pogoda: Module<Weather> = {
   id: "pogoda",
   title: "Pogoda",
-  order: MODULE_IDS.indexOf("pogoda"),
   async load() {
     const now = Date.now();
     try {
@@ -155,7 +150,7 @@ const pogoda: Module<Weather> = {
       return null;
     }
   },
-  alerts: weatherAlerts,
+  upcoming: weatherUpcoming,
   status: weatherStatus,
   sources: weatherSources,
   checkedAt: weatherChecked,

@@ -17,11 +17,11 @@ import {
 } from "../lib/water-fixture.ts";
 import {
   water,
-  waterAlerts,
   waterNone,
   waterSources,
   waterStatus,
   waterTrace,
+  waterUpcoming,
 } from "../lib/water-module.ts";
 import { STALE_MS, zukView } from "../lib/zuk-data.ts";
 import { AddressPage, WasteDetails } from "./place-page.tsx";
@@ -394,20 +394,15 @@ test("village: the hub's water in every state, /woda never MZGKiM", () => {
   };
   const hub = {
     cut: [
-      [
-        {
-          text: "przerwa w dostawie – poniedziałek, 26 października, 8:00–16:00 (i jeszcze 1 dzień).",
-          href: "/adres/0606257/woda",
-          link: "Więcej o tej przerwie",
-          short: "ZUK Mokrzyca",
-          sourceHref:
-            "https://www.gminalubaczow.pl/2026/10/23/przerwy-w-dostawie-wody-26-29-10-2026/",
-          from: "2026-10-26T08:00:00+01:00",
-        },
-      ],
+      ["Cała wieś Lisie Jamy.", "Cała wieś Lisie Jamy."],
       [
         [
-          ["Poniedziałek, 26 października, 8:00–16:00"],
+          [
+            {
+              day: "2026-10-26",
+              text: "poniedziałek, 26 października, 8:00–16:00",
+            },
+          ],
           ["Gdzie: cała miejscowość Lisie Jamy"],
         ],
         [["Kolejne dni: czwartek, 29 października"]],
@@ -457,7 +452,7 @@ test("village: the hub's water in every state, /woda never MZGKiM", () => {
     const data = water({ "gmina-lubaczow": view }, SMOLINCE);
     assert.deepEqual(
       [
-        waterAlerts(data),
+        waterUpcoming(data).map((item) => item.second),
         waterStatus(data),
         waterNone(data),
         waterSources(data),

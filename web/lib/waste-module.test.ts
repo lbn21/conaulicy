@@ -9,6 +9,7 @@ import {
   wastePath,
   wasteSources,
   wasteStatus,
+  wasteUpcoming,
 } from "./waste-module.ts";
 
 const wasteLine = (at: Parameters<typeof checkedLine>[0]) =>
@@ -48,6 +49,7 @@ const place = (overrides: Partial<PlaceView> = {}): PlaceView => ({
       pickups: [pickup("Zmieszane", "06:00"), pickup("Bio")],
     },
   ],
+  fractions: ["zmieszane", "bio", "papier"],
   sources: [
     { label: "Sektor 1", url: null, checkedAt: "2026-10-20", seenAt: null },
   ],
@@ -58,7 +60,7 @@ const place = (overrides: Partial<PlaceView> = {}): PlaceView => ({
 test("the section: the next pickup on or after today, absolute, its bins", () => {
   assert.deepEqual(wasteStatus(place()), [
     [
-      ["Środa, 28 października"],
+      [{ day: "2026-10-28", text: "środa, 28 października" }],
       ["Tego dnia odbiorą:"],
       [{ bins: [pickup("Zmieszane", "06:00"), pickup("Bio")] }],
     ],
@@ -66,30 +68,69 @@ test("the section: the next pickup on or after today, absolute, its bins", () =>
   ]);
 });
 
-test("every fraction of the place that day: „wszystkie pojemniki”", () => {
+test("every fraction of the zone that day: „wszystkie pojemniki”", () => {
   const all = [pickup("Papier"), pickup("Szkło")];
-  const status = (days: PlaceView["days"]) =>
-    wasteStatus(place({ days }))[0][1];
-  assert.deepEqual(
-    status([
-      { date: "2026-10-27", pickups: all },
-      { date: "2026-11-24", pickups: all },
-    ]),
-    ["Tego dnia odbiorą wszystkie pojemniki:"],
-  );
-  // A fraction that goes on another day: not all.
-  assert.deepEqual(
-    status([
-      { date: "2026-10-27", pickups: all },
-      { date: "2026-11-03", pickups: [pickup("Bio")] },
-    ]),
-    ["Tego dnia odbiorą:"],
-  );
+  const status = (fractions: string[], days: PlaceView["days"]) =>
+    wasteStatus(place({ fractions, days }))[0][1];
+  const days = [
+    { date: "2026-10-27", pickups: all },
+    { date: "2026-11-24", pickups: all },
+  ];
+  assert.deepEqual(status(["papier", "szkło"], days), [
+    "Tego dnia odbiorą wszystkie pojemniki:",
+  ]);
+  // The zone has a fraction no coming day takes (the year's last dates):
+  // not all, from the zone's own list, not from the dates left.
+  assert.deepEqual(status(["bio", "papier", "szkło"], days), [
+    "Tego dnia odbiorą:",
+  ]);
   // One fraction only: never „wszystkie”.
   assert.deepEqual(
-    status([{ date: "2026-10-27", pickups: [pickup("Szkło")] }]),
+    status(["szkło"], [{ date: "2026-10-27", pickups: [pickup("Szkło")] }]),
     ["Tego dnia odbiorą:"],
   );
+});
+
+test("the block: the next two days, from the day before, bins in running text", () => {
+  const items = wasteUpcoming(
+    place({
+      fractions: ["zmieszane", "bio"],
+      days: [
+        { date: "2026-10-20", pickups: [pickup("Papier")] },
+        {
+          date: "2026-10-28",
+          pickups: [pickup("Zmieszane", "06:00"), pickup("Bio")],
+        },
+        { date: "2026-10-30", pickups: [pickup("Bio")] },
+        { date: "2026-11-02", pickups: [pickup("Zmieszane")] },
+      ],
+    }),
+  );
+  assert.deepEqual(
+    items.map((item) => item.module === "smieci" && item.bins),
+    ["wszystkie pojemniki", "bio"],
+  );
+  assert.deepEqual(items[0], {
+    module: "smieci",
+    span: {
+      start: "2026-10-28T00:00:00+01:00",
+      end: "2026-10-29T00:00:00+01:00",
+      day: "2026-10-28",
+      endDay: "2026-10-28",
+      from: null,
+      to: null,
+      about: false,
+      date: "środa, 28 października",
+      until: "czwartku 29 października",
+    },
+    shownFrom: "2026-10-27T00:00:00+01:00",
+    bins: "wszystkie pojemniki",
+    second: "Wystaw je do 6:00 rano.",
+    secondUntil: "2026-10-28T06:00:00+01:00",
+  });
+  assert.equal(items[1].second, null);
+  assert.deepEqual(wasteUpcoming(place({ askNumber: true, zoneId: null })), []);
+  assert.deepEqual(wasteUpcoming(place({ zoneId: null, days: [] })), []);
 });
 
 test("no put-out line without a time; a note in the meta line while unverified", () => {
@@ -99,7 +140,7 @@ test("no put-out line without a time; a note in the meta line while unverified",
   });
   assert.deepEqual(wasteStatus(unverified), [
     [
-      ["Wtorek, 27 października"],
+      [{ day: "2026-10-27", text: "wtorek, 27 października" }],
       ["Tego dnia odbiorą:"],
       [{ bins: [pickup("Szkło")] }],
     ],
