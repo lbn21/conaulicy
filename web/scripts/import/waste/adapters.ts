@@ -16,7 +16,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { type AiUsage, ZUK_MODEL } from "../../../lib/zuk-ai.ts";
+import { type AiUsage, ZUK_EFFORT, ZUK_MODEL } from "../../../lib/zuk-ai.ts";
 import type { Etl } from "../../lib/import-data.ts";
 import type { Source } from "../core/config.ts";
 import type {
@@ -228,13 +228,13 @@ export type Extracted = CoreExtracted & {
   reviewed: boolean;
   /**
    * Not read: this sha256 already has a review PR (open, merged but not in
-   * this checkout, or rejected for a reading with this same prompt and
-   * model), so no xAI call and the PR is left as it is.
+   * this checkout, or rejected for a reading with this same prompt, model
+   * and effort), so no xAI call and the PR is left as it is.
    */
   pending?: { state: "open" | "merged" | "rejected"; url: string };
   /** Else Grok's fresh reading, for its review PR (check.ts). */
   read?: {
-    /** The prompt's sha256 and the model asked, recorded in the PR. */
+    /** The prompt's sha256, the model and the effort asked, recorded in the PR. */
     readWith: ReadWith;
     /** The reply as given. */
     content: string;
@@ -319,9 +319,11 @@ export function renderPdf(body: Buffer, timeoutMs = RENDER_TIMEOUT_MS): Buffer {
  * PR (check.ts). A merged review of this exact file (sha256) replaces the
  * reading: no call, its dates apply. A sha256 that already has a review PR
  * (open, merged but not checked out, or rejected for a reading with this
- * same prompt sha256 and model) is not read again: no call, and check.ts
- * leaves the PR alone. A rejected review of another reading (another prompt
- * or model, or none recorded) is read again and gets a new PR. deps: tests
+ * same prompt sha256, model and effort) is not read again: no call, and
+ * check.ts leaves the PR alone. A rejected review of another reading
+ * (another prompt, model or effort, or one not recorded) is read again and
+ * gets a new PR. The prompt's sha256 is of the whole text sent: the
+ * instructions and the TERYT place list (prompts.ts). deps: tests
  * inject the network, the key and the renderer.
  */
 export function wasteAi(
@@ -363,7 +365,11 @@ export function wasteAi(
     }
     // Its review is already open, merged, or rejected for this same
     // reading: never a second call.
-    const readWith = { prompt: sha256(prompt.text), model: ZUK_MODEL };
+    const readWith = {
+      prompt: sha256(prompt.text),
+      model: ZUK_MODEL,
+      effort: ZUK_EFFORT,
+    };
     const { sameOpen, merged, rejected, rejectedOther } = reviews.status(
       source.id,
       file.name,
@@ -389,7 +395,7 @@ export function wasteAi(
     }
     if (rejectedOther)
       console.log(
-        `${file.name}: its review ${rejectedOther.url} was rejected for another reading (prompt sha256 ${rejectedOther.prompt ?? "not recorded"}, model ${rejectedOther.model ?? "not recorded"}); read again with prompt sha256 ${readWith.prompt}, model ${readWith.model}.`,
+        `${file.name}: its review ${rejectedOther.url} was rejected for another reading (prompt sha256 ${rejectedOther.prompt ?? "not recorded"}, model ${rejectedOther.model ?? "not recorded"}, effort ${rejectedOther.effort ?? "not recorded"}); read again with prompt sha256 ${readWith.prompt}, model ${readWith.model}, effort ${readWith.effort}.`,
       );
     const image =
       layout === "gmina"

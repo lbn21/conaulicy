@@ -7,6 +7,8 @@
 // Notice. It never returns ids: our code maps listed names to them.
 
 export const ZUK_MODEL = "grok-4.7";
+/** The reasoning effort every call asks for. */
+export const ZUK_EFFORT = "medium";
 
 const XAI_URL = "https://api.x.ai/v1/chat/completions";
 /** One model call at most this long (a real post took 161 s at medium). */
@@ -307,7 +309,7 @@ export type XaiReply = {
 };
 
 /**
- * One chat/completions call to Grok (ZUK_MODEL, reasoning medium), shared by
+ * One chat/completions call to Grok (ZUK_MODEL, ZUK_EFFORT), shared by
  * the water reader and the waste import. The body is exactly what is given:
  * temperature and response_format only when set. Throws on a network or HTTP
  * error or a timeout; never logs the key. No retries.
@@ -331,7 +333,7 @@ export async function callXai(
     },
     body: JSON.stringify({
       model: ZUK_MODEL,
-      reasoning_effort: "medium",
+      reasoning_effort: ZUK_EFFORT,
       temperature: request.temperature,
       messages: request.messages,
       response_format: request.responseFormat,

@@ -17,7 +17,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { parse as parseYaml, stringify } from "yaml";
-import { ZUK_MODEL } from "../../../lib/zuk-ai.ts";
+import { ZUK_EFFORT, ZUK_MODEL } from "../../../lib/zuk-ai.ts";
 import { ZUK_PLACES } from "../../../lib/zuk-places.generated.ts";
 import { loadConfig } from "../core/config.ts";
 import type { Queryable } from "../core/db.ts";
@@ -378,40 +378,97 @@ test("a rejected review keeps the database; a merged one not checked out yet wai
   assert.equal(reviewPrs().length, count);
 });
 
-test("a rejected review of another reading (another prompt, or none recorded): read again, a new review PR", async () => {
+/** What each xAI request sent: its body as JSON, in order. */
+function sending(fetcher: typeof fetch) {
+  const sent: Array<{
+    model: string;
+    reasoning_effort: string;
+    messages: Array<{ content: Array<{ type: string; text?: string }> }>;
+  }> = [];
+  const wrapped = (async (url: string | URL, init?: RequestInit) => {
+    sent.push(JSON.parse(String(init?.body)));
+    return fetcher(url, init);
+  }) as typeof fetch;
+  return { sent, fetcher: wrapped };
+}
+
+const NOW = `prompt:${sha256(schedulePrompt("gmina").text)} model:${ZUK_MODEL} effort:${ZUK_EFFORT}`;
+
+test("a rejected review of another reading (another prompt, model or effort, or one not recorded): read again, a new review PR", async () => {
   process.env.REVIEWS_FILE = path.join(dir, "reviews.json");
-  const now = `prompt:${sha256(schedulePrompt("gmina").text)} model:${ZUK_MODEL}`;
+  // Each marker rewritten as the rejected PR's; the same file twice, each
+  // time on its newest PR.
   const cases: Array<[string, string, string]> = [
-    // A PR read with another prompt; one from before prompts were recorded.
-    ["waste:gmina-s3", now, `prompt:${"0".repeat(64)} model:${ZUK_MODEL}`],
-    ["waste:gmina-s4", ` ${now}`, ""],
+    [
+      "waste:gmina-s3",
+      NOW,
+      `prompt:${"0".repeat(64)} model:${ZUK_MODEL} effort:${ZUK_EFFORT}`,
+    ],
+    [
+      "waste:gmina-s3",
+      NOW,
+      `prompt:${sha256(schedulePrompt("gmina").text)} model:grok-0 effort:${ZUK_EFFORT}`,
+    ],
+    [
+      "waste:gmina-s3",
+      NOW,
+      `prompt:${sha256(schedulePrompt("gmina").text)} model:${ZUK_MODEL} effort:high`,
+    ],
+    // Before task 199: no prompt, model or effort.
+    ["waste:gmina-s4", ` ${NOW}`, ""],
+    // Before task 203 (#192 to #202): prompt and model, no effort.
+    [
+      "waste:gmina-s4",
+      NOW,
+      `prompt:${sha256(schedulePrompt("gmina").text)} model:${ZUK_MODEL}`,
+    ],
   ];
   for (const [zone, from, to] of cases) {
     const doc = EXPECTED_2026[zone].source_doc;
     const all = reviewPrs();
-    const old = all.find((p) => p.title.includes(doc));
+    const old = all.filter((p) => p.title.includes(doc)).at(-1);
     assert.ok(old);
-    assert.ok(old.body.includes(now), "the PR records the prompt and model");
+    assert.ok(
+      old.body.includes(` ${NOW} -->`),
+      "the PR records the prompt, model and effort",
+    );
     old.state = "closed";
     old.body = old.body.replace(from, to);
     writeFileSync(process.env.REVIEWS_FILE, JSON.stringify(all));
-    const { out, problems, held } = await readAndCheck(
-      fixtureFetcher(`gmina-s${zone.at(-1)}`),
-      zone,
-      "gmina",
-    );
-    assert.ok(out.read, zone);
+    const { sent, fetcher } = sending(fixtureFetcher(`gmina-s${zone.at(-1)}`));
+    const { out, problems, held } = await readAndCheck(fetcher, zone, "gmina");
+    assert.ok(out.read, to);
     assert.deepEqual(problems, []);
     assert.equal(held?.blocks, true);
     assert.match(held?.note ?? "", /^a new schedule; its review PR: /);
     const after = reviewPrs();
-    assert.equal(after.length, all.length + 1, zone);
+    assert.equal(after.length, all.length + 1, to);
     const pr = after.at(-1);
     assert.ok(pr);
     assert.equal(pr.state, "open");
     assert.ok(pr.title.includes(doc));
-    assert.ok(pr.body.includes(` ${now} -->`), zone);
-    // That one rejected too: same prompt and model, so held, no xAI call.
+    // The marker is what was sent: the sha256 of every text part of the
+    // request (the prompt with its TERYT list), its model and its effort.
+    assert.equal(sent.length, 1);
+    const [request] = sent;
+    const text = request.messages
+      .flatMap((m) => m.content)
+      .filter((c) => c.type === "text")
+      .map((c) => c.text)
+      .join("");
+    assert.ok(
+      pr.body.includes(
+        ` prompt:${sha256(text)} model:${request.model} effort:${request.reasoning_effort} -->`,
+      ),
+      to,
+    );
+    assert.ok(pr.body.includes(` ${NOW} -->`), to);
+    assert.ok(
+      pr.body.includes(
+        `- Odczyt: model \`${ZUK_MODEL}\`, reasoning \`${ZUK_EFFORT}\`, SHA-256 promptu`,
+      ),
+    );
+    // That one rejected too: same prompt, model and effort, so held, no xAI call.
     pr.state = "closed";
     writeFileSync(process.env.REVIEWS_FILE, JSON.stringify(after));
     const again = await readAndCheck(unreachable, zone, "gmina");
@@ -419,4 +476,45 @@ test("a rejected review of another reading (another prompt, or none recorded): r
     assert.equal(again.held?.blocks, false);
     assert.equal(reviewPrs().length, after.length);
   }
+});
+
+test("reviews from before task 203 (no effort recorded): open and merged count as before, no xAI call", async () => {
+  process.env.REVIEWS_FILE = path.join(dir, "reviews.json");
+  const zone = "waste:gmina-s5";
+  const doc = EXPECTED_2026[zone].source_doc;
+  const rewrite = (state: string) => {
+    const all = reviewPrs();
+    const pr = all.filter((p) => p.title.includes(doc)).at(-1);
+    assert.ok(pr);
+    pr.state = state;
+    pr.body = pr.body.replace(
+      NOW,
+      `prompt:${sha256(schedulePrompt("gmina").text)} model:${ZUK_MODEL}`,
+    );
+    writeFileSync(process.env.REVIEWS_FILE as string, JSON.stringify(all));
+    return pr;
+  };
+  const count = reviewPrs().length;
+  rewrite("open");
+  const open = await readAndCheck(unreachable, zone, "gmina");
+  assert.equal(open.out.pending?.state, "open");
+  assert.equal(open.held?.blocks, true);
+  const pr = rewrite("merged");
+  const merged = await readAndCheck(unreachable, zone, "gmina");
+  assert.equal(merged.out.pending?.state, "merged");
+  assert.match(merged.held?.note ?? "", /merged .* but not in this checkout/);
+  // Once in the checkout, its YAML applies, whatever its marker says.
+  const [[key, yaml]] = Object.entries(pr.files);
+  const target = path.join(
+    process.env.IMPORT_REVIEW_DIR as string,
+    key.replace(/^etl\/review\//, ""),
+  );
+  mkdirSync(path.dirname(target), { recursive: true });
+  writeFileSync(target, yaml);
+  const applied = await readAndCheck(unreachable, zone, "gmina");
+  assert.equal(applied.out.reviewed, true);
+  assert.equal(applied.out.read, undefined);
+  assert.deepEqual(applied.problems, []);
+  assert.equal(applied.held, null);
+  assert.equal(reviewPrs().length, count);
 });

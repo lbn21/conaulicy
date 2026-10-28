@@ -8,8 +8,9 @@
 // it on web and mobile); no source file is ever pushed to git. The bot
 // force-updates only import-review/* branches. REVIEWS_FILE replaces GitHub
 // in tests; IMPORT_REVIEW_DIR replaces etl/review (where merged files are read).
-// The PR's marker records the prompt's sha256 and the model it was read
-// with, so a rejected review blocks a second read only of that same reading.
+// The PR's marker records the prompt's sha256, the model and the reasoning
+// effort it was read with, so a rejected review blocks a second read only of
+// that same reading.
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -26,12 +27,13 @@ type Pr = {
   number: number;
   state: "open" | "closed" | "merged";
   sha256: string | null;
-  /** What it was read with (its marker); null in a review from before task 199. */
+  /** What it was read with (its marker); null where the marker has no such field. */
   prompt: string | null;
   model: string | null;
+  effort: string | null;
   url: string;
 };
-type Stored = Omit<Pr, "prompt" | "model"> & {
+type Stored = Omit<Pr, "prompt" | "model" | "effort"> & {
   branch: string;
   title: string;
   body: string;
@@ -42,20 +44,27 @@ type Stored = Omit<Pr, "prompt" | "model"> & {
 const reviewKey = (sourceId: string, fileName: string) =>
   `${sourceId}/${fileName.replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9._-]/g, "-")}`;
 const reviewedFile = (key: string) => `etl/review/${key}.yaml`;
-/** The prompt's sha256 and the model a reading was asked of. */
-export type ReadWith = { prompt: string; model: string };
+/**
+ * What a reading was asked of: the sha256 of the whole text sent (the
+ * prompt, its place lists included), the model and the reasoning effort.
+ */
+export type ReadWith = { prompt: string; model: string; effort: string };
 const marker = (key: string, digest: string, readWith?: ReadWith) =>
-  `<!-- import-review: ${key} sha256:${digest}${readWith ? ` prompt:${readWith.prompt} model:${readWith.model}` : ""} -->`;
-/** The marker's fields as written; a part it does not have is null. */
+  `<!-- import-review: ${key} sha256:${digest}${readWith ? ` prompt:${readWith.prompt} model:${readWith.model} effort:${readWith.effort}` : ""} -->`;
+/**
+ * The marker's fields as written; a part it does not have is null (before
+ * task 199 no prompt or model, before task 203 no effort).
+ */
 function markerOf(body: string) {
   const m =
-    /<!-- import-review: \S+ sha256:([0-9a-f]+)(?: prompt:([0-9a-f]+) model:(\S+))? -->/.exec(
+    /<!-- import-review: \S+ sha256:([0-9a-f]+)(?: prompt:([0-9a-f]+) model:(\S+)(?: effort:(\S+))?)? -->/.exec(
       body,
     );
   return {
     sha256: m?.[1] ?? null,
     prompt: m?.[2] ?? null,
     model: m?.[3] ?? null,
+    effort: m?.[4] ?? null,
   };
 }
 
@@ -197,9 +206,9 @@ export class Reviews {
   /**
    * What happened to this exact file's review: open (waiting), rejected
    * (closed without merging), merged, or null (no review yet). Given
-   * `readWith`, rejected is only a review read with that same prompt and
-   * model; one read otherwise, or before they were recorded, is
-   * rejectedOther.
+   * `readWith`, rejected is only a review read with that same prompt, model
+   * and effort; one read otherwise, or whose marker lacks any of them, is
+   * rejectedOther. Open and merged reviews count whatever they were read with.
    */
   status(
     sourceId: string,
@@ -211,7 +220,10 @@ export class Reviews {
     const same = prs.filter((p) => p.sha256 === digest);
     const closed = same.filter((p) => p.state === "closed");
     const sameReading = (p: Pr) =>
-      !readWith || (p.prompt === readWith.prompt && p.model === readWith.model);
+      !readWith ||
+      (p.prompt === readWith.prompt &&
+        p.model === readWith.model &&
+        p.effort === readWith.effort);
     return {
       open: prs.find((p) => p.state === "open") ?? null,
       sameOpen: same.find((p) => p.state === "open") ?? null,
@@ -253,7 +265,7 @@ export class Reviews {
       `- ${req.pageLabel ?? "Strona źródła"}: ${req.source.page}`,
       `- SHA-256: \`${req.digest}\``,
       req.readWith
-        ? `- Odczyt: model \`${req.readWith.model}\`, SHA-256 promptu \`${req.readWith.prompt}\``
+        ? `- Odczyt: model \`${req.readWith.model}\`, reasoning \`${req.readWith.effort}\`, SHA-256 promptu \`${req.readWith.prompt}\``
         : "",
       req.runUrl ? `- Przebieg importu: ${req.runUrl}` : "",
       "",
