@@ -116,7 +116,7 @@ const SHORT_FROM = new RegExp(`^od ${DAY}, ${TIME}$`, "u");
 const CROSS_DAY = new RegExp(`^Od ${DAY}, ${TIME} do ${DAY}, ${TIME}\\.$`, "u");
 const footer = (stale) =>
   new RegExp(
-    `^Dotyczy całego powiatu lubaczowskiego\\. Stan na ${TIME}\\.${stale ? " Nowszych danych nie udało się pobrać\\." : ""} ${IMGW_ATTRIBUTION.join(" ").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+    `^Dotyczy całego powiatu lubaczowskiego\\. Stan na ${TIME}\\.${stale ? " Nowszych danych nie udało się pobrać\\." : ""}$`,
     "u",
   );
 const COLOUR = {
@@ -238,6 +238,8 @@ function readBanner() {
     )?.textContent,
     footer: b.querySelector(".govuk-details__text > .govuk-body-s")
       ?.textContent,
+    attribution: b.querySelector(".govuk-details__text > .govuk-hint")
+      ?.textContent,
     alerts:
       b.querySelectorAll('[role="alert"]').length +
       (b.getAttribute("role") === "alert" ? 1 : 0),
@@ -323,6 +325,9 @@ function expectBanner(label, state, seen) {
     fail(`links ${links}`);
   if (seen.source !== "Źródło: IMGW-PIB") fail(`source „${seen.source}”`);
   if (!footer(!!state.stale).test(seen.footer)) fail(`footer „${seen.footer}”`);
+  // IMGW's wording as is, in secondary text (task 205).
+  if (seen.attribution !== IMGW_ATTRIBUTION.join(" "))
+    fail(`attribution „${seen.attribution}”`);
 }
 
 // WCAG 2.x contrast of two computed rgb() colours.

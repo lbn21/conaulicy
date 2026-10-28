@@ -53,9 +53,11 @@ export type Banner = {
   /** The details' summary. */
   more: string;
   warnings: BannerWarning[];
-  /** Visible, before the details: the source, short (in full in the footer). */
+  /** Visible, before the details: the source, short (in full in the attribution). */
   source: string;
   footer: string;
+  /** IMGW-PIB's required wording (IMGW_ATTRIBUTION), after the footer. */
+  attribution: string;
 };
 
 const at = (time: number) => `${dayGenitive(time)}, ${clockTime(time)}`;
@@ -105,7 +107,7 @@ export function banner(found: Found, now: number): Banner | null {
       "Dotyczy całego powiatu lubaczowskiego.",
       `Stan na ${clockTime(fetchedAt)}.`,
       ...(found.stale ? ["Nowszych danych nie udało się pobrać."] : []),
-      ...IMGW_ATTRIBUTION,
     ].join(" "),
+    attribution: IMGW_ATTRIBUTION.join(" "),
   };
 }

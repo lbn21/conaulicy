@@ -314,9 +314,25 @@ export function AddressSearch({
       input.dispatchEvent(new Event("input", { bubbles: true }));
     }
 
+    // Back to a page kept in the back/forward cache: the list is as it was
+    // left, open. Escape closes it through the library's own state, so
+    // aria-expanded follows (its blur keeps the list open on iOS).
+    function closeOnRestore(event: PageTransitionEvent) {
+      if (!event.persisted) return;
+      container?.querySelector(`#${INPUT_ID}`)?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Escape",
+          keyCode: 27,
+          bubbles: true,
+        }),
+      );
+    }
+    window.addEventListener("pageshow", closeOnRestore);
+
     const cancelIdle = whenIdle(() => void start(), 2000, 200);
     return () => {
       cancelled = true;
+      window.removeEventListener("pageshow", closeOnRestore);
       cancelIdle();
       cancelTakeover();
       stopIndex();
