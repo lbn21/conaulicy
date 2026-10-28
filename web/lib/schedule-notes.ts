@@ -2,6 +2,7 @@
 // kept in one place so they cannot drift. Pure, so the unit tests need no
 // database.
 import type { PickupDay, PlaceView } from "@/lib/schedule";
+import { scheduleOwner } from "./places.ts";
 
 /**
  * Whether a place has any pickup on or after `today` (a Warsaw ISO day).
@@ -29,6 +30,21 @@ export function putOutBy(time: string): string {
 export const DISCLAIMER =
   "Nie jesteśmy urzędem – obowiązuje harmonogram gminy.";
 
+/** The same for one gmina's schedule (the calendar, the PDF). */
+export function disclaimer(gmina: string): string {
+  return `Nie jesteśmy urzędem – obowiązuje harmonogram ${scheduleOwner(gmina)}.`;
+}
+
+/**
+ * After the last date, on the waste subpage and in its calendar: the next
+ * year's dates come when published. Null without dates.
+ */
+export function laterNote(days: Pick<PickupDay, "date">[]): string | null {
+  const last = days.at(-1);
+  if (!last) return null;
+  return `Terminy na ${Number(last.date.slice(0, 4)) + 1} dodamy, gdy je ogłoszą.`;
+}
+
 /**
  * Under the h1 of the address page and the waste subpage: a house number
  * given on a street not split by numbers changes nothing, so say so. Null on
@@ -54,8 +70,9 @@ export const NO_MORE_DATES_NEXT =
   "Dodamy je, gdy tylko gmina ogłosi nowy harmonogram.";
 
 /** Shown on the page and printed in the PDF while a place is not verified. */
-export const UNVERIFIED_NOTE =
-  "Te daty odczytaliśmy automatycznie z harmonogramu gminy i nikt ich jeszcze nie sprawdził drugi raz. Gdyby coś się nie zgadzało, rację ma harmonogram gminy.";
+export function unverifiedNote(gmina: string): string {
+  return `Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest komunikat ${scheduleOwner(gmina)}.`;
+}
 
 /**
  * The place's description in search results and when shared: its dates and
@@ -65,7 +82,10 @@ export const UNVERIFIED_NOTE =
  * subpage's own (/adres/<id>/smieci): the full list, calendar and PDF.
  */
 export function placeDescription(
-  place: Pick<PlaceView, "label" | "zoneId" | "askNumber" | "days" | "today">,
+  place: Pick<
+    PlaceView,
+    "label" | "gmina" | "zoneId" | "askNumber" | "days" | "today"
+  >,
   page: "address" | "waste" = "address",
 ): string {
   const dates =
@@ -74,7 +94,7 @@ export function placeDescription(
   if (page === "waste") {
     return dates
       ? `Pełna lista odbiorów śmieci: ${place.label}. Wszystkie terminy do kalendarza w telefonie i harmonogram do druku (PDF).`
-      : `Odbiór śmieci: ${place.label}. Terminów jeszcze tu nie mamy – do tego czasu sprawdź harmonogram gminy.`;
+      : `Odbiór śmieci: ${place.label}. Terminów jeszcze tu nie mamy – do tego czasu sprawdź harmonogram ${scheduleOwner(place.gmina)}.`;
   }
   return dates
     ? `Wywóz śmieci, przerwy w dostawie wody i ostrzeżenia IMGW: ${place.label}. Najbliższe terminy w jednym miejscu.`

@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  DISCLAIMER,
+  disclaimer,
   hasUpcoming,
+  laterNote,
   placeDescription,
   putOutNote,
   sharedNumberNote,
-  UNVERIFIED_NOTE,
+  unverifiedNote,
 } from "./schedule-notes.ts";
 
 const day = (date: string) => ({
@@ -45,14 +48,34 @@ test("the put-out note gives the data's hour without a leading zero", () => {
   );
 });
 
-test("the unverified note sends people to the gmina's schedule", () => {
-  assert.match(UNVERIFIED_NOTE, /nikt ich jeszcze nie sprawdził/);
-  assert.match(UNVERIFIED_NOTE, /rację ma harmonogram gminy\.$/);
+test("the unverified note names whose schedule wins: the gmina's, or the town's", () => {
+  assert.equal(
+    unverifiedNote("Lubaczów (gmina)"),
+    "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest komunikat gminy.",
+  );
+  assert.equal(
+    unverifiedNote("Lubaczów (miasto)"),
+    "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest komunikat Urzędu Miejskiego.",
+  );
+  assert.equal(
+    disclaimer("Lubaczów (miasto)"),
+    "Nie jesteśmy urzędem – obowiązuje harmonogram Urzędu Miejskiego.",
+  );
+  assert.equal(disclaimer("Lubaczów (gmina)"), DISCLAIMER);
+});
+
+test("after the last date: the next year's dates come when published", () => {
+  assert.equal(
+    laterNote([day("2026-11-02"), day("2026-12-31")]),
+    "Terminy na 2027 dodamy, gdy je ogłoszą.",
+  );
+  assert.equal(laterNote([]), null);
 });
 
 test("a place's description offers dates only when the page has them", () => {
   const place = {
     label: "ul. Rynek, Lubaczów",
+    gmina: "Lubaczów (miasto)",
     zoneId: "lubaczow-1",
     askNumber: false,
     days: [day("2026-12-28")],
@@ -82,6 +105,7 @@ test("a place's description offers dates only when the page has them", () => {
 test("the waste subpage's description is its own", () => {
   const place = {
     label: "ul. Rynek, Lubaczów",
+    gmina: "Lubaczów (miasto)",
     zoneId: "lubaczow-1",
     askNumber: false,
     days: [day("2026-12-28")],

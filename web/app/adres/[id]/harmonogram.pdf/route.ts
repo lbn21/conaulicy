@@ -22,6 +22,7 @@ import {
 } from "@/lib/logo";
 import { fileSlug } from "@/lib/normalize";
 import { type Block, flow, type Spot } from "@/lib/pdf-flow";
+import { scheduleName } from "@/lib/places";
 import {
   getPlace,
   movedTarget,
@@ -30,10 +31,10 @@ import {
   type PlaceView,
 } from "@/lib/schedule";
 import {
-  DISCLAIMER,
+  disclaimer,
   hasUpcoming,
   putOutNote,
-  UNVERIFIED_NOTE,
+  unverifiedNote,
 } from "@/lib/schedule-notes";
 import { SITE_NAME } from "@/lib/share";
 import { THEME_COLOR } from "@/lib/theme";
@@ -383,7 +384,7 @@ function emptyRange(keys: string[]): string {
 }
 
 const LATER =
-  "terminy dodamy, gdy gmina je ogłosi. Aktualne zawsze na conaulicy.pl.";
+  "terminy dodamy, gdy je ogłoszą. Aktualne zawsze na conaulicy.pl.";
 
 // ---------------------------------------------------------------- render
 
@@ -414,7 +415,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // The unverified note ends with the same advice, so then it is said once,
   // after the reason for it.
   const warningText = place.verified
-    ? "Terminy mogą się zmienić. Gdyby coś się nie zgadzało, rację ma harmonogram gminy."
+    ? `Terminy mogą się zmienić. Jeśli coś się nie zgadza, ważniejszy jest ${scheduleName(place.gmina)}.`
     : "Terminy mogą się zmienić.";
 
   const doc = new PDFDocument({
@@ -463,7 +464,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       : "";
     return { text: `Źródło: ${source.label}${checked}`, url: source.url };
   });
-  const closing = DISCLAIMER;
+  const closing = disclaimer(place.gmina);
   const small = px(16);
   // A URL never breaks: its own line, smaller if it must.
   const urlSize = (text: string) =>
@@ -849,7 +850,9 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     ? { bold: `${emptyRange(trailing)}: `, text: LATER }
     : null;
   const panelNotes = (withLater: boolean): Note[] => [
-    ...(place.verified ? [] : [{ bold: "", text: UNVERIFIED_NOTE }]),
+    ...(place.verified
+      ? []
+      : [{ bold: "", text: unverifiedNote(place.gmina) }]),
     ...(putOut ? [{ bold: "", text: putOut }] : []),
     ...(withLater && later ? [later] : []),
   ];

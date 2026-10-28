@@ -44,18 +44,27 @@ export function localitySearchLabel(locality: {
   return locality.kind === "miasto" ? locality.name : villageLabel(locality);
 }
 
-// Who publishes each gmina's schedule, in the genitive for "harmonogram …".
-const SCHEDULE_OWNERS: Record<string, string> = {
-  "Lubaczów (miasto)": "Urzędu Miejskiego w Lubaczowie",
-  "Lubaczów (gmina)": "Urzędu Gminy Lubaczów",
+// Who publishes each gmina's schedule, in the genitive for "harmonogram …":
+// in full, for a source link, and short, for a sentence about it.
+const SCHEDULE_OWNERS: Record<string, { full: string; short: string }> = {
+  "Lubaczów (miasto)": {
+    full: "Urzędu Miejskiego w Lubaczowie",
+    short: "Urzędu Miejskiego",
+  },
+  "Lubaczów (gmina)": { full: "Urzędu Gminy Lubaczów", short: "gminy" },
 };
 
 /** "harmonogram Urzędu Gminy Lubaczów": a source link names its publisher. */
 export function scheduleName(gmina: string): string {
   const owner = SCHEDULE_OWNERS[gmina];
   return owner
-    ? `harmonogram ${owner}`
+    ? `harmonogram ${owner.full}`
     : `harmonogram gminy ${gminaShortName(gmina)}`;
+}
+
+/** "gminy", or the town's "Urzędu Miejskiego": "harmonogram …" in a sentence. */
+export function scheduleOwner(gmina: string): string {
+  return SCHEDULE_OWNERS[gmina]?.short ?? "gminy";
 }
 
 /**

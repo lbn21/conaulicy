@@ -12,7 +12,12 @@ import {
 } from "@/lib/ics";
 import { NOINDEX } from "@/lib/indexing";
 import { getZone } from "@/lib/schedule";
-import { DISCLAIMER, putOutNote } from "@/lib/schedule-notes";
+import {
+  DISCLAIMER,
+  disclaimer,
+  laterNote,
+  putOutNote,
+} from "@/lib/schedule-notes";
 import { wasteCalendarName, wasteFilename } from "@/lib/waste-ics";
 
 export async function GET(
@@ -29,17 +34,21 @@ export async function GET(
   }
 
   const stamp = icsUtc(new Date());
+  // The next year's dates, in the calendar's description (no event).
+  const later = laterNote(zone.events.map((event) => ({ date: event.start })));
   const lines = [
     ...calendarHead("Wywoz smieci", wasteCalendarName(zone.name)),
+    ...(later ? [`X-WR-CALDESC:${escapeText(later)}`] : []),
     `X-WR-TIMEZONE:${WARSAW}`,
   ];
+  const notUs = zone.gmina ? disclaimer(zone.gmina) : DISCLAIMER;
 
   for (const event of zone.events) {
     const putOutBy = event.payload?.putOutBy;
     const description = [
       typeof putOutBy === "string" ? putOutNote(putOutBy) : null,
       `Źródło: ${event.sourceUrl} (stan na ${longDate(event.checkedAt)})`,
-      DISCLAIMER,
+      notUs,
     ]
       .filter(Boolean)
       .join("\n");

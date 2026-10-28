@@ -12,6 +12,7 @@ import {
   CalendarBlock,
   SourceInset,
 } from "@/components/subpage-parts";
+import type { ModuleId } from "@/lib/address-routes";
 import { withHouseNumber } from "@/lib/house";
 import type { Checked } from "@/lib/hub";
 import { indexable } from "@/lib/indexing";
@@ -19,17 +20,19 @@ import {
   localityAnchor,
   placePath,
   scheduleName,
+  scheduleOwner,
   titleLabel,
 } from "@/lib/places";
 import { prgNote } from "@/lib/prg";
 import { getPlace, movedTarget, type PlaceView } from "@/lib/schedule";
 import {
   hasUpcoming,
+  laterNote,
   NO_MORE_DATES,
   NO_MORE_DATES_NEXT,
   placeDescription,
   sharedNumberNote,
-  UNVERIFIED_NOTE,
+  unverifiedNote,
 } from "@/lib/schedule-notes";
 import { pageMetadata } from "@/lib/share";
 import { ALL_PLACES } from "@/lib/static-pages";
@@ -65,7 +68,7 @@ function NoDates({
         {heading}
       </h2>
       <p className="govuk-body">
-        {`${text} Do tego czasu sprawdź odbiory w harmonogramie gminy.`}
+        {`${text} Do tego czasu sprawdź odbiory w harmonogramie ${scheduleOwner(place.gmina)}.`}
       </p>
       {place.schedulePage && (
         <p className="govuk-body">
@@ -85,7 +88,7 @@ function NoDates({
 export function numberError(place: PlaceView, missing: boolean): string | null {
   if (!place.askNumber) return null;
   if (place.unknownNr) {
-    return `Numeru ${place.unknownNr} nie ma w harmonogramie tej ulicy. Sprawdź numer albo harmonogram gminy`;
+    return `Numeru ${place.unknownNr} nie ma w harmonogramie tej ulicy. Sprawdź numer albo harmonogram ${scheduleOwner(place.gmina)}`;
   }
   return missing ? "Wpisz numer domu, na przykład 12, 12a albo 7/22" : null;
 }
@@ -257,12 +260,15 @@ function PlaceHeading({
   heading,
   error = null,
   checkedAt = null,
+  module = "smieci",
 }: {
   place: PlaceView;
   caption?: string;
   heading: string;
   error?: string | null;
   checkedAt?: Checked;
+  /** Whose check the line under „Zmień adres” is. */
+  module?: ModuleId;
 }) {
   const name = withHouseNumber(place.name, place.nr);
   const notFound = prgNote(place);
@@ -281,7 +287,7 @@ function PlaceHeading({
           Zmień adres<span className="govuk-visually-hidden"> {name}</span>
         </a>
       </p>
-      <CheckedLine at={checkedAt} />
+      <CheckedLine at={checkedAt} module={module} />
     </>
   );
 }
@@ -291,10 +297,12 @@ export function SubpageHeading({
   place,
   heading,
   checkedAt,
+  module,
 }: {
   place: PlaceView;
   heading: string;
   checkedAt: Checked;
+  module: ModuleId;
 }) {
   return (
     <PlaceHeading
@@ -302,6 +310,7 @@ export function SubpageHeading({
       caption={placeCaption(place)}
       heading={heading}
       checkedAt={checkedAt}
+      module={module}
     />
   );
 }
@@ -486,9 +495,13 @@ function WasteBody({
             </a>
           </p>
 
-          <PickupSchedule days={place.days} renderedOn={place.today} />
+          <PickupSchedule
+            days={place.days}
+            renderedOn={place.today}
+            later={laterNote(place.days)}
+          />
 
-          {!place.verified && <AiReadNote text={UNVERIFIED_NOTE} />}
+          {!place.verified && <AiReadNote text={unverifiedNote(place.gmina)} />}
           <SourceInset>
             {place.sources.map((source) => (
               <p key={source.label} className="govuk-body">

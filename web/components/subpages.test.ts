@@ -96,7 +96,7 @@ const SKELETON = [
   '<span class="govuk-caption-l">',
   '<h1 class="govuk-heading-l">',
   "Zmień adres",
-  "Ostatnio sprawdziliśmy",
+  " sprawdziliśmy: ",
   'role="button"',
 ];
 const AFTER = ['class="govuk-warning-text"', 'class="govuk-inset-text"'];
@@ -126,7 +126,7 @@ test("/woda: the AI note in a warning text, the source in an inset", () => {
   const html = waterPage();
   assert.match(
     html,
-    /<div class="govuk-warning-text">[\s\S]*odczytaliśmy automatycznie z komunikatu gminy/,
+    /<div class="govuk-warning-text">[\s\S]*przepisał automatycznie program/,
   );
   assert.match(
     html,
@@ -146,7 +146,12 @@ test("/woda without a dated cut: no button, the rest in the same order", () => {
     assert.ok(ascending(order(html, SKELETON.slice(0, -1))), html);
   }
   const html = waterPage([emergency]);
-  assert.ok(ascending(order(html, ["Ostatnio", "<h2", ...AFTER])), html);
+  assert.ok(
+    ascending(
+      order(html, ["Komunikaty o wodzie sprawdziliśmy", "<h2", ...AFTER]),
+    ),
+    html,
+  );
 });
 
 test("/smieci and /woda: the same skeleton and calendar block", () => {
@@ -382,7 +387,7 @@ test("village: the hub's water in every state, /woda never MZGKiM", () => {
         ["Gdzie", ["cała miejscowość Lisie Jamy"]],
         ["Kolejne", ["czwartek, 29 października"]],
       ],
-      "brak zapowiedzianych przerw w dostawie",
+      "brak zapowiedzianych przerw",
       [
         [
           {
@@ -393,7 +398,7 @@ test("village: the hub's water in every state, /woda never MZGKiM", () => {
       ],
       null,
     ],
-    none: [[], null, "brak zapowiedzianych przerw w dostawie", [GMINA], null],
+    none: [[], null, "brak zapowiedzianych przerw", [GMINA], null],
     stale: [
       [],
       null,
@@ -461,7 +466,7 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
   );
   assert.match(
     html,
-    /odczytaliśmy automatycznie z komunikatu MZGKiM i nikt ich jeszcze nie sprawdził drugi raz\. Gdyby coś się nie zgadzało, rację ma komunikat MZGKiM\./,
+    /Te daty przepisał automatycznie program\. Jeśli coś się nie zgadza, ważniejszy jest komunikat MZGKiM\./,
   );
   assert.match(
     html,
@@ -480,7 +485,14 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
   const quiet = page([]);
   assert.match(
     quiet,
-    /<p class="govuk-body">Nie wiemy o żadnej zapowiedzianej przerwie w dostawie wody pod tym adresem\. Gmina ogłasza je w <a href="https:\/\/www\.gminalubaczow\.pl\/aktualnosci\/" class="govuk-link">aktualności gminy Lubaczów<\/a>, a MZGKiM – w <a href="https:\/\/mzgkim\.lubaczow\.pl\/category\/komunikaty\/" class="govuk-link">komunikatach MZGKiM<\/a>\.<\/p>/,
+    /<p class="govuk-body">Brak zapowiedzianych przerw\. Gmina ogłasza je w <a href="https:\/\/www\.gminalubaczow\.pl\/aktualnosci\/" class="govuk-link">aktualności gminy Lubaczów<\/a>, a MZGKiM – w <a href="https:\/\/mzgkim\.lubaczow\.pl\/category\/komunikaty\/" class="govuk-link">komunikatach MZGKiM<\/a>\.<\/p>/,
   );
   assert.doesNotMatch(quiet, /jeszcze tu nie pokazujemy|nie sprawdzamy/);
+});
+
+test("/smieci: after the last date, the next year's line (task 205)", () => {
+  assert.match(
+    wastePage(),
+    /<p class="govuk-body">Terminy na 2027 dodamy, gdy je ogłoszą\.<\/p><\/section>/,
+  );
 });

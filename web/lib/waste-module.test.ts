@@ -10,6 +10,9 @@ import {
   wasteSummary,
 } from "./waste-module.ts";
 
+const wasteLine = (at: Parameters<typeof checkedLine>[0]) =>
+  checkedLine(at, "smieci");
+
 const pickup = (label: string, putOutBy: string | null = null) => ({
   id: label,
   subtype: label.toLowerCase(),
@@ -72,7 +75,7 @@ test("no put-out row without a time; a note while unverified", () => {
   assert.deepEqual(rows[0], ["Najbliższy odbiór", ["wtorek, 27 października"]]);
 });
 
-test("unverified: one short sentence, the gmina's schedule linked", () => {
+test("unverified: one short sentence, the schedule's owner linked", () => {
   const note = (overrides: Partial<PlaceView>) =>
     wasteSummary(place({ verified: false, ...overrides })).at(-1);
   const page = "https://example.org/harmonogram";
@@ -83,15 +86,20 @@ test("unverified: one short sentence, the gmina's schedule linked", () => {
   ];
   assert.deepEqual(
     note({ schedulePage: page }),
-    sentence({ href: page, text: "harmonogramie gminy" }),
+    sentence({ href: page, text: "harmonogramie Urzędu Miejskiego" }),
   );
   assert.deepEqual(
     note({
       sources: [{ label: "Sektor 1", url: pdf, checkedAt: null, seenAt: null }],
     }),
-    sentence({ href: pdf, text: "harmonogramie gminy" }),
+    sentence({ href: pdf, text: "harmonogramie Urzędu Miejskiego" }),
   );
-  assert.deepEqual(note({}), sentence("harmonogramie gminy"));
+  assert.deepEqual(note({}), sentence("harmonogramie Urzędu Miejskiego"));
+  // A village: the gmina's.
+  assert.deepEqual(
+    note({ gmina: "Lubaczów (gmina)" }),
+    sentence("harmonogramie gminy"),
+  );
 });
 
 test("a split street without a number links the waste subpage's question", () => {
@@ -154,8 +162,8 @@ test("the PDF's QR code and link: the waste subpage, with the number", () => {
 test("checked line: events.checkedAt, a day; source_files.lastSeenAt, Warsaw day and time", () => {
   assert.equal(wasteChecked(place()), "2026-10-20");
   assert.equal(
-    checkedLine(wasteChecked(place())),
-    "Ostatnio sprawdziliśmy: 20 października",
+    wasteLine(wasteChecked(place())),
+    "Wywozy sprawdziliśmy: 20 października",
   );
   // The source row says no more than its link and part: one checked line.
   for (const row of wasteSources(place()))
@@ -176,10 +184,7 @@ test("checked line: events.checkedAt, a day; source_files.lastSeenAt, Warsaw day
   ];
   const at = wasteChecked(place({ sources }));
   assert.ok(at instanceof Date);
-  assert.equal(
-    checkedLine(at),
-    "Ostatnio sprawdziliśmy: 25 października, 5:03",
-  );
+  assert.equal(wasteLine(at), "Wywozy sprawdziliśmy: 25 października, 5:03");
 });
 
 test("checked line: the oldest of several sources, times and days alike; none without a date", () => {
@@ -194,8 +199,8 @@ test("checked line: the oldest of several sources, times and days alike; none wi
     { label: "Sektor 1, szkło", url: null, checkedAt: null, seenAt: null },
   ];
   assert.equal(
-    checkedLine(wasteChecked(place({ sources }))),
-    "Ostatnio sprawdziliśmy: 30 września",
+    wasteLine(wasteChecked(place({ sources }))),
+    "Wywozy sprawdziliśmy: 30 września",
   );
   assert.equal(wasteChecked(place({ sources: [sources[2]] })), null);
   assert.equal(wasteChecked(place({ sources: [] })), null);
@@ -209,25 +214,25 @@ test("checked line: the oldest of several sources, times and days alike; none wi
   });
   // Two times: the older one.
   assert.equal(
-    checkedLine(
+    wasteLine(
       wasteChecked(
         place({
           sources: [seen("2026-10-25T04:03:00Z"), seen("2026-10-24T04:01:00Z")],
         }),
       ),
     ),
-    "Ostatnio sprawdziliśmy: 24 października, 6:01",
+    "Wywozy sprawdziliśmy: 24 października, 6:01",
   );
   // A file seen today, another source without a row checked days ago.
   assert.equal(
-    checkedLine(
+    wasteLine(
       wasteChecked(
         place({
           sources: [seen("2026-10-25T04:03:00Z"), seen(null, "2026-10-20")],
         }),
       ),
     ),
-    "Ostatnio sprawdziliśmy: 20 października",
+    "Wywozy sprawdziliśmy: 20 października",
   );
   // A day counts as older than any time on that Warsaw day, and the day
   // is Warsaw's: 23:30 UTC on the 24th is already the 25th there.
@@ -240,14 +245,14 @@ test("checked line: the oldest of several sources, times and days alike; none wi
     "2026-10-25",
   );
   assert.equal(
-    checkedLine(
+    wasteLine(
       wasteChecked(
         place({
           sources: [seen("2026-10-24T21:30:00Z"), seen(null, "2026-10-25")],
         }),
       ),
     ),
-    "Ostatnio sprawdziliśmy: 24 października, 23:30",
+    "Wywozy sprawdziliśmy: 24 października, 23:30",
   );
 });
 

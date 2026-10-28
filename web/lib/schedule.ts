@@ -510,9 +510,22 @@ const zoneCached = unstable_cache(
   async (zoneId: string, today: string) => {
     const [zone] = await db().select().from(zones).where(eq(zones.id, zoneId));
     if (!zone) return null;
-    return { ...zone, events: await zoneEvents(zone.id, today) };
+    // Whose schedule it is: a zone lies in one gmina.
+    const [member] = await db()
+      .select({ gmina: gminy.name })
+      .from(zoneMembers)
+      .innerJoin(localities, eq(localities.id, zoneMembers.localityId))
+      .innerJoin(gminy, eq(gminy.id, localities.gminaId))
+      .where(eq(zoneMembers.zoneId, zone.id))
+      .limit(1);
+    return {
+      ...zone,
+      gmina: member?.gmina ?? null,
+      events: await zoneEvents(zone.id, today),
+    };
   },
-  ["zone"],
+  // v2: the zone's gmina (task 205).
+  ["zone-v2"],
   CACHE,
 );
 

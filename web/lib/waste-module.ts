@@ -4,7 +4,7 @@
 import type { PlaceView, SourceView } from "@/lib/schedule";
 import { absoluteDay, todayInWarsaw } from "./dates.ts";
 import type { Checked, Part, SummaryRow } from "./hub.ts";
-import { placePath, scheduleName } from "./places.ts";
+import { placePath, scheduleName, scheduleOwner } from "./places.ts";
 import {
   hasUpcoming,
   NO_MORE_DATES,
@@ -32,7 +32,7 @@ export function wastePath(place: Pick<PlaceView, "id" | "nr">): string {
 // its page), as the street page says it.
 function noDates(place: PlaceView, why: string): Part[] {
   return [
-    `${why} Do tego czasu sprawdź odbiory w harmonogramie gminy.`,
+    `${why} Do tego czasu sprawdź odbiory w harmonogramie ${scheduleOwner(place.gmina)}.`,
     ...(place.schedulePage
       ? [
           " ",
@@ -46,10 +46,10 @@ function noDates(place: PlaceView, why: string): Part[] {
 }
 
 // Dates not checked yet: one short sentence on the card (the subpage keeps
-// the full UNVERIFIED_NOTE), linking the gmina's schedule when we know it.
+// the full unverifiedNote), linking the gmina's schedule when we know it.
 function unverifiedNote(place: PlaceView): Part[] {
   const href = place.schedulePage ?? place.sources.find((s) => s.url)?.url;
-  const schedule = "harmonogramie gminy";
+  const schedule = `harmonogramie ${scheduleOwner(place.gmina)}`;
   return [
     "Daty odczytaliśmy automatycznie, sprawdź je w ",
     href ? { href, text: schedule } : schedule,

@@ -95,10 +95,13 @@ function DayList({ days, today }: { days: PickupDay[]; today: string }) {
 export function PickupSchedule({
   days,
   renderedOn,
+  later = null,
 }: {
   days: PickupDay[];
   /** Warsaw day the server rendered for. */
   renderedOn: string;
+  /** After the last date: when the next dates come (laterNote). */
+  later?: string | null;
 }) {
   // Hydrates with the server's day, so "dziś"/"jutro" is in the HTML with no
   // pop-in. Re-renders only if the Warsaw day has moved on since the render
@@ -138,6 +141,7 @@ export function PickupSchedule({
           </div>
         </details>
       )}
+      {later && <p className="govuk-body">{later}</p>}
     </section>
   );
 }
