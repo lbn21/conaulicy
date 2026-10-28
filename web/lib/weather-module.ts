@@ -1,7 +1,7 @@
 // What the weather module (lib/modules.ts) says on the address page: IMGW's
 // warnings for the powiat, filtered as the banner (lib/imgw-banner.ts), from
 // the same copy of the feed. Pure, so the unit tests read every state.
-import type { Alert, Part, SummaryRow } from "./hub.ts";
+import type { Alert, Group, Part } from "./hub.ts";
 import { type Banner, banner, fresh, IMGW_PAGE } from "./imgw-banner.ts";
 import type { Feed } from "./imgw-warnings.ts";
 
@@ -43,17 +43,21 @@ export function weatherAlerts(data: Weather): Alert[] {
   }));
 }
 
-/** The card: one row per warning, then where it applies; null without one. */
-export function weatherSummary(data: Weather): SummaryRow[] | null {
-  if (!data.banner) return null;
+/**
+ * The section's lines, together: one per warning, its level and when,
+ * absolute ("Silny wiatr – stopień 1 z 3, do niedzieli 25 października,
+ * 2:00."), then where, as the water's cut; without one, that there is none.
+ */
+export function weatherStatus(data: Weather): Group[] {
+  if (!data.banner)
+    return [[["Brak ostrzeżeń IMGW dla powiatu lubaczowskiego."]]];
   return [
-    ...data.banner.warnings.map(
-      (warning): SummaryRow => [
-        warning.event,
-        [`${warning.level}, ${warning.short}`],
-      ],
-    ),
-    ["Gdzie", ["cały powiat lubaczowski"]],
+    [
+      ...data.banner.warnings.map((warning) => [
+        `${warning.event} – ${warning.level.toLowerCase()}, ${warning.short}.`,
+      ]),
+      ["Gdzie: cały powiat lubaczowski"],
+    ],
   ];
 }
 

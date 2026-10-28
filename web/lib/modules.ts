@@ -1,8 +1,7 @@
 // The address page's modules: waste, water and the weather today; power and
-// others later (docs/tasks T102). Each one has a card on the address page
-// (components/hub.tsx), or a line under „Nic nie zapowiedziano” when it has nothing
-// to show, and a subpage of its own, /adres/<id>/<id of the module>, if it
-// has one. The ids and their order live in lib/address-routes.ts, so the
+// others later (docs/tasks T102). Each one has a section on the address
+// page (components/hub.tsx), always, in registry order, and a subpage of its
+// own, /adres/<id>/<id of the module>, if it has one. The ids and their order live in lib/address-routes.ts, so the
 // unit tests and the URL rules can read them without Next.js; this registry
 // must list exactly those.
 import type { Metadata } from "next";
@@ -16,19 +15,21 @@ import {
   type ModuleId,
   SUBPAGE_IDS,
 } from "@/lib/address-routes";
-import type { Alert, Checked, Part, SummaryRow } from "@/lib/hub";
-import { IMGW_PAGE } from "@/lib/imgw-banner";
+import type { Alert, Checked, Group, Part } from "@/lib/hub";
 import { getPlace, type PlaceView } from "@/lib/schedule";
-import { wasteChecked, wasteSources, wasteSummary } from "@/lib/waste-module";
+import {
+  wasteChecked,
+  wasteNote,
+  wasteSources,
+  wasteStatus,
+} from "@/lib/waste-module";
 import { loadWater } from "@/lib/water-load";
 import {
   type Water,
   waterAlerts,
   waterChecked,
-  waterNone,
   waterSources,
-  waterSummary,
-  waterTrace,
+  waterStatus,
 } from "@/lib/water-module";
 import {
   type Weather,
@@ -36,18 +37,13 @@ import {
   weatherAlerts,
   weatherChecked,
   weatherSources,
-  weatherSummary,
+  weatherStatus,
 } from "@/lib/weather-module";
 
 export type Module<D> = {
   id: ModuleId;
-  /** The card's title. */
+  /** Its section's h2. */
   title: string;
-  /**
-   * Its section's link on the address page, saying where it goes
-   * („Wszystkie odbiory śmieci”), never a bare „Szczegóły”.
-   */
-  more: string;
   /** Registry order, from 0. */
   order: number;
   /**
@@ -55,27 +51,33 @@ export type Module<D> = {
    * (waste: a 404), or nothing we may show (any other: left out).
    */
   load(place: string, nr: string | null): Promise<D | null>;
-  /** Today's and the coming warnings, for the slot above the cards. */
+  /** Today's and the coming warnings, for the slot above the sections. */
   alerts(data: D): Alert[];
-  /** The card's rows; null: nothing to show („Nic nie zapowiedziano”). */
-  summary(data: D): SummaryRow[] | null;
-  /** What „Nic nie zapowiedziano” says for it, after its title (summary null). */
-  none?: string | ((data: D) => string);
   /**
-   * A line after its card or its „Nic nie zapowiedziano” line (water: a cut left
-   * out for the house number); left out or null: none.
+   * Its section's lines, under the h2, always at least one: what is next,
+   * or that nothing is (absolute dates only, so a cached copy stays true).
    */
-  trace?(data: D): string | null;
-  /** Its sources, one „Źródło” each: a link and when it was checked. */
+  status(data: D): Group[];
+  /** Its sources, in its section's meta line: a link each. */
   sources(data: D): Part[][];
   /**
-   * When we last checked its source: „Ostatnio sprawdziliśmy …” on its card,
-   * its „Nic nie zapowiedziano” line and its subpage (lib/hub.ts checkedLine).
-   * Left out or null: nothing shown.
+   * A sentence in the meta line, after the sources (waste: the dates are
+   * not checked yet); left out or null: none.
+   */
+  note?(data: D): string | null;
+  /**
+   * When we last checked its source: „Sprawdziliśmy …” at the end of its
+   * section's meta line (lib/hub.ts metaLine), and its subpage's checked
+   * line (checkedLine). Left out or null: nothing shown.
    */
   checkedAt?(data: D): Checked;
 } & (
   | {
+      /**
+       * Its section's link to the subpage, saying where it goes
+       * („Wszystkie odbiory śmieci”), never a bare „Szczegóły”.
+       */
+      more: string;
       /** The subpage's h1. */
       pageTitle: string;
       /** The subpage's title, description and canonical (its own URL). */
@@ -95,13 +97,13 @@ export type Module<D> = {
       }>;
     }
   | {
-      /** No subpage: its section's link goes to the source's own page. */
-      href: string;
+      /** No subpage: no link but its source's, in the meta line. */
+      Details?: undefined;
     }
 );
 
-// Waste wraps today's street page data as it is (PlaceView): a card on the
-// address page, and the street page's body on its subpage.
+// Waste wraps today's street page data as it is (PlaceView): a section on
+// the address page, and the street page's body on its subpage.
 const waste: Module<PlaceView> = {
   id: "smieci",
   title: "Śmieci",
@@ -111,8 +113,9 @@ const waste: Module<PlaceView> = {
   load: getPlace,
   // A pickup is routine, never a warning.
   alerts: () => [],
-  summary: wasteSummary,
+  status: wasteStatus,
   sources: wasteSources,
+  note: wasteNote,
   checkedAt: wasteChecked,
   metadata: wasteMetadata,
   Details: WasteDetails,
@@ -129,10 +132,7 @@ const woda: Module<Water> = {
   order: MODULE_IDS.indexOf("woda"),
   load: loadWater,
   alerts: waterAlerts,
-  summary: waterSummary,
-  none: waterNone,
-  // With no cut shown, the card says it (waterSummary's „Inne numery”).
-  trace: (d) => (d.outages.length > 0 ? waterTrace(d) : null),
+  status: waterStatus,
   sources: waterSources,
   checkedAt: waterChecked,
   metadata: waterMetadata,
@@ -140,11 +140,11 @@ const woda: Module<Water> = {
 };
 
 // IMGW's warnings for the powiat (all our gminas lie in one), as the
-// banner other pages show; failing or too old, simply left out.
+// banner other pages show; failing or too old, simply left out. No subpage:
+// its source, linked in the meta line, is IMGW's own page.
 const pogoda: Module<Weather> = {
   id: "pogoda",
   title: "Pogoda",
-  more: "Wszystkie ostrzeżenia na meteo.imgw.pl",
   order: MODULE_IDS.indexOf("pogoda"),
   async load() {
     const now = Date.now();
@@ -156,15 +156,13 @@ const pogoda: Module<Weather> = {
     }
   },
   alerts: weatherAlerts,
-  summary: weatherSummary,
-  none: "brak ostrzeżeń IMGW",
+  status: weatherStatus,
   sources: weatherSources,
   checkedAt: weatherChecked,
-  href: IMGW_PAGE,
 };
 
 // A module's data type stays its own; the pages only pass it from load()
-// to the card and to Details.
+// to its section and to Details.
 // biome-ignore lint/suspicious/noExplicitAny: one registry for every data type
 export const MODULES: { [K in ModuleId]: Module<any> } = {
   smieci: waste,
@@ -176,5 +174,5 @@ export const MODULES: { [K in ModuleId]: Module<any> } = {
 export function findSubpage(slug: string) {
   if (!isModuleId(slug) || !SUBPAGE_IDS.includes(slug)) return null;
   const module: Module<unknown> = MODULES[slug];
-  return "Details" in module ? module : null;
+  return module.Details ? module : null;
 }

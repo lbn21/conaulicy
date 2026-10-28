@@ -67,7 +67,7 @@ function NextPickup({ day, today }: { day: PickupDay; today: string }) {
           </span>
         </time>
       </h3>
-      <Bins pickups={day.pickups} large />
+      <Bins pickups={day.pickups} size="large" />
       <PutOutBy day={day} />
     </div>
   );
@@ -83,7 +83,7 @@ function DayList({ days, today }: { days: PickupDay[]; today: string }) {
             <time dateTime={day.date}>{spokenDay(day.date, today)}</time>
           </dt>
           <dd className="govuk-summary-list__value">
-            <Bins pickups={day.pickups} large={false} />
+            <Bins pickups={day.pickups} size="medium" />
             <PutOutBy day={day} />
           </dd>
         </div>

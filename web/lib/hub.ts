@@ -1,6 +1,6 @@
 // The address page as a hub of modules (lib/modules.ts, components/hub.tsx):
-// what a module gives it, and the alert slot's rules. Pure, so the unit
-// tests read it.
+// what a module gives it, the alert slot's rules and each section's meta
+// line. Pure, so the unit tests read it.
 
 import type { ModuleId } from "./address-routes.ts";
 import { clockTime, dayMonth } from "./date-labels.ts";
@@ -17,8 +17,14 @@ export type Bins = {
 /** A row's or a line's content, in order: text, links and bins. */
 export type Part = string | Link | Bins;
 
-/** One row of a module's card: key, value. */
-export type SummaryRow = [string, Part[]];
+/** One line of a module's section: a paragraph, or a row of bins. */
+type Line = Part[];
+
+/**
+ * Lines that belong together (a date and its bins): close under each other
+ * (GOV.UK's spacing 2), the group a paragraph's gap from the next.
+ */
+export type Group = Line[];
 
 /** Something to warn about, in the slot above the cards. */
 export type Alert = {
@@ -75,16 +81,55 @@ const CHECKED: Partial<Record<ModuleId, string>> = {
   woda: "Komunikaty o wodzie sprawdziliśmy",
 };
 
+/** "25 października, 14:20", or "23 października" for a day; Polish time. */
+function checkedWhen(at: Date | string): string {
+  if (typeof at === "string") return dayMonth(warsawNoon(at).getTime());
+  const ms = at.getTime();
+  return `${dayMonth(ms)}, ${clockTime(ms)}`;
+}
+
 /**
- * When a module last checked its source, in Polish time, absolute: "Wywozy
- * sprawdziliśmy: 25 października, 14:20", or "… 23 października" for a day.
- * null: nothing to say.
+ * When a module last checked its source, on its subpage, in Polish time,
+ * absolute: "Wywozy sprawdziliśmy: 25 października, 14:20", or "…
+ * 23 października" for a day. null: nothing to say.
  */
 export function checkedLine(at: Checked, module: ModuleId): string | null {
   if (!at) return null;
-  const label = CHECKED[module] ?? "Ostatnio sprawdziliśmy";
-  if (typeof at === "string")
-    return `${label}: ${dayMonth(warsawNoon(at).getTime())}`;
-  const ms = at.getTime();
-  return `${label}: ${dayMonth(ms)}, ${clockTime(ms)}`;
+  return `${CHECKED[module] ?? "Ostatnio sprawdziliśmy"}: ${checkedWhen(at)}`;
 }
+
+/**
+ * The last line of a module's section on the address page: „Źródło: ‹its
+ * sources, joined with ;›.”, then `note` (a full sentence), then
+ * „Sprawdziliśmy 25 października, 14:20.”, absolute.
+ */
+export function metaLine(
+  sources: Part[][],
+  note: string | null,
+  at: Checked,
+): Part[] {
+  const parts: Part[] = [
+    "Źródło: ",
+    ...sources.flatMap((source, i) => (i > 0 ? ["; ", ...source] : source)),
+    ".",
+  ];
+  if (note) parts.push(` ${note}`);
+  if (at) parts.push(` Sprawdziliśmy ${checkedWhen(at)}.`);
+  return merged(parts);
+}
+
+/** Adjacent texts as one, so the markup has no empty comments between. */
+export function merged(parts: Part[]): Part[] {
+  const out: Part[] = [];
+  for (const p of parts) {
+    const last = out.at(-1);
+    if (typeof p === "string" && typeof last === "string")
+      out[out.length - 1] = last + p;
+    else out.push(p);
+  }
+  return out;
+}
+
+/** "przerwa" → "Przerwa". */
+export const capitalised = (text: string) =>
+  text.charAt(0).toUpperCase() + text.slice(1);

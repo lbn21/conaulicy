@@ -20,11 +20,10 @@ import {
   waterAlerts,
   waterNone,
   waterSources,
-  waterSummary,
+  waterStatus,
   waterTrace,
 } from "../lib/water-module.ts";
 import { STALE_MS, zukView } from "../lib/zuk-data.ts";
-import { Trace } from "./hub.tsx";
 import { AddressPage, WasteDetails } from "./place-page.tsx";
 import { CALENDAR_CHECK, CALENDAR_STEPS } from "./subpage-parts.tsx";
 import { WaterDetails } from "./water-page.tsx";
@@ -130,7 +129,7 @@ test("/woda: the AI note in a warning text, the source in an inset", () => {
   );
   assert.match(
     html,
-    /<div class="govuk-inset-text"><p class="govuk-body">Źródło: <a href="https:\/\/www\.gminalubaczow\.pl\/[^"]+" class="govuk-link">Komunikat gminy z 23 października 2026<\/a><\/p><\/div>/,
+    /<div class="govuk-inset-text"><p class="govuk-body">Źródło: <a href="https:\/\/www\.gminalubaczow\.pl\/[^"]+" class="govuk-link">komunikat gminy z 23 października 2026<\/a><\/p><\/div>/,
   );
   // A town street: the cut's own post is its only source, never MZGKiM's.
   assert.doesNotMatch(html, /MZGKiM/);
@@ -337,18 +336,17 @@ test("a number outside a cut's range: one trace line, hub and /woda", () => {
   ];
   const data = (nr: string | null) =>
     water(bothViews(posts, CHECKED, NOW), sobieskiego(nr));
+  // The hub's water lines, as text.
   const hub = (nr: string | null) =>
-    renderToStaticMarkup(
-      createElement(Trace, { module: MODULES.woda, data: data(nr) } as never),
-    );
-  // task 188: with no cut shown, the hub's card says it („Inne numery”),
-  // so no trace line under it.
-  assert.equal(hub("5"), "");
-  assert.deepEqual(waterSummary(data("5"))?.[1], [
-    "Inne numery",
-    [
-      "Gmina zapowiedziała przerwę na tej ulicy – poniedziałek, 26 października, 8:00–16:00 – ale według komunikatu nie obejmuje nr 5.",
-    ],
+    MODULES.woda
+      .status(data(nr))
+      .flat()
+      .map((line) => line.join(""));
+  // task 188: with no cut shown, the hub's section says it, with the cut's
+  // day, so no trace line after it.
+  assert.deepEqual(hub("5"), [
+    "Pod nr 5: brak zapowiedzianych przerw.",
+    "Gmina zapowiedziała przerwę na tej ulicy – poniedziałek, 26 października, 8:00–16:00 – ale według komunikatu nie obejmuje nr 5.",
   ]);
   // /woda: right after the empty text, before the AI note and source.
   const five = waterPage(posts, sobieskiego("5"));
@@ -360,7 +358,7 @@ test("a number outside a cut's range: one trace line, hub and /woda", () => {
   );
   assert.equal(five.split("Gmina zapowiedziała też").length, 2);
   for (const nr of ["30", null]) {
-    assert.equal(hub(nr), "");
+    assert.ok(!hub(nr).some((line) => line.includes("Gmina zapowiedziała")));
     const html = waterPage(posts, sobieskiego(nr));
     assert.doesNotMatch(html, /Gmina zapowiedziała też/);
     assert.match(html, /od nr 23 do nr 47/);
@@ -408,32 +406,46 @@ test("village: the hub's water in every state, /woda never MZGKiM", () => {
         },
       ],
       [
-        ["Najbliższa przerwa", ["poniedziałek, 26 października, 8:00–16:00"]],
-        ["Gdzie", ["cała miejscowość Lisie Jamy"]],
-        ["Kolejne", ["czwartek, 29 października"]],
+        [
+          ["Poniedziałek, 26 października, 8:00–16:00"],
+          ["Gdzie: cała miejscowość Lisie Jamy"],
+        ],
+        [["Kolejne dni: czwartek, 29 października"]],
       ],
       "brak zapowiedzianych przerw",
       [
         [
           {
             href: "https://www.gminalubaczow.pl/2026/10/23/przerwy-w-dostawie-wody-26-29-10-2026/",
-            text: "Komunikat gminy z 23 października 2026",
+            text: "komunikat gminy z 23 października 2026",
           },
         ],
       ],
       null,
     ],
-    none: [[], null, "brak zapowiedzianych przerw", [GMINA], null],
+    none: [
+      [],
+      [[["Brak zapowiedzianych przerw."]]],
+      "brak zapowiedzianych przerw",
+      [GMINA],
+      null,
+    ],
     stale: [
       [],
-      null,
+      [
+        [
+          [
+            "Brak zapowiedzianych przerw przy ostatnim sprawdzeniu, ale od ponad godziny nie udało się nam sprawdzić nowych.",
+          ],
+        ],
+      ],
       "brak zapowiedzianych przerw przy ostatnim sprawdzeniu, ale od ponad godziny nie udało się nam sprawdzić nowych",
       [GMINA],
       null,
     ],
     unavailable: [
       [],
-      null,
+      [[["Nie udało się nam sprawdzić komunikatów."]]],
       "nie udało się nam sprawdzić komunikatów",
       [GMINA],
       null,
@@ -446,7 +458,7 @@ test("village: the hub's water in every state, /woda never MZGKiM", () => {
     assert.deepEqual(
       [
         waterAlerts(data),
-        waterSummary(data),
+        waterStatus(data),
         waterNone(data),
         waterSources(data),
         waterTrace(data),
@@ -495,7 +507,7 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
   );
   assert.match(
     html,
-    /<div class="govuk-inset-text"><p class="govuk-body">Źródło: <a href="https:\/\/mzgkim\.lubaczow\.pl\/przerwa-w-dostawie-wody-100\/" class="govuk-link">Komunikat MZGKiM z 2 października 2026<\/a><\/p><\/div>/,
+    /<div class="govuk-inset-text"><p class="govuk-body">Źródło: <a href="https:\/\/mzgkim\.lubaczow\.pl\/przerwa-w-dostawie-wody-100\/" class="govuk-link">komunikat MZGKiM z 2 października 2026<\/a><\/p><\/div>/,
   );
   // Its cut shown here: its area off our list is not linked again.
   assert.doesNotMatch(html, /Inne komunikaty/);

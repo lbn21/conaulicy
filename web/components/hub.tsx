@@ -1,5 +1,4 @@
 import { Fragment } from "react";
-import { CheckedLine } from "@/components/checked-line";
 import { Parts, textOf } from "@/components/parts";
 import {
   AddressPage,
@@ -11,8 +10,8 @@ import { MODULE_IDS } from "@/lib/address-routes";
 import {
   type Alert,
   alertSlot,
-  checkedLine,
-  type Part,
+  type Group,
+  metaLine,
   warningCount,
 } from "@/lib/hub";
 import { IMGW_ATTRIBUTION } from "@/lib/imgw-warnings";
@@ -22,37 +21,22 @@ import type { PlaceView } from "@/lib/schedule";
 
 // The address page, /adres/[id] (and /nr/…): the hub of modules
 // (lib/modules.ts, docs/tasks T102), under breadcrumbs. Under the h1, one GOV.UK warning text
-// for every module's alerts; then a section per module with something to
-// show, waste always first: its h2, a summary list and a link saying where
-// it goes („Wszystkie odbiory śmieci”)
-// (no summary cards: GOV.UK keeps them for lists of the same type of thing,
-// task 131); then „Nic nie zapowiedziano”, a line for each module with nothing. A
-// visible section break between sections. Dates are absolute only, so a
-// cached copy stays true without client JS. No calendar or PDF here: they
-// are on the waste subpage. A split street's number errors keep the street
-// page (StreetPage), GOV.UK's validation pattern.
+// for every module's alerts; then a section per module, always, in registry
+// order (Śmieci, Woda, Pogoda; task 207): its h2, its status lines (what is
+// next, or that nothing is), a link saying where its subpage goes
+// („Wszystkie odbiory śmieci”), then its meta line, small: „Źródło: …”, and
+// when we checked. No summary lists or cards (GOV.UK keeps cards for lists
+// of the same type of thing, task 131). A visible section break between
+// sections. Dates are absolute only, so a cached copy stays true without
+// client JS. No calendar or PDF here: they are on the waste subpage. A
+// split street's number errors keep the street page (StreetPage), GOV.UK's
+// validation pattern.
 
 type Loaded = { module: Module<unknown>; data: unknown };
 
-const checkedAt = ({ module, data }: Loaded) =>
-  module.checkedAt?.(data) ?? null;
-
-/** What „Nic nie zapowiedziano” says for a module. */
-const noneText = ({ module, data }: Loaded) =>
-  typeof module.none === "function" ? module.none(data) : module.none;
-
-/** The module's line after its list or „Nic nie zapowiedziano” line, if any. */
-export function Trace({ module, data }: Loaded) {
-  const text = module.trace?.(data) ?? null;
-  return text && <p className="govuk-body">{text}</p>;
-}
-
-/** Where a module's section link goes: its subpage, or the source's page. */
-function detailsHref({ module }: Loaded, place: PlaceView): string {
-  if ("href" in module) return module.href;
-  // The number as given, as the subpage's breadcrumb back here.
-  return `${placePath(place.id)}/${module.id}${place.givenNr ? `?nr=${place.givenNr}` : ""}`;
-}
+/** A module's subpage, with the number as given (its breadcrumb back here). */
+const subpageHref = (module: Module<unknown>, place: PlaceView) =>
+  `${placePath(place.id)}/${module.id}${place.givenNr ? `?nr=${place.givenNr}` : ""}`;
 
 // An alert slot's line; those after the first keep a gap (GOV.UK's
 // spacing scale), so two warnings read as two.
@@ -121,54 +105,64 @@ function AlertSlot({
   );
 }
 
-const ROW = "govuk-summary-list__row";
+// Lines of a group close under each other (GOV.UK's spacing 2); a group's
+// last keeps the paragraph's gap (spacing 4, as govuk-body).
+const CLOSE = "govuk-!-margin-bottom-2";
 
-/** A module's section: its h2, GOV.UK's summary list, its link. */
+/** A module's status: its groups of lines, a paragraph each, bins a row. */
+function Status({ groups }: { groups: Group[] }) {
+  return groups.flatMap((lines) =>
+    lines.map((line, i) => {
+      const last = i === lines.length - 1;
+      const key = textOf(line);
+      if (line.length === 1 && typeof line[0] !== "string" && "bins" in line[0])
+        return (
+          <div key={key} className={last ? "govuk-!-margin-bottom-4" : CLOSE}>
+            <Parts parts={line} />
+          </div>
+        );
+      return (
+        <p key={key} className={last ? "govuk-body" : `govuk-body ${CLOSE}`}>
+          <Parts parts={line} />
+        </p>
+      );
+    }),
+  );
+}
+
+/**
+ * A module's section: its h2, its status, the link to its subpage (if it
+ * has one), then its meta line, last.
+ */
 function ModuleSection({
-  loaded,
-  rows,
+  loaded: { module, data },
   place,
 }: {
   loaded: Loaded;
-  rows: Array<[string, Part[]]>;
   place: PlaceView;
 }) {
-  const { module, data } = loaded;
   const heading = `${module.id}-heading`;
-  const all: Array<[string, Part[]]> = [
-    ...rows,
-    ...module.sources(data).map((parts): [string, Part[]] => ["Źródło", parts]),
-  ];
   return (
     <section aria-labelledby={heading}>
       <h2 id={heading} className="govuk-heading-l">
         {module.title}
       </h2>
-      {/* No row borders: the section break is the only line (task 132). */}
-      <dl className="govuk-summary-list govuk-summary-list--no-border">
-        {all.map(([key, value], i) => (
-          <div key={`${key}: ${textOf(value)}`} className={ROW}>
-            <dt className="govuk-summary-list__key">{key}</dt>
-            <dd className="govuk-summary-list__value">
-              <Parts parts={value} />
-              {/* Under the last source, so the row keeps GOV.UK's spacing. */}
-              {i === all.length - 1 && (
-                <CheckedLine
-                  at={checkedAt(loaded)}
-                  module={module.id}
-                  as="span"
-                  className="govuk-!-display-block govuk-!-margin-top-1 govuk-!-margin-bottom-0"
-                />
-              )}
-            </dd>
-          </div>
-        ))}
-      </dl>
-      <Trace {...loaded} />
-      <p className="govuk-body">
-        <a className="govuk-link" href={detailsHref(loaded, place)}>
-          {module.more}
-        </a>
+      <Status groups={module.status(data)} />
+      {module.Details && (
+        <p className="govuk-body">
+          <a className="govuk-link" href={subpageHref(module, place)}>
+            {module.more}
+          </a>
+        </p>
+      )}
+      <p className="govuk-body-s">
+        <Parts
+          parts={metaLine(
+            module.sources(data),
+            module.note?.(data) ?? null,
+            module.checkedAt?.(data) ?? null,
+          )}
+        />
       </p>
     </section>
   );
@@ -208,56 +202,19 @@ export async function HubMain({
       title: module.title,
     })),
   );
-  const cards = loaded.flatMap((entry) => {
-    const rows = entry.module.summary(entry.data);
-    return rows ? [{ entry, rows }] : [];
-  });
-  const quiet = loaded.filter(
-    ({ module, data }) => module.summary(data) === null,
-  );
   const imgw = loaded.some(({ module }) => module.id === "pogoda");
 
   return (
     <AddressPage place={place}>
       <AlertSlot alerts={alerts} />
       <div id="co-cie-czeka">
-        {cards.map(({ entry, rows }, i) => (
+        {loaded.map((entry, i) => (
           <Fragment key={entry.module.id}>
             {i > 0 && BREAK}
-            <ModuleSection loaded={entry} rows={rows} place={place} />
+            <ModuleSection loaded={entry} place={place} />
           </Fragment>
         ))}
       </div>
-      {quiet.length > 0 && (
-        <>
-          {cards.length > 0 && BREAK}
-          <section aria-labelledby="nic-nie-zapowiedziano-heading">
-            <h2 id="nic-nie-zapowiedziano-heading" className="govuk-heading-l">
-              Nic nie zapowiedziano
-            </h2>
-            {quiet.map((entry) => {
-              const { module, data } = entry;
-              const checked = checkedLine(checkedAt(entry), module.id);
-              return (
-                <Fragment key={module.id}>
-                  <p className="govuk-body">
-                    {`${module.title}: ${noneText(entry)}. Źródło: `}
-                    <Parts
-                      parts={module
-                        .sources(data)
-                        .flatMap((parts, i) =>
-                          i > 0 ? ["; ", ...parts] : parts,
-                        )}
-                    />
-                    .{checked && ` ${checked}.`}
-                  </p>
-                  <Trace {...entry} />
-                </Fragment>
-              );
-            })}
-          </section>
-        </>
-      )}
       {/* IMGW's required wording, as secondary text (task 205). */}
       {imgw && (
         <p className="govuk-hint govuk-!-font-size-16">

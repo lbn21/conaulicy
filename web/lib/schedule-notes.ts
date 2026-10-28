@@ -18,13 +18,24 @@ export function hasUpcoming(days: PickupDay[], today: string): boolean {
  * `time` is the data's hour ("06:00"), shown without its leading zero.
  */
 export function putOutNote(time: string): string {
-  return `Wystaw pojemniki ${putOutBy(time)}.`;
+  return `Wystaw pojemniki do ${time.replace(/^0/, "")} w dniu odbioru.`;
 }
 
-/** The same, after „Wystaw”: "do 6:00 w dniu odbioru". */
-export function putOutBy(time: string): string {
-  return `do ${time.replace(/^0/, "")} w dniu odbioru`;
+/**
+ * The same on the address page, after its bins: "Wystaw je do 6:00 rano.";
+ * „rano” before noon, else „w dniu odbioru”.
+ */
+export function putOutLine(time: string): string {
+  const hour = time.replace(/^0/, "");
+  return `Wystaw je do ${hour} ${Number.parseInt(hour, 10) < 12 ? "rano" : "w dniu odbioru"}.`;
 }
+
+/**
+ * The address page's waste meta line while the dates are not checked yet:
+ * one short sentence (the subpage keeps the full unverifiedNote).
+ */
+export const SHORT_UNVERIFIED_NOTE =
+  "Daty przepisał program – jeśli coś się nie zgadza, ważniejszy jest harmonogram.";
 
 /** In the footer and a calendar without its gmina: we are not an office. */
 export const DISCLAIMER =

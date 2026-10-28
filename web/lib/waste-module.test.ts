@@ -5,9 +5,10 @@ import type { PlaceView } from "./schedule.ts";
 import {
   sourcesOf,
   wasteChecked,
+  wasteNote,
   wastePath,
   wasteSources,
-  wasteSummary,
+  wasteStatus,
 } from "./waste-module.ts";
 
 const wasteLine = (at: Parameters<typeof checkedLine>[0]) =>
@@ -54,61 +55,65 @@ const place = (overrides: Partial<PlaceView> = {}): PlaceView => ({
   ...overrides,
 });
 
-test("the card: the next pickup on or after today, absolute, its bins", () => {
-  const rows = wasteSummary(place());
-  assert.deepEqual(rows, [
-    ["Najbliższy odbiór", ["środa, 28 października"]],
-    ["Pojemniki", [{ bins: [pickup("Zmieszane", "06:00"), pickup("Bio")] }]],
-    ["Wystaw", ["do 6:00 w dniu odbioru"]],
+test("the section: the next pickup on or after today, absolute, its bins", () => {
+  assert.deepEqual(wasteStatus(place()), [
+    [
+      ["Środa, 28 października"],
+      ["Tego dnia odbiorą:"],
+      [{ bins: [pickup("Zmieszane", "06:00"), pickup("Bio")] }],
+    ],
+    [["Wystaw je do 6:00 rano."]],
   ]);
 });
 
-test("no put-out row without a time; a note while unverified", () => {
-  const rows = wasteSummary(
-    place({
-      days: [{ date: "2026-10-27", pickups: [pickup("Szkło")] }],
-      verified: false,
-    }),
-  );
+test("every fraction of the place that day: „wszystkie pojemniki”", () => {
+  const all = [pickup("Papier"), pickup("Szkło")];
+  const status = (days: PlaceView["days"]) =>
+    wasteStatus(place({ days }))[0][1];
   assert.deepEqual(
-    rows.map(([key]) => key),
-    ["Najbliższy odbiór", "Pojemniki", "Uwaga"],
+    status([
+      { date: "2026-10-27", pickups: all },
+      { date: "2026-11-24", pickups: all },
+    ]),
+    ["Tego dnia odbiorą wszystkie pojemniki:"],
   );
-  assert.deepEqual(rows[0], ["Najbliższy odbiór", ["wtorek, 27 października"]]);
+  // A fraction that goes on another day: not all.
+  assert.deepEqual(
+    status([
+      { date: "2026-10-27", pickups: all },
+      { date: "2026-11-03", pickups: [pickup("Bio")] },
+    ]),
+    ["Tego dnia odbiorą:"],
+  );
+  // One fraction only: never „wszystkie”.
+  assert.deepEqual(
+    status([{ date: "2026-10-27", pickups: [pickup("Szkło")] }]),
+    ["Tego dnia odbiorą:"],
+  );
 });
 
-test("unverified: one short sentence, the schedule's owner linked", () => {
-  const note = (overrides: Partial<PlaceView>) =>
-    wasteSummary(place({ verified: false, ...overrides })).at(-1);
-  const page = "https://example.org/harmonogram";
-  const pdf = "https://example.org/a.pdf";
-  const sentence = (link: string | { href: string; text: string }) => [
-    "Uwaga",
-    ["Daty odczytaliśmy automatycznie, sprawdź je w ", link, "."],
-  ];
-  assert.deepEqual(
-    note({ schedulePage: page }),
-    sentence({ href: page, text: "harmonogramie Urzędu Miejskiego" }),
+test("no put-out line without a time; a note in the meta line while unverified", () => {
+  const unverified = place({
+    days: [{ date: "2026-10-27", pickups: [pickup("Szkło")] }],
+    verified: false,
+  });
+  assert.deepEqual(wasteStatus(unverified), [
+    [
+      ["Wtorek, 27 października"],
+      ["Tego dnia odbiorą:"],
+      [{ bins: [pickup("Szkło")] }],
+    ],
+  ]);
+  assert.equal(
+    wasteNote(unverified),
+    "Daty przepisał program – jeśli coś się nie zgadza, ważniejszy jest harmonogram.",
   );
-  assert.deepEqual(
-    note({
-      sources: [{ label: "Sektor 1", url: pdf, checkedAt: null, seenAt: null }],
-    }),
-    sentence({ href: pdf, text: "harmonogramie Urzędu Miejskiego" }),
-  );
-  assert.deepEqual(note({}), sentence("harmonogramie Urzędu Miejskiego"));
-  // A village: the gmina's.
-  assert.deepEqual(
-    note({ gmina: "Lubaczów (gmina)" }),
-    sentence("harmonogramie gminy"),
-  );
+  assert.equal(wasteNote(place()), null);
 });
 
 test("a split street without a number links the waste subpage's question", () => {
-  const rows = wasteSummary(place({ askNumber: true, zoneId: null }));
-  assert.deepEqual(rows, [
+  assert.deepEqual(wasteStatus(place({ askNumber: true, zoneId: null })), [
     [
-      "Najbliższy odbiór",
       [
         "Na tej ulicy śmieciarka przyjeżdża w różne dni, zależnie od numeru. ",
         { href: "/adres/0972447-00470/smieci", text: "Podaj numer domu" },
@@ -117,20 +122,20 @@ test("a split street without a number links the waste subpage's question", () =>
   ]);
 });
 
-test("no dates: why, then the gmina's schedule, always a card", () => {
+test("no dates: why, then the gmina's schedule, always a line", () => {
   const page = "https://example.org/harmonogram";
-  const none = wasteSummary(
+  const none = wasteStatus(
     place({ zoneId: null, days: [], schedulePage: page }),
-  );
+  ).flat();
   assert.equal(none.length, 1);
-  assert.match(String(none[0][1][0]), /^Tej ulicy jeszcze nie mamy\./);
-  assert.deepEqual(none[0][1].at(-1), {
+  assert.match(String(none[0][0]), /^Tej ulicy jeszcze nie mamy\./);
+  assert.deepEqual(none[0].at(-1), {
     href: page,
     text: "Otwórz harmonogram Urzędu Miejskiego w Lubaczowie",
   });
-  const ended = wasteSummary(place({ today: "2026-11-01" }));
-  assert.match(String(ended[0][1][0]), /^Nie mamy jeszcze kolejnych terminów/);
-  assert.equal(ended[0][1].length, 1);
+  const ended = wasteStatus(place({ today: "2026-11-01" })).flat();
+  assert.match(String(ended[0][0]), /^Nie mamy jeszcze kolejnych terminów/);
+  assert.equal(ended[0].length, 1);
 });
 
 test("one source row each: link, part, when checked", () => {

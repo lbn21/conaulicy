@@ -3,13 +3,14 @@
 // unit tests need no database.
 import type { PlaceView, SourceView } from "@/lib/schedule";
 import { absoluteDay, todayInWarsaw } from "./dates.ts";
-import type { Checked, Part, SummaryRow } from "./hub.ts";
+import { type Checked, capitalised, type Group, type Part } from "./hub.ts";
 import { placePath, scheduleName, scheduleOwner } from "./places.ts";
 import {
   hasUpcoming,
   NO_MORE_DATES,
   NO_MORE_DATES_NEXT,
-  putOutBy,
+  putOutLine,
+  SHORT_UNVERIFIED_NOTE,
 } from "./schedule-notes.ts";
 
 /** A place we have no pickup data for: the street page's heading. */
@@ -45,29 +46,22 @@ function noDates(place: PlaceView, why: string): Part[] {
   ];
 }
 
-// Dates not checked yet: one short sentence on the card (the subpage keeps
-// the full unverifiedNote), linking the gmina's schedule when we know it.
-function unverifiedNote(place: PlaceView): Part[] {
-  const href = place.schedulePage ?? place.sources.find((s) => s.url)?.url;
-  const schedule = `harmonogramie ${scheduleOwner(place.gmina)}`;
-  return [
-    "Daty odczytaliśmy automatycznie, sprawdź je w ",
-    href ? { href, text: schedule } : schedule,
-    ".",
-  ];
+/** The section's meta line's note while the dates are not checked yet. */
+export function wasteNote(place: PlaceView): string | null {
+  return place.verified ? null : SHORT_UNVERIFIED_NOTE;
 }
 
 /**
- * The waste card, always there: the next pickup, its bins and when to put
- * them out; on a split street without a number, the question's page; or
- * why there are no dates.
+ * The section's lines, always some: the next pickup's day (absolute, so a
+ * cached copy stays true), what goes that day („wszystkie pojemniki” when
+ * it is every fraction the place has, more than one) and when to put them
+ * out; on a split street without a number, the question's page; or why
+ * there are no dates.
  */
-export function wasteSummary(place: PlaceView): SummaryRow[] {
-  const key = "Najbliższy odbiór";
+export function wasteStatus(place: PlaceView): Group[] {
   if (place.askNumber) {
     return [
       [
-        key,
         [
           `${SPLIT_HINT} `,
           { href: wastePath(place), text: "Podaj numer domu" },
@@ -78,7 +72,6 @@ export function wasteSummary(place: PlaceView): SummaryRow[] {
   if (place.zoneId === null) {
     return [
       [
-        key,
         noDates(
           place,
           `${noDataHeading(place.kind)}. Harmonogramu tu nie zgadujemy.`,
@@ -86,22 +79,31 @@ export function wasteSummary(place: PlaceView): SummaryRow[] {
       ],
     ];
   }
-  if (!hasUpcoming(place.days, place.today)) {
-    return [[key, noDates(place, `${NO_MORE_DATES}. ${NO_MORE_DATES_NEXT}`)]];
-  }
   const next = place.days.find((day) => day.date >= place.today);
-  if (!next) return [];
-  const rows: SummaryRow[] = [
-    [key, [absoluteDay(next.date)]],
-    ["Pojemniki", [{ bins: next.pickups }]],
+  if (!next || !hasUpcoming(place.days, place.today)) {
+    return [[noDates(place, `${NO_MORE_DATES}. ${NO_MORE_DATES_NEXT}`)]];
+  }
+  const every = new Set(
+    place.days.flatMap((day) => day.pickups.map((pickup) => pickup.subtype)),
+  );
+  const all =
+    every.size > 1 &&
+    [...every].every((subtype) =>
+      next.pickups.some((pickup) => pickup.subtype === subtype),
+    );
+  const groups: Group[] = [
+    [
+      [capitalised(absoluteDay(next.date))],
+      [`Tego dnia odbiorą${all ? " wszystkie pojemniki" : ""}:`],
+      [{ bins: next.pickups }],
+    ],
   ];
   const time = next.pickups.find((pickup) => pickup.putOutBy)?.putOutBy;
-  if (time) rows.push(["Wystaw", [putOutBy(time)]]);
-  if (!place.verified) rows.push(["Uwaga", unverifiedNote(place)]);
-  return rows;
+  if (time) groups.push([[putOutLine(time)]]);
+  return groups;
 }
 
-/** One „Źródło” row per source: its link and its part. */
+/** One „Źródło” per source: its link and its part. */
 export function wasteSources(place: PlaceView): Part[][] {
   const name = scheduleName(place.gmina);
   return place.sources.map((source) => [

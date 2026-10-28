@@ -6,6 +6,7 @@ import {
   hasUpcoming,
   laterNote,
   placeDescription,
+  putOutLine,
   putOutNote,
   sharedNumberNote,
   shownNr,
@@ -47,6 +48,12 @@ test("the put-out note gives the data's hour without a leading zero", () => {
     putOutNote("10:00"),
     "Wystaw pojemniki do 10:00 w dniu odbioru.",
   );
+});
+
+test("the address page's put-out line: „rano” before noon only", () => {
+  assert.equal(putOutLine("06:00"), "Wystaw je do 6:00 rano.");
+  assert.equal(putOutLine("11:59"), "Wystaw je do 11:59 rano.");
+  assert.equal(putOutLine("12:00"), "Wystaw je do 12:00 w dniu odbioru.");
 });
 
 test("the unverified note names whose schedule wins: the gmina's, or the town's", () => {

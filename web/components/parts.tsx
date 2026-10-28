@@ -2,10 +2,10 @@ import { Fragment } from "react";
 import { Bins } from "@/components/waste-bins";
 import type { Part } from "@/lib/hub";
 
-// A module's rows and lines (lib/hub.ts Part): text, links and bins, for
-// the address page's cards and the module subpages.
+// A module's lines (lib/hub.ts Part): text, links and bins, for the
+// address page's sections and the module subpages.
 
-/** Parts as plain text: a row's key in the list. */
+/** Parts as plain text, for a key in a list. */
 export const textOf = (parts: Part[]) =>
   parts
     .map((part) =>
@@ -17,14 +17,14 @@ export const textOf = (parts: Part[]) =>
     )
     .join("");
 
-/** A row's or a line's parts as text, links and bins. */
+/** A line's parts as text, links and bins (a row of small ones). */
 export function Parts({ parts }: { parts: Part[] }) {
   return parts.map((part, i) => {
     // A fixed sequence, never reordered; its texts may repeat (" ").
     const key = `${i}`;
     if (typeof part === "string") return <Fragment key={key}>{part}</Fragment>;
     if ("bins" in part) {
-      return <Bins key={key} pickups={part.bins} large={false} />;
+      return <Bins key={key} pickups={part.bins} size="small" />;
     }
     return (
       <a key={key} href={part.href} className="govuk-link">
