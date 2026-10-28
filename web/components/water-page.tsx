@@ -81,7 +81,12 @@ export function WaterDetails({
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
-        <SubpageHeading place={data.place} heading={H1} checkedAt={checkedAt} />
+        <SubpageHeading
+          place={data.place}
+          heading={H1}
+          checkedAt={checkedAt}
+          module="woda"
+        />
         {note && (
           <div className="govuk-inset-text">
             <Parts parts={note} />

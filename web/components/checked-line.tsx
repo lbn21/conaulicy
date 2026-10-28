@@ -1,3 +1,4 @@
+import type { ModuleId } from "@/lib/address-routes";
 import { type Checked, checkedLine } from "@/lib/hub";
 
 /**
@@ -7,14 +8,17 @@ import { type Checked, checkedLine } from "@/lib/hub";
  */
 export function CheckedLine({
   at,
+  module,
   as: Tag = "p",
   className = "",
 }: {
   at: Checked;
+  /** Whose check: its label (lib/hub.ts checkedLine). */
+  module: ModuleId;
   as?: "p" | "span";
   className?: string;
 }) {
-  const line = checkedLine(at);
+  const line = checkedLine(at, module);
   if (!line) return null;
   return (
     <Tag className={`govuk-hint govuk-!-font-size-16 ${className}`.trim()}>

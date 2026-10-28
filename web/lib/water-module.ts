@@ -614,7 +614,12 @@ const cutSources = (data: Water) => {
 
 /** The gmina's AI-read note: the shape of every source's. */
 export const WATER_AI_NOTE =
-  "Te daty i godziny odczytaliśmy automatycznie z komunikatu gminy i nikt ich jeszcze nie sprawdził drugi raz. Gdyby coś się nie zgadzało, rację ma komunikat gminy.";
+  "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest komunikat gminy.";
+
+/** The AI-read note for one source's posts, `of` its genitive. */
+export function aiNote(of: string): string {
+  return `Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest komunikat ${of}.`;
+}
 
 /**
  * The subpage's AI-read note (components/subpage-parts.tsx AiReadNote), as
@@ -624,9 +629,8 @@ export const WATER_AI_NOTE =
 export function waterAiNote(data: Water): string {
   const used = cutSources(data);
   if (used.length > 1)
-    return `Te daty i godziny odczytaliśmy automatycznie z komunikatów ${used.map((s) => s.of).join(" i ")} i nikt ich jeszcze nie sprawdził drugi raz. Gdyby coś się nie zgadzało, rację mają komunikaty.`;
-  const { of } = used[0] ?? GMINA;
-  return `Te daty i godziny odczytaliśmy automatycznie z komunikatu ${of} i nikt ich jeszcze nie sprawdził drugi raz. Gdyby coś się nie zgadzało, rację ma komunikat ${of}.`;
+    return `Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejsze są komunikaty ${used.map((s) => s.of).join(" i ")}.`;
+  return aiNote((used[0] ?? GMINA).of);
 }
 
 /** The calendar block's hint: whose change of hours to fetch it again for. */
@@ -637,6 +641,9 @@ export function waterCalendarHint(data: Water): string {
     .join(" lub ");
   return `Plik z przerwami. Jeśli ${who} zmieni godziny, pobierz go jeszcze raz.`;
 }
+
+/** No cut announced: one phrase for the subpage and the address page. */
+const NO_CUTS = "Brak zapowiedzianych przerw";
 
 /** Where the sources announce cuts: "Gmina ogłasza je w …, a MZGKiM – w …". */
 const announced = (sources: SourceState[]): Part[] =>
@@ -658,7 +665,7 @@ export function waterEmpty(data: Water): Part[] | null {
       ".",
     ]);
   const parts: Part[] = [
-    "Nie wiemy o żadnej zapowiedzianej przerwie w dostawie wody pod tym adresem. ",
+    `${NO_CUTS}. `,
     ...announced(data.sources.filter((s) => !s.unavailable)),
     ".",
   ];
@@ -688,7 +695,7 @@ export function waterNone(data: Water): string {
   const old = late(data);
   if (old.length > 0)
     return `brak zapowiedzianych przerw przy ostatnim sprawdzeniu, ale od ponad godziny nie udało się nam sprawdzić nowych${old.length < data.sources.length ? ` komunikatów${named(data, old)}` : ""}`;
-  return "brak zapowiedzianych przerw w dostawie";
+  return NO_CUTS.toLowerCase();
 }
 
 /** The post itself: "Komunikat gminy z 23 października 2026". */

@@ -155,6 +155,7 @@ function ModuleSection({
               {i === all.length - 1 && (
                 <CheckedLine
                   at={checkedAt(loaded)}
+                  module={module.id}
                   as="span"
                   className="govuk-!-display-block govuk-!-margin-top-1 govuk-!-margin-bottom-0"
                 />
@@ -236,7 +237,7 @@ export async function HubMain({
             </h2>
             {quiet.map((entry) => {
               const { module, data } = entry;
-              const checked = checkedLine(checkedAt(entry));
+              const checked = checkedLine(checkedAt(entry), module.id);
               return (
                 <Fragment key={module.id}>
                   <p className="govuk-body">
@@ -257,7 +258,12 @@ export async function HubMain({
           </section>
         </>
       )}
-      {imgw && <p className="govuk-body-s">{IMGW_ATTRIBUTION.join(" ")}</p>}
+      {/* IMGW's required wording, as secondary text (task 205). */}
+      {imgw && (
+        <p className="govuk-hint govuk-!-font-size-16">
+          {IMGW_ATTRIBUTION.join(" ")}
+        </p>
+      )}
     </AddressPage>
   );
 }

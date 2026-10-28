@@ -89,7 +89,7 @@ test("checked line: the copy's fetchedAt, warning or not", () => {
       at("2026-10-25T13:52:10+01:00"),
     );
     assert.equal(
-      checkedLine(weatherChecked(data)),
+      checkedLine(weatherChecked(data), "pogoda"),
       "Ostatnio sprawdziliśmy: 25 października, 13:52",
     );
   }
