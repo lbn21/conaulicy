@@ -137,6 +137,10 @@ export async function ImgwBanner() {
                   </a>
                 </p>
                 <p className="govuk-body-s">{shown.footer}</p>
+                {/* IMGW's required wording, as secondary text (task 205). */}
+                <p className="govuk-hint govuk-!-font-size-16">
+                  {shown.attribution}
+                </p>
               </div>
             </details>
           </div>

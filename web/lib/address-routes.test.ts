@@ -7,6 +7,7 @@ import {
   MODULE_IDS,
   NUMBER_REWRITES,
   numberErrorPath,
+  numberParam,
   RESERVED_SEGMENTS,
   SUBPAGE_IDS,
 } from "./address-routes.ts";
@@ -104,4 +105,22 @@ test("a valid ?nr= becomes a path, for the street page and a module; any other, 
   assert.equal(numberErrorPath("/adres/X/numer"), null);
   assert.equal(numberErrorPath("/adres/X/nr/12"), null);
   assert.equal(numberErrorPath("/ulice"), null);
+  // Any other value goes to the number variant, which checks and shows it.
+  assert.equal(numberErrorPath("/adres/X", "abc"), "/adres/X/nr/abc");
+  assert.equal(
+    numberErrorPath("/adres/X/woda", " 44"),
+    "/adres/X/woda/nr/%2044",
+  );
+  assert.equal(
+    numberErrorPath("/adres/X/smieci", "+44"),
+    "/adres/X/smieci/nr/%2B44",
+  );
+});
+
+test("a /nr/ path's value: decoded, its segments joined", () => {
+  assert.equal(numberParam(["%2B44"]), "+44");
+  assert.equal(numberParam(["%2044"]), " 44");
+  assert.equal(numberParam(["7", "22"]), "7/22");
+  assert.equal(numberParam(["50a"]), "50a");
+  assert.equal(numberParam(["%E0%A4%A"]), "%E0%A4%A");
 });

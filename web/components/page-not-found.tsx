@@ -26,10 +26,8 @@ export function PageNotFound() {
       <div className="govuk-grid-column-two-thirds">
         <h1 className="govuk-heading-l">{NOT_FOUND_TITLE}</h1>
         <p className="govuk-body">
-          Jeśli adres został wpisany ręcznie, sprawdź, czy jest poprawny.
-        </p>
-        <p className="govuk-body">
-          Jeśli adres został wklejony, sprawdź, czy skopiowano go w całości.
+          Nie ma takiej strony. Może w adresie jest literówka albo link jest
+          nieaktualny.
         </p>
         <p className="govuk-body">
           Jeśli adres jest poprawny albo kliknięto link lub przycisk, napisz do

@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  DISCLAIMER,
+  disclaimer,
   hasUpcoming,
+  laterNote,
   placeDescription,
   putOutNote,
   sharedNumberNote,
-  UNVERIFIED_NOTE,
+  shownNr,
+  unverifiedNote,
 } from "./schedule-notes.ts";
 
 const day = (date: string) => ({
@@ -45,14 +49,34 @@ test("the put-out note gives the data's hour without a leading zero", () => {
   );
 });
 
-test("the unverified note sends people to the gmina's schedule", () => {
-  assert.match(UNVERIFIED_NOTE, /nikt ich jeszcze nie sprawdził/);
-  assert.match(UNVERIFIED_NOTE, /rację ma harmonogram gminy\.$/);
+test("the unverified note names whose schedule wins: the gmina's, or the town's", () => {
+  assert.equal(
+    unverifiedNote("Lubaczów (gmina)"),
+    "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest harmonogram gminy.",
+  );
+  assert.equal(
+    unverifiedNote("Lubaczów (miasto)"),
+    "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest harmonogram Urzędu Miejskiego.",
+  );
+  assert.equal(
+    disclaimer("Lubaczów (miasto)"),
+    "Nie jesteśmy urzędem – obowiązuje harmonogram Urzędu Miejskiego.",
+  );
+  assert.equal(disclaimer("Lubaczów (gmina)"), DISCLAIMER);
+});
+
+test("after the last date: the next year's dates come when published", () => {
+  assert.equal(
+    laterNote([day("2026-11-02"), day("2026-12-31")]),
+    "Terminy na 2027 dodamy, gdy je ogłoszą.",
+  );
+  assert.equal(laterNote([]), null);
 });
 
 test("a place's description offers dates only when the page has them", () => {
   const place = {
     label: "ul. Rynek, Lubaczów",
+    gmina: "Lubaczów (miasto)",
     zoneId: "lubaczow-1",
     askNumber: false,
     days: [day("2026-12-28")],
@@ -82,6 +106,7 @@ test("a place's description offers dates only when the page has them", () => {
 test("the waste subpage's description is its own", () => {
   const place = {
     label: "ul. Rynek, Lubaczów",
+    gmina: "Lubaczów (miasto)",
     zoneId: "lubaczow-1",
     askNumber: false,
     days: [day("2026-12-28")],
@@ -107,6 +132,8 @@ const asnyka = {
   nr: null,
   askNumber: false,
   givenNr: null,
+  invalidNr: null,
+  knownNr: false,
 };
 
 test("a number on a street with one schedule is acknowledged", () => {
@@ -121,11 +148,11 @@ test("a number on a street with one schedule is acknowledged", () => {
   );
 });
 
-test("a number the address register lacks is not repeated", () => {
-  assert.equal(
-    sharedNumberNote({ ...asnyka, givenNr: "9999" }, true),
-    "Harmonogram jest wspólny dla całej ulicy.",
-  );
+test("the number after the name: one the register has, or a split street's", () => {
+  assert.equal(shownNr({ nr: null, givenNr: "44", knownNr: true }), "44");
+  // Unknown to the register, or not checked: as before, none.
+  assert.equal(shownNr({ nr: null, givenNr: "44", knownNr: false }), null);
+  assert.equal(shownNr({ nr: "7a", givenNr: "7a", knownNr: false }), "7a");
 });
 
 test("no number, no note", () => {

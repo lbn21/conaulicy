@@ -26,7 +26,7 @@ import type { PlaceView } from "@/lib/schedule";
 // show, waste always first: its h2, a summary list and a link saying where
 // it goes („Wszystkie odbiory śmieci”)
 // (no summary cards: GOV.UK keeps them for lists of the same type of thing,
-// task 131); then „Bez zapowiedzi”, a line for each module with nothing. A
+// task 131); then „Nic nie zapowiedziano”, a line for each module with nothing. A
 // visible section break between sections. Dates are absolute only, so a
 // cached copy stays true without client JS. No calendar or PDF here: they
 // are on the waste subpage. A split street's number errors keep the street
@@ -37,11 +37,11 @@ type Loaded = { module: Module<unknown>; data: unknown };
 const checkedAt = ({ module, data }: Loaded) =>
   module.checkedAt?.(data) ?? null;
 
-/** What „Bez zapowiedzi” says for a module. */
+/** What „Nic nie zapowiedziano” says for a module. */
 const noneText = ({ module, data }: Loaded) =>
   typeof module.none === "function" ? module.none(data) : module.none;
 
-/** The module's line after its list or „Bez zapowiedzi” line, if any. */
+/** The module's line after its list or „Nic nie zapowiedziano” line, if any. */
 export function Trace({ module, data }: Loaded) {
   const text = module.trace?.(data) ?? null;
   return text && <p className="govuk-body">{text}</p>;
@@ -155,6 +155,7 @@ function ModuleSection({
               {i === all.length - 1 && (
                 <CheckedLine
                   at={checkedAt(loaded)}
+                  module={module.id}
                   as="span"
                   className="govuk-!-display-block govuk-!-margin-top-1 govuk-!-margin-bottom-0"
                 />
@@ -230,13 +231,13 @@ export async function HubMain({
       {quiet.length > 0 && (
         <>
           {cards.length > 0 && BREAK}
-          <section aria-labelledby="bez-zapowiedzi-heading">
-            <h2 id="bez-zapowiedzi-heading" className="govuk-heading-l">
-              Bez zapowiedzi
+          <section aria-labelledby="nic-nie-zapowiedziano-heading">
+            <h2 id="nic-nie-zapowiedziano-heading" className="govuk-heading-l">
+              Nic nie zapowiedziano
             </h2>
             {quiet.map((entry) => {
               const { module, data } = entry;
-              const checked = checkedLine(checkedAt(entry));
+              const checked = checkedLine(checkedAt(entry), module.id);
               return (
                 <Fragment key={module.id}>
                   <p className="govuk-body">
@@ -257,7 +258,12 @@ export async function HubMain({
           </section>
         </>
       )}
-      {imgw && <p className="govuk-body-s">{IMGW_ATTRIBUTION.join(" ")}</p>}
+      {/* IMGW's required wording, as secondary text (task 205). */}
+      {imgw && (
+        <p className="govuk-hint govuk-!-font-size-16">
+          {IMGW_ATTRIBUTION.join(" ")}
+        </p>
+      )}
     </AddressPage>
   );
 }

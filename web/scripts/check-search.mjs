@@ -773,7 +773,7 @@ try {
   // summary linking to the field, error message, error styles.
   const MISSING = "Wpisz numer domu, na przykład 12, 12a albo 7/22";
   const UNKNOWN =
-    "Numeru 42 nie ma w harmonogramie tej ulicy. Sprawdź numer albo harmonogram gminy";
+    "Numeru 42 nie ma w harmonogramie tej ulicy. Sprawdź numer albo harmonogram Urzędu Miejskiego";
   for (const [query, message] of [
     ["", MISSING],
     ["abc", MISSING],

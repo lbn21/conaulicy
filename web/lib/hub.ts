@@ -1,6 +1,8 @@
 // The address page as a hub of modules (lib/modules.ts, components/hub.tsx):
 // what a module gives it, and the alert slot's rules. Pure, so the unit
 // tests read it.
+
+import type { ModuleId } from "./address-routes.ts";
 import { clockTime, dayMonth } from "./date-labels.ts";
 import { warsawNoon } from "./dates.ts";
 
@@ -67,15 +69,22 @@ export function warningCount(n: number): string {
  */
 export type Checked = Date | string | null;
 
+/** What each module's check line says it checked; any other: „Ostatnio”. */
+const CHECKED: Partial<Record<ModuleId, string>> = {
+  smieci: "Wywozy sprawdziliśmy",
+  woda: "Komunikaty o wodzie sprawdziliśmy",
+};
+
 /**
- * When a module last checked its source, in Polish time, absolute: "Ostatnio
+ * When a module last checked its source, in Polish time, absolute: "Wywozy
  * sprawdziliśmy: 25 października, 14:20", or "… 23 października" for a day.
  * null: nothing to say.
  */
-export function checkedLine(at: Checked): string | null {
+export function checkedLine(at: Checked, module: ModuleId): string | null {
   if (!at) return null;
+  const label = CHECKED[module] ?? "Ostatnio sprawdziliśmy";
   if (typeof at === "string")
-    return `Ostatnio sprawdziliśmy: ${dayMonth(warsawNoon(at).getTime())}`;
+    return `${label}: ${dayMonth(warsawNoon(at).getTime())}`;
   const ms = at.getTime();
-  return `Ostatnio sprawdziliśmy: ${dayMonth(ms)}, ${clockTime(ms)}`;
+  return `${label}: ${dayMonth(ms)}, ${clockTime(ms)}`;
 }

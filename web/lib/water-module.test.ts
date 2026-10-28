@@ -66,6 +66,9 @@ import {
 } from "./zuk-fixture.ts";
 import { ZUK_PLACES } from "./zuk-places.generated.ts";
 
+const waterLine = (at: Parameters<typeof checkedLine>[0]) =>
+  checkedLine(at, "woda");
+
 // Sunday 25 Oct 2026, 13:30 in Warsaw (CET since 3:00 today); 39885's cuts
 // are 26-29 Oct, all 8:00-16:00.
 const CHECKED = "2026-10-25T12:20:00.000Z";
@@ -341,7 +344,7 @@ test("house number: outside a street's range, the cut is not shown", () => {
   assert.deepEqual(waterAlerts(five), []);
   // task 188: was no card; now the card says the cut leaves nr 5 out.
   assert.deepEqual(waterSummary(five), [
-    ["Pod nr 5", ["Brak zapowiedzianych przerw w dostawie."]],
+    ["Pod nr 5", ["Brak zapowiedzianych przerw."]],
     [
       "Inne numery",
       [
@@ -645,16 +648,16 @@ test("card: the cut, where, as written, and the post as its source", () => {
   ]);
 });
 
-test("no cut here: no card, „Bez zapowiedzi” with the gmina's news", () => {
+test("no cut here: no card, „Nic nie zapowiedziano” with the gmina's news", () => {
   const data = waterAt(SMOLINCE, []);
   assert.equal(waterSummary(data), null);
-  assert.equal(waterNone(data), "brak zapowiedzianych przerw w dostawie");
+  assert.equal(waterNone(data), "brak zapowiedzianych przerw");
   assert.deepEqual(waterSources(data), [[GMINA]]);
 });
 
 test("/woda empty: a warm sentence and the gmina's news; none with a cut", () => {
   assert.deepEqual(waterEmpty(waterAt(SMOLINCE, [])), [
-    "Nie wiemy o żadnej zapowiedzianej przerwie w dostawie wody pod tym adresem. Gmina ogłasza je w ",
+    "Brak zapowiedzianych przerw. Gmina ogłasza je w ",
     GMINA,
     ".",
   ]);
@@ -742,9 +745,9 @@ test("town, fresh, no cut: the villages' none, both sources' posts", () => {
     assert.deepEqual(data.outages, []);
     assert.equal(waterSummary(data), null);
     assert.equal(staleNote(data), null);
-    assert.equal(waterNone(data), "brak zapowiedzianych przerw w dostawie");
+    assert.equal(waterNone(data), "brak zapowiedzianych przerw");
     assert.deepEqual(waterEmpty(data), [
-      "Nie wiemy o żadnej zapowiedzianej przerwie w dostawie wody pod tym adresem. Gmina ogłasza je w ",
+      "Brak zapowiedzianych przerw. Gmina ogłasza je w ",
       GMINA,
       ", a MZGKiM – w ",
       { href: MZGKIM_NEWS, text: "komunikatach MZGKiM" },
@@ -752,8 +755,8 @@ test("town, fresh, no cut: the villages' none, both sources' posts", () => {
     ]);
     assert.deepEqual(waterSources(data), [[GMINA], [MZGKIM]]);
     assert.equal(
-      checkedLine(waterChecked(data)),
-      "Ostatnio sprawdziliśmy: 25 października, 13:20",
+      waterLine(waterChecked(data)),
+      "Komunikaty o wodzie sprawdziliśmy: 25 października, 13:20",
     );
   }
 });
@@ -784,7 +787,7 @@ test("town, an MZGKiM cut: shown as a ZUK cut, its own post the source", () => {
   );
   assert.equal(
     waterAiNote(data),
-    "Te daty i godziny odczytaliśmy automatycznie z komunikatu MZGKiM i nikt ich jeszcze nie sprawdził drugi raz. Gdyby coś się nie zgadzało, rację ma komunikat MZGKiM.",
+    "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest komunikat MZGKiM.",
   );
   assert.equal(
     waterCalendarHint(data),
@@ -941,7 +944,7 @@ test("town, both sources' cuts: both posts, both in the AI note", () => {
   );
   assert.equal(
     waterAiNote(both),
-    "Te daty i godziny odczytaliśmy automatycznie z komunikatów gminy i MZGKiM i nikt ich jeszcze nie sprawdził drugi raz. Gdyby coś się nie zgadzało, rację mają komunikaty.",
+    "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejsze są komunikaty gminy i MZGKiM.",
   );
   assert.equal(
     waterCalendarHint(both),
@@ -1008,7 +1011,7 @@ test("town, MZGKiM unavailable: said, with its posts; the gmina's none kept", ()
     "nie udało się nam sprawdzić komunikatów MZGKiM",
   );
   assert.deepEqual(waterEmpty(quiet), [
-    "Nie wiemy o żadnej zapowiedzianej przerwie w dostawie wody pod tym adresem. Gmina ogłasza je w ",
+    "Brak zapowiedzianych przerw. Gmina ogłasza je w ",
     GMINA,
     ". Nie udało się nam jednak teraz sprawdzić komunikatów MZGKiM. Zajrzyj do ",
     MZGKIM_OF,
@@ -1046,16 +1049,16 @@ test("freshness: the checked line always, the stale note only after 1 h", () => 
     waterAt(ZUKI, [post()], new Date(checked + ms), CHECKED);
   const fresh = at(STALE_MS);
   assert.equal(
-    checkedLine(waterChecked(fresh)),
-    "Ostatnio sprawdziliśmy: 25 października, 13:20",
+    waterLine(waterChecked(fresh)),
+    "Komunikaty o wodzie sprawdziliśmy: 25 października, 13:20",
   );
   assert.equal(staleNote(fresh), null);
   assert.equal(waterSummary(fresh)?.length, 2);
 
   const stale = at(STALE_MS + 1);
   assert.equal(
-    checkedLine(waterChecked(stale)),
-    "Ostatnio sprawdziliśmy: 25 października, 13:20",
+    waterLine(waterChecked(stale)),
+    "Komunikaty o wodzie sprawdziliśmy: 25 października, 13:20",
   );
   const note = staleNote(stale);
   assert.ok(note);
@@ -1472,7 +1475,7 @@ test("nr: a cut that covers it says so; one that leaves it out, in the card", ()
   );
   const data = zaluze("43");
   assert.deepEqual(waterSummary(data), [
-    ["Pod nr 43", ["Brak zapowiedzianych przerw w dostawie."]],
+    ["Pod nr 43", ["Brak zapowiedzianych przerw."]],
     [
       "Inne numery",
       [

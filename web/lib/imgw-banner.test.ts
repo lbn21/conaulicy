@@ -68,7 +68,8 @@ test("one warning in force: title, tag, until when, source, details, footer", ()
       },
     ],
     source: "Źródło: IMGW-PIB",
-    footer: `Dotyczy całego powiatu lubaczowskiego. Stan na 13:52. ${SOURCE}`,
+    footer: "Dotyczy całego powiatu lubaczowskiego. Stan na 13:52.",
+    attribution: SOURCE,
   });
 });
 
@@ -125,7 +126,7 @@ test("stale: shown with a note under 3 hours, not at all from 3 hours", () => {
   const now = at(fetchedAt) + 3 * HOUR - 1;
   assert.equal(
     banner(stale, now)?.footer,
-    `Dotyczy całego powiatu lubaczowskiego. Stan na 12:00. Nowszych danych nie udało się pobrać. ${SOURCE}`,
+    "Dotyczy całego powiatu lubaczowskiego. Stan na 12:00. Nowszych danych nie udało się pobrać.",
   );
   assert.equal(banner(stale, now + 1), null);
   assert.equal(banner(copy(fetchedAt), now + 1), null);

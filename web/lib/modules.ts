@@ -1,6 +1,6 @@
 // The address page's modules: waste, water and the weather today; power and
 // others later (docs/tasks T102). Each one has a card on the address page
-// (components/hub.tsx), or a line under „Bez zapowiedzi” when it has nothing
+// (components/hub.tsx), or a line under „Nic nie zapowiedziano” when it has nothing
 // to show, and a subpage of its own, /adres/<id>/<id of the module>, if it
 // has one. The ids and their order live in lib/address-routes.ts, so the
 // unit tests and the URL rules can read them without Next.js; this registry
@@ -57,12 +57,12 @@ export type Module<D> = {
   load(place: string, nr: string | null): Promise<D | null>;
   /** Today's and the coming warnings, for the slot above the cards. */
   alerts(data: D): Alert[];
-  /** The card's rows; null: nothing to show („Bez zapowiedzi”). */
+  /** The card's rows; null: nothing to show („Nic nie zapowiedziano”). */
   summary(data: D): SummaryRow[] | null;
-  /** What „Bez zapowiedzi” says for it, after its title (summary null). */
+  /** What „Nic nie zapowiedziano” says for it, after its title (summary null). */
   none?: string | ((data: D) => string);
   /**
-   * A line after its card or its „Bez zapowiedzi” line (water: a cut left
+   * A line after its card or its „Nic nie zapowiedziano” line (water: a cut left
    * out for the house number); left out or null: none.
    */
   trace?(data: D): string | null;
@@ -70,7 +70,7 @@ export type Module<D> = {
   sources(data: D): Part[][];
   /**
    * When we last checked its source: „Ostatnio sprawdziliśmy …” on its card,
-   * its „Bez zapowiedzi” line and its subpage (lib/hub.ts checkedLine).
+   * its „Nic nie zapowiedziano” line and its subpage (lib/hub.ts checkedLine).
    * Left out or null: nothing shown.
    */
   checkedAt?(data: D): Checked;

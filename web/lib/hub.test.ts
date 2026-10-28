@@ -58,20 +58,29 @@ test("Polish plurals for the count", () => {
 
 test("checked line: a day alone, an instant with its Warsaw time, over midnight and DST", () => {
   assert.equal(
-    checkedLine("2026-10-23"),
+    checkedLine("2026-10-23", "pogoda"),
     "Ostatnio sprawdziliśmy: 23 października",
   );
   // 22:30 UTC on 31 August is already 1 September in Warsaw.
   assert.equal(
-    checkedLine(new Date("2026-08-31T22:30:00Z")),
+    checkedLine(new Date("2026-08-31T22:30:00Z"), "pogoda"),
     "Ostatnio sprawdziliśmy: 1 września, 0:30",
   );
   assert.equal(
-    checkedLine(new Date("2026-10-25T14:42:00Z")),
+    checkedLine(new Date("2026-10-25T14:42:00Z"), "pogoda"),
     "Ostatnio sprawdziliśmy: 25 października, 15:42",
   );
-  assert.equal(checkedLine(null), null);
-  const line = (iso: string) => checkedLine(new Date(iso));
+  assert.equal(checkedLine(null, "pogoda"), null);
+  // Waste and water say what they checked.
+  assert.equal(
+    checkedLine("2026-10-23", "smieci"),
+    "Wywozy sprawdziliśmy: 23 października",
+  );
+  assert.equal(
+    checkedLine(new Date("2026-10-25T14:42:00Z"), "woda"),
+    "Komunikaty o wodzie sprawdziliśmy: 25 października, 15:42",
+  );
+  const line = (iso: string) => checkedLine(new Date(iso), "pogoda");
   // Summer time until 3:00 on 25 Oct: midnight is 22:00 UTC the day before.
   assert.equal(
     line("2026-10-24T21:59:00Z"),

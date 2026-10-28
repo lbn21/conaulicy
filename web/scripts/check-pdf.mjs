@@ -21,9 +21,9 @@ import { inflateSync } from "node:zlib";
 import QRCode from "qrcode";
 import { SITE_URL } from "../lib/config.generated.ts";
 import {
-  DISCLAIMER,
+  disclaimer,
   NO_MORE_DATES,
-  UNVERIFIED_NOTE,
+  unverifiedNote,
 } from "../lib/schedule-notes.ts";
 import { notSource, walk } from "./lib/files.mjs";
 import { finish, startServer } from "./lib/server.mjs";
@@ -34,6 +34,10 @@ const MIN_PAGES = 2;
 const MAX_PAGES = 6;
 // The proposal stamp, not the home page's „Przykładowe adresy”.
 const SAMPLE = /PRZYKŁADOWE DANE|podgląd układu/;
+// The town's streets (SIMC 0972447) are the Urząd Miejski's schedule, the
+// rest the gmina's (lib/places.ts scheduleOwner).
+const gminaOf = (p) =>
+  p.startsWith("/adres/0972447") ? "Lubaczów (miasto)" : "Lubaczów (gmina)";
 const CASES = [
   {
     name: "city street",
@@ -240,9 +244,20 @@ try {
       text.includes("Te same terminy co w kalendarzu"),
       `${c.name}: no text-only version`,
     );
+    const flat = text.replace(/\s+/g, " ");
+    const gmina = gminaOf(c.path);
     check(
-      text.replace(/\s+/g, " ").includes(DISCLAIMER),
-      `${c.name}: no "${DISCLAIMER}" line`,
+      flat.includes(disclaimer(gmina)),
+      `${c.name}: no "${disclaimer(gmina)}" line`,
+    );
+    // The town's PDF names the Urząd Miejski, never the gmina's schedule.
+    const town = gmina === "Lubaczów (miasto)";
+    check(
+      town
+        ? flat.includes("Urzędu Miejskiego") &&
+            !flat.includes("harmonogram gminy")
+        : flat.includes("harmonogram gminy"),
+      `${c.name}: not the ${town ? "town's" : "gmina's"} wording`,
     );
     check(text.includes("Źródło:"), `${c.name}: no source line`);
     // The QR code and the printed link: the waste subpage, never the hub or
@@ -290,7 +305,7 @@ try {
       );
     }
     check(
-      text.replace(/\s+/g, " ").includes(UNVERIFIED_NOTE),
+      flat.includes(unverifiedNote(gmina)),
       `${c.name}: no "not double-checked" note`,
     );
     check(

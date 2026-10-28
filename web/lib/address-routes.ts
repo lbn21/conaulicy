@@ -56,10 +56,29 @@ export const NUMBER_REWRITES = [
 }));
 
 /**
- * The page's own error variant (/adres/<id>/numer, /adres/<id>/smieci/numer)
- * for an address asked with ?nr= but no usable number, or null.
+ * The value of a /nr/… path, as given: its segments decoded (a page's
+ * params keep the encoding, "%2B44" for "+44") and joined ("7/22").
  */
-export function numberErrorPath(pathname: string): string | null {
+export function numberParam(segments: string[]): string {
+  return segments
+    .map((segment) => {
+      try {
+        return decodeURIComponent(segment);
+      } catch {
+        return segment;
+      }
+    })
+    .join("/");
+}
+
+/**
+ * The page's own error variant (/adres/<id>/numer, /adres/<id>/smieci/numer)
+ * for an address asked with an empty ?nr=; with any other value not in
+ * NR_QUERY's shape, its number variant (/adres/<id>/nr/<value>), which
+ * checks the value (lib/prg.ts isValidHouseNumber) and shows it; or null.
+ */
+export function numberErrorPath(pathname: string, nr = ""): string | null {
   const match = ADDRESS.exec(pathname);
-  return match ? `${match[1]}/numer` : null;
+  if (!match) return null;
+  return nr ? `${match[1]}/nr/${encodeURIComponent(nr)}` : `${match[1]}/numer`;
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { streetLabel, villageLabel } from "./places.ts";
-import { prgNote } from "./prg.ts";
+import { isValidHouseNumber } from "./prg.ts";
 import { matcher, type SearchIndex } from "./search.ts";
 import { HINT, HINT_EXAMPLES } from "./search-hint.ts";
 import { ZUK_PLACES } from "./zuk-places.generated.ts";
@@ -57,16 +57,9 @@ for (const { text, id, nr } of HINT_EXAMPLES) {
     assert.equal(same.length, 1);
 
     if (nr) {
-      const place = (givenNr: string) =>
-        ({
-          id,
-          kind: street ? "ulica" : "wies",
-          givenNr,
-          askNumber: false,
-        }) as Parameters<typeof prgNote>[0];
-      assert.equal(prgNote(place(nr)), null);
-      // Control: a number PRG lacks there gets the note.
-      assert.notEqual(prgNote(place("12")), null);
+      assert.equal(isValidHouseNumber(id, nr), true);
+      // Control: a number PRG lacks there is not valid.
+      assert.equal(isValidHouseNumber(id, "12"), false);
     }
   });
 }

@@ -133,7 +133,7 @@ try {
   check(
     village.status === 200 &&
       village.text.includes("Harmonogram") &&
-      village.text.includes("Ostatnio sprawdziliśmy"),
+      village.text.includes("Wywozy sprawdziliśmy"),
     "village: no source line",
   );
   const unzoned = await page(`/adres/${FIXTURE_IDS.unzonedStreet}`);

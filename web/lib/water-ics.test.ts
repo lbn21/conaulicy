@@ -88,14 +88,17 @@ test("a cut at the address: one event, Warsaw hours, place and source", () => {
     "SUMMARY:Przerwa w dostawie wody",
     "LOCATION:ul. Żuki\\, Lubaczów",
     `URL:${POST_URL}`,
-    "STATUS:CONFIRMED",
+    "STATUS:TENTATIVE",
   ])
     assert.ok(all.includes(line), line);
+  assert.ok(!all.includes("STATUS:CONFIRMED"));
   const [description] = value(ics, "DESCRIPTION");
   assert.match(description, /^Cała ulica Żuki\.\\n/);
   assert.ok(description.includes(`Źródło: ${POST_URL}`));
   // The last line: our /woda page, which always shows the current state.
-  assert.ok(description.endsWith(`rację ma komunikat.\\n${CHECK}`));
+  assert.ok(
+    description.endsWith(`ważniejszy jest komunikat gminy.\\n${CHECK}`),
+  );
   assert.equal(ZUKI_PAGE, "https://conaulicy.pl/adres/0972447-26555/woda");
   assert.ok(
     description.endsWith(
@@ -341,7 +344,7 @@ test("no dated cut, no button: an emergency, no hours, a Notice, none", () => {
     assert.equal(waterCalendarHref(data), null);
 });
 
-test("a house number outside a cut's range: no event; inside: the same UID", () => {
+test("a house number outside a cut's range: no event; inside: the UID with the number", () => {
   const [first] = post().items;
   const sob = post({ items: [{ ...first, ...SOBIESKIEGO_RANGE }] });
   const outside = at([sob], sobieskiego("5"));
@@ -350,7 +353,7 @@ test("a house number outside a cut's range: no event; inside: the same UID", () 
   const inside = waterCalendar(at([sob], sobieskiego("30")), NOW);
   assert.equal(events(inside), 1);
   assert.deepEqual(value(inside, "UID"), [
-    `woda-${POST_39885}-0606116-0606116-20431-${first.date}@conaulicy.pl`,
+    `woda-${POST_39885}-0606116-0606116-20431-nr-30-${first.date}@conaulicy.pl`,
   ]);
 });
 
@@ -383,7 +386,7 @@ test("an MZGKiM cut: its own UID, its post as the source and the note", () => {
   assert.ok(description.includes(`Źródło: ${url}`));
   assert.ok(
     description.includes(
-      "Daty i godziny odczytaliśmy z komunikatu MZGKiM. Gdyby coś się nie zgadzało\\, rację ma komunikat.",
+      "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza\\, ważniejszy jest komunikat MZGKiM.",
     ),
   );
   folded(ics);
@@ -463,9 +466,11 @@ test("a part: its village's partial cut, the village's UID, a line to check; the
   );
   const zaluze = (nr: string) =>
     waterCalendar(at([post()], villagePlace("0606464", "Załuże", nr)), NOW);
+  // With a number: its own UID, so it never replaces the whole village's.
   assert.deepEqual(value(zaluze("44"), "UID"), [
-    "woda-39885-0606464-all-2026-10-28@conaulicy.pl",
+    "woda-39885-0606464-all-nr-44-2026-10-28@conaulicy.pl",
   ]);
+  assert.deepEqual(value(zaluze("44"), "UID"), value(zaluze("44"), "UID"));
   assert.doesNotMatch(zaluze("44"), /należy do miejscowości/);
   assert.equal(events(zaluze("43")), 0);
   // Smolińce: Lisie Jamy's whole cuts, no line to check.

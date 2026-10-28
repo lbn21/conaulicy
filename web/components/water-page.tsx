@@ -13,6 +13,7 @@ import type { Checked } from "@/lib/hub";
 import { indexable } from "@/lib/indexing";
 import { placePath, titleLabel } from "@/lib/places";
 import { getPlace } from "@/lib/schedule";
+import { shownNr } from "@/lib/schedule-notes";
 import { pageMetadata } from "@/lib/share";
 import { waterCalendarHref } from "@/lib/water-ics";
 import {
@@ -55,7 +56,7 @@ export async function waterMetadata(
   return {
     ...pageMetadata({
       path: `${placePath(id)}/woda`,
-      title: `${H1} – ${withHouseNumber(titleLabel(place.label), place.nr)}`,
+      title: `${H1} – ${withHouseNumber(titleLabel(place.label), shownNr(place))}`,
       description: `Zapowiedziane przerwy w dostawie wody: ${place.label}. Daty i godziny z komunikatów ${sourcesAt(
         place.localityId,
       )
@@ -81,7 +82,12 @@ export function WaterDetails({
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
-        <SubpageHeading place={data.place} heading={H1} checkedAt={checkedAt} />
+        <SubpageHeading
+          place={data.place}
+          heading={H1}
+          checkedAt={checkedAt}
+          module="woda"
+        />
         {note && (
           <div className="govuk-inset-text">
             <Parts parts={note} />
