@@ -19,7 +19,7 @@
 // opened). --read-only: nothing written at all. --force-extract: extract
 // known and settled files too (each waste file is read again and gets a
 // review PR, unless its sha256 has a merged or open review, or a rejected
-// one read with the same prompt and model). --extract-only: no
+// one read with the same prompt, model and effort). --extract-only: no
 // database and no review PR: detect, download, extract and validate, print,
 // exit 1 on any problem (tests the reading); a file held for its review PR
 // is not read, and is printed as held, with why.

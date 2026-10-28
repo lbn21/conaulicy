@@ -101,7 +101,7 @@ export const check: Domain["check"] = async ({
     reviews.hold(
       digest,
       state === "rejected"
-        ? `its review was rejected for a reading with this same prompt and model (${url}); the database keeps its dates`
+        ? `its review was rejected for a reading with this same prompt, model and effort (${url}); the database keeps its dates`
         : state === "merged"
           ? `its review is merged (${url}) but not in this checkout yet`
           : `waiting for its review PR: ${url}`,
@@ -171,7 +171,7 @@ export const check: Domain["check"] = async ({
       "",
       "Dopóki ten plik czeka na przegląd, z całego źródła nie stosuje się nic (także z jego innych plików), aż wszystkie jego przeglądy zostaną scalone.",
       "",
-      `Jeden odczyt: **${model}** (xAI, reasoning medium): tokeny ${usage.promptTokens} wejścia, ${usage.completionTokens} wyjścia, ${usage.reasoningTokens} rozumowania; $${costUsd.toFixed(4)}; ${Math.round(latencyMs / 1000)} s. Każdy nowy harmonogram sprawdza człowiek, także gdy wszystkie kontrole przeszły i odczyt zgadza się z bazą: porównaj daty z obrazem.`,
+      `Jeden odczyt: **${model}** (xAI, reasoning ${out.read.readWith.effort}): tokeny ${usage.promptTokens} wejścia, ${usage.completionTokens} wyjścia, ${usage.reasoningTokens} rozumowania; $${costUsd.toFixed(4)}; ${Math.round(latencyMs / 1000)} s. Każdy nowy harmonogram sprawdza człowiek, także gdy wszystkie kontrole przeszły i odczyt zgadza się z bazą: porównaj daty z obrazem.`,
       "",
       `- Sektor: odczyt ${reading ? JSON.stringify(reading.sector) : "?"}, z nazwy pliku ${file.sector}${layout === "gmina" ? " (PDF gminy nie drukuje sektora: odczyt ma być null)" : ""}`,
       `- Rok: odczyt ${reading ? JSON.stringify(reading.year) : "?"}, z nazwy pliku ${file.year}`,
