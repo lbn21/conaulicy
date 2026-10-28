@@ -56,6 +56,22 @@ export const NUMBER_REWRITES = [
 }));
 
 /**
+ * The value of a /nr/… path, as given: its segments decoded (a page's
+ * params keep the encoding, "%2B44" for "+44") and joined ("7/22").
+ */
+export function numberParam(segments: string[]): string {
+  return segments
+    .map((segment) => {
+      try {
+        return decodeURIComponent(segment);
+      } catch {
+        return segment;
+      }
+    })
+    .join("/");
+}
+
+/**
  * The page's own error variant (/adres/<id>/numer, /adres/<id>/smieci/numer)
  * for an address asked with an empty ?nr=; with any other value not in
  * NR_QUERY's shape, its number variant (/adres/<id>/nr/<value>), which

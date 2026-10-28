@@ -1,5 +1,6 @@
 import { HubMain } from "@/components/hub";
 import { placeMetadata } from "@/components/place-page";
+import { numberParam } from "@/lib/address-routes";
 import { houseNumber } from "@/lib/house";
 
 // /adres/[id]?nr=7/22 lands here (next.config.ts rewrites it), so an
@@ -17,7 +18,7 @@ export async function generateMetadata({
   params,
 }: PageProps<"/adres/[id]/nr/[...nr]">) {
   const { id, nr } = await params;
-  const given = nr.join("/");
+  const given = numberParam(nr);
   return placeMetadata(id, given, houseNumber(given) === null);
 }
 
@@ -25,6 +26,6 @@ export default async function PlaceWithNumberPage({
   params,
 }: PageProps<"/adres/[id]/nr/[...nr]">) {
   const { id, nr } = await params;
-  const given = nr.join("/");
+  const given = numberParam(nr);
   return <HubMain id={id} nr={given} missing={houseNumber(given) === null} />;
 }

@@ -1,4 +1,5 @@
 import { ModuleMain, moduleMetadata } from "@/components/module-page";
+import { numberParam } from "@/lib/address-routes";
 import { houseNumber } from "@/lib/house";
 
 // /adres/[id]/[module]?nr=7/22 lands here (next.config.ts rewrites it), as
@@ -17,7 +18,7 @@ export async function generateMetadata({
   params,
 }: PageProps<"/adres/[id]/[module]/nr/[...nr]">) {
   const { id, module, nr } = await params;
-  const given = nr.join("/");
+  const given = numberParam(nr);
   return moduleMetadata(id, module, given, houseNumber(given) === null);
 }
 
@@ -25,7 +26,7 @@ export default async function ModuleWithNumberPage({
   params,
 }: PageProps<"/adres/[id]/[module]/nr/[...nr]">) {
   const { id, module, nr } = await params;
-  const given = nr.join("/");
+  const given = numberParam(nr);
   return (
     <ModuleMain
       id={id}
