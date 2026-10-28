@@ -1,0 +1,123 @@
+# Przejrzane daty z pliku harmonogram-2026-s4.jpg, wstępnie z odczytu grok-4.7.
+# Porównaj z obrazem i popraw dni miesiąca, jeśli trzeba. Scalenie PR
+# zatwierdza je dla pliku o tym sha256. places to tylko informacja,
+# skopiowana z odczytu: przynależność do stref bierze się wyłącznie z bazy.
+sha256: 91171038fbab823badd430d0249f0ed20596ccb973c26b5e817ea57901aba1dc
+file: "harmonogram-2026-s4.jpg"
+from: "grok-4.7"
+sector: 4
+year: 2026
+rows:
+  "zmieszane+popiol":
+    styczeń: [2, 15, 29]
+    luty: [12, 26]
+    marzec: [12, 26]
+    kwiecień: [9, 23]
+    maj: [7, 21]
+    czerwiec: [3, 18]
+    lipiec: [2, 16, 30]
+    sierpień: [13, 27]
+    wrzesień: [10, 24]
+    październik: [8, 22]
+    listopad: [5, 19]
+    grudzień: [3, 17, 31]
+  "papier+tworzywa_metale+szklo":
+    styczeń: [22]
+    luty: [19]
+    marzec: [19]
+    kwiecień: [16]
+    maj: [21]
+    czerwiec: [11, 25]
+    lipiec: [16, 30]
+    sierpień: [13, 27]
+    wrzesień: [17]
+    październik: [22]
+    listopad: [19]
+    grudzień: [23]
+  "bio":
+    styczeń: [8]
+    luty: [5]
+    marzec: [5]
+    kwiecień: [2, 16, 30]
+    maj: [14, 28]
+    czerwiec: [11, 25]
+    lipiec: [9, 23]
+    sierpień: [6, 20]
+    wrzesień: [3, 17]
+    październik: [1, 15, 29]
+    listopad: [12]
+    grudzień: [10]
+  "wielkogabarytowe+elektro+opony+tekstylia":
+    styczeń: []
+    luty: []
+    marzec: [20]
+    kwiecień: []
+    maj: []
+    czerwiec: []
+    lipiec: []
+    sierpień: []
+    wrzesień: [21]
+    październik: []
+    listopad: []
+    grudzień: []
+places:
+  - { as_written: "3-ego Maja", id: "29830" }
+  - { as_written: "Agenora Gołuchowskiego", id: "38689" }
+  - { as_written: "Akacjowa", id: "00157" }
+  - { as_written: "Andrzeja II Węgierskiego", id: "44269" }
+  - { as_written: "Boczna Mazury", id: "01533" }
+  - { as_written: "Brzozowa", id: "02276" }
+  - { as_written: "Dębowa", id: "03811" }
+  - { as_written: "Dworska", id: "04446" }
+  - { as_written: "Fiołkowa", id: "05027" }
+  - { as_written: "Franciszka Mazurkiewicza", id: "48412" }
+  - { as_written: "Gen. Antoniego Jeziorańskiego", id: "48939" }
+  - { as_written: "Handlowa", id: "06507" }
+  - { as_written: "Henryka Sienkiewicza", id: "19834" }
+  - { as_written: "Het. Sieniawskiego", id: "38140" }
+  - { as_written: "Het. Tarnowskiego", id: "22684" }
+  - { as_written: "Irysowa", id: "06933" }
+  - { as_written: "Jagodowa", id: "07059" }
+  - { as_written: "Jana III Sobieskiego", id: "20431" }
+  - { as_written: "Jarzębinowa", id: "07290" }
+  - { as_written: "Jaśminowa", id: "07380" }
+  - { as_written: "Jaworowa", id: "07394" }
+  - { as_written: "Kasztelańska", id: "08179" }
+  - { as_written: "Klonowa", id: "08574" }
+  - { as_written: "Konwaliowa", id: "09223" }
+  - { as_written: "Księcia Leszka Białego", id: "38139" }
+  - { as_written: "Księcia Władysława Opolczyka", id: "15092" }
+  - { as_written: "Kwiatowa", id: "10562" }
+  - { as_written: "Lipowa", id: "11139" }
+  - { as_written: "Malinowa", id: "12065" }
+  - { as_written: "Mały Łążek", id: "12206" }
+  - { as_written: "Mazury", id: "12559" }
+  - { as_written: "Mikołaja Zibura", id: "38137" }
+  - { as_written: "Miodowa", id: "12991" }
+  - { as_written: "Monte Casino", id: "13252" }
+  - { as_written: "Narcyzowa", id: "13998" }
+  - { as_written: "Niemirowska", id: "14183" }
+  - { as_written: "Ostrowiecka", id: "15388" }
+  - { as_written: "Parkowa", id: "15710" }
+  - { as_written: "Piotra Łukasiewicza", id: "38690" }
+  - { as_written: "Płk. Franciszka Herzoga", id: "38687" }
+  - { as_written: "Podzamcze", id: "16894" }
+  - { as_written: "Pogodna", id: "16900" }
+  - { as_written: "Poziomkowa", id: "17390" }
+  - { as_written: "Rejtana", id: "18573" }
+  - { as_written: "Różana", id: "19000" }
+  - { as_written: "Słonecznikowa", id: "20258" }
+  - { as_written: "Sosnowa", id: "20598" }
+  - { as_written: "Stanisława Wyspiańskiego", id: "25084" }
+  - { as_written: "Starzyny", id: "21042" }
+  - { as_written: "Strażacka", id: "21271" }
+  - { as_written: "Sudel", id: "39849" }
+  - { as_written: "Tulipanowa", id: "23129" }
+  - { as_written: "Wierzbowa", id: "24170" }
+  - { as_written: "Wiosenna", id: "24364" }
+  - { as_written: "Wojewody Pakosława", id: "38138" }
+  - { as_written: "Wrzosowa", id: "24870" }
+  - { as_written: "Św. Huberta", id: "48377" }
+  - { as_written: "Św. Królowej Jadwigi", id: "29695" }
+  - { as_written: "Zielna", id: "26077" }
+  - { as_written: "Chabrowa", id: "02657" }
