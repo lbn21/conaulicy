@@ -1,12 +1,12 @@
 // The IMGW banner (components/imgw-banner.tsx) in every state, from the mock
 // (IMGW_WARNINGS_URL=mock:…, lib/imgw-mock.ts), on the built site:
 // - mock:none (the build's own setting in CI): no banner on any route, no
-//   alert on the address page; the breadcrumbs only on the address pages,
+//   warning on the address page; the breadcrumbs only on the address pages,
 //   right before <main> (task 149), so nothing precedes the banner in it;
-// - never the banner on an address page or its waste subpage: their alert
-//   slot (components/hub.tsx) for one warning, two (a gap between the
-//   lines), three (two lines, then „I jeszcze 1 ostrzeżenie”), and IMGW
-//   failing (no weather at all);
+// - never the banner on an address page or its waste subpage: its
+//   „Najbliższe dni” block (components/upcoming.tsx) and weather section
+//   for one warning, two and three (a line each), and IMGW failing (no
+//   weather at all);
 // - each state on one page (/o-projekcie), a server per state: GOV.UK's markup
 //   (role="region", aria-labelledby, no role="alert", no button), the title,
 //   one tag per warning with its level and colour, highest first, the time,
@@ -38,7 +38,7 @@ import { WARNING_LEVELS } from "../lib/palette.ts";
 import { finish, ROUTES, startServer } from "./lib/server.mjs";
 
 // The banner's page for every state: any page but an address page, which
-// carries the warnings in its alert slot instead (HUB, below).
+// carries the warnings in „Najbliższe dni” instead (HUB, below).
 const PAGE = "/o-projekcie";
 const HUB = "/adres/0972447-00470";
 // The hub's weather section with no warning (lib/weather-module.ts).
@@ -515,13 +515,14 @@ async function deepChecks(browser, origin) {
   await page.close();
 }
 
-// The address page with the state's warnings (state.hub: how many; null:
-// IMGW failing): never the banner, on it or its waste subpage; the alert
-// slot, one GOV.UK warning text: a line per warning ("Pogoda: …" with an
-// absolute day, „Więcej na meteo.imgw.pl” to IMGW, „(IMGW-PIB)”), two at most,
-// then „I jeszcze N …” to the module sections, a gap above every line but
-// the first; the weather's section after the waste's.
-// Failing: the page still renders, without the weather.
+// The address page with the state's warnings (state.hub: how many, all in
+// force; null: IMGW failing): never the banner, on it or its waste
+// subpage; „Najbliższe dni” (components/upcoming.tsx), a line per warning
+// („Teraz:”, the event, its tag, until when, „Cały powiat.”, „Szczegóły i
+// źródło” to #pogoda), none on /smieci; the weather's section after the
+// waste's, a tag and an absolute time per warning (its day lead the
+// island's), never a relative word in it. Failing: the page still renders,
+// without the weather.
 async function hubChecks(origin, state) {
   const label = `${state.name} ${HUB}`;
   const [hub, waste] = await Promise.all(
@@ -539,59 +540,55 @@ async function hubChecks(origin, state) {
     if (html.includes('<div class="govuk-notification-banner"'))
       failures.push(`${state.name} ${p}: the IMGW banner`);
   }
-  // The subpage's own warning text is the street page's (unverified dates).
-  if (waste.includes("Pogoda: "))
-    failures.push(`${state.name} ${HUB}/smieci: an alert slot`);
+  if (waste.includes("ostrzeżenie IMGW"))
+    failures.push(`${state.name} ${HUB}/smieci: a warning line`);
   const cards = [
     ...hub.matchAll(
-      /<section aria-labelledby="([a-z]+)-heading"><h2 id="\1-heading" class="govuk-heading-l">([^<]*)</g,
+      /<section id="([a-z]+)" aria-labelledby="\1-heading"><h2 id="\1-heading" class="govuk-heading-l">([^<]*)</g,
     ),
   ].map(([, , title]) => title);
-  const slot =
-    /<div class="govuk-warning-text">[\s\S]*?<strong class="govuk-warning-text__text">([\s\S]*?)<\/strong><\/div>/.exec(
-      hub,
-    )?.[1];
+  const lines = [
+    ...hub.matchAll(
+      /<li><span class="govuk-!-display-block">([\s\S]*?)<\/li>/g,
+    ),
+  ]
+    .map(([, line]) => line)
+    .filter((line) => line.includes("ostrzeżenie IMGW"));
   if (state.hub === null) {
-    if (slot || /Pogoda/.test(hub) || cards.join() !== "Śmieci,Woda")
+    if (
+      lines.length > 0 ||
+      /Pogoda/.test(hub) ||
+      cards.join() !== "Śmieci,Woda"
+    )
       failures.push(`${label}: weather shown while IMGW fails (${cards})`);
     else console.log(`ok    ${label}: rendered without the weather`);
     return;
   }
-  const spans = [
-    ...(slot ?? "").matchAll(
-      /<span class="(govuk-!-display-block(?: govuk-!-margin-top-2)?)">([\s\S]*?)<\/span>(?=<span class="govuk-!-display-block|$)/g,
-    ),
-  ];
-  const lines = spans.map(([, , line]) => line);
-  // Every line after the first keeps a gap from the one above.
-  const gaps = spans.map(([, cls]) => cls.endsWith("margin-top-2"));
-  const alerts = lines.filter((line) => line.startsWith("Pogoda: "));
-  const more = lines.filter((line) => line.includes('href="#co-cie-czeka"'));
-  const target = hub.includes('<div id="co-cie-czeka"><section ');
-  const hidden = state.hub > 1 ? `Uwaga, ${state.hub} ostrzeżenia.` : "Uwaga.";
   const line = new RegExp(
-    `^Pogoda: Silny wiatr, stopień [1-3] z 3\\. (?:Obowiązuje teraz, do|Od) ${DAY}, ${TIME}.*? <a href="https://meteo\\.imgw\\.pl/" class="govuk-link">Więcej na meteo\\.imgw\\.pl</a> <span class="govuk-!-font-weight-regular">\\(IMGW-PIB\\)</span>$`,
+    `^<strong>Teraz:</strong> ostrzeżenie IMGW – silny wiatr <strong class="govuk-tag govuk-tag--(?:yellow|orange|red)">Stopień [1-3] z 3</strong>, do (?:jutra, |${DAY}, )?${TIME}\\.</span><span class="govuk-!-display-block">Cały powiat\\.</span><a class="govuk-link" href="#pogoda">Szczegóły i źródło<span class="govuk-visually-hidden">: pogoda</span></a>$`,
     "u",
   );
+  const from = hub.indexOf('<section id="pogoda"');
+  const section = hub.slice(from, hub.indexOf("</section>", from));
+  const tags = section.match(/<strong class="govuk-tag /g)?.length ?? 0;
+  const when = new RegExp(
+    `<p class="govuk-body govuk-!-margin-bottom-2">(?:(?:Dziś|Jutro|Za [2-7] dni): \\p{Ll}|\\p{Lu})\\p{L}+, \\d{1,2} \\p{L}+, ${TIME}(?:–${TIME}| – \\p{L}+, \\d{1,2} \\p{L}+, ${TIME})</p>`,
+    "gu",
+  );
   const problems = [
-    !slot?.startsWith(`<span class="govuk-visually-hidden">${hidden}</span>`) &&
-      `hidden count, want "${hidden}"`,
-    alerts.length !== Math.min(state.hub, 2) &&
-      `${alerts.length} alert lines, want ${Math.min(state.hub, 2)}`,
-    ...alerts.filter((a) => !line.test(a)).map((a) => `line ${a}`),
-    state.hub > 2
-      ? !(
-          more.length === 1 && more[0].includes(">I jeszcze 1 ostrzeżenie</a>")
-        ) && `overflow ${JSON.stringify(more)}`
-      : more.length > 0 && "an overflow link",
-    gaps.some((gap, i) => gap !== i > 0) && `line gaps ${gaps}`,
+    lines.length !== state.hub &&
+      `${lines.length} warning lines, want ${state.hub}`,
+    ...lines.filter((l) => !line.test(l)).map((l) => `line ${l}`),
+    tags !== state.hub && `${tags} tags in Pogoda, want ${state.hub}`,
+    (section.match(when)?.length ?? 0) !== state.hub &&
+      "Pogoda without an absolute time per warning",
+    /Obowiązuje teraz|Teraz/.test(section) && "a relative word in Pogoda",
     cards.join() !== "Śmieci,Woda,Pogoda" && `sections ${cards}`,
-    !target && "no #co-cie-czeka around the module sections",
     // Every section, always (task 207); the weather's says the warning.
     hub.includes(NO_WARNINGS) && "„Brak ostrzeżeń” with a warning",
   ].filter(Boolean);
   if (problems.length > 0) failures.push(`${label}: ${problems.join("; ")}`);
-  else console.log(`ok    ${label}: alert slot, ${alerts.length} lines`);
+  else console.log(`ok    ${label}: „Najbliższe dni”, ${lines.length} lines`);
 }
 
 // With SCREENSHOT_DIR, the address page at 375 px for the reviewer:
@@ -717,13 +714,13 @@ try {
     }
     const hub = await (await fetch(plain.origin + HUB)).text();
     if (
-      /govuk-warning-text/.test(hub) ||
+      hub.includes("ostrzeżenie IMGW") ||
       !hub.includes(`<p class="govuk-body">${NO_WARNINGS}</p>`)
     )
-      failures.push(`${HUB}: an alert, or no „${NO_WARNINGS}”`);
+      failures.push(`${HUB}: a warning line, or no „${NO_WARNINGS}”`);
     await hubShot(browser, plain.origin, "none");
     console.log(
-      `ok    ${process.env.IMGW_WARNINGS_URL}: no banner on ${ROUTES.length} routes, no alert on ${HUB}`,
+      `ok    ${process.env.IMGW_WARNINGS_URL}: no banner on ${ROUTES.length} routes, no warning on ${HUB}`,
     );
   } finally {
     await plain.stop();
