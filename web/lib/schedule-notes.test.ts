@@ -62,13 +62,20 @@ test("the unverified note names whose schedule wins: the gmina's, or the town's"
     disclaimer("Lubaczów (miasto)"),
     "Nie jesteśmy urzędem – obowiązuje harmonogram Urzędu Miejskiego.",
   );
-  assert.equal(disclaimer("Lubaczów (gmina)"), DISCLAIMER);
+  assert.equal(
+    disclaimer("Lubaczów (gmina)"),
+    "Nie jesteśmy urzędem – obowiązuje harmonogram gminy.",
+  );
+  assert.equal(
+    DISCLAIMER,
+    "Nie jesteśmy urzędem – ważniejszy jest komunikat urzędu.",
+  );
 });
 
 test("after the last date: the next year's dates come when published", () => {
   assert.equal(
     laterNote([day("2026-11-02"), day("2026-12-31")]),
-    "Terminy na 2027 dodamy, gdy je ogłoszą.",
+    "Terminy na kolejny rok dodamy, gdy je ogłoszą.",
   );
   assert.equal(laterNote([]), null);
 });

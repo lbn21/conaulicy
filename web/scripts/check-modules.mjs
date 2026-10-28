@@ -44,10 +44,16 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
-import { sharedNumberNote, unverifiedNote } from "../lib/schedule-notes.ts";
+import {
+  laterNote,
+  sharedNumberNote,
+  unverifiedNote,
+} from "../lib/schedule-notes.ts";
 import { finish, startServer } from "./lib/server.mjs";
 
 const STREET = "/adres/0972447-00470";
+// The page's, the calendar's and the PDF's line after the last date.
+const LATER = laterNote([{ date: "" }]);
 const SPLIT = "/adres/0972447-90004";
 const VILLAGE = "/adres/0606010";
 const VILLAGE_STREET = "/adres/0606234-90007";
@@ -384,11 +390,7 @@ try {
     if (!sub.main.includes(unverifiedNote(gminaOf(waste))))
       fail(waste, "no unverified note");
     // After the last date: the next year's, when published (task 205).
-    if (
-      !/<p class="govuk-body">Terminy na \d{4} dodamy, gdy je ogłoszą\.<\/p><\/section>/.test(
-        sub.main,
-      )
-    )
+    if (!sub.main.includes(`<p class="govuk-body">${LATER}</p></section>`))
       fail(waste, "no line about the next year's dates");
     if (!new RegExp(`>${WASTE_CHECKED}</p>`, "u").test(sub.main))
       fail(waste, "no day-only checked line");
@@ -484,11 +486,7 @@ try {
     }
     const body = await (await fetch(`${server.origin}${href}`)).text();
     const unfolded = body.replace(/\r\n /g, "");
-    if (
-      !/\r\nX-WR-CALDESC:Terminy na \d{4} dodamy\\, gdy je ogłoszą\.\r\n/.test(
-        unfolded,
-      )
-    )
+    if (!unfolded.includes(`\r\nX-WR-CALDESC:${LATER.replace(",", "\\,")}\r\n`))
       fail(href, "no X-WR-CALDESC with the next year's line");
     if (/BEGIN:VEVENT(?:(?!END:VEVENT)[\s\S])*Terminy na/.test(unfolded))
       fail(href, "the next year's line as an event");

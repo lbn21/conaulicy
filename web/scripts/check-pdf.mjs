@@ -22,6 +22,7 @@ import QRCode from "qrcode";
 import { SITE_URL } from "../lib/config.generated.ts";
 import {
   disclaimer,
+  laterNote,
   NO_MORE_DATES,
   unverifiedNote,
 } from "../lib/schedule-notes.ts";
@@ -258,6 +259,13 @@ try {
             !flat.includes("harmonogram gminy")
         : flat.includes("harmonogram gminy"),
       `${c.name}: not the ${town ? "town's" : "gmina's"} wording`,
+    );
+    // The page's and the calendar's line, in the calendar version and the
+    // text version (task 206).
+    const later = laterNote([{ date: "" }]);
+    check(
+      flat.split(later).length - 1 === 2,
+      `${c.name}: not twice "${later}"`,
     );
     check(text.includes("Źródło:"), `${c.name}: no source line`);
     // The QR code and the printed link: the waste subpage, never the hub or
