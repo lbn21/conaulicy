@@ -1,0 +1,102 @@
+# Przejrzane daty z pliku harmonogram-2026-s2.jpg, wstępnie z odczytu grok-4.7.
+# Porównaj z obrazem i popraw dni miesiąca, jeśli trzeba. Scalenie PR
+# zatwierdza je dla pliku o tym sha256. places to tylko informacja,
+# skopiowana z odczytu: przynależność do stref bierze się wyłącznie z bazy.
+sha256: fb408b9ca0c3e3e109fcf2b692cef5b6c09e3a2d79745ee21fcd2094ef1e2761
+file: "harmonogram-2026-s2.jpg"
+from: "grok-4.7"
+sector: 2
+year: 2026
+rows:
+  "zmieszane+popiol":
+    styczeń: [13, 27]
+    luty: [10, 24]
+    marzec: [10, 24]
+    kwiecień: [7, 21]
+    maj: [5, 19]
+    czerwiec: [2, 16, 30]
+    lipiec: [14, 28]
+    sierpień: [11, 25]
+    wrzesień: [8, 22]
+    październik: [6, 20]
+    listopad: [3, 17]
+    grudzień: [1, 15, 29]
+  "papier+tworzywa_metale+szklo":
+    styczeń: [13]
+    luty: [10]
+    marzec: [10]
+    kwiecień: [7]
+    maj: [12]
+    czerwiec: [2, 16]
+    lipiec: [7, 21]
+    sierpień: [4, 18]
+    wrzesień: [8]
+    październik: [13]
+    listopad: [10]
+    grudzień: [15]
+  "bio":
+    styczeń: [7]
+    luty: [3]
+    marzec: [3]
+    kwiecień: [2, 14, 28]
+    maj: [12, 26]
+    czerwiec: [9, 23]
+    lipiec: [7, 21]
+    sierpień: [4, 18]
+    wrzesień: [1, 15, 29]
+    październik: [13, 27]
+    listopad: [10]
+    grudzień: [8]
+  "wielkogabarytowe+elektro+opony+tekstylia":
+    styczeń: []
+    luty: []
+    marzec: [16]
+    kwiecień: []
+    maj: []
+    czerwiec: []
+    lipiec: []
+    sierpień: []
+    wrzesień: [16]
+    październik: []
+    listopad: []
+    grudzień: []
+places:
+  - { as_written: "Agrestowa", id: "00148" }
+  - { as_written: "Bolesława Prusa", id: "17577" }
+  - { as_written: "Brzoskwiniowa", id: "02264" }
+  - { as_written: "Grunwaldzka", id: "06260" }
+  - { as_written: "Gruszkowa", id: "06274" }
+  - { as_written: "Hotelowa", id: "06749" }
+  - { as_written: "Ignacego Krasickiego", id: "09830" }
+  - { as_written: "Jabłkowa", id: "06962" }
+  - { as_written: "Jana Matejki", id: "12489" }
+  - { as_written: "Jana Kochanowskiego", id: "08728" }
+  - { as_written: "Jasna", id: "07335" }
+  - { as_written: "Jęczmienna", id: "07563" }
+  - { as_written: "Józefa Ignacego Kraszewskiego", id: "09871" }
+  - { as_written: "Józefa Piłsudskiego", id: "16264" }
+  - { as_written: "Kard. Stefana Wyszyńskiego", id: "48861" }
+  - { as_written: "Kazimierza Wielkiego", id: "08265" }
+  - { as_written: "Krótka", id: "10009" }
+  - { as_written: "Legionów", id: "10769" }
+  - { as_written: "Mikołaja Kopernika", id: "09282" }
+  - { as_written: "Morelowa", id: "13283" }
+  - { as_written: "Nowa", id: "14330" }
+  - { as_written: "Płk. Stanisława Dąbka", id: "48934" }
+  - { as_written: "Polna", id: "17011" }
+  - { as_written: "Rzeczna", id: "19326" }
+  - { as_written: "Rzemieślnicza", id: "19335" }
+  - { as_written: "Sadowa", id: "19404" }
+  - { as_written: "Sienna", id: "19836" }
+  - { as_written: "Słoneczna", id: "20254" }
+  - { as_written: "Sportowa", id: "20683" }
+  - { as_written: "Stefana Żeromskiego", id: "26469" }
+  - { as_written: "Śliwkowa", id: "22339" }
+  - { as_written: "Św. Anny", id: "48374" }
+  - { as_written: "Targowa", id: "22659" }
+  - { as_written: "Wiśniowa", id: "24412" }
+  - { as_written: "Zbożowa", id: "25910" }
+  - { as_written: "Żuki", id: "26555" }
+  - { as_written: "Żniwna", id: "26492" }
+  - { as_written: "Żytnia", id: "26635" }
+  - { as_written: "Warzywna", id: "23713" }
