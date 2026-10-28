@@ -1,0 +1,92 @@
+# Przejrzane daty z pliku harmonogram-2026-s5.jpg, wstępnie z odczytu grok-4.7.
+# Porównaj z obrazem i popraw dni miesiąca, jeśli trzeba. Scalenie PR
+# zatwierdza je dla pliku o tym sha256. places to tylko informacja,
+# skopiowana z odczytu: przynależność do stref bierze się wyłącznie z bazy.
+sha256: c17185d966dac2a7edb300487768f78ec3488134650e7f93a6820e54928c5705
+file: "harmonogram-2026-s5.jpg"
+from: "grok-4.7"
+sector: 5
+year: 2026
+rows:
+  "zmieszane+popiol":
+    styczeń: [2, 16, 30]
+    luty: [13, 27]
+    marzec: [13, 27]
+    kwiecień: [10, 24]
+    maj: [8, 22]
+    czerwiec: [5, 19]
+    lipiec: [3, 17, 31]
+    sierpień: [14, 28]
+    wrzesień: [11, 25]
+    październik: [9, 23]
+    listopad: [6, 20]
+    grudzień: [4, 18]
+  "papier+tworzywa_metale+szklo":
+    styczeń: [30]
+    luty: [27]
+    marzec: [27]
+    kwiecień: [24]
+    maj: [29]
+    czerwiec: [12, 26]
+    lipiec: [17, 31]
+    sierpień: [14, 28]
+    wrzesień: [25]
+    październik: [30]
+    listopad: [27]
+    grudzień: [30]
+  "bio":
+    styczeń: [9]
+    luty: [6]
+    marzec: [6]
+    kwiecień: [3, 17, 29]
+    maj: [15, 29]
+    czerwiec: [12, 26]
+    lipiec: [10, 24]
+    sierpień: [7, 21]
+    wrzesień: [4, 18]
+    październik: [2, 16, 30]
+    listopad: [13]
+    grudzień: [11]
+  "wielkogabarytowe+elektro+opony+tekstylia":
+    styczeń: []
+    luty: []
+    marzec: [30]
+    kwiecień: []
+    maj: []
+    czerwiec: []
+    lipiec: []
+    sierpień: []
+    wrzesień: [30]
+    październik: []
+    listopad: []
+    grudzień: []
+places:
+  - { as_written: "Eugeniusza Kwiatkowskiego", id: "10559" }
+  - { as_written: "Adama Mickiewicza", id: "12740" }
+  - { as_written: "Budowlanych", id: "02337" }
+  - { as_written: "Dr. Henryka Szymańskiego", id: "48943" }
+  - { as_written: "Dr. Szczepana Kruczka", id: "48940" }
+  - { as_written: "Dr. Zygmunta Leszczyńskiego", id: "48941" }
+  - { as_written: "Fryderyka Szopena", id: "22023" }
+  - { as_written: "Gen. Józefa Hallera", id: "06480" }
+  - { as_written: "Gen. Władysława Sikorskiego", id: "48859" }
+  - { as_written: "Ignacego Mościckiego", id: "13390" }
+  - { as_written: "Jacka Malczewskiego", id: "12037" }
+  - { as_written: "Ks. Bronisława Gwoździa", id: "41688" }
+  - { as_written: "Leśna", id: "10898" }
+  - { as_written: "Kasztanowa", id: "08171" }
+  - { as_written: "Obrońców Lwowa", id: "14627" }
+  - { as_written: "Ogrodowa", id: "14834" }
+  - { as_written: "Piaski", id: "16027" }
+  - { as_written: "Piaskowa", id: "16033" }
+  - { as_written: "Pod Borem", id: "16590" }
+  - { as_written: "Przemysłowa", id: "17742" }
+  - { as_written: "Rolna", id: "18819" }
+  - { as_written: "Romana Dmowskiego", id: "03868" }
+  - { as_written: "Stanisława Dębickiego", id: "03792" }
+  - { as_written: "Szpitalna", id: "22073" }
+  - { as_written: "Westerplatte", id: "23897" }
+  - { as_written: "Wodna", id: "24550" }
+  - { as_written: "Wspólna", id: "24885" }
+  - { as_written: "Zacisze", id: "25314" }
+  - { as_written: "Zielona", id: "26081" }
