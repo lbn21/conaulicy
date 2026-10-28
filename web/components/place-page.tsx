@@ -23,7 +23,7 @@ import {
   scheduleOwner,
   titleLabel,
 } from "@/lib/places";
-import { prgNote } from "@/lib/prg";
+import { numberWarning } from "@/lib/prg";
 import { getPlace, movedTarget, type PlaceView } from "@/lib/schedule";
 import {
   hasUpcoming,
@@ -32,6 +32,7 @@ import {
   NO_MORE_DATES_NEXT,
   placeDescription,
   sharedNumberNote,
+  shownNr,
   unverifiedNote,
 } from "@/lib/schedule-notes";
 import { pageMetadata } from "@/lib/share";
@@ -90,7 +91,10 @@ export function numberError(place: PlaceView, missing: boolean): string | null {
   if (place.unknownNr) {
     return `Numeru ${place.unknownNr} nie ma w harmonogramie tej ulicy. Sprawdź numer albo harmonogram ${scheduleOwner(place.gmina)}`;
   }
-  return missing ? "Wpisz numer domu, na przykład 12, 12a albo 7/22" : null;
+  // A number the register lacks is no usable number either.
+  return missing || place.invalidNr !== null
+    ? "Wpisz numer domu, na przykład 12, 12a albo 7/22"
+    : null;
 }
 
 /**
@@ -137,7 +141,7 @@ async function addressMetadata(
   // GOV.UK: the title is the H1 (the waste subpage's, then its place), and
   // "Error: " first, so screen readers hear it first. The place adds its
   // locality, the H1 does not (Jakub's decision, task 133: docs/layout.md).
-  const name = withHouseNumber(titleLabel(place.label), place.nr);
+  const name = withHouseNumber(titleLabel(place.label), shownNr(place));
   const h1 =
     page === "waste" ? `${WASTE_H1}: wszystkie terminy – ${name}` : name;
   const title = numberError(place, missing) ? `Błąd: ${h1}` : h1;
@@ -152,7 +156,7 @@ async function addressMetadata(
     // Never a search result, its links still followed once the site is
     // indexable: /numer, an error variant of the street page, and a place
     // we have no dates for (its page only links the gmina's schedule).
-    ...((missing || noData(place)) && {
+    ...((missing || place.invalidNr !== null || noData(place)) && {
       robots: { index: false, follow: indexable() },
     }),
   };
@@ -250,7 +254,7 @@ export function PlaceNotFound() {
  * The top of the street page, the address page and the waste subpage:
  * GOV.UK's error summary, the caption (the subpage's: its h1 does not name
  * the place; the address page's locality is in its breadcrumbs), the h1, a house number the address
- * register does not have (prgNote) or the street does not need
+ * register does not have (numberWarning) or the street does not need
  * (sharedNumberNote), „Zmień adres”, then on a subpage when
  * its module last checked its source (Module.checkedAt).
  */
@@ -270,11 +274,8 @@ function PlaceHeading({
   /** Whose check the line under „Zmień adres” is. */
   module?: ModuleId;
 }) {
-  const name = withHouseNumber(place.name, place.nr);
-  const notFound = prgNote(place);
-  const note = [notFound, sharedNumberNote(place, notFound !== null)]
-    .filter(Boolean)
-    .join(" ");
+  const name = withHouseNumber(place.name, shownNr(place));
+  const note = numberWarning(place) ?? sharedNumberNote(place);
   return (
     <>
       {error && <ErrorSummary error={error} href="#nr" />}
@@ -357,7 +358,7 @@ export function AddressPage({
           <div className="govuk-grid-column-two-thirds">
             <PlaceHeading
               place={place}
-              heading={withHouseNumber(place.name, place.nr)}
+              heading={withHouseNumber(place.name, shownNr(place))}
               error={error}
             />
             {children}
@@ -370,7 +371,7 @@ export function AddressPage({
 
 /** "Lubaczów, ul. Adama Asnyka 12"; a village alone: "Basznia Dolna". */
 function placeCaption(place: PlaceView): string {
-  const name = withHouseNumber(place.name, place.nr);
+  const name = withHouseNumber(place.name, shownNr(place));
   return place.kind === "ulica" ? `${place.area}, ${name}` : name;
 }
 
@@ -403,7 +404,7 @@ export function PlaceBreadcrumbs({
   ];
   if (subpage) {
     items.push({
-      label: withHouseNumber(place.name, place.nr),
+      label: withHouseNumber(place.name, shownNr(place)),
       // The number as given, even where it changes nothing (the address
       // page then says so); none on /numer.
       href: placePath(place.id, place.givenNr),

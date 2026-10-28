@@ -49,19 +49,26 @@ export function laterNote(days: Pick<PickupDay, "date">[]): string | null {
  * Under the h1 of the address page and the waste subpage: a house number
  * given on a street not split by numbers changes nothing, so say so. Null on
  * a split street (the number picks the part, or the page asks again), on a
- * village, and where we have no dates. `notFound`: the address register has
- * no such number (lib/prg.ts prgNote, said first), so the number is not
- * repeated here.
+ * village, and where we have no dates. A number the register lacks is no
+ * givenNr (lib/prg.ts numberWarning says it instead).
  */
 export function sharedNumberNote(
   place: Pick<PlaceView, "kind" | "zoneId" | "nr" | "askNumber" | "givenNr">,
-  notFound = false,
 ): string | null {
   if (!place.givenNr || place.nr || place.askNumber) return null;
   if (place.kind !== "ulica" || place.zoneId === null) return null;
-  return notFound
-    ? "Harmonogram jest wspólny dla całej ulicy."
-    : `Harmonogram jest wspólny dla całej ulicy, także dla nr ${place.givenNr}.`;
+  return `Harmonogram jest wspólny dla całej ulicy, także dla nr ${place.givenNr}.`;
+}
+
+/**
+ * The number after the place's name (h1, title, caption, breadcrumb): one
+ * the register has there, or the one that picks a split street's part;
+ * else none.
+ */
+export function shownNr(
+  place: Pick<PlaceView, "nr" | "givenNr" | "knownNr">,
+): string | null {
+  return place.knownNr ? place.givenNr : place.nr;
 }
 
 /** When a place's schedule has ended: the heading, then what comes next. */
@@ -71,7 +78,7 @@ export const NO_MORE_DATES_NEXT =
 
 /** Shown on the page and printed in the PDF while a place is not verified. */
 export function unverifiedNote(gmina: string): string {
-  return `Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest komunikat ${scheduleOwner(gmina)}.`;
+  return `Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest harmonogram ${scheduleOwner(gmina)}.`;
 }
 
 /**

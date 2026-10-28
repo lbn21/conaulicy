@@ -44,6 +44,7 @@ import {
   UNLISTED_PREFIXES,
   villageLabel,
 } from "@/lib/places";
+import { isValidHouseNumber } from "@/lib/prg";
 import {
   byLabel,
   type Matcher,
@@ -138,6 +139,14 @@ export type PlaceView = {
   unknownNr: string | null;
   /** The house number as given (?nr=, normalised), split street or not. */
   givenNr: string | null;
+  /**
+   * The value given when the register has no such number at the place
+   * (lib/prg.ts isValidHouseNumber), as given; the view is then the whole
+   * place's.
+   */
+  invalidNr: string | null;
+  /** The register has givenNr at the place, so the h1 may show it. */
+  knownNr: boolean;
   /** Warsaw day this view was computed for; the page renders "dziś"/"jutro" from it. */
   today: string;
   schedulePage: string | null;
@@ -482,6 +491,8 @@ const placeCached = unstable_cache(
       askNumber,
       unknownNr: askNumber ? nr : null,
       givenNr: nr,
+      invalidNr: null,
+      knownNr: false,
       today,
       schedulePage: place.schedulePage,
       days,
@@ -497,13 +508,28 @@ const placeCached = unstable_cache(
   CACHE,
 );
 
-/** nr: a house number as given (?nr=); anything invalid is ignored. */
-export function getPlace(
+/**
+ * nr: a house number as given (?nr=). One the register lacks at the place
+ * (lib/prg.ts isValidHouseNumber) is set aside, as invalidNr; anything else
+ * invalid is ignored.
+ */
+export async function getPlace(
   id: string,
   nr?: string | null,
 ): Promise<PlaceView | null> {
+  const valid = nr ? isValidHouseNumber(id, nr) : null;
   // Event dates are ISO days in Europe/Warsaw, so compare against the Warsaw day, not UTC.
-  return placeCached(id, todayInWarsaw(), houseNumber(nr));
+  const view = await placeCached(
+    id,
+    todayInWarsaw(),
+    valid === false ? null : houseNumber(nr),
+  );
+  if (!view) return null;
+  return {
+    ...view,
+    invalidNr: valid === false ? (nr ?? null) : null,
+    knownNr: valid === true && view.givenNr !== null,
+  };
 }
 
 const zoneCached = unstable_cache(

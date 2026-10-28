@@ -25,7 +25,7 @@ import {
 } from "../lib/water-module.ts";
 import { STALE_MS, zukView } from "../lib/zuk-data.ts";
 import { Trace } from "./hub.tsx";
-import { WasteDetails } from "./place-page.tsx";
+import { AddressPage, WasteDetails } from "./place-page.tsx";
 import { CALENDAR_CHECK, CALENDAR_STEPS } from "./subpage-parts.tsx";
 import { WaterDetails } from "./water-page.tsx";
 import { eventProperties } from "./web-analytics.tsx";
@@ -250,41 +250,37 @@ test("a click sends whichever of zone, source and place the link has", () => {
   });
 });
 
-// The house number against the address register (lib/prg.ts): PRG has 1-7
-// at ul. Adama Asnyka, nothing at os. Unii Lubelskiej.
+// The house number against the address register (lib/prg.ts, task 205):
+// one it lacks is set aside (lib/schedule.ts getPlace), the view is the
+// whole place's, and one warning says so.
 const ASNYKA = { id: "0972447-00470", name: "ul. Adama Asnyka" };
-const PRG_NOTE =
-  "Nie znaleźliśmy nr 9999 przy tej ulicy w rejestrze adresów. Sprawdź, czy numer jest dobry.";
+const WARNING =
+  "Nie znaleźliśmy nr „9999” pod tym adresem – pokazujemy całą ulicę.";
 
-test("a number PRG has: no note; one it lacks: the note, the schedule as ever", () => {
+test("a number the register lacks: the one warning, the whole street", () => {
   assert.doesNotMatch(
-    wastePage({ ...ASNYKA, givenNr: "5" }),
-    /rejestrze adresów/,
+    wastePage({ ...ASNYKA, givenNr: "5", knownNr: true }),
+    /Nie znaleźliśmy/,
   );
-  const html = wastePage({ ...ASNYKA, givenNr: "9999" });
+  const html = wastePage({ ...ASNYKA, invalidNr: "9999" });
   assert.match(
     html,
     new RegExp(
-      `<h1 class="govuk-heading-l">Odbiór śmieci</h1><p class="govuk-body">${PRG_NOTE.replace(".", "\\.")} Harmonogram jest wspólny dla całej ulicy\\.</p>`,
+      `<h1 class="govuk-heading-l">Odbiór śmieci</h1><p class="govuk-body">${WARNING}</p>`,
     ),
   );
+  assert.doesNotMatch(html, /rejestrze adresów|wspólny dla całej ulicy/);
   assert.ok(
     ascending(order(html, [...SKELETON, "Najbliższe odbiory", ...AFTER])),
     html,
   );
-  // /woda: the same note, the cuts as ever.
-  const water = waterPage(undefined, testPlace({ ...ASNYKA, givenNr: "9999" }));
-  assert.ok(water.includes(PRG_NOTE), water);
+  // /woda: the same warning, the cuts as ever.
+  const water = waterPage(
+    undefined,
+    testPlace({ ...ASNYKA, invalidNr: "9999" }),
+  );
+  assert.ok(water.includes(WARNING), water);
   assert.ok(ascending(order(water, [...SKELETON, "<h2", "Godziny"])), water);
-});
-
-test("a place PRG has no points for: no note", () => {
-  const html = wastePage({
-    id: "0972447-48373",
-    name: "os. Osiedle Unii Lubelskiej",
-    givenNr: "9999",
-  });
-  assert.doesNotMatch(html, /rejestrze adresów/);
 });
 
 test("a split street: only the schedule's own error, never both", () => {
@@ -296,7 +292,36 @@ test("a split street: only the schedule's own error, never both", () => {
     givenNr: "9999",
   });
   assert.match(html, /Numeru 9999 nie ma w harmonogramie tej ulicy/);
-  assert.doesNotMatch(html, /rejestrze adresów/);
+  assert.doesNotMatch(html, /Nie znaleźliśmy/);
+  // A number the register lacks there: the question's own error.
+  const lacked = wastePage({
+    ...ASNYKA,
+    zoneId: null,
+    askNumber: true,
+    invalidNr: "abc",
+  });
+  assert.match(lacked, /Wpisz numer domu, na przykład 12, 12a albo 7\/22/);
+  assert.doesNotMatch(lacked, /Nie znaleźliśmy/);
+});
+
+test("the h1 shows a number only when the register has it (item 6)", () => {
+  const h1 = (place: Partial<PlaceView>) => {
+    const props: Parameters<typeof AddressPage>[0] = {
+      place: testPlace({
+        id: "0606464",
+        kind: "wies",
+        name: "Załuże",
+        ...place,
+      }),
+      children: null,
+    };
+    return /<h1 class="govuk-heading-l">([^<]*)<\/h1>/.exec(
+      renderToStaticMarkup(createElement(AddressPage, props)),
+    )?.[1];
+  };
+  assert.equal(h1({ givenNr: "44", knownNr: true }), "Załuże 44");
+  assert.equal(h1({ givenNr: "44", knownNr: false }), "Załuże");
+  assert.equal(h1({ invalidNr: "50a" }), "Załuże");
 });
 
 // Real post 39872's cut, ul. Jana III Sobieskiego „od nr 23 do nr 47”.

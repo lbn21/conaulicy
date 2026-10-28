@@ -36,14 +36,16 @@ const GATED_HEADERS = {
 
 const NR = new RegExp(`^${NR_QUERY}$`);
 
-// A street page (or a module subpage) asked with ?nr= but no usable house
-// number (empty, or not a number) goes to its own cached page, which shows
-// the GOV.UK error on a split street. Valid numbers are rewritten in
-// next.config.ts; a rewrite's `has` cannot match an empty value, hence here.
+// A street page (or a module subpage) asked with an empty ?nr= goes to its
+// own cached page, which shows the GOV.UK error on a split street; any
+// other value not in NR's shape to its number variant, which checks it and
+// says so. Numbers in that shape are rewritten in next.config.ts; a
+// rewrite's `has` cannot match an empty value, hence here.
 function missingNumber(request: NextRequest): URL | null {
-  const path = numberErrorPath(request.nextUrl.pathname);
   const nr = request.nextUrl.searchParams.get("nr");
-  if (!path || nr === null || NR.test(nr)) return null;
+  if (nr === null || NR.test(nr)) return null;
+  const path = numberErrorPath(request.nextUrl.pathname, nr);
+  if (!path) return null;
   const url = request.nextUrl.clone();
   url.pathname = path;
   url.search = "";

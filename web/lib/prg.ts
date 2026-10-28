@@ -1,13 +1,11 @@
 import "server-only";
-import { prgNumber } from "./house.ts";
 import { PRG_NUMBERS } from "./prg-numbers.generated.ts";
 import type { PlaceView } from "./schedule.ts";
 
 // The typed house number checked against the national address register
-// (PRG, GUGiK; npm run prg:update): a hint under the h1, never a filter.
+// (PRG, GUGiK; npm run prg:update): a number it lacks is set aside, and
+// the page shows the whole place with a warning.
 // Server only: the numbers never reach the browser (scripts/check-bundle.mjs).
-
-export type PrgMatch = "found" | "not-found" | "unknown";
 
 const NUMBERS = new Map(
   PRG_NUMBERS.trim()
@@ -19,35 +17,32 @@ const NUMBERS = new Map(
 );
 
 /**
- * Whether PRG has nr at the place: the number itself, or for a flat
- * ("7/22") its building ("7"). "unknown": PRG has no point there at all.
+ * The one check of a house number (task 205), for every page and file that
+ * takes one (lib/schedule.ts getPlace): the value, trimmed and upper case,
+ * is one of the register's numbers at the place, or a flat ("7/22") whose
+ * building ("7") is. null: the register has no point at the place, so
+ * nothing is checked.
  */
-export function prgMatch(
-  numbers: ReadonlySet<string> | undefined,
-  nr: string,
-): PrgMatch {
-  if (!numbers) return "unknown";
-  const typed = prgNumber(nr);
-  if (!typed) return "not-found";
-  if (numbers.has(typed)) return "found";
-  const slash = typed.indexOf("/");
-  return slash > 0 && numbers.has(typed.slice(0, slash))
-    ? "found"
-    : "not-found";
+export function isValidHouseNumber(
+  place: string,
+  value: string,
+): boolean | null {
+  const numbers = NUMBERS.get(place);
+  if (!numbers) return null;
+  const nr = value.trim().toUpperCase();
+  const slash = nr.indexOf("/");
+  return numbers.has(nr) || (slash > 0 && numbers.has(nr.slice(0, slash)));
 }
 
 /**
- * The note for a number PRG does not have at the place, or null. None on a
- * split street still asking for the number: its own error says it.
+ * Under the h1 for a number the register does not have (invalidNr): one
+ * warning, the value as given. A street keeps its own word, as before.
+ * None on a split street still asking for the number: its error says it.
  */
-export function prgNote(
-  place: Pick<PlaceView, "id" | "kind" | "givenNr" | "askNumber">,
+export function numberWarning(
+  place: Pick<PlaceView, "kind" | "invalidNr" | "askNumber">,
 ): string | null {
-  if (!place.givenNr || place.askNumber) return null;
-  if (prgMatch(NUMBERS.get(place.id), place.givenNr) !== "not-found") {
-    return null;
-  }
-  const where =
-    place.kind === "ulica" ? "przy tej ulicy" : "w tej miejscowości";
-  return `Nie znaleźliśmy nr ${place.givenNr} ${where} w rejestrze adresów. Sprawdź, czy numer jest dobry.`;
+  if (place.invalidNr === null || place.askNumber) return null;
+  const whole = place.kind === "ulica" ? "całą ulicę" : "całą miejscowość";
+  return `Nie znaleźliśmy nr „${place.invalidNr}” pod tym adresem – pokazujemy ${whole}.`;
 }

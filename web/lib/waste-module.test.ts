@@ -36,6 +36,8 @@ const place = (overrides: Partial<PlaceView> = {}): PlaceView => ({
   askNumber: false,
   unknownNr: null,
   givenNr: null,
+  invalidNr: null,
+  knownNr: false,
   today: "2026-10-26",
   schedulePage: null,
   days: [

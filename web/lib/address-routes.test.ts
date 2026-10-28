@@ -104,4 +104,14 @@ test("a valid ?nr= becomes a path, for the street page and a module; any other, 
   assert.equal(numberErrorPath("/adres/X/numer"), null);
   assert.equal(numberErrorPath("/adres/X/nr/12"), null);
   assert.equal(numberErrorPath("/ulice"), null);
+  // Any other value goes to the number variant, which checks and shows it.
+  assert.equal(numberErrorPath("/adres/X", "abc"), "/adres/X/nr/abc");
+  assert.equal(
+    numberErrorPath("/adres/X/woda", " 44"),
+    "/adres/X/woda/nr/%2044",
+  );
+  assert.equal(
+    numberErrorPath("/adres/X/smieci", "+44"),
+    "/adres/X/smieci/nr/%2B44",
+  );
 });

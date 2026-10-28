@@ -8,6 +8,7 @@ import {
   placeDescription,
   putOutNote,
   sharedNumberNote,
+  shownNr,
   unverifiedNote,
 } from "./schedule-notes.ts";
 
@@ -51,11 +52,11 @@ test("the put-out note gives the data's hour without a leading zero", () => {
 test("the unverified note names whose schedule wins: the gmina's, or the town's", () => {
   assert.equal(
     unverifiedNote("Lubaczów (gmina)"),
-    "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest komunikat gminy.",
+    "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest harmonogram gminy.",
   );
   assert.equal(
     unverifiedNote("Lubaczów (miasto)"),
-    "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest komunikat Urzędu Miejskiego.",
+    "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest harmonogram Urzędu Miejskiego.",
   );
   assert.equal(
     disclaimer("Lubaczów (miasto)"),
@@ -131,6 +132,8 @@ const asnyka = {
   nr: null,
   askNumber: false,
   givenNr: null,
+  invalidNr: null,
+  knownNr: false,
 };
 
 test("a number on a street with one schedule is acknowledged", () => {
@@ -145,11 +148,11 @@ test("a number on a street with one schedule is acknowledged", () => {
   );
 });
 
-test("a number the address register lacks is not repeated", () => {
-  assert.equal(
-    sharedNumberNote({ ...asnyka, givenNr: "9999" }, true),
-    "Harmonogram jest wspólny dla całej ulicy.",
-  );
+test("the number after the name: one the register has, or a split street's", () => {
+  assert.equal(shownNr({ nr: null, givenNr: "44", knownNr: true }), "44");
+  // Unknown to the register, or not checked: as before, none.
+  assert.equal(shownNr({ nr: null, givenNr: "44", knownNr: false }), null);
+  assert.equal(shownNr({ nr: "7a", givenNr: "7a", knownNr: false }), "7a");
 });
 
 test("no number, no note", () => {

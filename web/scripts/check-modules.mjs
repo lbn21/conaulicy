@@ -15,7 +15,7 @@
 //   last in the section), a visible section break between each pair of
 //   sections and none before the first or after the last, its
 //   rows (Najbliższy odbiór with an absolute date, Pojemniki, Źródło), no
-//   calendar, PDF or IMGW banner, „Bez zapowiedzi” with the weather and its
+//   calendar, PDF or IMGW banner, „Nic nie zapowiedziano” with the weather and its
 //   source; „Ostatnio sprawdziliśmy” (the fixture has no source_files rows,
 //   so the day events.checkedAt, no time)
 //   under the waste list's last source (a row with no border) and after the weather's line (IMGW's
@@ -75,14 +75,18 @@ const ownerOf = (path) =>
 const FRESHNESS = / sprawdziliśmy: |sprawdzono|Stan na/g;
 const freshness = (html) => html.match(FRESHNESS)?.length ?? 0;
 const DATE = String.raw`\p{L}+, \d{1,2} \p{L}+`;
-// PRG has nr 1-7 at ul. Adama Asnyka (lib/prg.ts), so 12 gets its hint
-// first, then the shared schedule without the number again.
-const NOTE = sharedNumberNote(
-  { kind: "ulica", zoneId: "", nr: null, askNumber: false, givenNr: "12" },
-  true,
-);
-const PRG_NOTE =
-  "Nie znaleźliśmy nr 12 przy tej ulicy w rejestrze adresów. Sprawdź, czy numer jest dobry.";
+// PRG has nr 1-7 at ul. Adama Asnyka (lib/prg.ts): 5 is a number of the
+// street, with its shared schedule; 12 is not, so one warning and the
+// whole street (lib/prg.ts numberWarning).
+const NOTE = sharedNumberNote({
+  kind: "ulica",
+  zoneId: "",
+  nr: null,
+  askNumber: false,
+  givenNr: "5",
+});
+const warning = (nr, whole = "całą miejscowość") =>
+  `Nie znaleźliśmy nr „${nr}” pod tym adresem – pokazujemy ${whole}.`;
 
 const server = await startServer(3312);
 const failures = [];
@@ -158,7 +162,7 @@ function crumbsAre(path, html, want) {
     );
 }
 
-// The module sections' titles, in order („Bez zapowiedzi” has a hyphen in
+// The module sections' titles, in order („Nic nie zapowiedziano” has a hyphen in
 // its id).
 const sections = (html) =>
   [
@@ -212,7 +216,7 @@ try {
     [STREET, `${STREET}/smieci`, TOWN, "ul. Adama Asnyka"],
     // The number changes nothing here, but both links keep it, so the note
     // stays on the way back.
-    [`${STREET}?nr=12`, `${STREET}/smieci?nr=12`, TOWN, "ul. Adama Asnyka"],
+    [`${STREET}?nr=5`, `${STREET}/smieci?nr=5`, TOWN, "ul. Adama Asnyka 5"],
     [VILLAGE, `${VILLAGE}/smieci`, VILLAGES("Gmina Lubaczów"), "Dąbrowa"],
     [
       STREETED_VILLAGE,
@@ -297,18 +301,18 @@ try {
         : "";
     if (
       !hub.includes(
-        `<h2 id="bez-zapowiedzi-heading" class="govuk-heading-l">Bez zapowiedzi</h2><p class="govuk-body">Woda: nie udało się nam sprawdzić komunikatów. Źródło: <a href="https://www.gminalubaczow.pl/aktualnosci/" class="govuk-link">aktualności gminy Lubaczów</a>${mzgkim}.</p>`,
+        `<h2 id="nic-nie-zapowiedziano-heading" class="govuk-heading-l">Nic nie zapowiedziano</h2><p class="govuk-body">Woda: nie udało się nam sprawdzić komunikatów. Źródło: <a href="https://www.gminalubaczow.pl/aktualnosci/" class="govuk-link">aktualności gminy Lubaczów</a>${mzgkim}.</p>`,
       )
     )
-      fail(path, "no „Bez zapowiedzi” line for the water");
+      fail(path, "no „Nic nie zapowiedziano” line for the water");
     if (
       !/<\/p><p class="govuk-body">Pogoda: brak ostrzeżeń IMGW\. Źródło: <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">IMGW-PIB<\/a>\.(?:<!-- -->)? Ostatnio sprawdziliśmy: /.test(
         hub,
       )
     )
-      fail(path, "no „Bez zapowiedzi” line for the weather");
+      fail(path, "no „Nic nie zapowiedziano” line for the weather");
     // The checked line: under the waste list's last source, after the
-    // weather's „Bez zapowiedzi” line (the copy's fetchedAt).
+    // weather's „Nic nie zapowiedziano” line (the copy's fetchedAt).
     if (
       !new RegExp(
         `<div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Źródło</dt><dd class="govuk-summary-list__value">(?:(?!</dd>).)*<span class="govuk-hint govuk-!-font-size-16 [^"]*">${WASTE_CHECKED}</span></dd></div></dl>`,
@@ -334,17 +338,17 @@ try {
       fail(path, "not the short „Uwaga” sentence");
     headingsInOrder(path, hub);
     // The note right under the h1, only for the street with one schedule.
-    const note = path === `${STREET}?nr=12`;
-    const underH1 = new RegExp(
-      `</h1><p class="govuk-body">${PRG_NOTE} ${NOTE}</p>`,
-    );
+    const note = path === `${STREET}?nr=5`;
+    const underH1 = new RegExp(`</h1><p class="govuk-body">${NOTE}</p>`);
     if (note !== underH1.test(hub))
       fail(path, note ? "no note under the h1" : "a house-number note");
     if (!note && hub.includes("Harmonogram jest wspólny"))
       fail(path, "a house-number note");
     // The number the page does not need stays out of the title.
     const title = /<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "";
-    if (note && /\b12\b/.test(title)) fail(path, `title ${title}`);
+    // A number the register has: in the title, as in the h1 (item 6).
+    if (note && !title.startsWith("ul. Adama Asnyka 5"))
+      fail(path, `title ${title}`);
 
     const sub = await main(waste);
     if (sub.status !== 200) fail(waste, `${sub.status}, want 200`);
@@ -577,11 +581,50 @@ try {
     const path = `${STREETED_VILLAGE}/nr/${nr}`;
     const page = await main(path);
     if (page.status !== 200) fail(path, `${page.status}, want 200`);
-    const has = page.main.includes(
-      `Nie znaleźliśmy nr ${nr} w tej miejscowości w rejestrze adresów.`,
-    );
-    if (has !== hint) fail(path, hint ? "no PRG hint" : "a PRG hint");
+    if (page.main.includes(warning(nr)) !== hint)
+      fail(path, hint ? "no warning" : "a warning");
+    // The h1 names a number the register has, never another (item 6).
+    const h1 = hint ? "Krowica Sama" : `Krowica Sama ${nr}`;
+    if (!page.main.includes(`<h1 class="govuk-heading-l">${h1}</h1>`))
+      fail(path, `not the h1 „${h1}”`);
   }
+
+  // Any value the register lacks, in the path or the query, on the address
+  // page, /smieci and /woda: one warning, the whole place, never indexed;
+  // the water calendar reads it the same way: the whole place (task 205).
+  const calName = async (path) =>
+    /\r\nX-WR-CALNAME:([^\r]*(?:\r\n [^\r]*)*)/
+      .exec(await (await fetch(`${server.origin}${path}`)).text())?.[1]
+      .replace(/\r\n /g, "");
+  const wholeName = await calName(`${VILLAGE}/woda.ics`);
+  const BAD = ["abc", "x", "-1", "44.0", "99999", "0", "50a", "+44"];
+  for (const nr of BAD) {
+    const value = encodeURIComponent(nr);
+    for (const sub of ["", "/smieci", "/woda"]) {
+      for (const path of [
+        `${VILLAGE}${sub}?nr=${value}`,
+        `${VILLAGE}${sub}/nr/${value}`,
+      ]) {
+        const page = await main(path);
+        if (page.status !== 200) fail(path, `${page.status}, want 200`);
+        if (!page.main.includes(warning(nr)))
+          fail(path, `no warning for „${nr}”`);
+        if (!/<meta name="robots" content="noindex/.test(page.html))
+          fail(path, "indexable");
+      }
+    }
+    const ics = `${VILLAGE}/woda.ics?nr=${value}`;
+    const name = await calName(ics);
+    if (!wholeName || name !== wholeName)
+      fail(ics, `„${name}”, not the whole place's „${wholeName}”`);
+  }
+  // A number the register has: the page and the calendar both keep it.
+  const good = await main(`${VILLAGE}/woda?nr=5`);
+  if (good.main.includes("Nie znaleźliśmy"))
+    fail(`${VILLAGE}/woda?nr=5`, "a warning for a known number");
+  const goodName = await calName(`${VILLAGE}/woda.ics?nr=5`);
+  if (!goodName?.includes("Dąbrowa 5"))
+    fail(`${VILLAGE}/woda.ics?nr=5`, `„${goodName}”, not the number's`);
   // The other pages, for vague links only.
   for (const path of [
     "/",
@@ -657,5 +700,5 @@ async function shots(dir) {
 
 finish(
   failures,
-  "Modules: the hub (sections, no cards, waste first, no calendar, water and weather under „Bez zapowiedzi”), /smieci (breadcrumbs, h1, calendar, PDF) and /woda (fallback).",
+  "Modules: the hub (sections, no cards, waste first, no calendar, water and weather under „Nic nie zapowiedziano”), /smieci (breadcrumbs, h1, calendar, PDF) and /woda (fallback).",
 );
