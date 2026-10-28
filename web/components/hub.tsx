@@ -72,7 +72,7 @@ function Status({
  * A module's section: its h2, its status, the link to its subpage (if it
  * has one), then its meta line, last.
  */
-function ModuleSection({
+export function ModuleSection({
   loaded: { module, data },
   place,
   renderedAt,
@@ -82,29 +82,31 @@ function ModuleSection({
   renderedAt: number;
 }) {
   const heading = `${module.id}-heading`;
+  const sources = module.sources(data);
+  const meta = metaLine(
+    sources,
+    module.note?.(data) ?? null,
+    module.checkedAt?.(data) ?? null,
+  );
   return (
     <section id={module.id} aria-labelledby={heading}>
       <h2 id={heading} className="govuk-heading-l">
         {module.title}
       </h2>
       <Status groups={module.status(data)} renderedAt={renderedAt} />
-      {module.Details && (
+      {/* No source: nothing for the subpage to detail. */}
+      {module.Details && sources.length > 0 && (
         <p className="govuk-body">
           <a className="govuk-link" href={subpageHref(module, place)}>
             {module.more}
           </a>
         </p>
       )}
-      <p className="govuk-body-s">
-        <Parts
-          parts={metaLine(
-            module.sources(data),
-            module.note?.(data) ?? null,
-            module.checkedAt?.(data) ?? null,
-          )}
-          renderedAt={renderedAt}
-        />
-      </p>
+      {meta.length > 0 && (
+        <p className="govuk-body-s">
+          <Parts parts={meta} renderedAt={renderedAt} />
+        </p>
+      )}
     </section>
   );
 }

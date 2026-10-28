@@ -68,21 +68,27 @@ export function checkedLine(at: Checked, module: ModuleId): string | null {
 /**
  * The last line of a module's section on the address page: „Źródło: ‹its
  * sources, joined with ;›.”, then `note` (a full sentence), then
- * „Sprawdziliśmy 25 października, 14:20.”, absolute.
+ * „Sprawdziliśmy 25 października, 14:20.”, absolute. Each only when there
+ * is one; nothing at all: no parts.
  */
 export function metaLine(
   sources: Part[][],
   note: string | null,
   at: Checked,
 ): Part[] {
-  const parts: Part[] = [
-    "Źródło: ",
-    ...sources.flatMap((source, i) => (i > 0 ? ["; ", ...source] : source)),
-    ".",
-  ];
-  if (note) parts.push(` ${note}`);
+  const parts: Part[] = [];
+  if (sources.length > 0)
+    parts.push(
+      "Źródło: ",
+      ...sources.flatMap((source, i) => (i > 0 ? ["; ", ...source] : source)),
+      ".",
+    );
+  if (note) parts.push(" ", note);
   if (at) parts.push(` Sprawdziliśmy ${checkedWhen(at)}.`);
-  return merged(parts);
+  const out = merged(parts);
+  // No source before it: the line starts with the note or the check.
+  if (typeof out[0] === "string") out[0] = out[0].trimStart();
+  return out;
 }
 
 /** Adjacent texts as one, so the markup has no empty comments between. */
