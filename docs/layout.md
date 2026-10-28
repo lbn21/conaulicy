@@ -26,7 +26,7 @@ Each needs Jakub's OK; listed here so nothing drifts silently.
 - `/smieci`: „Harmonogram do druku (PDF)” between the calendar block and the pickup list. Existing before task 125.
 - `/woda`: when a source's posts were last read over an hour ago (or, beside a cut or notice, one of the address's sources could not be read), an inset with the stale note (`staleNote`, `web/lib/water-module.ts`) between the checked line and the calendar block. Existing before task 125.
 - `/woda` with no cut here: no AI-read note and no source inset; the empty text links each source's news itself (`waterEmpty`: the gmina's; in the town MZGKiM's too).
-- `/woda` and the hub's water card or „Nic nie zapowiedziano” line: with a house number, when a cut here was left out because its houses clearly exclude that number, one `govuk-body` line after the cuts or the empty text (`waterTrace`, `web/lib/water-module.ts`; on the hub the module's `trace`, `web/lib/modules.ts`). Jakub's decision, task 129. On the hub, when no cut is left to show, the water card itself says it instead („Pod nr N” and „Inne numery” rows, `waterSummary`), so water keeps its own section and no trace line follows (task 188).
+- `/woda` and the hub's water section: with a house number, when a cut here was left out because its houses clearly exclude that number, one `govuk-body` line after the cuts or the empty text (`waterTrace`, `web/lib/water-module.ts`; on the hub a line of `waterStatus` after the cut). Jakub's decision, task 129. On the hub, when no cut is left to show, the section says it instead („Pod nr N: …” and the left-out cut with its day, `waterStatus`), and no trace line follows (task 188).
 
 ## Breadcrumbs
 
@@ -62,7 +62,7 @@ Across the whole site the same job always uses the same component and style:
 
 - one button style per action (adding to a calendar: the primary `govuk-button`, `CalendarBlock`);
 - one alert component (the hub's alert slot, `AlertSlot` in `web/components/hub.tsx`): each line its text, then, for an alert with its own post (`Alert.sourceHref`, water), „Źródło: komunikat <source>.” linking the post and our „Więcej o tej przerwie”; otherwise the details link and „(<source>)” (task 188);
-- one freshness line (`CheckedLine`).
+- one freshness line: `CheckedLine` on the subpages; on the hub, the end of each section's meta line („Sprawdziliśmy …”, `metaLine`, `web/lib/hub.ts`).
 - Link text says where it goes (e.g. „Wszystkie odbiory śmieci”); never a bare „Szczegóły” or „Kliknij tutaj” (`web/scripts/check-modules.mjs` fails on one).
 
 ## Home-screen app
@@ -71,9 +71,17 @@ Opened from the home screen (`display-mode: standalone`), every page has a strip
 
 ## The hub, `/adres/<id>`
 
-The hub keeps its own layout (`web/components/hub.tsx`): the shared alert slot under the h1, then each module as its own section (h2 `govuk-heading-l`, a summary list, then a text link saying where it goes: its module's `more`, `web/lib/modules.ts`, e.g. „Wszystkie odbiory śmieci”), a visible `govuk-section-break--l` between sections and before „Nic nie zapowiedziano”; no summary cards on the hub. The hub's module summary lists use `govuk-summary-list--no-border`; the visible section break is the only line between modules; subpages keep row borders (Jakub's decision, task 132). Then „Nic nie zapowiedziano” (h2 `govuk-heading-l`), and no calendar button.
+The hub keeps its own layout (`web/components/hub.tsx`): the shared alert slot under „Zmień adres”, then one section per module, always, in registry order: Śmieci, Woda, Pogoda (`MODULE_IDS`, `web/lib/address-routes.ts`; task 207). A module left out only when it has nothing we may show (the weather when IMGW's copy is missing or 3 hours old). Each section, in this order:
 
-Jakub's decision, task 131 (GOV.UK: summary cards are for lists of the same type of thing).
+1. h2 `govuk-heading-l`, the module's title.
+2. Its status (`Module.status`, `web/lib/modules.ts`): groups of lines, never empty. Each line a `govuk-body` paragraph (a row of bins: a `div`); lines of a group close under each other (`govuk-!-margin-bottom-2`), the group's last keeps the paragraph's gap. Dates absolute only („Środa, 4 listopada”), so a cached copy stays true; relative words („Dziś”, „Jutro”, „Za N dni”) come with the client island in task 207's PR 2. A label with a colon („Gdzie: …”, „Kolejne dni: …”) ends without a full stop, as its value may end in the source's own words.
+   - Śmieci: the next pickup's day; „Tego dnia odbiorą:”, or „Tego dnia odbiorą wszystkie pojemniki:” when that day has every fraction of the place's coming dates (more than one); its bins in a row (`Bins` size `small`: 14×20 marks, GOV.UK's `govuk-!-display-inline-block` and `govuk-!-margin-right-3` / `-1`, no own CSS); „Wystaw je do 6:00 rano.” when the data has a time (`putOutLine`, `web/lib/schedule-notes.ts`). Or the split street's question, or why there are no dates.
+   - Woda: the nearest cut's day and hours, „Gdzie: …”; the parent village's hint, „Kolejne dni: …”, the trace, notices and the stale note, each a group of its own. Nothing: „Brak zapowiedzianych przerw.” (or that we could not check, `waterNone`).
+   - Pogoda: one line per warning and „Gdzie: cały powiat lubaczowski”, together. Nothing: „Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.”
+3. A text link to the module's subpage saying where it goes (its `more`, e.g. „Wszystkie odbiory śmieci”); none for a module without a subpage (the weather: its source is IMGW's own page).
+4. Its meta line, last, `govuk-body-s`: „Źródło: ‹its sources, joined with ;›.”, then the module's `note` (waste, dates not checked yet: „Daty przepisał program – jeśli coś się nie zgadza, ważniejszy jest harmonogram.”), then „Sprawdziliśmy 28 października, 15:52.” (`metaLine`, `web/lib/hub.ts`).
+
+A visible `govuk-section-break--l` between sections, none before the first or after the last; no summary lists or cards on the hub (GOV.UK: summary cards are for lists of the same type of thing; Jakub's decision, task 131), no calendar button. IMGW's required wording after the sections, as secondary text.
 
 ## Deviations
 
