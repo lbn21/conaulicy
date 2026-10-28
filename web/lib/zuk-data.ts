@@ -61,7 +61,7 @@
 import { todayInWarsaw } from "./dates.ts";
 import type { Disruption, Doubt, Notice } from "./disruptions.ts";
 import { GMINA, type WaterSource } from "./water-sources.ts";
-import { current, noticeUntil, type WarningPlace } from "./zuk.ts";
+import { current, noticeUntil, notOver, type WarningPlace } from "./zuk.ts";
 import type { AiItem } from "./zuk-ai.ts";
 import type { Reason } from "./zuk-resolve.ts";
 
@@ -376,7 +376,7 @@ export function zukView(
   };
   const posts = file.active
     .filter((p) => !HIDDEN.has(p.reason ?? ""))
-    .map((p) => ({ ...p, items: current(p.items, today) }));
+    .map((p) => ({ ...p, items: notOver(p.items, now) }));
   const doubt = doubted(posts);
   const disruptions: Disruption[] = [];
   const notices: Notice[] = [];

@@ -1181,12 +1181,12 @@ test("notices: never for ai-deferred, not-water or water-quality posts", () => {
   }
 });
 
-test("past cuts: gone at midnight in Warsaw, not in UTC", () => {
-  // ul. Żuki's cut is on Tuesday 27 Oct; Warsaw is UTC+1.
+test("past cuts: gone at their end in Warsaw, not in UTC", () => {
+  // ul. Żuki's cut is on Tuesday 27 Oct, 8:00-16:00; Warsaw is UTC+1.
   const at = (iso: string) => waterAt(ZUKI, [post()], new Date(iso), iso);
-  assert.equal(waterUpcoming(at("2026-10-27T22:59:59Z")).length, 1);
-  assert.equal(lines(at("2026-10-27T22:59:59Z")).length, 2);
-  const after = at("2026-10-27T23:00:00Z");
+  assert.equal(waterUpcoming(at("2026-10-27T14:59:59Z")).length, 1);
+  assert.equal(lines(at("2026-10-27T14:59:59Z")).length, 2);
+  const after = at("2026-10-27T15:00:00Z");
   assert.deepEqual(after.outages, []);
   assert.deepEqual(waterUpcoming(after), []);
   assert.deepEqual(waterStatus(after), [[["Brak zapowiedzianych przerw."]]]);

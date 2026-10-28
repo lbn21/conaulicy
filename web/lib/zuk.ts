@@ -8,9 +8,10 @@
 // makes the whole post a Notice (lib/disruptions.ts), and so does a post
 // left with no item. The cron that runs it: lib/zuk-cron.ts.
 
-import { addDays } from "./dates.ts";
+import { addDays, warsawToIso } from "./dates.ts";
 import type { Disruption, DisruptionLabel, Doubt } from "./disruptions.ts";
 import type { District } from "./districts.ts";
+import { endOf } from "./hub.ts";
 import { GMINA, type WaterSource } from "./water-sources.ts";
 import type { AiItem, AiResult } from "./zuk-ai.ts";
 import { checkWhen, houseScope, quoted, type When } from "./zuk-guards.ts";
@@ -459,9 +460,20 @@ export function readQualityPost(
 /** The Warsaw day a cut is over after: its end's, else its start's. */
 const lastDay = (d: Disruption) => (d.end ?? d.start ?? d.date).slice(0, 10);
 
-/** Cuts still to come or under way on `today` (Warsaw). */
+/** Cuts still to come or under way on `today` (Warsaw): what is kept. */
 export const current = (items: Disruption[], today: string) =>
   items.filter((d) => lastDay(d) >= today);
+
+/** A cut's end as an instant (ISO); null when the notice gives none. */
+export const endInstant = (d: Pick<Disruption, "end">) =>
+  d.end && warsawToIso(d.end, "later");
+
+/**
+ * Cuts not over at `now`: before their end, else before the Warsaw
+ * midnight after their day (lib/hub.ts endOf, as the block's span).
+ */
+export const notOver = (items: Disruption[], now: Date) =>
+  items.filter((d) => now.getTime() < Date.parse(endOf(d.date, endInstant(d))));
 
 /** The day from which a Notice is no longer shown: 14 days after posting. */
 export const noticeUntil = (publishedAt: string) =>

@@ -97,6 +97,16 @@ export function merged(parts: Part[]): Part[] {
   return out;
 }
 
+const midnight = (d: string) => warsawToIso(`${d} 00:00:00`) ?? `${d}T00:00:00`;
+
+/**
+ * When an item on a Warsaw `day` is over (ISO): its `end`, an instant, else
+ * the next day's 0:00 (the source gives no time). One rule for the block
+ * (span) and the pages (lib/zuk.ts notOver).
+ */
+export const endOf = (day: string, end: string | null) =>
+  end ?? midnight(addDays(day, 1));
+
 /**
  * An item's span (lib/upcoming.ts) on a Warsaw `day`: `start` and `end` are
  * instants (ISO), or null when the source gives no time (then its day's
@@ -108,9 +118,7 @@ export function span(
   end: string | null,
   about = false,
 ): Span {
-  const midnight = (d: string) =>
-    warsawToIso(`${d} 00:00:00`) ?? `${d}T00:00:00`;
-  const until = end ?? midnight(addDays(day, 1));
+  const until = endOf(day, end);
   return {
     start: start ?? midnight(day),
     end: until,

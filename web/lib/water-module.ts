@@ -47,6 +47,7 @@ import {
   type WaterSource,
   type WaterSourceId,
 } from "./water-sources.ts";
+import { endInstant } from "./zuk.ts";
 import { type ZukData, zukView } from "./zuk-data.ts";
 import { ZUK_PLACES } from "./zuk-places.generated.ts";
 
@@ -471,7 +472,7 @@ export function waterUpcoming(data: Water): Item[] {
     span: span(
       cut.date,
       cut.start && warsawToIso(cut.start),
-      cut.end && warsawToIso(cut.end, "later"),
+      endInstant(cut),
       cut.endEstimated,
     ),
     shownFrom: null,
