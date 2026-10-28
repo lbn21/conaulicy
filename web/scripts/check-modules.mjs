@@ -44,7 +44,7 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
-import { sharedNumberNote, UNVERIFIED_NOTE } from "../lib/schedule-notes.ts";
+import { sharedNumberNote, unverifiedNote } from "../lib/schedule-notes.ts";
 import { finish, startServer } from "./lib/server.mjs";
 
 const STREET = "/adres/0972447-00470";
@@ -63,9 +63,16 @@ const BARE_VILLAGE_PART = "/adres/0606027";
 const MAIN = /<main[\s\S]*<\/main>/;
 // The waste module's line: the CI fixture has no source_files rows, so
 // events.checkedAt, the day it was made (a day, so no time).
-const WASTE_CHECKED = String.raw`Ostatnio sprawdziliśmy: \d{1,2} \p{L}+`;
+const WASTE_CHECKED = String.raw`Wywozy sprawdziliśmy: \d{1,2} \p{L}+`;
+// The town's streets (SIMC 0972447) are the Urząd Miejski's schedule, the
+// rest the gmina's (lib/places.ts scheduleOwner).
+const TOWN_SIMC = "/adres/0972447";
+const gminaOf = (path) =>
+  path.startsWith(TOWN_SIMC) ? "Lubaczów (miasto)" : "Lubaczów (gmina)";
+const ownerOf = (path) =>
+  path.startsWith(TOWN_SIMC) ? "Urzędu Miejskiego" : "gminy";
 // Freshness texts besides that line (tasks 118-120: one per module).
-const FRESHNESS = /Ostatnio sprawdziliśmy|sprawdzono|Stan na/g;
+const FRESHNESS = / sprawdziliśmy: |sprawdzono|Stan na/g;
 const freshness = (html) => html.match(FRESHNESS)?.length ?? 0;
 const DATE = String.raw`\p{L}+, \d{1,2} \p{L}+`;
 // PRG has nr 1-7 at ul. Adama Asnyka (lib/prg.ts), so 12 gets its hint
@@ -319,10 +326,10 @@ try {
     if (freshness(hub) !== 2)
       fail(path, `${freshness(hub)} freshness texts, not one per module`);
     if (
-      !/<dt class="govuk-summary-list__key">Uwaga<\/dt><dd class="govuk-summary-list__value">Daty odczytaliśmy automatycznie, sprawdź je w <a href="https:\/\/[^"]+" class="govuk-link">harmonogramie gminy<\/a>\.<\/dd>/.test(
-        hub,
-      ) ||
-      hub.includes(UNVERIFIED_NOTE)
+      !new RegExp(
+        `<dt class="govuk-summary-list__key">Uwaga</dt><dd class="govuk-summary-list__value">Daty odczytaliśmy automatycznie, sprawdź je w <a href="https://[^"]+" class="govuk-link">harmonogramie ${ownerOf(path)}</a>\\.</dd>`,
+      ).test(hub) ||
+      hub.includes(unverifiedNote(gminaOf(path)))
     )
       fail(path, "not the short „Uwaga” sentence");
     headingsInOrder(path, hub);
@@ -370,7 +377,15 @@ try {
       sub.main.includes("no-border")
     )
       fail(waste, "the pickup list without row borders");
-    if (!sub.main.includes(UNVERIFIED_NOTE)) fail(waste, "no unverified note");
+    if (!sub.main.includes(unverifiedNote(gminaOf(waste))))
+      fail(waste, "no unverified note");
+    // After the last date: the next year's, when published (task 205).
+    if (
+      !/<p class="govuk-body">Terminy na \d{4} dodamy, gdy je ogłoszą\.<\/p><\/section>/.test(
+        sub.main,
+      )
+    )
+      fail(waste, "no line about the next year's dates");
     if (!new RegExp(`>${WASTE_CHECKED}</p>`, "u").test(sub.main))
       fail(waste, "no day-only checked line");
     if (freshness(sub.main) !== 1)
@@ -406,7 +421,7 @@ try {
     )
   )
     fail(waterPath, "no fallback to the gmina's and MZGKiM's news");
-  if (water.main.includes("Ostatnio sprawdziliśmy"))
+  if (water.main.includes("Komunikaty o wodzie sprawdziliśmy"))
     fail(waterPath, "a checked line without a file");
   if (!/<meta name="robots" content="noindex/.test(water.html))
     fail(waterPath, "not noindex");
@@ -430,6 +445,52 @@ try {
   const unknown = await fetch(`${server.origin}/adres/0000000/woda.ics`);
   if (unknown.status !== 404)
     fail("/adres/0000000/woda.ics", `${unknown.status}, want 404`);
+
+  // A module after a house number is no page: 308 to the module's subpage
+  // with the number in the query (next.config.ts, task 205).
+  for (const [from, to] of [
+    [`${VILLAGE}/nr/44/woda`, `${VILLAGE}/woda?nr=44`],
+    [`${STREET}/nr/5/smieci`, `${STREET}/smieci?nr=5`],
+    [`${STREET}/nr/7/22/woda`, `${STREET}/woda?nr=7/22`],
+  ]) {
+    const res = await fetch(`${server.origin}${from}`, { redirect: "manual" });
+    const location = res.headers.get("location") ?? "";
+    // The slash may come back encoded; either is the same query.
+    if (res.status !== 308 || !decodeURIComponent(location).endsWith(to))
+      fail(from, `${res.status} to „${location}”, want 308 to ${to}`);
+  }
+
+  // No x-powered-by anywhere (next.config.ts poweredByHeader).
+  for (const path of [STREET, "/ulice", "/nie-ma-takiej-strony"]) {
+    const res = await fetch(`${server.origin}${path}`);
+    if (res.headers.has("x-powered-by")) fail(path, "an x-powered-by header");
+  }
+
+  // The waste calendar: the next year's line in its description, no event
+  // for it; the town's names the Urząd Miejski, the gmina's the gmina.
+  for (const [path, owner, other] of [
+    [`${STREET}/smieci`, "Urzędu Miejskiego", "harmonogram gminy"],
+    [`${VILLAGE}/smieci`, "harmonogram gminy", "Urzędu Miejskiego"],
+  ]) {
+    const page = await main(path);
+    const href = /href="(\/ics\/[^"]+)"/.exec(page.main)?.[1];
+    if (!href) {
+      fail(path, "no waste calendar link");
+      continue;
+    }
+    const body = await (await fetch(`${server.origin}${href}`)).text();
+    const unfolded = body.replace(/\r\n /g, "");
+    if (
+      !/\r\nX-WR-CALDESC:Terminy na \d{4} dodamy\\, gdy je ogłoszą\.\r\n/.test(
+        unfolded,
+      )
+    )
+      fail(href, "no X-WR-CALDESC with the next year's line");
+    if (/BEGIN:VEVENT(?:(?!END:VEVENT)[\s\S])*Terminy na/.test(unfolded))
+      fail(href, "the next year's line as an event");
+    if (!unfolded.includes(owner) || unfolded.includes(other))
+      fail(href, `not „${owner}”, or „${other}”`);
+  }
 
   // A split street: the number first, then its dates; a wrong one keeps the
   // street page's error.
