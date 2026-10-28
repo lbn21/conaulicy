@@ -287,8 +287,9 @@ try {
       `${c.name}: links ${links.join(", ")}, expected ${page} only`,
     );
     // A month is never split: each later page of the text version starts
-    // with a month heading ("Marzec 2027", maybe "(ciąg dalszy)") or a line
-    // about months without dates ("2027: ..."), never with a lone date.
+    // with a month heading ("Marzec 2027", maybe "(ciąg dalszy)"), a line
+    // about months without dates ("2027: ...") or the next year's line,
+    // never with a lone date.
     for (let page = 2; page <= pages; page++) {
       const lines = run("pdftotext", [
         "-f",
@@ -308,7 +309,8 @@ try {
       const first = lines[band + 1] ?? "";
       check(
         /^\p{Lu}\p{Ll}+ \d{4}( \(ciąg dalszy\))?$/u.test(first) ||
-          /^[\p{Ll}\d– ]+: /u.test(first),
+          /^[\p{Ll}\d– ]+: /u.test(first) ||
+          later.startsWith(first),
         `${c.name}: page ${page} of the text version starts mid-month ("${first}")`,
       );
     }
