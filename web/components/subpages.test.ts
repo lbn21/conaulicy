@@ -518,6 +518,6 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
 test("/smieci: after the last date, the next year's line (task 205)", () => {
   assert.match(
     wastePage(),
-    /<p class="govuk-body">Terminy na 2027 dodamy, gdy je ogłoszą\.<\/p><\/section>/,
+    /<p class="govuk-body">Terminy na kolejny rok dodamy, gdy je ogłoszą\.<\/p><\/section>/,
   );
 });

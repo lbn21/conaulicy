@@ -26,9 +26,9 @@ export function putOutBy(time: string): string {
   return `do ${time.replace(/^0/, "")} w dniu odbioru`;
 }
 
-/** In the footer, the calendar and the PDF: we are not the gmina. */
+/** In the footer and a calendar without its gmina: we are not an office. */
 export const DISCLAIMER =
-  "Nie jesteśmy urzędem – obowiązuje harmonogram gminy.";
+  "Nie jesteśmy urzędem – ważniejszy jest komunikat urzędu.";
 
 /** The same for one gmina's schedule (the calendar, the PDF). */
 export function disclaimer(gmina: string): string {
@@ -36,13 +36,13 @@ export function disclaimer(gmina: string): string {
 }
 
 /**
- * After the last date, on the waste subpage and in its calendar: the next
- * year's dates come when published. Null without dates.
+ * After the last date, on the waste subpage, in its calendar and in the PDF:
+ * the next year's dates come when published. Null without dates.
  */
 export function laterNote(days: Pick<PickupDay, "date">[]): string | null {
-  const last = days.at(-1);
-  if (!last) return null;
-  return `Terminy na ${Number(last.date.slice(0, 4)) + 1} dodamy, gdy je ogłoszą.`;
+  return days.length > 0
+    ? "Terminy na kolejny rok dodamy, gdy je ogłoszą."
+    : null;
 }
 
 /**

@@ -69,7 +69,8 @@ export default function AboutPage() {
           </p>
           <p className="govuk-body">
             Nie jesteśmy urzędem. Gdyby coś się nie zgadzało, rację mają
-            harmonogram i komunikaty gminy.
+            harmonogram i komunikaty Urzędu Gminy Lubaczów i Urzędu Miejskiego w
+            Lubaczowie.
           </p>
           <p className="govuk-body">
             Jak dbamy o Twoją prywatność, opisujemy w zakładce{" "}

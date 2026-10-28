@@ -22,6 +22,7 @@ import QRCode from "qrcode";
 import { SITE_URL } from "../lib/config.generated.ts";
 import {
   disclaimer,
+  laterNote,
   NO_MORE_DATES,
   unverifiedNote,
 } from "../lib/schedule-notes.ts";
@@ -259,6 +260,13 @@ try {
         : flat.includes("harmonogram gminy"),
       `${c.name}: not the ${town ? "town's" : "gmina's"} wording`,
     );
+    // The page's and the calendar's line, in the calendar version and the
+    // text version (task 206).
+    const later = laterNote([{ date: "" }]);
+    check(
+      flat.split(later).length - 1 === 2,
+      `${c.name}: not twice "${later}"`,
+    );
     check(text.includes("Źródło:"), `${c.name}: no source line`);
     // The QR code and the printed link: the waste subpage, never the hub or
     // a preview deployment.
@@ -279,8 +287,9 @@ try {
       `${c.name}: links ${links.join(", ")}, expected ${page} only`,
     );
     // A month is never split: each later page of the text version starts
-    // with a month heading ("Marzec 2027", maybe "(ciąg dalszy)") or a line
-    // about months without dates ("2027: ..."), never with a lone date.
+    // with a month heading ("Marzec 2027", maybe "(ciąg dalszy)"), a line
+    // about months without dates ("2027: ...") or the next year's line,
+    // never with a lone date.
     for (let page = 2; page <= pages; page++) {
       const lines = run("pdftotext", [
         "-f",
@@ -300,7 +309,8 @@ try {
       const first = lines[band + 1] ?? "";
       check(
         /^\p{Lu}\p{Ll}+ \d{4}( \(ciąg dalszy\))?$/u.test(first) ||
-          /^[\p{Ll}\d– ]+: /u.test(first),
+          /^[\p{Ll}\d– ]+: /u.test(first) ||
+          later.startsWith(first),
         `${c.name}: page ${page} of the text version starts mid-month ("${first}")`,
       );
     }

@@ -33,6 +33,7 @@ import {
 import {
   disclaimer,
   hasUpcoming,
+  laterNote,
   putOutNote,
   unverifiedNote,
 } from "@/lib/schedule-notes";
@@ -383,9 +384,6 @@ function emptyRange(keys: string[]): string {
   return `${name(first)} ${first.slice(0, 4)} – ${name(last)} ${last.slice(0, 4)}`;
 }
 
-const LATER =
-  "terminy dodamy, gdy je ogłoszą. Aktualne zawsze na conaulicy.pl.";
-
 // ---------------------------------------------------------------- render
 
 function render(place: PlaceView, url: string): Promise<Buffer> {
@@ -398,11 +396,10 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     const key = day.date.slice(0, 7);
     byMonth.set(key, [...(byMonth.get(key) ?? []), day]);
   }
-  // Only months with dates are printed; the empty ones after the last date
-  // become one line.
+  // Only months with dates are printed.
   const printed = months.filter((key) => byMonth.has(key));
-  const lastPrinted = months.indexOf(printed[printed.length - 1]);
-  const trailing = months.slice(lastPrinted + 1);
+  // After the last date, as on the page and in the calendar.
+  const laterText = laterNote(place.days);
   const usual = usualWeekday(inWindow);
   const odd = (day: PickupDay) =>
     usual !== null && weekdayName(day.date) !== usual;
@@ -840,15 +837,13 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // ------------------------------------------------------------ panel
   // GOV.UK Warning text on the grey band, then any other notes: that no one
   // has checked the dates yet (as on the page), the put-out time, and the
-  // line about months not announced yet when it does not fit below the
-  // calendar.
+  // line about the next year's dates (laterNote) when it does not fit below
+  // the calendar.
   type Note = { bold: string; text: string };
   const warnD = px(35);
   const noteX = MARGIN + warnD + px(15);
   const noteW = CONTENT_W - warnD - px(15);
-  const later: Note | null = trailing.length
-    ? { bold: `${emptyRange(trailing)}: `, text: LATER }
-    : null;
+  const later: Note | null = laterText ? { bold: "", text: laterText } : null;
   const panelNotes = (withLater: boolean): Note[] => [
     ...(place.verified
       ? []
@@ -1216,12 +1211,12 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     | { kind: "month"; title: string; items: string[] };
   const entries: Entry[] = [];
   let gap: string[] = [];
-  const flushGap = (last: boolean) => {
+  const flushGap = () => {
     if (gap.length === 0) return;
     entries.push({
       kind: "gap",
       range: `${emptyRange(gap)}: `,
-      text: last ? LATER : "terminy jeszcze nieogłoszone.",
+      text: "terminy jeszcze nieogłoszone.",
     });
     gap = [];
   };
@@ -1231,14 +1226,15 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       gap.push(key);
       continue;
     }
-    flushGap(false);
+    flushGap();
     entries.push({
       kind: "month",
       title: monthTitle(`${key}-01`),
       items: days.map((day) => `${spoken(day)} – ${label(day.pickups)}`),
     });
   }
-  flushGap(true);
+  flushGap();
+  if (laterText) entries.push({ kind: "gap", range: "", text: laterText });
 
   // Measured first, so a month is never split across pages (lib/pdf-flow).
   const itemH = (text: string) => {
