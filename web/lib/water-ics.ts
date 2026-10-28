@@ -28,6 +28,7 @@ import {
 import { fileSlug } from "./normalize.ts";
 import { placePath } from "./places.ts";
 import {
+  aiNote,
   type Cut,
   capitalised,
   cutWhere,
@@ -79,15 +80,17 @@ function postId(cut: Disruption): string {
 /**
  * Stable across downloads: the post, the place, the day; a village's
  * grouped streets (Cut.streets) "ulice" and the start, so two groups of
- * one post on one day stay apart.
+ * one post on one day stay apart. A file for a house number adds it
+ * ("-nr-44"), so its events never replace the whole address's.
  */
-function cutUid(cut: CalendarCut): string {
+function cutUid(cut: CalendarCut, nr: string | null): string {
   const { localityId, streetId } = cut.place;
+  const scope = nr ? `-nr-${nr}` : "";
   if (cut.streets) {
     const start = cut.start.slice(11, 16).replace(":", "");
-    return `woda-${postId(cut)}-${localityId}-ulice-${cut.date}-${start}@conaulicy.pl`;
+    return `woda-${postId(cut)}-${localityId}-ulice${scope}-${cut.date}-${start}@conaulicy.pl`;
   }
-  return `woda-${postId(cut)}-${localityId}-${streetId ?? "all"}-${cut.date}@conaulicy.pl`;
+  return `woda-${postId(cut)}-${localityId}-${streetId ?? "all"}${scope}-${cut.date}@conaulicy.pl`;
 }
 
 /** The post's last edit in minutes since 1970: grows with every edit. */
@@ -144,12 +147,12 @@ export function waterCalendar(data: Water, now: Date): string {
       `${capitalised(cutWhere(cut, data.place))}.`,
       ...(parent ? [parentHint(data.place.name, parent)] : []),
       `Źródło: ${cut.source.url}`,
-      `Daty i godziny odczytaliśmy z komunikatu ${sourceOf(cut.uid).of}. Gdyby coś się nie zgadzało, rację ma komunikat.`,
+      aiNote(sourceOf(cut.uid).of),
       check,
     ].join("\n");
     lines.push(
       "BEGIN:VEVENT",
-      `UID:${cutUid(cut)}`,
+      `UID:${cutUid(cut, data.place.givenNr)}`,
       `SEQUENCE:${cutSequence(cut)}`,
       `DTSTAMP:${stamp}`,
       `DTSTART;TZID=${WARSAW}:${local(cut.start)}`,
@@ -158,7 +161,8 @@ export function waterCalendar(data: Water, now: Date): string {
       `LOCATION:${escapeText(location)}`,
       `DESCRIPTION:${escapeText(description)}`,
       `URL:${cut.source.url}`,
-      "STATUS:CONFIRMED",
+      // Read by a program, checked by no one: tentative.
+      "STATUS:TENTATIVE",
       "BEGIN:VALARM",
       "ACTION:DISPLAY",
       `DESCRIPTION:${escapeText(`Jutro przerwa w dostawie wody, ${hours(cut)}.\n${check}`)}`,
