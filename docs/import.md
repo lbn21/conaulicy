@@ -38,16 +38,19 @@ Each run writes one `import_runs` row per source: status `no_change`, `applied`,
 
 Every new schedule goes to a person (`core/review.ts`, waste content in `waste/check.ts`). The rule:
 - A file whose sha256 has no merged review gets **one blocking review PR**, even when every check passes and the reading equals the database. Nothing from it applies until a person merges the PR.
-- `force_extract` reads a file again even when it is settled or matches the database, and opens a review PR for it; only a file whose sha256 has a merged review in the checkout is not read again (the merged YAML is used, no xAI call, no new PR).
-- A normal run does not read a settled file again; a file whose sha256 has a merged review in `etl/review` opens no PR: the merged YAML replaces the reading and applies.
-- The review status is looked up before the xAI call: a sha256 with an open, merged or rejected review is not read again (with or without `force_extract`), so it never costs a second call and its PR is not rewritten. A new sha256 gets a fresh read.
+- A normal run does not extract a settled file at all. `force_extract` extracts it too, even when it matches the database. Every file that is extracted, with or without `force_extract`, goes through the same steps, in this order, before any xAI call:
+  1. Its sha256 has a merged review in `etl/review` (the checkout): the merged YAML replaces the reading and applies. No xAI call, no new PR.
+  2. Its sha256 has an **open** review PR, or a **merged** one that is not in the checkout yet: not read again. No xAI call, and the PR is left exactly as it is.
+  3. Its sha256 has a **rejected** review PR (closed without merging) read with the **same prompt and model** as now: not read again. No xAI call, the PR is left as it is, and the database keeps its dates.
+  4. Otherwise it is read once by Grok and gets a review PR. That includes a sha256 whose only rejected reviews were read with another prompt or model, or recorded neither (reviews opened before task 199): the run logs the rejected PR and opens a new one.
+- **What a review was read with** is recorded in every PR: the prompt's sha256 (of the whole prompt sent, as pinned in `prompts.test.ts`) and the model asked (`grok-4.7`). They are a line in the body and part of its hidden marker, `<!-- import-review: <source>/<stem> sha256:<file> prompt:<prompt sha256> model:<model> -->`, which the run reads back literally; a marker without them counts as another reading. So after a prompt fix, a file whose review was rejected is read again with the new prompt.
 
 The PR is opened by `dry-run` and `apply` runs (it is not a database write), never by `extract-only`.
 
-- **Body (Polish):** the file's URL on the source site, its SHA-256 and the run link; the model, tokens and cost; sector and year as read against the file name; the literal checks' findings; a table of every row and month with the reading's days, the month header as read and the database's days, differences marked; the dates Grok could not place (`unplaced`); the three places' lists; the date rules' findings (weekdays, holidays, counts); Grok's reply as given; then the original image inline (full size, clickable) from its public URL on the source site, the one the import downloaded. A PDF is linked.
+- **Body (Polish):** the file's URL on the source site, its SHA-256, the model asked and the prompt's SHA-256, and the run link; the model, tokens and cost; sector and year as read against the file name; the literal checks' findings; a table of every row and month with the reading's days, the month header as read and the database's days, differences marked; the dates Grok could not place (`unplaced`); the three places' lists; the date rules' findings (weekdays, holidays, counts); Grok's reply as given; then the original image inline (full size, clickable) from its public URL on the source site, the one the import downloaded. A PDF is linked.
 - **Diff:** one file, `etl/review/<source>/<file stem>.yaml`: the reading's dates (month by month, easy to edit in "Files changed"), sector, year and the places as returned (information only: membership comes only from the database). A reply without the expected shape pre-fills no dates. YAML, not JSON, so `check-tracked-data` keeps JSON off main as before.
 - **Merge = approve.** The next run reads that file instead of calling Grok, but only for the file whose `sha256` it names: if the source publishes a new version, the reviewed file is ignored and a new review opens. The merged file gets the same literal checks (keys, sector, year, integer days, place ids) and the date rules before it applies.
-- **Close = reject.** The database keeps its dates; the same version of the file is not reviewed again.
+- **Close = reject.** The database keeps its dates; the same version of the file is not reviewed again while the prompt and model stay the same. A changed prompt or model reads it again, with a new review PR (step 4 above).
 - **One PR per file:** the branch is `import-review/<source>/<file stem>`. While its PR is open, a run updates only the body (a person's edits to the YAML are kept); a new version of the file rewrites the branch. A version whose merged review applies closes a stale review of another version as superseded.
 - **The image is never in git (decision).** The body embeds the source site's public URL; GitHub's camo proxy fetches and serves it, so it renders on the web and in the mobile app. No source file is pushed to any branch. When the body is written, the import fetches that URL (with `import.retries`): if it now serves another SHA-256, or cannot be fetched, the body says the image may differ from the reviewed version. The SHA-256 is the authority.
 - **The bot only force-pushes `import-review/*` branches,** never `main` or anyone else's branch. Vercel skips them: `web/vercel.json` turns deployments off for `import-review/**`.
@@ -55,7 +58,7 @@ The PR is opened by `dry-run` and `apply` runs (it is not a database write), nev
 - **Needs** the workflow's `contents: write` and `pull-requests: write`, and the repository setting "Allow GitHub Actions to create and approve pull requests" (Settings → Actions → General). Without it the run fails with an issue naming that setting.
 
 **Self-healing:**
-- A file whose sha256 already has a review PR (open, merged but not in the checkout yet, or rejected) is never read again: no xAI call, and its PR is left exactly as it is. It applies as soon as its review is merged. A held file holds its whole source: nothing from that source applies until all its reviews are merged (the PR says so).
+- A file whose sha256 already has a review PR (open, merged but not in the checkout yet, or rejected for the same prompt and model) is not read again: no xAI call, and its PR is left exactly as it is. It applies as soon as its review is merged. A held file holds its whole source: nothing from that source applies until all its reviews are merged (the PR says so).
 - A failed source is retried by the next run.
 - Network calls retry with backoff (`import.retries`).
 
@@ -82,11 +85,11 @@ The PR is opened by `dry-run` and `apply` runs (it is not a database write), nev
 ## RUNBOOK
 
 **Run it by hand.** Actions → import → Run workflow, from `main`. Pick a mode:
-- `extract-only`: no database and no review PR. It reads every file (one xAI call each, unless a merged review covers it) and prints the literal checks' and date rules' findings; it exits 1 on any.
+- `extract-only`: no database and no review PR. It extracts every detected file through the same steps 1 to 4 as above (one xAI call per file it reads) and prints the literal checks' and date rules' findings; it exits 1 on any. A file it does not read because of its review PR (steps 2 and 3) is printed as `held, not read:` with the reason and the PR, never as `ok`, and the summary counts them.
 - `dry-run`: compares with the database, opens the review PRs, and writes only the `import_runs` row.
 - `apply`: the real import.
 
-`force_extract` reads files that are already known and settled again: each gets a review PR (unless its sha256 has a merged review), so a person compares the reading with the database. This is how a new year's import is rehearsed. Each read is a paid xAI call. Locally, without the key, use `--read-only` only on files that have merged reviews.
+`force_extract` extracts files that are already known and settled again, through steps 1 to 4 above: each one read gets a review PR, so a person compares the reading with the database; one with a merged, open, or same-prompt rejected review is not read. This is how a new year's import is rehearsed. Each read is a paid xAI call. Locally, without the key, use `--read-only` only on files that have merged reviews.
 
 **Revert a batch.** The batch id is in the `import_runs` row and the run log.
 
