@@ -1,0 +1,56 @@
+# Przejrzane daty z pliku 5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf, wstępnie z odczytu grok-4.7.
+# Porównaj z obrazem i popraw dni miesiąca, jeśli trzeba. Scalenie PR
+# zatwierdza je dla pliku o tym sha256. places to tylko informacja,
+# skopiowana z odczytu: przynależność do stref bierze się wyłącznie z bazy.
+sha256: 755893808bae353e2e5ea0ca371b8f81b2f2cb8d6187c9f4d1f58738aa2e9e8d
+file: "5_2026_Mokrzyca_Zaluze_Piastowo_Antoniki_Balaje_Dabkow.pdf"
+from: "grok-4.7"
+sector: null
+year: 2026
+rows:
+  "zmieszane+bio":
+    styczeń: [23]
+    luty: [20]
+    marzec: [20]
+    kwiecień: [10, 24]
+    maj: [8, 22]
+    czerwiec: [9, 19]
+    lipiec: [10, 24]
+    sierpień: [7, 21]
+    wrzesień: [7, 18]
+    październik: [9, 23]
+    listopad: [20]
+    grudzień: [18]
+  "selektywne":
+    styczeń: [23]
+    luty: [20]
+    marzec: [20]
+    kwiecień: [24]
+    maj: [22]
+    czerwiec: [19]
+    lipiec: [24]
+    sierpień: [21]
+    wrzesień: [18]
+    październik: [23]
+    listopad: [20]
+    grudzień: [18]
+  "wielkogabarytowe":
+    styczeń: []
+    luty: []
+    marzec: [31]
+    kwiecień: []
+    maj: []
+    czerwiec: []
+    lipiec: []
+    sierpień: []
+    wrzesień: [29]
+    październik: []
+    listopad: []
+    grudzień: []
+places:
+  - { as_written: "MOKRZYCA", id: "0605884" }
+  - { as_written: "ZAŁUŻE", id: "0606464" }
+  - { as_written: "PIASTOWO", id: "0606352" }
+  - { as_written: "ANTONIKI", id: "0606292" }
+  - { as_written: "BAŁAJE", id: "0605878" }
+  - { as_written: "DĄBKÓW", id: "0606004" }
