@@ -10,10 +10,13 @@
 //   error variants keep the hub's; none on the flat pages (/szukaj,
 //   /o-projekcie, /prywatnosc, /dostepnosc, /ulice), the home page or a 404;
 // - the hub: no caption (the locality is in its breadcrumbs), one h1,
-//   „Zmień adres”, no summary cards or lists: a section per module, always,
-//   Śmieci, Woda, Pogoda (tasks 131, 207), a visible section break between
-//   each pair of sections and none before the first or after the last;
-//   waste: the next pickup's absolute date, „Tego dnia odbiorą…:” and its
+//   „Zmień adres”, no summary cards or lists: „Najbliższe dni” only with a
+//   pickup today or tomorrow (no water or warning in CI), its links to the
+//   sections' anchors; a section per module, always, Śmieci, Woda, Pogoda
+//   (tasks 131, 207), each its id as its anchor, a visible section break
+//   between each pair of sections (and after the block), none after the
+//   last; waste: the next pickup's date, its lead („Jutro: ”, „Za 5 dni: ”)
+//   for 7 days, „Tego dnia odbiorą…:” and its
 //   bins in a row, its „Wszystkie odbiory śmieci” link to /smieci (?nr=
 //   kept), then its meta line, last: „Źródło: …”, the fixture's dates
 //   unverified, so one short sentence (while /smieci keeps the full note),
@@ -176,32 +179,61 @@ function crumbsAre(path, html, want) {
 const sections = (html) =>
   [
     ...html.matchAll(
-      /<section aria-labelledby="([a-z]+)-heading"><h2 id="\1-heading" class="govuk-heading-l">([^<]*)</g,
+      /<section id="([a-z]+)" aria-labelledby="\1-heading"><h2 id="\1-heading" class="govuk-heading-l">([^<]*)</g,
     ),
   ].map(([, , title]) => title);
+
+// A section's first line's lead (components/upcoming.tsx DayLead):
+// „Dziś: ”, „Jutro: ”, „Za 2 dni: ” to „Za 7 dni: ”, then the date in lower
+// case; further away, the date alone, capitalised.
+const LEAD = "(?:(?:Dziś|Jutro|Za [2-7] dni): \\p{Ll}|\\p{Lu})";
 
 const BREAK =
   '<hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible"/>';
 
+// „Najbliższe dni” (task 207, components/upcoming.tsx), only while
+// something is shown.
+const UPCOMING =
+  '<section aria-labelledby="najblizsze-dni"><h2 id="najblizsze-dni" class="govuk-heading-m">Najbliższe dni</h2><ul class="govuk-list govuk-list--spaced">';
+
 // The hub's outline (tasks 131, 207): no summary cards or lists, one h1, no
-// h3, the modules in <div id="co-cie-czeka"> (the alert slot's „I jeszcze
-// …”), one visible section break between each pair of sections, none before
-// the first or after the last.
+// h3; „Najbliższe dni”, if shown, before the modules, its links to their
+// sections' anchors (#woda), a section break after it; each module's
+// section its id as its anchor; one visible section break between each
+// pair of sections, none after the last.
 function hubOutline(path, hub) {
   if (hub.includes("govuk-summary-card")) fail(path, "a summary card");
   const h1s = hub.match(/<h1[\s>]/g)?.length ?? 0;
   if (h1s !== 1) fail(path, `${h1s} h1s, want 1`);
   if (/<h3[\s>]/.test(hub)) fail(path, "an h3");
-  if (!hub.includes('<div id="co-cie-czeka"><section aria-labelledby="'))
-    fail(path, "the modules not first in #co-cie-czeka");
-  const parts = hub.split(/<section aria-labelledby="[^"]+">/).slice(1);
+  const upcoming = hub.indexOf(UPCOMING);
+  const first = hub.search(/<section id="[a-z]+" aria-labelledby="/);
+  if (upcoming > first) fail(path, "„Najbliższe dni” after the modules");
+  if (upcoming >= 0) {
+    const block = hub.slice(upcoming, first);
+    if (!block.endsWith(`</section>${BREAK}`))
+      fail(path, "no section break after „Najbliższe dni”");
+    const ids = new Set(
+      [...hub.matchAll(/<section id="([a-z]+)"/g)].map(([, id]) => id),
+    );
+    for (const [, id] of block.matchAll(
+      /<a class="govuk-link" href="#([^"]+)">Szczegóły i źródło<span class="govuk-visually-hidden">: [^<]+<\/span><\/a>/g,
+    ))
+      if (!ids.has(id)) fail(path, `a link to #${id}, no such section`);
+    if (!/href="#[a-z]+">Szczegóły i źródło/.test(block))
+      fail(path, "„Najbliższe dni” without its links");
+  }
+  const parts = hub
+    .split(/<section id="[a-z]+" aria-labelledby="[^"]+">/)
+    .slice(1);
   if (parts.length < 2) fail(path, `${parts.length} sections`);
   const gaps = parts.map((part) =>
     part.slice(part.lastIndexOf("</section>") + "</section>".length),
   );
   if (gaps.slice(0, -1).some((gap) => !gap.endsWith(BREAK)))
     fail(path, `not one section break between sections ${gaps}`);
-  if ((hub.match(/<hr[\s/>]/g)?.length ?? 0) !== parts.length - 1)
+  const breaks = parts.length - 1 + (upcoming >= 0 ? 1 : 0);
+  if ((hub.match(/<hr[\s/>]/g)?.length ?? 0) !== breaks)
     fail(path, "a section break outside the gaps between sections");
   // Lines, not summary lists: the section break is the only line.
   if (/<dl[\s>]/.test(hub)) fail(path, "a summary list");
@@ -267,19 +299,30 @@ try {
     hubOutline(path, hub);
     if (sections(hub).join() !== "Śmieci,Woda,Pogoda")
       fail(path, `sections ${sections(hub)}`);
+    // No water file and no IMGW warning in CI: „Najbliższe dni” holds a
+    // pickup today or tomorrow, as the waste section's lead says, or is
+    // not there at all.
+    const soon =
+      /class="govuk-heading-l">Śmieci<\/h2><p[^>]*>(?:Dziś|Jutro):/.test(hub);
+    if (hub.includes(UPCOMING) !== soon)
+      fail(path, `„Najbliższe dni” ${soon ? "missing" : "with nothing soon"}`);
+    if (soon && !/<strong>(?:Dziś|Jutro)<\/strong> odbiór śmieci: /.test(hub))
+      fail(path, "„Najbliższe dni” without the pickup");
     // Waste: the date, what goes, the bins in a row; the fixture's 6:00.
     if (
       !new RegExp(
-        `>Śmieci</h2><p class="govuk-body ${CLOSE}">\\p{Lu}\\p{L}+, \\d{1,2} \\p{L}+</p><p class="govuk-body ${CLOSE}">Tego dnia odbiorą(?: wszystkie pojemniki)?:</p><div class="govuk-!-margin-bottom-4"><ul class="govuk-list govuk-!-margin-bottom-0"><li class="govuk-!-display-inline-block govuk-!-margin-right-3"><span aria-hidden="true"><svg aria-hidden="true" width="14" height="20" `,
+        `>Śmieci</h2><p class="govuk-body ${CLOSE}">${LEAD}\\p{L}+, \\d{1,2} \\p{L}+</p><p class="govuk-body ${CLOSE}">Tego dnia odbiorą(?: wszystkie pojemniki)?:</p><div class="govuk-!-margin-bottom-4"><ul class="govuk-list govuk-!-margin-bottom-0"><li class="govuk-!-display-inline-block govuk-!-margin-right-3"><span aria-hidden="true"><svg aria-hidden="true" width="14" height="20" `,
         "u",
       ).test(hub)
     )
       fail(path, "no absolute next pickup date and its bins in a row");
     // The village's sektor 1 has the fixture's 6:00; the town has none.
     const putOut = '<p class="govuk-body">Wystaw je do 6:00 rano.</p>';
+    const from = hub.indexOf('<section id="smieci"');
+    const section = hub.slice(from, hub.indexOf("</section>", from));
     if (
-      (path === VILLAGE && !hub.includes(putOut)) ||
-      hub.split("Wystaw").length !== hub.split(putOut).length
+      (path === VILLAGE && !section.includes(putOut)) ||
+      section.split("Wystaw").length !== section.split(putOut).length
     )
       fail(path, "not „Wystaw je do 6:00 rano.” as its own line");
     // Its link, then its meta line, last: the source, the short unverified
@@ -294,8 +337,19 @@ try {
       fail(path, "not „Wszystkie odbiory śmieci”, then the meta line, last");
     if (hub.includes(unverifiedNote(gminaOf(path))))
       fail(path, "the subpage's full unverified note");
-    if (/\b(dziś|jutro|pojutrze|za \d+ dni)\b/i.test(hub))
-      fail(path, "a relative date");
+    // Relative words only where the island puts them: „Najbliższe dni” and
+    // each section's first line (components/upcoming.tsx).
+    const fixed = hub
+      .replace(
+        /<section aria-labelledby="najblizsze-dni">[\s\S]*?<\/section>/,
+        "",
+      )
+      .replaceAll(
+        /(class="govuk-heading-l">[^<]*<\/h2>)<p[^>]*>[^<]*<\/p>/g,
+        "$1",
+      );
+    if (/\b(dziś|jutro|pojutrze|za \d+ dni|teraz)\b/i.test(fixed))
+      fail(path, "a relative date outside the island's places");
     if (
       /href="\/ics\/|harmonogram\.pdf|woda\.ics|do kalendarza|czy się udało/.test(
         hub,

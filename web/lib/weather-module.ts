@@ -1,9 +1,12 @@
 // What the weather module (lib/modules.ts) says on the address page: IMGW's
 // warnings for the powiat, filtered as the banner (lib/imgw-banner.ts), from
 // the same copy of the feed. Pure, so the unit tests read every state.
-import type { Alert, Group, Part } from "./hub.ts";
+import { clockTime, warsawDay } from "./date-labels.ts";
+import { absoluteDay } from "./dates.ts";
+import { type Group, type Part, span } from "./hub.ts";
 import { type Banner, banner, fresh, IMGW_PAGE } from "./imgw-banner.ts";
 import type { Feed } from "./imgw-warnings.ts";
+import type { Item } from "./upcoming.ts";
 
 export type Weather = {
   /** null: no warning in force or to come. */
@@ -12,7 +15,7 @@ export type Weather = {
   stale: boolean;
 };
 
-/** The source, short, after an alert. */
+/** The source, short. */
 const SHORT = "IMGW-PIB";
 
 /**
@@ -32,29 +35,49 @@ export function weather(
   };
 }
 
-/** One per warning: "Silny wiatr, stopień 1 z 3. Obowiązuje teraz, do …." */
-export function weatherAlerts(data: Weather): Alert[] {
+type Shown = Banner["warnings"][number];
+
+/** The block's items: one per warning in force or to come, the powiat's. */
+export function weatherUpcoming(data: Weather): Item[] {
   return (data.banner?.warnings ?? []).map((warning) => ({
-    text: `${warning.event}, ${warning.level.toLowerCase()}. ${warning.when}`,
-    href: IMGW_PAGE,
-    link: "Więcej na meteo.imgw.pl",
-    short: SHORT,
-    from: warning.from,
+    module: "pogoda",
+    span: span(warsawDay(Date.parse(warning.from)), warning.from, warning.to),
+    shownFrom: null,
+    event: warning.event.charAt(0).toLowerCase() + warning.event.slice(1),
+    level: { tag: warning.tag, text: warning.level },
+    second: "Cały powiat.",
+    secondUntil: null,
   }));
 }
 
 /**
- * The section's lines, together: one per warning, its level and when,
- * absolute ("Silny wiatr – stopień 1 z 3, do niedzieli 25 października,
- * 2:00."), then where, as the water's cut; without one, that there is none.
+ * "piątek, 30 października, 13:00–23:00", or "13:00 – sobota,
+ * 31 października, 2:00" across midnight: absolute, so a cached copy stays
+ * true (the island puts „Dziś” or „Jutro” before it).
+ */
+function when(warning: Shown): string {
+  const from = Date.parse(warning.from);
+  const to = Date.parse(warning.to);
+  const end = warsawDay(to);
+  const day = warsawDay(from);
+  return end === day
+    ? `${absoluteDay(day)}, ${clockTime(from)}–${clockTime(to)}`
+    : `${absoluteDay(day)}, ${clockTime(from)} – ${absoluteDay(end)}, ${clockTime(to)}`;
+}
+
+/**
+ * The section's lines, together: per warning, its event and level (the
+ * tag), then when, its day first; then where, as the water's cut; without
+ * one, that there is none.
  */
 export function weatherStatus(data: Weather): Group[] {
   if (!data.banner)
     return [[["Brak ostrzeżeń IMGW dla powiatu lubaczowskiego."]]];
   return [
     [
-      ...data.banner.warnings.map((warning) => [
-        `${warning.event} – ${warning.level.toLowerCase()}, ${warning.short}.`,
+      ...data.banner.warnings.flatMap((warning) => [
+        [`${warning.event} `, { tag: warning.tag, text: warning.level }],
+        [{ day: warsawDay(Date.parse(warning.from)), text: when(warning) }],
       ]),
       ["Gdzie: cały powiat lubaczowski"],
     ],

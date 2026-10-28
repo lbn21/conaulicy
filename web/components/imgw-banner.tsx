@@ -59,9 +59,9 @@ function Line({ warning }: { warning: Shown }) {
 }
 
 // IMGW's meteo warnings for the powiat (docs/data/imgw.md), above the h1 of
-// every page but the address pages (/adres/**, whose alert slot carries them,
-// components/hub.tsx): GOV.UK's notification banner, neutral, as
-// govuk-frontend 6.5.1's template. Compact: one line per warning, the rest
+// every page but the address pages (/adres/**, whose „Najbliższe dni”
+// carries them, components/hub.tsx): GOV.UK's notification banner, neutral,
+// as govuk-frontend 6.5.1's template. Compact: one line per warning, the rest
 // in GOV.UK's details (native <details>, closed). Server-rendered, no client
 // JS (its data-module is not initialised: GOV.UK's script only focuses
 // role="alert" banners). Nothing at all when there is no warning, the newest copy is 3

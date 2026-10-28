@@ -119,6 +119,7 @@ export const testPlace = (overrides: Partial<PlaceView> = {}): PlaceView => ({
   schedulePage: null,
   days: [],
   sources: [],
+  fractions: [],
   verified: true,
   ...overrides,
 });

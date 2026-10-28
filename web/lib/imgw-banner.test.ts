@@ -59,6 +59,7 @@ test("one warning in force: title, tag, until when, source, details, footer", ()
       {
         id: "Sk20261024094213061",
         from: "2026-10-25T13:00:00+01:00",
+        to: "2026-10-25T19:00:00+01:00",
         event: "Silny wiatr",
         tag: "govuk-tag govuk-tag--yellow",
         level: "Stopień 1 z 3",

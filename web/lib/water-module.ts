@@ -36,15 +36,10 @@ import type { PlaceView } from "@/lib/schedule";
 import { longDate } from "./date-labels.ts";
 import { absoluteDay, warsawToIso } from "./dates.ts";
 import type { Disruption, Notice } from "./disruptions.ts";
-import {
-  type Alert,
-  capitalised,
-  type Group,
-  merged,
-  type Part,
-} from "./hub.ts";
+import { capitalised, type Group, merged, type Part, span } from "./hub.ts";
 import { PART_STREETS, VILLAGE_IN } from "./part-streets.ts";
 import { placePath } from "./places.ts";
+import type { Item } from "./upcoming.ts";
 import {
   GMINA,
   sourceOf,
@@ -349,10 +344,24 @@ const listed = (items: string[]) =>
     ? `${items.slice(0, -1).join(", ")} i ${items.at(-1)}`
     : (items[0] ?? "");
 
+/** TERYT's kind of each locality (SIMC). */
+const KIND = new Map(ZUK_PLACES.localities.map((l) => [l.id, l.kind]));
+
+/**
+ * The word for a whole locality, from its TERYT kind: „wieś” (genitive
+ * „wsi”) for a village, „miejscowość” („miejscowości”) for anything else.
+ * One rule for the Woda section (scope) and „Najbliższe dni”.
+ */
+function placeWord(localityId: string): { is: string; of: string } {
+  return KIND.get(localityId) === "wies"
+    ? { is: "wieś", of: "wsi" }
+    : { is: "miejscowość", of: "miejscowości" };
+}
+
 /**
  * What is cut, in our names, with the source's own words on the houses as
- * written: "cała miejscowość Wzorowo", "cała ulica Próbna", "Wzorowo:
- * Górki od numeru 44 do numeru 92", "część miejscowości Wzorowo: ulice
+ * written: "cała wieś Wzorowo", "cała ulica Próbna", "Wzorowo:
+ * Górki od numeru 44 do numeru 92", "część wsi Wzorowo: ulice
  * Próbna i Górna (od nr 26 do nr 42)".
  */
 export function scope(cut: Cut): string {
@@ -363,12 +372,12 @@ export function scope(cut: Cut): string {
     const names = cut.streets.map((s) =>
       s.note ? `${s.name} (${s.note})` : s.name,
     );
-    return `część miejscowości ${label?.locality ?? cut.where}: ${names.length === 1 ? "ulica" : "ulice"} ${listed(names)}`;
+    return `część ${placeWord(cut.place.localityId).of} ${label?.locality ?? cut.where}: ${names.length === 1 ? "ulica" : "ulice"} ${listed(names)}`;
   }
   if (cut.scope.type === "whole" && !cut.note) {
     return street
       ? `cała ulica ${street}`
-      : `cała miejscowość ${label?.locality ?? cut.where}`;
+      : `cała ${placeWord(cut.place.localityId).is} ${label?.locality ?? cut.where}`;
   }
   if (cut.note) return `${name}: ${cut.note}`;
   if (cut.scope.type === "ranges") {
@@ -379,9 +388,6 @@ export function scope(cut: Cut): string {
     return `${name}: numery ${cut.scope.numbers.join(", ")}`;
   return `${name}, w części`;
 }
-
-/** "1 dzień", "2 dni". */
-const days = (n: number) => `${n} ${n === 1 ? "dzień" : "dni"}`;
 
 /** The whole place, nothing more: certain wherever it applies. */
 const certain = (cut: Cut) => cut.scope.type === "whole" && !cut.note;
@@ -414,22 +420,6 @@ const linked = (cut: Cut, place: Address) =>
   cut.place.streetId !== null && !own(cut, place);
 
 /**
- * " w części ulicy" or " w części miejscowości" when the cut may leave the
- * address out: not the whole place, and not a house range that clearly
- * includes the number as given (then " pod nr 44"); a cut from elsewhere
- * names its place (" w części miejscowości Wzorowo"); "" when certain.
- */
-function part(cut: Cut, place: Water["place"]): string {
-  if (certain(cut)) return "";
-  if (cut.streets) return " w części miejscowości";
-  if (linked(cut, place)) return ` w części ulicy ${cut.label?.street}`;
-  if (!own(cut, place))
-    return ` w części miejscowości ${cut.label?.locality ?? cut.where}`;
-  if (inside(cut, place)) return ` pod nr ${place.givenNr}`;
-  return ` w części ${cut.place.streetId ? "ulicy" : "miejscowości"}`;
-}
-
-/**
  * „Gdzie”: scope, and the number as given when the cut clearly has it; on
  * a part, a street of its village with the village: "ulica Pilipy w
  * Młodowie".
@@ -443,26 +433,52 @@ export function cutWhere(cut: Cut, place: Water["place"]): string {
   return scope({ ...cut, label: { ...cut.label, street: named } });
 }
 
-/** The nearest cut, with how many more days follow; none without a cut. */
-export function waterAlerts(data: Water): Alert[] {
-  const [next] = data.outages;
-  if (!next) return [];
-  const more = new Set(
-    data.outages.map((cut) => cut.date).filter((date) => date !== next.date),
-  ).size;
-  return [
-    {
-      text: `przerwa w dostawie${part(next, data.place)} – ${when(next)}${more > 0 ? ` (i jeszcze ${days(more)})` : ""}.`,
-      href: waterPath(data.place),
-      // One water alert at most, so the name stays unique.
-      link: "Więcej o tej przerwie",
-      short: sourceOf(next.uid).short,
-      sourceHref: next.source.url,
-      from:
-        warsawToIso(next.start ?? `${next.date} 00:00:00`) ??
-        `${next.date}T00:00:00`,
-    },
-  ];
+/** „44–92 i 100–110”, „3, 5, 7”: the houses as the scope has them. */
+function houses(cut: Cut): string | null {
+  const { scope } = cut;
+  if (scope.type === "ranges")
+    return scope.ranges.map((r) => `${r.from}–${r.to}`).join(" i ");
+  if (scope.type === "numbers") return scope.numbers.join(", ");
+  return null;
+}
+
+/**
+ * The block's second sentence: where, from structured fields only (the
+ * scope, our TERYT names and kinds, the grouped streets' names); never the
+ * source's own words (`note`), whose presence only keeps it from „Cała”.
+ */
+function upcomingWhere(cut: Cut, place: Water["place"]): string {
+  const word = placeWord(cut.place.localityId);
+  const locality = cut.label?.locality ?? cut.where;
+  const street = cut.label?.street ?? null;
+  if (cut.streets)
+    return `${cut.streets.length === 1 ? "Ulica" : "Ulice"} ${listed(cut.streets.map((s) => s.name))}.`;
+  const parent = parentPart(cut, place);
+  if (parent)
+    return `Część ${word.of} ${parent} – może nie obejmować tej miejscowości. Sprawdź niżej.`;
+  if (inside(cut, place)) return `Obejmuje Twój dom (nr ${place.givenNr}).`;
+  if (certain(cut))
+    return street ? `Cała ulica ${street}.` : `Cała ${word.is} ${locality}.`;
+  const nrs = houses(cut);
+  if (nrs) return `${street ? `Ulica ${street}` : locality}, numery ${nrs}.`;
+  return `Część ${street ? "ulicy" : word.of} – sprawdź niżej, których domów dotyczy.`;
+}
+
+/** The block's items: every cut still to come here, each its own. */
+export function waterUpcoming(data: Water): Item[] {
+  return data.outages.map((cut) => ({
+    module: "woda",
+    span: span(
+      cut.date,
+      cut.start && warsawToIso(cut.start),
+      cut.end && warsawToIso(cut.end, "later"),
+      cut.endEstimated,
+    ),
+    shownFrom: null,
+    emergency: cut.cause === "emergency",
+    second: upcomingWhere(cut, data.place),
+    secondUntil: null,
+  }));
 }
 
 /**
@@ -495,8 +511,6 @@ export function noticeLink(notice: Notice): Part {
     hidden: `„${notice.title}”`,
   };
 }
-
-/** Adjacent strings as one, so the page renders one text node. */
 
 /** Links joined with „ i ”. */
 const joined = (links: Part[]): Part[] =>
@@ -555,7 +569,7 @@ export function waterStatus(data: Water): Group[] {
   const groups: Group[] = [];
   if (next) {
     groups.push([
-      [capitalised(when(next))],
+      [{ day: next.date, text: when(next) }],
       [`Gdzie: ${cutWhere(next, data.place)}`],
     ]);
     const parent = parentPart(next, data.place);

@@ -1,9 +1,9 @@
 // What the waste module (lib/modules.ts) says about a place on the address
 // page, from today's street page data (PlaceView, unchanged). Pure, so the
 // unit tests need no database.
-import type { PlaceView, SourceView } from "@/lib/schedule";
-import { absoluteDay, todayInWarsaw } from "./dates.ts";
-import { type Checked, capitalised, type Group, type Part } from "./hub.ts";
+import type { PickupDay, PlaceView, SourceView } from "@/lib/schedule";
+import { absoluteDay, addDays, todayInWarsaw, warsawToIso } from "./dates.ts";
+import { type Checked, type Group, type Part, span } from "./hub.ts";
 import { placePath, scheduleName, scheduleOwner } from "./places.ts";
 import {
   hasUpcoming,
@@ -12,6 +12,7 @@ import {
   putOutLine,
   SHORT_UNVERIFIED_NOTE,
 } from "./schedule-notes.ts";
+import type { Item } from "./upcoming.ts";
 
 /** A place we have no pickup data for: the street page's heading. */
 export function noDataHeading(kind: PlaceView["kind"]): string {
@@ -52,8 +53,20 @@ export function wasteNote(place: PlaceView): string | null {
 }
 
 /**
- * The section's lines, always some: the next pickup's day (absolute, so a
- * cached copy stays true), what goes that day („wszystkie pojemniki” when
+ * Whether a day takes every fraction the zone has (all its events, not only
+ * the coming ones, so the year's last days are not „wszystkie” for want of
+ * dates), more than one.
+ */
+const allBins = (place: PlaceView, day: PickupDay) =>
+  place.fractions.length > 1 &&
+  place.fractions.every((subtype) =>
+    day.pickups.some((pickup) => pickup.subtype === subtype),
+  );
+
+/**
+ * The section's lines, always some: the next pickup's day (absolute, its
+ * „Dziś” or „Za 5 dni” put by the island, so a cached copy stays true),
+ * what goes that day („wszystkie pojemniki” when
  * it is every fraction the place has, more than one) and when to put them
  * out; on a split street without a number, the question's page; or why
  * there are no dates.
@@ -83,17 +96,10 @@ export function wasteStatus(place: PlaceView): Group[] {
   if (!next || !hasUpcoming(place.days, place.today)) {
     return [[noDates(place, `${NO_MORE_DATES}. ${NO_MORE_DATES_NEXT}`)]];
   }
-  const every = new Set(
-    place.days.flatMap((day) => day.pickups.map((pickup) => pickup.subtype)),
-  );
-  const all =
-    every.size > 1 &&
-    [...every].every((subtype) =>
-      next.pickups.some((pickup) => pickup.subtype === subtype),
-    );
+  const all = allBins(place, next);
   const groups: Group[] = [
     [
-      [capitalised(absoluteDay(next.date))],
+      [{ day: next.date, text: absoluteDay(next.date) }],
       [`Tego dnia odbiorą${all ? " wszystkie pojemniki" : ""}:`],
       [{ bins: next.pickups }],
     ],
@@ -101,6 +107,33 @@ export function wasteStatus(place: PlaceView): Group[] {
   const time = next.pickups.find((pickup) => pickup.putOutBy)?.putOutBy;
   if (time) groups.push([[putOutLine(time)]]);
   return groups;
+}
+
+/**
+ * The block's pickups: the next two days (today and tomorrow at most are
+ * shown, from the day before; the island moves on without a new render),
+ * the bins in running text, and when to put them out until that time.
+ */
+export function wasteUpcoming(place: PlaceView): Item[] {
+  if (place.askNumber || place.zoneId === null) return [];
+  return place.days
+    .filter((day) => day.date >= place.today)
+    .slice(0, 2)
+    .map((day) => {
+      const time = day.pickups.find((pickup) => pickup.putOutBy)?.putOutBy;
+      return {
+        module: "smieci",
+        span: span(day.date, null, null),
+        shownFrom: warsawToIso(`${addDays(day.date, -1)} 00:00:00`),
+        bins: allBins(place, day)
+          ? "wszystkie pojemniki"
+          : day.pickups
+              .map((p) => p.label.charAt(0).toLowerCase() + p.label.slice(1))
+              .join(", "),
+        second: time ? putOutLine(time) : null,
+        secondUntil: time ? warsawToIso(`${day.date} ${time}:00`) : null,
+      };
+    });
 }
 
 /** One „Źródło” per source: its link and its part. */

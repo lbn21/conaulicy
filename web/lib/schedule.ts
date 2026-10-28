@@ -151,6 +151,11 @@ export type PlaceView = {
   today: string;
   schedulePage: string | null;
   days: PickupDay[];
+  /**
+   * Every fraction the zone has, from all its events (past ones too), so
+   * „wszystkie pojemniki” holds at the end of the data; none without one.
+   */
+  fractions: string[];
   sources: SourceView[];
   verified: boolean;
 };
@@ -441,6 +446,17 @@ async function zoneEvents(zoneId: string, from: string) {
   return rows.sort((a, b) => a.start.localeCompare(b.start) || bySubtype(a, b));
 }
 
+/** Every fraction a zone has, from all its events, in display order. */
+async function zoneFractions(zoneId: string) {
+  const rows = await db()
+    .selectDistinct({ subtype: events.subtype })
+    .from(events)
+    .where(eq(events.zoneId, zoneId));
+  return rows
+    .map((row) => row.subtype)
+    .sort((a, b) => SUBTYPE_ORDER.indexOf(a) - SUBTYPE_ORDER.indexOf(b));
+}
+
 // Keyed by the Warsaw day, so past pickups drop out at midnight.
 const placeCached = unstable_cache(
   async (
@@ -452,7 +468,9 @@ const placeCached = unstable_cache(
     if (!place) return null;
 
     const zone = await wasteZoneFor(place, nr);
-    const upcoming = zone.id ? await zoneEvents(zone.id, today) : [];
+    const [upcoming, fractions] = zone.id
+      ? await Promise.all([zoneEvents(zone.id, today), zoneFractions(zone.id)])
+      : [[], []];
     // On a split street the number picks the zone; one that picks none is
     // set aside, and the page asks again.
     const askNumber = zone.split && !zone.id;
@@ -496,15 +514,16 @@ const placeCached = unstable_cache(
       today,
       schedulePage: place.schedulePage,
       days,
+      fractions,
       sources: sourcesOf(upcoming),
       verified: upcoming.every((e) => e.verified),
     };
   },
-  // v5: villages with streets are places (task 127), older entries say
-  // null; v4: sources' seenAt (task 121); v3: task 118 added importedAt,
-  // task 120 dropped it again; v2 entries lack localityId and streetId
-  // (task 117).
-  ["place-v5"],
+  // v6: the zone's fractions (task 207); v5: villages with streets are
+  // places (task 127), older entries say null; v4: sources' seenAt (task
+  // 121); v3: task 118 added importedAt, task 120 dropped it again; v2
+  // entries lack localityId and streetId (task 117).
+  ["place-v6"],
   CACHE,
 );
 

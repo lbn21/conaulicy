@@ -438,7 +438,7 @@ test("a village's streets in one post and hours: one event, its own UID", () => 
   ]);
   assert.match(
     value(ics, "DESCRIPTION")[0] as string,
-    /^Część miejscowości Lisie Jamy: ulice Długa\\, Wąska\\, Leśna i Zielona\.\\n/,
+    /^Część wsi Lisie Jamy: ulice Długa\\, Wąska\\, Leśna i Zielona\.\\n/,
   );
   // The street's own file: its UID as ever.
   const dluga = testPlace({

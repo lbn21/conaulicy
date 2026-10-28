@@ -35,8 +35,9 @@ const TAG = {
 
 type BannerWarning = {
   id: string;
-  /** When it starts (ISO), to put the soonest first. */
+  /** When it starts and ends (ISO). */
   from: string;
+  to: string;
   event: string;
   /** The tag's classes. */
   tag: string;
@@ -96,6 +97,7 @@ export function banner(found: Found, now: number): Banner | null {
     warnings: warnings.map((warning) => ({
       id: warning.id,
       from: warning.validFrom,
+      to: warning.validTo,
       event: warning.event,
       tag: TAG[warning.level],
       level: `Stopień ${warning.level} z 3`,

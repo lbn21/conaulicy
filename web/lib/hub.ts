@@ -1,10 +1,13 @@
 // The address page as a hub of modules (lib/modules.ts, components/hub.tsx):
-// what a module gives it, the alert slot's rules and each section's meta
-// line. Pure, so the unit tests read it.
+// what a module gives it, its items' spans (lib/upcoming.ts) and each
+// section's meta line. Pure, so the unit tests read it.
 
 import type { ModuleId } from "./address-routes.ts";
-import { clockTime, dayMonth } from "./date-labels.ts";
-import { warsawNoon } from "./dates.ts";
+import { clockTime, dayGenitive, dayMonth, warsawDay } from "./date-labels.ts";
+import { absoluteDay, addDays, warsawNoon, warsawToIso } from "./dates.ts";
+import { capitalised, type Span, type Tag } from "./upcoming.ts";
+
+export { capitalised };
 
 /** A link; `hidden` follows its text for screen readers only. */
 type Link = { href: string; text: string; hidden?: string };
@@ -14,8 +17,15 @@ export type Bins = {
   bins: Array<{ id: string; subtype: string; label: string }>;
 };
 
-/** A row's or a line's content, in order: text, links and bins. */
-export type Part = string | Link | Bins;
+/**
+ * A section's first line: its absolute `text` ("piątek, 30 października"),
+ * before which the island puts „Dziś”, „Jutro” or „Za 5 dni” (`day`, a
+ * Warsaw day; lib/upcoming.ts dayLead).
+ */
+type DayLead = { day: string; text: string };
+
+/** A row's or a line's content, in order: text, links, bins and tags. */
+export type Part = string | Link | Bins | Tag | DayLead;
 
 /** One line of a module's section: a paragraph, or a row of bins. */
 type Line = Part[];
@@ -25,49 +35,6 @@ type Line = Part[];
  * (GOV.UK's spacing 2), the group a paragraph's gap from the next.
  */
 export type Group = Line[];
-
-/** Something to warn about, in the slot above the cards. */
-export type Alert = {
-  /** A full sentence, with an absolute date. */
-  text: string;
-  /** Its details: the subpage, or the source's own page. */
-  href: string;
-  /** The link's text, saying where it goes: „Więcej o tej przerwie”. */
-  link: string;
-  /** The source, short: "IMGW-PIB". */
-  short: string;
-  /** The source's own post, if any: then linked as „Źródło: komunikat …”. */
-  sourceHref?: string;
-  /** When it starts (ISO): the soonest first. */
-  from: string;
-};
-
-/** Lines in the slot; the rest are behind „I jeszcze N …”. */
-export const MAX_ALERTS = 2;
-
-/**
- * The slot: every module's alerts in registry order, each module's soonest
- * first; at most `max` shown, `more` left for the cards below.
- */
-export function alertSlot<T extends { order: number; alert: Alert }>(
-  alerts: T[],
-  max = MAX_ALERTS,
-): { shown: T[]; more: number } {
-  const sorted = alerts.toSorted(
-    (a, b) =>
-      a.order - b.order || Date.parse(a.alert.from) - Date.parse(b.alert.from),
-  );
-  return {
-    shown: sorted.slice(0, max),
-    more: Math.max(0, sorted.length - max),
-  };
-}
-
-/** "1 ostrzeżenie", "3 ostrzeżenia", "5 ostrzeżeń", "22 ostrzeżenia". */
-export function warningCount(n: number): string {
-  const few = n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14);
-  return `${n} ${n === 1 ? "ostrzeżenie" : few ? "ostrzeżenia" : "ostrzeżeń"}`;
-}
 
 /**
  * When a module last checked its source (Module.checkedAt): an instant, or
@@ -130,6 +97,29 @@ export function merged(parts: Part[]): Part[] {
   return out;
 }
 
-/** "przerwa" → "Przerwa". */
-export const capitalised = (text: string) =>
-  text.charAt(0).toUpperCase() + text.slice(1);
+/**
+ * An item's span (lib/upcoming.ts) on a Warsaw `day`: `start` and `end` are
+ * instants (ISO), or null when the source gives no time (then its day's
+ * 0:00 and the next day's); `about`, the end is an estimate.
+ */
+export function span(
+  day: string,
+  start: string | null,
+  end: string | null,
+  about = false,
+): Span {
+  const midnight = (d: string) =>
+    warsawToIso(`${d} 00:00:00`) ?? `${d}T00:00:00`;
+  const until = end ?? midnight(addDays(day, 1));
+  return {
+    start: start ?? midnight(day),
+    end: until,
+    day,
+    endDay: end ? warsawDay(Date.parse(end)) : day,
+    from: start ? clockTime(Date.parse(start)) : null,
+    to: end ? clockTime(Date.parse(end)) : null,
+    about,
+    date: absoluteDay(day),
+    until: dayGenitive(Date.parse(until)),
+  };
+}

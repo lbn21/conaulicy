@@ -44,9 +44,9 @@ export const viewport: Viewport = {
 
 // Every page shows IMGW's warnings: the banner (components/imgw-banner.tsx),
 // which each page but the address pages draws above its h1, or the address
-// pages' alert slot (components/hub.tsx). So none is cached for more than
-// 10 minutes: static pages become ISR, and none with a longer revalidate
-// keeps it (/ulice: 3600 before).
+// pages' „Najbliższe dni” (components/hub.tsx). So none is cached for more
+// than 10 minutes: static pages become ISR, and none with a longer
+// revalidate keeps it (/ulice: 3600 before).
 export const revalidate = 600;
 
 // GOV.UK's snippet, exactly as in its page template: marks browsers that run
