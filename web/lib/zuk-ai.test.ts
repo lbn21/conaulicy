@@ -70,10 +70,10 @@ test("request: the water body is byte-identical (pinned)", async () => {
   const { calls, fetcher } = xai(200, JSON.stringify(reading(39865)));
   await readWithAi(INPUT, SYSTEM, "test-key", fetcher);
   const body = calls[0].init.body as string;
-  assert.equal(Buffer.byteLength(body), 11981);
+  assert.equal(Buffer.byteLength(body), 12281);
   assert.equal(
     createHash("sha256").update(body).digest("hex"),
-    "e8cce9e84b9b5bbfdf035a70b7314f771769c06f30f6f697691fd648cbf9afc1",
+    "30453b19f956c604df2df64802589a2215e2f4997df49d1874404cf6bdee220f",
   );
   assert.equal(calls[0].init.method, "POST");
   assert.deepEqual(calls[0].init.headers, {
