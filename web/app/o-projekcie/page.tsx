@@ -45,7 +45,7 @@ export default function AboutPage() {
           <p className="govuk-body">
             Gdy IMGW ogłosi ostrzeżenie pogodowe dla powiatu lubaczowskiego,
             pokażemy je na górze strony. Gdy ostrzeżeń nie ma, przy adresie
-            przeczytasz o tym w części „Bez zapowiedzi”.
+            przeczytasz o tym w części „Nic nie zapowiedziano”.
           </p>
           <p className="govuk-body">
             Strona jest darmowa i niekomercyjna. Nie ma na niej reklam ani kont.

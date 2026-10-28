@@ -587,7 +587,7 @@ async function hubChecks(origin, state) {
     !target && "no #co-cie-czeka around the module sections",
     // Water may be there (no ZUK file in CI); the weather never is.
     /<p class="govuk-body">Pogoda: /.test(hub) &&
-      "„Bez zapowiedzi” with a warning",
+      "„Nic nie zapowiedziano” with a warning",
   ].filter(Boolean);
   if (problems.length > 0) failures.push(`${label}: ${problems.join("; ")}`);
   else console.log(`ok    ${label}: alert slot, ${alerts.length} lines`);

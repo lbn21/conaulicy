@@ -26,7 +26,7 @@ Each needs Jakub's OK; listed here so nothing drifts silently.
 - `/smieci`: „Harmonogram do druku (PDF)” between the calendar block and the pickup list. Existing before task 125.
 - `/woda`: when a source's posts were last read over an hour ago (or, beside a cut or notice, one of the address's sources could not be read), an inset with the stale note (`staleNote`, `web/lib/water-module.ts`) between the checked line and the calendar block. Existing before task 125.
 - `/woda` with no cut here: no AI-read note and no source inset; the empty text links each source's news itself (`waterEmpty`: the gmina's; in the town MZGKiM's too).
-- `/woda` and the hub's water card or „Bez zapowiedzi” line: with a house number, when a cut here was left out because its houses clearly exclude that number, one `govuk-body` line after the cuts or the empty text (`waterTrace`, `web/lib/water-module.ts`; on the hub the module's `trace`, `web/lib/modules.ts`). Jakub's decision, task 129. On the hub, when no cut is left to show, the water card itself says it instead („Pod nr N” and „Inne numery” rows, `waterSummary`), so water keeps its own section and no trace line follows (task 188).
+- `/woda` and the hub's water card or „Nic nie zapowiedziano” line: with a house number, when a cut here was left out because its houses clearly exclude that number, one `govuk-body` line after the cuts or the empty text (`waterTrace`, `web/lib/water-module.ts`; on the hub the module's `trace`, `web/lib/modules.ts`). Jakub's decision, task 129. On the hub, when no cut is left to show, the water card itself says it instead („Pod nr N” and „Inne numery” rows, `waterSummary`), so water keeps its own section and no trace line follows (task 188).
 
 ## Breadcrumbs
 
@@ -71,7 +71,7 @@ Opened from the home screen (`display-mode: standalone`), every page has a strip
 
 ## The hub, `/adres/<id>`
 
-The hub keeps its own layout (`web/components/hub.tsx`): the shared alert slot under the h1, then each module as its own section (h2 `govuk-heading-l`, a summary list, then a text link saying where it goes: its module's `more`, `web/lib/modules.ts`, e.g. „Wszystkie odbiory śmieci”), a visible `govuk-section-break--l` between sections and before „Bez zapowiedzi”; no summary cards on the hub. The hub's module summary lists use `govuk-summary-list--no-border`; the visible section break is the only line between modules; subpages keep row borders (Jakub's decision, task 132). Then „Bez zapowiedzi” (h2 `govuk-heading-l`), and no calendar button.
+The hub keeps its own layout (`web/components/hub.tsx`): the shared alert slot under the h1, then each module as its own section (h2 `govuk-heading-l`, a summary list, then a text link saying where it goes: its module's `more`, `web/lib/modules.ts`, e.g. „Wszystkie odbiory śmieci”), a visible `govuk-section-break--l` between sections and before „Nic nie zapowiedziano”; no summary cards on the hub. The hub's module summary lists use `govuk-summary-list--no-border`; the visible section break is the only line between modules; subpages keep row borders (Jakub's decision, task 132). Then „Nic nie zapowiedziano” (h2 `govuk-heading-l`), and no calendar button.
 
 Jakub's decision, task 131 (GOV.UK: summary cards are for lists of the same type of thing).
 

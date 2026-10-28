@@ -53,7 +53,7 @@ test("the same warnings as the banner, from the same copy", () => {
   assert.deepEqual(data?.banner, banner(found, now));
 });
 
-test("no warning: no alert, no card („Bez zapowiedzi”), still a source", () => {
+test("no warning: no alert, no card („Nic nie zapowiedziano”), still a source", () => {
   const now = at("2026-10-25T14:00:00+01:00");
   const data = weather(copy("2026-10-25T13:52:10+01:00", none), now);
   assert.ok(data);

@@ -687,7 +687,7 @@ export function waterTrace(data: Water): string | null {
   return `${who} ${foretold} też przerwę ${placeWords(data)}, ale według komunikatu nie obejmuje nr ${data.place.givenNr}.`;
 }
 
-/** What „Bez zapowiedzi” says: none announced, or we could not check. */
+/** What „Nic nie zapowiedziano” says: none announced, or we could not check. */
 export function waterNone(data: Water): string {
   const none = down(data);
   if (none.length > 0)

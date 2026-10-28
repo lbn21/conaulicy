@@ -648,7 +648,7 @@ test("card: the cut, where, as written, and the post as its source", () => {
   ]);
 });
 
-test("no cut here: no card, „Bez zapowiedzi” with the gmina's news", () => {
+test("no cut here: no card, „Nic nie zapowiedziano” with the gmina's news", () => {
   const data = waterAt(SMOLINCE, []);
   assert.equal(waterSummary(data), null);
   assert.equal(waterNone(data), "brak zapowiedzianych przerw");
