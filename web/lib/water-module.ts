@@ -36,7 +36,13 @@ import type { PlaceView } from "@/lib/schedule";
 import { longDate } from "./date-labels.ts";
 import { absoluteDay, warsawToIso } from "./dates.ts";
 import type { Disruption, Notice } from "./disruptions.ts";
-import type { Alert, Part, SummaryRow } from "./hub.ts";
+import {
+  type Alert,
+  capitalised,
+  type Group,
+  merged,
+  type Part,
+} from "./hub.ts";
 import { PART_STREETS, VILLAGE_IN } from "./part-streets.ts";
 import { placePath } from "./places.ts";
 import {
@@ -374,10 +380,6 @@ export function scope(cut: Cut): string {
   return `${name}, w części`;
 }
 
-/** "przerwa" → "Przerwa". */
-export const capitalised = (text: string) =>
-  text.charAt(0).toUpperCase() + text.slice(1);
-
 /** "1 dzień", "2 dni". */
 const days = (n: number) => `${n} ${n === 1 ? "dzień" : "dni"}`;
 
@@ -495,16 +497,6 @@ export function noticeLink(notice: Notice): Part {
 }
 
 /** Adjacent strings as one, so the page renders one text node. */
-function merged(parts: Part[]): Part[] {
-  const out: Part[] = [];
-  for (const p of parts) {
-    const last = out.at(-1);
-    if (typeof p === "string" && typeof last === "string")
-      out[out.length - 1] = last + p;
-    else out.push(p);
-  }
-  return out;
-}
 
 /** Links joined with „ i ”. */
 const joined = (links: Part[]): Part[] =>
@@ -552,21 +544,23 @@ const placeWords = (data: Water) =>
   data.place.streetId === null ? "w tej miejscowości" : "na tej ulicy";
 
 /**
- * The card: the nearest cut, any more days, notices; with a cut here left
- * out for the number only, that it was; null with nothing.
+ * The section's lines: the nearest cut's day and hours and where, any more
+ * days, a cut here left out for the house number, notices, the stale note;
+ * with nothing, that nothing is announced (waterNone). Labels with a colon
+ * end without a full stop: `where` may end in the source's own words.
  */
-export function waterSummary(data: Water): SummaryRow[] | null {
+export function waterStatus(data: Water): Group[] {
   const [next, ...rest] = data.outages;
   const [left] = data.hidden;
-  if (!next && !left && data.notices.length === 0) return null;
-  const rows: SummaryRow[] = [];
+  const groups: Group[] = [];
   if (next) {
-    rows.push(["Najbliższa przerwa", [when(next)]]);
-    rows.push(["Gdzie", [cutWhere(next, data.place)]]);
+    groups.push([
+      [capitalised(when(next))],
+      [`Gdzie: ${cutWhere(next, data.place)}`],
+    ]);
     const parent = parentPart(next, data.place);
     if (parent)
-      rows.push([
-        "Sprawdź",
+      groups.push([
         [
           `${parentHint(data.place.name, parent)} Zobacz `,
           {
@@ -578,30 +572,32 @@ export function waterSummary(data: Water): SummaryRow[] | null {
       ]);
     const later = rest.filter((cut) => cut.date !== next.date);
     if (later.length > 0)
-      rows.push([
-        "Kolejne",
-        [[...new Set(later.map((cut) => absoluteDay(cut.date)))].join("; ")],
+      groups.push([
+        [
+          `Kolejne dni: ${[...new Set(later.map((cut) => absoluteDay(cut.date)))].join("; ")}`,
+        ],
       ]);
-  }
-  if (!next && left) {
+    const trace = waterTrace(data);
+    if (trace) groups.push([[trace]]);
+  } else if (left) {
     const { who, foretold } = sourceOf(left.uid);
     const nr = data.place.givenNr;
-    rows.push(
-      [`Pod nr ${nr}`, [`${capitalised(waterNone(data))}.`]],
+    groups.push(
+      [[`Pod nr ${nr}: ${waterNone(data)}.`]],
       [
-        "Inne numery",
         [
           `${who} ${foretold} przerwę ${placeWords(data)} – ${when(left)} – ale według komunikatu nie obejmuje nr ${nr}.`,
         ],
       ],
     );
+  } else if (data.notices.length === 0) {
+    groups.push([[`${capitalised(waterNone(data))}.`]]);
   }
-  for (const notice of data.notices)
-    rows.push(["Komunikat", [noticeLink(notice)]]);
-  // With nothing but the number's row, that row says it (waterNone).
+  for (const notice of data.notices) groups.push([[noticeLink(notice)]]);
+  // With nothing but the number's lines, the first says it (waterNone).
   const note = next || data.notices.length > 0 ? staleNote(data) : null;
-  if (note) rows.push(["Uwaga", note]);
-  return rows;
+  if (note) groups.push([note]);
+  return groups;
 }
 
 /** The sources of the cuts shown, in the address's order. */
@@ -687,7 +683,7 @@ export function waterTrace(data: Water): string | null {
   return `${who} ${foretold} też przerwę ${placeWords(data)}, ale według komunikatu nie obejmuje nr ${data.place.givenNr}.`;
 }
 
-/** What „Nic nie zapowiedziano” says: none announced, or we could not check. */
+/** Nothing to show: none announced, or we could not check (lowercase). */
 export function waterNone(data: Water): string {
   const none = down(data);
   if (none.length > 0)
@@ -698,11 +694,11 @@ export function waterNone(data: Water): string {
   return NO_CUTS.toLowerCase();
 }
 
-/** The post itself: "Komunikat gminy z 23 października 2026". */
+/** The post itself, after „Źródło: ”: "komunikat gminy z 23 października 2026". */
 function postLink(item: Pick<Disruption, "uid" | "source" | "publishedAt">) {
   return {
     href: item.source.url,
-    text: `Komunikat ${sourceOf(item.uid).of} z ${longDate(item.publishedAt.slice(0, 10))}`,
+    text: `komunikat ${sourceOf(item.uid).of} z ${longDate(item.publishedAt.slice(0, 10))}`,
   };
 }
 

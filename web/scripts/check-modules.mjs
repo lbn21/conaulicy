@@ -10,18 +10,20 @@
 //   error variants keep the hub's; none on the flat pages (/szukaj,
 //   /o-projekcie, /prywatnosc, /dostepnosc, /ulice), the home page or a 404;
 // - the hub: no caption (the locality is in its breadcrumbs), one h1,
-//   „Zmień adres”, no summary cards: a section per module (task 131), waste
-//   first (h2 „Śmieci”, its „Wszystkie odbiory śmieci” link to /smieci, ?nr= kept,
-//   last in the section), a visible section break between each pair of
-//   sections and none before the first or after the last, its
-//   rows (Najbliższy odbiór with an absolute date, Pojemniki, Źródło), no
-//   calendar, PDF or IMGW banner, „Nic nie zapowiedziano” with the weather and its
-//   source; „Ostatnio sprawdziliśmy” (the fixture has no source_files rows,
-//   so the day events.checkedAt, no time)
-//   under the waste list's last source (a row with no border) and after the weather's line (IMGW's
-//   fetchedAt, with its time), each module's one freshness text; headings h1 → h2 with no h3 and no skips; the fixture's dates are
-//   unverified: one short „Uwaga” sentence linking the gmina's schedule,
-//   while /smieci keeps the full note;
+//   „Zmień adres”, no summary cards or lists: a section per module, always,
+//   Śmieci, Woda, Pogoda (tasks 131, 207), a visible section break between
+//   each pair of sections and none before the first or after the last;
+//   waste: the next pickup's absolute date, „Tego dnia odbiorą…:” and its
+//   bins in a row, its „Wszystkie odbiory śmieci” link to /smieci (?nr=
+//   kept), then its meta line, last: „Źródło: …”, the fixture's dates
+//   unverified, so one short sentence (while /smieci keeps the full note),
+//   and „Sprawdziliśmy” with the day (the fixture has no source_files rows,
+//   so events.checkedAt, no time); water: „Nie udało się nam sprawdzić
+//   komunikatów.” (no file in CI), its link to /woda, its sources and no
+//   check; weather: „Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.”, no
+//   link, IMGW-PIB and the copy's fetchedAt with its time; each module's
+//   one freshness text; no calendar, PDF or IMGW banner; headings h1 → h2
+//   with no h3 and no skips;
 // - a split street without a number: the waste section asks for it,
 //   linking /smieci; with one, it has its date; an unknown number keeps the street
 //   page's error (GOV.UK's validation pattern);
@@ -46,6 +48,7 @@ import path from "node:path";
 import { chromium } from "playwright";
 import {
   laterNote,
+  SHORT_UNVERIFIED_NOTE,
   sharedNumberNote,
   unverifiedNote,
 } from "../lib/schedule-notes.ts";
@@ -67,20 +70,21 @@ const STREETED_VILLAGE = "/adres/0606180";
 const VILLAGE_PART = "/adres/0606300";
 const BARE_VILLAGE_PART = "/adres/0606027";
 const MAIN = /<main[\s\S]*<\/main>/;
-// The waste module's line: the CI fixture has no source_files rows, so
-// events.checkedAt, the day it was made (a day, so no time).
+// Lines of a group, close under each other (components/hub.tsx).
+const CLOSE = "govuk-!-margin-bottom-2";
+const escaped = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// The waste subpage's checked line: the CI fixture has no source_files rows,
+// so events.checkedAt, the day it was made (a day, so no time).
 const WASTE_CHECKED = String.raw`Wywozy sprawdziliśmy: \d{1,2} \p{L}+`;
 // The town's streets (SIMC 0972447) are the Urząd Miejski's schedule, the
 // rest the gmina's (lib/places.ts scheduleOwner).
 const TOWN_SIMC = "/adres/0972447";
 const gminaOf = (path) =>
   path.startsWith(TOWN_SIMC) ? "Lubaczów (miasto)" : "Lubaczów (gmina)";
-const ownerOf = (path) =>
-  path.startsWith(TOWN_SIMC) ? "Urzędu Miejskiego" : "gminy";
-// Freshness texts besides that line (tasks 118-120: one per module).
-const FRESHNESS = / sprawdziliśmy: |sprawdzono|Stan na/g;
+// Freshness texts besides that line (tasks 118-120: one per module); on the
+// hub, each section's „Sprawdziliśmy …” (task 207).
+const FRESHNESS = / sprawdziliśmy: |Sprawdziliśmy |sprawdzono|Stan na/g;
 const freshness = (html) => html.match(FRESHNESS)?.length ?? 0;
-const DATE = String.raw`\p{L}+, \d{1,2} \p{L}+`;
 // PRG has nr 1-7 at ul. Adama Asnyka (lib/prg.ts): 5 is a number of the
 // street, with its shared schedule; 12 is not, so one warning and the
 // whole street (lib/prg.ts numberWarning).
@@ -168,8 +172,7 @@ function crumbsAre(path, html, want) {
     );
 }
 
-// The module sections' titles, in order („Nic nie zapowiedziano” has a hyphen in
-// its id).
+// The module sections' titles, in order.
 const sections = (html) =>
   [
     ...html.matchAll(
@@ -180,10 +183,10 @@ const sections = (html) =>
 const BREAK =
   '<hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible"/>';
 
-// The hub's outline (task 131): no summary cards, one h1, no h3, the
-// modules in <div id="co-cie-czeka"> (the alert slot's „I jeszcze …”), one
-// visible section break between each pair of sections, none before the
-// first or after the last.
+// The hub's outline (tasks 131, 207): no summary cards or lists, one h1, no
+// h3, the modules in <div id="co-cie-czeka"> (the alert slot's „I jeszcze
+// …”), one visible section break between each pair of sections, none before
+// the first or after the last.
 function hubOutline(path, hub) {
   if (hub.includes("govuk-summary-card")) fail(path, "a summary card");
   const h1s = hub.match(/<h1[\s>]/g)?.length ?? 0;
@@ -200,18 +203,8 @@ function hubOutline(path, hub) {
     fail(path, `not one section break between sections ${gaps}`);
   if ((hub.match(/<hr[\s/>]/g)?.length ?? 0) !== parts.length - 1)
     fail(path, "a section break outside the gaps between sections");
-  // No row borders on the hub: the section break is the only line.
-  const lists = hub.match(/<dl class="[^"]*"/g) ?? [];
-  if (
-    lists.length === 0 ||
-    lists.some(
-      (dl) =>
-        dl !== '<dl class="govuk-summary-list govuk-summary-list--no-border"',
-    )
-  )
-    fail(path, `not every summary list without borders ${lists}`);
-  if (hub.includes("govuk-summary-list__row--no-border"))
-    fail(path, "a row-level --no-border");
+  // Lines, not summary lists: the section break is the only line.
+  if (/<dl[\s>]/.test(hub)) fail(path, "a summary list");
 }
 
 try {
@@ -272,25 +265,37 @@ try {
       fail(path, "not the h1 first in <main>, with no caption");
     if (!hub.includes(">Zmień adres<")) fail(path, "no „Zmień adres”");
     hubOutline(path, hub);
-    if (sections(hub)[0] !== "Śmieci") fail(path, `sections ${sections(hub)}`);
-    const action = `<p class="govuk-body"><a class="govuk-link" href="${links[1]}">Wszystkie odbiory śmieci</a></p></section>`;
-    if (!hub.includes(action))
-      fail(
-        path,
-        `no „Wszystkie odbiory śmieci” to ${links[1]} closing its section`,
-      );
+    if (sections(hub).join() !== "Śmieci,Woda,Pogoda")
+      fail(path, `sections ${sections(hub)}`);
+    // Waste: the date, what goes, the bins in a row; the fixture's 6:00.
     if (
       !new RegExp(
-        `<dt class="govuk-summary-list__key">Najbliższy odbiór</dt><dd class="govuk-summary-list__value">${DATE}</dd>`,
+        `>Śmieci</h2><p class="govuk-body ${CLOSE}">\\p{Lu}\\p{L}+, \\d{1,2} \\p{L}+</p><p class="govuk-body ${CLOSE}">Tego dnia odbiorą(?: wszystkie pojemniki)?:</p><div class="govuk-!-margin-bottom-4"><ul class="govuk-list govuk-!-margin-bottom-0"><li class="govuk-!-display-inline-block govuk-!-margin-right-3"><span aria-hidden="true"><svg aria-hidden="true" width="14" height="20" `,
         "u",
       ).test(hub)
     )
-      fail(path, "no absolute next pickup date");
-    for (const key of ["Pojemniki", "Źródło"]) {
-      if (!hub.includes(`<dt class="govuk-summary-list__key">${key}</dt>`))
-        fail(path, `no row ${key}`);
-    }
-    if (/\b(dziś|jutro|pojutrze)\b/i.test(hub)) fail(path, "a relative date");
+      fail(path, "no absolute next pickup date and its bins in a row");
+    // The village's sektor 1 has the fixture's 6:00; the town has none.
+    const putOut = '<p class="govuk-body">Wystaw je do 6:00 rano.</p>';
+    if (
+      (path === VILLAGE && !hub.includes(putOut)) ||
+      hub.split("Wystaw").length !== hub.split(putOut).length
+    )
+      fail(path, "not „Wystaw je do 6:00 rano.” as its own line");
+    // Its link, then its meta line, last: the source, the short unverified
+    // sentence, the day we checked.
+    const action = `<p class="govuk-body"><a class="govuk-link" href="${links[1]}">Wszystkie odbiory śmieci</a></p>`;
+    if (
+      !new RegExp(
+        `${escaped(action)}<p class="govuk-body-s">Źródło: <a href="https://[^"]+" class="govuk-link">harmonogram [^<]+</a>, [^<]+\\. ${escaped(SHORT_UNVERIFIED_NOTE)} Sprawdziliśmy \\d{1,2} \\p{L}+\\.</p></section>`,
+        "u",
+      ).test(hub)
+    )
+      fail(path, "not „Wszystkie odbiory śmieci”, then the meta line, last");
+    if (hub.includes(unverifiedNote(gminaOf(path))))
+      fail(path, "the subpage's full unverified note");
+    if (/\b(dziś|jutro|pojutrze|za \d+ dni)\b/i.test(hub))
+      fail(path, "a relative date");
     if (
       /href="\/ics\/|harmonogram\.pdf|woda\.ics|do kalendarza|czy się udało/.test(
         hub,
@@ -298,50 +303,30 @@ try {
     )
       fail(path, "a calendar or PDF link");
     if (/govuk-notification-banner/.test(hub)) fail(path, "the IMGW banner");
-    // No water file in CI (neither the gmina's nor MZGKiM's): water first,
-    // "nie udało się nam sprawdzić", the gmina's news; in the town,
-    // MZGKiM's posts too.
+    // No water file in CI (neither the gmina's nor MZGKiM's): "nie udało
+    // się nam sprawdzić", the link to /woda, the gmina's news; in the town,
+    // MZGKiM's posts too; no check.
     const mzgkim =
       locality === TOWN
         ? '; <a href="https://mzgkim.lubaczow.pl/category/komunikaty/" class="govuk-link">komunikaty MZGKiM</a>'
         : "";
+    const water = links[1].replace("/smieci", "/woda");
     if (
       !hub.includes(
-        `<h2 id="nic-nie-zapowiedziano-heading" class="govuk-heading-l">Nic nie zapowiedziano</h2><p class="govuk-body">Woda: nie udało się nam sprawdzić komunikatów. Źródło: <a href="https://www.gminalubaczow.pl/aktualnosci/" class="govuk-link">aktualności gminy Lubaczów</a>${mzgkim}.</p>`,
+        `<h2 id="woda-heading" class="govuk-heading-l">Woda</h2><p class="govuk-body">Nie udało się nam sprawdzić komunikatów.</p><p class="govuk-body"><a class="govuk-link" href="${water}">Wszystkie przerwy w wodzie</a></p><p class="govuk-body-s">Źródło: <a href="https://www.gminalubaczow.pl/aktualnosci/" class="govuk-link">aktualności gminy Lubaczów</a>${mzgkim}.</p></section>`,
       )
     )
-      fail(path, "no „Nic nie zapowiedziano” line for the water");
+      fail(path, "not the water section");
+    // The weather: no link but its source's, checked with the copy's time.
     if (
-      !/<\/p><p class="govuk-body">Pogoda: brak ostrzeżeń IMGW\. Źródło: <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">IMGW-PIB<\/a>\.(?:<!-- -->)? Ostatnio sprawdziliśmy: /.test(
+      !/<h2 id="pogoda-heading" class="govuk-heading-l">Pogoda<\/h2><p class="govuk-body">Brak ostrzeżeń IMGW dla powiatu lubaczowskiego\.<\/p><p class="govuk-body-s">Źródło: <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">IMGW-PIB<\/a>\. Sprawdziliśmy \d{1,2} \p{L}+, \d{1,2}:\d{2}\.<\/p><\/section>/u.test(
         hub,
       )
     )
-      fail(path, "no „Nic nie zapowiedziano” line for the weather");
-    // The checked line: under the waste list's last source, after the
-    // weather's „Nic nie zapowiedziano” line (the copy's fetchedAt).
-    if (
-      !new RegExp(
-        `<div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Źródło</dt><dd class="govuk-summary-list__value">(?:(?!</dd>).)*<span class="govuk-hint govuk-!-font-size-16 [^"]*">${WASTE_CHECKED}</span></dd></div></dl>`,
-        "su",
-      ).test(hub)
-    )
-      fail(path, "no day-only checked line under the waste list's last row");
-    if (
-      !/<p class="govuk-body">Pogoda: brak ostrzeżeń IMGW\.(?:(?!<\/p>).)* Ostatnio sprawdziliśmy: \d{1,2} \p{L}+, \d{1,2}:\d{2}\.<\/p>/su.test(
-        hub,
-      )
-    )
-      fail(path, "no checked line after the weather");
-    // Waste's and the weather's lines; the water has no file in CI.
+      fail(path, "not the weather section");
+    // Waste's and the weather's; the water has no file in CI.
     if (freshness(hub) !== 2)
       fail(path, `${freshness(hub)} freshness texts, not one per module`);
-    if (
-      !new RegExp(
-        `<dt class="govuk-summary-list__key">Uwaga</dt><dd class="govuk-summary-list__value">Daty odczytaliśmy automatycznie, sprawdź je w <a href="https://[^"]+" class="govuk-link">harmonogramie ${ownerOf(path)}</a>\\.</dd>`,
-      ).test(hub) ||
-      hub.includes(unverifiedNote(gminaOf(path)))
-    )
-      fail(path, "not the short „Uwaga” sentence");
     headingsInOrder(path, hub);
     // The note right under the h1, only for the street with one schedule.
     const note = path === `${STREET}?nr=5`;
@@ -698,5 +683,5 @@ async function shots(dir) {
 
 finish(
   failures,
-  "Modules: the hub (sections, no cards, waste first, no calendar, water and weather under „Nic nie zapowiedziano”), /smieci (breadcrumbs, h1, calendar, PDF) and /woda (fallback).",
+  "Modules: the hub (Śmieci, Woda, Pogoda, always, each with its meta line; no cards or lists, no calendar), /smieci (breadcrumbs, h1, calendar, PDF) and /woda (fallback).",
 );

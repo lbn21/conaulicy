@@ -9,7 +9,7 @@ import {
 } from "@/components/subpage-parts";
 import { absoluteDay } from "@/lib/dates";
 import { withHouseNumber } from "@/lib/house";
-import type { Checked } from "@/lib/hub";
+import { type Checked, capitalised } from "@/lib/hub";
 import { indexable } from "@/lib/indexing";
 import { placePath, titleLabel } from "@/lib/places";
 import { getPlace } from "@/lib/schedule";
@@ -17,7 +17,6 @@ import { shownNr } from "@/lib/schedule-notes";
 import { pageMetadata } from "@/lib/share";
 import { waterCalendarHref } from "@/lib/water-ics";
 import {
-  capitalised,
   cutWhere,
   hours,
   noticeLink,

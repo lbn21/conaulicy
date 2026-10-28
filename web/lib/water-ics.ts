@@ -18,6 +18,7 @@ import { SITE_URL } from "./config.generated.ts";
 import { addDays, WARSAW, warsawToIso } from "./dates.ts";
 import type { Disruption } from "./disruptions.ts";
 import { withHouseNumber } from "./house.ts";
+import { capitalised } from "./hub.ts";
 import {
   calendarBody,
   calendarHead,
@@ -30,7 +31,6 @@ import { placePath } from "./places.ts";
 import {
   aiNote,
   type Cut,
-  capitalised,
   cutWhere,
   hours,
   parentHint,

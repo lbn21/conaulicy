@@ -743,9 +743,9 @@ try {
   await ask.getByRole("button", { name: "Pokaż odbiory" }).click();
   await ask.waitForURL(`${server.origin}/adres/0972447-90004?nr=12`);
   check(
-    (await ask.locator("main dt", { hasText: "Najbliższy odbiór" }).count()) ===
+    (await ask.locator("main p", { hasText: /^Tego dnia odbiorą/ }).count()) ===
       1,
-    "split street ?nr=12: no next pickup on the card",
+    "split street ?nr=12: no next pickup in the waste section",
   );
   await ask.goto(`${server.origin}/adres/0972447-90004/smieci?nr=12`);
   check(

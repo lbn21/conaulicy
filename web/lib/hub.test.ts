@@ -5,6 +5,7 @@ import {
   alertSlot,
   checkedLine,
   MAX_ALERTS,
+  metaLine,
   warningCount,
 } from "./hub.ts";
 
@@ -108,4 +109,35 @@ test("checked line: a day alone, an instant with its Warsaw time, over midnight 
     line("2026-10-25T23:00:00Z"),
     "Ostatnio sprawdziliśmy: 26 października, 0:00",
   );
+});
+
+test("meta line: sources joined, a note, then when we checked, absolute", () => {
+  const link = (text: string) => ({
+    href: `https://example.org/${text}`,
+    text,
+  });
+  assert.deepEqual(
+    metaLine(
+      [[link("a"), ", sektor 1"], [link("b")]],
+      "Daty przepisał program.",
+      new Date("2026-10-28T14:52:00Z"),
+    ),
+    [
+      "Źródło: ",
+      link("a"),
+      ", sektor 1; ",
+      link("b"),
+      ". Daty przepisał program. Sprawdziliśmy 28 października, 15:52.",
+    ],
+  );
+  // A day only; no note.
+  assert.deepEqual(metaLine([["IMGW-PIB"]], null, "2026-10-23"), [
+    "Źródło: IMGW-PIB. Sprawdziliśmy 23 października.",
+  ]);
+  // Never checked: the source alone.
+  assert.deepEqual(metaLine([[link("a")]], null, null), [
+    "Źródło: ",
+    link("a"),
+    ".",
+  ]);
 });

@@ -31,11 +31,11 @@ try {
     if (response.status !== 200 || !name) {
       failures.push(`/adres/${id}: ${response.status}, not a place page`);
     } else if (
-      !/<dt class="govuk-summary-list__key">Najbliższy odbiór<\/dt><dd class="govuk-summary-list__value">\p{L}+, \d{1,2} \p{L}+<\/dd>/u.test(
+      !/>Śmieci<\/h2><p class="govuk-body govuk-!-margin-bottom-2">\p{Lu}\p{L}+, \d{1,2} \p{L}+<\/p>/u.test(
         html,
       )
     ) {
-      failures.push(`/adres/${id} (${name}): no next pickup on its card`);
+      failures.push(`/adres/${id} (${name}): no next pickup in its section`);
     } else {
       const waste = await fetch(`${server.origin}/adres/${id}/smieci`, {
         headers,

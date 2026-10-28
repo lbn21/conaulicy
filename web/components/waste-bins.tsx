@@ -9,8 +9,8 @@ import {
 } from "@/lib/waste-bin";
 
 // The bin marks, for the street page's schedule (components/pickup-schedule.tsx,
-// a client component) and the address page's waste card, a server one: no
-// "use client", so the card adds no JS.
+// a client component) and the address page's waste section, a server one: no
+// "use client", so the section adds no JS.
 
 function shade(color: string, percent: number): string {
   return `color-mix(in srgb, ${color} ${percent}%, black)`;
@@ -26,19 +26,35 @@ function rectOf(r: {
   return { x: r.x, y: r.y, width: r.width, height: r.height, rx: r.rx };
 }
 
-function WasteMark({ tone, large }: { tone: string; large: boolean }) {
+/**
+ * A mark's size: large for the next pickup, medium in the pickup list,
+ * small in a row of names (the address page): then half the medium one,
+ * 5px from its name (GOV.UK's spacing 1) and each bin 15px from the next
+ * (spacing 3), side by side.
+ */
+type Size = "large" | "medium" | "small";
+
+const SIZE: Record<Size, [number, number]> = {
+  large: [34, 48],
+  medium: [28, 40],
+  small: [14, 20],
+};
+
+function WasteMark({ tone, size }: { tone: string; size: Size }) {
   const token = TOKEN[tone];
   const fill = token ? `var(--waste-${token})` : "var(--app-bin-other)";
   const outline =
     token && OUTLINED.has(token) ? `var(--waste-${token}-border)` : "none";
-  const [width, height] = large ? [34, 48] : [28, 40];
+  const [width, height] = SIZE[size];
   return (
     <svg
       aria-hidden="true"
       width={width}
       height={height}
       viewBox={`0 0 ${BIN_WIDTH} ${BIN_HEIGHT}`}
-      className="app-bin"
+      className={
+        size === "small" ? "app-bin govuk-!-margin-right-1" : "app-bin"
+      }
       stroke={outline}
       strokeWidth="1.2"
       strokeLinejoin="round"
@@ -68,18 +84,25 @@ function WasteMark({ tone, large }: { tone: string; large: boolean }) {
 /** A day's bins: each one's mark, then its name. */
 export function Bins({
   pickups,
-  large,
+  size,
 }: {
   pickups: BinList["bins"];
-  large: boolean;
+  size: Size;
 }) {
   return (
     <ul className="govuk-list govuk-!-margin-bottom-0">
       {pickups.map((pickup) => (
-        <li key={pickup.id}>
+        <li
+          key={pickup.id}
+          className={
+            size === "small"
+              ? "govuk-!-display-inline-block govuk-!-margin-right-3"
+              : undefined
+          }
+        >
           <span aria-hidden="true">
             {tones(pickup.subtype).map((tone) => (
-              <WasteMark key={tone} tone={tone} large={large} />
+              <WasteMark key={tone} tone={tone} size={size} />
             ))}
           </span>
           {pickup.label}
