@@ -56,7 +56,7 @@ function Status({
       if (line.length === 1 && typeof line[0] !== "string" && "bins" in line[0])
         return (
           <div key={key} className={last ? "govuk-!-margin-bottom-4" : CLOSE}>
-            <Parts parts={line} />
+            <Parts parts={line} renderedAt={renderedAt} />
           </div>
         );
       return (
@@ -102,6 +102,7 @@ function ModuleSection({
             module.note?.(data) ?? null,
             module.checkedAt?.(data) ?? null,
           )}
+          renderedAt={renderedAt}
         />
       </p>
     </section>

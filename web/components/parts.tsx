@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { DayLead } from "@/components/upcoming";
 import { Bins } from "@/components/waste-bins";
-import type { Part } from "@/lib/hub";
+import { capitalised, type Part } from "@/lib/hub";
 
 // A module's lines (lib/hub.ts Part): text, links, bins, IMGW's tags and a
 // section's day lead (the island, components/upcoming.tsx), for the address
@@ -21,14 +21,15 @@ export const textOf = (parts: Part[]) =>
 
 /**
  * A line's parts as text, links, bins (a row of small ones), tags and day
- * leads; `renderedAt`, the server's render time, for a day lead.
+ * leads. `renderedAt`: the server's render time, for a day lead's island;
+ * null where no line has one (then a day lead is its date alone).
  */
 export function Parts({
   parts,
-  renderedAt = 0,
+  renderedAt,
 }: {
   parts: Part[];
-  renderedAt?: number;
+  renderedAt: number | null;
 }) {
   return parts.map((part, i) => {
     // A fixed sequence, never reordered; its texts may repeat (" ").
@@ -44,7 +45,9 @@ export function Parts({
         </strong>
       );
     if ("day" in part)
-      return (
+      return renderedAt === null ? (
+        <Fragment key={key}>{capitalised(part.text)}</Fragment>
+      ) : (
         <DayLead
           key={key}
           day={part.day}

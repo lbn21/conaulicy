@@ -89,7 +89,7 @@ export function WaterDetails({
         />
         {note && (
           <div className="govuk-inset-text">
-            <Parts parts={note} />
+            <Parts parts={note} renderedAt={null} />
           </div>
         )}
         {calendar && (
@@ -103,7 +103,7 @@ export function WaterDetails({
         )}
         {empty ? (
           <p className="govuk-body">
-            <Parts parts={empty} />
+            <Parts parts={empty} renderedAt={null} />
           </p>
         ) : (
           dates.map((date) => (
@@ -140,7 +140,7 @@ export function WaterDetails({
             </h2>
             {data.notices.map((notice) => (
               <p key={notice.uid} className="govuk-body">
-                <Parts parts={[noticeLink(notice)]} />
+                <Parts parts={[noticeLink(notice)]} renderedAt={null} />
               </p>
             ))}
           </section>
@@ -151,7 +151,7 @@ export function WaterDetails({
             <SourceInset>
               {waterSources(data).map((parts) => (
                 <p key={textOf(parts)} className="govuk-body">
-                  Źródło: <Parts parts={parts} />
+                  Źródło: <Parts parts={parts} renderedAt={null} />
                 </p>
               ))}
             </SourceInset>
