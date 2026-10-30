@@ -186,7 +186,8 @@ test("idempotent: the next run reads no page and calls the model 0 times", async
   assert.equal(summary.changed, false);
   assert.deepEqual(w.aiCalls, []);
   assert.deepEqual(w.urls, [MZGKIM_FEED]);
-  assert.deepEqual(w.purges, []);
+  // Unchanged, but checked: WATER purged, as after every written run.
+  assert.deepEqual(w.purges, [WATER]);
   const after = saved(w);
   assert.deepEqual(after.active, before.active);
   assert.deepEqual(after.seen, before.seen);

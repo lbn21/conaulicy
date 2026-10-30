@@ -60,15 +60,8 @@
 
 import { todayInWarsaw } from "./dates.ts";
 import type { Disruption, Doubt, Notice } from "./disruptions.ts";
-import { endOf } from "./hub.ts";
 import { GMINA, type WaterSource } from "./water-sources.ts";
-import {
-  current,
-  endInstant,
-  noticeUntil,
-  notOver,
-  type WarningPlace,
-} from "./zuk.ts";
+import { current, noticeUntil, notOver, type WarningPlace } from "./zuk.ts";
 import type { AiItem } from "./zuk-ai.ts";
 import type { Reason } from "./zuk-resolve.ts";
 
@@ -191,8 +184,7 @@ export type ZukFile = {
 /**
  * Whether the Warsaw day changed between `from` (exclusive, the previous
  * file's checkedAt) and `to` (inclusive, this run's start); never without a
- * previous file. The cron purges DAY on it (lib/zuk-cron.ts), and WATER
- * (movedSince).
+ * previous file. The cron purges DAY on it (lib/zuk-cron.ts).
  */
 export function dayChanged(
   previous: ZukFile | null,
@@ -200,30 +192,6 @@ export function dayChanged(
   to: Date,
 ): boolean {
   return previous !== null && todayInWarsaw(from) !== todayInWarsaw(to);
-}
-
-/**
- * Whether time alone has moved what the pages show between `from`
- * (exclusive, the previous file's checkedAt) and `to` (inclusive, this
- * run's start): the Warsaw day changed (the waste pickups, the day-level
- * data), or a cut of `previous`'s active posts passed its end (endOf, as
- * notOver; a cut without an end time ends at its next Warsaw midnight).
- * The cron purges WATER on it, so no page copy outlives that instant by
- * more than a run (lib/zuk-cron.ts).
- */
-export function movedSince(
-  previous: ZukFile | null,
-  from: Date,
-  to: Date,
-): boolean {
-  if (!previous) return false;
-  if (dayChanged(previous, from, to)) return true;
-  return previous.active.some((p) =>
-    p.items.some((d) => {
-      const end = Date.parse(endOf(d.date, endInstant(d)));
-      return from.getTime() < end && end <= to.getTime();
-    }),
-  );
 }
 
 /** The file, or null if it is not one of this version. */
