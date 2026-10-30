@@ -8,9 +8,9 @@
 // (any checkedAt aside, the rejected list too); only such a run, or one
 // after a Warsaw midnight or a cut's end, purges the WATER cache tag
 // (deps.purge); one after a Warsaw midnight also DAY; never DATASET. The
-// model reads every post and says what it is: a water cut is read for its cuts, a water-quality
-// warning for its places (not shown yet), anything else is "not-water",
-// never read again. Only the water posts that still matter are `active`;
+// model reads every post and says what it is: a water cut is read for its
+// cuts, a water-quality warning for its places (not shown yet), anything
+// else is "not-water", never read again. Only the water posts that still matter are `active`;
 // the rest is a slim `seen` record. Every item that fails the gate goes to
 // the `rejected` list, rebuilt each run from the posts in the window and
 // logged. The source's site down: the old file stays, unchanged, and turns
