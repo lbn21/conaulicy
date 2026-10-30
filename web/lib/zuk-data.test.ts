@@ -5,6 +5,7 @@ import { readPost } from "./zuk.ts";
 import {
   AI_DEFERRED,
   AI_UNAVAILABLE,
+  dayChanged,
   EXPIRED,
   movedSince,
   NOT_WATER,
@@ -533,6 +534,63 @@ test("movedSince: a Warsaw midnight or a cut's end in (from, to]", () => {
     assert.equal(
       movedSince(previous, new Date(from), new Date(to)),
       moved,
+      name,
+    );
+});
+
+test("dayChanged: a Warsaw midnight in (from, to]", () => {
+  const cases: Array<[string, ZukFile | null, string, string, boolean]> = [
+    ["no previous file", null, "2026-10-28T22:50Z", "2026-10-28T23:10Z", false],
+    ["same day", file([]), "2026-10-29T08:00Z", "2026-10-29T08:15Z", false],
+    [
+      "midnight inside",
+      file([]),
+      "2026-10-28T22:50Z",
+      "2026-10-28T23:05Z",
+      true,
+    ],
+    // 0:00 Warsaw (CET) on 29 Oct is 2026-10-28T23:00Z.
+    [
+      "midnight exactly at from",
+      file([]),
+      "2026-10-28T23:00Z",
+      "2026-10-28T23:15Z",
+      false,
+    ],
+    [
+      "midnight exactly at to",
+      file([]),
+      "2026-10-28T22:45Z",
+      "2026-10-28T23:00Z",
+      true,
+    ],
+    // DST: 24 Oct is CEST (+2), 25 Oct and 27 Mar CET (+1).
+    [
+      "CEST midnight, 24 Oct",
+      file([]),
+      "2026-10-24T21:50Z",
+      "2026-10-24T22:10Z",
+      true,
+    ],
+    [
+      "CET midnight, 25 Oct",
+      file([]),
+      "2026-10-25T22:50Z",
+      "2026-10-25T23:10Z",
+      true,
+    ],
+    [
+      "CET midnight, 27 Mar",
+      file([]),
+      "2027-03-27T22:50Z",
+      "2027-03-27T23:10Z",
+      true,
+    ],
+  ];
+  for (const [name, previous, from, to, changed] of cases)
+    assert.equal(
+      dayChanged(previous, new Date(from), new Date(to)),
+      changed,
       name,
     );
 });

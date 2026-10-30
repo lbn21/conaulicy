@@ -1,13 +1,17 @@
 import assert from "node:assert/strict";
+import { readdirSync } from "node:fs";
 import { test } from "node:test";
+import { getPathMatch } from "next/dist/shared/lib/router/utils/path-match";
 import {
   ADDRESS,
   ADDRESS_VARIANTS,
+  FILE_NAMES,
   isModuleId,
   MODULE_IDS,
   NUMBER_REWRITES,
   numberErrorPath,
   numberParam,
+  numberRedirects,
   RESERVED_SEGMENTS,
   SUBPAGE_IDS,
 } from "./address-routes.ts";
@@ -123,4 +127,59 @@ test("a /nr/ path's value: decoded, its segments joined", () => {
   assert.equal(numberParam(["7", "22"]), "7/22");
   assert.equal(numberParam(["50a"]), "50a");
   assert.equal(numberParam(["%E0%A4%A"]), "%E0%A4%A");
+});
+
+test("a subpage or file after a house number goes to the base address's one", () => {
+  const module = ":module(smieci|woda|harmonogram\\.pdf|woda\\.ics)";
+  assert.deepEqual(numberRedirects(), [
+    {
+      source: `/adres/:id/nr/:nr/${module}`,
+      destination: "/adres/:id/:module?nr=:nr",
+      permanent: true,
+    },
+    {
+      source: `/adres/:id/nr/:nr/:flat/${module}`,
+      destination: "/adres/:id/:module?nr=:nr/:flat",
+      permanent: true,
+    },
+  ]);
+});
+
+test("the number redirects match as Next.js matches them", () => {
+  const [plain, flat] = numberRedirects().map(({ source }) =>
+    getPathMatch(source),
+  );
+  for (const name of [...SUBPAGE_IDS, ...FILE_NAMES]) {
+    assert.deepEqual(
+      { ...plain(`/adres/x/nr/50/${name}`) },
+      { id: "x", nr: "50", module: name },
+    );
+    assert.deepEqual(
+      { ...flat(`/adres/x/nr/7/22/${name}`) },
+      { id: "x", nr: "7", flat: "22", module: name },
+    );
+    assert.equal(plain(`/adres/x/nr/7/22/${name}`), false, name);
+  }
+  // The dot is escaped: no other name, and the page's own number variants,
+  // stay with the page.
+  for (const path of [
+    "/adres/x/nr/50/wodaXics",
+    "/adres/x/nr/50/harmonogramXpdf",
+    "/adres/x/nr/50",
+    "/adres/x/nr/7/22",
+    "/adres/x/nr/50/pogoda",
+  ]) {
+    assert.equal(plain(path), false, path);
+    assert.equal(flat(path), false, path);
+  }
+});
+
+test("every file route under app/adres/[id]/ has its number redirect", () => {
+  const folders = readdirSync(new URL("../app/adres/[id]/", import.meta.url), {
+    withFileTypes: true,
+  })
+    .filter((entry) => entry.isDirectory() && entry.name.includes("."))
+    .map((entry) => entry.name);
+  assert.deepEqual(folders.toSorted(), [...FILE_NAMES].toSorted());
+  for (const name of FILE_NAMES) assert.ok(RESERVED_SEGMENTS.includes(name));
 });

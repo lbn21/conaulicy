@@ -30,9 +30,10 @@ export function GET(request: Request) {
     writeFile: (body) => writeZukFile(body, source.water.pathname),
     // The file's content changed, or time moved what the pages show (a
     // Warsaw midnight, a cut's end; lib/zuk-data.ts movedSince): its
-    // cached copy and every page and
-    // calendar tagged WATER, data cache and CDN alike (lib/headers.ts).
-    // Never DATASET: the waste data did not change.
+    // cached copy and every page and calendar tagged WATER; after a Warsaw
+    // midnight also DAY, the day-keyed waste data and every response built
+    // from it (lib/zuk-data.ts dayChanged). Data cache and CDN alike
+    // (lib/headers.ts). Never DATASET: the waste data did not change.
     purge: (tag) => revalidateTag(tag, { expire: 0 }),
     // The TERYT snapshot, not the database: the prompt and the gate need
     // each street's CECHA and NAZWA_1 (lib/zuk-resolve.ts). The town's

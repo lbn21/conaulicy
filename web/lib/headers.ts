@@ -6,10 +6,13 @@
  * (lib/gate.ts datasetHeaders), the CDN copies. DATASET: every database
  * read, purged by an import (app/api/revalidate). WATER: the ZUK file and
  * every response that shows water data, purged by the ZUK cron when the
- * file's content changed (lib/zuk-cron.ts).
+ * file's content changed (lib/zuk-cron.ts). DAY: the data keyed by the
+ * Warsaw day (lib/schedule.ts getPlace, getZone) and every response built
+ * from it, purged by the ZUK cron when the Warsaw day changed.
  */
 export const DATASET = "dataset";
 export const WATER = "water";
+export const DAY = "day";
 
 /** Kept by no cache: answers that must never be reused. */
 export const NO_STORE = { "Cache-Control": "no-store" };

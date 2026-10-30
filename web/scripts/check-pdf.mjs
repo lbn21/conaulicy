@@ -10,7 +10,8 @@
 // ICS and search responses carry the dataset cache tag, so an import's
 // revalidate purges their CDN copies; the water calendar, hub and /woda
 // page the water tag too, so the ZUK cron's purge reaches them, and the
-// waste subpage does not. The QR code, read back from the page,
+// waste subpage does not; the PDF, the waste calendar and every address
+// page the day tag, which the ZUK cron purges at a Warsaw midnight. The QR code, read back from the page,
 // and every printed link open the waste subpage on SITE_URL. Run after
 // `next build`; needs poppler-utils (pdfinfo, pdffonts, pdftotext).
 import { execFileSync } from "node:child_process";
@@ -66,10 +67,14 @@ const CASES = [
     status: 404,
   },
 ];
-// Responses the CDN keeps (when the gate is off), tagged for the purge: the
-// waste ones DATASET only, the water calendar WATER beside it, which the ZUK
-// cron purges (lib/headers.ts).
+// Responses the CDN keeps (when the gate is off), tagged for the purge:
+// DATASET, beside it DAY on those built from the day-keyed data and WATER
+// on the water calendar, both purged by the ZUK cron (lib/headers.ts).
 const WATER_TAGGED = ["/adres/0972447-00470/woda.ics"];
+const DAY_TAGGED = [
+  "/adres/0972447-00470/harmonogram.pdf",
+  "/ics/waste%3Amiasto-s1",
+];
 // Pages: their ISR entry's tags, Next's x-next-cache-tags (the ZUK file's
 // unstable_cache tag included), each page's own entry in .next/server.
 const PAGE_TAGS = [
@@ -77,12 +82,8 @@ const PAGE_TAGS = [
   { path: "/adres/0972447-00470/woda", water: true },
   { path: "/adres/0972447-00470/smieci", water: false },
 ];
-const TAGGED = [
-  "/adres/0972447-00470/harmonogram.pdf",
-  "/adres/0972447-90009/harmonogram.pdf",
-  "/ics/waste%3Amiasto-s1",
-  "/api/search?q=asnyka",
-];
+// The ended schedule's PDF is a 404: no day-keyed file.
+const TAGGED = ["/adres/0972447-90009/harmonogram.pdf", "/api/search?q=asnyka"];
 
 // The tags of the ISR entry `next start` wrote for a page, found by its
 // path's implicit tag; written just after the response, so polled.
@@ -348,6 +349,15 @@ try {
       `${p}: Vercel-Cache-Tag ${response.headers.get("vercel-cache-tag")}, expected dataset`,
     );
   }
+  for (const p of DAY_TAGGED) {
+    const response = await fetch(server.origin + p);
+    await response.arrayBuffer();
+    check(
+      response.status === 200 &&
+        response.headers.get("vercel-cache-tag") === "dataset,day",
+      `${p}: ${response.status}, Vercel-Cache-Tag ${response.headers.get("vercel-cache-tag")}, expected dataset,day`,
+    );
+  }
   for (const p of WATER_TAGGED) {
     const response = await fetch(server.origin + p);
     await response.arrayBuffer();
@@ -361,8 +371,10 @@ try {
     await (await fetch(server.origin + p)).text();
     const tags = await pageTags(p);
     check(
-      tags?.includes("dataset") && tags.includes("water") === water,
-      `${p}: cache tags ${tags?.join(",") ?? "(no entry)"}, expected dataset${water ? ",water" : " without water"}`,
+      tags?.includes("dataset") &&
+        tags.includes("day") &&
+        tags.includes("water") === water,
+      `${p}: cache tags ${tags?.join(",") ?? "(no entry)"}, expected dataset,day${water ? ",water" : " without water"}`,
     );
   }
   // The waste calendar's file is named after the calendar, not the zone id.
@@ -374,7 +386,7 @@ try {
     `/ics/waste%3Amiasto-s1: Content-Disposition ${disposition}`,
   );
   console.log(
-    `ok    cache tag on ${TAGGED.length + WATER_TAGGED.length} responses, ${PAGE_TAGS.length} pages`,
+    `ok    cache tag on ${TAGGED.length + DAY_TAGGED.length + WATER_TAGGED.length} responses, ${PAGE_TAGS.length} pages`,
   );
 } finally {
   server.stop();

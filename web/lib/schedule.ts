@@ -29,7 +29,7 @@ import {
   zoneMembers,
   zones,
 } from "@/lib/db";
-import { DATASET } from "@/lib/headers";
+import { DATASET, DAY } from "@/lib/headers";
 import { houseNumber } from "@/lib/house";
 import {
   gminaShortName,
@@ -59,6 +59,9 @@ import { sourcesOf } from "@/lib/waste-module";
 // hits the cache, not Neon. After an import, POST /api/revalidate purges the
 // tag. The hourly revalidate is only a safety net.
 const CACHE = { tags: [DATASET], revalidate: 3600 };
+// What is keyed by the Warsaw day is tagged DAY too, purged by the ZUK cron
+// when that day changed (lib/zuk-cron.ts), and so is every page reading it.
+const DAY_CACHE = { ...CACHE, tags: [DATASET, DAY] };
 
 type ZoneEvent = typeof events.$inferSelect & {
   /** source_files.lastSeenAt of the event's file; null: no such row. */
@@ -524,7 +527,7 @@ const placeCached = unstable_cache(
   // 121); v3: task 118 added importedAt, task 120 dropped it again; v2
   // entries lack localityId and streetId (task 117).
   ["place-v6"],
-  CACHE,
+  DAY_CACHE,
 );
 
 /**
@@ -571,7 +574,7 @@ const zoneCached = unstable_cache(
   },
   // v2: the zone's gmina (task 205).
   ["zone-v2"],
-  CACHE,
+  DAY_CACHE,
 );
 
 export function getZone(zoneId: string) {

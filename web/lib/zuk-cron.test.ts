@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { WATER } from "./headers.ts";
+import { DAY, WATER } from "./headers.ts";
 import { WP_POSTS } from "./sources/gmina-lubaczow/fetch.ts";
 import { gminaLubaczow } from "./sources/gmina-lubaczow/index.ts";
 import type { ZukPost } from "./zuk.ts";
@@ -376,7 +376,7 @@ test("purge: an unchanged run, only checkedAt new, purges nothing", async () => 
 const BEFORE_MIDNIGHT = new Date("2026-10-25T22:50:00Z");
 const AFTER_MIDNIGHT = new Date("2026-10-25T23:05:00Z");
 
-test("purge: an unchanged run over a Warsaw midnight purges WATER once, after the write", async () => {
+test("purge: an unchanged run over a Warsaw midnight purges WATER and DAY once each, after the write", async () => {
   const w = world({ posts: [], now: BEFORE_MIDNIGHT });
   await cron(w);
   w.purges = [];
@@ -384,8 +384,8 @@ test("purge: an unchanged run over a Warsaw midnight purges WATER once, after th
   w.now = AFTER_MIDNIGHT;
   const response = await cron(w, inOrder(w, order));
   assert.equal((await response.json()).changed, false);
-  assert.deepEqual(w.purges, [WATER]);
-  assert.deepEqual(order, ["write", `purge ${WATER}`]);
+  assert.deepEqual(w.purges, [WATER, DAY]);
+  assert.deepEqual(order, ["write", `purge ${WATER}`, `purge ${DAY}`]);
   // The next run, the same day: nothing.
   w.purges = [];
   w.now = new Date(AFTER_MIDNIGHT.getTime() + 15 * 60_000);
@@ -425,7 +425,7 @@ test("purge: an unchanged run past a cut's end purges WATER once", async () => {
   assert.deepEqual(w.purges, []);
 });
 
-test("purge: a changed run over a midnight still purges once", async () => {
+test("purge: a changed run over a midnight purges WATER and DAY once each", async () => {
   const w = world({ posts: [], now: BEFORE_MIDNIGHT });
   await cron(w);
   w.purges = [];
@@ -433,7 +433,7 @@ test("purge: a changed run over a midnight still purges once", async () => {
   w.now = AFTER_MIDNIGHT;
   const response = await cron(w);
   assert.equal((await response.json()).changed, true);
-  assert.deepEqual(w.purges, [WATER]);
+  assert.deepEqual(w.purges, [WATER, DAY]);
 });
 
 test("purge: over a midnight, the write fails or the source is down, nothing purged", async () => {

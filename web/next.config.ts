@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { NUMBER_REWRITES, SUBPAGE_IDS } from "./lib/address-routes";
+import { NUMBER_REWRITES, numberRedirects } from "./lib/address-routes";
 import { SITE_URL } from "./lib/config.generated";
 import { headerList, SECURITY } from "./lib/headers";
 import { indexable, NOINDEX, NOINDEX_NOFOLLOW } from "./lib/indexing";
@@ -59,24 +59,12 @@ const nextConfig: NextConfig = {
   },
   // The Vercel address goes to the permanent one, path and query kept. Only
   // this host: preview URLs (conaulicy-git-*.vercel.app) keep working. 308
-  // keeps the method, so a POST /api/revalidate still arrives. A module
-  // after a house number (/adres/<id>/nr/5/woda) is no page of its own: it
-  // goes to the module's subpage with the number in the query. Two rules,
-  // as a number has at most one slash ("7/22"): a repeated param (:nr+)
-  // cannot go into a destination's query.
+  // keeps the method, so a POST /api/revalidate still arrives. A subpage or
+  // file after a house number goes to the base address's one
+  // (lib/address-routes.ts numberRedirects).
   async redirects() {
-    const module = `:module(${SUBPAGE_IDS.join("|")})`;
     return [
-      {
-        source: `/adres/:id/nr/:nr/${module}`,
-        destination: "/adres/:id/:module?nr=:nr",
-        permanent: true,
-      },
-      {
-        source: `/adres/:id/nr/:nr/:flat/${module}`,
-        destination: "/adres/:id/:module?nr=:nr/:flat",
-        permanent: true,
-      },
+      ...numberRedirects(),
       {
         source: "/:path*",
         has: [{ type: "host", value: "conaulicy.vercel.app" }],

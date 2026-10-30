@@ -15,8 +15,8 @@ export function cacheControl(publicValue: string): string {
  * Headers of a response built from the dataset: cached by the CDN (unless
  * gated) and tagged, so an import's POST /api/revalidate deletes the CDN copy
  * too. `extraTag` beside DATASET: WATER on a response that shows water data,
- * which the ZUK cron purges (lib/headers.ts). A function, as the gate is
- * read per request.
+ * DAY on one built from the day-keyed data; the ZUK cron purges both
+ * (lib/headers.ts). A function, as the gate is read per request.
  */
 export function datasetHeaders(
   publicValue = "public, s-maxage=3600, stale-while-revalidate=86400",
