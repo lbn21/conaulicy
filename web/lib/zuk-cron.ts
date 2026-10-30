@@ -508,26 +508,33 @@ async function runOne(
  * failed); every source of `more` runs at the same time, each on its own
  * (its own file; a slow model call of one never uses up another's time
  * before the deadline): a failure is logged and listed under `sources`,
- * never the gmina's run's or the response's status. `imgw` (lib/imgw-cron.ts
- * runImgw) runs beside them, its result listed under `imgw`, and never
- * changes the water runs' result or the response's status either.
+ * never the gmina's run's or the response's status. `also.imgw`
+ * (lib/imgw-cron.ts runImgw) runs beside them, its result listed under
+ * `imgw`; `also.warm` (lib/warm.ts) once every run is done, its result
+ * listed under `warm`: neither ever changes the water runs' result or the
+ * response's status.
  */
 export async function handleZukCron(
   request: Request,
   cronSecret: string | undefined,
   deps: ZukCronDeps,
   more: ZukCronDeps[] = [],
-  imgw?: () => Promise<unknown>,
+  also: {
+    imgw?: () => Promise<unknown>;
+    warm?: () => Promise<unknown>;
+  } = {},
 ): Promise<Response> {
   const denied = cronDenied(request, cronSecret);
   if (denied) return denied;
+  const failed = (step: string) => (error: unknown) => {
+    deps.log({ [step]: "error", error: (error as Error).message });
+    return { error: "failed" };
+  };
   const [weather, [main, ...results]] = await Promise.all([
-    imgw?.().catch((error) => {
-      deps.log({ imgw: "error", error: (error as Error).message });
-      return { error: "failed" };
-    }),
+    also.imgw?.().catch(failed("imgw")),
     Promise.all([deps, ...more].map(runOne)),
   ]);
+  const warmed = await also.warm?.().catch(failed("warm"));
   const sources: Record<string, unknown> = {};
   for (const [i, run] of more.entries()) {
     const result = results[i];
@@ -538,7 +545,8 @@ export async function handleZukCron(
   }
   const extra = {
     ...(more.length > 0 ? { sources } : {}),
-    ...(imgw ? { imgw: weather } : {}),
+    ...(also.imgw ? { imgw: weather } : {}),
+    ...(also.warm ? { warm: warmed ?? null } : {}),
   };
   if (!("error" in main))
     return Response.json({ ...main, ...extra }, { headers: NO_STORE });

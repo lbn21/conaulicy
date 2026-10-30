@@ -571,7 +571,7 @@ test("imgw: runs beside the water run, listed under imgw, never its result or st
     SECRET,
     deps(world()),
     [],
-    imgw,
+    { imgw },
   );
   assert.equal(denied.status, 401);
   assert.equal(calls, 0);
@@ -581,7 +581,7 @@ test("imgw: runs beside the water run, listed under imgw, never its result or st
     SECRET,
     deps(w),
     [],
-    imgw,
+    { imgw },
   );
   assert.equal(ok.status, 200);
   assert.equal(calls, 1);
@@ -597,7 +597,7 @@ test("imgw: runs beside the water run, listed under imgw, never its result or st
     SECRET,
     deps(w),
     [],
-    failing,
+    { imgw: failing },
   );
   assert.equal(again.status, 200);
   const { imgw: failed, ...water } = await again.json();
@@ -617,13 +617,50 @@ test("imgw: runs beside the water run, listed under imgw, never its result or st
     SECRET,
     deps(w),
     [],
-    imgw,
+    { imgw },
   );
   assert.equal(down.status, 502);
   assert.deepEqual(await down.json(), {
     error: "source unavailable",
     imgw: { changed: true },
   });
+});
+
+test("warm: once every run is done, listed under warm, never the result or status", async () => {
+  const request = () =>
+    new Request("https://conaulicy.pl/api/cron/zuk", {
+      headers: { authorization: `Bearer ${SECRET}` },
+    });
+  const order: string[] = [];
+  const w = world();
+  const response = await handleZukCron(
+    request(),
+    SECRET,
+    { ...deps(w), purge: (tag) => order.push(`purge ${tag}`) },
+    [],
+    {
+      imgw: async () => {
+        order.push("imgw");
+        return { changed: false };
+      },
+      warm: async () => {
+        order.push("warm");
+        return { pages: 1 };
+      },
+    },
+  );
+  assert.equal(order.at(-1), "warm");
+  assert.ok(order.includes(`purge ${WATER}`));
+  assert.ok(order.includes("imgw"));
+  assert.deepEqual((await response.json()).warm, { pages: 1 });
+  const failing = await handleZukCron(request(), SECRET, deps(w), [], {
+    warm: async () => {
+      throw new Error("warm broke");
+    },
+  });
+  assert.equal(failing.status, 200);
+  assert.deepEqual((await failing.json()).warm, { error: "failed" });
+  assert.deepEqual(w.logs.at(-1), { warm: "error", error: "warm broke" });
 });
 
 test("the gmina's site answers with something else: the same", async () => {
