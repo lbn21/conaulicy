@@ -508,17 +508,26 @@ async function runOne(
  * failed); every source of `more` runs at the same time, each on its own
  * (its own file; a slow model call of one never uses up another's time
  * before the deadline): a failure is logged and listed under `sources`,
- * never the gmina's run's or the response's status.
+ * never the gmina's run's or the response's status. `imgw` (lib/imgw-cron.ts
+ * runImgw) runs beside them, its result listed under `imgw`, and never
+ * changes the water runs' result or the response's status either.
  */
 export async function handleZukCron(
   request: Request,
   cronSecret: string | undefined,
   deps: ZukCronDeps,
   more: ZukCronDeps[] = [],
+  imgw?: () => Promise<unknown>,
 ): Promise<Response> {
   const denied = cronDenied(request, cronSecret);
   if (denied) return denied;
-  const [main, ...results] = await Promise.all([deps, ...more].map(runOne));
+  const [weather, [main, ...results]] = await Promise.all([
+    imgw?.().catch((error) => {
+      deps.log({ imgw: "error", error: (error as Error).message });
+      return { error: "failed" };
+    }),
+    Promise.all([deps, ...more].map(runOne)),
+  ]);
   const sources: Record<string, unknown> = {};
   for (const [i, run] of more.entries()) {
     const result = results[i];
@@ -527,7 +536,10 @@ export async function handleZukCron(
         ? { error: result.down ? "source unavailable" : "failed" }
         : result;
   }
-  const extra = more.length > 0 ? { sources } : {};
+  const extra = {
+    ...(more.length > 0 ? { sources } : {}),
+    ...(imgw ? { imgw: weather } : {}),
+  };
   if (!("error" in main))
     return Response.json({ ...main, ...extra }, { headers: NO_STORE });
   return Response.json(

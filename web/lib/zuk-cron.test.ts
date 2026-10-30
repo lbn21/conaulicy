@@ -555,6 +555,77 @@ test("the gmina's site down: 502, the old file and checkedAt untouched, nothing 
   assert.deepEqual(w.purges, []);
 });
 
+test("imgw: runs beside the water run, listed under imgw, never its result or status", async () => {
+  const request = (auth: string) =>
+    new Request("https://conaulicy.pl/api/cron/zuk", {
+      headers: { authorization: auth },
+    });
+  let calls = 0;
+  const imgw = async () => {
+    calls++;
+    return { changed: true };
+  };
+  // Denied: not run.
+  const denied = await handleZukCron(
+    request("Bearer x"),
+    SECRET,
+    deps(world()),
+    [],
+    imgw,
+  );
+  assert.equal(denied.status, 401);
+  assert.equal(calls, 0);
+  const w = world();
+  const ok = await handleZukCron(
+    request(`Bearer ${SECRET}`),
+    SECRET,
+    deps(w),
+    [],
+    imgw,
+  );
+  assert.equal(ok.status, 200);
+  assert.equal(calls, 1);
+  const body = await ok.json();
+  assert.deepEqual(body.imgw, { changed: true });
+  assert.equal(body.changed, true);
+  // It throws: the water run's result and status as without it.
+  const failing = async () => {
+    throw new Error("imgw broke");
+  };
+  const again = await handleZukCron(
+    request(`Bearer ${SECRET}`),
+    SECRET,
+    deps(w),
+    [],
+    failing,
+  );
+  assert.equal(again.status, 200);
+  const { imgw: failed, ...water } = await again.json();
+  assert.deepEqual(failed, { error: "failed" });
+  assert.deepEqual(Object.keys(water), [
+    "posts",
+    "active",
+    "aiCalls",
+    "costUsd",
+    "changed",
+  ]);
+  assert.equal(water.posts, RECENT.length);
+  // The water run down: its 502 stays, the IMGW result beside it.
+  w.posts = "down";
+  const down = await handleZukCron(
+    request(`Bearer ${SECRET}`),
+    SECRET,
+    deps(w),
+    [],
+    imgw,
+  );
+  assert.equal(down.status, 502);
+  assert.deepEqual(await down.json(), {
+    error: "source unavailable",
+    imgw: { changed: true },
+  });
+});
+
 test("the gmina's site answers with something else: the same", async () => {
   const w = world({ posts: [{ id: "x" }] as unknown as ZukPost[] });
   await assert.rejects(runZuk(deps(w)), /not a list of posts/);

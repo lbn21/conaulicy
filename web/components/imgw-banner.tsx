@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { Fragment } from "react";
+import { IMGW } from "@/lib/headers";
 import { type Banner, banner, IMGW_PAGE } from "@/lib/imgw-banner";
 import {
   type Feed,
@@ -14,9 +15,12 @@ import {
 // once a slot and a failed fetch falls back to the newest slot kept
 // (lib/imgw-warnings.ts). The fresh read and the look-back must reach the
 // same entry: unstable_cache keys on the callback's source text and the key
-// parts, hence one callback text for both.
+// parts, hence one callback text for both. Tagged IMGW, so every page
+// reading it carries the tag too and the cron's purge drops it with the
+// copies (lib/imgw-cron.ts).
 const reader = (url: string) => (slot: number, load: () => Promise<Feed>) =>
   unstable_cache(() => load(), ["imgw-warnings", url, String(slot)], {
+    tags: [IMGW],
     revalidate: KEEP_SECONDS,
   })();
 

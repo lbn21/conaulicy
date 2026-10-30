@@ -8,11 +8,15 @@
  * every response that shows water data, purged by the ZUK cron when the
  * file's content changed (lib/zuk-cron.ts). DAY: the data keyed by the
  * Warsaw day (lib/schedule.ts getPlace, getZone) and every response built
- * from it, purged by the ZUK cron when the Warsaw day changed.
+ * from it, purged by the ZUK cron when the Warsaw day changed. IMGW: the
+ * copies of IMGW's warnings feed (components/imgw-banner.tsx) and every page
+ * showing them (the banner, the address pages' weather), purged by the ZUK
+ * cron when the powiat's warnings the pages show changed (lib/imgw-cron.ts).
  */
 export const DATASET = "dataset";
 export const WATER = "water";
 export const DAY = "day";
+export const IMGW = "imgw";
 
 /** Kept by no cache: answers that must never be reused. */
 export const NO_STORE = { "Cache-Control": "no-store" };

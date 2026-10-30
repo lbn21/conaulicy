@@ -46,7 +46,9 @@ export const viewport: Viewport = {
 // which each page but the address pages draws above its h1, or the address
 // pages' „Najbliższe dni” (components/hub.tsx). So none is cached for more
 // than 10 minutes: static pages become ISR, and none with a longer
-// revalidate keeps it (/ulice: 3600 before).
+// revalidate keeps it (/ulice: 3600 before). ISR still serves the first
+// visitor after a quiet spell the old page, so the cron also purges every
+// page tagged IMGW when what they show changed (lib/imgw-cron.ts).
 export const revalidate = 600;
 
 // GOV.UK's snippet, exactly as in its page template: marks browsers that run
