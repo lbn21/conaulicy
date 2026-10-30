@@ -57,6 +57,14 @@ Vercel Blob. No database writes.
    write: the file's cached copy and every response tagged with it, below.
    Never `dataset`: the waste data did not change. An unchanged run, or one
    that wrote nothing, purges nothing.
+7. After every run is done (water and IMGW, `docs/data/imgw.md`), the pages
+   carrying a tag the cron purged are rebuilt at once (`lib/warm.ts`): from
+   the sitemap's route map (`lib/site-pages.ts`: the address pages carry
+   `day`, `water` and `imgw`, their waste subpages `day`, the home and
+   static pages `imgw`), each once, four at a time, each started only with
+   its 20 s timeout and a 15 s margin left before the function's limit; the
+   rest is left for ISR. A failure is logged with its path (ids only), never
+   retried. No purge, no warming. Listed under `warm` in the response.
 
 The gmina's site down: 502, the file and its `checkedAt` stay, and it turns
 stale after an hour. xAI down: a new
