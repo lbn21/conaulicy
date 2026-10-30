@@ -5,8 +5,9 @@
 // (the gazetteer hash); keeps every other post's stored result, and writes
 // the file (lib/zuk-data.ts) on every run that read the posts: checkedAt
 // is that run, generatedAt the last run that changed what the pages read
-// (any checkedAt aside, the rejected list too); only such a run purges the
-// WATER cache tag (deps.purge), never DATASET. The model reads every post
+// (any checkedAt aside, the rejected list too); only such a run, or one
+// after a Warsaw midnight or a cut's end, purges the WATER cache tag
+// (deps.purge); one after a Warsaw midnight also DAY; never DATASET. The model reads every post
 // and says what it is: a water cut is read for its cuts, a water-quality
 // warning for its places (not shown yet), anything else is "not-water",
 // never read again. Only the water posts that still matter are `active`;
@@ -27,7 +28,7 @@
 import { createHash } from "node:crypto";
 import { addDays, isoWithOffset, todayInWarsaw } from "./dates.ts";
 import type { District } from "./districts.ts";
-import { NO_STORE, WATER } from "./headers.ts";
+import { DAY, NO_STORE, WATER } from "./headers.ts";
 import { cronDenied } from "./secret.ts";
 import { gminaLubaczow } from "./sources/gmina-lubaczow/index.ts";
 import { type PostSource, SourceDown } from "./sources/source.ts";
@@ -47,6 +48,7 @@ import {
 } from "./zuk-ai.ts";
 import {
   AI_UNAVAILABLE,
+  dayChanged,
   INVALID_REPLY,
   movedSince,
   NOT_WATER,
@@ -465,8 +467,10 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
   await deps.writeFile(JSON.stringify(file));
   // Also when time alone moved what the pages show (a Warsaw midnight, a
   // cut's end) since the last read: their cached copies filtered by then.
-  if (changed || movedSince(previous, new Date(previous.checkedAt), started))
-    deps.purge(WATER);
+  const since = new Date(previous?.checkedAt ?? started);
+  if (changed || movedSince(previous, since, started)) deps.purge(WATER);
+  // The day-keyed waste data (lib/schedule.ts) and every page reading it.
+  if (dayChanged(previous, since, started)) deps.purge(DAY);
   if (rejected.length > 0)
     deps.log({ zuk: "rejected", ...tag, gazetteer, entries: rejected });
   const summary = {

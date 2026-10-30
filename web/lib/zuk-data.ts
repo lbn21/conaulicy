@@ -189,6 +189,20 @@ export type ZukFile = {
 };
 
 /**
+ * Whether the Warsaw day changed between `from` (exclusive, the previous
+ * file's checkedAt) and `to` (inclusive, this run's start); never without a
+ * previous file. The cron purges DAY on it (lib/zuk-cron.ts), and WATER
+ * (movedSince).
+ */
+export function dayChanged(
+  previous: ZukFile | null,
+  from: Date,
+  to: Date,
+): boolean {
+  return previous !== null && todayInWarsaw(from) !== todayInWarsaw(to);
+}
+
+/**
  * Whether time alone has moved what the pages show between `from`
  * (exclusive, the previous file's checkedAt) and `to` (inclusive, this
  * run's start): the Warsaw day changed (the waste pickups, the day-level
@@ -203,7 +217,7 @@ export function movedSince(
   to: Date,
 ): boolean {
   if (!previous) return false;
-  if (todayInWarsaw(from) !== todayInWarsaw(to)) return true;
+  if (dayChanged(previous, from, to)) return true;
   return previous.active.some((p) =>
     p.items.some((d) => {
       const end = Date.parse(endOf(d.date, endInstant(d)));

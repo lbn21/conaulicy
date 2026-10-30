@@ -7,7 +7,7 @@ import { longDate, monthTitle, weekdayShort } from "@/lib/date-labels";
 import { absoluteDay } from "@/lib/dates";
 import { datasetHeaders } from "@/lib/gate";
 import { GOVUK_COLOUR, GOVUK_FUNCTIONAL } from "@/lib/govuk-colours";
-import { TEXT_PLAIN } from "@/lib/headers";
+import { DAY, TEXT_PLAIN } from "@/lib/headers";
 import { withHouseNumber } from "@/lib/house";
 import { NOINDEX } from "@/lib/indexing";
 import { LOCALE } from "@/lib/locale";
@@ -1370,7 +1370,7 @@ export async function GET(
       "Content-Type": "application/pdf",
       // With a house number: in the file name too.
       "Content-Disposition": `inline; filename="harmonogram-${fileSlug(withHouseNumber(place.label, place.nr))}.pdf"`,
-      ...datasetHeaders(),
+      ...datasetHeaders(undefined, DAY),
       ...NOINDEX,
     },
   });
