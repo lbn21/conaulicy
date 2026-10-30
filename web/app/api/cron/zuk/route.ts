@@ -1,6 +1,8 @@
 import { revalidateTag } from "next/cache";
 import { unknownStreets } from "@/lib/districts";
 import { loadDistricts } from "@/lib/districts-db";
+import { IMGW_STATE, runImgw } from "@/lib/imgw-cron";
+import { upstream } from "@/lib/imgw-warnings";
 import { gminaLubaczow } from "@/lib/sources/gmina-lubaczow";
 import { mzgkim } from "@/lib/sources/mzgkim";
 import type { PostSource } from "@/lib/sources/source";
@@ -10,7 +12,9 @@ import { readZukFile, writeZukFile } from "@/lib/zuk-store";
 
 // The water cuts of every source into its private Blob file
 // (lib/zuk-cron.ts): the gmina's posts (ZUK) and MZGKiM's at the same
-// time, each failing on its own. Vercel Cron calls it every 15 minutes (vercel.json) with
+// time, each failing on its own; beside them, IMGW's warnings, purged from
+// the pages when what they show changed (lib/imgw-cron.ts). Vercel Cron
+// calls it every 15 minutes (vercel.json) with
 // `Authorization: Bearer $CRON_SECRET`; by hand:
 //
 //   curl -H "Authorization: Bearer $CRON_SECRET" https://conaulicy.pl/api/cron/zuk
@@ -52,7 +56,24 @@ export function GET(request: Request) {
     deadline,
     log: (line) => console.log(JSON.stringify(line)),
   });
-  return handleZukCron(request, process.env.CRON_SECRET, run(gminaLubaczow), [
-    run(mzgkim),
-  ]);
+  // What the pages show of IMGW's warnings changed: the feed's cached copies
+  // and every page tagged IMGW (lib/headers.ts), data cache and CDN alike.
+  // Its signature in its own private Blob file, read and written as the
+  // water files are.
+  const imgw = async () =>
+    runImgw({
+      ...(await upstream()),
+      readState: () => readZukFile(IMGW_STATE),
+      writeState: (body) => writeZukFile(body, IMGW_STATE),
+      purge: (tag) => revalidateTag(tag, { expire: 0 }),
+      now: () => new Date(),
+      log: (line) => console.log(JSON.stringify(line)),
+    });
+  return handleZukCron(
+    request,
+    process.env.CRON_SECRET,
+    run(gminaLubaczow),
+    [run(mzgkim)],
+    imgw,
+  );
 }
