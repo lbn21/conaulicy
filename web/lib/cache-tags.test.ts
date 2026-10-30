@@ -98,12 +98,8 @@ test("the ZUK cron's route purges by revalidateTag, never DATASET", () => {
   const route = read("../app/api/cron/zuk/route.ts");
   assert.match(
     route,
-    /const purge = \(tag: string\) => \{\n\s+revalidateTag\(tag, \{ expire: 0 \}\);\n\s+purged\.add\(tag\);/,
+    /purge: \(tag\) => revalidateTag\(tag, \{ expire: 0 \}\),/,
   );
-  // Every run (each water source, IMGW) through it, and only its tags warmed.
-  assert.equal(route.match(/\n\s+purge,\n/g)?.length, 2);
-  assert.match(route, /warm\(purged, \{/);
-  assert.match(route, /return sitePages\(places, noData\);/);
   assert.doesNotMatch(route, /import \{[^}]*\bDATASET\b/);
 });
 
@@ -155,28 +151,4 @@ test("the pages: IMGW's feed cache is tagged IMGW, the only way a page reads the
     read("./modules.ts"),
     /return weather\(await imgwCopy\(now\), now\);/,
   );
-});
-
-test("the route map (lib/site-pages.ts): the sitemap reads it, its tags are the pages'", () => {
-  // The sitemap and the cron's warming share it.
-  assert.match(
-    read("../app/sitemap.ts"),
-    /return sitePages\(places, noData\)\.map/,
-  );
-  const map = read("./site-pages.ts");
-  // The static pages draw the banner (above): IMGW alone.
-  assert.match(map, /\.map\(\(path\) => \(\{\n\s+path,\n\s+tags: \[IMGW\],/);
-  // The address page loads every module: waste (getPlace, DAY), water
-  // (WATER) and the weather (imgwCopy, IMGW).
-  assert.match(
-    read("../components/hub.tsx"),
-    /const modules = MODULE_IDS\.map/,
-  );
-  assert.match(map, /\{ path, tags: \[DAY, WATER, IMGW\] \}/);
-  // The waste subpage: getPlace and the waste module alone (DAY).
-  assert.match(
-    read("../components/module-page.tsx"),
-    /getPlace\(id, nr\),\n\s+module\?\.load\(id, nr\),/,
-  );
-  assert.match(map, /\{ path: `\$\{path\}\/\$\{WASTE\}`, tags: \[DAY\] \}/);
 });

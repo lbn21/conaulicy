@@ -1,15 +1,11 @@
 import { revalidateTag } from "next/cache";
-import { SITE_URL } from "@/lib/config.generated";
 import { unknownStreets } from "@/lib/districts";
 import { loadDistricts } from "@/lib/districts-db";
 import { IMGW_STATE, runImgw } from "@/lib/imgw-cron";
 import { upstream } from "@/lib/imgw-warnings";
-import { searchIndex } from "@/lib/schedule";
-import { sitePages } from "@/lib/site-pages";
 import { gminaLubaczow } from "@/lib/sources/gmina-lubaczow";
 import { mzgkim } from "@/lib/sources/mzgkim";
 import type { PostSource } from "@/lib/sources/source";
-import { warm } from "@/lib/warm";
 import { handleZukCron, type ZukCronDeps } from "@/lib/zuk-cron";
 import { ZUK_PLACES } from "@/lib/zuk-places.generated";
 import { readZukFile, writeZukFile } from "@/lib/zuk-store";
@@ -32,12 +28,6 @@ export const maxDuration = 300;
 
 export function GET(request: Request) {
   const deadline = new Date(Date.now() + maxDuration * 1000);
-  // Every tag this run purged: its pages are warmed once the runs are done.
-  const purged = new Set<string>();
-  const purge = (tag: string) => {
-    revalidateTag(tag, { expire: 0 });
-    purged.add(tag);
-  };
   const run = (source: PostSource): ZukCronDeps => ({
     fetch,
     readFile: () => readZukFile(source.water.pathname),
@@ -48,7 +38,7 @@ export function GET(request: Request) {
     // midnight also DAY, the day-keyed waste data and every response built
     // from it (lib/zuk-data.ts dayChanged). Data cache and CDN alike
     // (lib/headers.ts). Never DATASET: the waste data did not change.
-    purge,
+    purge: (tag) => revalidateTag(tag, { expire: 0 }),
     // The TERYT snapshot, not the database: the prompt and the gate need
     // each street's CECHA and NAZWA_1 (lib/zuk-resolve.ts). The town's
     // district names (the gazetteer, lib/districts.ts) from the database.
@@ -75,7 +65,7 @@ export function GET(request: Request) {
       ...(await upstream()),
       readState: () => readZukFile(IMGW_STATE),
       writeState: (body) => writeZukFile(body, IMGW_STATE),
-      purge,
+      purge: (tag) => revalidateTag(tag, { expire: 0 }),
       now: () => new Date(),
       log: (line) => console.log(JSON.stringify(line)),
     });
@@ -84,22 +74,6 @@ export function GET(request: Request) {
     process.env.CRON_SECRET,
     run(gminaLubaczow),
     [run(mzgkim)],
-    {
-      imgw,
-      // Only after a purge (a real change): the route map's pages carrying
-      // a purged tag, rebuilt before the deadline; the rest left for ISR.
-      warm: () =>
-        warm(purged, {
-          fetch,
-          base: SITE_URL,
-          pages: async () => {
-            const { places, noData } = await searchIndex();
-            return sitePages(places, noData);
-          },
-          now: () => new Date(),
-          deadline,
-          log: (line) => console.log(JSON.stringify(line)),
-        }),
-    },
+    imgw,
   );
 }
