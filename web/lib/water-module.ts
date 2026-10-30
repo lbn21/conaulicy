@@ -47,6 +47,7 @@ import {
   type WaterSource,
   type WaterSourceId,
 } from "./water-sources.ts";
+import { endInstant } from "./zuk.ts";
 import { type ZukData, zukView } from "./zuk-data.ts";
 import { ZUK_PLACES } from "./zuk-places.generated.ts";
 
@@ -422,9 +423,16 @@ const linked = (cut: Cut, place: Address) =>
 /**
  * „Gdzie”: scope, and the number as given when the cut clearly has it; on
  * a part, a street of its village with the village: "ulica Pilipy w
- * Młodowie".
+ * Młodowie". A number the register does not have (invalidNr), beside a cut
+ * of only some houses: that we cannot tell whether it has the house.
  */
 export function cutWhere(cut: Cut, place: Water["place"]): string {
+  const where = placeWhere(cut, place);
+  if (place.invalidNr === null || certain(cut)) return where;
+  return `${where}. Nr „${place.invalidNr}” nie ma w rejestrze adresów, więc nie wiemy, czy ta przerwa obejmuje Twój dom`;
+}
+
+function placeWhere(cut: Cut, place: Water["place"]): string {
   if (inside(cut, place)) return `${scope(cut)} (obejmuje nr ${place.givenNr})`;
   if (!linked(cut, place) || !cut.label) return scope(cut);
   const { locality, street } = cut.label;
@@ -471,7 +479,7 @@ export function waterUpcoming(data: Water): Item[] {
     span: span(
       cut.date,
       cut.start && warsawToIso(cut.start),
-      cut.end && warsawToIso(cut.end, "later"),
+      endInstant(cut),
       cut.endEstimated,
     ),
     shownFrom: null,

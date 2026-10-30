@@ -86,3 +86,17 @@ test("meta line: sources joined, a note, then when we checked, absolute", () => 
     ".",
   ]);
 });
+
+test("meta line: no source, no „Źródło”; what is left, or nothing", () => {
+  assert.deepEqual(metaLine([], null, null), []);
+  assert.deepEqual(metaLine([], "Daty przepisał program.", null), [
+    "Daty przepisał program.",
+  ]);
+  assert.deepEqual(metaLine([], null, "2026-10-23"), [
+    "Sprawdziliśmy 23 października.",
+  ]);
+  assert.deepEqual(
+    metaLine([], "Daty przepisał program.", new Date("2026-10-28T14:52:00Z")),
+    ["Daty przepisał program. Sprawdziliśmy 28 października, 15:52."],
+  );
+});
