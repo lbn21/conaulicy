@@ -356,20 +356,69 @@ test("purge: a run that changes the file purges WATER once, after the write", as
   assert.deepEqual(w.purges, [WATER]);
 });
 
-test("purge: an unchanged run, only checkedAt new, purges nothing", async () => {
+test("purge: an unchanged run, only checkedAt new, purges WATER once, after the write", async () => {
   const w = world();
   await cron(w);
   await cron(w);
   for (const minutes of [15, 30, 45]) {
     w.purges = [];
-    w.writes = [];
+    const order: string[] = [];
     w.now = new Date(NOW.getTime() + minutes * 60_000);
-    const response = await cron(w);
+    const response = await cron(w, inOrder(w, order));
     assert.equal((await response.json()).changed, false);
-    assert.equal(w.writes.length, 1);
     assert.equal(saved(w).checkedAt, w.now.toISOString());
-    assert.deepEqual(w.purges, []);
+    assert.deepEqual(w.purges, [WATER]);
+    assert.deepEqual(order, ["write", `purge ${WATER}`]);
   }
+});
+
+/**
+ * The pages' read of the file (lib/zuk-store.ts): a cached copy, tagged
+ * WATER, kept until a purge of that tag drops it, as Next's data cache
+ * does; then read from the store again.
+ */
+function taggedRead(w: World) {
+  let copy: string | null | undefined;
+  return {
+    purge: (tag: string) => {
+      w.purges.push(tag);
+      if (tag === WATER) copy = undefined;
+    },
+    checkedAt: () => {
+      if (copy === undefined) copy = w.file;
+      return zukView(copy ? parseZukFile(copy) : null, w.now).checkedAt;
+    },
+  };
+}
+
+test("purge: after an unchanged run the pages read its checkedAt; after a failed one the last good run's", async () => {
+  const w = world();
+  const page = taggedRead(w);
+  const run = () => cron(w, { purge: page.purge });
+  await run();
+  await run();
+  assert.equal(page.checkedAt(), NOW.toISOString());
+  // Unchanged, 15 minutes later: the cached copy is dropped, the time new.
+  w.now = new Date(NOW.getTime() + 15 * 60_000);
+  assert.equal((await (await run()).json()).changed, false);
+  const latest = w.now.toISOString();
+  assert.equal(page.checkedAt(), latest);
+  // The source down, then the write failing: no purge, the last good time.
+  w.purges = [];
+  w.now = new Date(NOW.getTime() + 30 * 60_000);
+  const posts = w.posts;
+  w.posts = "down";
+  assert.equal((await run()).status, 502);
+  w.posts = posts;
+  const failed = await cron(w, {
+    purge: page.purge,
+    writeFile: async () => {
+      throw new Error("blob: 503");
+    },
+  });
+  assert.equal(failed.status, 500);
+  assert.deepEqual(w.purges, []);
+  assert.equal(page.checkedAt(), latest);
 });
 
 // 23:50 and 0:05 Warsaw (CET), the night of 25/26 Oct.
@@ -386,14 +435,14 @@ test("purge: an unchanged run over a Warsaw midnight purges WATER and DAY once e
   assert.equal((await response.json()).changed, false);
   assert.deepEqual(w.purges, [WATER, DAY]);
   assert.deepEqual(order, ["write", `purge ${WATER}`, `purge ${DAY}`]);
-  // The next run, the same day: nothing.
+  // The next run, the same day: WATER only, as every run.
   w.purges = [];
   w.now = new Date(AFTER_MIDNIGHT.getTime() + 15 * 60_000);
   await cron(w);
-  assert.deepEqual(w.purges, []);
+  assert.deepEqual(w.purges, [WATER]);
 });
 
-test("purge: an unchanged run past a cut's end purges WATER once", async () => {
+test("purge: an unchanged run past a cut's end purges WATER, as every run", async () => {
   const w = world();
   // Twice, as above: the second run reads what the first deferred.
   await cron(w);
@@ -418,11 +467,6 @@ test("purge: an unchanged run past a cut's end purges WATER once", async () => {
   const response = await cron(w);
   assert.equal((await response.json()).changed, false);
   assert.deepEqual(w.purges, [WATER]);
-  // (from, to]: the next run does not purge for it again.
-  w.purges = [];
-  w.now = new Date(NOW.getTime() + 30 * 60_000);
-  await cron(w);
-  assert.deepEqual(w.purges, []);
 });
 
 test("purge: a changed run over a midnight purges WATER and DAY once each", async () => {
@@ -868,7 +912,7 @@ test("rejected: kept while its post is in the window, replaced when re-read", as
   assert.deepEqual(saved(w).rejected, []);
 });
 
-test("rejected only: generatedAt and the purge stay", async () => {
+test("rejected only: generatedAt stays, WATER purged as every run", async () => {
   const w = world({ posts: [RECENT[0]], readings: { 39885: withRejected() } });
   await runZuk(deps(w));
   const file = saved(w);
@@ -881,7 +925,7 @@ test("rejected only: generatedAt and the purge stay", async () => {
   assert.deepEqual(w.aiCalls, [39885, 39885]);
   assert.equal(saved(w).rejected.length, 1);
   assert.equal(saved(w).generatedAt, file.generatedAt);
-  assert.deepEqual(w.purges, []);
+  assert.deepEqual(w.purges, [WATER]);
 });
 
 test("the districts change: only posts with rejected items are read again", async () => {

@@ -9,8 +9,8 @@ import { placePath } from "@/lib/places";
 // over are the island's (components/upcoming.tsx), from the device's clock;
 // the sections' data is the server's, filtered when it rendered (the next
 // pickup, cuts not over). That is refreshed by this window and by the water
-// cron, which purges every page tagged WATER after a Warsaw midnight or a
-// cut's end (lib/zuk-data.ts movedSince).
+// cron, which purges every page tagged WATER after every check
+// (lib/zuk-cron.ts).
 export const revalidate = 600;
 
 // No paths at build time; an empty list still makes the route ISR, not dynamic.

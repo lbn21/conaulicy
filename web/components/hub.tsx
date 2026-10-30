@@ -28,8 +28,7 @@ import { ordered } from "@/lib/upcoming";
 // the HTML are absolute; the relative words („Dziś”, „Teraz”) are the
 // island's, from the device's clock. What the sections list is the
 // server's, as of the render: a cached copy is refreshed by the ISR window
-// and the water cron's purge after a midnight or a cut's end
-// (app/adres/[id]/page.tsx). No calendar or PDF here: they
+// and the crons' purges after every check (app/adres/[id]/page.tsx). No calendar or PDF here: they
 // are on the waste subpage. A split street's number errors keep the street
 // page (StreetPage), GOV.UK's validation pattern.
 

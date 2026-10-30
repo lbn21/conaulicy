@@ -5,13 +5,13 @@
  * Cache tags: Next's data cache and, sent as Vercel-Cache-Tag
  * (lib/gate.ts datasetHeaders), the CDN copies. DATASET: every database
  * read, purged by an import (app/api/revalidate). WATER: the ZUK file and
- * every response that shows water data, purged by the ZUK cron when the
- * file's content changed (lib/zuk-cron.ts). DAY: the data keyed by the
+ * every response that shows water data, purged by the ZUK cron after
+ * every run that wrote the file (lib/zuk-cron.ts). DAY: the data keyed by the
  * Warsaw day (lib/schedule.ts getPlace, getZone) and every response built
  * from it, purged by the ZUK cron when the Warsaw day changed. IMGW: the
  * copies of IMGW's warnings feed (components/imgw-banner.tsx) and every page
  * showing them (the banner, the address pages' weather), purged by the ZUK
- * cron when the powiat's warnings the pages show changed (lib/imgw-cron.ts).
+ * cron after every good fetch of the feed (lib/imgw-cron.ts).
  */
 export const DATASET = "dataset";
 export const WATER = "water";

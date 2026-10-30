@@ -48,7 +48,7 @@ export const viewport: Viewport = {
 // than 10 minutes: static pages become ISR, and none with a longer
 // revalidate keeps it (/ulice: 3600 before). ISR still serves the first
 // visitor after a quiet spell the old page, so the cron also purges every
-// page tagged IMGW when what they show changed (lib/imgw-cron.ts).
+// page tagged IMGW after every good fetch (lib/imgw-cron.ts).
 export const revalidate = 600;
 
 // GOV.UK's snippet, exactly as in its page template: marks browsers that run
