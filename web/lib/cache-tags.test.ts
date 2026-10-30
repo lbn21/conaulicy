@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { datasetHeaders } from "./gate.ts";
-import { DATASET, DAY, WATER } from "./headers.ts";
+import { DATASET, DAY, IMGW, WATER } from "./headers.ts";
 
 // Which responses carry which cache tag (lib/headers.ts): DATASET on every
 // response built from the database, WATER beside it where water data is
-// shown, DAY where the day-keyed waste data is read, so the ZUK cron's
-// purges reach them and nothing else.
+// shown, DAY where the day-keyed waste data is read, IMGW where IMGW's
+// warnings are shown, so the ZUK cron's purges reach them and nothing else.
 
 const read = (path: string) =>
   readFileSync(new URL(path, import.meta.url), "utf8");
@@ -16,6 +16,7 @@ test("datasetHeaders: DATASET, and an extra tag beside it", () => {
   assert.equal(DATASET, "dataset");
   assert.equal(WATER, "water");
   assert.equal(DAY, "day");
+  assert.equal(IMGW, "imgw");
   assert.equal(datasetHeaders()["Vercel-Cache-Tag"], "dataset");
   assert.equal(
     datasetHeaders(undefined, WATER)["Vercel-Cache-Tag"],
@@ -100,4 +101,54 @@ test("the ZUK cron's route purges by revalidateTag, never DATASET", () => {
     /purge: \(tag\) => revalidateTag\(tag, \{ expire: 0 \}\),/,
   );
   assert.doesNotMatch(route, /import \{[^}]*\bDATASET\b/);
+});
+
+test("the pages: IMGW's feed cache is tagged IMGW, the only way a page reads the feed", () => {
+  // One cache, tagged, for every copy and slot: imgwCopy reads it alone.
+  const banner = read("../components/imgw-banner.tsx");
+  assert.match(
+    banner,
+    /unstable_cache\(\(\) => load\(\), \["imgw-warnings", url, String\(slot\)\], \{\n\s+tags: \[IMGW\],/,
+  );
+  assert.equal(banner.match(/unstable_cache\(/g)?.length, 1);
+  assert.match(banner, /return latest\(now, reader\(url\), load\);/);
+  assert.match(banner, /shown = banner\(await imgwCopy\(now\), now\);/);
+  // Every other source file: the feed only through imgwCopy (or the
+  // cron's own fetch), so every page showing it carries the tag.
+  const root = new URL("../", import.meta.url);
+  const sources = ["app", "components", "lib"]
+    .flatMap((dir) =>
+      readdirSync(new URL(dir, root), {
+        recursive: true,
+        encoding: "utf8",
+      }).map((path) => `${dir}/${path}`),
+    )
+    .filter((path) => /\.tsx?$/.test(path) && !/\.test\.ts$/.test(path))
+    .sort();
+  const readers = sources.filter((path) =>
+    /\b(fetchFeed|latest)\(/.test(readFileSync(new URL(path, root), "utf8")),
+  );
+  assert.deepEqual(readers, [
+    "components/imgw-banner.tsx",
+    "lib/imgw-cron.ts",
+    "lib/imgw-warnings.ts",
+  ]);
+  // Where the warnings are shown: the banner on these pages, the weather
+  // module (the address pages' „Pogoda” and „Najbliższe dni”).
+  const drawing = sources.filter((path) =>
+    readFileSync(new URL(path, root), "utf8").includes("<ImgwBanner />"),
+  );
+  assert.deepEqual(drawing, [
+    "app/dostepnosc/page.tsx",
+    "app/not-found.tsx",
+    "app/o-projekcie/page.tsx",
+    "app/page.tsx",
+    "app/prywatnosc/page.tsx",
+    "app/szukaj/page.tsx",
+    "app/ulice/page.tsx",
+  ]);
+  assert.match(
+    read("./modules.ts"),
+    /return weather\(await imgwCopy\(now\), now\);/,
+  );
 });
