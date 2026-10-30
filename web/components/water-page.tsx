@@ -9,7 +9,7 @@ import {
 } from "@/components/subpage-parts";
 import { absoluteDay } from "@/lib/dates";
 import { withHouseNumber } from "@/lib/house";
-import { type Checked, capitalised } from "@/lib/hub";
+import type { Checked } from "@/lib/hub";
 import { indexable } from "@/lib/indexing";
 import { placePath, titleLabel } from "@/lib/places";
 import { getPlace } from "@/lib/schedule";
@@ -79,6 +79,8 @@ export function WaterDetails({
   const trace = waterTrace(data);
   const dates = [...new Set(data.outages.map((cut) => cut.date))];
   const calendar = waterCalendarHref(data);
+  // The days' „Dziś” or „Jutro” are the island's, as the hub's sections.
+  const renderedAt = Date.now();
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
@@ -110,7 +112,10 @@ export function WaterDetails({
           dates.map((date) => (
             <section key={date} aria-labelledby={`dzien-${date}`}>
               <h2 id={`dzien-${date}`} className="govuk-heading-m">
-                {capitalised(absoluteDay(date))}
+                <Parts
+                  parts={[{ day: date, text: absoluteDay(date) }]}
+                  renderedAt={renderedAt}
+                />
               </h2>
               {data.outages
                 .filter((cut) => cut.date === date)
