@@ -20,10 +20,16 @@ export type ModuleId = (typeof MODULE_IDS)[number];
 export const SUBPAGE_IDS: readonly ModuleId[] = ["smieci", "woda"];
 
 /**
+ * The address's files, /adres/<id>/<file>: route folders under
+ * app/adres/[id]/, which take ?nr= as the subpages do.
+ */
+export const FILE_NAMES = ["harmonogram.pdf", "woda.ics"];
+
+/**
  * Folders under app/adres/[id]/ that win over app/adres/[id]/[module]/, so no
  * module may be called this.
  */
-export const RESERVED_SEGMENTS = ["nr", "numer", "harmonogram.pdf", "woda.ics"];
+export const RESERVED_SEGMENTS = ["nr", "numer", ...FILE_NAMES];
 
 export function isModuleId(slug: string): slug is ModuleId {
   return (MODULE_IDS as readonly string[]).includes(slug);
@@ -54,6 +60,32 @@ export const NUMBER_REWRITES = [
   ...rule,
   has: [{ type: "query" as const, key: "nr", value: `(?<nr>${NR_QUERY})` }],
 }));
+
+/**
+ * A subpage or file after a house number (/adres/<id>/nr/5/woda,
+ * /adres/<id>/nr/5/woda.ics) is no page of its own: it goes to the base
+ * address's one with the number in the query. Two rules, as a number has at
+ * most one slash ("7/22"): a repeated param (:nr+) cannot go into a
+ * destination's query (next.config.ts redirects()).
+ */
+export function numberRedirects() {
+  const names = [...SUBPAGE_IDS, ...FILE_NAMES].map((name) =>
+    name.replaceAll(".", "\\."),
+  );
+  const module = `:module(${names.join("|")})`;
+  return [
+    {
+      source: `/adres/:id/nr/:nr/${module}`,
+      destination: "/adres/:id/:module?nr=:nr",
+      permanent: true,
+    },
+    {
+      source: `/adres/:id/nr/:nr/:flat/${module}`,
+      destination: "/adres/:id/:module?nr=:nr/:flat",
+      permanent: true,
+    },
+  ];
+}
 
 /**
  * The value of a /nr/… path, as given: its segments decoded (a page's
