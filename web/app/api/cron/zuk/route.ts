@@ -28,7 +28,9 @@ export function GET(request: Request) {
     fetch,
     readFile: () => readZukFile(source.water.pathname),
     writeFile: (body) => writeZukFile(body, source.water.pathname),
-    // The file's content changed: its cached copy and every page and
+    // The file's content changed, or time moved what the pages show (a
+    // Warsaw midnight, a cut's end; lib/zuk-data.ts movedSince): its
+    // cached copy and every page and
     // calendar tagged WATER, data cache and CDN alike (lib/headers.ts).
     // Never DATASET: the waste data did not change.
     purge: (tag) => revalidateTag(tag, { expire: 0 }),

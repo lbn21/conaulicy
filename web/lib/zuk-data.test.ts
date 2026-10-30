@@ -6,6 +6,7 @@ import {
   AI_DEFERRED,
   AI_UNAVAILABLE,
   EXPIRED,
+  movedSince,
   NOT_WATER,
   PAST,
   parseZukFile,
@@ -412,4 +413,126 @@ test("settle: a date-change post stays while it doubts an active post", () => {
   // Not about water: never kept for that.
   const sesja = { ...change, reason: NOT_WATER };
   assert.deepEqual(ids(settle([earlier, sesja], "2026-10-18").active), [39857]);
+});
+
+// A made-up cut: only its day and end matter to movedSince.
+const cut = (date: string, end: string | null) =>
+  ({ uid: `cut-${date}-${end}`, date, start: null, end }) as Disruption;
+const withCuts = (...items: Disruption[]) =>
+  file([{ ...cutPost, itemCount: items.length, items }]);
+const cutPost: StoredPost = {
+  id: 1,
+  modified: "2026-10-01T08:00:00",
+  reader: 3,
+  url: "https://example.test/1",
+  title: "Przerwa",
+  publishedAt: "2026-10-01 08:00:00",
+  updatedAt: "2026-10-01 08:00:00",
+  sourceId: "gmina-lubaczow",
+  status: "parsed",
+  localityIds: [],
+  itemCount: 0,
+  items: [],
+};
+
+test("movedSince: a Warsaw midnight or a cut's end in (from, to]", () => {
+  // 12:00 Warsaw (CET) on 29 Oct is 11:00Z.
+  const noon = withCuts(cut("2026-10-29", "2026-10-29 12:00:00"));
+  // No end time: over at the next Warsaw midnight, 2026-10-29T23:00Z.
+  const allDay = withCuts(cut("2026-10-29", null));
+  const cases: Array<[string, ZukFile | null, string, string, boolean]> = [
+    ["no previous file", null, "2026-10-28T22:50Z", "2026-10-28T23:10Z", false],
+    ["same day, no end", noon, "2026-10-29T08:00Z", "2026-10-29T08:15Z", false],
+    [
+      "the day changes",
+      file([]),
+      "2026-10-28T22:50Z",
+      "2026-10-28T23:05Z",
+      true,
+    ],
+    [
+      "a cut's end inside",
+      noon,
+      "2026-10-29T10:50Z",
+      "2026-10-29T11:05Z",
+      true,
+    ],
+    [
+      "the end exactly at from",
+      noon,
+      "2026-10-29T11:00Z",
+      "2026-10-29T11:15Z",
+      false,
+    ],
+    [
+      "the end exactly at to",
+      noon,
+      "2026-10-29T10:45Z",
+      "2026-10-29T11:00Z",
+      true,
+    ],
+    [
+      "no end time, before midnight",
+      allDay,
+      "2026-10-29T22:40Z",
+      "2026-10-29T22:55Z",
+      false,
+    ],
+    [
+      "no end time, over midnight",
+      allDay,
+      "2026-10-29T22:50Z",
+      "2026-10-29T23:05Z",
+      true,
+    ],
+    // DST: 24 Oct is CEST (+2), 25 Oct and 27 Mar CET (+1), 28 Mar CEST.
+    [
+      "CEST midnight, 24 Oct",
+      file([]),
+      "2026-10-24T21:50Z",
+      "2026-10-24T22:10Z",
+      true,
+    ],
+    [
+      "CET 23:00, 25 Oct",
+      file([]),
+      "2026-10-25T21:50Z",
+      "2026-10-25T22:10Z",
+      false,
+    ],
+    [
+      "CET midnight, 25 Oct",
+      file([]),
+      "2026-10-25T22:50Z",
+      "2026-10-25T23:10Z",
+      true,
+    ],
+    [
+      "CET midnight, 27 Mar",
+      file([]),
+      "2027-03-27T22:50Z",
+      "2027-03-27T23:10Z",
+      true,
+    ],
+    [
+      "CEST midnight, 28 Mar",
+      file([]),
+      "2027-03-28T21:50Z",
+      "2027-03-28T22:10Z",
+      true,
+    ],
+    [
+      "CEST 1:00, 28 Mar",
+      file([]),
+      "2027-03-28T22:50Z",
+      "2027-03-28T23:10Z",
+      false,
+    ],
+  ];
+  for (const [name, previous, from, to, moved] of cases)
+    assert.equal(
+      movedSince(previous, new Date(from), new Date(to)),
+      moved,
+      name,
+    );
 });

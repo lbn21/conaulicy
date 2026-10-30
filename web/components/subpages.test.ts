@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { mock, test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MODULES } from "../lib/modules.ts";
@@ -527,4 +527,38 @@ test("/smieci: after the last date, the next year's line (task 205)", () => {
     wastePage(),
     /<p class="govuk-body">Terminy na kolejny rok dodamy, gdy je ogłoszą\.<\/p><\/section>/,
   );
+});
+
+test("/woda day headings: the island's „Dziś”, „Jutro” or „Za N dni” before the date, as dayLead", () => {
+  // The render's clock alone moves; the data is as of NOW.
+  const heading = (at: string) => {
+    mock.timers.enable({ apis: ["Date"], now: new Date(at) });
+    try {
+      return waterPage().match(
+        /<h2 id="dzien-2026-10-27" class="govuk-heading-m">([^<]*)<\/h2>/,
+      )?.[1];
+    } finally {
+      mock.timers.reset();
+    }
+  };
+  assert.equal(
+    heading("2026-10-27T05:00:00Z"),
+    "Dziś: wtorek, 27 października",
+  );
+  assert.equal(
+    heading("2026-10-26T12:00:00Z"),
+    "Jutro: wtorek, 27 października",
+  );
+  assert.equal(
+    heading("2026-10-25T12:30:00Z"),
+    "Za 2 dni: wtorek, 27 października",
+  );
+  assert.equal(heading("2026-10-19T12:00:00Z"), "Wtorek, 27 października");
+  // No cut: no day heading, the page as before.
+  mock.timers.enable({ apis: ["Date"], now: NOW });
+  try {
+    assert.doesNotMatch(waterPage([]), /id="dzien-/);
+  } finally {
+    mock.timers.reset();
+  }
 });

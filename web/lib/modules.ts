@@ -53,8 +53,8 @@ export type Module<D> = {
   upcoming(data: D): Item[];
   /**
    * Its section's lines, under the h2, always at least one: what is next,
-   * or that nothing is (absolute dates only, so a cached copy stays true;
-   * a first line's day lead is the island's).
+   * or that nothing is (absolute dates only, a first line's day lead the
+   * island's; what is next is as of the render, app/adres/[id]/page.tsx).
    */
   status(data: D): Group[];
   /** Its sources, in its section's meta line: a link each. */

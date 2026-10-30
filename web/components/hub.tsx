@@ -26,7 +26,10 @@ import { ordered } from "@/lib/upcoming";
 // No summary lists or cards (GOV.UK keeps cards for lists of the same type
 // of thing, task 131). A visible section break between sections. Dates in
 // the HTML are absolute; the relative words („Dziś”, „Teraz”) are the
-// island's, so a cached copy is never wrong. No calendar or PDF here: they
+// island's, from the device's clock. What the sections list is the
+// server's, as of the render: a cached copy is refreshed by the ISR window
+// and the water cron's purge after a midnight or a cut's end
+// (app/adres/[id]/page.tsx). No calendar or PDF here: they
 // are on the waste subpage. A split street's number errors keep the street
 // page (StreetPage), GOV.UK's validation pattern.
 

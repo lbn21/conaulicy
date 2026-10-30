@@ -9,7 +9,7 @@ import {
 } from "@/components/subpage-parts";
 import { absoluteDay } from "@/lib/dates";
 import { withHouseNumber } from "@/lib/house";
-import { type Checked, capitalised } from "@/lib/hub";
+import type { Checked } from "@/lib/hub";
 import { indexable } from "@/lib/indexing";
 import { placePath, titleLabel } from "@/lib/places";
 import { getPlace } from "@/lib/schedule";
@@ -36,8 +36,9 @@ import { sourcesAt } from "@/lib/water-sources";
 // (lib/water-ics.ts), then every planned cut still to come at this
 // address, a day each, with its hours and what is cut, then posts we could
 // not match to addresses, as links only, then the AI-read note and the
-// posts as the source. Dates are absolute, so a cached copy stays
-// true.
+// posts as the source. Dates are absolute; the cuts are those not over at
+// the render, and the water cron purges the page when one ends
+// (lib/zuk-data.ts movedSince).
 
 const H1 = "Przerwy w dostawie wody";
 
@@ -78,6 +79,8 @@ export function WaterDetails({
   const trace = waterTrace(data);
   const dates = [...new Set(data.outages.map((cut) => cut.date))];
   const calendar = waterCalendarHref(data);
+  // The days' „Dziś” or „Jutro” are the island's, as the hub's sections.
+  const renderedAt = Date.now();
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
@@ -109,7 +112,10 @@ export function WaterDetails({
           dates.map((date) => (
             <section key={date} aria-labelledby={`dzien-${date}`}>
               <h2 id={`dzien-${date}`} className="govuk-heading-m">
-                {capitalised(absoluteDay(date))}
+                <Parts
+                  parts={[{ day: date, text: absoluteDay(date) }]}
+                  renderedAt={renderedAt}
+                />
               </h2>
               {data.outages
                 .filter((cut) => cut.date === date)

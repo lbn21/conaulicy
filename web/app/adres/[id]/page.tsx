@@ -4,9 +4,13 @@ import { placePath } from "@/lib/places";
 
 // The address page, the hub of modules (components/hub.tsx). Rendered on
 // first visit, then served from the cache like a static page. Regenerate
-// every 10 minutes, so the static HTML drops past pickups and ended IMGW
-// warnings; its dates are absolute, so a copy cached over midnight stays
-// true.
+// every 10 minutes; a stale copy is served once more while it does, so it
+// can be hours old. The relative words („Dziś”, „Jutro”) and hiding what is
+// over are the island's (components/upcoming.tsx), from the device's clock;
+// the sections' data is the server's, filtered when it rendered (the next
+// pickup, cuts not over). That is refreshed by this window and by the water
+// cron, which purges every page tagged WATER after a Warsaw midnight or a
+// cut's end (lib/zuk-data.ts movedSince).
 export const revalidate = 600;
 
 // No paths at build time; an empty list still makes the route ISR, not dynamic.
