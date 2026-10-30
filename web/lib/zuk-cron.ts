@@ -10,14 +10,15 @@
 // (deps.purge); one after a Warsaw midnight also DAY; never DATASET. The
 // model reads every post and says what it is: a water cut is read for its
 // cuts, a water-quality warning for its places (not shown yet), anything
-// else is "not-water", never read again. Only the water posts that still matter are `active`;
-// the rest is a slim `seen` record. Every item that fails the gate goes to
-// the `rejected` list, rebuilt each run from the posts in the window and
-// logged. The source's site down: the old file stays, unchanged, and turns
-// stale. xAI down: new and edited posts are retried next run, never shown;
-// so are those over the run's cap. A post read before keeps that reading
-// until it is read again. A file of an older version: no file, every post
-// is read afresh. Dependencies come in, so the tests mock them.
+// else is "not-water", never read again. Only the water posts that still
+// matter are `active`; the rest is a slim `seen` record. Every item that
+// fails the gate goes to the `rejected` list, rebuilt each run from the
+// posts in the window and logged. The source's site down: the old file
+// stays, unchanged, and turns stale. xAI down: new and edited posts are
+// retried next run, never shown; so are those over the run's cap. A post
+// read before keeps that reading until it is read again. A file of an older
+// version: no file, every post is read afresh. Dependencies come in, so the
+// tests mock them.
 //
 // One run reads one source (lib/sources) into its own file; the route runs
 // every source at the same time (handleZukCron), each failing on its own,
