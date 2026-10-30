@@ -369,6 +369,95 @@ test("purge: an unchanged run, only checkedAt new, purges nothing", async () => 
   }
 });
 
+// 23:50 and 0:05 Warsaw (CET), the night of 25/26 Oct.
+const BEFORE_MIDNIGHT = new Date("2026-10-25T22:50:00Z");
+const AFTER_MIDNIGHT = new Date("2026-10-25T23:05:00Z");
+
+test("purge: an unchanged run over a Warsaw midnight purges WATER once, after the write", async () => {
+  const w = world({ posts: [], now: BEFORE_MIDNIGHT });
+  await cron(w);
+  w.purges = [];
+  const order: string[] = [];
+  w.now = AFTER_MIDNIGHT;
+  const response = await cron(w, {
+    writeFile: async (body) => {
+      order.push("write");
+      w.file = body;
+    },
+    purge: (tag) => {
+      order.push(`purge ${tag}`);
+      w.purges.push(tag);
+    },
+  });
+  assert.equal((await response.json()).changed, false);
+  assert.deepEqual(w.purges, [WATER]);
+  assert.deepEqual(order, ["write", `purge ${WATER}`]);
+  // The next run, the same day: nothing.
+  w.purges = [];
+  w.now = new Date(AFTER_MIDNIGHT.getTime() + 15 * 60_000);
+  await cron(w);
+  assert.deepEqual(w.purges, []);
+});
+
+test("purge: an unchanged run past a cut's end purges WATER once", async () => {
+  const w = world();
+  // Twice, as above: the second run reads what the first deferred.
+  await cron(w);
+  await cron(w);
+  // A made-up cut in a kept post, over at 9:10 Warsaw (CET), 08:10Z:
+  // between this file's checkedAt (NOW) and the next run.
+  const file = saved(w);
+  const [first, ...rest] = file.active;
+  const cut = {
+    ...first.items[0],
+    uid: "made-up",
+    date: "2026-10-25",
+    start: null,
+    end: "2026-10-25 09:10:00",
+  };
+  w.file = JSON.stringify({
+    ...file,
+    active: [{ ...first, items: [...first.items, cut] }, ...rest],
+  });
+  w.purges = [];
+  w.now = new Date(NOW.getTime() + 15 * 60_000);
+  const response = await cron(w);
+  assert.equal((await response.json()).changed, false);
+  assert.deepEqual(w.purges, [WATER]);
+  // (from, to]: the next run does not purge for it again.
+  w.purges = [];
+  w.now = new Date(NOW.getTime() + 30 * 60_000);
+  await cron(w);
+  assert.deepEqual(w.purges, []);
+});
+
+test("purge: a changed run over a midnight still purges once", async () => {
+  const w = world({ posts: [], now: BEFORE_MIDNIGHT });
+  await cron(w);
+  w.purges = [];
+  w.posts = RECENT;
+  w.now = AFTER_MIDNIGHT;
+  const response = await cron(w);
+  assert.equal((await response.json()).changed, true);
+  assert.deepEqual(w.purges, [WATER]);
+});
+
+test("purge: over a midnight, the write fails or the source is down, nothing purged", async () => {
+  const w = world({ posts: [], now: BEFORE_MIDNIGHT });
+  await cron(w);
+  w.purges = [];
+  w.now = AFTER_MIDNIGHT;
+  const failed = await cron(w, {
+    writeFile: async () => {
+      throw new Error("blob: 503");
+    },
+  });
+  assert.equal(failed.status, 500);
+  w.posts = "down";
+  assert.equal((await cron(w)).status, 502);
+  assert.deepEqual(w.purges, []);
+});
+
 test("purge: the write fails, nothing purged", async () => {
   const w = world();
   const response = await cron(w, {

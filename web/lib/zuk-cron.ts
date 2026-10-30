@@ -48,6 +48,7 @@ import {
 import {
   AI_UNAVAILABLE,
   INVALID_REPLY,
+  movedSince,
   NOT_WATER,
   parseZukFile,
   type RejectedEntry,
@@ -462,7 +463,10 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     retries: retries.filter((r) => window.has(r.postId)),
   };
   await deps.writeFile(JSON.stringify(file));
-  if (changed) deps.purge(WATER);
+  // Also when time alone moved what the pages show (a Warsaw midnight, a
+  // cut's end) since the last read: their cached copies filtered by then.
+  if (changed || movedSince(previous, new Date(previous.checkedAt), started))
+    deps.purge(WATER);
   if (rejected.length > 0)
     deps.log({ zuk: "rejected", ...tag, gazetteer, entries: rejected });
   const summary = {
