@@ -1,7 +1,7 @@
 import { revalidateTag } from "next/cache";
 import { unknownStreets } from "@/lib/districts";
 import { loadDistricts } from "@/lib/districts-db";
-import { IMGW_STATE, runImgw } from "@/lib/imgw-cron";
+import { runImgw } from "@/lib/imgw-cron";
 import { upstream } from "@/lib/imgw-warnings";
 import { gminaLubaczow } from "@/lib/sources/gmina-lubaczow";
 import { mzgkim } from "@/lib/sources/mzgkim";
@@ -13,7 +13,7 @@ import { readZukFile, writeZukFile } from "@/lib/zuk-store";
 // The water cuts of every source into its private Blob file
 // (lib/zuk-cron.ts): the gmina's posts (ZUK) and MZGKiM's at the same
 // time, each failing on its own; beside them, IMGW's warnings, purged from
-// the pages when what they show changed (lib/imgw-cron.ts). Vercel Cron
+// the pages after every good fetch (lib/imgw-cron.ts). Vercel Cron
 // calls it every 15 minutes (vercel.json) with
 // `Authorization: Bearer $CRON_SECRET`; by hand:
 //
@@ -32,8 +32,7 @@ export function GET(request: Request) {
     fetch,
     readFile: () => readZukFile(source.water.pathname),
     writeFile: (body) => writeZukFile(body, source.water.pathname),
-    // The file's content changed, or time moved what the pages show (a
-    // Warsaw midnight, a cut's end; lib/zuk-data.ts movedSince): its
+    // After every run that wrote the file (a new checkedAt at least): its
     // cached copy and every page and calendar tagged WATER; after a Warsaw
     // midnight also DAY, the day-keyed waste data and every response built
     // from it (lib/zuk-data.ts dayChanged). Data cache and CDN alike
@@ -56,17 +55,12 @@ export function GET(request: Request) {
     deadline,
     log: (line) => console.log(JSON.stringify(line)),
   });
-  // What the pages show of IMGW's warnings changed: the feed's cached copies
-  // and every page tagged IMGW (lib/headers.ts), data cache and CDN alike.
-  // Its signature in its own private Blob file, read and written as the
-  // water files are.
+  // After every good fetch of IMGW's feed: the feed's cached copies and
+  // every page tagged IMGW (lib/headers.ts), data cache and CDN alike.
   const imgw = async () =>
     runImgw({
       ...(await upstream()),
-      readState: () => readZukFile(IMGW_STATE),
-      writeState: (body) => writeZukFile(body, IMGW_STATE),
       purge: (tag) => revalidateTag(tag, { expire: 0 }),
-      now: () => new Date(),
       log: (line) => console.log(JSON.stringify(line)),
     });
   return handleZukCron(
