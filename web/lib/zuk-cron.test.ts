@@ -326,19 +326,22 @@ test("unchanged posts: every run writes a new checkedAt, generatedAt kept", asyn
   }
 });
 
+/** The run's writes and purges, as they happen, into `order`. */
+const inOrder = (w: World, order: string[]): Partial<ZukCronDeps> => ({
+  writeFile: async (body) => {
+    order.push("write");
+    w.file = body;
+  },
+  purge: (tag) => {
+    order.push(`purge ${tag}`);
+    w.purges.push(tag);
+  },
+});
+
 test("purge: a run that changes the file purges WATER once, after the write", async () => {
   const w = world();
   const order: string[] = [];
-  const response = await cron(w, {
-    writeFile: async (body) => {
-      order.push("write");
-      w.file = body;
-    },
-    purge: (tag) => {
-      order.push(`purge ${tag}`);
-      w.purges.push(tag);
-    },
-  });
+  const response = await cron(w, inOrder(w, order));
   assert.equal(response.status, 200);
   assert.equal((await response.json()).changed, true);
   assert.deepEqual(w.purges, [WATER]);
@@ -379,16 +382,7 @@ test("purge: an unchanged run over a Warsaw midnight purges WATER once, after th
   w.purges = [];
   const order: string[] = [];
   w.now = AFTER_MIDNIGHT;
-  const response = await cron(w, {
-    writeFile: async (body) => {
-      order.push("write");
-      w.file = body;
-    },
-    purge: (tag) => {
-      order.push(`purge ${tag}`);
-      w.purges.push(tag);
-    },
-  });
+  const response = await cron(w, inOrder(w, order));
   assert.equal((await response.json()).changed, false);
   assert.deepEqual(w.purges, [WATER]);
   assert.deepEqual(order, ["write", `purge ${WATER}`]);
