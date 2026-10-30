@@ -50,7 +50,10 @@ export function GET(request: Request) {
     xaiKey: process.env.XAI_API_KEY,
     now: () => new Date(),
     deadline,
-    log: (line) => console.log(JSON.stringify(line)),
+    log: (line) =>
+      console.log(
+        JSON.stringify({ ...line, region: process.env.VERCEL_REGION }),
+      ),
   });
   return handleZukCron(request, process.env.CRON_SECRET, run(gminaLubaczow), [
     run(mzgkim),
