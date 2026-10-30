@@ -65,7 +65,7 @@ const allBins = (place: PlaceView, day: PickupDay) =>
 
 /**
  * The section's lines, always some: the next pickup's day (absolute, its
- * „Dziś” or „Za 5 dni” put by the island, so a cached copy stays true),
+ * „Dziś” or „Za 5 dni” put by the island; the day as of the render),
  * what goes that day („wszystkie pojemniki” when
  * it is every fraction the place has, more than one) and when to put them
  * out; on a split street without a number, the question's page; or why

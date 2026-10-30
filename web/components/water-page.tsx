@@ -36,8 +36,9 @@ import { sourcesAt } from "@/lib/water-sources";
 // (lib/water-ics.ts), then every planned cut still to come at this
 // address, a day each, with its hours and what is cut, then posts we could
 // not match to addresses, as links only, then the AI-read note and the
-// posts as the source. Dates are absolute, so a cached copy stays
-// true.
+// posts as the source. Dates are absolute; the cuts are those not over at
+// the render, and the water cron purges the page when one ends
+// (lib/zuk-data.ts movedSince).
 
 const H1 = "Przerwy w dostawie wody";
 
