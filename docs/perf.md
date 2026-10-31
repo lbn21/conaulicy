@@ -27,7 +27,7 @@ Lighthouse (npm `lighthouse`, free, no Lighthouse CI server) with its mobile set
 
 **Hard gates:** LCP, TBT and the search keystroke are what people feel. CLS left the hard gates (Jakub's decision, 31 Oct 2026): live blocks reveal after the static shell (`docs/layout.md`), and a little shift on reveal is accepted. It is still reported; `check-fonts` and `check-search` hold a reveal to web.dev's "good" CLS (0.1), and a late font must still move nothing (< 0.001). They never move to make room for code; if one fails, report to Jakub.
 
-**Adaptable:** the size budgets (first-load JS, HTML, fonts, PDF) follow GOV.UK Frontend's CSS and JS and alphagov accessible-autocomplete, which are used as-is. Since task 227 accessible-autocomplete (its React build, about 16 KB gzip) is part of the home page's and `/szukaj`'s first-load JS, rendered on the server and hydrated, instead of a chunk loaded once the page is idle: the field is the same element before and after hydration.
+**Adaptable:** the size budgets (first-load JS, HTML, fonts, PDF) follow GOV.UK Frontend's CSS and JS and alphagov accessible-autocomplete, which are used as-is. Since task 227 accessible-autocomplete (its React build, about 16 KB gzip) is part of the home page's first-load JS, rendered on the server and hydrated, instead of a chunk loaded once the page is idle: the field is the same element before and after hydration.
 
 ## Flake fixed: real throttling (2026-10-19)
 

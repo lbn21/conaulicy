@@ -33,7 +33,7 @@ Each needs Jakub's OK; listed here so nothing drifts silently.
 One component, `Breadcrumbs` (`web/components/breadcrumbs.tsx`), GOV.UK's breadcrumbs: every item a link, the page itself left out, `aria-label` „Ścieżka nawigacyjna”.
 
 - Only on the address pages (`/adres/<id>` and its subpages): „Strona główna”, the locality, and on a module's subpage the address page (`PlaceBreadcrumbs`, `web/components/place-page.tsx`).
-- None anywhere else: `/szukaj`, `/o-projekcie`, `/prywatnosc`, `/dostepnosc`, `/ulice`, the home page and the 404. GOV.UK: „Do not use the breadcrumbs component on websites with a flat structure”, and the rest of the site is flat (Jakub's decision, task 149; task 146 had added „Strona główna” there).
+- None anywhere else: `/o-projekcie`, `/prywatnosc`, `/dostepnosc`, `/ulice`, the home page and the 404. GOV.UK: „Do not use the breadcrumbs component on websites with a flat structure”, and the rest of the site is flat (Jakub's decision, task 149; task 146 had added „Strona główna” there).
 - Before `<main>`, inside `govuk-width-container`, as GOV.UK places them: „Always place breadcrumbs at the top of a page, before the `<main>` element”, so the skip link („Przejdź do treści”, `#main-content`) skips them along with the header. So each page renders its own `<main>` (`PageMain`, `web/components/page-main.tsx`); the layout has only the container. The IMGW banner is the first thing in `<main>` on every page that has it (every page but the address pages and the 404 page, `docs/data/imgw.md`).
 - Spacing as when they were inside `<main>`: `govuk-!-margin-top-7` stands in for main's top padding, and GOV.UK's own 10 px margin-bottom plus main's padding give the 30/50 px gap to the h1. GOV.UK's spacing scale has no 20/40 px step, so on mobile they sit 5 px lower than before (25 px under the header, not 20); identical from tablet up.
 
@@ -53,7 +53,7 @@ GOV.UK's title is the page's h1, then „ – conaulicy.pl”. A place's pages a
 ## Indexing
 
 - Indexed, and in the sitemap (`web/app/sitemap.ts`): the static pages, and for each place with data its hub and `/smieci`.
-- `noindex` and not in the sitemap: `/woda` (its content lasts days and is mostly empty; it stays so), the house-number variants (`?nr=`, `/nr/…`, canonical to the hub), `/numer`, `/szukaj`, PDFs, ICS files, and places with no data.
+- `noindex` and not in the sitemap: `/woda` (its content lasts days and is mostly empty; it stays so), the house-number variants (`?nr=`, `/nr/…`, canonical to the hub), `/numer`, PDFs, ICS files, and places with no data.
 - `web/scripts/check-indexing.mjs` checks both lists, and that every URL in the sitemap is indexable (200, no noindex, canonical itself).
 
 ## Site-wide: the same job, the same component
@@ -75,7 +75,7 @@ Every page is a static shell; what changes between imports is a live block, its 
 - **Freshness:** a block's „Sprawdziliśmy” comes from the same read as its data. The IMGW line is always there: „Ostrzeżenia IMGW: brak ostrzeżeń dla powiatu lubaczowskiego · sprawdziliśmy 14:52” when there is none, its source linked.
 - **„Dziś”, „Jutro”, „Za 5 dni”:** the device's, never the server's (`DayWord`, `web/components/day-word.tsx`, `use(browser())`): a word-wide skeleton in the HTML, then the word. The dates around it are absolute, with their weekday, in the HTML.
 
-`/szukaj` is static too: its heading („Wyszukaj adres”, one for every outcome) and the search field (empty) are in the static shell, never behind a skeleton; only its results are drawn in the browser (`web/components/search-results.tsx`). After „Szukaj” they are there at once, from the index already in memory (a search with one place never shows `/szukaj`: it opens the place); on a direct visit they sit behind `web/components/search-skeleton.tsx` (about one result) until the index is in. An empty search shows GOV.UK's error summary and field error on the page where it was submitted (`SearchErrorSummary`, `web/components/address-search.tsx`), never on load.
+The search lives only on the home page (no `/szukaj`, task 227): its field is in the static shell, the same element before and after hydration (`web/components/address-search.tsx`). What „Szukaj” finds is drawn under the field, in a polite live region: one place opens its page; several are listed („Wyniki wyszukiwania”, h2, then „Dla „…” znaleźliśmy 3 adresy. Wybierz swój.” and the links); none is plain text, never an error („Nie znaleźliśmy „…””, h2, then what to try). While the index is still loading, `web/components/search-skeleton.tsx` (one result) holds the place. GOV.UK's error summary and field error only for an empty submit, never on load.
 
 ## Home-screen app
 
