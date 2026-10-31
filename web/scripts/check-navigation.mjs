@@ -21,6 +21,11 @@ function check(ok, message) {
 }
 
 const HUB = "/adres/0972447-00470";
+// The one place "rynek" finds in the CI fixture.
+const ONE_PLACE = "/adres/0972447-19253";
+// From „Szukaj” to the place's h1 once prefetched: a frame or a few, no
+// round trip (a request on the local server takes longer).
+const SEARCH_SWITCH = 100;
 
 const server = await startServer(3313);
 const browser = await chromium.launch();
@@ -168,9 +173,14 @@ try {
       return {
         marker: window.__oneDocument === true,
         crumbs: nav.length,
-        beforeMain: nav.every(
-          (el) => el.nextElementSibling?.id === "main-content",
-        ),
+        // The next rendered element: the slot's left pages stay in the
+        // document, hidden (Activity), next to it.
+        beforeMain: nav.every((el) => {
+          let next = el.nextElementSibling;
+          while (next && !next.checkVisibility())
+            next = next.nextElementSibling;
+          return next?.id === "main-content";
+        }),
         focus:
           active === document.body ||
           (active?.checkVisibility() ?? false) ||
@@ -280,6 +290,59 @@ try {
   await imgwLine("home");
 } catch (error) {
   check(false, `navigation walk: ${error}`);
+}
+
+// „Szukaj” with one place: its page is prefetched while typing settles
+// (components/address-search.tsx), so from the click to its h1 on screen is
+// instant: logged, and at most SEARCH_SWITCH ms.
+try {
+  const search = await browser.newPage({
+    viewport: { width: 360, height: 800 },
+  });
+  const indexIn = search.waitForResponse((r) =>
+    r.url().includes("/api/search-index/"),
+  );
+  await search.goto(`${server.origin}/`, { waitUntil: "load" });
+  await indexIn;
+  const prefetched = search.waitForRequest(
+    (r) =>
+      new URL(r.url()).pathname === ONE_PLACE &&
+      r.headers()["next-router-prefetch"] === "1",
+    { timeout: 5000 },
+  );
+  await search.getByRole("combobox").pressSequentially("rynek");
+  await search.getByRole("combobox").press("Escape");
+  await prefetched;
+  await search.waitForLoadState("networkidle");
+  const ms = await search.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const home = document.querySelector("h1")?.textContent;
+        const start = performance.now();
+        document.querySelector("search button[type=submit]").click();
+        const frame = () => {
+          const h1 = [...document.querySelectorAll("h1")].find(
+            (el) => el.checkVisibility() && el.textContent !== home,
+          );
+          if (h1) resolve(performance.now() - start);
+          else if (performance.now() - start > 10000) resolve(null);
+          else requestAnimationFrame(frame);
+        };
+        frame();
+      }),
+  );
+  console.log(`„Szukaj” with one place (prefetched): its h1 after ${ms} ms`);
+  check(
+    ms !== null && ms <= SEARCH_SWITCH,
+    `„Szukaj” with one place: its h1 after ${ms} ms (at most ${SEARCH_SWITCH})`,
+  );
+  check(
+    new URL(search.url()).pathname === ONE_PLACE,
+    `„Szukaj” with one place: at ${search.url()}`,
+  );
+  await search.close();
+} catch (error) {
+  check(false, `„Szukaj” with one place: ${error}`);
 } finally {
   await browser.close();
   await server.stop();
