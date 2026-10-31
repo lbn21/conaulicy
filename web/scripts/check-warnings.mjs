@@ -178,9 +178,11 @@ const shots = []; // [width, state, file]
 let port = 3320;
 
 // Drop a page from the ISR cache, so the next request renders it: the
-// build's prerendered copy and any copy rendered since (route-cache).
+// build's prerendered copy and any copy rendered since (route-cache). Cached
+// by its path, never its query: /szukaj?q=… is /szukaj's prerendered shell,
+// which holds the banner (task 222).
 function forget(page) {
-  const name = page === "/" ? "index" : page.slice(1);
+  const name = page === "/" ? "index" : page.slice(1).split("?")[0];
   const routeCache = ".next/server/route-cache/APP_PAGE";
   const bases = [
     path.join(".next/server/app", name),
