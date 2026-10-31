@@ -1,6 +1,4 @@
 import "server-only";
-import { unstable_cache } from "next/cache";
-import { WATER } from "./headers.ts";
 import { readBlobFile, writeBlobFile } from "./live-store.ts";
 import {
   GMINA,
@@ -11,9 +9,8 @@ import {
 import { parseZukFile, type ZukData, zukView } from "./zuk-data.ts";
 
 // Each water source's file in the private Blob store (lib/live-store.ts,
-// lib/water-sources.ts pathname): read through Next's data cache for the
-// pages, tagged WATER, so the cron's purge (lib/zuk-cron.ts) drops it and
-// every page rendered from it (the tag is the pages' too).
+// lib/water-sources.ts pathname): the cron reads its origin, the pages'
+// live blocks its CDN copy, per request (at most 60 s behind a write).
 
 /**
  * A file's body from the Blob's origin, or null if there is none yet.
@@ -29,11 +26,6 @@ export function writeZukFile(
 ): Promise<void> {
   return writeBlobFile(pathname, body);
 }
-
-const cached = unstable_cache(readZukFile, ["zuk-file"], {
-  tags: [WATER],
-  revalidate: 600,
-});
 
 /**
  * `next dev` only: ZUK_MOCK (the gmina's) and MZGKIM_MOCK, each a fixture
@@ -69,7 +61,7 @@ async function sourceData(source: WaterSource, now: Date): Promise<ZukData> {
   if (mock) return mock;
   let body: string | null = null;
   try {
-    body = await cached(source.pathname);
+    body = await readBlobFile(source.pathname, { cdn: true });
   } catch (error) {
     console.error(`${source.pathname}: ${(error as Error).message}`);
   }

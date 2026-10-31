@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
-import { ImgwBanner } from "@/components/imgw-banner";
+import { ImgwLive } from "@/components/imgw-banner";
 import { PageMain } from "@/components/page-main";
-import { DATASET, IMGW } from "@/lib/headers";
+import { DATASET } from "@/lib/headers";
 import { type ListedPlace, localityAnchor, placePath } from "@/lib/places";
 import { searchIndex } from "@/lib/schedule";
 import { pageMetadata } from "@/lib/share";
@@ -21,13 +21,22 @@ export const metadata: Metadata = pageMetadata({
  * letter (Polish order), then the villages, each a link, with their streets
  * under it if they have any. No client JS of its own.
  */
-export default async function AllPlacesPage() {
-  // From the cached search index, as the sitemap: the same places, purged
-  // with it (tag `dataset`, POST /api/revalidate). Cached as every page
-  // (next.config.ts `page`, 10 minutes: the banner's IMGW copy).
+export default function AllPlacesPage() {
+  return (
+    <PageMain>
+      <ImgwLive />
+      <AllPlaces />
+    </PageMain>
+  );
+}
+
+// The page's static shell but the IMGW banner (its own hole): from the
+// cached search index, as the sitemap, the same places, cached until the
+// next import (tag `dataset`, POST /api/revalidate) or deploy.
+async function AllPlaces() {
   "use cache";
-  cacheLife("page");
-  cacheTag(DATASET, IMGW);
+  cacheLife("max");
+  cacheTag(DATASET);
   const { list, noData } = await searchIndex();
   const without = new Set(noData);
   const town = list.townId ? localityAnchor(list.townId) : undefined;
@@ -43,70 +52,67 @@ export default async function AllPlacesPage() {
   );
 
   return (
-    <PageMain>
-      <ImgwBanner />
-      <div className="govuk-grid-row">
-        <div className="govuk-grid-column-two-thirds">
-          <h1 className="govuk-heading-l">{ALL_PLACES.text}</h1>
-          <p className="govuk-body-l">
-            Wybierz swoją ulicę albo wieś, żeby zobaczyć terminy wywozu śmieci,
-            przerwy w dostawie wody i ostrzeżenia IMGW.
-          </p>
-          <p className="govuk-body govuk-!-margin-bottom-8">
-            Wolisz wpisać adres?{" "}
-            <a href="/" className="govuk-link">
-              Wyszukaj go na stronie głównej
-            </a>
-            .
-          </p>
+    <div className="govuk-grid-row">
+      <div className="govuk-grid-column-two-thirds">
+        <h1 className="govuk-heading-l">{ALL_PLACES.text}</h1>
+        <p className="govuk-body-l">
+          Wybierz swoją ulicę albo wieś, żeby zobaczyć terminy wywozu śmieci,
+          przerwy w dostawie wody i ostrzeżenia IMGW.
+        </p>
+        <p className="govuk-body govuk-!-margin-bottom-8">
+          Wolisz wpisać adres?{" "}
+          <a href="/" className="govuk-link">
+            Wyszukaj go na stronie głównej
+          </a>
+          .
+        </p>
 
-          {/* Ids from SIMC (localityAnchor) on the town's heading and every
+        {/* Ids from SIMC (localityAnchor) on the town's heading and every
               village's line, where the breadcrumbs link; the section keeps
               the old #ulice-heading, at the same spot. */}
-          <section id="ulice-heading" aria-labelledby={town}>
-            <h2 id={town} className="govuk-heading-m">
-              Ulice w Lubaczowie
-            </h2>
-            {list.town.map(({ letter, places }) => (
-              <div key={letter}>
-                <h3 className="govuk-heading-s">{letter}</h3>
-                <ul className="govuk-list">
-                  {places.map((place) => (
-                    <li key={place.id}>
-                      <Place place={place} />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </section>
+        <section id="ulice-heading" aria-labelledby={town}>
+          <h2 id={town} className="govuk-heading-m">
+            Ulice w Lubaczowie
+          </h2>
+          {list.town.map(({ letter, places }) => (
+            <div key={letter}>
+              <h3 className="govuk-heading-s">{letter}</h3>
+              <ul className="govuk-list">
+                {places.map((place) => (
+                  <li key={place.id}>
+                    <Place place={place} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </section>
 
-          <section aria-labelledby="wsie-heading">
-            <h2
-              id="wsie-heading"
-              className="govuk-heading-m govuk-!-margin-top-6"
-            >
-              Wsie w gminie Lubaczów
-            </h2>
-            <ul className="govuk-list">
-              {list.villages.map((village) => (
-                <li key={village.id} id={localityAnchor(village.id)}>
-                  <Place place={village} />
-                  {village.streets.length > 0 && (
-                    <ul className="govuk-list govuk-!-margin-left-4 govuk-!-margin-top-1">
-                      {village.streets.map((street) => (
-                        <li key={street.id}>
-                          <Place place={street} />
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
-        </div>
+        <section aria-labelledby="wsie-heading">
+          <h2
+            id="wsie-heading"
+            className="govuk-heading-m govuk-!-margin-top-6"
+          >
+            Wsie w gminie Lubaczów
+          </h2>
+          <ul className="govuk-list">
+            {list.villages.map((village) => (
+              <li key={village.id} id={localityAnchor(village.id)}>
+                <Place place={village} />
+                {village.streets.length > 0 && (
+                  <ul className="govuk-list govuk-!-margin-left-4 govuk-!-margin-top-1">
+                    {village.streets.map((street) => (
+                      <li key={street.id}>
+                        <Place place={street} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
       </div>
-    </PageMain>
+    </div>
   );
 }

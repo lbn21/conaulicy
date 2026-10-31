@@ -5,8 +5,8 @@
 // The pages read that file, never IMGW. A failure (IMGW down, a feed of
 // the wrong shape, the file not written) is logged and leaves the file as
 // it was: never thrown. The run's result is the check's: the cron records
-// it (status/checks.json) and purges IMGW after a good one
-// (lib/zuk-cron.ts handleZukCron). No Next.js imports, so the unit tests
+// it (status/checks.json; lib/zuk-cron.ts handleZukCron); nothing is
+// purged, the pages read the files per request. No Next.js imports, so the unit tests
 // run it as is; dependencies come in.
 import {
   type Feed,

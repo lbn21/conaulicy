@@ -15,9 +15,15 @@ const COMPONENTS = [
   ["govuk-skip-link", SkipLink],
 ] as const;
 
-export function initGovukFrontend() {
+/**
+ * Starts every component in `$scope` (the page, or a part drawn later),
+ * skipping one already started (GOV.UK marks it data-<module>-init).
+ */
+export function initGovukFrontend($scope: ParentNode = document) {
   for (const [name, Component] of COMPONENTS) {
-    for (const $root of document.querySelectorAll(`[data-module="${name}"]`)) {
+    for (const $root of $scope.querySelectorAll(
+      `[data-module="${name}"]:not([data-${name}-init])`,
+    )) {
       try {
         new Component($root);
       } catch (error) {

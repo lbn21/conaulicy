@@ -1,14 +1,15 @@
 import "server-only";
 import { get, put } from "@vercel/blob";
-import { unstable_cache } from "next/cache";
-import { IMGW } from "./headers.ts";
 import { type ImgwRead, imgwCopyOf, UNREADABLE } from "./imgw-banner.ts";
 import { upstream } from "./imgw-warnings.ts";
 
-// The private Blob store (BLOB_READ_WRITE_TOKEN): the cron's files, and the
-// pages' cached reader of IMGW's. Each read is from the Blob's origin, not
-// its CDN copy (up to 60 s old): a read right after a purge gets the new
-// file.
+// The private Blob store (BLOB_READ_WRITE_TOKEN): the crons' files, read
+// and written by the crons, and read by the pages' live blocks
+// (components/live-block.tsx), per request. The crons read the Blob's
+// origin, so a run compares against the last write; the pages read its
+// CDN copy, at most 60 s behind a write (vercel.com/docs/vercel-blob,
+// "Caching"; every file is written with the minimum cacheControlMaxAge,
+// 60 s), so no page needs a purge.
 
 /** IMGW's last good feed, only our powiats' items (lib/imgw-cron.ts). */
 export const FEED_PATH = "imgw/feed.json";
@@ -16,11 +17,17 @@ export const FEED_PATH = "imgw/feed.json";
 /** Every source's last check (lib/live-status.ts, lib/zuk-cron.ts). */
 export const CHECKS_PATH = "status/checks.json";
 
-/** A file's body, or null if there is none yet. Throws on other errors. */
-export async function readBlobFile(pathname: string): Promise<string | null> {
+/**
+ * A file's body, or null if there is none yet. Throws on other errors.
+ * From the Blob's origin (the crons); `cdn`: through its CDN (the pages).
+ */
+export async function readBlobFile(
+  pathname: string,
+  { cdn = false }: { cdn?: boolean } = {},
+): Promise<string | null> {
   const blob = await get(pathname, {
     access: "private",
-    useCache: false,
+    useCache: cdn,
   });
   if (blob?.statusCode !== 200) return null;
   return new Response(blob.stream).text();
@@ -53,25 +60,17 @@ async function imgwFiles(
     return mockFiles(store, Date.now());
   }
   const [feed, checks] = await Promise.all([
-    readBlobFile(FEED_PATH),
-    readBlobFile(CHECKS_PATH),
+    readBlobFile(FEED_PATH, { cdn: true }),
+    readBlobFile(CHECKS_PATH, { cdn: true }),
   ]);
   return { feed, checks };
 }
 
-// Through Next's data cache, tagged IMGW: every page reading it carries the
-// tag too, so the cron's purge after every good check (lib/zuk-cron.ts)
-// drops the entry and those pages. A read that throws inside it is never
-// stored; imgwCopy turns it into a value (docs/data/imgw.md).
-const cachedFiles = unstable_cache(imgwFiles, ["imgw-files"], {
-  tags: [IMGW],
-  revalidate: 600,
-});
-
 /**
  * The last good copy of IMGW's feed and its last good check, or null when
  * the cron has written none yet: the banner's (components/imgw-banner.tsx)
- * and the weather module's (lib/modules.ts). Pages never ask IMGW. The
+ * and the weather module's (lib/modules.ts), read per request through the
+ * Blob's CDN, never cached by Next. Pages never ask IMGW. The
  * store unreadable, or its feed file not one: UNREADABLE, an expected
  * error as a value, which the pages render as a notice (Next.js, "Handling
  * expected errors"); every page renders as ever.
@@ -79,7 +78,7 @@ const cachedFiles = unstable_cache(imgwFiles, ["imgw-files"], {
 export async function imgwCopy(): Promise<ImgwRead> {
   const { url } = await upstream();
   try {
-    const { feed, checks } = await cachedFiles(
+    const { feed, checks } = await imgwFiles(
       url.startsWith("mock:") ? url : "blob",
     );
     return imgwCopyOf(feed, checks);

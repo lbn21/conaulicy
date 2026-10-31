@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { IMGW } from "./headers.ts";
 import { banner, imgwCopyOf, POWIAT } from "./imgw-banner.ts";
 import { type ImgwCronDeps, runImgw } from "./imgw-cron.ts";
 import { IMGW_URL, parseFeedFile } from "./imgw-warnings.ts";
@@ -36,7 +35,6 @@ type World = {
   /** The private Blob store, by pathname. */
   store: Map<string, string>;
   writes: string[];
-  purges: string[];
   logs: Array<Record<string, unknown>>;
 };
 
@@ -45,7 +43,6 @@ function world(over: Partial<World> = {}): World {
     body: [raw()],
     store: new Map(),
     writes: [],
-    purges: [],
     logs: [],
     ...over,
   };
@@ -157,7 +154,7 @@ test("the file not written: not a good check", async () => {
 
 // The cron as the route runs it: a water run that fails at once (its file
 // unreadable, so it stops there), IMGW beside it, the status file after.
-function cron(w: World, now: Date, cache: Map<string, string[]>) {
+function cron(w: World, now: Date) {
   const clock = () => now.getTime();
   const water: ZukCronDeps = {
     fetch: (async () => {
@@ -167,12 +164,6 @@ function cron(w: World, now: Date, cache: Map<string, string[]>) {
       throw new Error("water file unreadable");
     },
     writeFile: async () => assert.fail("no water write"),
-    // As revalidateTag does: drops every cached entry with the tag.
-    purge: (tag) => {
-      w.purges.push(tag);
-      for (const [key, tags] of cache)
-        if (tags.includes(tag)) cache.delete(key);
-    },
     places: async () => assert.fail("no places"),
     xaiKey: undefined,
     now: () => now,
@@ -190,14 +181,10 @@ function cron(w: World, now: Date, cache: Map<string, string[]>) {
   );
 }
 
-test("the cron: a good check is recorded, then IMGW purged; a failure records ok:false, the feed kept", async () => {
+test("the cron: a good check is recorded; a failure records ok:false, the feed kept", async () => {
   const w = world();
-  // The pages' cached copy of the store's files (lib/live-store.ts),
-  // tagged IMGW as Next's data cache keeps it.
-  const cache = new Map<string, string[]>();
-  await cron(w, T0, cache);
+  await cron(w, T0);
   assert.deepEqual(w.writes, [FEED, CHECKS]);
-  assert.deepEqual(w.purges, [IMGW]);
   const good = parseChecks(w.store.get(CHECKS) ?? null);
   assert.deepEqual(good?.sources[IMGW_KEY], {
     checkedAt: T0.toISOString(),
@@ -205,19 +192,13 @@ test("the cron: a good check is recorded, then IMGW purged; a failure records ok
     ok: true,
   });
   const feed = w.store.get(FEED);
-  // A page renders: its copy cached, tagged.
-  cache.set("imgw-files", [IMGW]);
-  // IMGW down 15 minutes on: the feed file untouched, the try recorded,
-  // no purge, the cached copy kept.
+  // IMGW down 15 minutes on: the feed file untouched, the try recorded.
   w.body = "down";
   w.writes = [];
-  w.purges = [];
   const later = new Date(T0.getTime() + 15 * 60_000);
-  await cron(w, later, cache);
+  await cron(w, later);
   assert.deepEqual(w.writes, [CHECKS]);
-  assert.deepEqual(w.purges, []);
   assert.equal(w.store.get(FEED), feed);
-  assert.ok(cache.has("imgw-files"));
   assert.deepEqual(parseChecks(w.store.get(CHECKS) ?? null)?.sources.imgw, {
     checkedAt: T0.toISOString(),
     attemptAt: later.toISOString(),
@@ -235,16 +216,12 @@ test("the cron: a good check is recorded, then IMGW purged; a failure records ok
   );
 });
 
-test("a purge never touches the feed file: the next render reads the same copy", async () => {
+test("an unchanged feed is never written again: the pages read the same copy, its check new", async () => {
   const w = world();
-  const cache = new Map<string, string[]>([["imgw-files", [IMGW]]]);
-  await cron(w, T0, cache);
+  await cron(w, T0);
   const before = new Map(w.store);
-  // Every good run purges; the store is not a cache.
   for (let run = 1; run <= 3; run++) {
-    cache.set("imgw-files", [IMGW]);
-    await cron(w, new Date(T0.getTime() + run * 15 * 60_000), cache);
-    assert.equal(cache.has("imgw-files"), false);
+    await cron(w, new Date(T0.getTime() + run * 15 * 60_000));
     assert.equal(w.store.get(FEED), before.get(FEED));
   }
   const now = T0.getTime() + 46 * 60_000;

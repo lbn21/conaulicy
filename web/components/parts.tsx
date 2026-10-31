@@ -1,11 +1,12 @@
 import { Fragment } from "react";
-import { DayLead } from "@/components/upcoming";
+import { DayWord } from "@/components/day-word";
 import { Bins } from "@/components/waste-bins";
-import { capitalised, type Part } from "@/lib/hub";
+import type { Group, Part } from "@/lib/hub";
+import { capitalised } from "@/lib/upcoming";
 
 // A module's lines (lib/hub.ts Part): text, links, bins, IMGW's tags and a
-// section's day lead (the island, components/upcoming.tsx), for the address
-// page's sections and the module subpages.
+// section's day lead („Dziś: ”, the device's, components/day-word.tsx), for
+// the address page's sections and the module subpages.
 
 /** Parts as plain text, for a key in a list. */
 export const textOf = (parts: Part[]) =>
@@ -21,16 +22,10 @@ export const textOf = (parts: Part[]) =>
 
 /**
  * A line's parts as text, links, bins (a row of small ones), tags and day
- * leads. `renderedAt`: the server's render time, for a day lead's island;
- * null where no line has one (then a day lead is its date alone).
+ * leads. `lead`: a day lead gets the device's „Dziś: ” (DayWord); false
+ * where none should (then a day lead is its date alone).
  */
-export function Parts({
-  parts,
-  renderedAt,
-}: {
-  parts: Part[];
-  renderedAt: number | null;
-}) {
+export function Parts({ parts, lead }: { parts: Part[]; lead: boolean }) {
   return parts.map((part, i) => {
     // A fixed sequence, never reordered; its texts may repeat (" ").
     const key = `${i}`;
@@ -45,15 +40,10 @@ export function Parts({
         </strong>
       );
     if ("day" in part)
-      return renderedAt === null ? (
-        <Fragment key={key}>{capitalised(part.text)}</Fragment>
+      return lead ? (
+        <DayWord key={key} day={part.day} form="lead" text={part.text} />
       ) : (
-        <DayLead
-          key={key}
-          day={part.day}
-          text={part.text}
-          renderedAt={renderedAt}
-        />
+        <Fragment key={key}>{capitalised(part.text)}</Fragment>
       );
     return (
       <a key={key} href={part.href} className="govuk-link">
@@ -64,4 +54,30 @@ export function Parts({
       </a>
     );
   });
+}
+
+// Lines of a group close under each other (GOV.UK's spacing 2); a group's
+// last keeps the paragraph's gap (spacing 4, as govuk-body).
+const CLOSE = "govuk-!-margin-bottom-2";
+
+/** A module's status: its groups of lines, a paragraph each, bins a row. */
+export function Status({ groups }: { groups: Group[] }) {
+  return groups.flatMap((lines, g) =>
+    lines.map((line, i) => {
+      const last = i === lines.length - 1;
+      // A fixed sequence, never reordered; its texts may repeat.
+      const key = `${g}-${i}`;
+      if (line.length === 1 && typeof line[0] !== "string" && "bins" in line[0])
+        return (
+          <div key={key} className={last ? "govuk-!-margin-bottom-4" : CLOSE}>
+            <Parts parts={line} lead />
+          </div>
+        );
+      return (
+        <p key={key} className={last ? "govuk-body" : `govuk-body ${CLOSE}`}>
+          <Parts parts={line} lead />
+        </p>
+      );
+    }),
+  );
 }

@@ -1,7 +1,15 @@
-import { cacheLife, cacheTag } from "next/cache";
+import { io } from "next/cache";
 import { Fragment } from "react";
-import { IMGW } from "@/lib/headers";
-import { type Banner, banner, CURRENT, IMGW_PAGE } from "@/lib/imgw-banner";
+import { BlockSkeleton, LiveBlock } from "@/components/live-block";
+import { Skeleton } from "@/components/skeleton";
+import { clockTime } from "@/lib/date-labels";
+import {
+  type Banner,
+  banner,
+  CURRENT,
+  IMGW_PAGE,
+  UNREADABLE,
+} from "@/lib/imgw-banner";
 import { imgwCopy } from "@/lib/live-store";
 
 type Shown = Banner["warnings"][number];
@@ -17,23 +25,48 @@ function Line({ warning }: { warning: Shown }) {
 }
 
 // IMGW's meteo warnings for the powiat (docs/data/imgw.md), above the h1 of
-// every page but the address pages (/adres/**, whose „Najbliższe dni”
-// carries them, components/hub.tsx): GOV.UK's notification banner, neutral,
-// as govuk-frontend 6.5.1's template. Compact: one line per warning, the rest
-// in GOV.UK's details (native <details>, closed). Server-rendered, no client
-// JS (its data-module is not initialised: GOV.UK's script only focuses
-// role="alert" banners). From the last good copy in the store, never IMGW
-// itself (lib/live-store.ts). Nothing at all when there is no copy yet, or
-// a fresh one has no warning; a notice first when the last good check is
-// old, with or without warnings, or alone when the store cannot be read
-// now (lib/imgw-banner.ts): the rest of the page renders as ever. Cached
-// as every page (next.config.ts `page`), tagged IMGW, on /szukaj too.
-export async function ImgwBanner() {
-  "use cache";
-  cacheLife("page");
-  cacheTag(IMGW);
-  const shown = banner(await imgwCopy(), Date.now());
-  if (!shown) return null;
+// every page but the address pages (/adres/**, whose „Najbliższe dni” and
+// „Pogoda” carry them, components/hub.tsx). Always there: with no warning,
+// one quiet line, its source linked and when we checked; with warnings, or
+// a notice that the last good check is old, or alone when the store cannot
+// be read now (lib/imgw-banner.ts), GOV.UK's notification banner, neutral,
+// as govuk-frontend 6.5.1's template. Compact: one line per warning, the
+// rest in GOV.UK's details (native <details>, closed). Server-rendered, no
+// client JS (its data-module is not initialised: GOV.UK's script only
+// focuses role="alert" banners). From the last good copy in the store,
+// never IMGW itself (lib/live-store.ts). Read per request in its own hole
+// (ImgwLive), never in the pages' cached shells, so the time it shows and
+// the warnings come from the same read.
+
+// The quiet line's start; the rest says when we checked.
+const QUIET = "brak ostrzeżeń dla powiatu lubaczowskiego";
+
+/** The line when there is no warning: „IMGW: brak ostrzeżeń … · sprawdziliśmy 14:52”. */
+function Quiet({ checkedAt }: { checkedAt: number | null }) {
+  return (
+    <div className="govuk-grid-row">
+      <div className="govuk-grid-column-two-thirds">
+        <p className="govuk-body-s">
+          <a className="govuk-link" href={IMGW_PAGE}>
+            Ostrzeżenia IMGW
+          </a>
+          {checkedAt === null
+            ? ": jeszcze ich nie sprawdziliśmy"
+            : `: ${QUIET} · sprawdziliśmy ${clockTime(checkedAt)}`}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+async function ImgwBanner() {
+  await io();
+  const copy = await imgwCopy();
+  const shown = banner(copy, Date.now());
+  if (!shown)
+    return (
+      <Quiet checkedAt={copy && copy !== UNREADABLE ? copy.checkedAt : null} />
+    );
   const several = shown.warnings.length > 1;
   return (
     <div className="govuk-grid-row">
@@ -119,5 +152,27 @@ export async function ImgwBanner() {
         </div>
       </div>
     </div>
+  );
+}
+
+// The typical shape: the quiet line (no warning is the usual state).
+const SKELETON = (
+  <div className="govuk-grid-row">
+    <div className="govuk-grid-column-two-thirds">
+      <BlockSkeleton>
+        <p className="govuk-body-s">
+          <Skeleton>{`Ostrzeżenia IMGW: ${QUIET} · sprawdziliśmy 14:52`}</Skeleton>
+        </p>
+      </BlockSkeleton>
+    </div>
+  </div>
+);
+
+/** The banner in its own hole, with its skeleton (components/live-block.tsx). */
+export function ImgwLive() {
+  return (
+    <LiveBlock skeleton={SKELETON}>
+      <ImgwBanner />
+    </LiveBlock>
   );
 }

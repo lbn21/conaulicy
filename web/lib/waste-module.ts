@@ -1,9 +1,11 @@
 // What the waste module (lib/modules.ts) says about a place on the address
 // page, from today's street page data (PlaceView, unchanged). Pure, so the
-// unit tests need no database.
+// unit tests need no database, and client-safe: the section's lines are
+// drawn on the device (components/waste-status.tsx). Its „Najbliższe dni”
+// items are lib/waste-upcoming.ts's.
 import type { PickupDay, PlaceView, SourceView } from "@/lib/schedule";
-import { absoluteDay, addDays, todayInWarsaw, warsawToIso } from "./dates.ts";
-import { type Checked, type Group, type Part, span } from "./hub.ts";
+import { absoluteDay, todayInWarsaw } from "./dates.ts";
+import type { Checked, Group, Part } from "./hub.ts";
 import { placePath, scheduleName, scheduleOwner } from "./places.ts";
 import {
   hasUpcoming,
@@ -12,7 +14,6 @@ import {
   putOutLine,
   SHORT_UNVERIFIED_NOTE,
 } from "./schedule-notes.ts";
-import type { Item } from "./upcoming.ts";
 
 /** A place we have no pickup data for: the street page's heading. */
 export function noDataHeading(kind: PlaceView["kind"]): string {
@@ -57,7 +58,7 @@ export function wasteNote(place: PlaceView): string | null {
  * the coming ones, so the year's last days are not „wszystkie” for want of
  * dates), more than one.
  */
-const allBins = (place: PlaceView, day: PickupDay) =>
+export const allBins = (place: PlaceView, day: PickupDay) =>
   place.fractions.length > 1 &&
   place.fractions.every((subtype) =>
     day.pickups.some((pickup) => pickup.subtype === subtype),
@@ -107,33 +108,6 @@ export function wasteStatus(place: PlaceView): Group[] {
   const time = next.pickups.find((pickup) => pickup.putOutBy)?.putOutBy;
   if (time) groups.push([[putOutLine(time)]]);
   return groups;
-}
-
-/**
- * The block's pickups: the next two days (today and tomorrow at most are
- * shown, from the day before; the island moves on without a new render),
- * the bins in running text, and when to put them out until that time.
- */
-export function wasteUpcoming(place: PlaceView): Item[] {
-  if (place.askNumber || place.zoneId === null) return [];
-  return place.days
-    .filter((day) => day.date >= place.today)
-    .slice(0, 2)
-    .map((day) => {
-      const time = day.pickups.find((pickup) => pickup.putOutBy)?.putOutBy;
-      return {
-        module: "smieci",
-        span: span(day.date, null, null),
-        shownFrom: warsawToIso(`${addDays(day.date, -1)} 00:00:00`),
-        bins: allBins(place, day)
-          ? "wszystkie pojemniki"
-          : day.pickups
-              .map((p) => p.label.charAt(0).toLowerCase() + p.label.slice(1))
-              .join(", "),
-        second: time ? putOutLine(time) : null,
-        secondUntil: time ? warsawToIso(`${day.date} ${time}:00`) : null,
-      };
-    });
 }
 
 /** One „Źródło” per source: its link and its part. */

@@ -4,7 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MODULES } from "../lib/modules.ts";
 import { testPlace } from "../lib/water-fixture.ts";
-import { ModuleSection } from "./hub.tsx";
+import { ModuleBody, ModuleSection } from "./hub.tsx";
 
 // A hub section (components/hub.tsx) as the address page renders it, for a
 // made-up place: with no source, no subpage link and no meta line.
@@ -29,11 +29,14 @@ const SOURCE = {
 const section = (place: Parameters<typeof testPlace>[0]) => {
   const data = testPlace({ ...PLACE, schedulePage: SCHEDULE, ...place });
   return renderToStaticMarkup(
-    createElement(ModuleSection, {
-      loaded: { module: MODULES.smieci, data },
-      place: data,
-      renderedAt: Date.parse("2026-10-25T12:30:00Z"),
-    }),
+    createElement(
+      ModuleSection,
+      { module: MODULES.smieci },
+      createElement(ModuleBody, {
+        loaded: { module: MODULES.smieci, data },
+        place: data,
+      }),
+    ),
   );
 };
 

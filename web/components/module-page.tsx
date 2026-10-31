@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
-import { cacheLife, cacheTag } from "next/cache";
+import { cacheLife, cacheTag, io } from "next/cache";
 import type { ReactNode } from "react";
+import { BlockSkeleton, LiveBlock } from "@/components/live-block";
 import { PageMain } from "@/components/page-main";
 import { NOT_FOUND_METADATA } from "@/components/page-not-found";
-import { PlaceBreadcrumbs } from "@/components/place-page";
+import { PlaceBreadcrumbs, SubpageHeading } from "@/components/place-page";
+import { Skeleton } from "@/components/skeleton";
 import { findSubpage } from "@/lib/modules";
 import { getPlace, PLACE_TAGS } from "@/lib/schedule";
 
@@ -11,7 +13,10 @@ import { getPlace, PLACE_TAGS } from "@/lib/schedule";
 // house-number and /numer variants as the address page
 // (lib/address-routes.ts), under the place's breadcrumbs (before <main>), the
 // same for every module. An unknown module, or one without a subpage (the weather), is a
-// 404. Canonical: the subpage itself.
+// 404. Canonical: the subpage itself. A static shell cached until the next
+// import or deploy, as the address page (components/hub.tsx): the waste
+// subpage whole; a live module's (water) its frame and heading, its body
+// read per request in its own hole (moduleLive).
 
 export async function moduleMetadata(
   id: string,
@@ -26,8 +31,60 @@ export async function moduleMetadata(
 }
 
 /**
- * A subpage's body, cached as the address page's (components/hub.tsx
- * HubMain), with the place's and its module's tags.
+ * A live module's subpage body, read per request (after io(), so never in
+ * the shell): its checked line, from the same read as its data, then the
+ * rest (Module.Details).
+ */
+async function ModuleLive({
+  slug,
+  id,
+  nr,
+}: {
+  slug: string;
+  id: string;
+  nr: string | null;
+}) {
+  await io();
+  const module = findSubpage(slug);
+  const data = await module?.load(id, nr);
+  // No such place: the shell around this answers 404.
+  if (!module || !data) return null;
+  return (
+    <module.Details data={data} checkedAt={module.checkedAt?.(data) ?? null} />
+  );
+}
+
+// A live subpage's typical shape: its checked line and one paragraph (no
+// cut planned, the usual state).
+const LIVE_SKELETON = (
+  <BlockSkeleton>
+    <p className="govuk-hint govuk-!-font-size-16">
+      <Skeleton>
+        Komunikaty o wodzie sprawdziliśmy: 31 października, 14:20
+      </Skeleton>
+    </p>
+    <p className="govuk-body">
+      <Skeleton>
+        Brak zapowiedzianych przerw w dostawie wody. Sprawdzamy komunikaty gminy
+        i MZGKiM.
+      </Skeleton>
+    </p>
+  </BlockSkeleton>
+);
+
+/** A live module's subpage body for ModuleMain, its own hole. */
+export function moduleLive(id: string, slug: string, nr: string | null) {
+  return (
+    <LiveBlock skeleton={LIVE_SKELETON}>
+      <ModuleLive slug={slug} id={id} nr={nr} />
+    </LiveBlock>
+  );
+}
+
+/**
+ * A subpage's static shell, cached as the address page's (components/hub.tsx
+ * HubMain): cacheLife "max", the dataset's tags; `unknown` and `live`
+ * (moduleLive) pass through uncached.
  */
 export async function ModuleMain({
   id,
@@ -35,6 +92,7 @@ export async function ModuleMain({
   nr,
   missing = false,
   unknown,
+  live,
 }: {
   id: string;
   slug: string;
@@ -42,25 +100,36 @@ export async function ModuleMain({
   missing?: boolean;
   /** What an unknown place or module shows. */
   unknown: ReactNode;
+  /** A live module's body (moduleLive). */
+  live: ReactNode;
 }) {
   "use cache";
-  cacheLife("page");
+  cacheLife("max");
+  cacheTag(...PLACE_TAGS);
   const module = findSubpage(slug);
-  cacheTag(...PLACE_TAGS, ...(module?.tags ?? []));
   const [place, data] = await Promise.all([
     getPlace(id, nr),
-    module?.load(id, nr),
+    module && !module.live ? module.load(id, nr) : null,
   ]);
-  if (!module || !place || !data) return <>{unknown}</>;
+  if (!module || !place || (!module.live && !data)) return <>{unknown}</>;
   return (
     <>
       <PlaceBreadcrumbs place={place} subpage />
       <PageMain>
-        <module.Details
-          data={data}
-          missing={missing}
-          checkedAt={module.checkedAt?.(data) ?? null}
-        />
+        {module.live ? (
+          <div className="govuk-grid-row">
+            <div className="govuk-grid-column-two-thirds">
+              <SubpageHeading place={place} heading={module.pageTitle} />
+              {live}
+            </div>
+          </div>
+        ) : (
+          <module.Details
+            data={data}
+            missing={missing}
+            checkedAt={module.checkedAt?.(data) ?? null}
+          />
+        )}
       </PageMain>
     </>
   );

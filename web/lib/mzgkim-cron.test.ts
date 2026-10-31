@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { WATER } from "./headers.ts";
 import {
   CUT_100,
   DERATYZACJA,
@@ -49,7 +48,6 @@ type World = {
   aiCalls: number[];
   aiFails: boolean;
   logs: Array<Record<string, unknown>>;
-  purges: string[];
   now: Date;
 };
 
@@ -61,7 +59,6 @@ const world = (over: Partial<World> = {}): World => ({
   aiCalls: [],
   aiFails: false,
   logs: [],
-  purges: [],
   now: NOW,
   ...over,
 });
@@ -86,7 +83,6 @@ function deps(w: World): ZukCronDeps {
     writeFile: async (body) => {
       w.file = body;
     },
-    purge: (tag) => w.purges.push(tag),
     places: async () => MZGKIM_PLACES,
     readAi: async (
       input: AiInput,
@@ -166,7 +162,6 @@ test("a run: every post read by the model from its page", async () => {
       (l) => l.zuk === "ai" && l.source === "mzgkim" && l.rejected === 0,
     ),
   );
-  assert.deepEqual(w.purges, [WATER]);
   // The pages: its cuts under MZGKiM's name, every area matched.
   const view = zukView(file, NOW, MZGKIM);
   assert.equal(view.disruptions.length, 3 + 9 + 22);
@@ -179,15 +174,13 @@ test("idempotent: the next run reads no page and calls the model 0 times", async
   const before = saved(w);
   w.urls = [];
   w.aiCalls = [];
-  w.purges = [];
   w.now = new Date(NOW.getTime() + 15 * 60_000);
   const summary = await runZuk(deps(w));
   assert.equal(summary.aiCalls, 0);
   assert.equal(summary.changed, false);
   assert.deepEqual(w.aiCalls, []);
   assert.deepEqual(w.urls, [MZGKIM_FEED]);
-  // Unchanged, but checked: WATER purged, as after every written run.
-  assert.deepEqual(w.purges, [WATER]);
+  // Unchanged, but checked: written, as after every run.
   const after = saved(w);
   assert.deepEqual(after.active, before.active);
   assert.deepEqual(after.seen, before.seen);
@@ -278,7 +271,6 @@ const gmina = (w: { gminaDown: boolean; gminaFile: string | null }) =>
     writeFile: async (body: string) => {
       w.gminaFile = body;
     },
-    purge: () => {},
     places: async () => ZUK_PLACES,
     xaiKey: "xai-key",
     now: () => NOW,

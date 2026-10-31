@@ -1,4 +1,4 @@
-import { HubMain } from "@/components/hub";
+import { HubMain, hubLive } from "@/components/hub";
 import { PlaceNotFound, placeMetadata } from "@/components/place-page";
 import { numberParam } from "@/lib/address-routes";
 import { houseNumber } from "@/lib/house";
@@ -9,8 +9,10 @@ import { firstAddress } from "@/lib/prerender";
 // hold a slash, hence the catch-all. Any other non-empty ?nr= lands here too
 // (proxy.ts): a value that is no house number at all is, as on /numer, a
 // missing one (a split street asks again, never indexed).
-// Static and prerendered as the address page (../../page.tsx).
-export const ensureStatic = "navigation";
+// A static shell with live holes, as the address page (../../page.tsx); one
+// number prerendered (lib/prerender.ts firstAddress), any other gets the
+// route's fallback shell on its first visit.
+export const ensureStatic = "prefetch";
 
 export async function generateStaticParams(): Promise<
   Array<{ id: string; nr: string[] }>
@@ -37,6 +39,7 @@ export default async function PlaceWithNumberPage({
       nr={given}
       missing={houseNumber(given) === null}
       unknown={<PlaceNotFound />}
+      {...hubLive(id, given)}
     />
   );
 }

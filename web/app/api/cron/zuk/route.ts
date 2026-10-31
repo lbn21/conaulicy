@@ -1,4 +1,3 @@
-import { revalidateTag } from "next/cache";
 import { unknownStreets } from "@/lib/districts";
 import { loadDistricts } from "@/lib/districts-db";
 import { runImgw } from "@/lib/imgw-cron";
@@ -20,8 +19,9 @@ import { readZukFile, writeZukFile } from "@/lib/zuk-store";
 // (lib/zuk-cron.ts): the gmina's posts (ZUK) and MZGKiM's at the same
 // time, each failing on its own; beside them, IMGW's warnings into their
 // own private Blob file (lib/imgw-cron.ts); then every source's check into
-// the status file, and IMGW purged from the pages after a good check
-// (lib/zuk-cron.ts handleZukCron). Vercel Cron
+// the status file (lib/zuk-cron.ts handleZukCron). Nothing is purged: the
+// pages read these files per request through the Blob's CDN
+// (lib/live-store.ts). Vercel Cron
 // calls it every 15 minutes (vercel.json) with
 // `Authorization: Bearer $CRON_SECRET`; by hand:
 //
@@ -40,12 +40,6 @@ export function GET(request: Request) {
     fetch,
     readFile: () => readZukFile(source.water.pathname),
     writeFile: (body) => writeZukFile(body, source.water.pathname),
-    // After every run that wrote the file (a new checkedAt at least): its
-    // cached copy and every page and calendar tagged WATER; after a Warsaw
-    // midnight also DAY, the day-keyed waste data and every response built
-    // from it (lib/zuk-data.ts dayChanged). Data cache and CDN alike
-    // (lib/headers.ts). Never DATASET: the waste data did not change.
-    purge: (tag) => revalidateTag(tag, { expire: 0 }),
     // The TERYT snapshot, not the database: the prompt and the gate need
     // each street's CECHA and NAZWA_1 (lib/zuk-resolve.ts). The town's
     // district names (the gazetteer, lib/districts.ts) from the database.
@@ -63,9 +57,7 @@ export function GET(request: Request) {
     deadline,
     log: (line) => console.log(JSON.stringify(line)),
   });
-  // IMGW's feed into imgw/feed.json when it changed; after a good check
-  // the gmina's run's purge drops every page tagged IMGW (lib/headers.ts),
-  // data cache and CDN alike.
+  // IMGW's feed into imgw/feed.json when it changed.
   const imgw = async () =>
     runImgw({
       ...(await upstream()),

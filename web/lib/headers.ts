@@ -2,21 +2,14 @@
 // proxy.ts and next.config.ts can read it too.
 
 /**
- * Cache tags: Next's data cache and, sent as Vercel-Cache-Tag
- * (lib/gate.ts datasetHeaders), the CDN copies. DATASET: every database
- * read, purged by an import (app/api/revalidate). WATER: the ZUK file and
- * every response that shows water data, purged by the ZUK cron after
- * every run that wrote the file (lib/zuk-cron.ts). DAY: the data keyed by the
- * Warsaw day (lib/schedule.ts getPlace, getZone) and every response built
- * from it, purged by the ZUK cron when the Warsaw day changed. IMGW: the
- * pages' cached copy of IMGW's files in the store (lib/live-store.ts) and
- * every page showing them (the banner, the address pages' weather), purged
- * by the ZUK cron after every good check of the feed (lib/zuk-cron.ts).
+ * The one cache tag: Next's data cache, every page shell built from the
+ * database (`use cache`, cacheTag) and, sent as Vercel-Cache-Tag
+ * (lib/gate.ts datasetHeaders), the CDN copies. Every database read,
+ * purged by an import (app/api/revalidate), the only purge: the crons'
+ * files (water, IMGW) are read per request through the Blob's CDN, never
+ * cached by Next (lib/live-store.ts).
  */
 export const DATASET = "dataset";
-export const WATER = "water";
-export const DAY = "day";
-export const IMGW = "imgw";
 
 /** Kept by no cache: answers that must never be reused. */
 export const NO_STORE = { "Cache-Control": "no-store" };

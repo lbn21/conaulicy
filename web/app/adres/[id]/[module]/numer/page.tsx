@@ -1,10 +1,15 @@
-import { ModuleMain, moduleMetadata } from "@/components/module-page";
+import {
+  ModuleMain,
+  moduleLive,
+  moduleMetadata,
+} from "@/components/module-page";
 import { PlaceNotFound } from "@/components/place-page";
 
 // /adres/[id]/[module]?nr= with no usable house number lands here (proxy.ts
 // rewrites it), as /adres/[id]/numer for the street page.
-// Static and prerendered as the subpage.
-export const ensureStatic = "navigation";
+// A static shell with a live hole, prerendered for every place, as the
+// subpage.
+export const ensureStatic = "prefetch";
 
 export { generateStaticParams } from "../page";
 
@@ -26,6 +31,7 @@ export default async function ModuleMissingNumberPage({
       nr={null}
       missing
       unknown={<PlaceNotFound />}
+      live={moduleLive(id, module, null)}
     />
   );
 }
