@@ -19,10 +19,10 @@ import {
 import { pageMetadata } from "@/lib/share";
 import { ALL_PLACES } from "@/lib/static-pages";
 
-// The home page's search form, for typed text (a picked suggestion opens
-// its place itself), and above the results the same field
+// The home page's search form, and above the results the same field
 // (components/address-search.tsx), filled with what was searched for. A
-// suggestion's text, typed or pasted, opens its place; anything else gets the same ranked search as the search
+// picked suggestion's text (the field's value after a pick) opens its
+// place; anything else gets the same ranked search as the search
 // field (lib/search.ts, over the cached index), every result instead of 8.
 // One clearly best place: straight to its page; otherwise the ranked list;
 // none: what to try next. Rendered per request, so never cached by the CDN;
