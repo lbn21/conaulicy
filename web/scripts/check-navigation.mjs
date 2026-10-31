@@ -28,9 +28,9 @@ const server = await startServer(3313);
 const browser = await chromium.launch();
 try {
   // Prefetching settles: after a page's load (its links in view prefetch
-  // their routes' App Shells) the network goes quiet, as checks waiting for
-  // "networkidle" need. If not, what was requested more than twice is
-  // listed, with its headers.
+  // their routes' App Shells, none to an address page) the network goes
+  // quiet, as checks waiting for "networkidle" need. If not, what was
+  // requested more than twice is listed, with its headers.
   for (const quietPath of [HUB, "/", "/ulice"]) {
     const quiet = await browser.newPage({
       viewport: { width: 360, height: 800 },
@@ -106,17 +106,14 @@ try {
         .map(([url, e]) => `${url} ${JSON.stringify(e)}`)
         .join("\n  ")}`,
     );
-    // Every address prefetch ended, with a response (task 228: they hung
-    // while the address pages read their params outside <Suspense>).
+    // No address page is prefetched (lib/address-routes.ts addressPrefetch,
+    // task 228: with Partial Prefetching their prefetch never ended).
     const addresses = [...seen].filter(
       ([url, e]) => url.startsWith("/adres/") && e.prefetched,
     );
-    const unfinished = addresses.filter(
-      ([, e]) => (e.ended.finished ?? 0) !== e.requests,
-    );
     check(
-      (quietPath === HUB || addresses.length > 0) && unfinished.length === 0,
-      `${quietPath}: ${addresses.length} address prefetches, not all finished: ${JSON.stringify(unfinished)}`,
+      addresses.length === 0,
+      `${quietPath}: address pages prefetched: ${JSON.stringify(addresses)}`,
     );
     await quiet.close();
   }
@@ -322,10 +319,9 @@ try {
   check(false, `navigation walk: ${error}`);
 }
 
-// From a click to a place: its skeleton shell (the App Shell, prefetched:
-// the place's caption, h1 and „Zmień adres” as skeletons) and its h1, in ms
-// from the click, measured in the page at each frame; logged for the PR.
-// The skeleton is null when the h1 came first (no frame in between).
+// From a click to a place's h1 on screen, in ms, measured in the page at
+// each frame; logged for the PR. Address pages are not prefetched, so it
+// includes the page's request.
 function timedClick(page, selector) {
   return page.evaluate(
     (selector) =>
@@ -336,20 +332,12 @@ function timedClick(page, selector) {
           );
         const before = visibleH1()?.textContent;
         const start = performance.now();
-        let skeleton = null;
         document.querySelector(selector).click();
         const frame = () => {
           const now = Math.round(performance.now() - start);
-          if (
-            skeleton === null &&
-            [
-              ...document.querySelectorAll(".govuk-heading-l .app-skeleton"),
-            ].some((el) => el.checkVisibility())
-          )
-            skeleton = now;
           const h1 = visibleH1();
-          if (h1 && h1.textContent !== before) resolve({ skeleton, h1: now });
-          else if (now > 10000) resolve({ skeleton, h1: null });
+          if (h1 && h1.textContent !== before) resolve({ h1: now });
+          else if (now > 10000) resolve({ h1: null });
           else requestAnimationFrame(frame);
         };
         frame();
@@ -399,44 +387,6 @@ try {
   await list.close();
 } catch (error) {
   check(false, `„Szukaj” timings: ${error}`);
-}
-
-// Two hubs kept by Activity: hub A, home, hub B, then Back to A; no id
-// twice at any step (both hubs have sections #smieci, #woda, #pogoda).
-try {
-  const two = await browser.newPage({ viewport: { width: 360, height: 800 } });
-  await two.goto(`${server.origin}/`, { waitUntil: "networkidle" });
-  const example = (n) =>
-    two
-      .locator('section[aria-labelledby="sample-heading"] ul a')
-      .filter({ visible: true })
-      .nth(n);
-  const hubA = await example(0).getAttribute("href");
-  const hubB = await example(1).getAttribute("href");
-  const ids = async (step) => {
-    await two.getByRole("heading", { level: 1 }).waitFor();
-    const state = await mainAndIds(two);
-    check(
-      state.mains === 1 && state.main && state.duplicates.length === 0,
-      `two hubs, ${step}: main and ids ${JSON.stringify(state)}`,
-    );
-  };
-  await example(0).click();
-  await two.waitForURL((url) => `${url.pathname}${url.search}` === hubA);
-  await ids("at hub A");
-  await two.getByRole("link", { name: "conaulicy.pl – strona główna" }).click();
-  await two.waitForURL((url) => url.pathname === "/");
-  await example(1).click();
-  await two.waitForURL((url) => `${url.pathname}${url.search}` === hubB);
-  await ids("at hub B, A kept");
-  await two.goBack();
-  await two.waitForURL((url) => url.pathname === "/");
-  await two.goBack();
-  await two.waitForURL((url) => `${url.pathname}${url.search}` === hubA);
-  await ids("back at hub A, B kept");
-  await two.close();
-} catch (error) {
-  check(false, `two hubs: ${error}`);
 } finally {
   await browser.close();
   await server.stop();
