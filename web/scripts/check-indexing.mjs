@@ -21,7 +21,9 @@
 // layout (lang, stylesheet), GOV.UK's "page not found" H1, its link home
 // („Przejdź na stronę główną”), robots meta noindex (one or more tags, every
 // one noindex, none index), and no description; an unknown module
-// (/adres/<id>/<slug>) and one without a subpage (/pogoda) too. Both: /, an
+// (/adres/<id>/<slug>) and one without a subpage (/pogoda) too; asked
+// without following redirects, and never under a renamed id (the 308s of
+// /api/place-redirects, scripts/check-query.mjs). Both: /, an
 // address page, /szukaj and a calendar send the five security headers.
 //
 // Runs against `next start` on the current build and the CI fixture.
@@ -246,7 +248,13 @@ try {
   // shell, and noindex. Next.js 16.4 emits its own noindex on a 404, and on a
   // cached dynamic 404 that is regenerated (ISR, after 10 minutes) it emits
   // a second one: harmless, both say noindex. So one or more tags, every one
-  // noindex, none index.
+  // noindex, none index. Not followed: the first render of a redirect once
+  // sent Location twice, and fetch followed the joined value to a 404 of its
+  // own, so a 308 passed as a 404 (task 221). A renamed id is a 308, never
+  // one of these: its rows (the CI fixture's) as the proxy reads them.
+  const renamed = await (
+    await fetch(`${server.origin}/api/place-redirects`)
+  ).json();
   for (const path of [
     "/nie-ma-takiej-strony",
     "/adres/9999999",
@@ -264,7 +272,14 @@ try {
     "/adres/0972447-00470/pogoda",
     "/adres/0972447-00470/pogoda/nr/12",
   ]) {
-    const response = await fetch(`${server.origin}${path}`);
+    const id = path.split("/")[2];
+    if (path.startsWith("/adres/") && Object.hasOwn(renamed, id)) {
+      failures.push(`${path}: ${id} is renamed (a 308), not a 404 to check`);
+      continue;
+    }
+    const response = await fetch(`${server.origin}${path}`, {
+      redirect: "manual",
+    });
     const html = await response.text();
     const metas = [...html.matchAll(META)].map(([, content]) => content);
     const missing = [
