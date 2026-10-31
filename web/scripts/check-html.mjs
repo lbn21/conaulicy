@@ -84,13 +84,13 @@ try {
       });
       const html = await res.text();
       const expected = route.status ?? 200;
-      // A browser gets the static result: a real 404. A bot's render is
-      // dynamic, so a notFound() inside a Suspense boundary (PlaceNotFound)
-      // comes after the 200: Next.js then sends noindex instead
-      // (nextjs.org/docs/app/guides/streaming#status-codes; Jakub's
-      // decision, task 220). A bot gets either.
+      // An unknown address's first answer is the route's fallback shell,
+      // its 200 sent before the page knows the place is unknown
+      // (ensureStatic 'prefetch', task 226; a bot's render likewise, task
+      // 220): Next.js then sends the 404 page with noindex
+      // (nextjs.org/docs/app/guides/streaming#status-codes). Later answers
+      // are the cached 404 (scripts/lib/server.mjs notFoundAt).
       const notFound =
-        suffix &&
         expected === 404 &&
         res.status === 200 &&
         html.includes('<meta name="robots" content="noindex"/>');
@@ -150,8 +150,15 @@ try {
   server.stop();
 }
 
+// React's own attributes, not the page's markup: <ViewTransition> writes
+// vt-update, vt-enter, vt-exit (and vt-name, vt-share) on the elements it
+// wraps in the server HTML, so the browser can animate the Suspense reveal
+// (components/live-block.tsx; nextjs.org/docs/app/guides/view-transitions).
+// Only those attributes are let through.
+const REACT_VT = /^Attribute “vt-(?:update|enter|exit|name|share)” not allowed/;
 const errors = messages.filter(
-  (m) => m.type === "error" || m.subType === "fatal",
+  (m) =>
+    (m.type === "error" || m.subType === "fatal") && !REACT_VT.test(m.message),
 );
 const warnings = messages.filter(
   (m) => m.type === "info" && m.subType === "warning",
