@@ -714,8 +714,10 @@ try {
     ["Asnyka 5", "/adres/0972447-00470?nr=5"],
     ["adama", "/szukaj?q=adama"],
   ]) {
-    await form.goto(`${server.origin}/`);
-    await form.getByLabel("Ulica albo wieś").fill(query);
+    await form.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+    // The field as JS enhances it (the library's combobox), typed, no pick.
+    await form.locator("#adres").click();
+    await form.getByRole("combobox").pressSequentially(query);
     await form.getByRole("button", { name: "Szukaj" }).click();
     await form
       .waitForURL(`${server.origin}${url}`, { timeout: 5000 })
