@@ -1,4 +1,8 @@
-import { ModuleMain, moduleMetadata } from "@/components/module-page";
+import {
+  ModuleMain,
+  moduleLive,
+  moduleMetadata,
+} from "@/components/module-page";
 import { PlaceNotFound } from "@/components/place-page";
 import { numberParam, SUBPAGE_IDS } from "@/lib/address-routes";
 import { houseNumber } from "@/lib/house";
@@ -6,8 +10,9 @@ import { firstAddress } from "@/lib/prerender";
 
 // /adres/[id]/[module]?nr=7/22 lands here (next.config.ts rewrites it), as
 // /adres/[id]/nr/… for the street page, any other non-empty ?nr= too.
-// Static and prerendered as the subpage.
-export const ensureStatic = "navigation";
+// A static shell with a live hole, as the subpage; one number prerendered
+// (lib/prerender.ts firstAddress), as /adres/[id]/nr/….
+export const ensureStatic = "prefetch";
 
 export async function generateStaticParams(): Promise<
   Array<{ id: string; module: string; nr: string[] }>
@@ -35,6 +40,7 @@ export default async function ModuleWithNumberPage({
       nr={given}
       missing={houseNumber(given) === null}
       unknown={<PlaceNotFound />}
+      live={moduleLive(id, module, given)}
     />
   );
 }

@@ -5,10 +5,9 @@
 // (the gazetteer hash); keeps every other post's stored result, and writes
 // the file (lib/zuk-data.ts) on every run that read the posts: checkedAt
 // is that run, generatedAt the last run that changed what the pages read
-// (any checkedAt aside, the rejected list too); every such run, once the
-// file is written, purges the WATER cache tag (deps.purge), so the next view
-// of a page renders against it, its „Sprawdziliśmy” time this run's; one
-// after a Warsaw midnight also DAY; never DATASET. The
+// (any checkedAt aside, the rejected list too). No purge: the pages read
+// the file per request through the Blob's CDN (lib/zuk-store.ts), so a
+// write shows within 60 s, its „Sprawdziliśmy” time this run's. The
 // model reads every post and says what it is: a water cut is read for its
 // cuts, a water-quality warning for its places (not shown yet), anything
 // else is "not-water", never read again. Only the water posts that still
@@ -30,7 +29,7 @@
 import { createHash } from "node:crypto";
 import { addDays, isoWithOffset, todayInWarsaw } from "./dates.ts";
 import type { District } from "./districts.ts";
-import { DAY, IMGW, NO_STORE, WATER } from "./headers.ts";
+import { NO_STORE } from "./headers.ts";
 import type { ImgwRunSummary } from "./imgw-cron.ts";
 import { IMGW_KEY, nextChecks, parseChecks, waterKey } from "./live-status.ts";
 import { cronDenied } from "./secret.ts";
@@ -52,7 +51,6 @@ import {
 } from "./zuk-ai.ts";
 import {
   AI_UNAVAILABLE,
-  dayChanged,
   INVALID_REPLY,
   NOT_WATER,
   parseZukFile,
@@ -93,8 +91,6 @@ export type ZukCronDeps = {
   /** The file's body, or null if there is none yet. Throws if unreadable. */
   readFile: () => Promise<string | null>;
   writeFile: (body: string) => Promise<void>;
-  /** Drops a cache tag's data cache and CDN copies: revalidateTag. */
-  purge: (tag: string) => void;
   places: () => Promise<ZukPlaces>;
   readAi?: typeof readWithAi;
   /** Whose posts: lib/sources; the gmina's by default. */
@@ -468,12 +464,6 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     retries: retries.filter((r) => window.has(r.postId)),
   };
   await deps.writeFile(JSON.stringify(file));
-  // Every written run, changed or not: its new checkedAt, and whatever time
-  // alone moved since the last (a Warsaw midnight, a cut's end).
-  deps.purge(WATER);
-  const since = new Date(previous?.checkedAt ?? started);
-  // The day-keyed waste data (lib/schedule.ts) and every page reading it.
-  if (dayChanged(previous, since, started)) deps.purge(DAY);
   if (rejected.length > 0)
     deps.log({ zuk: "rejected", ...tag, gazetteer, entries: rejected });
   const summary = {
@@ -545,8 +535,7 @@ async function recordChecks(
  * runImgw) runs beside them, its result listed under `imgw`, and never
  * changes the water runs' result or the response's status either. Once
  * every run is done, each one's check goes to `checks` (status/checks.json)
- * in one write; then, after a good IMGW check, IMGW is purged (its pages
- * read that file).
+ * in one write.
  */
 export async function handleZukCron(
   request: Request,
@@ -573,9 +562,6 @@ export async function handleZukCron(
     ok[waterKey((run.source ?? gminaLubaczow).id)] = !("error" in outcomes[i]);
   if (weather) ok[IMGW_KEY] = !("error" in weather);
   if (checks) await recordChecks(checks, ok, attemptAt, deps.log);
-  // After every good check of IMGW's feed, the file written or not: its
-  // pages and their cached copy of the store's files (lib/live-store.ts).
-  if (ok[IMGW_KEY]) deps.purge(IMGW);
   const sources: Record<string, unknown> = {};
   for (const [i, run] of more.entries()) {
     const result = results[i];

@@ -18,14 +18,14 @@ Lighthouse (npm `lighthouse`, free, no Lighthouse CI server) with its mobile set
 |---|---|---|
 | LCP | ≤ 1800 ms | median |
 | TBT | ≤ 150 ms | median |
-| CLS | < 0.01 (in practice 0) | median |
+| CLS | reported, not a gate (≤ 0.1 in the checks) | median |
 | Street page HTML | ≤ 30 KB gzip | one fetch (all pages are checked) |
 | Preloaded fonts | ≤ 4 files | the page's `<link rel="preload" as="font">` |
 | Search keystroke → list updated | ≤ 50 ms | median of 5 keys, index loaded, CPU 4× slower |
 | First-load JS | ≤ 200 KB gzip | `npm run budget` (separate step) |
 | Street PDF | ≤ 150 KB, 2–6 pages | `scripts/check-pdf.mjs` (separate step): CI fixture's city street, village and split street with `?nr=` |
 
-**Hard gates:** LCP, TBT, CLS and the search keystroke are what people feel. They never move to make room for code; if one fails, report to Jakub.
+**Hard gates:** LCP, TBT and the search keystroke are what people feel. CLS left the hard gates (Jakub's decision, 31 Oct 2026): live blocks reveal after the static shell (`docs/layout.md`), and a little shift on reveal is accepted. It is still reported; `check-fonts` and `check-search` hold a reveal to web.dev's "good" CLS (0.1), and a late font must still move nothing (< 0.001). They never move to make room for code; if one fails, report to Jakub.
 
 **Adaptable:** the size budgets (first-load JS, HTML, fonts, PDF) follow GOV.UK Frontend's CSS and JS and alphagov accessible-autocomplete, which are used as-is.
 

@@ -51,7 +51,7 @@ $app-header-colour: $app-header;
     pointer-events: none;
   }
 
-  // On one line, under the 80-line cap (scripts/check-own-css.mjs).
+  // On one line, under the line cap (scripts/check-own-css.mjs).
   .govuk-template__body:has(.govuk-skip-link:focus)::before { display: none; }
 }
 
@@ -151,10 +151,46 @@ $app-header-colour: $app-header;
   vertical-align: middle;
 }
 
-// A loading placeholder (components/skeleton.tsx), as GOV.UK has none: its
-// text, in place, transparent on the bin markers' neutral grey. Not animated.
-// On one line, under the 80-line cap (scripts/check-own-css.mjs).
-.app-skeleton { background-color: govuk-colour("black", $variant: "tint-95"); color: transparent; }
+// A loading placeholder (components/skeleton.tsx), as GOV.UK has none: blank
+// space as wide as its text, in place, on the bin markers' neutral grey,
+// with a subtle pulse (opacity only, so it runs on the compositor:
+// web.dev/articles/animations-guide). More modern than GOV.UK, which has no
+// loading state (Jakub's decision, 31 Oct 2026).
+.app-skeleton {
+  background-color: govuk-colour("black", $variant: "tint-95");
+  animation: app-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes app-pulse { 50% { opacity: 0.55; } }
+
+// A live block's reveal (components/live-block.tsx), as Next.js's "Suspense
+// reveals" (nextjs.org/docs/app/guides/view-transitions): the skeleton
+// leaves fast, the block fades in and rises a little after it. Clicks during
+// a reveal reach the page. All of it off under prefers-reduced-motion
+// (web.dev/articles/prefers-reduced-motion): the block swaps at once. Some
+// rules on one line, under the cap (scripts/check-own-css.mjs).
+::view-transition { pointer-events: none; }
+::view-transition-old(.app-leave) { animation: 150ms ease-out both app-fade reverse; }
+
+::view-transition-new(.app-arrive) {
+  animation:
+    210ms ease-in 150ms both app-fade,
+    400ms ease-out both app-rise;
+}
+
+@keyframes app-fade { from { opacity: 0; } }
+@keyframes app-rise { from { transform: translateY(govuk-spacing(2)); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .app-skeleton,
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*),
+  ::view-transition-old(.app-leave),
+  ::view-transition-new(.app-arrive) {
+    animation: none;
+  }
+}
 
 // Deviation from GOV.UK's tag tints (Jakub's decision, task 98): the IMGW
 // banner's level tags take the solid colours of IMGW's own warnings map

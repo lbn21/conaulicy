@@ -1,7 +1,7 @@
 import { longDate } from "@/lib/date-labels";
 import { addDays, WARSAW } from "@/lib/dates";
 import { datasetHeaders } from "@/lib/gate";
-import { DAY, TEXT_PLAIN } from "@/lib/headers";
+import { TEXT_PLAIN } from "@/lib/headers";
 import {
   calendarBody,
   calendarHead,
@@ -67,7 +67,7 @@ export async function GET(
   }
 
   return calendarResponse(calendarBody(lines), wasteFilename(zone.name), {
-    ...datasetHeaders(undefined, DAY),
+    ...datasetHeaders(),
     ...NOINDEX,
   });
 }

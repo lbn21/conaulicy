@@ -55,7 +55,13 @@ import {
   sharedNumberNote,
   unverifiedNote,
 } from "../lib/schedule-notes.ts";
-import { finish, startServer } from "./lib/server.mjs";
+import {
+  closeRenderedPages,
+  finish,
+  notFoundAt,
+  renderedPage,
+  startServer,
+} from "./lib/server.mjs";
 
 const STREET = "/adres/0972447-00470";
 // The page's, the calendar's and the PDF's line after the last date.
@@ -105,11 +111,11 @@ const server = await startServer(3312);
 const failures = [];
 const fail = (path, message) => failures.push(`${path}: ${message}`);
 
+// The page with its live blocks in (scripts/lib/server.mjs renderedPage).
 async function main(path) {
-  const response = await fetch(`${server.origin}${path}`);
-  const html = await response.text();
+  const { status, html } = await renderedPage(`${server.origin}${path}`);
   vagueLinks(path, html);
-  return { status: response.status, main: MAIN.exec(html)?.[0] ?? "", html };
+  return { status, main: MAIN.exec(html)?.[0] ?? "", html };
 }
 
 // Link text says where it goes (docs/layout.md): no link whose visible
@@ -674,11 +680,12 @@ try {
     if (page.status !== 200) fail(path, `${page.status}, want 200`);
   }
   // The town is no place of its own.
-  const town = await fetch(`${server.origin}/adres/0972447`);
-  if (town.status !== 404) fail("/adres/0972447", `${town.status}, want 404`);
+  const town = await notFoundAt(`${server.origin}/adres/0972447`);
+  if (town) fail("/adres/0972447", town);
 
   if (process.env.SCREENSHOT_DIR) await shots(process.env.SCREENSHOT_DIR);
 } finally {
+  await closeRenderedPages();
   server.stop();
 }
 

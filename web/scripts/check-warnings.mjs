@@ -1,8 +1,12 @@
 // The IMGW banner (components/imgw-banner.tsx) in every state, from the mock
 // store (IMGW_WARNINGS_URL=mock:…, lib/imgw-mock.ts mockFiles: the files a
 // good cron run left, checkedAgo minutes back), on the built site:
-// - mock:none (the build's own setting in CI): no banner on any route, no
-//   warning on the address page; the breadcrumbs only on the address pages,
+// - mock:none (the build's own setting in CI): no banner on any route, the
+//   quiet line instead („Ostrzeżenia IMGW: brak ostrzeżeń … · sprawdziliśmy
+//   14:52”) on the banner's pages, no warning on the address page; the
+//   banner is a live block, read per request (components/live-block.tsx),
+//   so every page is read as the browser shows it; the breadcrumbs only on
+//   the address pages,
 //   right before <main> (task 149), so nothing precedes the banner in it;
 // - never the banner on an address page or its waste subpage: its
 //   „Najbliższe dni” block (components/upcoming.tsx) and weather section
@@ -39,7 +43,13 @@ import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "playwright";
 import { IMGW_ATTRIBUTION } from "../lib/imgw-warnings.ts";
 import { WARNING_LEVELS } from "../lib/palette.ts";
-import { finish, ROUTES, startServer } from "./lib/server.mjs";
+import {
+  closeRenderedPages,
+  finish,
+  ROUTES,
+  renderedPage,
+  startServer,
+} from "./lib/server.mjs";
 
 // The banner's page for every state: any page but an address page, which
 // carries the warnings in „Najbliższe dni” instead (HUB, below).
@@ -574,7 +584,7 @@ async function deepChecks(browser, origin) {
 
 // The address page with the state's warnings (state.hub: how many, all in
 // force): never the banner, on it or its waste subpage; „Najbliższe dni”
-// (components/upcoming.tsx), a line per warning („Teraz:”, the event, its
+// (components/upcoming.tsx), a line per warning (its day lead, the event, its
 // tag, until when, „Cały powiat.”, „Szczegóły i źródło” to #pogoda), none
 // on /smieci; the weather's section after the waste's, the state's notice
 // first if any (its link IMGW's page), a tag and an absolute time per
@@ -583,10 +593,9 @@ async function hubChecks(origin, state) {
   const label = `${state.name} ${HUB}`;
   const [hub, waste] = await Promise.all(
     [HUB, `${HUB}/smieci`].map(async (p) => {
-      const response = await fetch(origin + p);
-      if (response.status !== 200)
-        failures.push(`${state.name} ${p}: HTTP ${response.status}`);
-      return response.text();
+      const { status, html } = await renderedPage(origin + p);
+      if (status !== 200) failures.push(`${state.name} ${p}: HTTP ${status}`);
+      return html;
     }),
   );
   for (const [p, html] of [
@@ -611,7 +620,8 @@ async function hubChecks(origin, state) {
     .map(([, line]) => line)
     .filter((line) => line.includes("ostrzeżenie IMGW"));
   const line = new RegExp(
-    `^<strong>Teraz:</strong> ostrzeżenie IMGW – silny wiatr <strong class="govuk-tag govuk-tag--(?:yellow|orange|red)">Stopień [1-3] z 3</strong>, do (?:jutra, |${DAY}, )?${TIME}\\.</span><span class="govuk-!-display-block">Cały powiat\\.</span><a class="govuk-link" href="#pogoda">Szczegóły i źródło<span class="govuk-visually-hidden">: pogoda</span></a>$`,
+    // The lead: the device's „Dziś”, „Jutro” or the start's date, absolute.
+    `^<strong>(?:(?:Dziś|Jutro)(?: od ${TIME})?|\\p{Lu}\\p{L}+, \\d{1,2} \\p{L}+(?:, od ${TIME})?):</strong> ostrzeżenie IMGW – silny wiatr <strong class="govuk-tag govuk-tag--(?:yellow|orange|red)">Stopień [1-3] z 3</strong>, do (?:${DAY}, )?${TIME}\\.</span><span class="govuk-!-display-block">Cały powiat\\.</span><a class="govuk-link" href="#pogoda">Szczegóły i źródło<span class="govuk-visually-hidden">: pogoda</span></a>$`,
     "u",
   );
   const from = hub.indexOf('<section id="pogoda"');
@@ -670,6 +680,16 @@ async function visit(browser, origin, state, pagePath, name) {
     });
     const page = await context.newPage();
     const response = await page.goto(origin + pagePath, { waitUntil: "load" });
+    // The banner and /szukaj's h1 come in after the shell.
+    await page
+      .waitForFunction(
+        () =>
+          !document.querySelector(".app-skeleton") &&
+          document.querySelector("main h1"),
+        null,
+        { timeout: 10_000 },
+      )
+      .catch(() => {});
     const label = `${state.name} ${pagePath} [${width}px]`;
     if (response?.status() !== 200)
       failures.push(`${label}: HTTP ${response?.status()}`);
@@ -759,13 +779,23 @@ try {
   try {
     for (const route of ROUTES) {
       const html = await (await fetch(plain.origin + route.path)).text();
-      if (/govuk-notification-banner|Ostrzeżeni[ea] IMGW/.test(html))
-        failures.push(
-          `${route.path}: a banner with ${process.env.IMGW_WARNINGS_URL}`,
-        );
       crumbsPlaced(route, html);
+      if (route.status) continue;
+      const shown = (await renderedPage(plain.origin + route.path)).html;
+      // The banner's pages: the quiet line; the address pages: neither.
+      const quiet =
+        /<a class="govuk-link" href="https:\/\/meteo\.imgw\.pl\/">Ostrzeżenia IMGW<\/a>: brak ostrzeżeń dla powiatu lubaczowskiego · sprawdziliśmy \d{1,2}:\d{2}<\/p>/.test(
+          shown,
+        );
+      if (
+        /govuk-notification-banner/.test(shown) ||
+        quiet === route.path.startsWith("/adres/")
+      )
+        failures.push(
+          `${route.path}: a banner, or the quiet line ${quiet}, with ${process.env.IMGW_WARNINGS_URL}`,
+        );
     }
-    const hub = await (await fetch(plain.origin + HUB)).text();
+    const hub = (await renderedPage(plain.origin + HUB)).html;
     if (
       hub.includes("ostrzeżenie IMGW") ||
       !hub.includes(`<p class="govuk-body">${NO_WARNINGS}</p>`)
@@ -773,7 +803,7 @@ try {
       failures.push(`${HUB}: a warning line, or no „${NO_WARNINGS}”`);
     await hubShot(browser, plain.origin, "none");
     console.log(
-      `ok    ${process.env.IMGW_WARNINGS_URL}: no banner on ${ROUTES.length} routes, no warning on ${HUB}`,
+      `ok    ${process.env.IMGW_WARNINGS_URL}: no banner on ${ROUTES.length} routes, the quiet line on the banner's pages, no warning on ${HUB}`,
     );
   } finally {
     await plain.stop();
@@ -827,6 +857,7 @@ try {
     );
   }
 } finally {
+  await closeRenderedPages();
   await browser.close();
 }
 

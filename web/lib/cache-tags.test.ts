@@ -2,153 +2,90 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { datasetHeaders } from "./gate.ts";
-import { DATASET, DAY, IMGW, WATER } from "./headers.ts";
+import { DATASET } from "./headers.ts";
 
-// Which responses carry which cache tag (lib/headers.ts): DATASET on every
-// response built from the database, WATER beside it where water data is
-// shown, DAY where the day-keyed waste data is read, IMGW where IMGW's
-// warnings are shown, so the ZUK cron's purges reach them and nothing else.
+// The caching model (next.config.ts, docs/perf.md): every page is a static
+// shell cached for the longest time (cacheLife "max"); the shells built
+// from the database are tagged DATASET, which only an import purges
+// (app/api/revalidate). What changes between imports (IMGW, water,
+// „Najbliższe dni”) is never in a shell: each block reads its Blob file per
+// request through the Blob's CDN, after io(), in its own hole. No cron
+// purges anything.
 
 const read = (path: string) =>
   readFileSync(new URL(path, import.meta.url), "utf8");
 
-test("datasetHeaders: DATASET, and an extra tag beside it", () => {
+const root = new URL("../", import.meta.url);
+const sources = ["app", "components", "lib"]
+  .flatMap((dir) =>
+    readdirSync(new URL(dir, root), {
+      recursive: true,
+      encoding: "utf8",
+    }).map((path) => `${dir}/${path}`),
+  )
+  .filter((path) => /\.tsx?$/.test(path) && !/\.test\.ts$/.test(path))
+  .sort();
+const calling = (pattern: RegExp) =>
+  sources.filter((path) =>
+    pattern.test(readFileSync(new URL(path, root), "utf8")),
+  );
+
+test("datasetHeaders: the one tag, DATASET", () => {
   assert.equal(DATASET, "dataset");
-  assert.equal(WATER, "water");
-  assert.equal(DAY, "day");
-  assert.equal(IMGW, "imgw");
   assert.equal(datasetHeaders()["Vercel-Cache-Tag"], "dataset");
   assert.equal(
-    datasetHeaders(undefined, WATER)["Vercel-Cache-Tag"],
-    "dataset,water",
-  );
-  assert.equal(
-    datasetHeaders("public, s-maxage=3600", WATER)["Cache-Control"],
+    datasetHeaders("public, s-maxage=3600")["Cache-Control"],
     "public, s-maxage=3600",
   );
 });
 
-test("the water calendar is tagged WATER, the waste responses are not", () => {
-  const water = read("../app/adres/[id]/woda.ics/route.ts");
+test("the only purge is the import's, of DATASET", () => {
+  assert.deepEqual(calling(/\brevalidateTag\(/), [
+    "app/api/revalidate/route.ts",
+  ]);
   assert.match(
-    water,
-    /\.\.\.datasetHeaders\(undefined, WATER\),\n\s+\.\.\.NOINDEX,/,
+    read("../app/api/revalidate/route.ts"),
+    /revalidateTag\(DATASET, \{ expire: 0 \}\);/,
   );
-  assert.doesNotMatch(water, /\bDAY\b/);
-  for (const path of [
-    "../app/ics/[zoneId]/route.ts",
-    "../app/adres/[id]/harmonogram.pdf/route.ts",
-  ]) {
-    const route = read(path);
-    assert.doesNotMatch(route, /WATER/, path);
-    // The file, built from the day-keyed data, is tagged DAY; its 308 and
-    // 404 are not.
-    assert.equal(
-      route.match(/datasetHeaders\(undefined, DAY\),\n\s+\.\.\.NOINDEX,/g)
-        ?.length,
-      1,
-      path,
-    );
-    assert.equal(route.match(/datasetHeaders\([^)]*,/g)?.length, 1, path);
-  }
-  for (const path of [
-    "../app/api/search/route.ts",
-    "../app/api/place-redirects/route.ts",
-  ]) {
-    const route = read(path);
-    assert.doesNotMatch(route, /WATER/, path);
-    assert.doesNotMatch(route, /datasetHeaders\([^)]*,/, path);
-  }
+  assert.doesNotMatch(
+    read("../app/api/cron/zuk/route.ts"),
+    /purge:|revalidateTag/,
+  );
+  assert.doesNotMatch(read("./zuk-cron.ts"), /purge\(/);
 });
 
-test("the pages: the ZUK file's cache is tagged WATER, so is every page reading it", () => {
-  // unstable_cache's tags are the rendering page's too (its ISR entry):
-  // the hub and the /woda subpage, with or without a house number.
-  assert.match(
-    read("./zuk-store.ts"),
-    /unstable_cache\(readZukFile, \["zuk-file"\], \{\n\s+tags: \[WATER\],/,
-  );
-  assert.match(read("./water-load.ts"), /getWaterData\(\)/);
-  // Every source's file through that one cache, by its pathname.
-  assert.match(read("./zuk-store.ts"), /await cached\(source\.pathname\)/);
-});
-
-test("the pages: the day-keyed caches are tagged DAY, so is every page reading them", () => {
-  // getPlace and getZone: every address page, the PDF and the zone ICS.
-  const schedule = read("./schedule.ts");
-  assert.match(
-    schedule,
-    /const DAY_CACHE = \{ \.\.\.CACHE, tags: \[DATASET, DAY\] \};/,
-  );
-  for (const key of ["place", "zone"])
-    assert.match(
-      schedule,
-      new RegExp(
-        `const ${key}Cached = unstable_cache\\([^]*?\\["${key}-v\\d+"\\],\\n\\s+DAY_CACHE,\\n\\);`,
-      ),
-      key,
-    );
-  assert.equal(schedule.match(/DAY_CACHE,/g)?.length, 2);
-  assert.doesNotMatch(schedule, /WATER/);
-});
-
-test("the ZUK cron's route purges by revalidateTag, never DATASET", () => {
-  // What lib/zuk-cron.ts purges, and when, is behaviour: zuk-cron.test.ts
-  // ("purge: …"). Only the route's wiring to Next is read here.
-  const route = read("../app/api/cron/zuk/route.ts");
-  assert.match(
-    route,
-    /purge: \(tag\) => revalidateTag\(tag, \{ expire: 0 \}\),/,
-  );
-  assert.doesNotMatch(route, /import \{[^}]*\bDATASET\b/);
-});
-
-test("the pages: IMGW's files in the store are read through one cache tagged IMGW, never IMGW itself", () => {
-  // One cache, tagged: imgwCopy reads it alone, keyed by the store.
+test("the crons' files: no Next cache in front of them; the pages read the Blob's CDN, the crons its origin", () => {
   const store = read("./live-store.ts");
+  const zuk = read("./zuk-store.ts");
+  assert.doesNotMatch(store, /unstable_cache|cacheTag/);
+  assert.doesNotMatch(zuk, /unstable_cache|cacheTag/);
+  assert.match(store, /useCache: cdn,/);
+  assert.match(store, /readBlobFile\(FEED_PATH, \{ cdn: true \}\)/);
+  assert.match(store, /readBlobFile\(CHECKS_PATH, \{ cdn: true \}\)/);
+  assert.match(zuk, /readBlobFile\(source\.pathname, \{ cdn: true \}\)/);
+  // The crons: the origin, so a run compares with the last write.
+  assert.match(zuk, /return readBlobFile\(pathname\);/);
   assert.match(
-    store,
-    /unstable_cache\(imgwFiles, \["imgw-files"\], \{\n\s+tags: \[IMGW\],/,
+    read("../app/api/cron/zuk/route.ts"),
+    /readFeed: \(\) => readBlobFile\(FEED_PATH\),/,
   );
-  assert.equal(store.match(/unstable_cache\(/g)?.length, 1);
-  assert.match(store, /return imgwCopyOf\(feed, checks\);/);
-  assert.match(
-    read("../components/imgw-banner.tsx"),
-    /const shown = banner\(await imgwCopy\(\), Date\.now\(\)\);/,
-  );
-  assert.match(
-    read("./modules.ts"),
-    /return weather\(await imgwCopy\(\), Date\.now\(\)\);/,
-  );
-  const root = new URL("../", import.meta.url);
-  const sources = ["app", "components", "lib"]
-    .flatMap((dir) =>
-      readdirSync(new URL(dir, root), {
-        recursive: true,
-        encoding: "utf8",
-      }).map((path) => `${dir}/${path}`),
-    )
-    .filter((path) => /\.tsx?$/.test(path) && !/\.test\.ts$/.test(path))
-    .sort();
-  const calling = (pattern: RegExp) =>
-    sources.filter((path) =>
-      pattern.test(readFileSync(new URL(path, root), "utf8")),
-    );
-  // IMGW asked only by the cron (and the mock outside production).
+  // Written with the minimum CDN lifetime, 60 s.
+  assert.match(store, /cacheControlMaxAge: 60,/);
+});
+
+test("IMGW: asked only by the cron; its copy read only in live blocks", () => {
   assert.deepEqual(calling(/\bfetchFeed\(/), [
     "lib/imgw-cron.ts",
     "lib/imgw-mock.ts",
     "lib/imgw-warnings.ts",
   ]);
-  // The copy only through that cache, so every page showing it carries the tag.
   assert.deepEqual(calling(/\bimgwCopy\(/), [
     "components/imgw-banner.tsx",
     "lib/live-store.ts",
     "lib/modules.ts",
   ]);
-  // Where the warnings are shown: the banner on these pages, the weather
-  // module (the address pages' „Pogoda” and „Najbliższe dni”).
-  assert.deepEqual(calling(/<ImgwBanner \/>/), [
+  // The banner, in its own hole, on every page but the address pages.
+  assert.deepEqual(calling(/<ImgwLive \/>/), [
     "app/dostepnosc/page.tsx",
     "app/o-projekcie/page.tsx",
     "app/page.tsx",
@@ -158,53 +95,55 @@ test("the pages: IMGW's files in the store are read through one cache tagged IMG
   ]);
 });
 
-test("the cached pages: each `use cache` scope tags what it reads", () => {
-  // Cache Components (next.config.ts): every page's cached scope calls
-  // cacheTag itself, with its data's tags, so the purges reach the page.
-  const scope = (tags: string) =>
-    new RegExp(`"use cache";\\n\\s+cacheLife\\("page"\\);\\n\\s+${tags}`);
-  // The banner, wherever it is shown; the pages reading the dataset tag
-  // all they render, the banner's IMGW too.
-  assert.match(
-    read("../components/imgw-banner.tsx"),
-    scope("cacheTag\\(IMGW\\);\\n\\s+const shown = banner"),
+test("the shells: every `use cache` scope is cacheLife max and tags the dataset", () => {
+  const scopes = sources.flatMap((path) =>
+    [
+      ...readFileSync(new URL(path, root), "utf8").matchAll(
+        /"use cache";\n\s+cacheLife\("(\w+)"\);\n\s+cacheTag\(([^)]*)\);/g,
+      ),
+    ].map((m) => `${path}: ${m[1]} ${m[2]}`),
   );
-  for (const path of ["../app/page.tsx", "../app/ulice/page.tsx"])
-    assert.match(read(path), scope("cacheTag\\(DATASET, IMGW\\);"), path);
-  assert.doesNotMatch(read("../app/szukaj/page.tsx"), /use cache/);
-  // The address pages: every module's tags; a subpage its module's and
-  // the place's (getPlace); their metadata the place's.
-  const modules = read("./modules.ts");
-  assert.match(modules, /load: getPlace,\n\s+tags: PLACE_TAGS,/);
-  assert.match(
-    modules,
-    /load: loadWater,\n\s+tags: \[\.\.\.PLACE_TAGS, WATER\],/,
-  );
-  assert.match(modules, /Date\.now\(\)\);\n\s+\},\n\s+tags: \[IMGW\],/);
+  assert.deepEqual(scopes, [
+    "app/page.tsx: max DATASET",
+    "app/sitemap.ts: dataset DATASET",
+    "app/szukaj/page.tsx: max DATASET",
+    "app/ulice/page.tsx: max DATASET",
+    "components/hub.tsx: max ...PLACE_TAGS",
+    "components/module-page.tsx: max ...PLACE_TAGS",
+    "components/place-page.tsx: max ...PLACE_TAGS",
+    "components/water-page.tsx: max ...PLACE_TAGS",
+  ]);
+  // Every scope is one of those.
+  assert.equal(calling(/"use cache"/).length, 8);
   assert.match(
     read("./schedule.ts"),
     /export const PLACE_TAGS = DAY_CACHE\.tags;/,
   );
-  const modulesTags = (scopeTags: string, path: string, count = 1) =>
+  assert.match(read("./schedule.ts"), /const DAY_CACHE = CACHE;/);
+});
+
+test("the live blocks: read after io(), never inside a cached scope", () => {
+  for (const [path, count] of [
+    ["../components/hub.tsx", 2],
+    ["../components/module-page.tsx", 1],
+    ["../components/imgw-banner.tsx", 1],
+  ] as const)
     assert.equal(
-      read(path).match(new RegExp(scope(scopeTags).source, "g"))?.length,
+      read(path).match(/\n\s+await io\(\);\n/g)?.length,
       count,
       path,
     );
-  modulesTags(
-    "const modules = [^;]+;\\n\\s+cacheTag\\(\\.\\.\\.modules\\.flatMap\\(\\(module\\) => module\\.tags\\)\\);",
-    "../components/hub.tsx",
+  assert.doesNotMatch(read("../components/imgw-banner.tsx"), /use cache/);
+  // Every live module's body and „Najbliższe dni” through LiveBlock.
+  const hub = read("../components/hub.tsx");
+  assert.match(
+    hub,
+    /<LiveBlock skeleton=\{UPCOMING_SKELETON\}>\n\s+<UpcomingLive /,
   );
-  modulesTags(
-    "const module = findSubpage\\(slug\\);\\n\\s+cacheTag\\(\\.\\.\\.PLACE_TAGS, \\.\\.\\.\\(module\\?\\.tags \\?\\? \\[\\]\\)\\);",
-    "../components/module-page.tsx",
+  assert.match(
+    hub,
+    /<LiveBlock key=\{slug\} skeleton=\{sectionSkeleton\(MODULES\[slug\]\)\}>\n\s+<ModuleLive /,
   );
-  modulesTags(
-    "cacheTag\\(\\.\\.\\.PLACE_TAGS\\);",
-    "../components/place-page.tsx",
-  );
-  modulesTags(
-    "cacheTag\\(\\.\\.\\.PLACE_TAGS\\);",
-    "../components/water-page.tsx",
-  );
+  const modules = read("./modules.ts");
+  assert.equal(modules.match(/\n\s+live: true,\n/g)?.length, 2);
 });

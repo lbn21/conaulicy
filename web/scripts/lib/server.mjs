@@ -125,3 +125,84 @@ export async function searchIndexOf(origin, home) {
   const places = url ? await fetchJson(`${origin}${url}`) : [];
   return { url, places };
 }
+
+// A page as the browser shows it once every live block is in: the page's
+// static shell streams each block (IMGW, water, „Najbliższe dni”) after it,
+// behind a skeleton (components/live-block.tsx), and /szukaj's column and
+// „Dziś” render in the browser (components/day-word.tsx), so the server's
+// HTML alone has skeletons there. Chromium, JS on, reduced motion; the
+// skeletons gone (or 10 s); void elements written as React writes them
+// (<hr/>), React's own marks left out, so checks match either. Its status
+// is the document's.
+let pages;
+export async function renderedPage(url, { width = 375, userAgent } = {}) {
+  if (!pages) {
+    const { chromium } = await import("playwright");
+    pages = await chromium.launch();
+  }
+  const context = await pages.newContext({
+    viewport: { width, height: 900 },
+    reducedMotion: "reduce",
+    ...(userAgent ? { userAgent } : {}),
+  });
+  try {
+    const page = await context.newPage();
+    const response = await page.goto(url, { waitUntil: "networkidle" });
+    await page
+      .waitForFunction(() => !document.querySelector(".app-skeleton"), null, {
+        timeout: 10_000,
+      })
+      .catch(() => {});
+    const html = (await page.content())
+      .replace(
+        /<(hr|br|input|img|meta|link)(\s[^>]*?)?>/g,
+        (_, tag, attrs = "") => `<${tag}${attrs}/>`,
+      )
+      // React's own marks, not the page's: its Suspense boundaries'
+      // comments and the view transitions' hints it leaves on revealed
+      // elements.
+      .replace(/<!--[$/&!?]*-->/g, "")
+      .replace(/ vt-[a-z]+="[^"]*"/g, "");
+    return { status: response?.status() ?? 0, html, url: page.url() };
+  } finally {
+    await context.close();
+  }
+}
+
+/** Closes renderedPage's browser, if it started one. */
+export async function closeRenderedPages() {
+  await pages?.close();
+  pages = undefined;
+}
+
+/**
+ * An unknown address (or module): a 404. The address routes serve a known
+ * place's prerendered shell; an id never prerendered first gets the route's
+ * fallback shell, its status sent before the page knows the place is
+ * unknown (ensureStatic 'prefetch':
+ * nextjs.org/docs/app/api-reference/file-conventions/route-segment-config/ensureStatic),
+ * so that one first answer may be a 200, but only with the 404 page and
+ * noindex; every later one is the cached 404. Returns what failed, or null.
+ */
+export async function notFoundAt(url) {
+  const first = await fetch(url);
+  const html = await first.text();
+  if (
+    first.status !== 404 &&
+    !(
+      first.status === 200 &&
+      html.includes('<meta name="robots" content="noindex"/>') &&
+      html.includes("Nie ma takiej strony")
+    )
+  )
+    return `${first.status}, want 404 (or a first 200 with the 404 page and noindex)`;
+  // The 404 is generated in the background after the first answer.
+  let status = first.status;
+  for (let i = 0; i < 20 && status !== 404; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const again = await fetch(url);
+    await again.arrayBuffer();
+    status = again.status;
+  }
+  return status === 404 ? null : `${status} after the first answer, want 404`;
+}

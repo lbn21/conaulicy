@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ContactLink } from "@/components/contact-link";
-import { ImgwBanner } from "@/components/imgw-banner";
+import { ImgwLive } from "@/components/imgw-banner";
 import { PageMain } from "@/components/page-main";
 import { pageMetadata } from "@/lib/share";
 import { ABOUT, ACCESSIBILITY, PRIVACY } from "@/lib/static-pages";
@@ -20,7 +20,7 @@ const PRG_PAGE =
 export default function AboutPage() {
   return (
     <PageMain>
-      <ImgwBanner />
+      <ImgwLive />
       <div className="govuk-grid-row">
         <div className="govuk-grid-column-two-thirds">
           <h1 className="govuk-heading-l">{ABOUT.text}</h1>

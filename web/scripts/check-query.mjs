@@ -6,10 +6,10 @@
 // is linked at the root with no query, and served as a PNG.
 //
 // Also the search without JS: the home page's raw HTML is a GET form to
-// /szukaj with a field named q and a submit button, and /szukaj answers it:
-// one place redirects (never stored; a bot gets a 308, a browser the same
-// redirect client-side, with JS) to its page with the house number,
-// several are listed, none says what to try, an empty q is GOV.UK's error.
+// /szukaj with a field named q and a submit button, and /szukaj answers it
+// (a static page, its column rendered in the browser): one place opens its
+// page with the house number, several are listed, none says what to try, an
+// empty q is GOV.UK's error.
 // /szukaj's field is the home page's (components/address-search.tsx): the
 // same <search> markup, holding what was searched for, or GOV.UK's error
 // markup for an empty q, between the H1 and the results.
@@ -26,8 +26,11 @@ import { withHouseNumber } from "../lib/house.ts";
 import {
   BOT_UA,
   BROWSER_UA,
+  closeRenderedPages,
   fetchJson,
   finish,
+  notFoundAt,
+  renderedPage,
   searchIndexOf,
   startServer,
 } from "./lib/server.mjs";
@@ -43,12 +46,9 @@ const STREET = "/adres/0972447-00470";
 const SPLIT = "/adres/0972447-90004";
 const RENAMED = "/adres/0972447-99999";
 
-// [method, path, status, clean path + query for a redirect, user agent]. A
-// one-place search is asked as an HTML-limited bot: its render is not
-// streamed, so the redirect is a real 308. A browser gets /szukaj's
-// prerendered shell, so the same redirect is a client-side one
-// (nextjs.org/docs/app/api-reference/functions/redirect): check-search
-// asserts where it lands.
+// [method, path, status, clean path + query for a redirect, user agent].
+// /szukaj is static, for browsers and bots alike: a one-place search opens
+// its page in the browser (LANDS, below).
 const CASES = [
   ["GET", `${STREET}?x=1`, 308, STREET],
   ["GET", `${STREET}?nr=12&x=1`, 308, `${STREET}?nr=12`],
@@ -70,33 +70,12 @@ const CASES = [
   ["POST", "/api/revalidate?x=1", 401],
   ["GET", "/manifest.webmanifest?x=1", 200],
   ["GET", "/robots.txt?x=1", 200],
-  ["GET", "/szukaj?q=Rynek", 308, "/adres/0972447-19253", BOT_UA],
-  ["GET", "/szukaj?q=asnyka%2012", 308, "/adres/0972447-00470?nr=12", BOT_UA],
-  [
-    "GET",
-    `/szukaj?q=${encodeURIComponent("ul. Rynek, Lubaczów")}`,
-    308,
-    "/adres/0972447-19253",
-    BOT_UA,
-  ],
-  // A house number where the field puts it, or typed after a pick.
-  ...[
-    ["ul. Rynek 5, Lubaczów", "/adres/0972447-19253?nr=5"],
-    ["ul. Rynek, Lubaczów 5", "/adres/0972447-19253?nr=5"],
-    ["ul. Adama Asnyka 12, Lubaczów", "/adres/0972447-00470?nr=12"],
-    ["ul. Adama Asnyka, Lubaczów 12", "/adres/0972447-00470?nr=12"],
-  ].map(([q, to]) => [
-    "GET",
-    `/szukaj?q=${encodeURIComponent(q)}`,
-    308,
-    to,
-    BOT_UA,
-  ]),
+  ["GET", "/szukaj?q=Rynek", 200],
+  ["GET", "/szukaj?q=Rynek", 200, undefined, BOT_UA],
   ["GET", "/szukaj?q=adama", 200],
   // Under 3 letters, a list, never one place (lib/search.ts CLEAR_MIN).
   ["GET", "/szukaj?q=a", 200],
   ["GET", "/szukaj?q=as", 200],
-  ["GET", "/szukaj?q=asn", 308, "/adres/0972447-00470", BOT_UA],
   ["GET", "/szukaj?q=xyzqq", 200],
   ["GET", "/szukaj?q=", 200],
   ["GET", "/szukaj?q=Rynek&utm_source=x", 308, "/szukaj?q=Rynek"],
@@ -127,7 +106,22 @@ const CASES = [
   ["GET", "/api/place-redirects", 200],
 ];
 
-// [query, what the raw HTML of /szukaj must hold]
+// [query, where a browser lands from /szukaj?q= (the place's page, with
+// the house number)]. Every label in the index, and some with a number, are
+// added below.
+const LANDS = [
+  ["Rynek", "/adres/0972447-19253"],
+  ["asnyka 12", "/adres/0972447-00470?nr=12"],
+  ["ul. Rynek, Lubaczów", "/adres/0972447-19253"],
+  // A house number where the field puts it, or typed after a pick.
+  ["ul. Rynek 5, Lubaczów", "/adres/0972447-19253?nr=5"],
+  ["ul. Rynek, Lubaczów 5", "/adres/0972447-19253?nr=5"],
+  ["ul. Adama Asnyka 12, Lubaczów", "/adres/0972447-00470?nr=12"],
+  ["ul. Adama Asnyka, Lubaczów 12", "/adres/0972447-00470?nr=12"],
+  ["asn", "/adres/0972447-00470"],
+];
+
+// [query, what /szukaj must hold, as the browser shows it]
 const SEARCH = [
   [
     "adama",
@@ -151,7 +145,8 @@ const SEARCH = [
   [
     "",
     [
-      "<title>Błąd: Wyszukaj adres – conaulicy.pl</title>",
+      // One title for every outcome: the page is static.
+      "<title>Wyszukaj adres – conaulicy.pl</title>",
       'class="govuk-error-summary"',
       'href="#adres">Wpisz nazwę ulicy albo wsi</a>',
       'class="govuk-error-message"',
@@ -197,25 +192,12 @@ try {
   if (places.length === 0) failures.push("/: no search index");
   for (const [i, [id, label]] of places.entries()) {
     const href = `/adres/${encodeURIComponent(id)}`;
-    CASES.push([
-      "GET",
-      `/szukaj?q=${encodeURIComponent(label)}`,
-      308,
-      href,
-      BOT_UA,
-    ]);
+    LANDS.push([label, href]);
     // Every third with a house number, as the field writes it or as typed
     // after a pick.
     if (i % 3 === 0) {
-      for (const text of [withHouseNumber(label, "7a"), `${label} 7a`]) {
-        CASES.push([
-          "GET",
-          `/szukaj?q=${encodeURIComponent(text)}`,
-          308,
-          `${href}?nr=7a`,
-          BOT_UA,
-        ]);
-      }
+      for (const text of [withHouseNumber(label, "7a"), `${label} 7a`])
+        LANDS.push([text, `${href}?nr=7a`]);
     }
   }
 
@@ -235,18 +217,29 @@ try {
     new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1] ?? null;
   const search = (html) =>
     /<search[^>]*>[\s\S]*?<\/search>/.exec(html)?.[0] ?? "";
+  for (const [q, to] of LANDS) {
+    const { url } = await renderedPage(
+      `${server.origin}/szukaj?q=${encodeURIComponent(q)}`,
+    );
+    const at = new URL(url);
+    if (decodeURI(`${at.pathname}${at.search}`) !== to)
+      failures.push(
+        `/szukaj?q=${q}: at ${at.pathname}${at.search}, want ${to}`,
+      );
+  }
   for (const [q, parts] of SEARCH) {
+    const url = `${server.origin}/szukaj?q=${encodeURIComponent(q)}`;
     const page = (ua) =>
-      fetch(`${server.origin}/szukaj?q=${encodeURIComponent(q)}`, {
-        headers: { "user-agent": ua },
-      }).then((res) => res.text());
-    const html = await page(BROWSER_UA);
+      fetch(url, { headers: { "user-agent": ua } }).then((res) => res.text());
+    const { html } = await renderedPage(url, { userAgent: BROWSER_UA });
     const input = field(html);
     const error = q === "";
+    // With text, the page's field until its first focus; empty, the
+    // library's at once (its own describedby: check-search).
     const want = {
-      value: escapeHtml(q),
+      value: error ? null : escapeHtml(q),
       error: error,
-      describedBy: error ? "adres-hint adres-error" : "adres-hint",
+      describedBy: error ? "adres__assistiveHint" : "adres-hint",
     };
     const got = {
       value: attr(input, "value"),
@@ -278,9 +271,8 @@ try {
       if (!html.includes(part)) failures.push(`/szukaj?q=${q}: no ${part}`);
     }
     // GOV.UK search results: the error summary (if any), the H1, the field,
-    // then the results. Each looked for after the one before: the results
-    // stream in after the placeholder (task 222), and the RSC payload's
-    // scripts may carry their text earlier in the document.
+    // then the results. Each looked for after the one before: the RSC
+    // payload's scripts may carry their text earlier in the document.
     const order = [];
     for (const part of error
       ? ['class="govuk-error-summary"', "<h1", "<search"]
@@ -303,31 +295,28 @@ try {
       failures.push(`/szukaj?q=${q} (browser): no <title> or robots meta`);
     }
   }
-  // One field: /szukaj's form is the home page's, but for its value.
-  const adama = await (await fetch(`${server.origin}/szukaj?q=adama`)).text();
-  const blank = (html) => search(html).replace(/\svalue="[^"]*"/, ' value=""');
-  if (!search(home) || blank(adama) !== blank(home)) {
-    failures.push(
-      `/szukaj?q=adama: search form differs from /\n  / ${search(home)}\n  /szukaj ${search(adama)}`,
-    );
-  }
-  // Never stored, for a bot (its 308: a permanent redirect a client kept
-  // would outlive a data change) and a browser (200, the redirect inside).
-  for (const [ua, status] of [
-    [BOT_UA, 308],
-    [BROWSER_UA, 200],
-  ]) {
-    const one = await fetch(`${server.origin}/szukaj?q=Rynek`, {
-      headers: { "user-agent": ua },
-      redirect: "manual",
-    });
-    await one.arrayBuffer();
-    const store = one.headers.get("cache-control") ?? "";
-    if (one.status !== status || !/no-store/.test(store)) {
-      failures.push(
-        `/szukaj?q=Rynek (${ua === BOT_UA ? "bot" : "browser"}): ${one.status}, Cache-Control ${JSON.stringify(store)}`,
+  // One field: /szukaj's form is the home page's, but for its value (both
+  // as the browser shows them).
+  const adama = (await renderedPage(`${server.origin}/szukaj?q=adama`)).html;
+  // The home page's own HTML, its void elements as renderedPage writes them.
+  const shownHome = home.replace(
+    /<(input)(\s[^>]*?)?(?<!\/)>/g,
+    (_, tag, attrs = "") => `<${tag}${attrs}/>`,
+  );
+  // The form tag's attributes in any order (a client render writes its
+  // own); method and action are checked on the home page's, above.
+  const blank = (html) =>
+    search(html)
+      .replace(/\svalue="[^"]*"/, ' value=""')
+      .replace(/<form\s[^>]*>/, (tag) =>
+        /\smethod="get"/.test(tag) && /\saction="\/szukaj"/.test(tag)
+          ? "<form>"
+          : tag,
       );
-    }
+  if (!search(shownHome) || blank(adama) !== blank(shownHome)) {
+    failures.push(
+      `/szukaj?q=adama: search form differs from /\n  / ${search(shownHome)}\n  /szukaj ${search(adama)}`,
+    );
   }
 
   // The calendar link is on the waste subpage (the address page has none).
@@ -337,6 +326,12 @@ try {
   else failures.push(`${STREET}/smieci: no /ics/ link`);
 
   for (const [method, path, status, clean, ua] of CASES) {
+    // An unknown address: notFoundAt's rule (scripts/lib/server.mjs).
+    if (status === 404 && path.startsWith("/adres/")) {
+      const wrong = await notFoundAt(`${server.origin}${path}`);
+      if (wrong) failures.push(`${method} ${path}: ${wrong}`);
+      continue;
+    }
     const response = await fetch(`${server.origin}${path}`, {
       method,
       redirect: "manual",
@@ -363,6 +358,7 @@ try {
     failures.push(`/api/place-redirects: ${JSON.stringify(moved)}`);
   }
 } finally {
+  await closeRenderedPages();
   server.stop();
 }
 

@@ -126,7 +126,7 @@ async function addressMetadata(
   page: "address" | "waste",
 ): Promise<Metadata> {
   "use cache";
-  cacheLife("page");
+  cacheLife("max");
   cacheTag(...PLACE_TAGS);
   const place = await getPlace(id, nr);
   // As app/not-found.tsx: Next.js's own noindex is the only robots tag.
@@ -288,25 +288,23 @@ function PlaceHeading({
   );
 }
 
-/** A module subpage's heading: the place as its caption, then the h1. */
+/**
+ * A live module subpage's heading (components/module-page.tsx), in the
+ * shell: the place as its caption, then the h1; its checked line is the
+ * live body's, from the same read as its data.
+ */
 export function SubpageHeading({
   place,
   heading,
-  checkedAt,
-  module,
 }: {
   place: PlaceView;
   heading: string;
-  checkedAt: Checked;
-  module: ModuleId;
 }) {
   return (
     <PlaceHeading
       place={place}
       caption={placeCaption(place)}
       heading={heading}
-      checkedAt={checkedAt}
-      module={module}
     />
   );
 }

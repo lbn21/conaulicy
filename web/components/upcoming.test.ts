@@ -4,14 +4,16 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { warsawToIso } from "../lib/dates.ts";
 import { span } from "../lib/hub.ts";
-import { type Item, trusted } from "../lib/upcoming.ts";
-import { DayLead, Upcoming, UpcomingList } from "./upcoming.tsx";
+import type { Item } from "../lib/upcoming.ts";
+import { blank } from "./skeleton.tsx";
+import { Upcoming } from "./upcoming.tsx";
 
-// The island (components/upcoming.tsx) as the page renders it: the server's
-// words from the render time, then the device's clock. Rendered at 23:58
-// on Wednesday 28 Oct; the device reads 00:05 on Thursday.
+// „Najbliższe dni” (components/upcoming.tsx) as the server renders it per
+// request: what is not over at `now`, every date absolute, and in place of
+// „Dziś” or „Jutro” a word-wide skeleton (the device's, after hydration:
+// components/day-word.tsx). At 23:58 on Wednesday 28 Oct, and at 00:05.
 const wall = (w: string) => warsawToIso(w) as string;
-const RENDERED = Date.parse("2026-10-28T23:58:00+01:00");
+const NOW = Date.parse("2026-10-28T23:58:00+01:00");
 const LATER = Date.parse("2026-10-29T00:05:00+01:00");
 
 const ITEMS: Item[] = [
@@ -38,19 +40,28 @@ const ITEMS: Item[] = [
 ];
 
 const list = (now: number) =>
-  renderToStaticMarkup(createElement(UpcomingList, { items: ITEMS, now }));
+  renderToStaticMarkup(createElement(Upcoming, { items: ITEMS, now }));
 
-test("server render: the render time's words, GOV.UK's list, section links", () => {
-  const html = renderToStaticMarkup(
-    createElement(Upcoming, { items: ITEMS, renderedAt: RENDERED }),
-  );
-  assert.equal(html, list(RENDERED));
+// The skeleton the server leaves for the device's word.
+const WORD = `<span class="app-skeleton" aria-hidden="true">${blank("Jutro")}</span>`;
+
+test("server render: absolute words, the word a skeleton, GOV.UK's list, section links", () => {
+  const html = list(NOW);
   assert.match(
     html,
     /^<section aria-labelledby="najblizsze-dni"><h2 id="najblizsze-dni" class="govuk-heading-m">Najbliższe dni<\/h2><ul class="govuk-list govuk-list--spaced">/,
   );
-  assert.match(html, /<strong>Teraz<\/strong> nie ma wody – do jutra, 0:00\./);
-  assert.match(html, /<strong>Jutro<\/strong> odbiór śmieci: papier, szkło\./);
+  assert.ok(
+    html.includes(
+      `<strong>${WORD}</strong> od 22:00 do czwartku 29 października, 0:00 nie będzie wody.`,
+    ),
+    html,
+  );
+  assert.ok(
+    html.includes(`<strong>${WORD}</strong> odbiór śmieci: papier, szkło.`),
+    html,
+  );
+  assert.doesNotMatch(html, /Dziś|Teraz|jutra/);
   assert.match(
     html,
     /<a class="govuk-link" href="#woda">Szczegóły i źródło<span class="govuk-visually-hidden">: woda<\/span><\/a>/,
@@ -62,39 +73,17 @@ test("server render: the render time's words, GOV.UK's list, section links", () 
   assert.match(html, /<hr class="govuk-section-break[^"]*"\/>$/);
 });
 
-test("23:58 → 00:05: „Jutro” becomes „Dziś”, the cut over is gone", () => {
+test("00:05: the cut over is gone, the pickup stays", () => {
   const html = list(LATER);
   assert.doesNotMatch(html, /wody/);
-  assert.match(html, /<strong>Dziś<\/strong> odbiór śmieci: papier, szkło\./);
+  assert.match(html, /odbiór śmieci: papier, szkło\./);
   assert.equal((html.match(/<li>/g) ?? []).length, 1);
-});
-
-test("a device clock earlier than the render keeps the server's words", () => {
-  const early = Date.parse("2026-10-27T09:00:00+01:00");
-  assert.equal(list(trusted(early, RENDERED)), list(RENDERED));
-  // Within 5 minutes: the device's own.
-  assert.equal(trusted(RENDERED - 60_000, RENDERED), RENDERED - 60_000);
 });
 
 test("nothing shown: no block, no heading, no break", () => {
   assert.equal(list(Date.parse("2026-10-30T00:00:00+01:00")), "");
   assert.equal(
-    renderToStaticMarkup(
-      createElement(Upcoming, { items: [], renderedAt: RENDERED }),
-    ),
+    renderToStaticMarkup(createElement(Upcoming, { items: [], now: NOW })),
     "",
   );
-});
-
-test("a section's day lead, from the render time", () => {
-  const lead = (day: string) =>
-    renderToStaticMarkup(
-      createElement(DayLead, {
-        day,
-        text: "piątek, 30 października",
-        renderedAt: RENDERED,
-      }),
-    );
-  assert.equal(lead("2026-10-29"), "Jutro: piątek, 30 października");
-  assert.equal(lead("2026-11-20"), "Piątek, 30 października");
 });

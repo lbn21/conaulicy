@@ -7,14 +7,12 @@ import { whenIdle } from "@/lib/idle";
 import {
   addresses,
   type Matcher,
-  matcher,
-  placeHref,
   SEARCH_ID,
   type SearchHit,
-  type SearchIndex,
   searchTerms,
 } from "@/lib/search";
 import { HINT, LABEL } from "@/lib/search-hint";
+import { loadIndex as loadSearchIndex } from "@/lib/search-index";
 
 // One search per page (the home page or /szukaj), so fixed ids.
 const INPUT_ID = "adres";
@@ -89,7 +87,8 @@ function afterLoad(callback: () => void): () => void {
  * its documented options only. It loads once the page is idle, so the field
  * a user taps is already its own: iOS opens the keyboard only for focus given
  * in the tap itself, never for focus moved to a new field after an async
- * import. The index of every place loads once, in the background once the
+ * import. The index of every place (lib/search-index.ts, shared with
+ * /szukaj's results) loads once, in the background once the
  * page has loaded and is idle, or on first focus if that comes first (only
  * then with Save-Data on), so suggestions are ready from the first letter;
  * then each keystroke is matched on the device
@@ -97,20 +96,15 @@ function afterLoad(callback: () => void): () => void {
  * settled queries go to /api/search. The list opens inline, under the field
  * and above „Szukaj”, pushing what follows down while it is open (GOV.UK's
  * default), so it never covers the button. As GOV.UK's default (no
- * autoselect), nothing is highlighted until ArrowDown, which goes to the
- * first suggestion. Choosing a suggestion (a tap or click, or Enter with it
- * highlighted) opens its place: the library's onConfirm (its README,
- * "onConfirm") hands over the suggestion, our search result with its id and
- * house number, and its page loads as a link's would, without /szukaj
- * (Location.assign,
- * developer.mozilla.org/docs/Web/API/Location/assign): a full page load, so
- * focus starts at the top (the skip link first) and screen readers announce
- * the new page, as for any link on the site. Enter with no suggestion
- * highlighted (list open or closed, none found, still loading) submits what
- * was typed. The library alone would do nothing on Enter with the list open
- * and nothing highlighted, so submitOnEnter does that. „Szukaj” always
- * submits what is in the field, and /szukaj opens the place whose text it
- * is. confirmOnBlur stays off: leaving the field keeps what was typed.
+ * onConfirm, no autoselect), nothing is highlighted until ArrowDown, which
+ * goes to the first suggestion. Choosing a suggestion (a tap or click, or
+ * Enter with it highlighted) only fills the field with its text and closes
+ * the list (Jakub's decision, 31 Oct 2026); with none highlighted (list open
+ * or closed, none found, still loading) Enter submits what was typed. The
+ * library alone would do nothing on Enter with the list open and nothing
+ * highlighted, so submitOnEnter does that. „Szukaj” always submits what is
+ * in the field, and /szukaj opens the place whose text it is. confirmOnBlur
+ * stays off: leaving the field keeps what was typed.
  *
  * The one search field: the home page and /szukaj both render it. On
  * /szukaj it holds the text searched for (`value`) and, for an empty search,
@@ -141,12 +135,7 @@ export function AddressSearch({
     let fetchIndex = () => {};
     const index: Promise<Matcher> = new Promise((resolve, reject) => {
       fetchIndex = () =>
-        fetch(indexUrl)
-          .then(async (res) => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            resolve(matcher((await res.json()) as SearchIndex));
-          })
-          .catch(reject);
+        loadSearchIndex(indexUrl).then(({ match }) => resolve(match), reject);
     });
     const loadIndex = () => {
       stopIndex();
@@ -216,7 +205,7 @@ export function AddressSearch({
     // Enter with the list open and no suggestion highlighted: the library
     // stops the submit and does nothing, so submit what was typed. With one
     // highlighted, focus is on that option (not the field) and the library
-    // confirms it (onConfirm, below).
+    // fills the field with it.
     const form = container.closest("form");
     function submitOnEnter(event: KeyboardEvent) {
       if (
@@ -288,14 +277,6 @@ export function AddressSearch({
         inputClasses,
         menuAttributes: { "aria-labelledby": LABEL_ID },
         confirmOnBlur: false,
-        // Called with the chosen suggestion only (3.0.2 handleOptionClick,
-        // for a click, a tap or Enter on the highlighted one); never for the
-        // "no results" row, which is not an option.
-        onConfirm: (option: Option) => {
-          if (option && typeof option !== "string") {
-            window.location.assign(placeHref(option));
-          }
-        },
         templates: {
           inputValue: optionText,
           suggestion: (option: Option) => escapeHtml(optionText(option)),

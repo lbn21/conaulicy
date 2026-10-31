@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
+import { CheckedLine } from "@/components/checked-line";
 import { NOT_FOUND_METADATA } from "@/components/page-not-found";
 import { Parts, textOf } from "@/components/parts";
-import { SubpageHeading } from "@/components/place-page";
 import {
   AiReadNote,
   CalendarBlock,
@@ -37,9 +37,10 @@ import { sourcesAt } from "@/lib/water-sources";
 // (lib/water-ics.ts), then every planned cut still to come at this
 // address, a day each, with its hours and what is cut, then posts we could
 // not match to addresses, as links only, then the AI-read note and the
-// posts as the source. Dates are absolute; the cuts are those not over at
-// the render, and the water cron purges the page after every check
-// (lib/zuk-cron.ts), so within a run of one's end.
+// posts as the source. The heading is in the page's cached shell, the rest
+// read per request (components/module-page.tsx moduleLive), so the cuts are
+// those not over now, from the cron's last file. Dates are absolute; a
+// day's „Dziś” or „Jutro” is the device's (components/day-word.tsx).
 
 const H1 = "Przerwy w dostawie wody";
 
@@ -52,7 +53,7 @@ export async function waterMetadata(
   nr: string | null,
 ): Promise<Metadata> {
   "use cache";
-  cacheLife("page");
+  cacheLife("max");
   cacheTag(...PLACE_TAGS);
   const place = await getPlace(id, nr);
   // As placeMetadata: Next.js's own noindex is the only robots tag.
@@ -71,6 +72,11 @@ export async function waterMetadata(
   };
 }
 
+/**
+ * The subpage's body, read per request (components/module-page.tsx
+ * moduleLive) under the heading in the shell: first when we checked, from
+ * the same read as the cuts.
+ */
 export function WaterDetails({
   data,
   checkedAt = null,
@@ -83,91 +89,79 @@ export function WaterDetails({
   const trace = waterTrace(data);
   const dates = [...new Set(data.outages.map((cut) => cut.date))];
   const calendar = waterCalendarHref(data);
-  // The days' „Dziś” or „Jutro” are the island's, as the hub's sections.
-  const renderedAt = Date.now();
   return (
-    <div className="govuk-grid-row">
-      <div className="govuk-grid-column-two-thirds">
-        <SubpageHeading
-          place={data.place}
-          heading={H1}
-          checkedAt={checkedAt}
-          module="woda"
+    <>
+      <CheckedLine at={checkedAt} module="woda" />
+      {note && (
+        <div className="govuk-inset-text">
+          <Parts parts={note} lead={false} />
+        </div>
+      )}
+      {calendar && (
+        <CalendarBlock
+          href={calendar}
+          label="Dodaj przerwy do kalendarza"
+          hint={waterCalendarHint(data)}
+          event="water_calendar_add"
+          place={data.place.id}
         />
-        {note && (
-          <div className="govuk-inset-text">
-            <Parts parts={note} renderedAt={null} />
-          </div>
-        )}
-        {calendar && (
-          <CalendarBlock
-            href={calendar}
-            label="Dodaj przerwy do kalendarza"
-            hint={waterCalendarHint(data)}
-            event="water_calendar_add"
-            place={data.place.id}
-          />
-        )}
-        {empty ? (
-          <p className="govuk-body">
-            <Parts parts={empty} renderedAt={null} />
-          </p>
-        ) : (
-          dates.map((date) => (
-            <section key={date} aria-labelledby={`dzien-${date}`}>
-              <h2 id={`dzien-${date}`} className="govuk-heading-m">
-                <Parts
-                  parts={[{ day: date, text: absoluteDay(date) }]}
-                  renderedAt={renderedAt}
-                />
-              </h2>
-              {data.outages
-                .filter((cut) => cut.date === date)
-                .map((cut) => (
-                  <dl key={cut.uid} className="govuk-summary-list">
-                    <div className="govuk-summary-list__row">
-                      <dt className="govuk-summary-list__key">Godziny</dt>
-                      <dd className="govuk-summary-list__value">
-                        {hours(cut) ?? "komunikat ich nie podaje"}
-                      </dd>
-                    </div>
-                    <div className="govuk-summary-list__row">
-                      <dt className="govuk-summary-list__key">Gdzie</dt>
-                      <dd className="govuk-summary-list__value">
-                        {cutWhere(cut, data.place)}
-                      </dd>
-                    </div>
-                  </dl>
-                ))}
-            </section>
-          ))
-        )}
-        {trace && <p className="govuk-body">{trace}</p>}
-        {data.notices.length > 0 && (
-          <section aria-labelledby="inne-komunikaty">
-            <h2 id="inne-komunikaty" className="govuk-heading-m">
-              Inne komunikaty
+      )}
+      {empty ? (
+        <p className="govuk-body">
+          <Parts parts={empty} lead={false} />
+        </p>
+      ) : (
+        dates.map((date) => (
+          <section key={date} aria-labelledby={`dzien-${date}`}>
+            <h2 id={`dzien-${date}`} className="govuk-heading-m">
+              <Parts parts={[{ day: date, text: absoluteDay(date) }]} lead />
             </h2>
-            {data.notices.map((notice) => (
-              <p key={notice.uid} className="govuk-body">
-                <Parts parts={[noticeLink(notice)]} renderedAt={null} />
+            {data.outages
+              .filter((cut) => cut.date === date)
+              .map((cut) => (
+                <dl key={cut.uid} className="govuk-summary-list">
+                  <div className="govuk-summary-list__row">
+                    <dt className="govuk-summary-list__key">Godziny</dt>
+                    <dd className="govuk-summary-list__value">
+                      {hours(cut) ?? "komunikat ich nie podaje"}
+                    </dd>
+                  </div>
+                  <div className="govuk-summary-list__row">
+                    <dt className="govuk-summary-list__key">Gdzie</dt>
+                    <dd className="govuk-summary-list__value">
+                      {cutWhere(cut, data.place)}
+                    </dd>
+                  </div>
+                </dl>
+              ))}
+          </section>
+        ))
+      )}
+      {trace && <p className="govuk-body">{trace}</p>}
+      {data.notices.length > 0 && (
+        <section aria-labelledby="inne-komunikaty">
+          <h2 id="inne-komunikaty" className="govuk-heading-m">
+            Inne komunikaty
+          </h2>
+          {data.notices.map((notice) => (
+            <p key={notice.uid} className="govuk-body">
+              <Parts parts={[noticeLink(notice)]} lead={false} />
+            </p>
+          ))}
+        </section>
+      )}
+      {!empty && (
+        <>
+          <AiReadNote text={waterAiNote(data)} />
+          <SourceInset>
+            {waterSources(data).map((parts) => (
+              <p key={textOf(parts)} className="govuk-body">
+                Źródło: <Parts parts={parts} lead={false} />
               </p>
             ))}
-          </section>
-        )}
-        {!empty && (
-          <>
-            <AiReadNote text={waterAiNote(data)} />
-            <SourceInset>
-              {waterSources(data).map((parts) => (
-                <p key={textOf(parts)} className="govuk-body">
-                  Źródło: <Parts parts={parts} renderedAt={null} />
-                </p>
-              ))}
-            </SourceInset>
-          </>
-        )}
-      </div>
-    </div>
+          </SourceInset>
+        </>
+      )}
+    </>
   );
 }

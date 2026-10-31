@@ -1,11 +1,10 @@
 // The address page's „Najbliższe dni” block (components/upcoming.tsx) and
 // its sections' day leads: what each module gives the block (Item), the one
-// order, and the words at an instant. The server makes every absolute label
-// (dates, clock times); this file only compares Warsaw days and instants,
-// so the island picks the words from the device's clock with no locale
-// formatting, and the unit tests from a fixed one. Pure and client-safe.
+// order, and its words. The server makes every label, absolute (dates,
+// clock times); only „Dziś”, „Jutro” and „Za 5 dni” are the device's
+// (components/day-word.tsx, dayLead), with no locale formatting, and the
+// unit tests' from a fixed day. Pure and client-safe.
 import { MODULE_IDS, type ModuleId } from "./address-routes.ts";
-import { addDays, todayInWarsaw } from "./dates.ts";
 
 /** When something happens, with its labels made on the server. */
 export type Span = {
@@ -76,57 +75,45 @@ export const visible = (item: Item, now: number) =>
   (item.shownFrom === null || Date.parse(item.shownFrom) <= now) &&
   now < Date.parse(item.span.end);
 
-/** The device's clock, unless it is over 5 minutes before the render. */
-const SKEW_MS = 5 * 60_000;
-export const trusted = (now: number, renderedAt: number) =>
-  now < renderedAt - SKEW_MS ? renderedAt : now;
-
 /** "przerwa" → "Przerwa". */
 export const capitalised = (text: string) =>
   text.charAt(0).toUpperCase() + text.slice(1);
 
-/** A line's words: the lead (bold), the rest, the second sentence. */
+/**
+ * A line's words: the lead (bold), as the device's „Dziś” or „Jutro” and
+ * what follows that word (components/day-word.tsx), or else the date
+ * („Piątek, 30 października:”); the rest; the second sentence.
+ */
 export type Words = {
-  lead: string;
+  day: string;
+  /** After „Dziś” or „Jutro”: "" for a cut or a pickup, „ od 13:00:” for a warning. */
+  afterWord: string;
+  /** The lead when the day is neither. */
+  date: string;
   text: Array<string | Tag>;
   second: string | null;
 };
 
 /**
- * An item's words at `now`. Under way (it has started: at its time, or on
- * an earlier day): „Teraz”; else „Dziś”, „Jutro” or its date. The end's
- * day is named only when it is not the lead's: „do jutra, 2:00”.
+ * An item's words: absolute only, so the server says nothing that depends
+ * on today; the end's day is named when it is not the start's: „do
+ * czwartku 29 października, 4:00”. The second sentence is dropped at its
+ * secondUntil, as of `now` (the block is read per request).
  */
 export function words(item: Item, now: number): Words {
   const { span } = item;
-  const today = todayInWarsaw(new Date(now));
-  const tomorrow = addDays(today, 1);
-  const going =
-    now >= Date.parse(span.start) && (span.from !== null || span.day < today);
-  const day =
-    span.day === today ? "Dziś" : span.day === tomorrow ? "Jutro" : null;
-  const ref = going ? today : span.day;
-  const endDay =
-    span.endDay === ref
-      ? ""
-      : span.endDay === tomorrow
-        ? "jutra, "
-        : `${span.until}, `;
+  const endDay = span.endDay === span.day ? "" : `${span.until}, `;
   const end = span.to && `${endDay}${span.about ? "ok. " : ""}${span.to}`;
   const second =
     item.secondUntil === null || now < Date.parse(item.secondUntil)
       ? item.second
       : null;
-  // „Piątek, 30 października:” before the rest; a word needs no colon.
-  const lead = going ? "Teraz" : (day ?? `${capitalised(span.date)}:`);
+  const date = capitalised(span.date);
+  const lead = { day: span.day, afterWord: "", date: `${date}:` };
   switch (item.module) {
     case "woda": {
-      // A failure: „(awaria)” right after what happens, for every lead.
+      // A failure: „(awaria)” right after what happens.
       const cut = item.emergency ? " (awaria)" : "";
-      const until = end
-        ? ` – do ${end}.`
-        : ". Komunikat nie podaje, do której.";
-      if (going) return { lead, text: [`nie ma wody${cut}${until}`], second };
       const text =
         span.from && end
           ? `od ${span.from} do ${end} nie będzie wody${cut}.`
@@ -135,17 +122,15 @@ export function words(item: Item, now: number): Words {
             : end
               ? `do ${end} nie będzie wody${cut}.`
               : `będzie przerwa w dostawie wody${cut}. Komunikat nie podaje godzin.`;
-      return { lead, text: [text], second };
+      return { ...lead, text: [text], second };
     }
     case "pogoda": {
       // A missing time left out, as the water's: no „od”, no „do”.
       const from = span.from ? ` od ${span.from}` : "";
       return {
-        lead: going
-          ? "Teraz:"
-          : day
-            ? `${day}${from}:`
-            : `${capitalised(span.date)}${from && `,${from}`}:`,
+        day: span.day,
+        afterWord: `${from}:`,
+        date: `${date}${from && `,${from}`}:`,
         text: [
           `ostrzeżenie IMGW – ${item.event} `,
           item.level,
@@ -155,16 +140,16 @@ export function words(item: Item, now: number): Words {
       };
     }
     case "smieci":
-      return { lead, text: [`odbiór śmieci: ${item.bins}.`], second };
+      return { ...lead, text: [`odbiór śmieci: ${item.bins}.`], second };
   }
 }
 
 /**
- * A section's first line: „Dziś: ”, „Jutro: ” or „Za 5 dni: ” (2 to 7 days)
- * before the absolute `text`; further, or past, the text alone.
+ * A section's first line on `today` (a Warsaw day): „Dziś: ”, „Jutro: ” or
+ * „Za 5 dni: ” (2 to 7 days) before the absolute `text`; further, or past,
+ * the text alone.
  */
-export function dayLead(day: string, text: string, now: number): string {
-  const today = todayInWarsaw(new Date(now));
+export function dayLead(day: string, text: string, today: string): string {
   const n = (Date.parse(day) - Date.parse(today)) / 86_400_000;
   const lead =
     n === 0

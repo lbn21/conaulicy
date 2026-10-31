@@ -29,7 +29,7 @@ import {
   zoneMembers,
   zones,
 } from "@/lib/db";
-import { DATASET, DAY } from "@/lib/headers";
+import { DATASET } from "@/lib/headers";
 import { houseNumber } from "@/lib/house";
 import {
   gminaShortName,
@@ -59,9 +59,8 @@ import { sourcesOf } from "@/lib/waste-module";
 // hits the cache, not Neon. After an import, POST /api/revalidate purges the
 // tag. The hourly revalidate is only a safety net.
 const CACHE = { tags: [DATASET], revalidate: 3600 };
-// What is keyed by the Warsaw day is tagged DAY too, purged by the ZUK cron
-// when that day changed (lib/zuk-cron.ts), and so is every page reading it.
-const DAY_CACHE = { ...CACHE, tags: [DATASET, DAY] };
+// What is keyed by the Warsaw day: a new day is a new entry.
+const DAY_CACHE = CACHE;
 /** getPlace's and getZone's tags: a cached page reading one carries them. */
 export const PLACE_TAGS = DAY_CACHE.tags;
 
@@ -342,8 +341,8 @@ export const searchIndex = unstable_cache(
 // The matcher for the current index, prepared once per index version.
 let prepared: { version: string; match: Matcher } | null = null;
 
-/** lib/search.ts matcher over searchIndex, for /api/search and /szukaj. */
-export async function searchMatcher(): Promise<Matcher> {
+/** lib/search.ts matcher over searchIndex, for /api/search. */
+async function searchMatcher(): Promise<Matcher> {
   const { version, places } = await searchIndex();
   if (prepared?.version !== version) {
     prepared = { version, match: matcher(places) };

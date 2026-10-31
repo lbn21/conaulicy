@@ -4,7 +4,8 @@
 // its swap for the results moves nothing either), at 360px, 375px (where the
 // breadcrumbs once wrapped differently) and 1280px, every font request is
 // held back 1.5s (a slow first visit) and the summed layout shift, including
-// shifts CLS itself would forgive, must stay under 0.001. (0.01 is too loose:
+// shifts CLS itself would forgive, must stay under 0.001; the live blocks'
+// reveals before it are measured apart, within REVEAL_LIMIT. (0.01 is too loose:
 // the 28px jump of the search section on / at 1280px scored only 0.0071.)
 //
 // The fixture's names never sit near a line's edge, but real ones do: then
@@ -28,6 +29,10 @@ const PAGES = [
 const WIDTHS = [360, 375, 1280];
 const FONT_DELAY = 1500;
 const LIMIT = 0.001;
+// A live block's reveal may move the page a little (Jakub's decision,
+// 31 Oct 2026: no CLS-0 gate): at most web.dev's "good" CLS
+// (web.dev/articles/cls).
+const REVEAL_LIMIT = 0.1;
 
 // Each place's breadcrumbs on a subpage and its h1, roughly as
 // components/place-page.tsx PlaceBreadcrumbs builds them.
@@ -82,6 +87,18 @@ try {
       const page = await context.newPage();
       const held = await holdFonts(page);
       await page.goto(`${server.origin}${path}`, { waitUntil: "load" });
+      // The live blocks' reveals first, while the font is still held
+      // (components/live-block.tsx): their shifts are allowed up to
+      // REVEAL_LIMIT, apart from the font's.
+      await page
+        .waitForFunction(() => !document.querySelector(".app-skeleton"), null, {
+          timeout: FONT_DELAY - 200,
+        })
+        .catch(() => {});
+      await page.waitForTimeout(100);
+      const reveal = await page.evaluate(() =>
+        window.__shifts.splice(0).reduce((sum, s) => sum + s.value, 0),
+      );
       await page.evaluate(() => document.fonts.ready);
       // Let the swap render and any late shift be reported.
       await page.waitForTimeout(500);
@@ -89,9 +106,11 @@ try {
       const total = shifts.reduce((sum, s) => sum + s.value, 0);
       const label = `${path} ${width}px`;
       results.push(
-        `${label}: layout shift ${total.toFixed(4)} (${held.count} font files held back)`,
+        `${label}: layout shift ${total.toFixed(4)}, reveals ${reveal.toFixed(4)} (${held.count} font files held back)`,
       );
       if (held.count === 0) failures.push(`${label}: no font request seen`);
+      if (reveal > REVEAL_LIMIT)
+        failures.push(`${label}: reveals shift ${reveal.toFixed(4)}`);
       if (total >= LIMIT) {
         failures.push(
           `${label}: layout shift ${total.toFixed(4)}\n${shifts

@@ -32,6 +32,7 @@ import { request } from "node:http";
 import {
   fetchJson,
   finish,
+  notFoundAt,
   ROUTES,
   searchIndexOf,
   startServer,
@@ -280,6 +281,13 @@ try {
     if (path.startsWith("/adres/") && Object.hasOwn(renamed, id)) {
       failures.push(`${path}: ${id} is renamed (a 308), not a 404 to check`);
       continue;
+    }
+    // An unknown address: its first answer may be the route's fallback
+    // shell's 200 (notFoundAt, scripts/lib/server.mjs); the page below is
+    // its cached 404.
+    if (path.startsWith("/adres/")) {
+      const wrong = await notFoundAt(`${server.origin}${path}`);
+      if (wrong) failures.push(`${path}: ${wrong}`);
     }
     const response = await fetch(`${server.origin}${path}`, {
       redirect: "manual",

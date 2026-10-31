@@ -9,8 +9,8 @@ import {
   wastePath,
   wasteSources,
   wasteStatus,
-  wasteUpcoming,
 } from "./waste-module.ts";
+import { wasteUpcoming } from "./waste-upcoming.ts";
 
 const wasteLine = (at: Parameters<typeof checkedLine>[0]) =>
   checkedLine(at, "smieci");

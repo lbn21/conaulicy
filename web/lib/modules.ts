@@ -7,20 +7,20 @@
 import type { Metadata } from "next";
 import type { ComponentType } from "react";
 import { WasteDetails, wasteMetadata } from "@/components/place-page";
+import { WasteStatus } from "@/components/waste-status";
 import { WaterDetails, waterMetadata } from "@/components/water-page";
 import { isModuleId, type ModuleId, SUBPAGE_IDS } from "@/lib/address-routes";
-import { IMGW, WATER } from "@/lib/headers";
 import type { Checked, Group, Part } from "@/lib/hub";
 import { imgwCopy } from "@/lib/live-store";
-import { getPlace, PLACE_TAGS, type PlaceView } from "@/lib/schedule";
+import { getPlace, type PlaceView } from "@/lib/schedule";
 import type { Item } from "@/lib/upcoming";
 import {
   wasteChecked,
   wasteNote,
   wasteSources,
   wasteStatus,
-  wasteUpcoming,
 } from "@/lib/waste-module";
+import { wasteUpcoming } from "@/lib/waste-upcoming";
 import { loadWater } from "@/lib/water-load";
 import {
   type Water,
@@ -48,10 +48,16 @@ export type Module<D> = {
    */
   load(place: string, nr: string | null): Promise<D | null>;
   /**
-   * The cache tags of what load() reads (lib/headers.ts): a cached page
-   * showing the module carries them (cacheTag), so the purges reach it.
+   * Its data changes between imports (a cron's file): its section body and
+   * subpage body are read per request, each in its own hole with a
+   * skeleton (components/live-block.tsx), never in the cached shell.
    */
-  tags: readonly string[];
+  live?: boolean;
+  /**
+   * A live module's usual status line (nothing planned, no warning): its
+   * skeleton's typical shape (components/hub.tsx).
+   */
+  typical?: string;
   /**
    * Its lines for the „Najbliższe dni” block (lib/upcoming.ts), structured:
    * the island words them and hides those over.
@@ -63,6 +69,12 @@ export type Module<D> = {
    * island's; what is next is as of the render, app/adres/[id]/page.tsx).
    */
   status(data: D): Group[];
+  /**
+   * Its section's lines drawn on the device instead of status() as of the
+   * render (a Client Component): waste, whose next pickup moves on with the
+   * day while the shell is cached.
+   */
+  Status?: ComponentType<{ data: D }>;
   /** Its sources, in its section's meta line: a link each. */
   sources(data: D): Part[][];
   /**
@@ -115,9 +127,9 @@ const waste: Module<PlaceView> = {
   more: "Wszystkie odbiory śmieci",
   pageTitle: "Odbiór śmieci",
   load: getPlace,
-  tags: PLACE_TAGS,
   upcoming: wasteUpcoming,
   status: wasteStatus,
+  Status: WasteStatus,
   sources: wasteSources,
   note: wasteNote,
   checkedAt: wasteChecked,
@@ -134,7 +146,8 @@ const woda: Module<Water> = {
   more: "Wszystkie przerwy w wodzie",
   pageTitle: "Przerwy w dostawie wody",
   load: loadWater,
-  tags: [...PLACE_TAGS, WATER],
+  live: true,
+  typical: "Brak zapowiedzianych przerw w dostawie wody.",
   upcoming: waterUpcoming,
   status: waterStatus,
   sources: waterSources,
@@ -153,7 +166,8 @@ const pogoda: Module<Weather> = {
   async load() {
     return weather(await imgwCopy(), Date.now());
   },
-  tags: [IMGW],
+  live: true,
+  typical: "Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.",
   upcoming: weatherUpcoming,
   status: weatherStatus,
   sources: weatherSources,

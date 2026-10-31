@@ -1,8 +1,9 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { DayWord } from "@/components/day-word";
+import { useWarsawToday } from "@/components/warsaw-today";
 import { Bins } from "@/components/waste-bins";
-import { absoluteDay, dayFace, relativeWord, todayInWarsaw } from "@/lib/dates";
+import { absoluteDay, dayFace } from "@/lib/dates";
 import type { PickupDay } from "@/lib/schedule";
 import {
   NO_MORE_DATES,
@@ -12,22 +13,15 @@ import {
 
 const HERO_COUNT = 3;
 
-// Re-check the Warsaw day every minute and when the tab comes back, so a tab
-// left open overnight moves "jutro" to "dziś". React only re-renders when the
-// date string changes.
-function subscribe(onChange: () => void): () => void {
-  const timer = setInterval(onChange, 60_000);
-  document.addEventListener("visibilitychange", onChange);
-  return () => {
-    clearInterval(timer);
-    document.removeEventListener("visibilitychange", onChange);
-  };
-}
-
-function spokenDay(iso: string, today: string): string {
-  const absolute = absoluteDay(iso);
-  const relative = relativeWord(iso, today);
-  return relative ? `${relative}, ${absolute}` : absolute;
+// A day as its date, absolute, with its weekday; „dziś, ” or „jutro, ”
+// before it is the device's (components/day-word.tsx), never the server's.
+function SpokenDay({ iso }: { iso: string }) {
+  return (
+    <>
+      <DayWord day={iso} form="word" />
+      {absoluteDay(iso)}
+    </>
+  );
 }
 
 function PutOutBy({ day }: { day: PickupDay }) {
@@ -44,19 +38,18 @@ function PutOutBy({ day }: { day: PickupDay }) {
  * The next pickup, with the big date. Screen readers hear "Najbliższy
  * odbiór:" and the date in words; the big figures are for the eye only.
  */
-function NextPickup({ day, today }: { day: PickupDay; today: string }) {
-  const relative = relativeWord(day.date, today);
+function NextPickup({ day }: { day: PickupDay }) {
   const face = dayFace(day.date);
   return (
     <div className="govuk-!-margin-bottom-6">
       <h3 className="govuk-heading-s govuk-!-margin-bottom-3">
         <time dateTime={day.date}>
           <span className="govuk-visually-hidden">
-            Najbliższy odbiór: {spokenDay(day.date, today)}
+            Najbliższy odbiór: <SpokenDay iso={day.date} />
           </span>
           <span aria-hidden="true">
             <span className="govuk-!-display-block govuk-!-font-size-27">
-              {relative ?? "Najbliższy odbiór"}
+              <DayWord day={day.date} form="label" text="Najbliższy odbiór" />
             </span>
             <span className="govuk-!-display-block govuk-!-font-size-80">
               {face.day}
@@ -74,13 +67,15 @@ function NextPickup({ day, today }: { day: PickupDay; today: string }) {
 }
 
 /** Further pickups: GOV.UK summary list, the date as key, bins as value. */
-function DayList({ days, today }: { days: PickupDay[]; today: string }) {
+function DayList({ days }: { days: PickupDay[] }) {
   return (
     <dl className="govuk-summary-list">
       {days.map((day) => (
         <div key={day.date} className="govuk-summary-list__row">
           <dt className="govuk-summary-list__key">
-            <time dateTime={day.date}>{spokenDay(day.date, today)}</time>
+            <time dateTime={day.date}>
+              <SpokenDay iso={day.date} />
+            </time>
           </dt>
           <dd className="govuk-summary-list__value">
             <Bins pickups={day.pickups} size="medium" />
@@ -103,14 +98,9 @@ export function PickupSchedule({
   /** After the last date: when the next dates come (laterNote). */
   later?: string | null;
 }) {
-  // Hydrates with the server's day, so "dziś"/"jutro" is in the HTML with no
-  // pop-in. Re-renders only if the Warsaw day has moved on since the render
-  // (a cached page across midnight).
-  const today = useSyncExternalStore(
-    subscribe,
-    todayInWarsaw,
-    () => renderedOn,
-  );
+  // From the device's day on: the page is cached until the next import or
+  // deploy, so the server's day may be past (components/warsaw-today.ts).
+  const today = useWarsawToday(renderedOn);
   const visible = days.filter((day) => day.date >= today);
 
   if (visible.length === 0) {
@@ -127,8 +117,8 @@ export function PickupSchedule({
       <h2 id="pickups-heading" className="govuk-visually-hidden">
         Najbliższe odbiory
       </h2>
-      <NextPickup day={hero[0]} today={today} />
-      {hero.length > 1 && <DayList days={hero.slice(1)} today={today} />}
+      <NextPickup day={hero[0]} />
+      {hero.length > 1 && <DayList days={hero.slice(1)} />}
       {rest.length > 0 && (
         <details className="govuk-details">
           <summary className="govuk-details__summary">
@@ -137,7 +127,7 @@ export function PickupSchedule({
             </span>
           </summary>
           <div className="govuk-details__text">
-            <DayList days={rest} today={today} />
+            <DayList days={rest} />
           </div>
         </details>
       )}
