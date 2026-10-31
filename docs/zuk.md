@@ -52,13 +52,11 @@ Vercel Blob. No database writes.
    `checkedAt` in it aside, and the `rejected` list). About 96 small Blob
    writes a day. A run with rejected items logs them in one line,
    `{zuk: "rejected", source, gazetteer, entries}`.
-6. Every run that wrote the file purges the `water` cache tag
-   (`revalidateTag("water", { expire: 0 })`, `lib/headers.ts`), after the
-   write, whether the content changed or not: the file's cached copy and
-   every response tagged with it, below, so the next view renders this
-   run's `checkedAt`. Never `dataset`: the waste data did not change. A run
-   that wrote nothing (the source down, a file it could not read, the write
-   failed) purges nothing; the old file and its time stay.
+6. Nothing is purged (Jakub's decision, 31 Oct 2026; until then every
+   written run purged a `water` tag). The pages read the file per request,
+   through the Blob's CDN, so a written run's cuts and `checkedAt` show
+   within 60 s. A run that wrote nothing (the source down, a file it could
+   not read, the write failed) leaves the old file and its time.
 
 The gmina's site down: 502, the file and its `checkedAt` stay, and it turns
 stale after an hour. xAI down: a new
@@ -254,16 +252,13 @@ wording stays in `where` (its street, else its locality, as written) and
 checked more than 60 minutes ago is `stale`, so a page shows the source link
 instead.
 
-**Caching.** `getZukData()` keeps the file in Next's data cache for 10
-minutes, tagged `water`; each refill reads the Blob's origin, not its CDN
-copy. The tag is also on every page rendered from it (their ISR entries:
-`/adres/[id]` and `/adres/[id]/woda`, with or without a house number) and,
-as `Vercel-Cache-Tag: dataset,water`, on the calendar file
-`/adres/[id]/woda.ics` (CDN: an hour, a day stale-while-revalidate). Every
-written run purges the tag, so the next request after it renders against
-the new file: its cuts and its „Ostatnio sprawdziliśmy”, never an older
-check's. The first request after each purge waits for that render (no
-stale copy).
+**Caching (31 Oct 2026).** No Next.js cache in front of the file: the
+pages' live blocks (the hub's „Woda” and „Najbliższe dni”, `/woda`'s
+body, `web/components/live-block.tsx`) read it per request through the
+Blob's CDN (`useCache: true`, at most 60 s behind a write); the cron reads
+its origin. Nothing is tagged `water` or purged. The calendar file
+`/adres/[id]/woda.ics` is cached by the CDN for an hour (a day
+stale-while-revalidate), tagged `dataset` only.
 
 With a house number (`?nr=`), a cut by house ranges or numbers that clearly
 leaves it out is not shown, on the page or in its calendar file, and the page
