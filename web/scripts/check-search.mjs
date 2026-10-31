@@ -48,9 +48,15 @@ async function openField(page) {
   return input;
 }
 
-// The links to places that „Szukaj” lists under the field.
+// What „Szukaj” shows under the field: the polite live region that is the
+// search landmark's own child (the library's status regions, also polite,
+// are inside the form, before it).
+const RESULTS = '#szukaj > [aria-live="polite"]';
+
+// The links to places that „Szukaj” lists under the field (not the
+// no-results tips' link to the list of streets).
 const resultLinks = (page) =>
-  page.locator('#szukaj [aria-live="polite"] ul.govuk-list a');
+  page.locator(`${RESULTS} ul.govuk-list a[href^="/adres/"]`);
 
 // „Szukaj” is not under the list: their boxes do not meet, and the button
 // is on top at its centre.
@@ -333,9 +339,10 @@ try {
   }
 
   // Enter with the list open and nothing highlighted submits what was
-  // typed (ul. and os. Mickiewicza: both listed under the field): no
-  // navigation, the list closed, the results at once (the index is in
-  // memory), no skeleton, the field keeping the text, nothing in error.
+  // typed (the CI fixture's ul. Adama Asnyka and ul. Adama Mickiewicza:
+  // both listed under the field): no navigation, the list closed, the
+  // results at once (the index is in memory), no skeleton, the field
+  // keeping the text, nothing in error.
   {
     const page = await browser.newPage({
       viewport: { width: 360, height: 800 },
@@ -346,7 +353,7 @@ try {
     });
     await page.goto(`${server.origin}/`, { waitUntil: "networkidle" });
     const input = await openField(page);
-    await input.pressSequentially("Mickiewicza");
+    await input.pressSequentially("Adama");
     await page
       .locator('[role="option"]:not([aria-disabled])')
       .first()
@@ -358,8 +365,8 @@ try {
       .first()
       .waitFor({ timeout: 5000 })
       .catch(() => {});
-    const landed = await page.evaluate(() => {
-      const live = document.querySelector('#szukaj [aria-live="polite"]');
+    const landed = await page.evaluate((results) => {
+      const live = document.querySelector(results);
       return {
         url: location.pathname + location.search,
         skeletons: live?.querySelectorAll(".app-skeleton").length,
@@ -374,7 +381,7 @@ try {
           ".govuk-error-summary, .govuk-error-message, .govuk-input--error",
         ).length,
       };
-    });
+    }, RESULTS);
     check(
       open === "true" &&
         landed.url === "/" &&
@@ -382,7 +389,7 @@ try {
         landed.skeletons === 0 &&
         landed.heading === "Wyniki wyszukiwania" &&
         landed.results === 2 &&
-        landed.field === "Mickiewicza" &&
+        landed.field === "Adama" &&
         landed.expanded === "false" &&
         landed.errors === 0,
       `Enter with the list open (aria-expanded ${open}): ${JSON.stringify({ ...landed, documents })}`,
@@ -602,13 +609,13 @@ try {
     .waitFor();
   await enter.getByRole("combobox").press("Enter");
   await enter
-    .locator('#szukaj [aria-live="polite"] h2', {
+    .locator(`${RESULTS} h2`, {
       hasText: "Nie znaleźliśmy „xyzqq”",
     })
     .waitFor({ timeout: 5000 })
     .catch(() => {});
-  const none = await enter.evaluate(() => {
-    const live = document.querySelector('#szukaj [aria-live="polite"]');
+  const none = await enter.evaluate((results) => {
+    const live = document.querySelector(results);
     return {
       url: location.pathname + location.search,
       heading: live?.querySelector("h2")?.textContent,
@@ -617,7 +624,7 @@ try {
         ".govuk-error-summary, .govuk-error-message, .govuk-input--error, .govuk-form-group--error",
       ).length,
     };
-  });
+  }, RESULTS);
   check(
     none.url === "/" &&
       none.heading === "Nie znaleźliśmy „xyzqq”" &&
@@ -733,7 +740,7 @@ try {
     await Promise.race([
       lands.waitForURL((url) => url.pathname !== "/"),
       lands
-        .locator('#szukaj [aria-live="polite"] h2', {
+        .locator(`${RESULTS} h2`, {
           hasText: /Wyniki wyszukiwania|Nie znaleźliśmy/,
         })
         .waitFor(),
@@ -826,13 +833,13 @@ try {
     await slow.getByRole("combobox").fill("adama");
     await slow.getByRole("button", { name: "Szukaj" }).click();
     const waiting = await slow
-      .locator('#szukaj [aria-live="polite"] .app-skeleton')
+      .locator(`${RESULTS} .app-skeleton`)
       .first()
       .waitFor({ timeout: 5000 })
       .then(() => true)
       .catch(() => false);
     const loading = await slow
-      .locator('#szukaj [aria-live="polite"] .govuk-visually-hidden', {
+      .locator(`${RESULTS} .govuk-visually-hidden`, {
         hasText: "Sprawdzamy…",
       })
       .count();
@@ -862,13 +869,21 @@ try {
     await nav.getByRole("heading", { level: 1 }).waitFor();
     steps.push("to the place");
     // The home page stays in the document, hidden (Next.js's Activity): still
-    // one #main-content, the layout's visible <main>, and no id twice; the
-    // skip link (GOV.UK's, started on the first load) moves focus into it.
+    // one #main-content, the layout's visible <main>, and no id twice.
     const ids = await mainAndIds(nav);
     check(
       ids.mains === 1 && ids.main && ids.duplicates.length === 0,
       `after the search's navigation to a place: main and ids ${JSON.stringify(ids)}`,
     );
+    await nav.goBack();
+    await nav.waitForURL(`${server.origin}/`);
+    await nav.getByRole("combobox").waitFor();
+    steps.push("back home");
+    await nav.goForward();
+    await nav.waitForURL(`${server.origin}/adres/0972447-19253`);
+    steps.push("forward to the place");
+    // GOV.UK's skip link (started on the first load) moves focus into the
+    // visible <main>. Last: its #main-content is a history entry of its own.
     await nav.locator("a.govuk-skip-link").focus();
     await nav.keyboard.press("Enter");
     const skipped = await nav.evaluate(() => {
@@ -888,15 +903,8 @@ try {
         skipped.visible &&
         skipped.h1 ===
           (await nav.getByRole("heading", { level: 1 }).textContent()),
-      `after the search's navigation: the skip link puts focus at ${JSON.stringify(skipped)}`,
+      `back at the place: the skip link puts focus at ${JSON.stringify(skipped)}`,
     );
-    await nav.goBack();
-    await nav.waitForURL(`${server.origin}/`);
-    await nav.getByRole("combobox").waitFor();
-    steps.push("back home");
-    await nav.goForward();
-    await nav.waitForURL(`${server.origin}/adres/0972447-19253`);
-    steps.push("forward to the place");
   } catch (error) {
     check(false, `Back/Forward: after ${JSON.stringify(steps)}: ${error}`);
   }
