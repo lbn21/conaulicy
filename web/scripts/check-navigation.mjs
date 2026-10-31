@@ -44,9 +44,16 @@ try {
         status: "pending",
       });
     });
-    quiet.on("requestfinished", async (request) => {
+    quiet.on("requestfinished", (request) => {
       const entry = seen.get(request);
-      if (entry) entry.status = (await request.response())?.status() ?? "none";
+      if (!entry) return;
+      entry.status = "finished";
+      request
+        .response()
+        .then((response) => {
+          entry.status = response?.status() ?? "none";
+        })
+        .catch(() => {});
     });
     quiet.on("requestfailed", (request) => {
       const entry = seen.get(request);
