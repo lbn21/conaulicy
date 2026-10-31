@@ -31,8 +31,9 @@ try {
     if (response.status !== 200 || !name) {
       failures.push(`/adres/${id}: ${response.status}, not a place page`);
     } else if (
-      // Its date, with the island's lead for 7 days (components/upcoming.tsx).
-      !/>Śmieci<\/h2><p class="govuk-body govuk-!-margin-bottom-2">(?:(?:Dziś|Jutro|Za [2-7] dni): \p{Ll}|\p{Lu})\p{L}+, \d{1,2} \p{L}+<\/p>/u.test(
+      // Its date, absolute; the device's „Dziś: ” or „Za 5 dni: ” before it
+      // is a word-wide skeleton in the HTML (components/day-word.tsx).
+      !/>Śmieci<\/h2><p class="govuk-body govuk-!-margin-bottom-2"><!--\$!--><template data-dgst=""><\/template><span class="app-skeleton" aria-hidden="true">\s+<\/span> \p{Ll}+, \d{1,2} \p{L}+<!--\/\$--><\/p>/u.test(
         html,
       )
     ) {

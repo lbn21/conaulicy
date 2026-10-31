@@ -17,7 +17,14 @@
 // description that leads with the waste, and no "prąd" in its HTML or the manifest (no power data).
 //
 // Runs against `next start` on the current build.
-import { finish, ROUTES, startServer } from "./lib/server.mjs";
+import {
+  closeRenderedPages,
+  finish,
+  notFoundAt,
+  ROUTES,
+  renderedPage,
+  startServer,
+} from "./lib/server.mjs";
 
 const SITE = "https://conaulicy.pl";
 const HOME_H1 = "Sprawdź swoją ulicę w Lubaczowie i gminie";
@@ -56,10 +63,28 @@ const descriptions = new Map();
 
 try {
   for (const { path, status = 200 } of ROUTES) {
+    // An unknown address: notFoundAt's rule (scripts/lib/server.mjs), then
+    // its cached 404 checked as any page.
+    if (status === 404 && path.startsWith("/adres/")) {
+      const wrong = await notFoundAt(`${server.origin}${path}`);
+      if (wrong) failures.push(`${path}: ${wrong}`);
+    }
     const response = await fetch(`${server.origin}${path}`);
     const html = await response.text();
     if (response.status !== status) {
       failures.push(`${path}: ${response.status}, want ${status}`);
+    }
+    // /szukaj: static, one title for every outcome; its column (the h1)
+    // drawn in the browser.
+    if (path.startsWith("/szukaj")) {
+      const shown = (await renderedPage(`${server.origin}${path}`)).html;
+      const h1 = all(shown, /<h1[^>]*>([\s\S]*?)<\/h1>/g);
+      const title = all(html, /<title>([^<]*)<\/title>/g).map(decode);
+      if (h1.length !== 1 || title.join() !== "Wyszukaj adres – conaulicy.pl")
+        failures.push(
+          `${path}: title ${JSON.stringify(title)}, ${h1.length} h1s`,
+        );
+      continue;
     }
     const h1 = all(html, /<h1[^>]*>([\s\S]*?)<\/h1>/g).map((text) =>
       decode(text.replace(/<[^>]*>/g, "")).trim(),
@@ -235,6 +260,7 @@ try {
       );
   }
 } finally {
+  await closeRenderedPages();
   server.stop();
 }
 

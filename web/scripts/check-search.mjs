@@ -16,14 +16,13 @@
 // /api/search answers when the index cannot load, and a house number
 // ("kosciuszki 7a") reaches the street page, which picks the part of a split
 // street by it, or asks for it (also without JS). Picking a suggestion (a
-// tap, a click, or ArrowDown and Enter) loads its place's page, with the
-// house number, in one document load, never through /szukaj; focus then
-// starts at the top (the skip link first), as after any link. Enter with
-// no option highlighted (list open or closed, none found) submits what was
-// typed, and so does „Szukaj”, also pressed with the list open. The search
-// form, typed and submitted: one clearly best place opens its page;
-// otherwise /szukaj lists them. The hint's example
-// ("Asnyka 5") opens its street with a number the register has. /szukaj,
+// tap, or ArrowDown and Enter) only fills the field and closes the list, as
+// GOV.UK's default; „Szukaj” or the next Enter submits the form, and
+// /szukaj opens the picked place, also with a house number typed after it.
+// Enter with no option highlighted (list open or closed, none found)
+// submits what was typed. The search form, typed and submitted: one
+// clearly best place opens its page; otherwise /szukaj lists them. The
+// hint's example ("Asnyka 5") opens its street with a number the register has. /szukaj,
 // /api/search and lib/search.ts rank alike. /szukaj has the same field,
 // prefilled once, with its error state. Run after
 // `next build`; needs Playwright's Chromium.
@@ -32,6 +31,10 @@ import { matcher, placeHref } from "../lib/search.ts";
 import { finish, startServer } from "./lib/server.mjs";
 
 const WIDTHS = [360, 1280];
+// A live block's reveal may move the page a little (Jakub's decision,
+// 31 Oct 2026: shifts on reveal accepted, no CLS-0 gate): at most web.dev's
+// "good" CLS (web.dev/articles/cls).
+const REVEAL_SHIFT = 0.1;
 // The two pages with the search field: the home page, and /szukaj with a
 // value (none found, so the page stays and lists what to try).
 const PAGES = [
@@ -104,7 +107,8 @@ try {
         reducedMotion: "reduce",
       });
       // Hold the index until the first letter is typed, so the loading state
-      // is visible.
+      // is visible. Not on /szukaj: its results come from the same index
+      // (lib/search-index.ts), so the field finds it loaded.
       const requests = { index: 0, search: 0 };
       let release;
       const held = new Promise((resolve) => {
@@ -126,6 +130,7 @@ try {
       });
       // The index loads once the page is idle, with no focus (and only after
       // hydration, so typing is not lost).
+      if (value) release();
       await page.goto(`${server.origin}${path}`, { waitUntil: "load" });
       await Promise.race([
         indexRequested,
@@ -170,6 +175,9 @@ try {
             return `${el.tagName.toLowerCase()} ${Math.round(r.left)},${Math.round(r.top + window.scrollY)} ${Math.round(r.width)}x${Math.round(r.height)}`;
           });
         });
+      // On /szukaj, below the field: its results, once they are in.
+      if (value)
+        await page.locator("main h1", { hasText: "Brak wyników" }).waitFor();
       const before = await below();
       const label = `${path} ${width}px`;
       const same = async (state) => {
@@ -212,8 +220,10 @@ try {
       const listbox = page.getByRole("listbox");
 
       await input.pressSequentially("a");
-      await note("Szukam…").waitFor();
-      await sameType(note("Szukam…"), "loading");
+      if (!value) {
+        await note("Szukam…").waitFor();
+        await sameType(note("Szukam…"), "loading");
+      }
       release();
 
       await result().first().waitFor();
@@ -322,8 +332,11 @@ try {
       );
 
       const shift = await page.evaluate(() => window.__shift);
+      // Without input: only a live block's reveal (/szukaj's results), within
+      // REVEAL_SHIFT.
+      const other = shift.entries.reduce((sum, value) => sum + value, 0);
       check(
-        shift.other === 0,
+        other <= REVEAL_SHIFT,
         `${label}: ${shift.other} layout shifts without recent input ${JSON.stringify(shift.entries)}`,
       );
       console.log(
@@ -396,7 +409,10 @@ try {
     state.fontSize >= 16,
     `Zmień adres: field text ${state.fontSize}px, phones zoom in below 16px`,
   );
-  check(state.shift === 0, `Zmień adres: layout shift ${state.shift}`);
+  check(
+    state.shift <= REVEAL_SHIFT,
+    `Zmień adres: layout shift ${state.shift}`,
+  );
 
   await page.locator("#adres").click();
   const input = page.getByRole("combobox");
@@ -413,28 +429,6 @@ try {
   );
   await page.close();
 
-  // The page's document requests: a pick loads its place's page, once,
-  // never /szukaj.
-  const documents = (page) => {
-    const paths = [];
-    page.on("request", (request) => {
-      if (request.isNavigationRequest() && request.frame() === page.mainFrame())
-        paths.push(request.url().replace(server.origin, ""));
-    });
-    return paths;
-  };
-  // The first Tab after the load: the skip link, as after any link. Then
-  // focus leaves it: GOV.UK shows it in the flow only while focused, so a
-  // click's mousedown would hide it and move the page under the pointer.
-  const firstTab = async (page) => {
-    await page.keyboard.press("Tab");
-    return page.evaluate(() => {
-      const text = document.activeElement?.textContent;
-      document.activeElement?.blur();
-      return text;
-    });
-  };
-
   // A house number: typed after the street, carried to the page.
   const house = await browser.newPage({
     viewport: { width: 360, height: 800 },
@@ -448,19 +442,26 @@ try {
     (await option.textContent()) === "ul. Tadeusza Kościuszki 7a, Lubaczów",
     `house number: option reads "${await option.textContent()}"`,
   );
-  // ArrowDown, Enter: the suggestion's page, with the number. Keys go where
-  // focus is (ArrowDown moves it to the option): a locator's press would
-  // focus the field first, which clears the library's highlight.
-  const houseLoads = documents(house);
+  // ArrowDown, Enter: the field holds the suggestion, the page stays; the
+  // next Enter submits the form. Keys go where focus is (ArrowDown moves it
+  // to the option): a locator's press would focus the field first, which
+  // clears the library's highlight.
   await house.keyboard.press("ArrowDown");
   await house.keyboard.press("Enter");
-  await house.waitForURL(`${server.origin}/adres/0972447-90004?nr=7a`);
-  const houseTab = await firstTab(house);
+  await house.waitForTimeout(500);
+  const picked = {
+    url: house.url(),
+    value: await house.getByRole("combobox").inputValue(),
+    list: await house.getByRole("listbox").isVisible(),
+  };
   check(
-    JSON.stringify(houseLoads) === '["/adres/0972447-90004?nr=7a"]' &&
-      houseTab === "Przejdź do treści",
-    `house number: ArrowDown, Enter loaded ${JSON.stringify(houseLoads)}, first Tab on "${houseTab}"`,
+    picked.url === `${server.origin}/` &&
+      picked.value === "ul. Tadeusza Kościuszki 7a, Lubaczów" &&
+      !picked.list,
+    `house number: ArrowDown, Enter does not only fill the field ${JSON.stringify(picked)}`,
   );
+  await house.getByRole("combobox").press("Enter");
+  await house.waitForURL(`${server.origin}/adres/0972447-90004?nr=7a`);
   const heading = await house.locator("h1").textContent();
   // The calendar and the PDF are on the waste subpage, its section's
   // „Wszystkie odbiory śmieci”, with the number.
@@ -484,8 +485,9 @@ try {
   );
   await house.close();
 
-  // A tap (phone) or click on a suggestion loads its place's page. "adama"
-  // finds two places.
+  // A tap (phone) or click on a suggestion fills the field and closes the
+  // list, uncovering „Szukaj”; the page stays until it is pressed. "adama"
+  // finds two places; the picked one's text opens it.
   for (const [width, touch] of [
     [360, true],
     [1280, false],
@@ -503,42 +505,67 @@ try {
       .locator('[role="option"]:not([aria-disabled])', { hasText: "Asnyka" })
       .first();
     await suggestion.waitFor();
-    const loads = documents(pick);
     await press(suggestion);
+    await pick.waitForTimeout(500);
+    const button = pick.getByRole("button", { name: "Szukaj" });
+    const picked = {
+      url: pick.url(),
+      value: await pick.getByRole("combobox").inputValue(),
+      list: await pick.getByRole("listbox").isVisible(),
+      // The button is on top at its centre, no longer under the list.
+      button: await button.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const top = document.elementFromPoint(
+          r.left + r.width / 2,
+          r.top + r.height / 2,
+        );
+        return el.contains(top);
+      }),
+    };
+    check(
+      picked.url === `${server.origin}/` &&
+        picked.value === "ul. Adama Asnyka, Lubaczów" &&
+        !picked.list &&
+        picked.button,
+      `${how} on a suggestion: does not only fill the field ${JSON.stringify(picked)}`,
+    );
+    await press(button);
     await pick
       .waitForURL(`${server.origin}/adres/0972447-00470`, { timeout: 5000 })
-      .catch(() => {});
-    const tab = await firstTab(pick);
-    check(
-      JSON.stringify(loads) === '["/adres/0972447-00470"]' &&
-        tab === "Przejdź do treści",
-      `${how} on a suggestion: at ${pick.url()}, loaded ${JSON.stringify(loads)}, first Tab on "${tab}"`,
-    );
+      .catch(() => check(false, `${how}, Szukaj: at ${pick.url()}`));
     await pick.close();
   }
 
-  // A house number typed, no pick, the list open inline above „Szukaj”: a
-  // click on it must not be lost to the list closing under the pointer, and
-  // /szukaj opens the one place with the number.
+  // A house number typed after a pick stays in the field (the library only
+  // searches again, never overriding it) and reaches the place's page.
   const typed = await browser.newPage({
     viewport: { width: 360, height: 800 },
   });
   await typed.goto(`${server.origin}/`, { waitUntil: "networkidle" });
   await typed.locator("#adres").click();
   const field = typed.getByRole("combobox");
-  await field.pressSequentially("rynek 5");
+  await field.pressSequentially("rynek");
   await typed
     .locator('[role="option"]:not([aria-disabled])', { hasText: "Rynek" })
     .first()
-    .waitFor();
+    .click();
+  await field.pressSequentially(" 5");
+  await typed.waitForTimeout(500);
+  // The list is open again, inline above „Szukaj”: a click on it must not
+  // be lost to the list closing under the pointer.
   check(
     (await field.getAttribute("aria-expanded")) === "true",
-    "number typed: the list is not open over the button",
+    "number typed after a pick: the list is not open over the button",
+  );
+  const value = await field.inputValue();
+  check(
+    value === "ul. Rynek, Lubaczów 5",
+    `number typed after a pick: field reads "${value}"`,
   );
   await typed.getByRole("button", { name: "Szukaj" }).click();
   await typed
     .waitForURL(`${server.origin}/adres/0972447-19253?nr=5`, { timeout: 5000 })
-    .catch(() => check(false, `number typed, Szukaj: at ${typed.url()}`));
+    .catch(() => check(false, `number typed after a pick: at ${typed.url()}`));
   await typed.close();
 
   // Enter with no suggestion (none found) submits the form.
@@ -645,9 +672,9 @@ try {
   // The same search everywhere: for each query, where a browser lands from
   // /szukaj (one place: its page; else the first result), /api/search's
   // first place and lib/search.ts's over the served index all point at the
-  // same place and number. /szukaj streams (a prerendered shell), so its
-  // one-place redirect is a client-side one, with JS
-  // (nextjs.org/docs/app/api-reference/functions/redirect, task 220).
+  // same place and number. /szukaj is static, its results matched on the
+  // device, so its one-place redirect is a client-side one
+  // (components/search-results.tsx).
   const lands = await browser.newPage();
   const home = await (await fetch(`${server.origin}/`)).text();
   const [indexPath] = home.match(/\/api\/search-index\/[0-9a-f]{16}/) ?? [];
@@ -671,9 +698,15 @@ try {
     const [api] = await (
       await fetch(`${server.origin}/api/search?q=${q}`)
     ).json();
-    await lands.goto(`${server.origin}/szukaj?q=${q}`, {
-      waitUntil: "networkidle",
-    });
+    await lands.goto(`${server.origin}/szukaj?q=${q}`);
+    // The results, or the one place's page, once the index is in.
+    await Promise.race([
+      lands.waitForURL((url) => url.pathname !== "/szukaj"),
+      lands
+        .locator("main h1", { hasText: /Wyniki wyszukiwania|Brak wyników/ })
+        .waitFor(),
+    ]).catch(() => {});
+    await lands.waitForLoadState("networkidle");
     const at = new URL(lands.url());
     const target =
       at.pathname === "/szukaj"
@@ -830,9 +863,10 @@ try {
   );
   await plain.close();
 
-  // A page with a number is cached like the plain one (ISR, not dynamic),
-  // also on a split street after its error pages were served: the error has
-  // its own path (/numer, or the unknown number's own), never a valid one's.
+  // A page with a number is served as the plain one, from a prerendered
+  // shell with its live blocks streamed in (x-nextjs-postponed), also on a
+  // split street after its error pages were served: the error has its own
+  // path (/numer, or the unknown number's own), never a valid one's.
   for (const query of ["", "abc", "42"]) {
     await fetch(`${server.origin}/adres/0972447-90004?nr=${query}`);
   }
@@ -840,11 +874,11 @@ try {
     const url = `${server.origin}/adres/${page}`;
     await fetch(url);
     const res = await fetch(url);
-    const cached = res.headers.get("x-nextjs-cache");
+    const shell = res.headers.get("x-nextjs-postponed");
     const html = await res.text();
     check(
-      cached === "HIT" && !html.includes("govuk-error-summary"),
-      `${page}: not cached or shows an error (x-nextjs-cache: ${cached})`,
+      shell === "1" && !html.includes("govuk-error-summary"),
+      `${page}: not a shell or shows an error (x-nextjs-postponed: ${shell})`,
     );
   }
 
