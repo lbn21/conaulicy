@@ -6,9 +6,5 @@ import { NOT_FOUND_METADATA, PageNotFound } from "@/components/page-not-found";
 export const metadata: Metadata = NOT_FOUND_METADATA;
 
 export default function NotFound() {
-  return (
-    <>
-      <PageNotFound />
-    </>
-  );
+  return <PageNotFound />;
 }
