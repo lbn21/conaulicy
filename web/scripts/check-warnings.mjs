@@ -49,6 +49,7 @@ import {
   ROUTES,
   renderedPage,
   startServer,
+  withoutReactMarks,
 } from "./lib/server.mjs";
 
 // The banner's page for every state: any page but an address page, which
@@ -206,7 +207,9 @@ function forget(page) {
 
 // GOV.UK's breadcrumbs only on an address page (none on a flat site, the
 // home page or a 404), before <main>, as GOV.UK places them: the skip link
-// skips them and nothing stands above the banner in <main> (task 149).
+// skips them and nothing stands above the banner in <main> (task 149). Read
+// without React's marks, as check-modules reads them: the @breadcrumbs slot
+// (app/layout.tsx) is a boundary of its own.
 function crumbsPlaced(route, html) {
   const address = route.path.startsWith("/adres/") && !route.status;
   const main = html.slice(html.indexOf("<main"), html.indexOf("</main>"));
@@ -778,7 +781,7 @@ try {
   try {
     for (const route of ROUTES) {
       const html = await (await fetch(plain.origin + route.path)).text();
-      crumbsPlaced(route, html);
+      crumbsPlaced(route, withoutReactMarks(html));
       if (route.status) continue;
       const shown = (await renderedPage(plain.origin + route.path)).html;
       // The banner's pages: the quiet line; the address pages: neither.

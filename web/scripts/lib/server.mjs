@@ -150,20 +150,25 @@ export async function renderedPage(url, { width = 375, userAgent } = {}) {
         timeout: 10_000,
       })
       .catch(() => {});
-    const html = (await page.content())
-      .replace(
-        /<(hr|br|input|img|meta|link)(\s[^>]*?)?>/g,
-        (_, tag, attrs = "") => `<${tag}${attrs}/>`,
-      )
-      // React's own marks, not the page's: its Suspense boundaries'
-      // comments and the view transitions' hints it leaves on revealed
-      // elements.
-      .replace(/<!--[$/&!?]*-->/g, "")
-      .replace(/ vt-[a-z]+="[^"]*"/g, "");
+    const html = withoutReactMarks(await page.content()).replace(
+      /<(hr|br|input|img|meta|link)(\s[^>]*?)?>/g,
+      (_, tag, attrs = "") => `<${tag}${attrs}/>`,
+    );
     return { status: response?.status() ?? 0, html, url: page.url() };
   } finally {
     await context.close();
   }
+}
+
+/**
+ * A page's HTML without React's own marks, which are not the page's: its
+ * Suspense and Activity boundaries' comments (a parallel route's slot is
+ * one) and the view transitions' hints it leaves on revealed elements.
+ */
+export function withoutReactMarks(html) {
+  return html
+    .replace(/<!--[$/&!?]*-->/g, "")
+    .replace(/ vt-[a-z]+="[^"]*"/g, "");
 }
 
 /** Closes renderedPage's browser, if it started one. */
