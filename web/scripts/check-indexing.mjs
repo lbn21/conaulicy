@@ -251,7 +251,9 @@ try {
     "/nie-ma-takiej-strony",
     "/adres/9999999",
     "/adres/abc",
-    "/adres/0972447-99999",
+    // An unknown street (0972447-99999 is the fixture's renamed one: a 308,
+    // scripts/check-query.mjs).
+    "/adres/0972447-88888",
     // An unknown module, with and without a number; a module of an unknown
     // place.
     "/adres/0972447-00470/nie-ma-takiego-modulu",
