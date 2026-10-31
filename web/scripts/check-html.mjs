@@ -3,9 +3,10 @@
 //
 // Needs Java 11+: JAVA_HOME, or `java` on PATH. Without Java it stops, unless
 // HTML_CHECK_REMOTE=1 asks for the public validator.w3.org/nu API instead.
-// Run after `next build`.
+// With HTML_DIR, also keeps every page's HTML there, as served (for the
+// reviewer: before/after a change to rendering). Run after `next build`.
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -60,7 +61,9 @@ if (!java && !remote) {
 }
 
 const server = await startServer();
-const dir = mkdtempSync(path.join(tmpdir(), "conaulicy-html-"));
+const dir =
+  process.env.HTML_DIR ?? mkdtempSync(path.join(tmpdir(), "conaulicy-html-"));
+mkdirSync(dir, { recursive: true });
 const files = new Map();
 let messages = [];
 try {
@@ -111,5 +114,5 @@ const engine = java
 console.log(
   `\n${ROUTES.length} pages, ${errors.length} errors, ${warnings.length} warnings (${engine}).`,
 );
-rmSync(dir, { recursive: true, force: true });
+if (!process.env.HTML_DIR) rmSync(dir, { recursive: true, force: true });
 process.exit(errors.length > 0 ? 1 : 0);
