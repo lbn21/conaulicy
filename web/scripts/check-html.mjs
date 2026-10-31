@@ -6,7 +6,7 @@
 //
 // Needs Java 11+: JAVA_HOME, or `java` on PATH. Without Java it stops, unless
 // HTML_CHECK_REMOTE=1 asks for the public validator.w3.org/nu API instead.
-// With HTML_DIR, also keeps every page's HTML there, as served (for the
+// With HTML_DIR, also keeps every page's HTML and headers there, as served (for the
 // reviewer: before/after a change to rendering). Run after `next build`.
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -89,6 +89,11 @@ try {
       const html = await res.text();
       const file = path.join(dir, `${route.name}${suffix}.html`);
       writeFileSync(file, html);
+      if (process.env.HTML_DIR)
+        writeFileSync(
+          path.join(dir, `${route.name}${suffix}.headers.txt`),
+          [...res.headers].map(([k, v]) => `${k}: ${v}`).join("\n"),
+        );
       if (
         !suffix &&
         !html.slice(0, html.indexOf("</head>")).includes("<title>")
