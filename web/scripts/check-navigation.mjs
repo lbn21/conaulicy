@@ -153,27 +153,30 @@ try {
       return;
     }
     // Next.js's route announcer (a polite region in its own shadow root)
-    // says the new page's title.
-    const said = () =>
-      page.evaluate(() => ({
-        announced: document
-          .querySelector("next-route-announcer")
-          ?.shadowRoot?.textContent?.trim(),
+    // says the new page's name: its title or, when the title is not set yet
+    // as the page comes in (a page kept by Activity), its h1, as Next.js
+    // documents (nextjs.org/docs/architecture/accessibility).
+    const announced = () => {
+      const text = document
+        .querySelector("next-route-announcer")
+        ?.shadowRoot?.textContent?.trim();
+      const h1 = [...document.querySelectorAll("h1")]
+        .find((el) => el.checkVisibility())
+        ?.textContent?.trim();
+      return {
+        ok: Boolean(text) && (text === document.title || text === h1),
+        text,
         title: document.title,
-      }));
-    await page
-      .waitForFunction(
-        () =>
-          document
-            .querySelector("next-route-announcer")
-            ?.shadowRoot?.textContent?.trim() === document.title,
-        null,
-        { timeout: 5000 },
-      )
-      .catch(() => {});
-    const announcer = await said();
+        h1,
+      };
+    };
+    let announcer = await page.evaluate(announced);
+    for (let waited = 0; !announcer.ok && waited < 5000; waited += 100) {
+      await page.waitForTimeout(100);
+      announcer = await page.evaluate(announced);
+    }
     check(
-      announcer.announced === announcer.title,
+      announcer.ok,
       `${step}: the route announcer says ${JSON.stringify(announcer)}`,
     );
     const state = await page.evaluate(() => {
