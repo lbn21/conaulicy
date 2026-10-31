@@ -52,6 +52,7 @@ try {
     quiet.on("request", (request) => {
       const e = entry(request);
       e.requests += 1;
+      if (request.headers()["next-router-prefetch"]) e.prefetched = true;
       if (!e.sent) {
         const h = request.headers();
         e.sent = Object.fromEntries(
@@ -104,6 +105,18 @@ try {
         )
         .map(([url, e]) => `${url} ${JSON.stringify(e)}`)
         .join("\n  ")}`,
+    );
+    // Every address prefetch ended, with a response (task 228: they hung
+    // while the address pages read their params outside <Suspense>).
+    const addresses = [...seen].filter(
+      ([url, e]) => url.startsWith("/adres/") && e.prefetched,
+    );
+    const unfinished = addresses.filter(
+      ([, e]) => (e.ended.finished ?? 0) !== e.requests,
+    );
+    check(
+      (quietPath === HUB || addresses.length > 0) && unfinished.length === 0,
+      `${quietPath}: ${addresses.length} address prefetches, not all finished: ${JSON.stringify(unfinished)}`,
     );
     await quiet.close();
   }
@@ -309,47 +322,121 @@ try {
   check(false, `navigation walk: ${error}`);
 }
 
-// „Szukaj” with one place: from the click to its h1 on screen, logged (its
-// route's App Shell is prefetched by the home page's example links; the
-// place's own part, its h1 included, comes with the navigation).
-try {
-  const search = await browser.newPage({
-    viewport: { width: 360, height: 800 },
-  });
-  const indexIn = search.waitForResponse((r) =>
-    r.url().includes("/api/search-index/"),
-  );
-  await search.goto(`${server.origin}/`, { waitUntil: "load" });
-  await indexIn;
-  await search.getByRole("combobox").pressSequentially("rynek");
-  await search.getByRole("combobox").press("Escape");
-  await search.waitForLoadState("networkidle");
-  const ms = await search.evaluate(
-    () =>
+// From a click to a place: its skeleton shell (the App Shell, prefetched:
+// the place's caption, h1 and „Zmień adres” as skeletons) and its h1, in ms
+// from the click, measured in the page at each frame; logged for the PR.
+// The skeleton is null when the h1 came first (no frame in between).
+function timedClick(page, selector) {
+  return page.evaluate(
+    (selector) =>
       new Promise((resolve) => {
-        const home = document.querySelector("h1")?.textContent;
-        const start = performance.now();
-        document.querySelector("search button[type=submit]").click();
-        const frame = () => {
-          const h1 = [...document.querySelectorAll("h1")].find(
-            (el) => el.checkVisibility() && el.textContent !== home,
+        const visibleH1 = () =>
+          [...document.querySelectorAll("h1")].find((el) =>
+            el.checkVisibility(),
           );
-          if (h1) resolve(performance.now() - start);
-          else if (performance.now() - start > 10000) resolve(null);
+        const before = visibleH1()?.textContent;
+        const start = performance.now();
+        let skeleton = null;
+        document.querySelector(selector).click();
+        const frame = () => {
+          const now = Math.round(performance.now() - start);
+          if (
+            skeleton === null &&
+            [
+              ...document.querySelectorAll(".govuk-heading-l .app-skeleton"),
+            ].some((el) => el.checkVisibility())
+          )
+            skeleton = now;
+          const h1 = visibleH1();
+          if (h1 && h1.textContent !== before) resolve({ skeleton, h1: now });
+          else if (now > 10000) resolve({ skeleton, h1: null });
           else requestAnimationFrame(frame);
         };
         frame();
       }),
+    selector,
   );
-  console.log(`„Szukaj” with one place: its h1 after ${ms} ms`);
-  check(ms !== null, "„Szukaj” with one place: no h1 within 10 s");
+}
+
+// The home page with the search index in, the network quiet.
+async function homeReady() {
+  const home = await browser.newPage({ viewport: { width: 360, height: 800 } });
+  const indexIn = home.waitForResponse((r) =>
+    r.url().includes("/api/search-index/"),
+  );
+  await home.goto(`${server.origin}/`, { waitUntil: "load" });
+  await indexIn;
+  return home;
+}
+
+try {
+  // „Szukaj” with one place.
+  const one = await homeReady();
+  await one.getByRole("combobox").pressSequentially("rynek");
+  await one.getByRole("combobox").press("Escape");
+  await one.waitForLoadState("networkidle");
+  const oneTimes = await timedClick(one, "search button[type=submit]");
+  console.log(`„Szukaj” with one place: ${JSON.stringify(oneTimes)} ms`);
   check(
-    new URL(search.url()).pathname === ONE_PLACE,
-    `„Szukaj” with one place: at ${search.url()}`,
+    oneTimes.h1 !== null && new URL(one.url()).pathname === ONE_PLACE,
+    `„Szukaj” with one place: ${JSON.stringify(oneTimes)} at ${one.url()}`,
   );
-  await search.close();
+  await one.close();
+
+  // A link in „Szukaj”'s list of several places (prefetched as next/link).
+  const list = await homeReady();
+  await list.getByRole("combobox").fill("adama");
+  await list.getByRole("button", { name: "Szukaj" }).click();
+  const result = '#szukaj > [aria-live="polite"] ul.govuk-list a';
+  await list.locator(result).first().waitFor();
+  await list.waitForLoadState("networkidle");
+  const listTimes = await timedClick(list, result);
+  console.log(`A link in „Szukaj”'s list: ${JSON.stringify(listTimes)} ms`);
+  check(
+    listTimes.h1 !== null,
+    `a link in „Szukaj”'s list: ${JSON.stringify(listTimes)}`,
+  );
+  await list.close();
 } catch (error) {
-  check(false, `„Szukaj” with one place: ${error}`);
+  check(false, `„Szukaj” timings: ${error}`);
+}
+
+// Two hubs kept by Activity: hub A, home, hub B, then Back to A; no id
+// twice at any step (both hubs have sections #smieci, #woda, #pogoda).
+try {
+  const two = await browser.newPage({ viewport: { width: 360, height: 800 } });
+  await two.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+  const example = (n) =>
+    two
+      .locator('section[aria-labelledby="sample-heading"] ul a')
+      .filter({ visible: true })
+      .nth(n);
+  const hubA = await example(0).getAttribute("href");
+  const hubB = await example(1).getAttribute("href");
+  const ids = async (step) => {
+    await two.getByRole("heading", { level: 1 }).waitFor();
+    const state = await mainAndIds(two);
+    check(
+      state.mains === 1 && state.main && state.duplicates.length === 0,
+      `two hubs, ${step}: main and ids ${JSON.stringify(state)}`,
+    );
+  };
+  await example(0).click();
+  await two.waitForURL((url) => `${url.pathname}${url.search}` === hubA);
+  await ids("at hub A");
+  await two.getByRole("link", { name: "conaulicy.pl – strona główna" }).click();
+  await two.waitForURL((url) => url.pathname === "/");
+  await example(1).click();
+  await two.waitForURL((url) => `${url.pathname}${url.search}` === hubB);
+  await ids("at hub B, A kept");
+  await two.goBack();
+  await two.waitForURL((url) => url.pathname === "/");
+  await two.goBack();
+  await two.waitForURL((url) => `${url.pathname}${url.search}` === hubA);
+  await ids("back at hub A, B kept");
+  await two.close();
+} catch (error) {
+  check(false, `two hubs: ${error}`);
 } finally {
   await browser.close();
   await server.stop();

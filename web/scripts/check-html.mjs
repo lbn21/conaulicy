@@ -1,5 +1,7 @@
 // Validates the HTML of every key route with the Nu Html Checker (vnu.jar,
 // the engine behind validator.w3.org/nu). Fails on any error; lists warnings.
+// A prerendered address page has its real h1 and breadcrumbs in its static
+// HTML, not their skeletons.
 // Each route as an HTML-limited bot gets it (metadata in <head>), and as a
 // browser does, unless Next.js streamed it the metadata (into <body>, as
 // documented); then only its bot copy. A
@@ -99,6 +101,28 @@ try {
         statuses.push(
           `${route.path}${suffix}: HTTP ${res.status}, expected ${expected}`,
         );
+      }
+      // A prerendered address page's full load: its real breadcrumbs and h1
+      // in the HTML before anything streamed after it (React's hidden
+      // <div id="S:…">), not their skeletons (components/place-params.tsx,
+      // task 228). A house number not prerendered (?nr=7a) streams them
+      // on its first visit, as Next.js generates it (ensureStatic).
+      if (
+        !suffix &&
+        expected === 200 &&
+        route.path.startsWith("/adres/") &&
+        !/[?&]nr=./.test(route.path)
+      ) {
+        const streamedAt = html.indexOf('<div hidden id="S:');
+        const before = streamedAt === -1 ? html : html.slice(0, streamedAt);
+        if (
+          !/<h1 class="govuk-heading-l">[^<]/.test(before) ||
+          !before.includes('class="govuk-breadcrumbs__link"')
+        ) {
+          statuses.push(
+            `${route.path}: the h1 or breadcrumbs are not in the static HTML`,
+          );
+        }
       }
       const file = path.join(dir, `${route.name}${suffix}.html`);
       writeFileSync(file, html);
