@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
-import { AddressSearch } from "@/components/address-search";
+import {
+  AddressSearch,
+  SearchErrorProvider,
+  SearchErrorSummary,
+} from "@/components/address-search";
 import { ImgwLive } from "@/components/imgw-banner";
 import { PageMain } from "@/components/page-main";
 import { SITE_URL } from "@/lib/config.generated";
@@ -20,7 +24,7 @@ export const metadata: Metadata = pageMetadata({
 });
 
 // For search engines: the site's name. No SearchAction: the results page
-// (/szukaj, for the form without JS) is never indexed.
+// (/szukaj) is never indexed.
 const WEBSITE = JSON.stringify({
   "@context": "https://schema.org",
   "@type": "WebSite",
@@ -55,51 +59,56 @@ async function HomeBody() {
   // A lookup page, as GOV.UK's "Find your local council": the task in the
   // heading, one line of what to do, the field, then what you get.
   return (
-    <div className="govuk-grid-row">
-      <script
-        type="application/ld+json"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: our own constant JSON, rendered on the server; React would escape it as text
-        dangerouslySetInnerHTML={{ __html: WEBSITE }}
-      />
-      <div className="govuk-grid-column-two-thirds">
-        <h1 className="govuk-heading-xl">{HOME_H1}</h1>
-        <p className="govuk-body-l">Wpisz ulicę albo wieś i sprawdź terminy.</p>
-
-        <div className="govuk-!-margin-bottom-8">
-          <AddressSearch indexUrl={indexUrl} />
-        </div>
-
-        <h2 className="govuk-heading-m">Co zobaczysz</h2>
-        <ul className="govuk-list govuk-list--bullet govuk-!-margin-bottom-8">
-          <li>dni wywozu śmieci – dla każdego rodzaju odpadów osobno</li>
-          <li>zapowiedziane przez gminę przerwy w dostawie wody</li>
-          <li>ostrzeżenia IMGW przed złą pogodą w powiecie lubaczowskim</li>
-          <li>
-            terminy wywozu w kalendarzu w telefonie i harmonogram do wydruku
-            (PDF)
-          </li>
-        </ul>
-
-        <section aria-labelledby="sample-heading">
-          <h2 id="sample-heading" className="govuk-heading-m">
-            Przykładowe adresy
-          </h2>
-          <ul className="govuk-list">
-            {places.map((place) => (
-              <li key={place.id}>
-                <a href={placeHref(place)} className="govuk-link">
-                  {place.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-          <p className="govuk-body">
-            <a href={ALL_PLACES.path} className="govuk-link">
-              Zobacz wszystkie ulice i wsie
-            </a>
+    <SearchErrorProvider>
+      <div className="govuk-grid-row">
+        <script
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: our own constant JSON, rendered on the server; React would escape it as text
+          dangerouslySetInnerHTML={{ __html: WEBSITE }}
+        />
+        <div className="govuk-grid-column-two-thirds">
+          <SearchErrorSummary />
+          <h1 className="govuk-heading-xl">{HOME_H1}</h1>
+          <p className="govuk-body-l">
+            Wpisz ulicę albo wieś i sprawdź terminy.
           </p>
-        </section>
+
+          <div className="govuk-!-margin-bottom-8">
+            <AddressSearch indexUrl={indexUrl} />
+          </div>
+
+          <h2 className="govuk-heading-m">Co zobaczysz</h2>
+          <ul className="govuk-list govuk-list--bullet govuk-!-margin-bottom-8">
+            <li>dni wywozu śmieci – dla każdego rodzaju odpadów osobno</li>
+            <li>zapowiedziane przez gminę przerwy w dostawie wody</li>
+            <li>ostrzeżenia IMGW przed złą pogodą w powiecie lubaczowskim</li>
+            <li>
+              terminy wywozu w kalendarzu w telefonie i harmonogram do wydruku
+              (PDF)
+            </li>
+          </ul>
+
+          <section aria-labelledby="sample-heading">
+            <h2 id="sample-heading" className="govuk-heading-m">
+              Przykładowe adresy
+            </h2>
+            <ul className="govuk-list">
+              {places.map((place) => (
+                <li key={place.id}>
+                  <a href={placeHref(place)} className="govuk-link">
+                    {place.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <p className="govuk-body">
+              <a href={ALL_PLACES.path} className="govuk-link">
+                Zobacz wszystkie ulice i wsie
+              </a>
+            </p>
+          </section>
+        </div>
       </div>
-    </div>
+    </SearchErrorProvider>
   );
 }
