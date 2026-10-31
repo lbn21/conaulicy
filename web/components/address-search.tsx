@@ -41,6 +41,9 @@ const ERROR_ID = "adres-error";
 
 const EMPTY_ERROR = "Wpisz nazwę ulicy albo wsi";
 
+// How long typing rests before the one place it names is prefetched (ms).
+const PREFETCH_AFTER = 150;
+
 type Note = "hint" | "loading" | "error" | "none";
 
 const NOTES: Record<Note, string> = {
@@ -346,6 +349,41 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
       cancelPrefetch();
     };
   }, [search]);
+
+  // What „Szukaj” would open, fetched ahead (useRouter().prefetch,
+  // nextjs.org/docs/app/api-reference/functions/use-router): once typing
+  // settles on exactly one place (over the loaded index, as submit decides),
+  // its page's static part (the URL's own, a per-link prefetch: static, by
+  // the root layout's ensureStatic) is already in the browser, so the switch
+  // to it is instant. Several places: their links prefetch as next/link does.
+  useEffect(() => {
+    const container = containerRef.current;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const settle = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const field = container?.querySelector<HTMLInputElement>(
+          `#${INPUT_ID}`,
+        );
+        const index = loadedIndex(indexUrl);
+        const q = searchQuery(field?.value ?? "");
+        if (!index || !q) return;
+        const outcome = outcomeOf(index, q);
+        if (outcome.kind === "one") router.prefetch(placeHref(outcome.hit));
+      }, PREFETCH_AFTER);
+    };
+    // Typing, and a picked suggestion (the library fills the field on a
+    // click or Enter, with no input event).
+    container?.addEventListener("input", settle);
+    container?.addEventListener("click", settle);
+    container?.addEventListener("keyup", settle);
+    return () => {
+      clearTimeout(timer);
+      container?.removeEventListener("input", settle);
+      container?.removeEventListener("click", settle);
+      container?.removeEventListener("keyup", settle);
+    };
+  }, [indexUrl, router]);
 
   // Back to a page kept in the back/forward cache: the list is as it was
   // left, open.
