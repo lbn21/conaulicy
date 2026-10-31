@@ -725,12 +725,20 @@ try {
   // Requests per URL (Next.js's _rsc left out), listed if a load never goes
   // quiet.
   const landsRequests = new Map();
+  const landsOpen = new Map();
   lands.on("request", (request) => {
     const url = new URL(request.url());
     url.searchParams.delete("_rsc");
     const key = `${url.pathname}${url.search}`;
     landsRequests.set(key, (landsRequests.get(key) ?? 0) + 1);
+    const h = request.headers();
+    landsOpen.set(request, {
+      key,
+      prefetch: h["next-router-segment-prefetch"] ?? h["next-router-prefetch"],
+    });
   });
+  lands.on("requestfinished", (request) => landsOpen.delete(request));
+  lands.on("requestfailed", (request) => landsOpen.delete(request));
   const home = await (await fetch(`${server.origin}/`)).text();
   const [indexPath] = home.match(/\/api\/search-index\/[0-9a-f]{16}/) ?? [];
   const index = await (await fetch(`${server.origin}${indexPath}`)).json();
@@ -759,7 +767,7 @@ try {
       .catch((error) => {
         const busy = [...landsRequests].filter(([, n]) => n > 2);
         throw new Error(
-          `before "${query}", / never went quiet: ${JSON.stringify(busy)}\n${error}`,
+          `before "${query}", / never went quiet: ${JSON.stringify(busy)}, open ${JSON.stringify([...landsOpen.values()])}\n${error}`,
         );
       });
     await lands.getByRole("combobox").fill(query);
