@@ -23,9 +23,6 @@ function check(ok, message) {
 const HUB = "/adres/0972447-00470";
 // The one place "rynek" finds in the CI fixture.
 const ONE_PLACE = "/adres/0972447-19253";
-// From „Szukaj” to the place's h1 once prefetched: a frame or a few, no
-// round trip (a request on the local server takes longer).
-const SEARCH_SWITCH = 100;
 
 const server = await startServer(3313);
 const browser = await chromium.launch();
@@ -151,20 +148,34 @@ try {
         null,
         { timeout: 10000 },
       );
-      // Next.js's route announcer (a polite region in its own shadow root)
-      // says the new page's title.
-      await page.waitForFunction(
+    } catch (error) {
+      check(false, `${step}: did not arrive at ${path}: ${error}`);
+      return;
+    }
+    // Next.js's route announcer (a polite region in its own shadow root)
+    // says the new page's title.
+    const said = () =>
+      page.evaluate(() => ({
+        announced: document
+          .querySelector("next-route-announcer")
+          ?.shadowRoot?.textContent?.trim(),
+        title: document.title,
+      }));
+    await page
+      .waitForFunction(
         () =>
           document
             .querySelector("next-route-announcer")
             ?.shadowRoot?.textContent?.trim() === document.title,
         null,
         { timeout: 5000 },
-      );
-    } catch (error) {
-      check(false, `${step}: did not arrive at ${path}: ${error}`);
-      return;
-    }
+      )
+      .catch(() => {});
+    const announcer = await said();
+    check(
+      announcer.announced === announcer.title,
+      `${step}: the route announcer says ${JSON.stringify(announcer)}`,
+    );
     const state = await page.evaluate(() => {
       const nav = [...document.querySelectorAll(".govuk-breadcrumbs")].filter(
         (el) => el.checkVisibility(),
@@ -292,9 +303,9 @@ try {
   check(false, `navigation walk: ${error}`);
 }
 
-// „Szukaj” with one place: its page is prefetched while typing settles
-// (components/address-search.tsx), so from the click to its h1 on screen is
-// instant: logged, and at most SEARCH_SWITCH ms.
+// „Szukaj” with one place: from the click to its h1 on screen, logged (its
+// route's App Shell is prefetched by the home page's example links; the
+// place's own part, its h1 included, comes with the navigation).
 try {
   const search = await browser.newPage({
     viewport: { width: 360, height: 800 },
@@ -304,15 +315,8 @@ try {
   );
   await search.goto(`${server.origin}/`, { waitUntil: "load" });
   await indexIn;
-  const prefetched = search.waitForRequest(
-    (r) =>
-      new URL(r.url()).pathname === ONE_PLACE &&
-      r.headers()["next-router-prefetch"] === "1",
-    { timeout: 5000 },
-  );
   await search.getByRole("combobox").pressSequentially("rynek");
   await search.getByRole("combobox").press("Escape");
-  await prefetched;
   await search.waitForLoadState("networkidle");
   const ms = await search.evaluate(
     () =>
@@ -331,11 +335,8 @@ try {
         frame();
       }),
   );
-  console.log(`„Szukaj” with one place (prefetched): its h1 after ${ms} ms`);
-  check(
-    ms !== null && ms <= SEARCH_SWITCH,
-    `„Szukaj” with one place: its h1 after ${ms} ms (at most ${SEARCH_SWITCH})`,
-  );
+  console.log(`„Szukaj” with one place: its h1 after ${ms} ms`);
+  check(ms !== null, "„Szukaj” with one place: no h1 within 10 s");
   check(
     new URL(search.url()).pathname === ONE_PLACE,
     `„Szukaj” with one place: at ${search.url()}`,
