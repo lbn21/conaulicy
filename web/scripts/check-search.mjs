@@ -722,6 +722,15 @@ try {
   // first place and lib/search.ts's over the served index all point at the
   // same place and number.
   const lands = await browser.newPage();
+  // Requests per URL (Next.js's _rsc left out), listed if a load never goes
+  // quiet.
+  const landsRequests = new Map();
+  lands.on("request", (request) => {
+    const url = new URL(request.url());
+    url.searchParams.delete("_rsc");
+    const key = `${url.pathname}${url.search}`;
+    landsRequests.set(key, (landsRequests.get(key) ?? 0) + 1);
+  });
   const home = await (await fetch(`${server.origin}/`)).text();
   const [indexPath] = home.match(/\/api\/search-index\/[0-9a-f]{16}/) ?? [];
   const index = await (await fetch(`${server.origin}${indexPath}`)).json();
@@ -744,7 +753,15 @@ try {
     const [api] = await (
       await fetch(`${server.origin}/api/search?q=${q}`)
     ).json();
-    await lands.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+    landsRequests.clear();
+    await lands
+      .goto(`${server.origin}/`, { waitUntil: "networkidle" })
+      .catch((error) => {
+        const busy = [...landsRequests].filter(([, n]) => n > 2);
+        throw new Error(
+          `before "${query}", / never went quiet: ${JSON.stringify(busy)}\n${error}`,
+        );
+      });
     await lands.getByRole("combobox").fill(query);
     await lands.getByRole("button", { name: "Szukaj" }).click();
     // The place's page, or what is under the field, once the index is in.
