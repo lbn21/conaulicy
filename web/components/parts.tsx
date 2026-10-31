@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Fragment } from "react";
 import { DayWord } from "@/components/day-word";
 import { Bins } from "@/components/waste-bins";
@@ -45,13 +46,16 @@ export function Parts({ parts, lead }: { parts: Part[]; lead: boolean }) {
       ) : (
         <Fragment key={key}>{capitalised(part.text)}</Fragment>
       );
+    // The site's own pages navigate client-side (next/link); a source's
+    // page elsewhere is a plain link.
+    const Anchor = part.href.startsWith("/") ? Link : "a";
     return (
-      <a key={key} href={part.href} className="govuk-link">
+      <Anchor key={key} href={part.href} className="govuk-link">
         {part.text}
         {part.hidden && (
           <span className="govuk-visually-hidden"> {part.hidden}</span>
         )}
-      </a>
+      </Anchor>
     );
   });
 }

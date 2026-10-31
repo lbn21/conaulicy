@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
+import Link from "next/link";
 import {
   AddressSearch,
   SearchErrorProvider,
@@ -94,16 +95,16 @@ async function HomeBody() {
             <ul className="govuk-list">
               {places.map((place) => (
                 <li key={place.id}>
-                  <a href={placeHref(place)} className="govuk-link">
+                  <Link href={placeHref(place)} className="govuk-link">
                     {place.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
             <p className="govuk-body">
-              <a href={ALL_PLACES.path} className="govuk-link">
+              <Link href={ALL_PLACES.path} className="govuk-link">
                 Zobacz wszystkie ulice i wsie
-              </a>
+              </Link>
             </p>
           </section>
         </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import "accessible-autocomplete/dist/accessible-autocomplete.min.css";
 import Autocomplete from "accessible-autocomplete/react";
 import { useRouter } from "next/navigation";
@@ -179,8 +180,23 @@ const SearchError = createContext<{
   clear: () => void;
 }>({ count: 0, report: () => {}, clear: () => {} });
 
-/** Holds the search's error state for the page's column. */
+/**
+ * Holds the search's error state for the page's column. A fresh search on
+ * every visit by a link or the search's own push („Zmień adres”, the logo,
+ * a footer link: CLAUDE.md, empty), while Back and Forward bring the page
+ * back as it was left: Next.js keeps a left page in the document (Activity),
+ * and its useRouter().bfcacheId changes only on a push or replace, so as a
+ * key it starts the column over then
+ * (nextjs.org/docs/app/api-reference/functions/use-router#bfcacheid). No
+ * event of the search sees those navigations, and the field's text is
+ * accessible-autocomplete's own state, so a new field is the only reset.
+ */
 export function SearchErrorProvider({ children }: { children: ReactNode }) {
+  const { bfcacheId } = useRouter();
+  return <SearchErrorState key={bfcacheId}>{children}</SearchErrorState>;
+}
+
+function SearchErrorState({ children }: { children: ReactNode }) {
   const [count, setCount] = useState(0);
   const value = useMemo(
     () => ({
@@ -249,9 +265,9 @@ function Results({ shown }: { shown: Shown }) {
         <ul className="govuk-list">
           {shown.hits.map((hit) => (
             <li key={hit.id}>
-              <a href={placeHref(hit)} className="govuk-link">
+              <Link href={placeHref(hit)} className="govuk-link">
                 {withHouseNumber(hit.label, hit.nr ?? null)}
-              </a>
+              </Link>
             </li>
           ))}
         </ul>
@@ -267,9 +283,9 @@ function Results({ shown }: { shown: Shown }) {
           <li>wpisać samą nazwę ulicy albo wsi, na przykład Asnyka</li>
           <li>
             znaleźć swój adres na liście{" "}
-            <a href={ALL_PLACES.path} className="govuk-link">
+            <Link href={ALL_PLACES.path} className="govuk-link">
               {ALL_PLACES.text}
-            </a>
+            </Link>
           </li>
         </ul>
       </>

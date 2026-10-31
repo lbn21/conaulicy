@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
 import { Breadcrumbs, type Crumb, HOME_CRUMB } from "@/components/breadcrumbs";
@@ -272,9 +273,9 @@ function PlaceHeading({
           like the section breaks below (--l), so the first h2 never sits
           right under it. */}
       <p className="govuk-body govuk-!-margin-bottom-6">
-        <a href="/" className="govuk-link govuk-link--no-visited-state">
+        <Link href="/" className="govuk-link govuk-link--no-visited-state">
           Zmień adres<span className="govuk-visually-hidden"> {name}</span>
-        </a>
+        </Link>
       </p>
       <CheckedLine at={checkedAt} module={module} />
     </>

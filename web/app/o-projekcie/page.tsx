@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ContactLink } from "@/components/contact-link";
 import { ImgwLive } from "@/components/imgw-banner";
 import { pageMetadata } from "@/lib/share";
@@ -73,13 +74,13 @@ export default function AboutPage() {
           </p>
           <p className="govuk-body">
             Jak dbamy o Twoją prywatność, opisujemy w zakładce{" "}
-            <a href={PRIVACY.path} className="govuk-link">
+            <Link href={PRIVACY.path} className="govuk-link">
               {PRIVACY.text}
-            </a>
+            </Link>
             , a o wygodę korzystania – w zakładce{" "}
-            <a href={ACCESSIBILITY.path} className="govuk-link">
+            <Link href={ACCESSIBILITY.path} className="govuk-link">
               {ACCESSIBILITY.text}
-            </a>
+            </Link>
             .
           </p>
           <p className="govuk-body">

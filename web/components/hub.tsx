@@ -1,4 +1,5 @@
 import { cacheLife, cacheTag, io } from "next/cache";
+import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 import { BlockSkeleton, LiveBlock } from "@/components/live-block";
 import { Parts, Status } from "@/components/parts";
@@ -69,9 +70,9 @@ export function ModuleBody({
       {/* No source: nothing for the subpage to detail. */}
       {module.Details && sources.length > 0 && (
         <p className="govuk-body">
-          <a className="govuk-link" href={subpageHref(module, place)}>
+          <Link className="govuk-link" href={subpageHref(module, place)}>
             {module.more}
-          </a>
+          </Link>
         </p>
       )}
       {meta.length > 0 && (

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export type Crumb = { href: string; label: string };
 
 /** The first crumb: the home page. */
@@ -22,9 +24,9 @@ export function Breadcrumbs({ items }: { items: readonly Crumb[] }) {
       <ol className="govuk-breadcrumbs__list">
         {items.map(({ href, label }) => (
           <li key={href} className="govuk-breadcrumbs__list-item">
-            <a className="govuk-breadcrumbs__link" href={href}>
+            <Link className="govuk-breadcrumbs__link" href={href}>
               {label}
-            </a>
+            </Link>
           </li>
         ))}
       </ol>
