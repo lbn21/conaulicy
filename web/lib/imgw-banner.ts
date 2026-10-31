@@ -1,28 +1,58 @@
 // What the IMGW banner says (components/imgw-banner.tsx draws it as GOV.UK's
-// notification banner): a function of the copy of the feed and the time, so
-// the unit tests read every state. docs/data/imgw.md.
+// notification banner): a function of the last good copy of the feed and
+// the time, so the unit tests read every state. docs/data/imgw.md.
 import { clockTime, dayGenitive, warsawDay } from "./date-labels.ts";
 import {
   type Feed,
   forPowiat,
   IMGW_ATTRIBUTION,
+  parseFeedFile,
   type Warning,
 } from "./imgw-warnings.ts";
+import { checkAge, IMGW_KEY, oldestCheck, parseChecks } from "./live-status.ts";
 
 /** The powiat every page's banner covers (lubaczowski; all our gminas lie in it). */
 export const POWIAT = "1809";
 
-/** A copy older than this is not shown at all. */
-const MAX_AGE_MS = 3 * 3_600_000;
-
 /** Where the banner and the address page send readers for more. */
 export const IMGW_PAGE = "https://meteo.imgw.pl/";
 
-type Found = { feed: Feed; stale: boolean } | null;
+/** The last sentence of every notice, its link IMGW_PAGE. */
+export const CURRENT = {
+  text: "Aktualne znajdziesz na",
+  link: "meteo.imgw.pl",
+};
 
-/** A copy we may show: there is one, and it is under 3 hours old. */
-export function fresh(found: Found, now: number): found is NonNullable<Found> {
-  return found !== null && now - Date.parse(found.feed.fetchedAt) < MAX_AGE_MS;
+/** The last good copy of the feed and when IMGW was last checked well (ms). */
+export type ImgwCopy = { feed: Feed; checkedAt: number };
+
+/**
+ * What the pages read from the store (lib/live-store.ts imgwCopy): the
+ * copy, null when the cron has written none yet, or UNREADABLE when the
+ * store could not be read now: an expected error, returned as a value.
+ */
+export const UNREADABLE = "unreadable";
+export type ImgwRead = ImgwCopy | null | typeof UNREADABLE;
+
+/** The notice when the store cannot be read now; CURRENT follows it. */
+const UNREADABLE_NOTICE = "Nie udało się teraz sprawdzić ostrzeżeń IMGW.";
+
+/**
+ * The copy from the feed file and the status file (lib/live-store.ts), or
+ * null when there is no feed file yet. The last good check is the status
+ * file's (every good run), never older than the feed file's own time (the
+ * feed is written only when it changed). Throws on a feed file that is not
+ * one (lib/imgw-warnings.ts parseFeedFile).
+ */
+export function imgwCopyOf(
+  feedBody: string | null,
+  checksBody: string | null,
+): ImgwCopy | null {
+  const feed = parseFeedFile(feedBody);
+  if (!feed) return null;
+  const fetchedAt = Date.parse(feed.fetchedAt);
+  const checked = oldestCheck(parseChecks(checksBody), [IMGW_KEY]);
+  return { feed, checkedAt: Math.max(checked ?? fetchedAt, fetchedAt) };
 }
 
 // IMGW's three levels: the tag's colour, never the only signal (its text
@@ -51,8 +81,14 @@ type BannerWarning = {
 
 export type Banner = {
   title: string;
+  /**
+   * Visible, first: the last good check is over STALE_MS old (lib/live-status.ts),
+   * so the data may be out of date; CURRENT follows it. null: fresh.
+   */
+  notice: string | null;
   /** The details' summary. */
   more: string;
+  /** None while the copy is too old, or none in force or to come. */
   warnings: BannerWarning[];
   /** Visible, before the details: the source, short (in full in the attribution). */
   source: string;
@@ -81,17 +117,58 @@ function times({ validFrom, validTo }: Warning, now: number) {
   };
 }
 
+/** "9:52" today, else "piątku 30 października, 9:52": when the last data is from. */
+function since(time: number, now: number): string {
+  return warsawDay(time) === warsawDay(now) ? clockTime(time) : at(time);
+}
+
 /**
- * The banner, or null: no copy, a copy 3 hours old or older, or no warning
- * in force or to come for the powiat (a warning is dropped once it ends).
+ * The notice: none while the last good check is fresh; stale, when the
+ * last data is from (the warnings still listed); too old, only that.
  */
-export function banner(found: Found, now: number): Banner | null {
-  if (!fresh(found, now)) return null;
-  const fetchedAt = Date.parse(found.feed.fetchedAt);
-  const warnings = forPowiat(found.feed.items, POWIAT, now);
-  if (warnings.length === 0) return null;
+function notice(
+  age: ReturnType<typeof checkAge>,
+  checkedAt: number,
+  now: number,
+  warnings: number,
+): string | null {
+  const time = since(checkedAt, now);
+  if (age === "fresh") return null;
+  if (age === "too-old")
+    return `Od ${time} nie udało się nam pobrać ostrzeżeń IMGW, więc ich nie pokazujemy.`;
+  return warnings > 0
+    ? `Nie udało się teraz pobrać ostrzeżeń IMGW. Pokazujemy ostatnie dane z ${time}.`
+    : `Nie udało się teraz pobrać ostrzeżeń IMGW. Ostatnie dane mamy z ${time}.`;
+}
+
+/**
+ * The banner, or null: no copy, or a fresh one without any warning in
+ * force or to come for the powiat (a warning is dropped once it ends).
+ * Never null while there is a copy whose last good check is stale: then
+ * the notice says so, with or without warnings; too old (MAX_AGE_MS), the
+ * warnings are no longer listed, only the notice. The store unreadable:
+ * the notice alone, that we could not check now.
+ */
+export function banner(copy: ImgwRead, now: number): Banner | null {
+  if (!copy) return null;
+  if (copy === UNREADABLE)
+    return {
+      title: "Ostrzeżenia IMGW",
+      notice: UNREADABLE_NOTICE,
+      more: "Szczegóły ostrzeżeń",
+      warnings: [],
+      source: "Źródło: IMGW-PIB",
+      footer: "Dotyczy całego powiatu lubaczowskiego.",
+      attribution: IMGW_ATTRIBUTION.join(" "),
+    };
+  const age = checkAge(copy.checkedAt, now);
+  const warnings =
+    age === "too-old" ? [] : forPowiat(copy.feed.items, POWIAT, now);
+  const said = notice(age, copy.checkedAt, now, warnings.length);
+  if (warnings.length === 0 && !said) return null;
   return {
     title: warnings.length === 1 ? "Ostrzeżenie IMGW" : "Ostrzeżenia IMGW",
+    notice: said,
     more:
       warnings.length === 1 ? "Szczegóły ostrzeżenia" : "Szczegóły ostrzeżeń",
     warnings: warnings.map((warning) => ({
@@ -105,11 +182,7 @@ export function banner(found: Found, now: number): Banner | null {
       details: `Prawdopodobieństwo: ${warning.probability}%. ${warning.text}`,
     })),
     source: "Źródło: IMGW-PIB",
-    footer: [
-      "Dotyczy całego powiatu lubaczowskiego.",
-      `Stan na ${clockTime(fetchedAt)}.`,
-      ...(found.stale ? ["Nowszych danych nie udało się pobrać."] : []),
-    ].join(" "),
+    footer: `Dotyczy całego powiatu lubaczowskiego. Stan na ${clockTime(copy.checkedAt)}.`,
     attribution: IMGW_ATTRIBUTION.join(" "),
   };
 }

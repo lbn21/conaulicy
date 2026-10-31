@@ -9,9 +9,9 @@
  * every run that wrote the file (lib/zuk-cron.ts). DAY: the data keyed by the
  * Warsaw day (lib/schedule.ts getPlace, getZone) and every response built
  * from it, purged by the ZUK cron when the Warsaw day changed. IMGW: the
- * copies of IMGW's warnings feed (components/imgw-banner.tsx) and every page
- * showing them (the banner, the address pages' weather), purged by the ZUK
- * cron after every good fetch of the feed (lib/imgw-cron.ts).
+ * pages' cached copy of IMGW's files in the store (lib/live-store.ts) and
+ * every page showing them (the banner, the address pages' weather), purged
+ * by the ZUK cron after every good check of the feed (lib/zuk-cron.ts).
  */
 export const DATASET = "dataset";
 export const WATER = "water";

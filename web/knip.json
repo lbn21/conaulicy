@@ -1,10 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": [
-    "scripts/check-*.mjs",
-    "scripts/brand-assets.ts",
-    "scripts/lib/fake-clock.mjs"
-  ],
+  "entry": ["scripts/check-*.mjs", "scripts/brand-assets.ts"],
   "project": ["**/*.{ts,tsx,mjs,scss,sass}"],
   "ignoreDependencies": ["server-only"],
   "ignoreBinaries": ["pdftoppm"]

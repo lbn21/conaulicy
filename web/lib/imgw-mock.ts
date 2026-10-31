@@ -1,7 +1,8 @@
 // Development and preview only: IMGW_WARNINGS_URL=mock:… answers from the
 // fixtures instead of IMGW, through the same fetch and parse path (usage:
-// docs/data/imgw.md). lib/imgw-warnings.ts loads it only outside production,
-// and it refuses to answer in production.
+// docs/data/imgw.md): the cron's fetch (mockFetch), and the pages' two
+// files in the store (mockFiles). lib/imgw-warnings.ts and lib/live-store.ts
+// load it only outside production, and it refuses to answer in production.
 import { isoWithOffset, warsawToIso } from "./dates.ts";
 import {
   DERIVED_1809_ID,
@@ -9,6 +10,8 @@ import {
   NO_WARNINGS_2026_10_18,
   REAL_2026_10_24,
 } from "./imgw-fixture.ts";
+import { feedFile, fetchFeed, ours } from "./imgw-warnings.ts";
+import { IMGW_KEY, nextChecks } from "./live-status.ts";
 
 const HOUR = 3_600_000;
 
@@ -94,7 +97,7 @@ function failure(params: URLSearchParams, signal?: AbortSignal | null) {
   }
 }
 
-/** fetch for IMGW_WARNINGS_URL=mock:<none|real|1809>[?level=…&start=…&also=…&fail=…&failAfter=…]. */
+/** fetch for IMGW_WARNINGS_URL=mock:<none|real|1809>[?level=…&start=…&also=…&fail=…&failAfter=…&checkedAgo=…]. */
 export const mockFetch: typeof fetch = async (input, init) => {
   if (process.env.VERCEL_ENV === "production")
     throw new Error("IMGW mock: off in production");
@@ -113,3 +116,27 @@ export const mockFetch: typeof fetch = async (input, init) => {
     headers: { "Content-Type": "application/json; charset=utf-8" },
   });
 };
+
+/**
+ * The store's two files for the pages (lib/live-store.ts), as a good cron
+ * run `checkedAgo` minutes before `now` (default 0) would have left them:
+ * the mock's feed, our powiats' items, and that run's check. A mock that
+ * fails (fail=…, failAfter=…) is a store that cannot be read: it throws.
+ */
+export async function mockFiles(
+  url: string,
+  now: number,
+): Promise<{ feed: string; checks: string }> {
+  const ago = Number(new URL(url).searchParams.get("checkedAgo") ?? 0);
+  const checkedAt = now - ago * 60_000;
+  const feed = await fetchFeed(url, {
+    fetch: mockFetch,
+    now: () => checkedAt,
+  });
+  return {
+    feed: feedFile({ fetchedAt: feed.fetchedAt, items: ours(feed.items) }),
+    checks: JSON.stringify(
+      nextChecks(null, { [IMGW_KEY]: true }, isoWithOffset(checkedAt)),
+    ),
+  };
+}

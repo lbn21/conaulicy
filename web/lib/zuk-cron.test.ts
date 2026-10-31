@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DAY, WATER } from "./headers.ts";
+import { DAY, IMGW, WATER } from "./headers.ts";
+import { IMGW_KEY, parseChecks, waterKey } from "./live-status.ts";
 import { WP_POSTS } from "./sources/gmina-lubaczow/fetch.ts";
 import { gminaLubaczow } from "./sources/gmina-lubaczow/index.ts";
 import type { ZukPost } from "./zuk.ts";
@@ -607,7 +608,7 @@ test("imgw: runs beside the water run, listed under imgw, never its result or st
   let calls = 0;
   const imgw = async () => {
     calls++;
-    return { changed: true };
+    return { checked: true as const, changed: true };
   };
   // Denied: not run.
   const denied = await handleZukCron(
@@ -630,7 +631,7 @@ test("imgw: runs beside the water run, listed under imgw, never its result or st
   assert.equal(ok.status, 200);
   assert.equal(calls, 1);
   const body = await ok.json();
-  assert.deepEqual(body.imgw, { changed: true });
+  assert.deepEqual(body.imgw, { checked: true, changed: true });
   assert.equal(body.changed, true);
   // It throws: the water run's result and status as without it.
   const failing = async () => {
@@ -666,8 +667,96 @@ test("imgw: runs beside the water run, listed under imgw, never its result or st
   assert.equal(down.status, 502);
   assert.deepEqual(await down.json(), {
     error: "source unavailable",
-    imgw: { changed: true },
+    imgw: { checked: true, changed: true },
   });
+});
+
+test("checks: one status write per run, after every run, each source's check in it; IMGW purged after it", async () => {
+  const request = new Request("https://conaulicy.pl/api/cron/zuk", {
+    headers: { authorization: `Bearer ${SECRET}` },
+  });
+  const w = world();
+  let status: string | null = null;
+  // Writes and purges, in order.
+  const order: string[] = [];
+  const checks = {
+    read: async () => status,
+    write: async (body: string) => {
+      order.push("checks");
+      status = body;
+    },
+  };
+  const run = (over: Partial<ZukCronDeps> = {}) => ({
+    ...deps(w),
+    purge: (tag: string) => {
+      w.purges.push(tag);
+      order.push(tag);
+    },
+    ...over,
+  });
+  // A second source whose file cannot be read: it fails every run.
+  const mzgkim: ZukCronDeps = {
+    ...run(),
+    source: { ...gminaLubaczow, id: "mzgkim" },
+    readFile: async () => {
+      throw new Error("unreadable");
+    },
+    purge: () => {},
+  };
+  const good = async () => ({ checked: true as const, changed: false });
+  await handleZukCron(request, SECRET, run(), [mzgkim], good, checks);
+  assert.deepEqual(order, [WATER, "checks", IMGW]);
+  const first = parseChecks(status);
+  const at = NOW.toISOString();
+  assert.deepEqual(first?.sources, {
+    [waterKey("gmina-lubaczow")]: { checkedAt: at, attemptAt: at, ok: true },
+    [waterKey("mzgkim")]: { checkedAt: null, attemptAt: at, ok: false },
+    [IMGW_KEY]: { checkedAt: at, attemptAt: at, ok: true },
+  });
+  // IMGW failing, the gmina's site down: one write still, the last good
+  // checks kept, no IMGW purge.
+  order.length = 0;
+  w.posts = "down";
+  w.now = new Date(NOW.getTime() + 15 * 60_000);
+  const later = w.now.toISOString();
+  const down = async () => ({ error: "feed unavailable" });
+  await handleZukCron(request, SECRET, run(), [mzgkim], down, checks);
+  assert.deepEqual(order, ["checks"]);
+  assert.deepEqual(parseChecks(status)?.sources, {
+    [waterKey("gmina-lubaczow")]: {
+      checkedAt: at,
+      attemptAt: later,
+      ok: false,
+    },
+    [waterKey("mzgkim")]: { checkedAt: null, attemptAt: later, ok: false },
+    [IMGW_KEY]: { checkedAt: at, attemptAt: later, ok: false },
+  });
+  // The status file unreadable, or its write failing: logged, the run's
+  // response as without it, IMGW still purged after a good check.
+  order.length = 0;
+  w.logs = [];
+  const broken = {
+    read: async () => {
+      throw new Error("blob down");
+    },
+    write: async () => {
+      throw new Error("blob down");
+    },
+  };
+  const response = await handleZukCron(
+    request,
+    SECRET,
+    run(),
+    [],
+    good,
+    broken,
+  );
+  assert.equal(response.status, 502);
+  assert.deepEqual(order, [IMGW]);
+  assert.deepEqual(
+    w.logs.filter((line) => "checks" in line).map((line) => line.checks),
+    ["read-error", "write-error"],
+  );
 });
 
 test("the gmina's site answers with something else: the same", async () => {

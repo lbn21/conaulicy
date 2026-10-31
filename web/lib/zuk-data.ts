@@ -60,6 +60,7 @@
 
 import { todayInWarsaw } from "./dates.ts";
 import type { Disruption, Doubt, Notice } from "./disruptions.ts";
+import { STALE_MS } from "./live-status.ts";
 import { GMINA, type WaterSource } from "./water-sources.ts";
 import { current, noticeUntil, notOver, type WarningPlace } from "./zuk.ts";
 import type { AiItem } from "./zuk-ai.ts";
@@ -79,8 +80,8 @@ export const ZUK_FILE_VERSION = 5;
  */
 export const ZUK_READER = 10;
 
-/** Older than this, the data may be out of date: show the source link. */
-export const STALE_MS = 60 * 60_000;
+/** Older than this, the data may be out of date: show the source link (one for every source). */
+export { STALE_MS };
 
 /** The model could not read the post (xAI failed or no key): retried. */
 export const AI_UNAVAILABLE = "ai-unavailable";

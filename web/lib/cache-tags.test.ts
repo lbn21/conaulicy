@@ -103,18 +103,23 @@ test("the ZUK cron's route purges by revalidateTag, never DATASET", () => {
   assert.doesNotMatch(route, /import \{[^}]*\bDATASET\b/);
 });
 
-test("the pages: IMGW's feed cache is tagged IMGW, the only way a page reads the feed", () => {
-  // One cache, tagged, for every copy and slot: imgwCopy reads it alone.
-  const banner = read("../components/imgw-banner.tsx");
+test("the pages: IMGW's files in the store are read through one cache tagged IMGW, never IMGW itself", () => {
+  // One cache, tagged: imgwCopy reads it alone, keyed by the store.
+  const store = read("./live-store.ts");
   assert.match(
-    banner,
-    /unstable_cache\(\(\) => load\(\), \["imgw-warnings", url, String\(slot\)\], \{\n\s+tags: \[IMGW\],/,
+    store,
+    /unstable_cache\(imgwFiles, \["imgw-files"\], \{\n\s+tags: \[IMGW\],/,
   );
-  assert.equal(banner.match(/unstable_cache\(/g)?.length, 1);
-  assert.match(banner, /return latest\(now, reader\(url\), load\);/);
-  assert.match(banner, /shown = banner\(await imgwCopy\(now\), now\);/);
-  // Every other source file: the feed only through imgwCopy (or the
-  // cron's own fetch), so every page showing it carries the tag.
+  assert.equal(store.match(/unstable_cache\(/g)?.length, 1);
+  assert.match(store, /return imgwCopyOf\(feed, checks\);/);
+  assert.match(
+    read("../components/imgw-banner.tsx"),
+    /const shown = banner\(await imgwCopy\(\), Date\.now\(\)\);/,
+  );
+  assert.match(
+    read("./modules.ts"),
+    /return weather\(await imgwCopy\(\), Date\.now\(\)\);/,
+  );
   const root = new URL("../", import.meta.url);
   const sources = ["app", "components", "lib"]
     .flatMap((dir) =>
@@ -125,30 +130,30 @@ test("the pages: IMGW's feed cache is tagged IMGW, the only way a page reads the
     )
     .filter((path) => /\.tsx?$/.test(path) && !/\.test\.ts$/.test(path))
     .sort();
-  const readers = sources.filter((path) =>
-    /\b(fetchFeed|latest)\(/.test(readFileSync(new URL(path, root), "utf8")),
-  );
-  assert.deepEqual(readers, [
-    "components/imgw-banner.tsx",
+  const calling = (pattern: RegExp) =>
+    sources.filter((path) =>
+      pattern.test(readFileSync(new URL(path, root), "utf8")),
+    );
+  // IMGW asked only by the cron (and the mock outside production).
+  assert.deepEqual(calling(/\bfetchFeed\(/), [
     "lib/imgw-cron.ts",
+    "lib/imgw-mock.ts",
     "lib/imgw-warnings.ts",
+  ]);
+  // The copy only through that cache, so every page showing it carries the tag.
+  assert.deepEqual(calling(/\bimgwCopy\(/), [
+    "components/imgw-banner.tsx",
+    "lib/live-store.ts",
+    "lib/modules.ts",
   ]);
   // Where the warnings are shown: the banner on these pages, the weather
   // module (the address pages' „Pogoda” and „Najbliższe dni”).
-  const drawing = sources.filter((path) =>
-    readFileSync(new URL(path, root), "utf8").includes("<ImgwBanner />"),
-  );
-  assert.deepEqual(drawing, [
+  assert.deepEqual(calling(/<ImgwBanner \/>/), [
     "app/dostepnosc/page.tsx",
-    "app/not-found.tsx",
     "app/o-projekcie/page.tsx",
     "app/page.tsx",
     "app/prywatnosc/page.tsx",
     "app/szukaj/page.tsx",
     "app/ulice/page.tsx",
   ]);
-  assert.match(
-    read("./modules.ts"),
-    /return weather\(await imgwCopy\(now\), now\);/,
-  );
 });

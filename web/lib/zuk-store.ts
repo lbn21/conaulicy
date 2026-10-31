@@ -1,7 +1,7 @@
 import "server-only";
-import { get, put } from "@vercel/blob";
 import { unstable_cache } from "next/cache";
 import { WATER } from "./headers.ts";
+import { readBlobFile, writeBlobFile } from "./live-store.ts";
 import {
   GMINA,
   WATER_SOURCES,
@@ -10,39 +10,24 @@ import {
 } from "./water-sources.ts";
 import { parseZukFile, type ZukData, zukView } from "./zuk-data.ts";
 
-// Each water source's file in the private Blob store
-// (BLOB_READ_WRITE_TOKEN, lib/water-sources.ts pathname): read through
-// Next's data cache for the pages, tagged WATER, so the cron's purge
-// (lib/zuk-cron.ts) drops it and every page rendered from it (the tag is
-// the pages' too). Each refill reads the Blob's origin, not its CDN copy
-// (up to 60 s old): a refill right after a purge gets the new file.
+// Each water source's file in the private Blob store (lib/live-store.ts,
+// lib/water-sources.ts pathname): read through Next's data cache for the
+// pages, tagged WATER, so the cron's purge (lib/zuk-cron.ts) drops it and
+// every page rendered from it (the tag is the pages' too).
 
 /**
  * A file's body from the Blob's origin, or null if there is none yet.
  * Throws on other errors.
  */
-export async function readZukFile(
-  pathname = GMINA.pathname,
-): Promise<string | null> {
-  const blob = await get(pathname, {
-    access: "private",
-    useCache: false,
-  });
-  if (blob?.statusCode !== 200) return null;
-  return new Response(blob.stream).text();
+export function readZukFile(pathname = GMINA.pathname): Promise<string | null> {
+  return readBlobFile(pathname);
 }
 
-export async function writeZukFile(
+export function writeZukFile(
   body: string,
   pathname = GMINA.pathname,
 ): Promise<void> {
-  await put(pathname, body, {
-    access: "private",
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    contentType: "application/json",
-    cacheControlMaxAge: 60,
-  });
+  return writeBlobFile(pathname, body);
 }
 
 const cached = unstable_cache(readZukFile, ["zuk-file"], {
