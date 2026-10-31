@@ -196,7 +196,13 @@ try {
   if (places.length === 0) failures.push("/: no search index");
   for (const [i, [id, label]] of places.entries()) {
     const href = `/adres/${encodeURIComponent(id)}`;
-    CASES.push(["GET", `/szukaj?q=${encodeURIComponent(label)}`, 308, href]);
+    CASES.push([
+      "GET",
+      `/szukaj?q=${encodeURIComponent(label)}`,
+      308,
+      href,
+      BOT_UA,
+    ]);
     // Every third with a house number, as the field writes it or as typed
     // after a pick.
     if (i % 3 === 0) {
@@ -206,6 +212,7 @@ try {
           `/szukaj?q=${encodeURIComponent(text)}`,
           308,
           `${href}?nr=7a`,
+          BOT_UA,
         ]);
       }
     }
