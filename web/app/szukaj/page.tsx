@@ -26,11 +26,11 @@ import { ALL_PLACES } from "@/lib/static-pages";
 // none: what to try next. Rendered per request, so never cached by the CDN;
 // never indexed (next.config.ts sends the header).
 
-// Allowed to block (nextjs.org/docs/app/guides/building, "A blocking
-// product page"): the page waits for its query before it answers, so the
-// one-place redirect is a real 308 and the results are in the HTML, with
-// or without JS. Its metadata streams to browsers, in <head> for HTML-
-// limited bots (next.config.ts).
+// Allowed to block (nextjs.org/docs/app/api-reference/file-conventions/route-segment-config/instant):
+// the page awaits its query outside any Suspense boundary. Next.js still
+// serves the prerendered shell first, so one place's redirect is a
+// client-side one for browsers, with JS; HTML-limited bots get a real 308
+// (nextjs.org/docs/app/api-reference/functions/redirect; task 220).
 export const instant = false;
 
 const EMPTY_ERROR = "Wpisz nazwę ulicy albo wsi";
