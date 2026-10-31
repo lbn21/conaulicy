@@ -6,7 +6,7 @@
 
 Lighthouse (npm `lighthouse`, free, no Lighthouse CI server) with its mobile settings and **real throttling** (`throttlingMethod: "devtools"`):
 
-- Moto G Power screen, mobile user agent.
+- Moto G Power screen, mobile user agent: set explicitly to a phone's Chrome (`BROWSER_UA`, `web/scripts/lib/server.mjs`), never a bot's, so the budgets measure what visitors get. Next.js renders a page per request for the user agents on its HTML-limited bot list (`Chrome-Lighthouse` among them), skipping the prerendered shell (https://nextjs.org/docs/app/guides/streaming#cache-components). Lighthouse 13.5's own mobile user agent no longer carries that token; the setting keeps it so.
 - Slow 4G (150 ms RTT, 1.6 Mbps down), applied by Chrome with Lighthouse's devtools adjustment: 562.5 ms request latency (150 × 3.75), 1475 kbps down (× 0.9), 675 kbps up. The check prints the profile it used.
 - CPU slowed 4× (Lighthouse's default). Fixed, not calibrated (see "Flake fixed" below). Each run's `benchmarkIndex` and the CPU slowdown are logged per page for information only; calibrating with Lighthouse's official CPU throttling calculator was not adopted, because on CI runners it would raise the slowdown above 4×.
 - Pages: `/`, `/adres/0972447-00470` (CI fixture street, Asnyka: the address page), `/adres/0972447-00470/smieci` (its waste subpage, the former street page), `/dostepnosc`, `/ulice` (every place, from the CI fixture).
