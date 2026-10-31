@@ -1,5 +1,5 @@
-import { HubMain, hubLive } from "@/components/hub";
-import { PlaceNotFound, placeMetadata } from "@/components/place-page";
+import { HubRoute } from "@/components/hub";
+import { placeMetadata } from "@/components/place-page";
 import { allPlaces } from "@/lib/prerender";
 
 // The address page, the hub of modules (components/hub.tsx): a static shell
@@ -20,15 +20,7 @@ export async function generateMetadata({ params }: PageProps<"/adres/[id]">) {
   return placeMetadata(id, null);
 }
 
-export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
-  // A renamed place's old address: proxy.ts answers its 308.
-  const { id } = await params;
-  return (
-    <HubMain
-      id={id}
-      nr={null}
-      unknown={<PlaceNotFound />}
-      {...hubLive(id, null)}
-    />
-  );
+// A renamed place's old address: proxy.ts answers its 308.
+export default function PlacePage({ params }: PageProps<"/adres/[id]">) {
+  return <HubRoute params={params} />;
 }

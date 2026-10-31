@@ -1,5 +1,5 @@
-import { HubMain, hubLive } from "@/components/hub";
-import { PlaceNotFound, placeMetadata } from "@/components/place-page";
+import { HubRoute } from "@/components/hub";
+import { placeMetadata } from "@/components/place-page";
 import { numberParam } from "@/lib/address-routes";
 import { houseNumber } from "@/lib/house";
 import { firstAddress } from "@/lib/prerender";
@@ -27,18 +27,8 @@ export async function generateMetadata({
   return placeMetadata(id, given, houseNumber(given) === null);
 }
 
-export default async function PlaceWithNumberPage({
+export default function PlaceWithNumberPage({
   params,
 }: PageProps<"/adres/[id]/nr/[...nr]">) {
-  const { id, nr } = await params;
-  const given = numberParam(nr);
-  return (
-    <HubMain
-      id={id}
-      nr={given}
-      missing={houseNumber(given) === null}
-      unknown={<PlaceNotFound />}
-      {...hubLive(id, given)}
-    />
-  );
+  return <HubRoute params={params} />;
 }

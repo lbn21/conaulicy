@@ -1,9 +1,4 @@
-import {
-  ModuleMain,
-  moduleLive,
-  moduleMetadata,
-} from "@/components/module-page";
-import { PlaceNotFound } from "@/components/place-page";
+import { ModuleRoute, moduleMetadata } from "@/components/module-page";
 import { SUBPAGE_IDS } from "@/lib/address-routes";
 import { allPlaces } from "@/lib/prerender";
 
@@ -31,17 +26,8 @@ export async function generateMetadata({
   return moduleMetadata(id, module, null);
 }
 
-export default async function ModulePage({
+export default function ModulePage({
   params,
 }: PageProps<"/adres/[id]/[module]">) {
-  const { id, module } = await params;
-  return (
-    <ModuleMain
-      id={id}
-      slug={module}
-      nr={null}
-      unknown={<PlaceNotFound />}
-      live={moduleLive(id, module, null)}
-    />
-  );
+  return <ModuleRoute params={params} />;
 }
