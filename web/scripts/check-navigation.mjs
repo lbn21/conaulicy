@@ -32,41 +32,73 @@ try {
     const quiet = await browser.newPage({
       viewport: { width: 360, height: 800 },
     });
+    // Per URL (query left out): how many requests, how they ended, and the
+    // first response's caching headers and its request's router headers.
     const seen = new Map();
+    const entry = (request) => {
+      const url = request.url().replace(server.origin, "").split("?")[0];
+      if (!seen.has(url)) seen.set(url, { requests: 0, ended: {} });
+      return seen.get(url);
+    };
+    const end = (request, how) => {
+      const e = entry(request);
+      e.ended[how] = (e.ended[how] ?? 0) + 1;
+    };
     quiet.on("request", (request) => {
-      const headers = request.headers();
-      seen.set(request, {
-        url: request.url().replace(server.origin, ""),
-        prefetch:
-          headers["next-router-prefetch"] ??
-          headers["next-router-segment-prefetch"] ??
-          null,
-        status: "pending",
-      });
+      const e = entry(request);
+      e.requests += 1;
+      if (!e.sent) {
+        const h = request.headers();
+        e.sent = Object.fromEntries(
+          Object.entries(h).filter(
+            ([k]) => k.startsWith("next-") || k === "rsc",
+          ),
+        );
+      }
     });
     quiet.on("requestfinished", (request) => {
-      const entry = seen.get(request);
-      if (!entry) return;
-      entry.status = "finished";
+      end(request, "finished");
+      const e = entry(request);
+      if (e.got) return;
+      e.got = {};
       request
         .response()
         .then((response) => {
-          entry.status = response?.status() ?? "none";
+          if (!response) return;
+          const h = response.headers();
+          e.got = Object.fromEntries(
+            Object.entries(h).filter(
+              ([k]) =>
+                k.startsWith("x-nextjs") ||
+                k === "cache-control" ||
+                k === "vary" ||
+                k === "content-type",
+            ),
+          );
+          e.got.status = response.status();
         })
         .catch(() => {});
     });
-    quiet.on("requestfailed", (request) => {
-      const entry = seen.get(request);
-      if (entry) entry.status = `failed ${request.failure()?.errorText}`;
-    });
+    quiet.on("requestfailed", (request) =>
+      end(request, request.failure()?.errorText ?? "failed"),
+    );
     await quiet.goto(`${server.origin}${HUB}`, { waitUntil: "load" });
     const idle = await quiet
       .waitForLoadState("networkidle", { timeout: 15000 })
       .then(() => true)
       .catch(() => false);
+    const busy = [...seen].filter(([, e]) => e.requests > 2);
     check(
       idle,
-      `hub: the network never goes quiet after load (${seen.size} requests):\n  ${[...seen.values()].map((r) => JSON.stringify(r)).join("\n  ")}`,
+      `hub: the network never goes quiet after load; requested more than twice:\n  ${busy.map(([url, e]) => `${url} ${JSON.stringify(e)}`).join("\n  ")}\n  for comparison: ${[
+        ...seen,
+      ]
+        .filter(
+          ([url]) =>
+            url.startsWith("/adres/") && !busy.some(([b]) => b === url),
+        )
+        .map(([url, e]) => `${url} ${JSON.stringify(e)}`)
+        .join("\n  ")}`,
     );
     await quiet.close();
   }
