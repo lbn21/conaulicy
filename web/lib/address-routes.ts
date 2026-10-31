@@ -31,6 +31,18 @@ export const FILE_NAMES = ["harmonogram.pdf", "woda.ics"];
  */
 export const RESERVED_SEGMENTS = ["nr", "numer", ...FILE_NAMES];
 
+/**
+ * A link's `prefetch` (next/link): none to an address page (/adres/…), the
+ * default for every other page (task 228, Jakub's decision). With Partial
+ * Prefetching an address route's App Shell holds no place (its pages read
+ * their params outside <Suspense>, so their static HTML has the place), and
+ * its prefetch never finished; prefetch={false} skips it, and a click
+ * fetches the page (nextjs.org/docs/app/api-reference/components/link#prefetch).
+ */
+export function addressPrefetch(href: string): false | undefined {
+  return href.startsWith("/adres/") ? false : undefined;
+}
+
 export function isModuleId(slug: string): slug is ModuleId {
   return (MODULE_IDS as readonly string[]).includes(slug);
 }

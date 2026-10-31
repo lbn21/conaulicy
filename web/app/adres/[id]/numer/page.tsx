@@ -1,5 +1,5 @@
-import { HubRoute } from "@/components/hub";
-import { placeMetadata } from "@/components/place-page";
+import { HubMain, hubLive } from "@/components/hub";
+import { PlaceNotFound, placeMetadata } from "@/components/place-page";
 
 // /adres/[id]?nr= with no usable house number (empty, or not a number) lands
 // here (proxy.ts rewrites it). A split street answers with the street page
@@ -17,8 +17,17 @@ export async function generateMetadata({
   return placeMetadata(id, null, true);
 }
 
-export default function PlaceMissingNumberPage({
+export default async function PlaceMissingNumberPage({
   params,
 }: PageProps<"/adres/[id]/numer">) {
-  return <HubRoute params={params} missing />;
+  const { id } = await params;
+  return (
+    <HubMain
+      id={id}
+      nr={null}
+      missing
+      unknown={<PlaceNotFound />}
+      {...hubLive(id, null)}
+    />
+  );
 }

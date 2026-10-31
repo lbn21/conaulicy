@@ -3,17 +3,14 @@ import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 import { BlockSkeleton, LiveBlock } from "@/components/live-block";
 import { Parts, Status } from "@/components/parts";
-import {
-  AddressPage,
-  numberError,
-  PlaceNotFound,
-  StreetPage,
-} from "@/components/place-page";
-import { HUB_SKELETON, PlaceParams } from "@/components/place-params";
+import { AddressPage, numberError, StreetPage } from "@/components/place-page";
 import { Skeleton } from "@/components/skeleton";
 import { Upcoming } from "@/components/upcoming";
-import { MODULE_IDS, type ModuleId, numberParam } from "@/lib/address-routes";
-import { houseNumber } from "@/lib/house";
+import {
+  addressPrefetch,
+  MODULE_IDS,
+  type ModuleId,
+} from "@/lib/address-routes";
 import { metaLine } from "@/lib/hub";
 import { IMGW_ATTRIBUTION } from "@/lib/imgw-warnings";
 import { MODULES, type Module } from "@/lib/modules";
@@ -77,7 +74,11 @@ export function ModuleBody({
       {/* No source: nothing for the subpage to detail. */}
       {module.Details && sources.length > 0 && (
         <p className="govuk-body">
-          <Link className="govuk-link" href={subpageHref(module, place)}>
+          <Link
+            className="govuk-link"
+            href={subpageHref(module, place)}
+            prefetch={addressPrefetch(subpageHref(module, place))}
+          >
             {module.more}
           </Link>
         </p>
@@ -193,7 +194,7 @@ function sectionSkeleton(module: Module<unknown>) {
 }
 
 /** The address page's live blocks for HubMain, each its own hole. */
-function hubLive(id: string, nr: string | null) {
+export function hubLive(id: string, nr: string | null) {
   return {
     upcoming: (
       <LiveBlock skeleton={UPCOMING_SKELETON}>
@@ -219,7 +220,7 @@ function hubLive(id: string, nr: string | null) {
  * notFound() is thrown in the page's own render and the blocks are read per
  * request.
  */
-async function HubMain({
+export async function HubMain({
   id,
   nr,
   missing = false,
@@ -277,35 +278,5 @@ async function HubMain({
         {IMGW_ATTRIBUTION.join(" ")}
       </p>
     </AddressPage>
-  );
-}
-
-/**
- * The address page from its route's params (app/adres/[id], its /numer and
- * /nr/… variants), read behind <Suspense> (PlaceParams): the house number
- * from /nr/…, missing when it is no number, or on /numer (`missing`).
- */
-export function HubRoute({
-  params,
-  missing = false,
-}: {
-  params: Promise<{ id: string; nr?: string[] }>;
-  missing?: boolean;
-}) {
-  return (
-    <PlaceParams params={params} skeleton={HUB_SKELETON}>
-      {({ id, nr }) => {
-        const given = nr ? numberParam(nr) : null;
-        return (
-          <HubMain
-            id={id}
-            nr={given}
-            missing={missing || (given !== null && houseNumber(given) === null)}
-            unknown={<PlaceNotFound />}
-            {...hubLive(id, given)}
-          />
-        );
-      }}
-    </PlaceParams>
   );
 }

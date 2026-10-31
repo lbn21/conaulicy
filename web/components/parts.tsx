@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Fragment } from "react";
 import { DayWord } from "@/components/day-word";
 import { Bins } from "@/components/waste-bins";
+import { addressPrefetch } from "@/lib/address-routes";
 import type { Group, Part } from "@/lib/hub";
 import { capitalised } from "@/lib/upcoming";
 
@@ -48,14 +49,27 @@ export function Parts({ parts, lead }: { parts: Part[]; lead: boolean }) {
       );
     // The site's own pages navigate client-side (next/link); a source's
     // page elsewhere is a plain link.
-    const Anchor = part.href.startsWith("/") ? Link : "a";
-    return (
-      <Anchor key={key} href={part.href} className="govuk-link">
+    const text = (
+      <>
         {part.text}
         {part.hidden && (
           <span className="govuk-visually-hidden"> {part.hidden}</span>
         )}
-      </Anchor>
+      </>
+    );
+    return part.href.startsWith("/") ? (
+      <Link
+        key={key}
+        href={part.href}
+        prefetch={addressPrefetch(part.href)}
+        className="govuk-link"
+      >
+        {text}
+      </Link>
+    ) : (
+      <a key={key} href={part.href} className="govuk-link">
+        {text}
+      </a>
     );
   });
 }

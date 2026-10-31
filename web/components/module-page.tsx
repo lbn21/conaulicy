@@ -3,11 +3,8 @@ import { cacheLife, cacheTag, io } from "next/cache";
 import type { ReactNode } from "react";
 import { BlockSkeleton, LiveBlock } from "@/components/live-block";
 import { NOT_FOUND_METADATA } from "@/components/page-not-found";
-import { PlaceNotFound, SubpageHeading } from "@/components/place-page";
-import { PlaceParams, SUBPAGE_SKELETON } from "@/components/place-params";
+import { SubpageHeading } from "@/components/place-page";
 import { Skeleton } from "@/components/skeleton";
-import { numberParam } from "@/lib/address-routes";
-import { houseNumber } from "@/lib/house";
 import { findSubpage } from "@/lib/modules";
 import { getPlace, PLACE_TAGS } from "@/lib/schedule";
 
@@ -75,7 +72,7 @@ const LIVE_SKELETON = (
 );
 
 /** A live module's subpage body for ModuleMain, its own hole. */
-function moduleLive(id: string, slug: string, nr: string | null) {
+export function moduleLive(id: string, slug: string, nr: string | null) {
   return (
     <LiveBlock skeleton={LIVE_SKELETON}>
       <ModuleLive slug={slug} id={id} nr={nr} />
@@ -88,7 +85,7 @@ function moduleLive(id: string, slug: string, nr: string | null) {
  * HubMain): cacheLife "max", the dataset's tags; `unknown` and `live`
  * (moduleLive) pass through uncached.
  */
-async function ModuleMain({
+export async function ModuleMain({
   id,
   slug,
   nr,
@@ -132,36 +129,5 @@ async function ModuleMain({
         />
       )}
     </>
-  );
-}
-
-/**
- * A module subpage from its route's params (app/adres/[id]/[module], its
- * /numer and /nr/… variants), read behind <Suspense> (PlaceParams), as
- * HubRoute (components/hub.tsx).
- */
-export function ModuleRoute({
-  params,
-  missing = false,
-}: {
-  params: Promise<{ id: string; module: string; nr?: string[] }>;
-  missing?: boolean;
-}) {
-  return (
-    <PlaceParams params={params} skeleton={SUBPAGE_SKELETON}>
-      {({ id, module, nr }) => {
-        const given = nr ? numberParam(nr) : null;
-        return (
-          <ModuleMain
-            id={id}
-            slug={module}
-            nr={given}
-            missing={missing || (given !== null && houseNumber(given) === null)}
-            unknown={<PlaceNotFound />}
-            live={moduleLive(id, module, given)}
-          />
-        );
-      }}
-    </PlaceParams>
   );
 }

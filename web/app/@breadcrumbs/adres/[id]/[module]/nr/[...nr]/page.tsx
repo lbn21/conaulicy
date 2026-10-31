@@ -1,8 +1,4 @@
 import { PlaceCrumbs } from "@/components/place-crumbs";
-import {
-  PlaceParams,
-  SUBPAGE_CRUMBS_SKELETON,
-} from "@/components/place-params";
 import { numberParam } from "@/lib/address-routes";
 
 // A module subpage's breadcrumbs with a house number
@@ -10,14 +6,9 @@ import { numberParam } from "@/lib/address-routes";
 
 export { generateStaticParams } from "@/app/adres/[id]/[module]/nr/[...nr]/page";
 
-export default function Crumbs({
+export default async function Crumbs({
   params,
 }: PageProps<"/adres/[id]/[module]/nr/[...nr]">) {
-  return (
-    <PlaceParams params={params} skeleton={SUBPAGE_CRUMBS_SKELETON}>
-      {({ id, module, nr }) => (
-        <PlaceCrumbs id={id} nr={numberParam(nr)} module={module} />
-      )}
-    </PlaceParams>
-  );
+  const { id, module, nr } = await params;
+  return <PlaceCrumbs id={id} nr={numberParam(nr)} module={module} />;
 }

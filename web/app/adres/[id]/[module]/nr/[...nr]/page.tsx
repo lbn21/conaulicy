@@ -1,4 +1,9 @@
-import { ModuleRoute, moduleMetadata } from "@/components/module-page";
+import {
+  ModuleMain,
+  moduleLive,
+  moduleMetadata,
+} from "@/components/module-page";
+import { PlaceNotFound } from "@/components/place-page";
 import { numberParam, SUBPAGE_IDS } from "@/lib/address-routes";
 import { houseNumber } from "@/lib/house";
 import { firstAddress } from "@/lib/prerender";
@@ -22,8 +27,19 @@ export async function generateMetadata({
   return moduleMetadata(id, module, given, houseNumber(given) === null);
 }
 
-export default function ModuleWithNumberPage({
+export default async function ModuleWithNumberPage({
   params,
 }: PageProps<"/adres/[id]/[module]/nr/[...nr]">) {
-  return <ModuleRoute params={params} />;
+  const { id, module, nr } = await params;
+  const given = numberParam(nr);
+  return (
+    <ModuleMain
+      id={id}
+      slug={module}
+      nr={given}
+      missing={houseNumber(given) === null}
+      unknown={<PlaceNotFound />}
+      live={moduleLive(id, module, given)}
+    />
+  );
 }
