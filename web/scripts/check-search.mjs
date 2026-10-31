@@ -688,7 +688,7 @@ try {
     const target =
       at.pathname === "/szukaj"
         ? await lands
-            .locator("main ul.govuk-list li a")
+            .locator("main ul.govuk-list > li:first-child > a:first-child")
             .first()
             .getAttribute("href", { timeout: 1000 })
             .catch(() => null)
