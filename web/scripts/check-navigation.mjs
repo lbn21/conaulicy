@@ -120,6 +120,28 @@ try {
     return state;
   }
 
+  // The hub's water and weather sections: a body under the heading.
+  async function hubSections(step) {
+    for (const id of ["pogoda", "woda"]) {
+      const text = await visible(`section#${id}`).innerText();
+      check(
+        text.split("\n").filter((line) => line.trim()).length > 1,
+        `${step}: the ${id} section has no body: ${JSON.stringify(text)}`,
+      );
+    }
+  }
+
+  // A flat page's IMGW line, its live block.
+  async function imgwLine(step) {
+    check(
+      await page
+        .getByRole("link", { name: "Ostrzeżenia IMGW" })
+        .isVisible()
+        .catch(() => false),
+      `${step}: the IMGW line is not there after the navigation`,
+    );
+  }
+
   // A home example: an address page, the hub.
   await visible('section[aria-labelledby="sample-heading"] ul a')
     .first()
@@ -134,13 +156,7 @@ try {
     window.__oneDocument = true;
   });
   documents.length = 0;
-  for (const id of ["pogoda", "woda"]) {
-    const text = await visible(`section#${id}`).innerText();
-    check(
-      text.split("\n").filter((line) => line.trim()).length > 1,
-      `hub: the ${id} section has no body: ${JSON.stringify(text)}`,
-    );
-  }
+  await hubSections("hub");
 
   await page.getByRole("link", { name: "Wszystkie odbiory śmieci" }).click();
   await arrived("hub → /smieci", `${HUB}/smieci`, { crumbs: 1 });
@@ -153,13 +169,7 @@ try {
     fetched.includes(HUB),
     `/smieci → hub: the hub's page was not fetched again (${JSON.stringify(fetched)})`,
   );
-  for (const id of ["pogoda", "woda"]) {
-    const text = await visible(`section#${id}`).innerText();
-    check(
-      text.split("\n").filter((line) => line.trim()).length > 1,
-      `hub again: the ${id} section has no body: ${JSON.stringify(text)}`,
-    );
-  }
+  await hubSections("hub again");
 
   // The footer's list of every place, clicked at the bottom of the page.
   const footerLink = page
@@ -174,13 +184,7 @@ try {
     ulice?.scrollY === 0,
     `hub → /ulice (footer): the page starts ${ulice?.scrollY}px down`,
   );
-  check(
-    await page
-      .getByRole("link", { name: "Ostrzeżenia IMGW" })
-      .isVisible()
-      .catch(() => false),
-    "/ulice: the IMGW line is not there after the navigation",
-  );
+  await imgwLine("/ulice");
 
   // The header's logo: home, the search field empty, its list closed.
   await page
@@ -193,13 +197,7 @@ try {
       (await field.getAttribute("aria-expanded")) === "false",
     `home by the logo: the field holds "${await field.inputValue()}"`,
   );
-  check(
-    await page
-      .getByRole("link", { name: "Ostrzeżenia IMGW" })
-      .isVisible()
-      .catch(() => false),
-    "home: the IMGW line is not there after the navigation",
-  );
+  await imgwLine("home");
 } catch (error) {
   check(false, `navigation walk: ${error}`);
 } finally {
