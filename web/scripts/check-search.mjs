@@ -144,12 +144,23 @@ try {
 
     // Layout shifts: those right after input (the inline list opening,
     // changing or closing; CLS forgives them) and those without (none).
+    // What moved after input is logged, so its sum can be traced.
     await page.evaluate(() => {
-      window.__shift = { input: 0, other: 0, entries: [] };
+      window.__shift = { input: 0, other: 0, entries: [], moved: {} };
+      const name = (node) =>
+        node?.nodeType === 1
+          ? `${node.tagName.toLowerCase()}${node.id ? `#${node.id}` : ""}${node.classList[0] ? `.${node.classList[0]}` : ""}`
+          : "text";
       new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
-          if (entry.hadRecentInput) window.__shift.input += entry.value;
-          else {
+          if (entry.hadRecentInput) {
+            window.__shift.input += entry.value;
+            for (const source of entry.sources) {
+              const moved = name(source.node);
+              window.__shift.moved[moved] =
+                (window.__shift.moved[moved] ?? 0) + 1;
+            }
+          } else {
             window.__shift.other += 1;
             window.__shift.entries.push(entry.value);
           }
@@ -333,7 +344,7 @@ try {
       `${label}: ${shift.other} layout shifts without recent input ${JSON.stringify(shift.entries)}`,
     );
     console.log(
-      `${label}: layout shift ${shift.input} after input, ${shift.other} without`,
+      `${label}: layout shift ${shift.input} after input (moved: ${JSON.stringify(shift.moved)}), ${shift.other} without`,
     );
     await page.close();
   }
