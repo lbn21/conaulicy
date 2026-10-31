@@ -85,9 +85,20 @@ try {
       Object.keys(runs[0]).map((key) => [key, median(runs.map((r) => r[key]))]),
     );
 
-    const html = await (await fetch(url)).text();
+    const res = await fetch(url, { headers: { "user-agent": BROWSER_UA } });
+    const html = await res.text();
     m.htmlGzip = gzipSync(html, { level: 9 }).length;
-    m.preloadedFonts = (html.match(/<link[^>]+as="font"[^>]*>/g) ?? []).length;
+    // Distinct fonts preloaded, by <link> in the HTML or in the Link header,
+    // where React sends a prerendered page's resource hints (react.dev,
+    // renderToPipeableStream onHeaders).
+    const tags = html.match(/<link[^>]+as="font"[^>]*>/g) ?? [];
+    const header = (res.headers.get("link") ?? "").split(/,\s*(?=<)/);
+    m.preloadedFonts = new Set([
+      ...tags.map((tag) => /href="([^"]+)"/.exec(tag)?.[1]),
+      ...header
+        .filter((hint) => /rel=preload/.test(hint) && /as="font"/.test(hint))
+        .map((hint) => /^<([^>]+)>/.exec(hint)?.[1]),
+    ]).size;
     results[name] = {
       ...m,
       lcpRuns: runs.map((r) => r.lcp),

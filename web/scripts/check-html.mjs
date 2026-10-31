@@ -2,7 +2,8 @@
 // the engine behind validator.w3.org/nu). Fails on any error; lists warnings.
 // Each route as an HTML-limited bot gets it (metadata in <head>), and as a
 // browser does, unless Next.js streamed it the metadata (into <body>, as
-// documented: /szukaj, rendered per request); then only its bot copy.
+// documented: /szukaj, rendered per request); then only its bot copy. A
+// 404 is a real 404 for the browser; for the bot a 404, or 200 + noindex.
 //
 // Needs Java 11+: JAVA_HOME, or `java` on PATH. Without Java it stops, unless
 // HTML_CHECK_REMOTE=1 asks for the public validator.w3.org/nu API instead.
@@ -71,6 +72,7 @@ const files = new Map();
 let messages = [];
 const streamed = [];
 const statuses = [];
+const streamedNotFound = [];
 try {
   for (const route of ROUTES) {
     for (const [ua, suffix] of [
@@ -80,13 +82,24 @@ try {
       const res = await fetch(server.origin + route.path, {
         headers: { "user-agent": ua },
       });
+      const html = await res.text();
       const expected = route.status ?? 200;
-      if (res.status !== expected) {
+      // A browser gets the static result: a real 404. A bot's render is
+      // dynamic, so a notFound() inside a Suspense boundary (PlaceNotFound)
+      // comes after the 200: Next.js then sends noindex instead
+      // (nextjs.org/docs/app/guides/streaming#status-codes; Jakub's
+      // decision, task 220). A bot gets either.
+      const notFound =
+        suffix &&
+        expected === 404 &&
+        res.status === 200 &&
+        html.includes('<meta name="robots" content="noindex"/>');
+      if (notFound) streamedNotFound.push(route.path);
+      else if (res.status !== expected) {
         statuses.push(
           `${route.path}${suffix}: HTTP ${res.status}, expected ${expected}`,
         );
       }
-      const html = await res.text();
       const file = path.join(dir, `${route.name}${suffix}.html`);
       writeFileSync(file, html);
       if (process.env.HTML_DIR)
@@ -137,7 +150,7 @@ const engine = java
   ? `vnu.jar ${execFileSync(java, ["-jar", VNU_JAR, "--version"], { encoding: "utf8" }).trim()}`
   : "validator.w3.org/nu";
 console.log(
-  `\n${files.size} documents (${ROUTES.length} pages, browser and bot; metadata streamed to the browser, its bot copy only: ${streamed.join(", ") || "none"}), ${errors.length} errors, ${warnings.length} warnings (${engine}).`,
+  `\n${files.size} documents (${ROUTES.length} pages, browser and bot; metadata streamed to the browser, its bot copy only: ${streamed.join(", ") || "none"}; 404 as 200 + noindex for the bot: ${streamedNotFound.join(", ") || "none"}), ${errors.length} errors, ${warnings.length} warnings (${engine}).`,
 );
 if (!process.env.HTML_DIR) rmSync(dir, { recursive: true, force: true });
 process.exit(errors.length > 0 || statuses.length > 0 ? 1 : 0);
