@@ -70,6 +70,7 @@ mkdirSync(dir, { recursive: true });
 const files = new Map();
 let messages = [];
 const streamed = [];
+const statuses = [];
 try {
   for (const route of ROUTES) {
     for (const [ua, suffix] of [
@@ -81,7 +82,7 @@ try {
       });
       const expected = route.status ?? 200;
       if (res.status !== expected) {
-        throw new Error(
+        statuses.push(
           `${route.path}${suffix}: HTTP ${res.status}, expected ${expected}`,
         );
       }
@@ -124,6 +125,7 @@ function print(list, label) {
   }
 }
 
+for (const status of statuses) console.log(`ERROR   ${status}`);
 print(errors, "ERROR  ");
 print(warnings, "warning");
 const engine = java
@@ -133,4 +135,4 @@ console.log(
   `\n${files.size} documents (${ROUTES.length} pages, browser and bot; metadata streamed to the browser, its bot copy only: ${streamed.join(", ") || "none"}), ${errors.length} errors, ${warnings.length} warnings (${engine}).`,
 );
 if (!process.env.HTML_DIR) rmSync(dir, { recursive: true, force: true });
-process.exit(errors.length > 0 ? 1 : 0);
+process.exit(errors.length > 0 || statuses.length > 0 ? 1 : 0);
