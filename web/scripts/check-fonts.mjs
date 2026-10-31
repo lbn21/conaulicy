@@ -1,5 +1,7 @@
 // Checks that the web font arriving late moves nothing: on the home page, an
-// address page and its waste and water subpages, at 360px, 375px (where the
+// address page and its waste and water subpages, and /szukaj with one result
+// (whose placeholder, components/search-skeleton.tsx, reserves one result:
+// its swap for the results moves nothing either), at 360px, 375px (where the
 // breadcrumbs once wrapped differently) and 1280px, every font request is
 // held back 1.5s (a slow first visit) and the summed layout shift, including
 // shifts CLS itself would forgive, must stay under 0.001. (0.01 is too loose:
@@ -21,6 +23,7 @@ const PAGES = [
   "/adres/0972447-00470",
   "/adres/0972447-00470/smieci",
   "/adres/0972447-00470/woda",
+  "/szukaj?q=as",
 ];
 const WIDTHS = [360, 375, 1280];
 const FONT_DELAY = 1500;

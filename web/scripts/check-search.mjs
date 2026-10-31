@@ -16,12 +16,13 @@
 // /api/search answers when the index cannot load, and a house number
 // ("kosciuszki 7a") reaches the street page, which picks the part of a split
 // street by it, or asks for it (also without JS). Picking a suggestion (a
-// tap, or ArrowDown and Enter) only fills the field and closes the list, as
-// GOV.UK's default; „Szukaj” or the next Enter submits the form, and
-// /szukaj opens the picked place, also with a house number typed after it.
-// Enter with no option highlighted (list open or closed, none found)
-// submits what was typed. The search form works without JS (one clearly
-// best place: its page; otherwise /szukaj lists them). The hint's example
+// tap, a click, or ArrowDown and Enter) loads its place's page, with the
+// house number, in one document load, never through /szukaj; focus then
+// starts at the top (the skip link first), as after any link. Enter with
+// no option highlighted (list open or closed, none found) submits what was
+// typed, and so does „Szukaj”, also pressed with the list open. The search
+// form, typed and submitted: one clearly best place opens its page;
+// otherwise /szukaj lists them. The hint's example
 // ("Asnyka 5") opens its street with a number the register has. /szukaj,
 // /api/search and lib/search.ts rank alike. /szukaj has the same field,
 // prefilled once, with its error state. Run after
@@ -412,6 +413,28 @@ try {
   );
   await page.close();
 
+  // The page's document requests: a pick loads its place's page, once,
+  // never /szukaj.
+  const documents = (page) => {
+    const paths = [];
+    page.on("request", (request) => {
+      if (request.isNavigationRequest() && request.frame() === page.mainFrame())
+        paths.push(request.url().replace(server.origin, ""));
+    });
+    return paths;
+  };
+  // The first Tab after the load: the skip link, as after any link. Then
+  // focus leaves it: GOV.UK shows it in the flow only while focused, so a
+  // click's mousedown would hide it and move the page under the pointer.
+  const firstTab = async (page) => {
+    await page.keyboard.press("Tab");
+    return page.evaluate(() => {
+      const text = document.activeElement?.textContent;
+      document.activeElement?.blur();
+      return text;
+    });
+  };
+
   // A house number: typed after the street, carried to the page.
   const house = await browser.newPage({
     viewport: { width: 360, height: 800 },
@@ -425,26 +448,19 @@ try {
     (await option.textContent()) === "ul. Tadeusza Kościuszki 7a, Lubaczów",
     `house number: option reads "${await option.textContent()}"`,
   );
-  // ArrowDown, Enter: the field holds the suggestion, the page stays; the
-  // next Enter submits the form. Keys go where focus is (ArrowDown moves it
-  // to the option): a locator's press would focus the field first, which
-  // clears the library's highlight.
+  // ArrowDown, Enter: the suggestion's page, with the number. Keys go where
+  // focus is (ArrowDown moves it to the option): a locator's press would
+  // focus the field first, which clears the library's highlight.
+  const houseLoads = documents(house);
   await house.keyboard.press("ArrowDown");
   await house.keyboard.press("Enter");
-  await house.waitForTimeout(500);
-  const picked = {
-    url: house.url(),
-    value: await house.getByRole("combobox").inputValue(),
-    list: await house.getByRole("listbox").isVisible(),
-  };
-  check(
-    picked.url === `${server.origin}/` &&
-      picked.value === "ul. Tadeusza Kościuszki 7a, Lubaczów" &&
-      !picked.list,
-    `house number: ArrowDown, Enter does not only fill the field ${JSON.stringify(picked)}`,
-  );
-  await house.getByRole("combobox").press("Enter");
   await house.waitForURL(`${server.origin}/adres/0972447-90004?nr=7a`);
+  const houseTab = await firstTab(house);
+  check(
+    JSON.stringify(houseLoads) === '["/adres/0972447-90004?nr=7a"]' &&
+      houseTab === "Przejdź do treści",
+    `house number: ArrowDown, Enter loaded ${JSON.stringify(houseLoads)}, first Tab on "${houseTab}"`,
+  );
   const heading = await house.locator("h1").textContent();
   // The calendar and the PDF are on the waste subpage, its section's
   // „Wszystkie odbiory śmieci”, with the number.
@@ -468,9 +484,8 @@ try {
   );
   await house.close();
 
-  // A tap (phone) or click on a suggestion fills the field and closes the
-  // list, uncovering „Szukaj”; the page stays until it is pressed. "adama"
-  // finds two places; the picked one's text opens it.
+  // A tap (phone) or click on a suggestion loads its place's page. "adama"
+  // finds two places.
   for (const [width, touch] of [
     [360, true],
     [1280, false],
@@ -488,70 +503,45 @@ try {
       .locator('[role="option"]:not([aria-disabled])', { hasText: "Asnyka" })
       .first();
     await suggestion.waitFor();
+    const loads = documents(pick);
     await press(suggestion);
-    await pick.waitForTimeout(500);
-    const button = pick.getByRole("button", { name: "Szukaj" });
-    const picked = {
-      url: pick.url(),
-      value: await pick.getByRole("combobox").inputValue(),
-      list: await pick.getByRole("listbox").isVisible(),
-      // The button is on top at its centre, no longer under the list.
-      button: await button.evaluate((el) => {
-        const r = el.getBoundingClientRect();
-        const top = document.elementFromPoint(
-          r.left + r.width / 2,
-          r.top + r.height / 2,
-        );
-        return el.contains(top);
-      }),
-    };
-    check(
-      picked.url === `${server.origin}/` &&
-        picked.value === "ul. Adama Asnyka, Lubaczów" &&
-        !picked.list &&
-        picked.button,
-      `${how} on a suggestion: does not only fill the field ${JSON.stringify(picked)}`,
-    );
-    await press(button);
     await pick
       .waitForURL(`${server.origin}/adres/0972447-00470`, { timeout: 5000 })
-      .catch(() => check(false, `${how}, Szukaj: at ${pick.url()}`));
+      .catch(() => {});
+    const tab = await firstTab(pick);
+    check(
+      JSON.stringify(loads) === '["/adres/0972447-00470"]' &&
+        tab === "Przejdź do treści",
+      `${how} on a suggestion: at ${pick.url()}, loaded ${JSON.stringify(loads)}, first Tab on "${tab}"`,
+    );
     await pick.close();
   }
 
-  // A house number typed after a pick stays in the field (the library only
-  // searches again, never overriding it) and reaches the place's page.
+  // A house number typed, no pick, the list open inline above „Szukaj”: a
+  // click on it must not be lost to the list closing under the pointer, and
+  // /szukaj opens the one place with the number.
   const typed = await browser.newPage({
     viewport: { width: 360, height: 800 },
   });
   await typed.goto(`${server.origin}/`, { waitUntil: "networkidle" });
   await typed.locator("#adres").click();
   const field = typed.getByRole("combobox");
-  await field.pressSequentially("rynek");
+  await field.pressSequentially("rynek 5");
   await typed
     .locator('[role="option"]:not([aria-disabled])', { hasText: "Rynek" })
     .first()
-    .click();
-  await field.pressSequentially(" 5");
-  await typed.waitForTimeout(500);
-  // The list is open again, inline above „Szukaj”: a click on it must not
-  // be lost to the list closing under the pointer.
+    .waitFor();
   check(
     (await field.getAttribute("aria-expanded")) === "true",
-    "number typed after a pick: the list is not open over the button",
-  );
-  const value = await field.inputValue();
-  check(
-    value === "ul. Rynek, Lubaczów 5",
-    `number typed after a pick: field reads "${value}"`,
+    "number typed: the list is not open over the button",
   );
   await typed.getByRole("button", { name: "Szukaj" }).click();
   await typed
     .waitForURL(`${server.origin}/adres/0972447-19253?nr=5`, { timeout: 5000 })
-    .catch(() => check(false, `number typed after a pick: at ${typed.url()}`));
+    .catch(() => check(false, `number typed, Szukaj: at ${typed.url()}`));
   await typed.close();
 
-  // Enter with no suggestion (none found) submits the form, as without JS.
+  // Enter with no suggestion (none found) submits the form.
   const enter = await browser.newPage({
     viewport: { width: 360, height: 800 },
   });
@@ -729,6 +719,12 @@ try {
       );
     }
   }
+  // The results stream in after the placeholder: wait for them to show.
+  await form
+    .locator("main ul.govuk-list a")
+    .first()
+    .waitFor({ timeout: 5000 })
+    .catch(() => {});
   check(
     (await form.locator("main ul.govuk-list a").count()) === 2,
     "form search adama: not 2 results",

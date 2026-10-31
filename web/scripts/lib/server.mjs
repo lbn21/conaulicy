@@ -105,11 +105,23 @@ export function finish(failures, summary) {
   process.exit(0);
 }
 
+// A JSON response's body; anything but a 2xx fails the check with the URL
+// and status, not a JSON parse error on an error page (QA review of #216).
+export async function fetchJson(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(
+      `GET ${url}: HTTP ${response.status} ${response.statusText}, expected JSON`,
+    );
+  }
+  return response.json();
+}
+
 // The search field's index that a home page's HTML links
 // (/api/search-index/<hash>): its URL, and its [id, label, type] rows, none
 // when the page links no index.
 export async function searchIndexOf(origin, home) {
   const url = /\/api\/search-index\/[\da-f]+/.exec(home)?.[0];
-  const places = url ? await (await fetch(`${origin}${url}`)).json() : [];
+  const places = url ? await fetchJson(`${origin}${url}`) : [];
   return { url, places };
 }

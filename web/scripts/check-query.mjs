@@ -26,6 +26,7 @@ import { withHouseNumber } from "../lib/house.ts";
 import {
   BOT_UA,
   BROWSER_UA,
+  fetchJson,
   finish,
   searchIndexOf,
   startServer,
@@ -277,13 +278,16 @@ try {
       if (!html.includes(part)) failures.push(`/szukaj?q=${q}: no ${part}`);
     }
     // GOV.UK search results: the error summary (if any), the H1, the field,
-    // then the results.
-    const order = (
-      error
-        ? ['class="govuk-error-summary"', "<h1", "<search"]
-        : ["<h1", "<search", parts[1], parts[2]]
-    ).map((part) => html.indexOf(part));
-    if (order.some((at, i) => at < 0 || (i > 0 && at < order[i - 1]))) {
+    // then the results. Each looked for after the one before: the results
+    // stream in after the placeholder (task 222), and the RSC payload's
+    // scripts may carry their text earlier in the document.
+    const order = [];
+    for (const part of error
+      ? ['class="govuk-error-summary"', "<h1", "<search"]
+      : ["<h1", "<search", parts[1], parts[2]]) {
+      order.push(html.indexOf(part, Math.max(0, order.at(-1) ?? 0)));
+    }
+    if (order.some((at) => at < 0)) {
       failures.push(`/szukaj?q=${q}: page order ${order}`);
     }
     // The metadata: in <head> for an HTML-limited bot; a browser may get
@@ -354,9 +358,7 @@ try {
       if (!type.includes("json")) failures.push(`${path}: ${type}`);
     }
   }
-  const moved = await (
-    await fetch(`${server.origin}/api/place-redirects`)
-  ).json();
+  const moved = await fetchJson(`${server.origin}/api/place-redirects`);
   if (moved["0972447-99999"] !== "0972447-00470") {
     failures.push(`/api/place-redirects: ${JSON.stringify(moved)}`);
   }

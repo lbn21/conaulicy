@@ -29,7 +29,13 @@
 // Runs against `next start` on the current build and the CI fixture.
 import { readFileSync } from "node:fs";
 import { request } from "node:http";
-import { finish, ROUTES, searchIndexOf, startServer } from "./lib/server.mjs";
+import {
+  fetchJson,
+  finish,
+  ROUTES,
+  searchIndexOf,
+  startServer,
+} from "./lib/server.mjs";
 
 const mode = process.argv
   .find((arg) => arg.startsWith("--expect="))
@@ -252,9 +258,7 @@ try {
   // sent Location twice, and fetch followed the joined value to a 404 of its
   // own, so a 308 passed as a 404 (task 221). A renamed id is a 308, never
   // one of these: its rows (the CI fixture's) as the proxy reads them.
-  const renamed = await (
-    await fetch(`${server.origin}/api/place-redirects`)
-  ).json();
+  const renamed = await fetchJson(`${server.origin}/api/place-redirects`);
   for (const path of [
     "/nie-ma-takiej-strony",
     "/adres/9999999",
