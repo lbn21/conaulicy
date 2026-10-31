@@ -1,21 +1,24 @@
 // The IMGW banner (components/imgw-banner.tsx) in every state, from the mock
-// (IMGW_WARNINGS_URL=mock:…, lib/imgw-mock.ts), on the built site:
+// store (IMGW_WARNINGS_URL=mock:…, lib/imgw-mock.ts mockFiles: the files a
+// good cron run left, checkedAgo minutes back), on the built site:
 // - mock:none (the build's own setting in CI): no banner on any route, no
 //   warning on the address page; the breadcrumbs only on the address pages,
 //   right before <main> (task 149), so nothing precedes the banner in it;
 // - never the banner on an address page or its waste subpage: its
 //   „Najbliższe dni” block (components/upcoming.tsx) and weather section
-//   for one warning, two and three (a line each), and IMGW failing (no
-//   weather at all);
+//   for one warning, two and three (a line each), stale and too old (the
+//   notice in Pogoda);
 // - each state on one page (/o-projekcie), a server per state: GOV.UK's markup
 //   (role="region", aria-labelledby, no role="alert", no button), the title,
 //   one tag per warning with its level and colour, highest first, the time,
-//   the visible source line, the probability and footer sentences, the stale
-//   line, placed first in <main> and before the h1 in the two-thirds column;
-//   axe at 375 and 1280 px;
+//   the visible source line, the probability and footer sentences, the
+//   notice and its link, placed first in <main> and before the h1 in the
+//   two-thirds column; axe at 375 and 1280 px;
 // - a level-3 warning on the home page and /ulice (placement before the h1);
-// - stale (the copy kept from an earlier 10-minute slot), too old (3 hours)
-//   and a failing IMGW: the server's clock runs ahead (lib/fake-clock.mjs);
+// - stale (the last good check over an hour back: the notice, the warning
+//   still listed; with no warning, the notice alone), too old (3 hours: the
+//   notice alone) and a store that cannot be read (no last render here, so
+//   an error, never an empty banner);
 // - three warnings: keyboard focus on the link, 320 px and 200% zoom with no
 //   horizontal scroll, the tags' fills (IMGW's level colours, lib/palette.ts)
 //   and contrast, the title's contrast, the banner's paddings.
@@ -45,17 +48,11 @@ const HUB = "/adres/0972447-00470";
 const NO_WARNINGS = "Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.";
 const WIDTHS = [375, 1280];
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
-const MINUTE = 60_000;
-const CLOCK = path.resolve(import.meta.dirname, "lib/fake-clock.mjs");
 const SHOTS = process.env.SCREENSHOT_DIR;
 
-// Kept by the stale states: fetched at the real time (the states before it
-// take minutes), failing from 10 minutes on, before the stale server's clock
-// (20 minutes ahead).
-const KEPT = `mock:1809?level=2&failAfter=${new Date(Date.now() + 10 * MINUTE).toISOString()}`;
-
-// levels: the tags expected, in order; upcoming: which items are to come;
-// opened: also checked and shot with the details open.
+// levels: the tags expected, in order (null: no banner); upcoming: which
+// items are to come; notice: the notice expected first; opened: also checked
+// and shot with the details open.
 const STATES = [
   ...[1, 2, 3].flatMap((level) => [
     {
@@ -92,13 +89,32 @@ const STATES = [
     upcoming: [true],
     crossDay: true,
   },
-  // Primes the kept copy (shown fresh), then the same copy 20 minutes and
-  // over 3 hours on, with IMGW failing.
-  { name: "kept-fresh", url: KEPT, levels: [2], shot: false },
-  { name: "stale", url: KEPT, ahead: 20 * MINUTE, levels: [2], stale: true },
-  { name: "too-old", url: KEPT, ahead: 195 * MINUTE, levels: null },
-  { name: "failing", url: "mock:1809?fail=timeout", levels: null, hub: null },
+  // The last good check over an hour back, and over three hours.
+  {
+    name: "stale",
+    url: "mock:1809?level=2&checkedAgo=70",
+    levels: [2],
+    notice: "stale",
+    hub: 1,
+  },
+  {
+    name: "stale-none",
+    url: "mock:none?checkedAgo=70",
+    levels: [],
+    notice: "stale-none",
+  },
+  {
+    name: "too-old",
+    url: "mock:1809?level=2&checkedAgo=190",
+    levels: [],
+    notice: "too-old",
+    hub: 0,
+  },
 ];
+
+// The store cannot be read, and the page has no last render (dropped from
+// the ISR cache): an error, never a page without the banner.
+const UNREADABLE = { name: "unreadable", url: "mock:1809?fail=500" };
 
 // Home and /ulice, with the state's server.
 const PLACEMENT = {
@@ -116,11 +132,31 @@ const SAME_DAY = new RegExp(`^Od ${DAY}, ${TIME} do ${TIME}\\.$`, "u");
 const SHORT_TO = new RegExp(`^do ${DAY}, ${TIME}$`, "u");
 const SHORT_FROM = new RegExp(`^od ${DAY}, ${TIME}$`, "u");
 const CROSS_DAY = new RegExp(`^Od ${DAY}, ${TIME} do ${DAY}, ${TIME}\\.$`, "u");
-const footer = (stale) =>
-  new RegExp(
-    `^Dotyczy całego powiatu lubaczowskiego\\. Stan na ${TIME}\\.${stale ? " Nowszych danych nie udało się pobrać\\." : ""}$`,
-    "u",
-  );
+const FOOTER = new RegExp(
+  `^Dotyczy całego powiatu lubaczowskiego\\. Stan na ${TIME}\\.$`,
+  "u",
+);
+// The last data's time: its day too when not today.
+const SINCE = `(?:${DAY}, )?${TIME}`;
+const CURRENT = " Aktualne znajdziesz na meteo\\.imgw\\.pl\\.";
+const NOTICE = {
+  stale: `Nie udało się teraz pobrać ostrzeżeń IMGW\\. Pokazujemy ostatnie dane z ${SINCE}\\.`,
+  "stale-none": `Nie udało się teraz pobrać ostrzeżeń IMGW\\. Ostatnie dane mamy z ${SINCE}\\.`,
+  "too-old": `Od ${SINCE} nie udało się nam pobrać ostrzeżeń IMGW, więc ich nie pokazujemy\\.`,
+};
+const notice = (name) => new RegExp(`^${NOTICE[name]}${CURRENT}$`, "u");
+const NOTICE_LINK = [
+  "https://meteo.imgw.pl/",
+  "meteo.imgw.pl",
+  "govuk-notification-banner__link",
+  "",
+];
+const DETAILS_LINK = [
+  "https://meteo.imgw.pl/",
+  "Szczegóły i mapa na meteo.imgw.pl",
+  "govuk-notification-banner__link",
+  "",
+];
 const COLOUR = {
   1: "govuk-tag--yellow",
   2: "govuk-tag--orange",
@@ -206,9 +242,16 @@ function readBanner() {
     content: [
       ...b.querySelector(".govuk-notification-banner__content").children,
     ].map((el) => `${el.tagName}.${el.className}`),
+    // The notice: the content's paragraph with a link.
+    notice: b
+      .querySelector(
+        ".govuk-notification-banner__content > p.govuk-body:has(a)",
+      )
+      ?.textContent.replace(/\s+/g, " ")
+      .trim(),
     lines: [
       ...b.querySelectorAll(
-        ".govuk-notification-banner__content > p.govuk-body, .govuk-notification-banner__content > ul > li",
+        ".govuk-notification-banner__content > p.govuk-body:not(:has(a)), .govuk-notification-banner__content > ul > li",
       ),
     ].map((line) => {
       const [event, tag] = line.querySelectorAll("strong");
@@ -276,12 +319,27 @@ function expectBanner(label, state, seen) {
   if (seen.list !== (n > 1 ? n : 0))
     fail(`${seen.list} list items for ${n} warnings`);
   const content = [
-    n > 1 ? "UL.govuk-list" : "P.govuk-body",
-    "P.govuk-body-s",
-    "DETAILS.govuk-details",
+    ...(state.notice ? ["P.govuk-body"] : []),
+    ...(n === 0
+      ? []
+      : [
+          n > 1 ? "UL.govuk-list" : "P.govuk-body",
+          "P.govuk-body-s",
+          "DETAILS.govuk-details",
+        ]),
   ];
   if (seen.content.join() !== content.join())
     fail(`content ${seen.content}, want ${content}`);
+  if (state.notice ? !notice(state.notice).test(seen.notice) : seen.notice)
+    fail(`notice „${seen.notice}”`);
+  const links = JSON.stringify(seen.link);
+  const want = [
+    ...(state.notice ? [NOTICE_LINK] : []),
+    ...(n > 0 ? [DETAILS_LINK] : []),
+  ];
+  if (links !== JSON.stringify(want)) fail(`links ${links}`);
+  // The notice alone: no source line or details (nothing of IMGW's shown).
+  if (n === 0) return;
   if (seen.open !== false) fail("details not closed");
   if (
     seen.summary !== (n === 1 ? "Szczegóły ostrzeżenia" : "Szczegóły ostrzeżeń")
@@ -312,21 +370,8 @@ function expectBanner(label, state, seen) {
     if (!/^Prawdopodobieństwo: \d{1,3}%\. Prognozuje się /.test(details))
       fail(`warning ${i}: details „${details}”`);
   });
-  const links = JSON.stringify(seen.link);
-  if (
-    links !==
-    JSON.stringify([
-      [
-        "https://meteo.imgw.pl/",
-        "Szczegóły i mapa na meteo.imgw.pl",
-        "govuk-notification-banner__link",
-        "",
-      ],
-    ])
-  )
-    fail(`links ${links}`);
   if (seen.source !== "Źródło: IMGW-PIB") fail(`source „${seen.source}”`);
-  if (!footer(!!state.stale).test(seen.footer)) fail(`footer „${seen.footer}”`);
+  if (!FOOTER.test(seen.footer)) fail(`footer „${seen.footer}”`);
   // IMGW's wording as is, in secondary text (task 205).
   if (seen.attribution !== IMGW_ATTRIBUTION.join(" "))
     fail(`attribution „${seen.attribution}”`);
@@ -516,13 +561,12 @@ async function deepChecks(browser, origin) {
 }
 
 // The address page with the state's warnings (state.hub: how many, all in
-// force; null: IMGW failing): never the banner, on it or its waste
-// subpage; „Najbliższe dni” (components/upcoming.tsx), a line per warning
-// („Teraz:”, the event, its tag, until when, „Cały powiat.”, „Szczegóły i
-// źródło” to #pogoda), none on /smieci; the weather's section after the
-// waste's, a tag and an absolute time per warning (its day lead the
-// island's), never a relative word in it. Failing: the page still renders,
-// without the weather.
+// force): never the banner, on it or its waste subpage; „Najbliższe dni”
+// (components/upcoming.tsx), a line per warning („Teraz:”, the event, its
+// tag, until when, „Cały powiat.”, „Szczegóły i źródło” to #pogoda), none
+// on /smieci; the weather's section after the waste's, the state's notice
+// first if any (its link IMGW's page), a tag and an absolute time per
+// warning (its day lead the island's), never a relative word in it.
 async function hubChecks(origin, state) {
   const label = `${state.name} ${HUB}`;
   const [hub, waste] = await Promise.all(
@@ -554,16 +598,6 @@ async function hubChecks(origin, state) {
   ]
     .map(([, line]) => line)
     .filter((line) => line.includes("ostrzeżenie IMGW"));
-  if (state.hub === null) {
-    if (
-      lines.length > 0 ||
-      /Pogoda/.test(hub) ||
-      cards.join() !== "Śmieci,Woda"
-    )
-      failures.push(`${label}: weather shown while IMGW fails (${cards})`);
-    else console.log(`ok    ${label}: rendered without the weather`);
-    return;
-  }
   const line = new RegExp(
     `^<strong>Teraz:</strong> ostrzeżenie IMGW – silny wiatr <strong class="govuk-tag govuk-tag--(?:yellow|orange|red)">Stopień [1-3] z 3</strong>, do (?:jutra, |${DAY}, )?${TIME}\\.</span><span class="govuk-!-display-block">Cały powiat\\.</span><a class="govuk-link" href="#pogoda">Szczegóły i źródło<span class="govuk-visually-hidden">: pogoda</span></a>$`,
     "u",
@@ -584,6 +618,13 @@ async function hubChecks(origin, state) {
       "Pogoda without an absolute time per warning",
     /Obowiązuje teraz|Teraz/.test(section) && "a relative word in Pogoda",
     cards.join() !== "Śmieci,Woda,Pogoda" && `sections ${cards}`,
+    // The notice first, with IMGW's link; none when fresh.
+    (state.notice
+      ? !new RegExp(
+          `<h2 id="pogoda-heading" class="govuk-heading-l">Pogoda</h2><p class="govuk-body">${NOTICE[state.notice]} Aktualne znajdziesz na <a href="https://meteo\\.imgw\\.pl/" class="govuk-link">meteo\\.imgw\\.pl</a>\\.</p>`,
+          "u",
+        ).test(section)
+      : section.includes("nie udało się")) && "Pogoda's notice",
     // Every section, always (task 207); the weather's says the warning.
     hub.includes(NO_WARNINGS) && "„Brak ostrzeżeń” with a warning",
   ].filter(Boolean);
@@ -729,14 +770,7 @@ try {
   for (const state of [...STATES, PLACEMENT]) {
     const pages = state.pages ?? [PAGE];
     for (const page of [...pages, HUB, `${HUB}/smieci`]) forget(page);
-    const env = { IMGW_WARNINGS_URL: state.url };
-    if (state.ahead)
-      Object.assign(env, {
-        FAKE_CLOCK_OFFSET_MS: String(state.ahead),
-        NODE_OPTIONS:
-          `${process.env.NODE_OPTIONS ?? ""} --import=${CLOCK}`.trim(),
-      });
-    const server = await startServer(port++, env);
+    const server = await startServer(port++, { IMGW_WARNINGS_URL: state.url });
     try {
       for (const page of pages) {
         const name = state.pages
@@ -754,6 +788,32 @@ try {
       await server.stop();
     }
   }
+  // The store unreadable: the pages showing IMGW answer with an error (no
+  // last render to keep), the waste subpage as ever.
+  for (const page of [PAGE, HUB, `${HUB}/smieci`]) forget(page);
+  const unreadable = await startServer(port++, {
+    IMGW_WARNINGS_URL: UNREADABLE.url,
+  });
+  try {
+    for (const [page, want] of [
+      [PAGE, 500],
+      [HUB, 500],
+      [`${HUB}/smieci`, 200],
+    ]) {
+      const response = await fetch(unreadable.origin + page);
+      const html = await response.text();
+      if (
+        response.status !== want ||
+        html.includes("govuk-notification-banner")
+      )
+        failures.push(
+          `${UNREADABLE.name} ${page}: HTTP ${response.status} (want ${want}), or a banner`,
+        );
+      else console.log(`ok    ${UNREADABLE.name} ${page}: HTTP ${want}`);
+    }
+  } finally {
+    await unreadable.stop();
+  }
   for (const page of [PAGE, HUB, `${HUB}/smieci`, ...PLACEMENT.pages])
     forget(page);
   if (SHOTS) {
@@ -769,5 +829,5 @@ try {
 
 finish(
   failures,
-  `IMGW banner: ${STATES.length + 1} states, every page as expected.`,
+  `IMGW banner: ${STATES.length + 2} states, every page as expected.`,
 );

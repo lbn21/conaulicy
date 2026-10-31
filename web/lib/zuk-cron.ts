@@ -30,7 +30,9 @@
 import { createHash } from "node:crypto";
 import { addDays, isoWithOffset, todayInWarsaw } from "./dates.ts";
 import type { District } from "./districts.ts";
-import { DAY, NO_STORE, WATER } from "./headers.ts";
+import { DAY, IMGW, NO_STORE, WATER } from "./headers.ts";
+import type { ImgwRunSummary } from "./imgw-cron.ts";
+import { IMGW_KEY, nextChecks, parseChecks, waterKey } from "./live-status.ts";
 import { cronDenied } from "./secret.ts";
 import { gminaLubaczow } from "./sources/gmina-lubaczow/index.ts";
 import { type PostSource, SourceDown } from "./sources/source.ts";
@@ -502,6 +504,37 @@ async function runOne(
   }
 }
 
+/** The status file (status/checks.json, lib/live-status.ts): its one writer is the route. */
+export type ChecksStore = {
+  /** Its body, or null if there is none yet. Throws if unreadable. */
+  read: () => Promise<string | null>;
+  write: (body: string) => Promise<void>;
+};
+
+/**
+ * Every source's check of this run into the status file, written once: a
+ * previous file that cannot be read is started afresh; a failed write is
+ * logged, never thrown.
+ */
+async function recordChecks(
+  store: ChecksStore,
+  results: Record<string, boolean>,
+  attemptAt: string,
+  log: ZukCronDeps["log"],
+): Promise<void> {
+  let previous = null;
+  try {
+    previous = parseChecks(await store.read());
+  } catch (error) {
+    log({ checks: "read-error", error: (error as Error).message });
+  }
+  try {
+    await store.write(JSON.stringify(nextChecks(previous, results, attemptAt)));
+  } catch (error) {
+    log({ checks: "write-error", error: (error as Error).message });
+  }
+}
+
 /**
  * The route: Vercel Cron's `Authorization: Bearer ${CRON_SECRET}`. `deps`
  * is the gmina's run, whose result is the response's (502 or 500 if it
@@ -510,24 +543,39 @@ async function runOne(
  * before the deadline): a failure is logged and listed under `sources`,
  * never the gmina's run's or the response's status. `imgw` (lib/imgw-cron.ts
  * runImgw) runs beside them, its result listed under `imgw`, and never
- * changes the water runs' result or the response's status either.
+ * changes the water runs' result or the response's status either. Once
+ * every run is done, each one's check goes to `checks` (status/checks.json)
+ * in one write; then, after a good IMGW check, IMGW is purged (its pages
+ * read that file).
  */
 export async function handleZukCron(
   request: Request,
   cronSecret: string | undefined,
   deps: ZukCronDeps,
   more: ZukCronDeps[] = [],
-  imgw?: () => Promise<unknown>,
+  imgw?: () => Promise<ImgwRunSummary>,
+  checks?: ChecksStore,
 ): Promise<Response> {
   const denied = cronDenied(request, cronSecret);
   if (denied) return denied;
-  const [weather, [main, ...results]] = await Promise.all([
-    imgw?.().catch((error) => {
+  const attemptAt = deps.now().toISOString();
+  const runs = [deps, ...more];
+  const [weather, outcomes] = await Promise.all([
+    imgw?.().catch((error): ImgwRunSummary => {
       deps.log({ imgw: "error", error: (error as Error).message });
       return { error: "failed" };
     }),
-    Promise.all([deps, ...more].map(runOne)),
+    Promise.all(runs.map(runOne)),
   ]);
+  const [main, ...results] = outcomes;
+  const ok: Record<string, boolean> = {};
+  for (const [i, run] of runs.entries())
+    ok[waterKey((run.source ?? gminaLubaczow).id)] = !("error" in outcomes[i]);
+  if (weather) ok[IMGW_KEY] = !("error" in weather);
+  if (checks) await recordChecks(checks, ok, attemptAt, deps.log);
+  // After every good check of IMGW's feed, the file written or not: its
+  // pages and their cached copy of the store's files (lib/live-store.ts).
+  if (ok[IMGW_KEY]) deps.purge(IMGW);
   const sources: Record<string, unknown> = {};
   for (const [i, run] of more.entries()) {
     const result = results[i];

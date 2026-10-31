@@ -1,7 +1,7 @@
-// IMGW meteo warnings for a powiat: fetch, parse and the last good copy.
-// Format, area coding, times and terms: docs/data/imgw.md. No Next.js
-// imports, so the unit tests run it as is; components/imgw-banner.tsx adds
-// the data cache.
+// IMGW meteo warnings for a powiat: fetch, parse, and the last good copy's
+// file (imgw/feed.json, written by lib/imgw-cron.ts, read by the pages
+// through lib/live-store.ts). Format, area coding, times and terms:
+// docs/data/imgw.md. No Next.js imports, so the unit tests run it as is.
 import { GMINA_SCHEDULE_PAGES } from "./config.generated.ts";
 import { isoWithOffset, warsawToIso } from "./dates.ts";
 
@@ -16,14 +16,8 @@ export const IMGW_ATTRIBUTION = [
 
 const TIMEOUT_MS = 5000;
 
-/** A fresh copy is fetched at most once per this many seconds. */
-export const REFRESH_SECONDS = 600;
-
-/** How many earlier copies a failed fetch may fall back to: three hours. */
-const KEEP = 18;
-
-/** How long the data cache keeps each copy (the current one and KEEP more). */
-export const KEEP_SECONDS = (KEEP + 1) * REFRESH_SECONDS;
+/** The feed file's shape: raise it when it changes (an older file is rewritten). */
+const FEED_VERSION = 1;
 
 type Level = 1 | 2 | 3;
 
@@ -168,28 +162,29 @@ export async function upstream(
   return { url, fetch: mockFetch };
 }
 
+/** Only the items for our powiats (POWIATS): what the feed file keeps. */
+export function ours(items: FeedItem[]): FeedItem[] {
+  return items.filter((item) => item.teryt.some((code) => POWIATS.has(code)));
+}
+
+/** The feed file's body: the copy as fetched, with its version. */
+export function feedFile(feed: Feed): string {
+  return JSON.stringify({ version: FEED_VERSION, ...feed });
+}
+
 /**
- * The current copy (slot = REFRESH_SECONDS), or if it cannot be fetched the
- * newest copy kept from the last three hours (stale), or null. `read` returns the
- * slot's cached copy or calls `load` to make it, and throws if that throws.
+ * The feed file's copy, or null when there is no file yet. Throws on a
+ * body that is not the file (not JSON, another version, another shape).
  */
-export async function latest(
-  now: number,
-  read: (slot: number, load: () => Promise<Feed>) => Promise<Feed>,
-  load: () => Promise<Feed>,
-): Promise<{ feed: Feed; stale: boolean } | null> {
-  const slot = Math.floor(now / (REFRESH_SECONDS * 1000));
-  try {
-    return { feed: await read(slot, load), stale: false };
-  } catch (error) {
-    console.warn(`IMGW warnings: fetch failed (${(error as Error).message})`);
-  }
-  const none = () => Promise.reject(new Error("no copy"));
-  const kept = await Promise.all(
-    Array.from({ length: KEEP }, (_, i) =>
-      read(slot - 1 - i, none).catch(() => null),
-    ),
-  );
-  const feed = kept.find((copy) => copy !== null);
-  return feed ? { feed, stale: true } : null;
+export function parseFeedFile(body: string | null): Feed | null {
+  if (body === null) return null;
+  const file = JSON.parse(body) as Record<string, unknown> | null;
+  if (
+    file?.version !== FEED_VERSION ||
+    typeof file.fetchedAt !== "string" ||
+    Number.isNaN(Date.parse(file.fetchedAt)) ||
+    !Array.isArray(file.items)
+  )
+    throw new Error(`IMGW feed file: not version ${FEED_VERSION}`);
+  return { fetchedAt: file.fetchedAt, items: file.items as FeedItem[] };
 }

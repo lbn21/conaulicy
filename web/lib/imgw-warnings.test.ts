@@ -8,18 +8,19 @@ import {
   REAL_2026_10_24,
   ZONED_2026_10_24,
 } from "./imgw-fixture.ts";
-import { mockFetch } from "./imgw-mock.ts";
+import { mockFetch, mockFiles } from "./imgw-mock.ts";
 import {
-  type Feed,
+  feedFile,
   fetchFeed,
   forPowiat,
   IMGW_URL,
-  latest,
+  ours,
   POWIATS,
   parseFeed,
-  REFRESH_SECONDS,
+  parseFeedFile,
   upstream,
 } from "./imgw-warnings.ts";
+import { IMGW_KEY, parseChecks } from "./live-status.ts";
 
 const quiet = () => {};
 const real = () => parseFeed(JSON.parse(REAL_2026_10_24), quiet);
@@ -188,51 +189,48 @@ test("fetch: the feed, and every upstream failure throws", async () => {
   });
 });
 
-test("last good: a failed fetch falls back to the newest slot kept, up to three hours", async () => {
-  const slotMs = REFRESH_SECONDS * 1000;
-  const now = 1000 * slotMs + 5;
-  const copy = (at: string): Feed => ({ fetchedAt: at, items: [] });
-  const cache = new Map<number, Feed>();
-  const read = async (slot: number, load: () => Promise<Feed>) => {
-    const hit = cache.get(slot);
-    if (hit) return hit;
-    const feed = await load();
-    cache.set(slot, feed);
-    return feed;
-  };
-  const failing = () => Promise.reject(new Error("HTTP 500"));
-  const warn = console.warn;
-  console.warn = quiet;
-  try {
-    // Fresh: fetched and kept in this slot.
-    assert.deepEqual(await latest(now, read, async () => copy("fresh")), {
-      feed: copy("fresh"),
-      stale: false,
-    });
-    assert.deepEqual(await latest(now, read, failing), {
-      feed: copy("fresh"),
-      stale: false,
-    });
-    // Next slots: IMGW fails, the copy is served as stale for three hours.
-    assert.deepEqual(await latest(now + slotMs, read, failing), {
-      feed: copy("fresh"),
-      stale: true,
-    });
-    assert.deepEqual(await latest(now + 18 * slotMs, read, failing), {
-      feed: copy("fresh"),
-      stale: true,
-    });
-    assert.equal(await latest(now + 19 * slotMs, read, failing), null);
-    // The look-back never fetches.
-    let calls = 0;
-    await latest(now + 3 * slotMs, read, () => {
-      calls++;
-      return failing();
-    });
-    assert.equal(calls, 1);
-  } finally {
-    console.warn = warn;
-  }
+test("the feed file: our powiats' items only, round-trips; not one: thrown", () => {
+  // The derived feed: 8 items, one of them 1809's; the real one: none.
+  const items = parseFeed(derived1809(), quiet);
+  const kept = ours(items);
+  assert.deepEqual([items.length, kept.length], [8, 1]);
+  assert.deepEqual(ours(real()), []);
+  assert.ok(kept.every((item) => item.teryt.some((t) => POWIATS.has(t))));
+  const feed = { fetchedAt: "2026-10-24T20:00:00+02:00", items: kept };
+  assert.deepEqual(parseFeedFile(feedFile(feed)), feed);
+  assert.equal(JSON.parse(feedFile(feed)).version, 1);
+  assert.equal(parseFeedFile(null), null);
+  for (const body of [
+    "{",
+    "null",
+    JSON.stringify({ ...feed, version: 2 }),
+    JSON.stringify({ version: 1, fetchedAt: "soon", items: [] }),
+    JSON.stringify({ version: 1, fetchedAt: feed.fetchedAt, items: {} }),
+  ])
+    assert.throws(() => parseFeedFile(body), body);
+});
+
+test("the mock's store files: as a good run checkedAgo minutes back left them; a failing mock throws", async () => {
+  const now = EVENING;
+  const files = await mockFiles("mock:1809?checkedAgo=70", now);
+  const feed = parseFeedFile(files.feed);
+  assert.equal(Date.parse(feed?.fetchedAt ?? ""), now - 70 * 60_000);
+  assert.deepEqual(
+    feed?.items.map((item) => item.id),
+    [DERIVED_1809_ID],
+  );
+  assert.deepEqual(parseChecks(files.checks)?.sources[IMGW_KEY], {
+    checkedAt: feed?.fetchedAt,
+    attemptAt: feed?.fetchedAt,
+    ok: true,
+  });
+  assert.equal(
+    Date.parse(
+      parseFeedFile((await mockFiles("mock:none", now)).feed)?.fetchedAt ?? "",
+    ),
+    now,
+  );
+  await assert.rejects(mockFiles("mock:1809?fail=500", now));
 });
 
 test("our powiats come from our gminas: 1809 only", () => {

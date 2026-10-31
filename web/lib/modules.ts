@@ -6,11 +6,11 @@
 // can read them without Next.js; this registry must list exactly those.
 import type { Metadata } from "next";
 import type { ComponentType } from "react";
-import { imgwCopy } from "@/components/imgw-banner";
 import { WasteDetails, wasteMetadata } from "@/components/place-page";
 import { WaterDetails, waterMetadata } from "@/components/water-page";
 import { isModuleId, type ModuleId, SUBPAGE_IDS } from "@/lib/address-routes";
 import type { Checked, Group, Part } from "@/lib/hub";
+import { imgwCopy } from "@/lib/live-store";
 import { getPlace, type PlaceView } from "@/lib/schedule";
 import type { Item } from "@/lib/upcoming";
 import {
@@ -136,19 +136,15 @@ const woda: Module<Water> = {
 };
 
 // IMGW's warnings for the powiat (all our gminas lie in one), as the
-// banner other pages show; failing or too old, simply left out. No subpage:
-// its source, linked in the meta line, is IMGW's own page.
+// banner other pages show, from the same last good copy; no copy yet,
+// simply left out; the store unreadable, thrown, so the page keeps its last
+// render. No subpage: its source, linked in the meta line, is IMGW's own
+// page.
 const pogoda: Module<Weather> = {
   id: "pogoda",
   title: "Pogoda",
   async load() {
-    const now = Date.now();
-    try {
-      return weather(await imgwCopy(now), now);
-    } catch (error) {
-      console.warn(`IMGW: not shown (${(error as Error).message})`);
-      return null;
-    }
+    return weather(await imgwCopy(), Date.now());
   },
   upcoming: weatherUpcoming,
   status: weatherStatus,

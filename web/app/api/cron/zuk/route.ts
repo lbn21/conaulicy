@@ -3,6 +3,12 @@ import { unknownStreets } from "@/lib/districts";
 import { loadDistricts } from "@/lib/districts-db";
 import { runImgw } from "@/lib/imgw-cron";
 import { upstream } from "@/lib/imgw-warnings";
+import {
+  CHECKS_PATH,
+  FEED_PATH,
+  readBlobFile,
+  writeBlobFile,
+} from "@/lib/live-store";
 import { gminaLubaczow } from "@/lib/sources/gmina-lubaczow";
 import { mzgkim } from "@/lib/sources/mzgkim";
 import type { PostSource } from "@/lib/sources/source";
@@ -12,8 +18,10 @@ import { readZukFile, writeZukFile } from "@/lib/zuk-store";
 
 // The water cuts of every source into its private Blob file
 // (lib/zuk-cron.ts): the gmina's posts (ZUK) and MZGKiM's at the same
-// time, each failing on its own; beside them, IMGW's warnings, purged from
-// the pages after every good fetch (lib/imgw-cron.ts). Vercel Cron
+// time, each failing on its own; beside them, IMGW's warnings into their
+// own private Blob file (lib/imgw-cron.ts); then every source's check into
+// the status file, and IMGW purged from the pages after a good check
+// (lib/zuk-cron.ts handleZukCron). Vercel Cron
 // calls it every 15 minutes (vercel.json) with
 // `Authorization: Bearer $CRON_SECRET`; by hand:
 //
@@ -55,12 +63,14 @@ export function GET(request: Request) {
     deadline,
     log: (line) => console.log(JSON.stringify(line)),
   });
-  // After every good fetch of IMGW's feed: the feed's cached copies and
-  // every page tagged IMGW (lib/headers.ts), data cache and CDN alike.
+  // IMGW's feed into imgw/feed.json when it changed; after a good check
+  // the gmina's run's purge drops every page tagged IMGW (lib/headers.ts),
+  // data cache and CDN alike.
   const imgw = async () =>
     runImgw({
       ...(await upstream()),
-      purge: (tag) => revalidateTag(tag, { expire: 0 }),
+      readFeed: () => readBlobFile(FEED_PATH),
+      writeFeed: (body) => writeBlobFile(FEED_PATH, body),
       log: (line) => console.log(JSON.stringify(line)),
     });
   return handleZukCron(
@@ -69,5 +79,9 @@ export function GET(request: Request) {
     run(gminaLubaczow),
     [run(mzgkim)],
     imgw,
+    {
+      read: () => readBlobFile(CHECKS_PATH),
+      write: (body) => writeBlobFile(CHECKS_PATH, body),
+    },
   );
 }

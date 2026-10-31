@@ -1,38 +1,37 @@
 // What the weather module (lib/modules.ts) says on the address page: IMGW's
 // warnings for the powiat, filtered as the banner (lib/imgw-banner.ts), from
-// the same copy of the feed. Pure, so the unit tests read every state.
+// the same copy of the feed, with the same notice when it is old. Pure, so
+// the unit tests read every state.
 import { clockTime, warsawDay } from "./date-labels.ts";
 import { absoluteDay } from "./dates.ts";
 import { type Group, type Part, span } from "./hub.ts";
-import { type Banner, banner, fresh, IMGW_PAGE } from "./imgw-banner.ts";
-import type { Feed } from "./imgw-warnings.ts";
+import {
+  type Banner,
+  banner,
+  CURRENT,
+  IMGW_PAGE,
+  type ImgwCopy,
+} from "./imgw-banner.ts";
 import type { Item } from "./upcoming.ts";
 
 export type Weather = {
-  /** null: no warning in force or to come. */
+  /** null: fresh, and no warning in force or to come. */
   banner: Banner | null;
-  fetchedAt: number;
-  stale: boolean;
+  /** The last good check (ms). */
+  checkedAt: number;
 };
 
 /** The source, short. */
 const SHORT = "IMGW-PIB";
 
 /**
- * The module's data, or null when the banner would show nothing for want of
- * a copy (none, or 3 hours old or older): then the address page leaves the
- * weather out, as other pages leave out the banner.
+ * The module's data, or null when there is no copy of the feed yet: then
+ * the address page leaves the weather out, as other pages leave out the
+ * banner.
  */
-export function weather(
-  found: { feed: Feed; stale: boolean } | null,
-  now: number,
-): Weather | null {
-  if (!fresh(found, now)) return null;
-  return {
-    banner: banner(found, now),
-    fetchedAt: Date.parse(found.feed.fetchedAt),
-    stale: found.stale,
-  };
+export function weather(copy: ImgwCopy | null, now: number): Weather | null {
+  if (!copy) return null;
+  return { banner: banner(copy, now), checkedAt: copy.checkedAt };
 }
 
 type Shown = Banner["warnings"][number];
@@ -66,35 +65,41 @@ function when(warning: Shown): string {
 }
 
 /**
- * The section's lines, together: per warning, its event and level (the
- * tag), then when, its day first; then where, as the water's cut; without
- * one, that there is none.
+ * The section's lines: the notice first when the copy is old (its link
+ * IMGW's page); then per warning, its event and level (the tag), then
+ * when, its day first; then where, as the water's cut, together; with
+ * neither, that there is no warning.
  */
 export function weatherStatus(data: Weather): Group[] {
   if (!data.banner)
     return [[["Brak ostrzeżeń IMGW dla powiatu lubaczowskiego."]]];
-  return [
-    [
-      ...data.banner.warnings.flatMap((warning) => [
+  const { notice, warnings } = data.banner;
+  const groups: Group[] = [];
+  if (notice)
+    groups.push([
+      [
+        `${notice} ${CURRENT.text} `,
+        { href: IMGW_PAGE, text: CURRENT.link },
+        ".",
+      ],
+    ]);
+  if (warnings.length > 0)
+    groups.push([
+      ...warnings.flatMap((warning) => [
         [`${warning.event} `, { tag: warning.tag, text: warning.level }],
         [{ day: warsawDay(Date.parse(warning.from)), text: when(warning) }],
       ]),
       ["Gdzie: cały powiat lubaczowski"],
-    ],
-  ];
+    ]);
+  return groups;
 }
 
-/** „Źródło”: IMGW's page, and if the copy is stale. */
-export function weatherSources(data: Weather): Part[][] {
-  return [
-    [
-      { href: IMGW_PAGE, text: SHORT },
-      ...(data.stale ? [". Nowszych danych nie udało się pobrać"] : []),
-    ],
-  ];
+/** „Źródło”: IMGW's page. */
+export function weatherSources(): Part[][] {
+  return [[{ href: IMGW_PAGE, text: SHORT }]];
 }
 
-/** When the copy of the feed was fetched: „Ostatnio sprawdziliśmy …”. */
+/** The last good check of IMGW: „Ostatnio sprawdziliśmy …”. */
 export function weatherChecked(data: Weather): Date {
-  return new Date(data.fetchedAt);
+  return new Date(data.checkedAt);
 }
