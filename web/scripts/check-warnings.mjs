@@ -783,8 +783,9 @@ try {
     const server = await startServer(port++, { IMGW_WARNINGS_URL: state.url });
     try {
       for (const page of pages) {
+        // A file name: the path's query (/szukaj?q=…) as plain characters.
         const name = state.pages
-          ? `${page === "/" ? "home" : page.slice(1)}-${state.name}`
+          ? `${page === "/" ? "home" : page.slice(1).replace(/[^\w-]+/g, "-")}-${state.name}`
           : state.name;
         await visit(browser, server.origin, state, page, name);
       }
