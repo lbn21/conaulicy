@@ -141,21 +141,6 @@ jobs:
       - name: First-load JS budget
         run: npm run budget
 
-      - name: HTML (Nu Html Checker)
-        run: node scripts/check-html.mjs
-        env:
-          HTML_DIR: ${{ runner.temp }}/html-pages
-
-      # For the reviewer: every checked page's HTML, as served by this build.
-      - name: HTML of the checked pages
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: html-pages
-          path: ${{ runner.temp }}/html-pages
-          if-no-files-found: ignore
-          retention-days: 14
-
       # Chromium, cached by Playwright version. No --with-deps: the runner
       # already has the libraries it needs, and apt (slow mirrors) only added
       # unused CJK/X fonts and xvfb.
@@ -179,6 +164,21 @@ jobs:
 
       - name: Search popup (no layout shift, combobox keys)
         run: node scripts/check-search.mjs
+
+      - name: HTML (Nu Html Checker)
+        run: node scripts/check-html.mjs
+        env:
+          HTML_DIR: ${{ runner.temp }}/html-pages
+
+      # For the reviewer: every checked page's HTML, as served by this build.
+      - name: HTML of the checked pages
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: html-pages
+          path: ${{ runner.temp }}/html-pages
+          if-no-files-found: ignore
+          retention-days: 14
 
       # WebKit needs system libraries the runner lacks, hence --with-deps.
       - name: Install WebKit for the iPhone check
