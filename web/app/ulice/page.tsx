@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import { ImgwLive } from "@/components/imgw-banner";
-import { PageMain } from "@/components/page-main";
 import { DATASET } from "@/lib/headers";
 import { type ListedPlace, localityAnchor, placePath } from "@/lib/places";
 import { searchIndex } from "@/lib/schedule";
@@ -23,10 +22,10 @@ export const metadata: Metadata = pageMetadata({
  */
 export default function AllPlacesPage() {
   return (
-    <PageMain>
+    <>
       <ImgwLive />
       <AllPlaces />
-    </PageMain>
+    </>
   );
 }
 

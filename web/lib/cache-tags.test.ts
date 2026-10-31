@@ -90,7 +90,6 @@ test("IMGW: asked only by the cron; its copy read only in live blocks", () => {
     "app/o-projekcie/page.tsx",
     "app/page.tsx",
     "app/prywatnosc/page.tsx",
-    "app/szukaj/page.tsx",
     "app/ulice/page.tsx",
   ]);
 });
@@ -106,10 +105,10 @@ test("the shells: every `use cache` scope is cacheLife max and tags the dataset"
   assert.deepEqual(scopes, [
     "app/page.tsx: max DATASET",
     "app/sitemap.ts: dataset DATASET",
-    "app/szukaj/page.tsx: max DATASET",
     "app/ulice/page.tsx: max DATASET",
     "components/hub.tsx: max ...PLACE_TAGS",
     "components/module-page.tsx: max ...PLACE_TAGS",
+    "components/place-crumbs.tsx: max ...PLACE_TAGS",
     "components/place-page.tsx: max ...PLACE_TAGS",
     "components/water-page.tsx: max ...PLACE_TAGS",
   ]);

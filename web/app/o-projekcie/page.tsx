@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { ContactLink } from "@/components/contact-link";
 import { ImgwLive } from "@/components/imgw-banner";
-import { PageMain } from "@/components/page-main";
 import { pageMetadata } from "@/lib/share";
 import { ABOUT, ACCESSIBILITY, PRIVACY } from "@/lib/static-pages";
 import { GMINA_NEWS, MZGKIM_NEWS } from "@/lib/water-module";
@@ -19,7 +18,7 @@ const PRG_PAGE =
 
 export default function AboutPage() {
   return (
-    <PageMain>
+    <>
       <ImgwLive />
       <div className="govuk-grid-row">
         <div className="govuk-grid-column-two-thirds">
@@ -88,6 +87,6 @@ export default function AboutPage() {
           </p>
         </div>
       </div>
-    </PageMain>
+    </>
   );
 }

@@ -22,7 +22,7 @@
 // - stale (the last good check over an hour back: the notice, the warning
 //   still listed; with no warning, the notice alone), too old (3 hours: the
 //   notice alone) and a store that cannot be read (the notice alone on the
-//   banner's pages, /szukaj and the hub's Pogoda; every page renders as
+//   banner's pages and the hub's Pogoda; every page renders as
 //   ever, the 404 page with no banner at all);
 // - three warnings: keyboard focus on the link, 320 px and 200% zoom with no
 //   horizontal scroll, the tags' fills (IMGW's level colours, lib/palette.ts)
@@ -49,6 +49,7 @@ import {
   ROUTES,
   renderedPage,
   startServer,
+  withoutReactMarks,
 } from "./lib/server.mjs";
 
 // The banner's page for every state: any page but an address page, which
@@ -130,7 +131,7 @@ const UNREADABLE = {
   levels: [],
   notice: "unreadable",
   hub: 0,
-  pages: [PAGE, "/szukaj?q=adama"],
+  pages: [PAGE, "/ulice"],
 };
 // A 404, never with the banner (app/not-found.tsx).
 const NOT_FOUND = "/nie-ma-takiej-strony";
@@ -189,8 +190,7 @@ let port = 3320;
 
 // Drop a page from the ISR cache, so the next request renders it: the
 // build's prerendered copy and any copy rendered since (route-cache). Cached
-// by its path, never its query: /szukaj?q=… is /szukaj's prerendered shell,
-// which holds the banner (task 222).
+// by its path, never its query.
 function forget(page) {
   const name = page === "/" ? "index" : page.slice(1).split("?")[0];
   const routeCache = ".next/server/route-cache/APP_PAGE";
@@ -207,7 +207,9 @@ function forget(page) {
 
 // GOV.UK's breadcrumbs only on an address page (none on a flat site, the
 // home page or a 404), before <main>, as GOV.UK places them: the skip link
-// skips them and nothing stands above the banner in <main> (task 149).
+// skips them and nothing stands above the banner in <main> (task 149). Read
+// without React's marks, as check-modules reads them: the @breadcrumbs slot
+// (app/layout.tsx) is a boundary of its own.
 function crumbsPlaced(route, html) {
   const address = route.path.startsWith("/adres/") && !route.status;
   const main = html.slice(html.indexOf("<main"), html.indexOf("</main>"));
@@ -680,7 +682,7 @@ async function visit(browser, origin, state, pagePath, name) {
     });
     const page = await context.newPage();
     const response = await page.goto(origin + pagePath, { waitUntil: "load" });
-    // The banner and /szukaj's h1 come in after the shell.
+    // The banner comes in after the shell.
     await page
       .waitForFunction(
         () =>
@@ -779,7 +781,7 @@ try {
   try {
     for (const route of ROUTES) {
       const html = await (await fetch(plain.origin + route.path)).text();
-      crumbsPlaced(route, html);
+      crumbsPlaced(route, withoutReactMarks(html));
       if (route.status) continue;
       const shown = (await renderedPage(plain.origin + route.path)).html;
       // The banner's pages: the quiet line; the address pages: neither.
@@ -815,7 +817,7 @@ try {
     const server = await startServer(port++, { IMGW_WARNINGS_URL: state.url });
     try {
       for (const page of pages) {
-        // A file name: the path's query (/szukaj?q=…) as plain characters.
+        // A file name: the path's query as plain characters.
         const name = state.pages
           ? `${page === "/" ? "home" : page.slice(1).replace(/[^\w-]+/g, "-")}-${state.name}`
           : state.name;

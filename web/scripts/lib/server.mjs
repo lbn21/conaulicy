@@ -29,9 +29,6 @@ export const ROUTES = [
   { path: "/prywatnosc", name: "privacy" },
   { path: "/dostepnosc", name: "accessibility" },
   { path: "/o-projekcie", name: "about" },
-  { path: "/szukaj?q=adama", name: "search-results" },
-  { path: "/szukaj?q=xyzqq", name: "search-none" },
-  { path: "/szukaj?q=", name: "search-empty" },
   { path: "/nie-ma-takiej-strony", name: "not-found", status: 404 },
   { path: "/adres/9999999", name: "unknown-place", status: 404 },
   {
@@ -128,8 +125,8 @@ export async function searchIndexOf(origin, home) {
 
 // A page as the browser shows it once every live block is in: the page's
 // static shell streams each block (IMGW, water, „Najbliższe dni”) after it,
-// behind a skeleton (components/live-block.tsx), and /szukaj's column and
-// „Dziś” render in the browser (components/day-word.tsx), so the server's
+// behind a skeleton (components/live-block.tsx), and „Dziś” renders in the
+// browser (components/day-word.tsx), so the server's
 // HTML alone has skeletons there. Chromium, JS on, reduced motion; the
 // skeletons gone (or 10 s); void elements written as React writes them
 // (<hr/>), React's own marks left out, so checks match either. Its status
@@ -153,20 +150,25 @@ export async function renderedPage(url, { width = 375, userAgent } = {}) {
         timeout: 10_000,
       })
       .catch(() => {});
-    const html = (await page.content())
-      .replace(
-        /<(hr|br|input|img|meta|link)(\s[^>]*?)?>/g,
-        (_, tag, attrs = "") => `<${tag}${attrs}/>`,
-      )
-      // React's own marks, not the page's: its Suspense boundaries'
-      // comments and the view transitions' hints it leaves on revealed
-      // elements.
-      .replace(/<!--[$/&!?]*-->/g, "")
-      .replace(/ vt-[a-z]+="[^"]*"/g, "");
+    const html = withoutReactMarks(await page.content()).replace(
+      /<(hr|br|input|img|meta|link)(\s[^>]*?)?>/g,
+      (_, tag, attrs = "") => `<${tag}${attrs}/>`,
+    );
     return { status: response?.status() ?? 0, html, url: page.url() };
   } finally {
     await context.close();
   }
+}
+
+/**
+ * A page's HTML without React's own marks, which are not the page's: its
+ * Suspense and Activity boundaries' comments (a parallel route's slot is
+ * one) and the view transitions' hints it leaves on revealed elements.
+ */
+export function withoutReactMarks(html) {
+  return html
+    .replace(/<!--[$/&!?]*-->/g, "")
+    .replace(/ vt-[a-z]+="[^"]*"/g, "");
 }
 
 /** Closes renderedPage's browser, if it started one. */
@@ -205,4 +207,26 @@ export async function notFoundAt(url) {
     status = again.status;
   }
   return status === 404 ? null : `${status} after the first answer, want 404`;
+}
+
+/**
+ * The page's <main> and ids, as the browser has them (a Playwright page):
+ * how many elements are #main-content and whether the first is a visible
+ * <main>, and every id used more than once. One <main>, the root layout's
+ * (app/layout.tsx): Next.js keeps a page left by a client-side navigation
+ * in the document, hidden (Activity), so a page's own ids would repeat.
+ */
+export function mainAndIds(page) {
+  return page.evaluate(() => {
+    const mains = document.querySelectorAll("#main-content");
+    const counts = new Map();
+    for (const el of document.querySelectorAll("[id]")) {
+      counts.set(el.id, (counts.get(el.id) ?? 0) + 1);
+    }
+    return {
+      mains: mains.length,
+      main: mains[0]?.tagName === "MAIN" && mains[0].checkVisibility() === true,
+      duplicates: [...counts].filter(([, n]) => n > 1).map(([id]) => id),
+    };
+  });
 }

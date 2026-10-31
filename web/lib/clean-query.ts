@@ -15,7 +15,6 @@ const PAGES = new RegExp(
 
 const ROUTES: [RegExp, string[]][] = [
   [PAGES, []],
-  [/^\/szukaj$/, ["q"]],
   [ADDRESS, ["nr"]],
   ...ADDRESS_VARIANTS.map((path): [RegExp, string[]] => [path, []]),
   [/^\/adres\/[^/]+\/harmonogram\.pdf$/, ["nr"]],
