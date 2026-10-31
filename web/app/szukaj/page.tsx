@@ -34,8 +34,8 @@ import { ALL_PLACES } from "@/lib/static-pages";
 // (nextjs.org/docs/app/guides/streaming: a <Suspense> boundary close to the
 // dynamic access, not loading.tsx, which would put the banner in the
 // fallback too; react.dev/reference/react/Suspense). So one place's redirect
-// is a client-side one for browsers, with JS; HTML-limited bots get the
-// page rendered for them, with a real 308
+// is a client-side one for browsers, with JS; HTML-limited bots get a real
+// 308, from generateMetadata
 // (nextjs.org/docs/app/api-reference/functions/redirect; task 220).
 
 const EMPTY_ERROR = "Wpisz nazwę ulicy albo wsi";
@@ -74,7 +74,13 @@ export async function generateMetadata({
   searchParams,
 }: PageProps<"/szukaj">): Promise<Metadata> {
   const result = await outcome(searchParams);
-  const h1 = result.kind === "one" ? H1.many : H1[result.kind];
+  // Next.js resolves the metadata before it sends anything to an
+  // HTML-limited bot, so a redirect here is a real 308 for it, ahead of the
+  // placeholder (redirect() may be used in generateMetadata:
+  // nextjs.org/docs/app/api-reference/functions/generate-metadata). A
+  // browser gets the metadata streamed: the same redirect, client-side.
+  if (result.kind === "one") permanentRedirect(placeHref(result.hit));
+  const h1 = H1[result.kind];
   // GOV.UK: "Error: " first in the title, so screen readers hear it first.
   const title = result.kind === "empty" ? `Błąd: ${h1}` : h1;
   return {
