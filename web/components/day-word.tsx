@@ -1,22 +1,24 @@
 "use client";
 
-import { Suspense, use, useSyncExternalStore } from "react";
-import { browser } from "react-dom";
+import { useSyncExternalStore } from "react";
 import { Skeleton } from "@/components/skeleton";
 import { relativeWord, todayInWarsaw } from "@/lib/dates";
 import { capitalised, dayLead } from "@/lib/upcoming";
 
 // „Dziś”, „Jutro” and „Za 5 dni” come from the device's date, never from
 // the server: the pages around them are static, cached until the next
-// deploy or import, so a server's „dziś” would go wrong overnight. React's
-// browser() renders the word only in the browser: on the server, and so in
-// the prerendered shell, use(browser()) leaves the closest <Suspense>
-// fallback, a word-wide skeleton (react.dev/reference/react-dom/browser;
-// nextjs.org/docs/app/guides/single-page-applications, "Rendering
-// components only in the browser"). The dates around the word are always
-// in the HTML, absolute, with their weekday. Re-checked every minute and
-// when the tab comes back, so a tab left open past midnight moves „Jutro”
-// to „Dziś”.
+// deploy or import, so a server's „dziś” would go wrong overnight. The
+// device's day is an external store with no server value
+// (react.dev/reference/react/useSyncExternalStore, getServerSnapshot): on
+// the server, and so in the prerendered shell, and at hydration, the word
+// is a word-wide skeleton; right after hydration, the word. The dates around
+// the word are always in the HTML, absolute, with their weekday. Not
+// use(browser()) (task 228): Next.js's docs keep it for a first browser
+// render that cannot match the server's HTML, which this one does, and its
+// client-only boundary deferred the whole place behind the address pages'
+// <Suspense> (components/place-params.tsx) to request time. Re-checked
+// every minute and when the tab comes back, so a tab left open past
+// midnight moves „Jutro” to „Dziś”.
 
 function subscribe(onChange: () => void): () => void {
   const timer = setInterval(onChange, 60_000);
@@ -45,16 +47,6 @@ type Props = {
   afterWord?: string;
 };
 
-function Word({ day, form, text = "", afterWord = "" }: Props) {
-  use(browser("„Dziś” and „jutro” come from the device's date."));
-  // Rendered in the browser only (above), so it never needs a server snapshot.
-  const today = useSyncExternalStore(subscribe, () => todayInWarsaw());
-  if (form === "lead") return dayLead(day, text, today);
-  const word = relativeWord(day, today);
-  if (form === "word") return word ? `${word}, ` : null;
-  return word ? `${capitalised(word)}${afterWord}` : text;
-}
-
 // What the skeleton stands for: about one word, in the place it will take.
 const PLACEHOLDER: Record<Form, string> = {
   lead: "Jutro:",
@@ -62,19 +54,22 @@ const PLACEHOLDER: Record<Form, string> = {
   label: "Jutro",
 };
 
+// No day on the server: the skeleton.
+const serverDay = () => null;
+
 /** A day's relative word (see Form), from the device's date. */
-export function DayWord(props: Props) {
-  const { form, text = "" } = props;
-  return (
-    <Suspense
-      fallback={
-        <>
-          <Skeleton>{PLACEHOLDER[form]}</Skeleton>
-          {form === "lead" ? ` ${text}` : form === "word" ? " " : null}
-        </>
-      }
-    >
-      <Word {...props} />
-    </Suspense>
-  );
+export function DayWord({ day, form, text = "", afterWord = "" }: Props) {
+  const today = useSyncExternalStore(subscribe, todayInWarsaw, serverDay);
+  if (today === null) {
+    return (
+      <>
+        <Skeleton>{PLACEHOLDER[form]}</Skeleton>
+        {form === "lead" ? ` ${text}` : form === "word" ? " " : null}
+      </>
+    );
+  }
+  if (form === "lead") return dayLead(day, text, today);
+  const word = relativeWord(day, today);
+  if (form === "word") return word ? `${word}, ` : null;
+  return word ? `${capitalised(word)}${afterWord}` : text;
 }
