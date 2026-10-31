@@ -652,9 +652,13 @@ try {
   );
   await again.close();
 
-  // The same search everywhere: for each query, /szukaj's redirect (or its
-  // first result), /api/search's first place and lib/search.ts's over the
-  // served index all point at the same place and number.
+  // The same search everywhere: for each query, where a browser lands from
+  // /szukaj (one place: its page; else the first result), /api/search's
+  // first place and lib/search.ts's over the served index all point at the
+  // same place and number. /szukaj streams (a prerendered shell), so its
+  // one-place redirect is a client-side one, with JS
+  // (nextjs.org/docs/app/api-reference/functions/redirect, task 220).
+  const lands = await browser.newPage();
   const home = await (await fetch(`${server.origin}/`)).text();
   const [indexPath] = home.match(/\/api\/search-index\/[0-9a-f]{16}/) ?? [];
   const index = await (await fetch(`${server.origin}${indexPath}`)).json();
@@ -677,29 +681,32 @@ try {
     const [api] = await (
       await fetch(`${server.origin}/api/search?q=${q}`)
     ).json();
-    const res = await fetch(`${server.origin}/szukaj?q=${q}`, {
-      redirect: "manual",
+    await lands.goto(`${server.origin}/szukaj?q=${q}`, {
+      waitUntil: "networkidle",
     });
-    const location = res.headers.get("location");
-    const target = location
-      ? decodeURI(
-          new URL(location, server.origin).href.slice(server.origin.length),
-        )
-      : ((await res.text()).match(
-          /<main[\s\S]*?<ul class="govuk-list[^"]*">\s*<li><a href="([^"]+)"/,
-        )?.[1] ?? null);
+    const at = new URL(lands.url());
+    const target =
+      at.pathname === "/szukaj"
+        ? await lands
+            .locator("main ul.govuk-list > li:first-child > a:first-child")
+            .first()
+            .getAttribute("href", { timeout: 1000 })
+            .catch(() => null)
+        : decodeURI(`${at.pathname}${at.search}`);
     const hrefs = [shared, api].map((hit) => (hit ? placeHref(hit) : null));
     check(
       hrefs[0] === hrefs[1] && hrefs[0] === target,
       `same search "${query}": module ${hrefs[0]}, /api/search ${hrefs[1]}, /szukaj ${target}`,
     );
   }
+  await lands.close();
 
   // A split street without a number asks for it, with no JS at all.
   const plain = await browser.newContext({ javaScriptEnabled: false });
-  // The home page's form without JS: one place opens its page; several are
-  // listed on /szukaj.
-  const form = await plain.newPage();
+  // The home page's form, submitted: one place opens its page; several are
+  // listed on /szukaj. With JS: /szukaj's one-place redirect is a
+  // client-side one (above).
+  const form = await browser.newPage();
   for (const [query, url] of [
     ["rynek", "/adres/0972447-19253"],
     ["Asnyka 12", "/adres/0972447-00470?nr=12"],
@@ -707,12 +714,14 @@ try {
     ["Asnyka 5", "/adres/0972447-00470?nr=5"],
     ["adama", "/szukaj?q=adama"],
   ]) {
-    await form.goto(`${server.origin}/`);
-    await form.getByLabel("Ulica albo wieś").fill(query);
+    await form.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+    // The field as JS enhances it (the library's combobox), typed, no pick.
+    await form.locator("#adres").click();
+    await form.getByRole("combobox").pressSequentially(query);
     await form.getByRole("button", { name: "Szukaj" }).click();
     await form
       .waitForURL(`${server.origin}${url}`, { timeout: 5000 })
-      .catch(() => check(false, `no-JS search "${query}": at ${form.url()}`));
+      .catch(() => check(false, `form search "${query}": at ${form.url()}`));
     if (query === "Asnyka 5") {
       check(
         !(await form.content()).includes("Nie znaleźliśmy nr"),
@@ -722,7 +731,7 @@ try {
   }
   check(
     (await form.locator("main ul.govuk-list a").count()) === 2,
-    "no-JS search adama: not 2 results",
+    "form search adama: not 2 results",
   );
   await form.close();
   const ask = await plain.newPage();

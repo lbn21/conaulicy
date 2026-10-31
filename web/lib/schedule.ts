@@ -62,6 +62,8 @@ const CACHE = { tags: [DATASET], revalidate: 3600 };
 // What is keyed by the Warsaw day is tagged DAY too, purged by the ZUK cron
 // when that day changed (lib/zuk-cron.ts), and so is every page reading it.
 const DAY_CACHE = { ...CACHE, tags: [DATASET, DAY] };
+/** getPlace's and getZone's tags: a cached page reading one carries them. */
+export const PLACE_TAGS = DAY_CACHE.tags;
 
 type ZoneEvent = typeof events.$inferSelect & {
   /** source_files.lastSeenAt of the event's file; null: no such row. */

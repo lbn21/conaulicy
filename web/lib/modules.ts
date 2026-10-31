@@ -9,9 +9,10 @@ import type { ComponentType } from "react";
 import { WasteDetails, wasteMetadata } from "@/components/place-page";
 import { WaterDetails, waterMetadata } from "@/components/water-page";
 import { isModuleId, type ModuleId, SUBPAGE_IDS } from "@/lib/address-routes";
+import { IMGW, WATER } from "@/lib/headers";
 import type { Checked, Group, Part } from "@/lib/hub";
 import { imgwCopy } from "@/lib/live-store";
-import { getPlace, type PlaceView } from "@/lib/schedule";
+import { getPlace, PLACE_TAGS, type PlaceView } from "@/lib/schedule";
 import type { Item } from "@/lib/upcoming";
 import {
   wasteChecked,
@@ -46,6 +47,11 @@ export type Module<D> = {
    * (waste: a 404), or nothing we may show (any other: left out).
    */
   load(place: string, nr: string | null): Promise<D | null>;
+  /**
+   * The cache tags of what load() reads (lib/headers.ts): a cached page
+   * showing the module carries them (cacheTag), so the purges reach it.
+   */
+  tags: readonly string[];
   /**
    * Its lines for the „Najbliższe dni” block (lib/upcoming.ts), structured:
    * the island words them and hides those over.
@@ -109,6 +115,7 @@ const waste: Module<PlaceView> = {
   more: "Wszystkie odbiory śmieci",
   pageTitle: "Odbiór śmieci",
   load: getPlace,
+  tags: PLACE_TAGS,
   upcoming: wasteUpcoming,
   status: wasteStatus,
   sources: wasteSources,
@@ -127,6 +134,7 @@ const woda: Module<Water> = {
   more: "Wszystkie przerwy w wodzie",
   pageTitle: "Przerwy w dostawie wody",
   load: loadWater,
+  tags: [...PLACE_TAGS, WATER],
   upcoming: waterUpcoming,
   status: waterStatus,
   sources: waterSources,
@@ -145,6 +153,7 @@ const pogoda: Module<Weather> = {
   async load() {
     return weather(await imgwCopy(), Date.now());
   },
+  tags: [IMGW],
   upcoming: weatherUpcoming,
   status: weatherStatus,
   sources: weatherSources,

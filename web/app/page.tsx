@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { cacheLife, cacheTag } from "next/cache";
 import { AddressSearch } from "@/components/address-search";
 import { ImgwBanner } from "@/components/imgw-banner";
 import { PageMain } from "@/components/page-main";
 import { SITE_URL } from "@/lib/config.generated";
 import { HOME_EXAMPLES } from "@/lib/examples";
+import { DATASET, IMGW } from "@/lib/headers";
 import { LANG } from "@/lib/locale";
 import { examplePlaces, searchIndexUrl } from "@/lib/schedule";
 import { placeHref } from "@/lib/search";
@@ -28,6 +30,11 @@ const WEBSITE = JSON.stringify({
 });
 
 export default async function Home() {
+  // Cached as every page (next.config.ts `page`), tagged with what it
+  // reads: the dataset (examples, index) and the banner's IMGW copy.
+  "use cache";
+  cacheLife("page");
+  cacheTag(DATASET, IMGW);
   // A few examples only: the full address list never ships to the client.
   const [places, indexUrl] = await Promise.all([
     examplePlaces(HOME_EXAMPLES),

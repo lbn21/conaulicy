@@ -57,8 +57,9 @@ function missingNumber(request: NextRequest): URL | null {
 // redirect from a rewritten page carries Location twice (Next.js replays the
 // render's headers onto the response), so its 308 is answered here, before
 // the rewrite. A module subpage (/adres/<id>/smieci) gets the same doubled
-// Location from its own redirect, so its 308 is answered here too, with or
-// without ?nr=. The plain page and the PDF redirect themselves. The map stays
+// Location from its own redirect, and so does the plain page since it is a
+// stored static result (Cache Components, task 220), so every address's 308
+// is answered here, with or without ?nr=. The PDF redirects itself. The map stays
 // in memory: a cold instance fetches it once (from the CDN), later
 // refreshes run after the response, so a normal request pays only a lookup.
 const MOVED_TTL = 5 * 60_000;
@@ -86,10 +87,7 @@ async function movedAddress(
   event: NextFetchEvent,
 ): Promise<URL | null> {
   const { pathname } = request.nextUrl;
-  const match = ADDRESS.exec(pathname);
-  const subpage = match !== null && match[1].split("/").length > 3;
-  if (!match || (!subpage && !request.nextUrl.searchParams.has("nr")))
-    return null;
+  if (!ADDRESS.test(pathname)) return null;
   if (!moved) await loadMoved(request);
   else if (Date.now() - moved.at > MOVED_TTL)
     event.waitUntil(loadMoved(request));

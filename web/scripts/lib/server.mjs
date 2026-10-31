@@ -41,6 +41,15 @@ export const ROUTES = [
   },
 ];
 
+// The checks' user agents. A phone's Chrome, as Lighthouse emulates it: a
+// browser, which Next.js may stream a page's metadata to (in <body>). And
+// one of Next.js's default HTML-limited bots, which gets it in <head>
+// (nextjs.org/docs/app/api-reference/config/next-config-js/htmlLimitedBots).
+export const BROWSER_UA =
+  "Mozilla/5.0 (Linux; Android 11; moto g power (2022)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Mobile Safari/537.36";
+export const BOT_UA =
+  "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)";
+
 export async function startServer(port = 3300, extraEnv = {}) {
   // The pre-launch gate must be off, or every page is a 401. Empty, not
   // unset: Next's .env loading never overrides a set variable, so a local

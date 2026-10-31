@@ -34,6 +34,11 @@ export function isValidHouseNumber(
   return numbers.has(nr) || (slash > 0 && numbers.has(nr.slice(0, slash)));
 }
 
+/** The register's first house number at the place, or null: none. */
+export function firstHouseNumber(place: string): string | null {
+  return NUMBERS.get(place)?.values().next().value ?? null;
+}
+
 /**
  * Under the h1 for a number the register does not have (invalidNr): one
  * warning, the value as given. A street keeps its own word, as before.

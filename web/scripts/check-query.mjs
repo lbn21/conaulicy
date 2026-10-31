@@ -7,7 +7,8 @@
 //
 // Also the search without JS: the home page's raw HTML is a GET form to
 // /szukaj with a field named q and a submit button, and /szukaj answers it:
-// one place redirects (308, never stored) to its page with the house number,
+// one place redirects (never stored; a bot gets a 308, a browser the same
+// redirect client-side, with JS) to its page with the house number,
 // several are listed, none says what to try, an empty q is GOV.UK's error.
 // /szukaj's field is the home page's (components/address-search.tsx): the
 // same <search> markup, holding what was searched for, or GOV.UK's error
@@ -22,7 +23,13 @@
 //
 // Runs against `next start` on the current build and the CI fixture.
 import { withHouseNumber } from "../lib/house.ts";
-import { finish, searchIndexOf, startServer } from "./lib/server.mjs";
+import {
+  BOT_UA,
+  BROWSER_UA,
+  finish,
+  searchIndexOf,
+  startServer,
+} from "./lib/server.mjs";
 
 const escapeHtml = (text) =>
   text
@@ -35,7 +42,12 @@ const STREET = "/adres/0972447-00470";
 const SPLIT = "/adres/0972447-90004";
 const RENAMED = "/adres/0972447-99999";
 
-// [method, path, status, clean path + query for a redirect]
+// [method, path, status, clean path + query for a redirect, user agent]. A
+// one-place search is asked as an HTML-limited bot: its render is not
+// streamed, so the redirect is a real 308. A browser gets /szukaj's
+// prerendered shell, so the same redirect is a client-side one
+// (nextjs.org/docs/app/api-reference/functions/redirect): check-search
+// asserts where it lands.
 const CASES = [
   ["GET", `${STREET}?x=1`, 308, STREET],
   ["GET", `${STREET}?nr=12&x=1`, 308, `${STREET}?nr=12`],
@@ -57,13 +69,14 @@ const CASES = [
   ["POST", "/api/revalidate?x=1", 401],
   ["GET", "/manifest.webmanifest?x=1", 200],
   ["GET", "/robots.txt?x=1", 200],
-  ["GET", "/szukaj?q=Rynek", 308, "/adres/0972447-19253"],
-  ["GET", "/szukaj?q=asnyka%2012", 308, "/adres/0972447-00470?nr=12"],
+  ["GET", "/szukaj?q=Rynek", 308, "/adres/0972447-19253", BOT_UA],
+  ["GET", "/szukaj?q=asnyka%2012", 308, "/adres/0972447-00470?nr=12", BOT_UA],
   [
     "GET",
     `/szukaj?q=${encodeURIComponent("ul. Rynek, Lubaczów")}`,
     308,
     "/adres/0972447-19253",
+    BOT_UA,
   ],
   // A house number where the field puts it, or typed after a pick.
   ...[
@@ -71,12 +84,18 @@ const CASES = [
     ["ul. Rynek, Lubaczów 5", "/adres/0972447-19253?nr=5"],
     ["ul. Adama Asnyka 12, Lubaczów", "/adres/0972447-00470?nr=12"],
     ["ul. Adama Asnyka, Lubaczów 12", "/adres/0972447-00470?nr=12"],
-  ].map(([q, to]) => ["GET", `/szukaj?q=${encodeURIComponent(q)}`, 308, to]),
+  ].map(([q, to]) => [
+    "GET",
+    `/szukaj?q=${encodeURIComponent(q)}`,
+    308,
+    to,
+    BOT_UA,
+  ]),
   ["GET", "/szukaj?q=adama", 200],
   // Under 3 letters, a list, never one place (lib/search.ts CLEAR_MIN).
   ["GET", "/szukaj?q=a", 200],
   ["GET", "/szukaj?q=as", 200],
-  ["GET", "/szukaj?q=asn", 308, "/adres/0972447-00470"],
+  ["GET", "/szukaj?q=asn", 308, "/adres/0972447-00470", BOT_UA],
   ["GET", "/szukaj?q=xyzqq", 200],
   ["GET", "/szukaj?q=", 200],
   ["GET", "/szukaj?q=Rynek&utm_source=x", 308, "/szukaj?q=Rynek"],
@@ -177,7 +196,13 @@ try {
   if (places.length === 0) failures.push("/: no search index");
   for (const [i, [id, label]] of places.entries()) {
     const href = `/adres/${encodeURIComponent(id)}`;
-    CASES.push(["GET", `/szukaj?q=${encodeURIComponent(label)}`, 308, href]);
+    CASES.push([
+      "GET",
+      `/szukaj?q=${encodeURIComponent(label)}`,
+      308,
+      href,
+      BOT_UA,
+    ]);
     // Every third with a house number, as the field writes it or as typed
     // after a pick.
     if (i % 3 === 0) {
@@ -187,6 +212,7 @@ try {
           `/szukaj?q=${encodeURIComponent(text)}`,
           308,
           `${href}?nr=7a`,
+          BOT_UA,
         ]);
       }
     }
@@ -209,9 +235,11 @@ try {
   const search = (html) =>
     /<search[^>]*>[\s\S]*?<\/search>/.exec(html)?.[0] ?? "";
   for (const [q, parts] of SEARCH) {
-    const html = await (
-      await fetch(`${server.origin}/szukaj?q=${encodeURIComponent(q)}`)
-    ).text();
+    const page = (ua) =>
+      fetch(`${server.origin}/szukaj?q=${encodeURIComponent(q)}`, {
+        headers: { "user-agent": ua },
+      }).then((res) => res.text());
+    const html = await page(BROWSER_UA);
     const input = field(html);
     const error = q === "";
     const want = {
@@ -258,10 +286,17 @@ try {
     if (order.some((at, i) => at < 0 || (i > 0 && at < order[i - 1]))) {
       failures.push(`/szukaj?q=${q}: page order ${order}`);
     }
-    // Metadata in <head>, never streamed into <body> (htmlLimitedBots).
-    const head = html.slice(0, html.indexOf("</head>"));
+    // The metadata: in <head> for an HTML-limited bot; a browser may get
+    // it streamed, so anywhere in its document (next.config.ts).
+    const bot = await page(BOT_UA);
+    const head = bot.slice(0, bot.indexOf("</head>"));
     if (!head.includes("<title>") || !head.includes('name="robots"')) {
-      failures.push(`/szukaj?q=${q}: <title> or robots meta not in <head>`);
+      failures.push(
+        `/szukaj?q=${q} (bot): <title> or robots meta not in <head>`,
+      );
+    }
+    if (!html.includes("<title>") || !html.includes('name="robots"')) {
+      failures.push(`/szukaj?q=${q} (browser): no <title> or robots meta`);
     }
   }
   // One field: /szukaj's form is the home page's, but for its value.
@@ -272,14 +307,23 @@ try {
       `/szukaj?q=adama: search form differs from /\n  / ${search(home)}\n  /szukaj ${search(adama)}`,
     );
   }
-  const one = await fetch(`${server.origin}/szukaj?q=Rynek`, {
-    redirect: "manual",
-  });
-  await one.arrayBuffer();
-  // A permanent redirect that a browser kept would outlive a data change.
-  const store = one.headers.get("cache-control") ?? "";
-  if (!/no-store/.test(store)) {
-    failures.push(`/szukaj?q=Rynek: Cache-Control ${JSON.stringify(store)}`);
+  // Never stored, for a bot (its 308: a permanent redirect a client kept
+  // would outlive a data change) and a browser (200, the redirect inside).
+  for (const [ua, status] of [
+    [BOT_UA, 308],
+    [BROWSER_UA, 200],
+  ]) {
+    const one = await fetch(`${server.origin}/szukaj?q=Rynek`, {
+      headers: { "user-agent": ua },
+      redirect: "manual",
+    });
+    await one.arrayBuffer();
+    const store = one.headers.get("cache-control") ?? "";
+    if (one.status !== status || !/no-store/.test(store)) {
+      failures.push(
+        `/szukaj?q=Rynek (${ua === BOT_UA ? "bot" : "browser"}): ${one.status}, Cache-Control ${JSON.stringify(store)}`,
+      );
+    }
   }
 
   // The calendar link is on the waste subpage (the address page has none).
@@ -288,10 +332,11 @@ try {
   if (ics) CASES.push(["GET", `${ics}?x=1`, 308, ics]);
   else failures.push(`${STREET}/smieci: no /ics/ link`);
 
-  for (const [method, path, status, clean] of CASES) {
+  for (const [method, path, status, clean, ua] of CASES) {
     const response = await fetch(`${server.origin}${path}`, {
       method,
       redirect: "manual",
+      headers: ua ? { "user-agent": ua } : {},
     });
     await response.arrayBuffer();
     const location = response.headers.get("location");

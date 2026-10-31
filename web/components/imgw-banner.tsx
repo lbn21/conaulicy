@@ -1,4 +1,6 @@
+import { cacheLife, cacheTag } from "next/cache";
 import { Fragment } from "react";
+import { IMGW } from "@/lib/headers";
 import { type Banner, banner, CURRENT, IMGW_PAGE } from "@/lib/imgw-banner";
 import { imgwCopy } from "@/lib/live-store";
 
@@ -24,8 +26,12 @@ function Line({ warning }: { warning: Shown }) {
 // itself (lib/live-store.ts). Nothing at all when there is no copy yet, or
 // a fresh one has no warning; a notice first when the last good check is
 // old, with or without warnings, or alone when the store cannot be read
-// now (lib/imgw-banner.ts): the rest of the page renders as ever.
+// now (lib/imgw-banner.ts): the rest of the page renders as ever. Cached
+// as every page (next.config.ts `page`), tagged IMGW, on /szukaj too.
 export async function ImgwBanner() {
+  "use cache";
+  cacheLife("page");
+  cacheTag(IMGW);
   const shown = banner(await imgwCopy(), Date.now());
   if (!shown) return null;
   const several = shown.warnings.length > 1;

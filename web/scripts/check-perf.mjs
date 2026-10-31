@@ -10,7 +10,7 @@ import { writeFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import lighthouse from "lighthouse";
 import { chromium } from "playwright";
-import { finish, startServer } from "./lib/server.mjs";
+import { BROWSER_UA, finish, startServer } from "./lib/server.mjs";
 
 const PAGES = [
   { path: "/", name: "home" },
@@ -60,6 +60,10 @@ try {
         // Real throttling: Lighthouse's Slow 4G preset applied by Chrome
         // (request latency 150 ms × 3.75, 1.6 Mbps × 0.9) and 4× CPU.
         throttlingMethod: "devtools",
+        // A phone's Chrome, never a bot's user agent: Next.js renders a
+        // page per request for its HTML-limited bots, so the budgets
+        // measure what visitors get (lib/server.mjs).
+        emulatedUserAgent: BROWSER_UA,
       });
       if (lhr.configSettings.throttlingMethod !== "devtools") {
         throw new Error("Lighthouse did not use real (devtools) throttling");
@@ -81,9 +85,20 @@ try {
       Object.keys(runs[0]).map((key) => [key, median(runs.map((r) => r[key]))]),
     );
 
-    const html = await (await fetch(url)).text();
+    const res = await fetch(url, { headers: { "user-agent": BROWSER_UA } });
+    const html = await res.text();
     m.htmlGzip = gzipSync(html, { level: 9 }).length;
-    m.preloadedFonts = (html.match(/<link[^>]+as="font"[^>]*>/g) ?? []).length;
+    // Distinct fonts preloaded, by <link> in the HTML or in the Link header,
+    // where React sends a prerendered page's resource hints (react.dev,
+    // renderToPipeableStream onHeaders).
+    const tags = html.match(/<link[^>]+as="font"[^>]*>/g) ?? [];
+    const header = (res.headers.get("link") ?? "").split(/,\s*(?=<)/);
+    m.preloadedFonts = new Set([
+      ...tags.map((tag) => /href="([^"]+)"/.exec(tag)?.[1]),
+      ...header
+        .filter((hint) => /rel=preload/.test(hint) && /as="font"/.test(hint))
+        .map((hint) => /^<([^>]+)>/.exec(hint)?.[1]),
+    ]).size;
     results[name] = {
       ...m,
       lcpRuns: runs.map((r) => r.lcp),

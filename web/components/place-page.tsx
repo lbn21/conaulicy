@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { notFound, permanentRedirect } from "next/navigation";
+import { cacheLife, cacheTag } from "next/cache";
+import { notFound } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
 import { Breadcrumbs, type Crumb, HOME_CRUMB } from "@/components/breadcrumbs";
 import { CheckedLine } from "@/components/checked-line";
@@ -24,7 +25,7 @@ import {
   titleLabel,
 } from "@/lib/places";
 import { numberWarning } from "@/lib/prg";
-import { getPlace, movedTarget, type PlaceView } from "@/lib/schedule";
+import { getPlace, PLACE_TAGS, type PlaceView } from "@/lib/schedule";
 import {
   hasUpcoming,
   laterNote,
@@ -97,18 +98,6 @@ export function numberError(place: PlaceView, missing: boolean): string | null {
     : null;
 }
 
-/**
- * A renamed place's old address (place_redirects): 308 to the same page on
- * its new id. `path` is the address as the visitor asked for it. Thrown
- * before the page streams, so the status is a real 308. Only for pages
- * reached without a rewrite: proxy.ts answers the ?nr= addresses.
- */
-export async function redirectIfMoved(id: string, path: string) {
-  if (await getPlace(id, null)) return;
-  const target = await movedTarget(id, path);
-  if (target) permanentRedirect(target);
-}
-
 export async function placeMetadata(
   id: string,
   nr: string | null,
@@ -129,12 +118,16 @@ export async function wasteMetadata(
   return addressMetadata(id, nr, missing, "waste");
 }
 
+// Cached as the page it describes (its params awaited outside, passed in).
 async function addressMetadata(
   id: string,
   nr: string | null,
   missing: boolean,
   page: "address" | "waste",
 ): Promise<Metadata> {
+  "use cache";
+  cacheLife("page");
+  cacheTag(...PLACE_TAGS);
   const place = await getPlace(id, nr);
   // As app/not-found.tsx: Next.js's own noindex is the only robots tag.
   if (!place) return NOT_FOUND_METADATA;
