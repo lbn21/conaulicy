@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 import { NUMBER_REWRITES, numberRedirects } from "./lib/address-routes";
 import { SITE_URL } from "./lib/config.generated";
 import { headerList, SECURITY } from "./lib/headers";
-import { indexable, NOINDEX, NOINDEX_NOFOLLOW } from "./lib/indexing";
+import { indexable, NOINDEX_NOFOLLOW } from "./lib/indexing";
 import { writeBrandAssets } from "./scripts/brand-assets";
 
 const nextConfig: NextConfig = {
@@ -46,16 +46,11 @@ const nextConfig: NextConfig = {
   // at runtime, which on Vercel sees the same values).
   // The security headers (lib/headers.ts) on every path, either way.
   async headers() {
-    // Search results are never search results (also meta robots).
     if (indexable()) {
       return [
         {
           source: "/:path*",
           headers: headerList(SECURITY),
-        },
-        {
-          source: "/szukaj",
-          headers: headerList(NOINDEX),
         },
       ];
     }

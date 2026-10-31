@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { ContactLink } from "@/components/contact-link";
 import { ImgwLive } from "@/components/imgw-banner";
-import { PageMain } from "@/components/page-main";
 import { pageMetadata } from "@/lib/share";
 import { PRIVACY } from "@/lib/static-pages";
 
@@ -21,7 +20,7 @@ const IMPROVMX_PRIVACY = "https://improvmx.com/privacy/";
 
 export default function PrivacyPage() {
   return (
-    <PageMain>
+    <>
       <ImgwLive />
       <div className="govuk-grid-row">
         <div className="govuk-grid-column-two-thirds">
@@ -157,6 +156,6 @@ export default function PrivacyPage() {
           </div>
         </div>
       </div>
-    </PageMain>
+    </>
   );
 }

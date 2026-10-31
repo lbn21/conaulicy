@@ -47,7 +47,10 @@ export const viewport: Viewport = {
 const supportScript = `document.body.className += ' js-enabled' + ('noModule' in HTMLScriptElement.prototype ? ' govuk-frontend-supported' : '');`;
 
 // The GOV.UK page template (design-system.service.gov.uk/styles/page-template).
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+  breadcrumbs,
+}: LayoutProps<"/">) {
   return (
     <html lang={LANG} className={`govuk-template ${atkinson.variable}`}>
       {/* The snippet adds classes to <body> before React hydrates. */}
@@ -75,9 +78,18 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Przejdź do treści
         </a>
         <SiteHeader />
-        {/* Each page renders its own <main> (components/page-main.tsx),
-            after its breadcrumbs where it has them. */}
-        <div className="govuk-width-container">{children}</div>
+        {/* GOV.UK's <main>, the skip link's target, one for the whole site:
+            a layout is never duplicated, while Next.js keeps a page left by
+            a client-side navigation in the document, hidden (Activity), so
+            a <main> per page would repeat its id. The address pages'
+            breadcrumbs come before it, as GOV.UK places them, from the
+            @breadcrumbs slot (parallel routes; docs/layout.md). */}
+        <div className="govuk-width-container">
+          {breadcrumbs}
+          <main className="govuk-main-wrapper" id="main-content">
+            {children}
+          </main>
+        </div>
         <SiteFooter />
         <GovukFrontend />
         {/* Production deployments only, never previews or local builds. */}

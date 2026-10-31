@@ -37,12 +37,9 @@ test("the street page, its PDF, water calendar and module subpages keep only nr"
   for (const [url, expected] of cases) assert.equal(clean(url), expected, url);
 });
 
-test("the search page and the search API keep only q, empty included", () => {
+test("the search API keeps only q, empty included", () => {
   const cases: Array<[string, string | null]> = [
-    ["/szukaj?q=asnyka+12", null],
-    ["/szukaj?q=", null],
-    ["/szukaj?q=rynek&utm_source=a", "?q=rynek"],
-    ["/szukaj?x=1", ""],
+    ["/api/search?q=", null],
     ["/api/search?q=asn", null],
     ["/api/search?q=asn&x=1", "?q=asn"],
   ];

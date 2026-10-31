@@ -203,7 +203,7 @@ test("clear only when the first place matches better than the rest", () => {
   assert.equal(match("adama").clear, false);
 });
 
-// /szukaj opens one place only when clear (task 95): never for "a" (once
+// „Szukaj” opens one place only when clear (task 95): never for "a" (once
 // ul. Hetmana A. M. Sieniawskiego, on its initial) or "as".
 test("clear needs 3+ letters; an initial alone never wins", () => {
   const top = (q: string) => match(q).hits[0]?.label;

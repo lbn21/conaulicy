@@ -1,20 +1,16 @@
 // Unknown query parameters redirect (308) to the clean URL, so random query
 // strings cannot bust the CDN cache (proxy.ts, lib/clean-query.ts). Allowed
-// ones (nr on street pages and PDFs, q on /api/search and /szukaj) are
+// ones (nr on street pages and PDFs, q on /api/search) are
 // served as they are; Next.js assets, icons with their cache-busting query,
 // other files and POST /api/revalidate are never redirected. The Apple icon
 // is linked at the root with no query, and served as a PNG.
 //
-// Also the search without JS: the home page's raw HTML is a GET form to
-// /szukaj with a field named q and a submit button, and /szukaj answers it
-// (a static page, its column rendered in the browser): one place opens its
-// page with the house number, several are listed, none says what to try, an
-// empty q is GOV.UK's error.
-// /szukaj's field is the home page's (components/address-search.tsx): the
-// same <search> markup, holding what was searched for, or GOV.UK's error
-// markup for an empty q, between the H1 and the results.
-// A suggestion's text, as a pick leaves it in the field, opens its own
-// place: every label in /api/search-index, and some with a house number.
+// Also the search (components/address-search.tsx): the home page's raw
+// HTML holds a form with the library's field (a combobox named q, empty, no
+// error) and a submit button; /szukaj is gone (task 227), a plain 404. A
+// suggestion's text, as a pick leaves it in the field, resolves to its own
+// place (lib/search-submit.ts, as „Szukaj” does): every label in
+// /api/search-index, and some with a house number.
 //
 // A renamed street's old id (place_redirects; the CI fixture's made-up
 // 0972447-99999) answers 308 on every address under it, query kept, with
@@ -23,32 +19,21 @@
 //
 // Runs against `next start` on the current build and the CI fixture.
 import { withHouseNumber } from "../lib/house.ts";
+import { matcher } from "../lib/search.ts";
+import { placeTarget } from "../lib/search-submit.ts";
 import {
-  BOT_UA,
-  BROWSER_UA,
-  closeRenderedPages,
   fetchJson,
   finish,
   notFoundAt,
-  renderedPage,
   searchIndexOf,
   startServer,
 } from "./lib/server.mjs";
-
-const escapeHtml = (text) =>
-  text
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 
 const STREET = "/adres/0972447-00470";
 const SPLIT = "/adres/0972447-90004";
 const RENAMED = "/adres/0972447-99999";
 
 // [method, path, status, clean path + query for a redirect, user agent].
-// /szukaj is static, for browsers and bots alike: a one-place search opens
-// its page in the browser (LANDS, below).
 const CASES = [
   ["GET", `${STREET}?x=1`, 308, STREET],
   ["GET", `${STREET}?nr=12&x=1`, 308, `${STREET}?nr=12`],
@@ -70,15 +55,8 @@ const CASES = [
   ["POST", "/api/revalidate?x=1", 401],
   ["GET", "/manifest.webmanifest?x=1", 200],
   ["GET", "/robots.txt?x=1", 200],
-  ["GET", "/szukaj?q=Rynek", 200],
-  ["GET", "/szukaj?q=Rynek", 200, undefined, BOT_UA],
-  ["GET", "/szukaj?q=adama", 200],
-  // Under 3 letters, a list, never one place (lib/search.ts CLEAR_MIN).
-  ["GET", "/szukaj?q=a", 200],
-  ["GET", "/szukaj?q=as", 200],
-  ["GET", "/szukaj?q=xyzqq", 200],
-  ["GET", "/szukaj?q=", 200],
-  ["GET", "/szukaj?q=Rynek&utm_source=x", 308, "/szukaj?q=Rynek"],
+  // The search page is gone: no redirect (task 227).
+  ["GET", "/szukaj?q=Rynek", 404],
   ["GET", RENAMED, 308, STREET],
   ["GET", `${RENAMED}?nr=12`, 308, `${STREET}?nr=12`],
   ["GET", `${RENAMED}?nr=`, 308, `${STREET}?nr=`],
@@ -106,8 +84,7 @@ const CASES = [
   ["GET", "/api/place-redirects", 200],
 ];
 
-// [query, where a browser lands from /szukaj?q= (the place's page, with
-// the house number)]. Every label in the index, and some with a number, are
+// [query, the one place „Szukaj” opens (its page, with the house number)]. Every label in the index, and some with a number, are
 // added below.
 const LANDS = [
   ["Rynek", "/adres/0972447-19253"],
@@ -119,40 +96,6 @@ const LANDS = [
   ["ul. Adama Asnyka 12, Lubaczów", "/adres/0972447-00470?nr=12"],
   ["ul. Adama Asnyka, Lubaczów 12", "/adres/0972447-00470?nr=12"],
   ["asn", "/adres/0972447-00470"],
-];
-
-// [query, what /szukaj must hold, as the browser shows it]
-const SEARCH = [
-  [
-    "adama",
-    [
-      '<h1 class="govuk-heading-l">Wyniki wyszukiwania</h1>',
-      "znaleźliśmy 2 adresy",
-      'href="/adres/0972447-00470"',
-      'href="/adres/0972447-12740"',
-      'value="adama"',
-    ],
-  ],
-  [
-    "xyzqq",
-    [
-      '<h1 class="govuk-heading-l">Brak wyników</h1>',
-      "Nie znaleźliśmy „xyzqq”.",
-      '<a href="/ulice" class="govuk-link">Wszystkie ulice i wsie</a>',
-      'value="xyzqq"',
-    ],
-  ],
-  [
-    "",
-    [
-      // One title for every outcome: the page is static.
-      "<title>Wyszukaj adres – conaulicy.pl</title>",
-      'class="govuk-error-summary"',
-      'href="#adres">Wpisz nazwę ulicy albo wsi</a>',
-      'class="govuk-error-message"',
-      "govuk-input--error",
-    ],
-  ],
 ];
 
 const server = await startServer(3308);
@@ -202,121 +145,22 @@ try {
   }
 
   const form = /<form[^>]*>[\s\S]*?<\/form>/.exec(home)?.[0] ?? "";
-  const tag = /^<form[^>]*>/.exec(form)?.[0] ?? "";
+  const field = /<input[^>]*\sname="q"[^>]*>/.exec(form)?.[0] ?? "";
   for (const part of [
-    /\smethod="get"/.test(tag),
-    /\saction="\/szukaj"/.test(tag),
-    form.includes('name="q"'),
+    /\srole="combobox"/.test(field),
+    /\sid="adres"/.test(field),
+    /\svalue=""/.test(field),
+    !/govuk-input--error/.test(field),
+    !/govuk-form-group--error|govuk-error-message/.test(form),
     form.includes('<button type="submit" class="govuk-button"'),
   ]) {
     if (!part) failures.push(`/: search form ${JSON.stringify(form)}`);
   }
-  // The field without JS: the placeholder input, before the library.
-  const field = (html) => /<input[^>]*\sname="q"[^>]*>/.exec(html)?.[0] ?? "";
-  const attr = (tag, name) =>
-    new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1] ?? null;
-  const search = (html) =>
-    /<search[^>]*>[\s\S]*?<\/search>/.exec(html)?.[0] ?? "";
+  const index = { places, match: matcher(places) };
   for (const [q, to] of LANDS) {
-    const { url } = await renderedPage(
-      `${server.origin}/szukaj?q=${encodeURIComponent(q)}`,
-    );
-    const at = new URL(url);
-    if (decodeURI(`${at.pathname}${at.search}`) !== to)
-      failures.push(
-        `/szukaj?q=${q}: at ${at.pathname}${at.search}, want ${to}`,
-      );
-  }
-  for (const [q, parts] of SEARCH) {
-    const url = `${server.origin}/szukaj?q=${encodeURIComponent(q)}`;
-    const page = (ua) =>
-      fetch(url, { headers: { "user-agent": ua } }).then((res) => res.text());
-    const { html } = await renderedPage(url, { userAgent: BROWSER_UA });
-    const input = field(html);
-    const error = q === "";
-    // With text, the page's field until its first focus; empty, the
-    // library's at once (its own describedby: check-search).
-    const want = {
-      value: error ? null : escapeHtml(q),
-      error: error,
-      describedBy: error ? "adres__assistiveHint" : "adres-hint",
-    };
-    const got = {
-      value: attr(input, "value"),
-      error: /govuk-input--error/.test(attr(input, "class") ?? ""),
-      describedBy: attr(input, "aria-describedby"),
-    };
-    if (JSON.stringify(got) !== JSON.stringify(want)) {
-      failures.push(
-        `/szukaj?q=${q}: field ${JSON.stringify(got)}, want ${JSON.stringify(want)}`,
-      );
-    }
-    const group = /govuk-form-group--error/.test(search(html));
-    const message = html.includes(
-      '<p id="adres-error" class="govuk-error-message"><span class="govuk-visually-hidden">Błąd:</span> ',
-    );
-    // GOV.UK's order: label, hint, error message, field.
-    const at = ['id="adres-hint"', 'id="adres-error"', 'name="q"'].map((part) =>
-      search(html).indexOf(part),
-    );
-    if (error && !(at[0] < at[1] && at[1] < at[2])) {
-      failures.push(`/szukaj?q=: hint, error, field out of order ${at}`);
-    }
-    if (group !== error || message !== error) {
-      failures.push(
-        `/szukaj?q=${q}: error group ${group}, error message ${message}, want ${error}`,
-      );
-    }
-    for (const part of parts) {
-      if (!html.includes(part)) failures.push(`/szukaj?q=${q}: no ${part}`);
-    }
-    // GOV.UK search results: the error summary (if any), the H1, the field,
-    // then the results. Each looked for after the one before: the RSC
-    // payload's scripts may carry their text earlier in the document.
-    const order = [];
-    for (const part of error
-      ? ['class="govuk-error-summary"', "<h1", "<search"]
-      : ["<h1", "<search", parts[1], parts[2]]) {
-      order.push(html.indexOf(part, Math.max(0, order.at(-1) ?? 0)));
-    }
-    if (order.some((at) => at < 0)) {
-      failures.push(`/szukaj?q=${q}: page order ${order}`);
-    }
-    // The metadata: in <head> for an HTML-limited bot; a browser may get
-    // it streamed, so anywhere in its document (next.config.ts).
-    const bot = await page(BOT_UA);
-    const head = bot.slice(0, bot.indexOf("</head>"));
-    if (!head.includes("<title>") || !head.includes('name="robots"')) {
-      failures.push(
-        `/szukaj?q=${q} (bot): <title> or robots meta not in <head>`,
-      );
-    }
-    if (!html.includes("<title>") || !html.includes('name="robots"')) {
-      failures.push(`/szukaj?q=${q} (browser): no <title> or robots meta`);
-    }
-  }
-  // One field: /szukaj's form is the home page's, but for its value (both
-  // as the browser shows them).
-  const adama = (await renderedPage(`${server.origin}/szukaj?q=adama`)).html;
-  // The home page's own HTML, its void elements as renderedPage writes them.
-  const shownHome = home.replace(
-    /<(input)(\s[^>]*?)?(?<!\/)>/g,
-    (_, tag, attrs = "") => `<${tag}${attrs}/>`,
-  );
-  // The form tag's attributes in any order (a client render writes its
-  // own); method and action are checked on the home page's, above.
-  const blank = (html) =>
-    search(html)
-      .replace(/\svalue="[^"]*"/, ' value=""')
-      .replace(/<form\s[^>]*>/, (tag) =>
-        /\smethod="get"/.test(tag) && /\saction="\/szukaj"/.test(tag)
-          ? "<form>"
-          : tag,
-      );
-  if (!search(shownHome) || blank(adama) !== blank(shownHome)) {
-    failures.push(
-      `/szukaj?q=adama: search form differs from /\n  / ${search(shownHome)}\n  /szukaj ${search(adama)}`,
-    );
+    const at = placeTarget(index, q);
+    if ((at && decodeURI(at)) !== to)
+      failures.push(`"${q}": opens ${at}, want ${to}`);
   }
 
   // The calendar link is on the waste subpage (the address page has none).
@@ -358,7 +202,6 @@ try {
     failures.push(`/api/place-redirects: ${JSON.stringify(moved)}`);
   }
 } finally {
-  await closeRenderedPages();
   server.stop();
 }
 
