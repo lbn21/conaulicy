@@ -75,7 +75,7 @@ Every page is a static shell; what changes between imports is a live block, its 
 - **Freshness:** a block's „Sprawdziliśmy” comes from the same read as its data. The IMGW line is always there: „Ostrzeżenia IMGW: brak ostrzeżeń dla powiatu lubaczowskiego · sprawdziliśmy 14:52” when there is none, its source linked.
 - **„Dziś”, „Jutro”, „Za 5 dni”:** the device's, never the server's (`DayWord`, `web/components/day-word.tsx`, `use(browser())`): a word-wide skeleton in the HTML, then the word. The dates around it are absolute, with their weekday, in the HTML.
 
-`/szukaj` is static too: its column is drawn in the browser (`web/components/search-results.tsx`), behind `web/components/search-skeleton.tsx` until the page's script runs (the h1, the field's label, hint, field and „Szukaj”, about one result); then the field at once, and the heading and results behind their own skeletons until the search index is in.
+`/szukaj` is static too: its heading („Wyszukaj adres”, one for every outcome) and the search field (empty) are in the static shell, never behind a skeleton; only its results are drawn in the browser (`web/components/search-results.tsx`). After „Szukaj” they are there at once, from the index already in memory (a search with one place never shows `/szukaj`: it opens the place); on a direct visit they sit behind `web/components/search-skeleton.tsx` (about one result) until the index is in. An empty search shows GOV.UK's error summary and field error on the page where it was submitted (`SearchErrorSummary`, `web/components/address-search.tsx`), never on load.
 
 ## Home-screen app
 
