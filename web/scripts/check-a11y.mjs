@@ -1,9 +1,11 @@
 // Runs axe-core on every key route at 360px and 1280px (light only, as GOV.UK).
-// Fails on any WCAG 2.0/2.1/2.2 A or AA violation. Run after `next build`;
+// Fails on any WCAG 2.0/2.1/2.2 A or AA violation, and on a page whose
+// #main-content is not exactly one visible <main> (the skip link's target)
+// or that uses an id twice. Run after `next build`;
 // needs Playwright's Chromium (`npx playwright install chromium`).
 import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "playwright";
-import { ROUTES, startServer } from "./lib/server.mjs";
+import { mainAndIds, ROUTES, startServer } from "./lib/server.mjs";
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const WIDTHS = [360, 1280];
@@ -33,6 +35,11 @@ try {
         .withTags(TAGS)
         .analyze();
       const label = `${route.path} [${width}px]`;
+      const ids = await mainAndIds(page);
+      if (ids.mains !== 1 || !ids.main || ids.duplicates.length > 0) {
+        failures += 1;
+        console.log(`FAIL  ${label}  main and ids ${JSON.stringify(ids)}`);
+      }
       if (violations.length === 0) {
         console.log(`ok    ${label}  (${passes.length} rules passed)`);
         continue;

@@ -26,11 +26,14 @@
 // in, a skeleton of one result holds their place. Back and Forward go where
 // they should. The hint's example ("Asnyka 5") opens its street with a
 // number the register has. „Szukaj”, /api/search and lib/search.ts rank
-// alike. An empty search shows GOV.UK's error, and only then. Run after
+// alike. After the search's navigation to a place, the document has one
+// #main-content (the layout's visible <main>) and no id twice, and the skip
+// link moves focus into it. An empty search shows GOV.UK's error, and only
+// then. Run after
 // `next build`; needs Playwright's Chromium.
 import { chromium } from "playwright";
 import { matcher, placeHref } from "../lib/search.ts";
-import { finish, startServer } from "./lib/server.mjs";
+import { finish, mainAndIds, startServer } from "./lib/server.mjs";
 
 const WIDTHS = [360, 1280];
 // A live block's reveal may move the page a little (Jakub's decision,
@@ -856,7 +859,37 @@ try {
     await nav.getByRole("combobox").fill("rynek");
     await nav.getByRole("button", { name: "Szukaj" }).click();
     await nav.waitForURL(`${server.origin}/adres/0972447-19253`);
+    await nav.getByRole("heading", { level: 1 }).waitFor();
     steps.push("to the place");
+    // The home page stays in the document, hidden (Next.js's Activity): still
+    // one #main-content, the layout's visible <main>, and no id twice; the
+    // skip link (GOV.UK's, started on the first load) moves focus into it.
+    const ids = await mainAndIds(nav);
+    check(
+      ids.mains === 1 && ids.main && ids.duplicates.length === 0,
+      `after the search's navigation to a place: main and ids ${JSON.stringify(ids)}`,
+    );
+    await nav.locator("a.govuk-skip-link").focus();
+    await nav.keyboard.press("Enter");
+    const skipped = await nav.evaluate(() => {
+      const main = document.activeElement?.closest("main");
+      return {
+        active: document.activeElement?.tagName,
+        inMain: main?.id === "main-content",
+        visible: main?.checkVisibility() === true,
+        // The hidden home page is in <main> too: the visible h1.
+        h1: [...(main?.querySelectorAll("h1") ?? [])].find((el) =>
+          el.checkVisibility(),
+        )?.textContent,
+      };
+    });
+    check(
+      skipped.inMain &&
+        skipped.visible &&
+        skipped.h1 ===
+          (await nav.getByRole("heading", { level: 1 }).textContent()),
+      `after the search's navigation: the skip link puts focus at ${JSON.stringify(skipped)}`,
+    );
     await nav.goBack();
     await nav.waitForURL(`${server.origin}/`);
     await nav.getByRole("combobox").waitFor();

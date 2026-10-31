@@ -203,3 +203,25 @@ export async function notFoundAt(url) {
   }
   return status === 404 ? null : `${status} after the first answer, want 404`;
 }
+
+/**
+ * The page's <main> and ids, as the browser has them (a Playwright page):
+ * how many elements are #main-content and whether the first is a visible
+ * <main>, and every id used more than once. One <main>, the root layout's
+ * (app/layout.tsx): Next.js keeps a page left by a client-side navigation
+ * in the document, hidden (Activity), so a page's own ids would repeat.
+ */
+export function mainAndIds(page) {
+  return page.evaluate(() => {
+    const mains = document.querySelectorAll("#main-content");
+    const counts = new Map();
+    for (const el of document.querySelectorAll("[id]")) {
+      counts.set(el.id, (counts.get(el.id) ?? 0) + 1);
+    }
+    return {
+      mains: mains.length,
+      main: mains[0]?.tagName === "MAIN" && mains[0].checkVisibility() === true,
+      duplicates: [...counts].filter(([, n]) => n > 1).map(([id]) => id),
+    };
+  });
+}
