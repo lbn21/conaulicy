@@ -423,10 +423,16 @@ try {
     });
     return paths;
   };
-  // The first Tab after the load: the skip link, as after any link.
+  // The first Tab after the load: the skip link, as after any link. Then
+  // focus leaves it: GOV.UK shows it in the flow only while focused, so a
+  // click's mousedown would hide it and move the page under the pointer.
   const firstTab = async (page) => {
     await page.keyboard.press("Tab");
-    return page.evaluate(() => document.activeElement?.textContent);
+    return page.evaluate(() => {
+      const text = document.activeElement?.textContent;
+      document.activeElement?.blur();
+      return text;
+    });
   };
 
   // A house number: typed after the street, carried to the page.
