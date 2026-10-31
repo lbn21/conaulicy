@@ -202,7 +202,6 @@ test("the cached pages: each `use cache` scope tags what it reads", () => {
   modulesTags(
     "cacheTag\\(\\.\\.\\.PLACE_TAGS\\);",
     "../components/place-page.tsx",
-    2,
   );
   modulesTags(
     "cacheTag\\(\\.\\.\\.PLACE_TAGS\\);",
