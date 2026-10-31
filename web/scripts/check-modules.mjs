@@ -7,7 +7,7 @@
 //   /ulice, #m-<SIMC>; a village part's to its village's line;
 //   any other village's to the villages; a village names its gmina),
 //   /smieci adds the address page; the street page's
-//   error variants keep the hub's; none on the flat pages (/szukaj,
+//   error variants keep the hub's; none on the flat pages (
 //   /o-projekcie, /prywatnosc, /dostepnosc, /ulice), the home page or a 404;
 // - the hub: no caption (the locality is in its breadcrumbs), one h1,
 //   „Zmień adres”, no summary cards or lists: „Najbliższe dni” only with a
@@ -582,9 +582,6 @@ try {
   // No breadcrumbs anywhere on the flat pages, the home page or a 404
   // (GOV.UK: none on a site with a flat structure; task 149).
   for (const path of [
-    "/szukaj?q=",
-    "/szukaj?q=adama",
-    "/szukaj?q=xyzqq",
     "/o-projekcie",
     "/prywatnosc",
     "/dostepnosc",

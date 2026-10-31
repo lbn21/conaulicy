@@ -29,9 +29,6 @@ export const ROUTES = [
   { path: "/prywatnosc", name: "privacy" },
   { path: "/dostepnosc", name: "accessibility" },
   { path: "/o-projekcie", name: "about" },
-  { path: "/szukaj?q=adama", name: "search-results" },
-  { path: "/szukaj?q=xyzqq", name: "search-none" },
-  { path: "/szukaj?q=", name: "search-empty" },
   { path: "/nie-ma-takiej-strony", name: "not-found", status: 404 },
   { path: "/adres/9999999", name: "unknown-place", status: 404 },
   {
@@ -128,8 +125,8 @@ export async function searchIndexOf(origin, home) {
 
 // A page as the browser shows it once every live block is in: the page's
 // static shell streams each block (IMGW, water, „Najbliższe dni”) after it,
-// behind a skeleton (components/live-block.tsx), and /szukaj's results and
-// „Dziś” render in the browser (components/day-word.tsx), so the server's
+// behind a skeleton (components/live-block.tsx), and „Dziś” renders in the
+// browser (components/day-word.tsx), so the server's
 // HTML alone has skeletons there. Chromium, JS on, reduced motion; the
 // skeletons gone (or 10 s); void elements written as React writes them
 // (<hr/>), React's own marks left out, so checks match either. Its status

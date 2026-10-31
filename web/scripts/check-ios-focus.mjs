@@ -2,7 +2,7 @@
 // focus moved to another field afterwards, so the field a user taps must
 // already be accessible-autocomplete's own (task 95): its React build,
 // rendered on the server and hydrated in place (task 227). In WebKit as an
-// iPhone, on a cold load of / and of /szukaj: the field in the HTML is the
+// iPhone, on a cold load of the home page: the field in the HTML is the
 // library's combobox, one tap focuses that very field and no field is added
 // or removed after it. After an empty search, the error summary's link
 // moves focus to the field. Typing straight after load loses nothing. Run
@@ -43,7 +43,7 @@ const watchFields = (page) =>
   });
 
 try {
-  for (const path of ["/", "/szukaj?q=adama"]) {
+  for (const path of ["/"]) {
     const context = await browser.newContext(iphone);
     const page = await context.newPage();
     await page.goto(`${server.origin}${path}`, { waitUntil: "networkidle" });

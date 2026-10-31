@@ -2,7 +2,7 @@
 // the engine behind validator.w3.org/nu). Fails on any error; lists warnings.
 // Each route as an HTML-limited bot gets it (metadata in <head>), and as a
 // browser does, unless Next.js streamed it the metadata (into <body>, as
-// documented: /szukaj, rendered per request); then only its bot copy. A
+// documented); then only its bot copy. A
 // 404 is a real 404 for the browser; for the bot a 404, or 200 + noindex.
 //
 // Needs Java 11+: JAVA_HOME, or `java` on PATH. Without Java it stops, unless
@@ -118,29 +118,6 @@ try {
       if (!java) messages.push(...(await checkRemotely(html, `file:${file}`)));
     }
   }
-  // With HTML_DIR, also the one-match search as served, its redirect not
-  // followed (for the reviewer; not validated: it may be a bare 308).
-  if (process.env.HTML_DIR)
-    for (const [ua, suffix] of [
-      [BROWSER_UA, ""],
-      [BOT_UA, ".bot"],
-    ]) {
-      const res = await fetch(`${server.origin}/szukaj?q=rynek`, {
-        headers: { "user-agent": ua },
-        redirect: "manual",
-      });
-      writeFileSync(
-        path.join(dir, `search-one${suffix}.html`),
-        await res.text(),
-      );
-      writeFileSync(
-        path.join(dir, `search-one${suffix}.headers.txt`),
-        [
-          `status: ${res.status}`,
-          ...[...res.headers].map(([k, v]) => `${k}: ${v}`),
-        ].join("\n"),
-      );
-    }
   if (java)
     messages = checkLocally(
       java,

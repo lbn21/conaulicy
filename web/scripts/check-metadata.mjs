@@ -22,7 +22,6 @@ import {
   finish,
   notFoundAt,
   ROUTES,
-  renderedPage,
   startServer,
 } from "./lib/server.mjs";
 
@@ -74,18 +73,6 @@ try {
     if (response.status !== status) {
       failures.push(`${path}: ${response.status}, want ${status}`);
     }
-    // /szukaj: static, one title and one h1 for every outcome, both in the
-    // static shell; its results drawn in the browser.
-    if (path.startsWith("/szukaj")) {
-      const shown = (await renderedPage(`${server.origin}${path}`)).html;
-      const h1 = all(shown, /<h1[^>]*>([\s\S]*?)<\/h1>/g);
-      const title = all(html, /<title>([^<]*)<\/title>/g).map(decode);
-      if (h1.length !== 1 || title.join() !== "Wyszukaj adres – conaulicy.pl")
-        failures.push(
-          `${path}: title ${JSON.stringify(title)}, ${h1.length} h1s`,
-        );
-      continue;
-    }
     const h1 = all(html, /<h1[^>]*>([\s\S]*?)<\/h1>/g).map((text) =>
       decode(text.replace(/<[^>]*>/g, "")).trim(),
     );
@@ -133,8 +120,7 @@ try {
     if (
       route.status ||
       route.path.includes("?nr") ||
-      /^\/adres\/[^/]+\/(?!smieci$)[^/?]+/.test(route.path) ||
-      route.path.startsWith("/szukaj")
+      /^\/adres\/[^/]+\/(?!smieci$)[^/?]+/.test(route.path)
     )
       continue;
     const { path } = route;

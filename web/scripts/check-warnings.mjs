@@ -22,7 +22,7 @@
 // - stale (the last good check over an hour back: the notice, the warning
 //   still listed; with no warning, the notice alone), too old (3 hours: the
 //   notice alone) and a store that cannot be read (the notice alone on the
-//   banner's pages, /szukaj and the hub's Pogoda; every page renders as
+//   banner's pages and the hub's Pogoda; every page renders as
 //   ever, the 404 page with no banner at all);
 // - three warnings: keyboard focus on the link, 320 px and 200% zoom with no
 //   horizontal scroll, the tags' fills (IMGW's level colours, lib/palette.ts)
@@ -130,7 +130,7 @@ const UNREADABLE = {
   levels: [],
   notice: "unreadable",
   hub: 0,
-  pages: [PAGE, "/szukaj?q=adama"],
+  pages: [PAGE, "/ulice"],
 };
 // A 404, never with the banner (app/not-found.tsx).
 const NOT_FOUND = "/nie-ma-takiej-strony";
@@ -189,8 +189,7 @@ let port = 3320;
 
 // Drop a page from the ISR cache, so the next request renders it: the
 // build's prerendered copy and any copy rendered since (route-cache). Cached
-// by its path, never its query: /szukaj?q=… is /szukaj's prerendered shell,
-// which holds the banner (task 222).
+// by its path, never its query.
 function forget(page) {
   const name = page === "/" ? "index" : page.slice(1).split("?")[0];
   const routeCache = ".next/server/route-cache/APP_PAGE";
@@ -680,7 +679,7 @@ async function visit(browser, origin, state, pagePath, name) {
     });
     const page = await context.newPage();
     const response = await page.goto(origin + pagePath, { waitUntil: "load" });
-    // The banner and /szukaj's results come in after the shell.
+    // The banner comes in after the shell.
     await page
       .waitForFunction(
         () =>
@@ -815,7 +814,7 @@ try {
     const server = await startServer(port++, { IMGW_WARNINGS_URL: state.url });
     try {
       for (const page of pages) {
-        // A file name: the path's query (/szukaj?q=…) as plain characters.
+        // A file name: the path's query as plain characters.
         const name = state.pages
           ? `${page === "/" ? "home" : page.slice(1).replace(/[^\w-]+/g, "-")}-${state.name}`
           : state.name;

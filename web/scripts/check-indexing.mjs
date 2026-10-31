@@ -11,8 +11,8 @@
 // those /ulice marks „(brak danych)”, each with its waste subpage
 // (/adres/<id>/smieci, canonical itself), nothing else. The address page and
 // /smieci canonicalise to themselves, ?nr= (and its /nr/… path) left out. PDFs and calendars send
-// X-Robots-Tag: noindex; the number-error page (/numer), a place without
-// data and /szukaj have meta robots noindex (/szukaj the header too); the
+// X-Robots-Tag: noindex; the number-error page (/numer) and a place
+// without data have meta robots noindex; the
 // static pages have one canonical link each (the home page's as the
 // sitemap has it, no trailing slash). Indexable: every URL in the sitemap
 // answers 200 with no noindex (meta or X-Robots-Tag), canonicalises to
@@ -24,7 +24,7 @@
 // (/adres/<id>/<slug>) and one without a subpage (/pogoda) too; asked
 // without following redirects, and never under a renamed id (the 308s of
 // /api/place-redirects, scripts/check-query.mjs). Both: /, an
-// address page, /szukaj and a calendar send the five security headers.
+// address page and a calendar send the five security headers.
 //
 // Runs against `next start` on the current build and the CI fixture.
 import { readFileSync } from "node:fs";
@@ -227,13 +227,12 @@ try {
     }
   }
 
-  // Never indexed, links followed once indexable: the number-error page, a
-  // place without data, search results (with the header too).
+  // Never indexed, links followed once indexable: the number-error page and
+  // a place without data.
   const noindexWant = index ? "noindex, follow" : "noindex, nofollow";
   for (const path of [
     "/adres/0972447-90004?nr=",
     ROUTES.find((route) => route.name === "street-without-schedule").path,
-    "/szukaj?q=adama",
   ]) {
     const response = await fetch(`${server.origin}${path}`);
     const metas = [...(await response.text()).matchAll(META)].map(
@@ -243,11 +242,6 @@ try {
       failures.push(
         `${path}: meta robots ${JSON.stringify(metas)}, want "${noindexWant}"`,
       );
-    }
-    const header = response.headers.get("x-robots-tag");
-    const headerWant = index ? "noindex" : "noindex, nofollow";
-    if (path.startsWith("/szukaj") && header !== headerWant) {
-      failures.push(`${path}: X-Robots-Tag ${header}, want ${headerWant}`);
     }
   }
 
@@ -342,8 +336,8 @@ try {
   }
 
   // The security headers (lib/headers.ts), written out again here: on a
-  // page, an address, search results and a calendar, either build.
-  for (const path of ["/", street, "/szukaj?q=adama", ...(ics ? [ics] : [])]) {
+  // page, an address and a calendar, either build.
+  for (const path of ["/", street, ...(ics ? [ics] : [])]) {
     const response = await fetch(`${server.origin}${path}`);
     await response.arrayBuffer();
     for (const [name, value] of Object.entries(SECURITY)) {
@@ -475,6 +469,6 @@ try {
 finish(
   failures,
   index
-    ? `Indexing (${PAGES.join(", ")}): indexable, robots.txt open, vercel.app redirects, sitemap complete, every URL in it indexable with its own title; PDF, ICS, /numer, no-data places, /szukaj noindex; 404s whole pages; canonicals.`
+    ? `Indexing (${PAGES.join(", ")}): indexable, robots.txt open, vercel.app redirects, sitemap complete, every URL in it indexable with its own title; PDF, ICS, /numer, no-data places noindex; 404s whole pages; canonicals.`
     : `Indexing (${PAGES.join(", ")}): noindex everywhere, robots.txt closed, sitemap empty; PDF, ICS noindex; 404s whole pages; canonicals.`,
 );
