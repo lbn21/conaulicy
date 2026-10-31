@@ -475,7 +475,11 @@ try {
   );
   await house.getByRole("combobox").press("Enter");
   await house.waitForURL(`${server.origin}/adres/0972447-90004?nr=7a`);
-  const heading = await house.locator("h1").textContent();
+  // A client-side navigation: Next.js keeps the home page in the document,
+  // hidden (Activity), so the visible h1 only, by role
+  // (nextjs.org/docs/app/guides/preserving-ui-state, "Use visibility-aware
+  // selectors").
+  const heading = await house.getByRole("heading", { level: 1 }).textContent();
   // The calendar and the PDF are on the waste subpage, its section's
   // „Wszystkie odbiory śmieci”, with the number.
   await house
