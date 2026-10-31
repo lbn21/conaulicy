@@ -27,6 +27,17 @@ export const CURRENT = {
 export type ImgwCopy = { feed: Feed; checkedAt: number };
 
 /**
+ * What the pages read from the store (lib/live-store.ts imgwCopy): the
+ * copy, null when the cron has written none yet, or UNREADABLE when the
+ * store could not be read now: an expected error, returned as a value.
+ */
+export const UNREADABLE = "unreadable";
+export type ImgwRead = ImgwCopy | null | typeof UNREADABLE;
+
+/** The notice when the store cannot be read now; CURRENT follows it. */
+const UNREADABLE_NOTICE = "Nie udało się teraz sprawdzić ostrzeżeń IMGW.";
+
+/**
  * The copy from the feed file and the status file (lib/live-store.ts), or
  * null when there is no feed file yet. The last good check is the status
  * file's (every good run), never older than the feed file's own time (the
@@ -135,10 +146,21 @@ function notice(
  * force or to come for the powiat (a warning is dropped once it ends).
  * Never null while there is a copy whose last good check is stale: then
  * the notice says so, with or without warnings; too old (MAX_AGE_MS), the
- * warnings are no longer listed, only the notice.
+ * warnings are no longer listed, only the notice. The store unreadable:
+ * the notice alone, that we could not check now.
  */
-export function banner(copy: ImgwCopy | null, now: number): Banner | null {
+export function banner(copy: ImgwRead, now: number): Banner | null {
   if (!copy) return null;
+  if (copy === UNREADABLE)
+    return {
+      title: "Ostrzeżenia IMGW",
+      notice: UNREADABLE_NOTICE,
+      more: "Szczegóły ostrzeżeń",
+      warnings: [],
+      source: "Źródło: IMGW-PIB",
+      footer: "Dotyczy całego powiatu lubaczowskiego.",
+      attribution: IMGW_ATTRIBUTION.join(" "),
+    };
   const age = checkAge(copy.checkedAt, now);
   const warnings =
     age === "too-old" ? [] : forPowiat(copy.feed.items, POWIAT, now);

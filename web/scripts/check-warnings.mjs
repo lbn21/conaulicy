@@ -17,8 +17,9 @@
 // - a level-3 warning on the home page and /ulice (placement before the h1);
 // - stale (the last good check over an hour back: the notice, the warning
 //   still listed; with no warning, the notice alone), too old (3 hours: the
-//   notice alone) and a store that cannot be read (no last render here, so
-//   an error, never an empty banner);
+//   notice alone) and a store that cannot be read (the notice alone on the
+//   banner's pages, /szukaj and the hub's Pogoda; every page renders as
+//   ever, the 404 page with no banner at all);
 // - three warnings: keyboard focus on the link, 320 px and 200% zoom with no
 //   horizontal scroll, the tags' fills (IMGW's level colours, lib/palette.ts)
 //   and contrast, the title's contrast, the banner's paddings.
@@ -112,9 +113,17 @@ const STATES = [
   },
 ];
 
-// The store cannot be read, and the page has no last render (dropped from
-// the ISR cache): an error, never a page without the banner.
-const UNREADABLE = { name: "unreadable", url: "mock:1809?fail=500" };
+// The store cannot be read: an expected error, rendered as a notice.
+const UNREADABLE = {
+  name: "unreadable",
+  url: "mock:1809?fail=500",
+  levels: [],
+  notice: "unreadable",
+  hub: 0,
+  pages: [PAGE, "/szukaj?q=adama"],
+};
+// A 404, never with the banner (app/not-found.tsx).
+const NOT_FOUND = "/nie-ma-takiej-strony";
 
 // Home and /ulice, with the state's server.
 const PLACEMENT = {
@@ -143,6 +152,7 @@ const NOTICE = {
   stale: `Nie udało się teraz pobrać ostrzeżeń IMGW\\. Pokazujemy ostatnie dane z ${SINCE}\\.`,
   "stale-none": `Nie udało się teraz pobrać ostrzeżeń IMGW\\. Ostatnie dane mamy z ${SINCE}\\.`,
   "too-old": `Od ${SINCE} nie udało się nam pobrać ostrzeżeń IMGW, więc ich nie pokazujemy\\.`,
+  unreadable: "Nie udało się teraz sprawdzić ostrzeżeń IMGW\\.",
 };
 const notice = (name) => new RegExp(`^${NOTICE[name]}${CURRENT}$`, "u");
 const NOTICE_LINK = [
@@ -767,7 +777,7 @@ try {
     await plain.stop();
   }
 
-  for (const state of [...STATES, PLACEMENT]) {
+  for (const state of [...STATES, UNREADABLE, PLACEMENT]) {
     const pages = state.pages ?? [PAGE];
     for (const page of [...pages, HUB, `${HUB}/smieci`]) forget(page);
     const server = await startServer(port++, { IMGW_WARNINGS_URL: state.url });
@@ -788,29 +798,19 @@ try {
       await server.stop();
     }
   }
-  // The store unreadable: the pages showing IMGW answer with an error (no
-  // last render to keep), the waste subpage as ever.
-  for (const page of [PAGE, HUB, `${HUB}/smieci`]) forget(page);
+  // The store unreadable: the 404 page as ever, with no banner.
   const unreadable = await startServer(port++, {
     IMGW_WARNINGS_URL: UNREADABLE.url,
   });
   try {
-    for (const [page, want] of [
-      [PAGE, 500],
-      [HUB, 500],
-      [`${HUB}/smieci`, 200],
-    ]) {
-      const response = await fetch(unreadable.origin + page);
-      const html = await response.text();
-      if (
-        response.status !== want ||
-        html.includes("govuk-notification-banner")
-      )
-        failures.push(
-          `${UNREADABLE.name} ${page}: HTTP ${response.status} (want ${want}), or a banner`,
-        );
-      else console.log(`ok    ${UNREADABLE.name} ${page}: HTTP ${want}`);
-    }
+    const response = await fetch(unreadable.origin + NOT_FOUND);
+    const html = await response.text();
+    if (response.status !== 404 || html.includes("govuk-notification-banner"))
+      failures.push(
+        `${UNREADABLE.name} ${NOT_FOUND}: HTTP ${response.status} (want 404), or a banner`,
+      );
+    else
+      console.log(`ok    ${UNREADABLE.name} ${NOT_FOUND}: HTTP 404, no banner`);
   } finally {
     await unreadable.stop();
   }

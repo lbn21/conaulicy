@@ -23,8 +23,8 @@ function Line({ warning }: { warning: Shown }) {
 // role="alert" banners). From the last good copy in the store, never IMGW
 // itself (lib/live-store.ts). Nothing at all when there is no copy yet, or
 // a fresh one has no warning; a notice first when the last good check is
-// old, with or without warnings (lib/imgw-banner.ts). The store unreadable:
-// the error is thrown, so the page keeps its last render.
+// old, with or without warnings, or alone when the store cannot be read
+// now (lib/imgw-banner.ts): the rest of the page renders as ever.
 export async function ImgwBanner() {
   const shown = banner(await imgwCopy(), Date.now());
   if (!shown) return null;

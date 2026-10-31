@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { checkedLine } from "./hub.ts";
-import { banner } from "./imgw-banner.ts";
+import { banner, UNREADABLE } from "./imgw-banner.ts";
 import { derived1809, NO_WARNINGS_2026_10_18 } from "./imgw-fixture.ts";
 import { type Feed, parseFeed } from "./imgw-warnings.ts";
 import {
@@ -119,7 +119,10 @@ test("stale: the notice first, linked to IMGW, then the warnings", () => {
   ]);
   assert.equal(warnings.at(-1)?.[0], "Gdzie: cały powiat lubaczowski");
   assert.equal(weatherUpcoming(data).length, 1);
-  assert.equal(weatherChecked(data).getTime(), at("2026-10-25T12:59:59+01:00"));
+  assert.equal(
+    weatherChecked(data)?.getTime(),
+    at("2026-10-25T12:59:59+01:00"),
+  );
   // No warning: the notice alone, never „Brak ostrzeżeń”.
   const none = weather(copy("2026-10-25T12:59:59+01:00", []), now);
   assert.ok(none);
@@ -156,7 +159,7 @@ test("checked line: the last good check, warning or not", () => {
     const data = weather(copy("2026-10-25T13:52:10+01:00", items), now);
     assert.ok(data);
     assert.equal(
-      weatherChecked(data).getTime(),
+      weatherChecked(data)?.getTime(),
       at("2026-10-25T13:52:10+01:00"),
     );
     assert.equal(
@@ -164,4 +167,15 @@ test("checked line: the last good check, warning or not", () => {
       "Ostatnio sprawdziliśmy: 25 października, 13:52",
     );
   }
+});
+
+test("the store unreadable now: the notice alone, no item, no check time", () => {
+  const data = weather(UNREADABLE, at("2026-10-25T14:00:00+01:00"));
+  assert.ok(data);
+  assert.deepEqual(weatherUpcoming(data), []);
+  assert.deepEqual(weatherStatus(data), [
+    [[`Nie udało się teraz sprawdzić ostrzeżeń IMGW.${NOTICE_END}`, link, "."]],
+  ]);
+  assert.equal(weatherChecked(data), null);
+  assert.equal(checkedLine(weatherChecked(data), "pogoda"), null);
 });

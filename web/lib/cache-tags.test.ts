@@ -150,7 +150,6 @@ test("the pages: IMGW's files in the store are read through one cache tagged IMG
   // module (the address pages' „Pogoda” and „Najbliższe dni”).
   assert.deepEqual(calling(/<ImgwBanner \/>/), [
     "app/dostepnosc/page.tsx",
-    "app/not-found.tsx",
     "app/o-projekcie/page.tsx",
     "app/page.tsx",
     "app/prywatnosc/page.tsx",

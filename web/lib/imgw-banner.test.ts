@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { banner, imgwCopyOf, POWIAT } from "./imgw-banner.ts";
+import { banner, imgwCopyOf, POWIAT, UNREADABLE } from "./imgw-banner.ts";
 import { derived1809, REAL_2026_10_24 } from "./imgw-fixture.ts";
 import {
   type Feed,
@@ -214,4 +214,12 @@ test("nothing to show: no copy, or a fresh one with no warning for 1809, or ever
   const end = at("2026-10-25T19:00:00+01:00");
   assert.equal(banner(copy(fetchedAt), end - 1)?.warnings.length, 1);
   assert.equal(banner(copy(fetchedAt), end), null);
+});
+
+test("the store unreadable now: the notice alone, never nothing", () => {
+  const shown = banner(UNREADABLE, at("2026-10-25T12:00:00+01:00"));
+  assert.deepEqual(
+    [shown?.title, shown?.notice, shown?.warnings],
+    ["Ostrzeżenia IMGW", "Nie udało się teraz sprawdzić ostrzeżeń IMGW.", []],
+  );
 });

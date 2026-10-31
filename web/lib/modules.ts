@@ -137,9 +137,8 @@ const woda: Module<Water> = {
 
 // IMGW's warnings for the powiat (all our gminas lie in one), as the
 // banner other pages show, from the same last good copy; no copy yet,
-// simply left out; the store unreadable, thrown, so the page keeps its last
-// render. No subpage: its source, linked in the meta line, is IMGW's own
-// page.
+// simply left out; the store unreadable, the same notice as the banner. No
+// subpage: its source, linked in the meta line, is IMGW's own page.
 const pogoda: Module<Weather> = {
   id: "pogoda",
   title: "Pogoda",

@@ -10,15 +10,16 @@ import {
   banner,
   CURRENT,
   IMGW_PAGE,
-  type ImgwCopy,
+  type ImgwRead,
+  UNREADABLE,
 } from "./imgw-banner.ts";
 import type { Item } from "./upcoming.ts";
 
 export type Weather = {
   /** null: fresh, and no warning in force or to come. */
   banner: Banner | null;
-  /** The last good check (ms). */
-  checkedAt: number;
+  /** The last good check (ms); null: the store could not be read now. */
+  checkedAt: number | null;
 };
 
 /** The source, short. */
@@ -27,11 +28,14 @@ const SHORT = "IMGW-PIB";
 /**
  * The module's data, or null when there is no copy of the feed yet: then
  * the address page leaves the weather out, as other pages leave out the
- * banner.
+ * banner. The store unreadable: the banner's notice, no check time.
  */
-export function weather(copy: ImgwCopy | null, now: number): Weather | null {
+export function weather(copy: ImgwRead, now: number): Weather | null {
   if (!copy) return null;
-  return { banner: banner(copy, now), checkedAt: copy.checkedAt };
+  return {
+    banner: banner(copy, now),
+    checkedAt: copy === UNREADABLE ? null : copy.checkedAt,
+  };
 }
 
 type Shown = Banner["warnings"][number];
@@ -99,7 +103,7 @@ export function weatherSources(): Part[][] {
   return [[{ href: IMGW_PAGE, text: SHORT }]];
 }
 
-/** The last good check of IMGW: „Ostatnio sprawdziliśmy …”. */
-export function weatherChecked(data: Weather): Date {
-  return new Date(data.checkedAt);
+/** The last good check of IMGW: „Ostatnio sprawdziliśmy …”; none when unknown. */
+export function weatherChecked(data: Weather): Date | null {
+  return data.checkedAt === null ? null : new Date(data.checkedAt);
 }
