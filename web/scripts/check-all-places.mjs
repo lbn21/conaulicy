@@ -100,7 +100,9 @@ try {
   // Every village line has one.
   const villages = main.slice(main.indexOf('id="wsie-heading"'));
   const lines = villages.match(/<ul class="govuk-list">([\s\S]*)<\/ul>/)?.[1];
-  const bare = (lines ?? "").match(/<li>(?!<a class="govuk-link" href="\/adres\/[^"]*-)/g);
+  const bare = (lines ?? "").match(
+    /<li>(?!<a class="govuk-link" href="\/adres\/[^"]*-)/g,
+  );
   if (bare) failures.push(`/ulice: ${bare.length} village lines without id`);
   for (const id of ["ulice-heading", "wsie-heading"]) {
     if (!ids.includes(id)) failures.push(`/ulice: no id ${id}`);
