@@ -1,14 +1,14 @@
-// Checks the address search (alphagov accessible-autocomplete, which takes
-// over the field once the page is idle, or on /szukaj with a value at its
-// first focus) on the home page and /szukaj at 360px and 1280px: the result
+// Checks the address search (alphagov accessible-autocomplete's React build,
+// the field from the first paint) on the home page and /szukaj at 360px and
+// 1280px: the result
 // list opens inline, under the field and above „Szukaj” (GOV.UK's default),
 // so it pushes the content below down while open but never covers the
 // button, and every layout shift is right after input (none that CLS would
 // count); once closed (Escape, a click outside) the content is back where it
 // was. It follows the APG combobox keyboard model (nothing highlighted until
 // ArrowDown, which goes to the first option), and its rows use the field's
-// font family and size. On /szukaj?q=… the list stays closed on load and
-// opens on the first focus.
+// font family and size. On /szukaj?q=… the field is empty and the list
+// stays closed on load.
 // Matching runs on the device: the index loads once, when the page is idle
 // after load or on focus if that comes first (only on focus with
 // Save-Data), and typing makes no request. Also: "ul" alone asks for a name, "Zmień adres" on a
@@ -17,15 +17,18 @@
 // ("kosciuszki 7a") reaches the street page, which picks the part of a split
 // street by it, or asks for it (also without JS). Picking a suggestion (a
 // tap, or ArrowDown and Enter) only fills the field and closes the list, as
-// GOV.UK's default; „Szukaj” or the next Enter submits the form, and
-// /szukaj opens the picked place, also with a house number typed after it.
-// Enter with no option highlighted (list open or closed, none found)
-// submits what was typed. The search form, typed and submitted: one
-// clearly best place opens its page; otherwise /szukaj lists them. The
-// hint's example ("Asnyka 5") opens its street with a number the register has. /szukaj,
-// /api/search and lib/search.ts rank alike. /szukaj has the same field,
-// prefilled once, with its error state. Run after
-// `next build`; needs Playwright's Chromium.
+// GOV.UK's default; „Szukaj” or the next Enter submits the form, which opens
+// the picked place, also with a house number typed after it. Enter with no
+// option highlighted (list open or closed, none found) submits what was
+// typed. The search form, typed and submitted, on the home page and on
+// /szukaj: a client-side navigation, never a document load; one clearly best
+// place opens its page with no /szukaj in between; otherwise /szukaj lists
+// them at once, with no skeleton; Back and Forward go where they should. A
+// direct /szukaj?q= with one place replaces itself with the place's page.
+// The hint's example ("Asnyka 5") opens its street with a number the
+// register has. /szukaj, /api/search and lib/search.ts rank alike. An empty
+// search shows GOV.UK's error on the page where it was submitted, and only
+// then. Run after `next build`; needs Playwright's Chromium.
 import { chromium } from "playwright";
 import { matcher, placeHref } from "../lib/search.ts";
 import { finish, startServer } from "./lib/server.mjs";
@@ -36,27 +39,33 @@ const WIDTHS = [360, 1280];
 // "good" CLS (web.dev/articles/cls).
 const REVEAL_SHIFT = 0.1;
 // The two pages with the search field: the home page, and /szukaj with a
-// value (none found, so the page stays and lists what to try).
+// query (none found, so the page stays and lists what to try): its results.
 const PAGES = [
   ["/", ""],
-  ["/szukaj?q=xyzqq", "xyzqq"],
+  ["/szukaj?q=xyzqq", "Nie znaleźliśmy „xyzqq”."],
 ];
 
-// Clicks the field, waits for the library's, and empties it (on /szukaj it
-// holds the value searched for, handed over after the takeover).
-async function openField(page, value) {
+// Clicks the field (the library's, empty on both pages).
+async function openField(page) {
   await page.locator("#adres").click();
   const input = page.getByRole("combobox");
   await input.waitFor();
-  if (value) {
-    await page.waitForFunction(
-      (v) => document.querySelector("#adres").value === v,
-      value,
-    );
-    await input.fill("");
-  }
   return input;
 }
+
+// Every address the page's history moves to (pushState, replaceState), so a
+// check can tell /szukaj was never shown on the way to a place.
+const recordHistory = (page) =>
+  page.addInitScript(() => {
+    window.__urls = [];
+    for (const name of ["pushState", "replaceState"]) {
+      const original = history[name].bind(history);
+      history[name] = (state, unused, url) => {
+        if (url) window.__urls.push(new URL(url, location.href).pathname);
+        return original(state, unused, url);
+      };
+    }
+  });
 
 // „Szukaj” is not under the list: their boxes do not meet, and the button
 // is on top at its centre.
@@ -100,7 +109,7 @@ const check = (ok, message) => {
 };
 
 try {
-  for (const [path, value] of PAGES)
+  for (const [path, results] of PAGES)
     for (const width of WIDTHS) {
       const page = await browser.newPage({
         viewport: { width, height: 800 },
@@ -130,7 +139,7 @@ try {
       });
       // The index loads once the page is idle, with no focus (and only after
       // hydration, so typing is not lost).
-      if (value) release();
+      if (results) release();
       await page.goto(`${server.origin}${path}`, { waitUntil: "load" });
       await Promise.race([
         indexRequested,
@@ -176,8 +185,7 @@ try {
           });
         });
       // On /szukaj, below the field: its results, once they are in.
-      if (value)
-        await page.locator("main h1", { hasText: "Brak wyników" }).waitFor();
+      if (results) await page.locator("main p", { hasText: results }).waitFor();
       const before = await below();
       const label = `${path} ${width}px`;
       const same = async (state) => {
@@ -216,11 +224,11 @@ try {
           `${label} ${state}: „Szukaj” under the list ${JSON.stringify(button)}`,
         );
       };
-      const input = await openField(page, value);
+      const input = await openField(page);
       const listbox = page.getByRole("listbox");
 
       await input.pressSequentially("a");
-      if (!value) {
+      if (!results) {
         await note("Szukam…").waitFor();
         await sameType(note("Szukam…"), "loading");
       }
@@ -346,30 +354,48 @@ try {
     }
 
   // Enter with the list open and nothing highlighted submits what was
-  // typed (ul. and os. Mickiewicza: /szukaj lists both), on both pages.
-  for (const [path, value] of PAGES) {
+  // typed (ul. and os. Mickiewicza: /szukaj lists both), on both pages: a
+  // client-side navigation (no document request), the results there at
+  // once (the index is in memory), with no skeleton, the field empty.
+  for (const [path] of PAGES) {
     const page = await browser.newPage({
       viewport: { width: 360, height: 800 },
     });
+    const documents = [];
+    page.on("request", (r) => {
+      if (r.isNavigationRequest()) documents.push(r.url());
+    });
     await page.goto(`${server.origin}${path}`, { waitUntil: "networkidle" });
-    const input = await openField(page, value);
+    const input = await openField(page);
     await input.pressSequentially("Mickiewicza");
     await page
       .locator('[role="option"]:not([aria-disabled])')
       .first()
       .waitFor();
     const open = await input.getAttribute("aria-expanded");
-    // The form's request (/szukaj may then redirect to the one place found).
-    const [submitted] = await Promise.all([
-      page
-        .waitForRequest((r) => r.isNavigationRequest(), { timeout: 5000 })
-        .catch(() => null),
-      input.press("Enter"),
-    ]);
+    documents.length = 0;
+    await input.press("Enter");
+    await page
+      .waitForURL(`${server.origin}/szukaj?q=Mickiewicza`, { timeout: 5000 })
+      .catch(() => {});
+    const landed = await page.evaluate(() => ({
+      url: location.pathname + location.search,
+      skeletons: document.querySelectorAll("main .app-skeleton").length,
+      h1: document.querySelector("main h1")?.textContent,
+      results: document.querySelectorAll(
+        "main ul.govuk-list a[href^='/adres/']",
+      ).length,
+      field: document.querySelector("#adres")?.value,
+    }));
     check(
       open === "true" &&
-        submitted?.url() === `${server.origin}/szukaj?q=Mickiewicza`,
-      `${path}: Enter with the list open (aria-expanded ${open}) went to ${submitted?.url()}`,
+        landed.url === "/szukaj?q=Mickiewicza" &&
+        documents.length === 0 &&
+        landed.skeletons === 0 &&
+        landed.h1 === "Wyszukaj adres" &&
+        landed.results === 2 &&
+        landed.field === "",
+      `${path}: Enter with the list open (aria-expanded ${open}): ${JSON.stringify({ ...landed, documents })}`,
     );
     await page.close();
   }
@@ -584,12 +610,13 @@ try {
     .catch(() => check(false, `Enter with no results: at ${enter.url()}`));
   await enter.close();
 
-  // /szukaj?q=…: the list stays closed on load and idle (the field is the
-  // server's until its first focus, so no aria-expanded="true" and no
-  // options); a click opens it on real places.
+  // /szukaj?q=…: the field is empty (the static shell's), the list stays
+  // closed on load and idle; typing opens it on real places. One index
+  // request, shared by the results and the field.
   const closed = await browser.newPage({
     viewport: { width: 360, height: 800 },
   });
+  const closedIndex = countIndex(closed);
   await closed.goto(`${server.origin}/szukaj?q=adama`, {
     waitUntil: "networkidle",
   });
@@ -601,73 +628,88 @@ try {
     options: [...document.querySelectorAll('[role="option"]')].filter((el) =>
       el.checkVisibility(),
     ).length,
+    error: document.querySelectorAll(
+      ".govuk-error-summary, .govuk-error-message",
+    ).length,
   }));
   check(
-    onLoad.value === "adama" &&
+    onLoad.value === "" &&
       onLoad.expanded !== "true" &&
       !onLoad.focused &&
-      onLoad.options === 0,
-    `/szukaj?q=adama: the list opens on load ${JSON.stringify(onLoad)}`,
+      onLoad.options === 0 &&
+      onLoad.error === 0,
+    `/szukaj?q=adama: on load ${JSON.stringify(onLoad)}`,
   );
   await closed.locator("#adres").click();
+  await closed.getByRole("combobox").pressSequentially("adama");
   await closed
     .locator('[role="option"]:not([aria-disabled])', { hasText: "Asnyka" })
     .first()
     .waitFor({ timeout: 5000 })
-    .catch(() => check(false, "/szukaj?q=adama: no options after a click"));
+    .catch(() => check(false, "/szukaj?q=adama: no options after typing"));
+  check(
+    closedIndex.count === 1,
+    `/szukaj?q=adama: ${closedIndex.count} index requests, expected 1`,
+  );
   await closed.close();
 
-  // /szukaj's field is the home page's, enhanced alike: it keeps what was
-  // searched for, once, its suggestions are real places, and an empty search
-  // keeps GOV.UK's error styles, with the error read first.
-  const again = await browser.newPage({
-    viewport: { width: 360, height: 800 },
-  });
-  const againIndex = countIndex(again);
-  await again.goto(`${server.origin}/szukaj?q=adama`, {
-    waitUntil: "networkidle",
-  });
-  check(
-    againIndex.count === 1,
-    `/szukaj?q=adama: ${againIndex.count} index requests before focus, expected 1`,
-  );
-  await again.locator("#adres").click();
-  const prefilled = again.getByRole("combobox");
-  await prefilled.waitFor();
-  const options = again.locator('[role="option"]:not([aria-disabled])');
-  await options
-    .filter({ hasText: "Asnyka" })
-    .first()
-    .waitFor({ timeout: 5000 })
-    .catch(() => check(false, "/szukaj?q=adama: no suggestions on focus"));
-  const texts = await options.allTextContents();
-  check(
-    (await prefilled.inputValue()) === "adama" &&
-      (await again.locator('input[name="q"]').count()) === 1 &&
-      !texts.includes("adama"),
-    `/szukaj?q=adama enhanced: field "${await prefilled.inputValue()}", options ${JSON.stringify(texts)}`,
-  );
-  check(
-    againIndex.count === 1,
-    `/szukaj?q=adama: ${againIndex.count} index requests after focus, expected 1`,
-  );
-  await again.goto(`${server.origin}/szukaj?q=`, { waitUntil: "networkidle" });
-  await again.locator("#adres").click();
-  const errored = again.getByRole("combobox");
-  await errored.waitFor();
-  const enhanced = await errored.evaluate((el) => ({
-    value: el.value,
-    input: el.classList.contains("govuk-input--error"),
-    group: Boolean(el.closest(".govuk-form-group--error")),
-    hint: document
-      .getElementById(el.getAttribute("aria-describedby") ?? "")
-      ?.textContent?.startsWith("Błąd: Wpisz nazwę ulicy albo wsi."),
-  }));
-  check(
-    Object.values(enhanced).every((v) => v === true || v === ""),
-    `/szukaj?q= enhanced: ${JSON.stringify(enhanced)}`,
-  );
-  await again.close();
+  // An empty search: no error until one is submitted (a direct /szukaj,
+  // /szukaj?q=); then GOV.UK's, on the page where it was, with no
+  // navigation: the error summary (focused, so it is announced) linking to
+  // the field, the error message, the error styles, the error read first.
+  for (const path of ["/", "/szukaj", "/szukaj?q="]) {
+    const empty = await browser.newPage({
+      viewport: { width: 360, height: 800 },
+    });
+    await empty.goto(`${server.origin}${path}`, { waitUntil: "networkidle" });
+    const before = await empty
+      .locator(".govuk-error-summary, .govuk-error-message")
+      .count();
+    await empty.getByRole("button", { name: "Szukaj" }).click();
+    await empty
+      .waitForFunction(
+        () => document.activeElement?.classList.contains("govuk-error-summary"),
+        null,
+        { timeout: 5000 },
+      )
+      .catch(() => {});
+    const shown = await empty.evaluate(() => {
+      const field = document.querySelector("#adres");
+      return {
+        url: location.pathname + location.search,
+        focused: document.activeElement?.classList.contains(
+          "govuk-error-summary",
+        ),
+        link: document
+          .querySelector(".govuk-error-summary__list a")
+          ?.getAttribute("href"),
+        message: document.querySelector("#adres-error")?.textContent,
+        input: field.classList.contains("govuk-input--error"),
+        group: Boolean(field.closest(".govuk-form-group--error")),
+        hint: document
+          .getElementById(field.getAttribute("aria-describedby") ?? "")
+          ?.textContent?.startsWith("Błąd: Wpisz nazwę ulicy albo wsi."),
+      };
+    });
+    const at = new URL(path, server.origin);
+    check(
+      before === 0 &&
+        shown.url === at.pathname + at.search &&
+        shown.focused &&
+        shown.link === "#adres" &&
+        shown.message === "Błąd: Wpisz nazwę ulicy albo wsi" &&
+        shown.input &&
+        shown.group &&
+        shown.hint,
+      `${path}: empty search ${JSON.stringify({ before, ...shown })}`,
+    );
+    await empty.locator(".govuk-error-summary__list a").click();
+    check(
+      (await empty.evaluate(() => document.activeElement?.id)) === "adres",
+      `${path}: the error summary's link does not focus the field`,
+    );
+    await empty.close();
+  }
 
   // The same search everywhere: for each query, where a browser lands from
   // /szukaj (one place: its page; else the first result), /api/search's
@@ -702,9 +744,7 @@ try {
     // The results, or the one place's page, once the index is in.
     await Promise.race([
       lands.waitForURL((url) => url.pathname !== "/szukaj"),
-      lands
-        .locator("main h1", { hasText: /Wyniki wyszukiwania|Brak wyników/ })
-        .waitFor(),
+      lands.locator("main p", { hasText: /znaleźliśmy/ }).waitFor(),
     ]).catch(() => {});
     await lands.waitForLoadState("networkidle");
     const at = new URL(lands.url());
@@ -726,43 +766,96 @@ try {
 
   // A split street without a number asks for it, with no JS at all.
   const plain = await browser.newContext({ javaScriptEnabled: false });
-  // The home page's form, submitted: one place opens its page; several are
-  // listed on /szukaj. With JS: /szukaj's one-place redirect is a
-  // client-side one (above).
-  const form = await browser.newPage();
-  for (const [query, url] of [
-    ["rynek", "/adres/0972447-19253"],
-    ["Asnyka 12", "/adres/0972447-00470?nr=12"],
-    // The hint's example: a number the address register has.
-    ["Asnyka 5", "/adres/0972447-00470?nr=5"],
-    ["adama", "/szukaj?q=adama"],
-  ]) {
-    await form.goto(`${server.origin}/`, { waitUntil: "networkidle" });
-    // The field as JS enhances it (the library's combobox), typed, no pick.
-    await form.locator("#adres").click();
-    await form.getByRole("combobox").pressSequentially(query);
-    await form.getByRole("button", { name: "Szukaj" }).click();
-    await form
-      .waitForURL(`${server.origin}${url}`, { timeout: 5000 })
-      .catch(() => check(false, `form search "${query}": at ${form.url()}`));
-    if (query === "Asnyka 5") {
+  // The search form, submitted (typed, no pick; „Szukaj”), from the home
+  // page and from /szukaj: a client-side navigation, never a document
+  // request. One place opens its page, /szukaj never shown on the way
+  // (pushed or replaced); several are listed on /szukaj at once, no
+  // skeleton.
+  for (const from of ["/", "/szukaj?q=xyzqq"])
+    for (const [query, url] of [
+      ["rynek", "/adres/0972447-19253"],
+      ["Asnyka 12", "/adres/0972447-00470?nr=12"],
+      // The hint's example: a number the address register has.
+      ["Asnyka 5", "/adres/0972447-00470?nr=5"],
+      ["adama", "/szukaj?q=adama"],
+    ]) {
+      const form = await browser.newPage();
+      await recordHistory(form);
+      const documents = [];
+      form.on("request", (r) => {
+        if (r.isNavigationRequest()) documents.push(r.url());
+      });
+      await form.goto(`${server.origin}${from}`, { waitUntil: "networkidle" });
+      await form.locator("#adres").click();
+      await form.getByRole("combobox").pressSequentially(query);
+      documents.length = 0;
+      await form.evaluate(() => {
+        window.__urls = [];
+      });
+      await form.getByRole("button", { name: "Szukaj" }).click();
+      await form
+        .waitForURL(`${server.origin}${url}`, { timeout: 5000 })
+        .catch(() => check(false, `${from} "${query}": at ${form.url()}`));
+      const state = await form.evaluate(() => ({
+        urls: window.__urls,
+        skeletons: document.querySelectorAll("main .app-skeleton").length,
+        results: document.querySelectorAll(
+          "main ul.govuk-list a[href^='/adres/']",
+        ).length,
+      }));
+      const list = url.startsWith("/szukaj");
       check(
-        !(await form.content()).includes("Nie znaleźliśmy nr"),
-        "hint example Asnyka 5: the register lacks the number",
+        documents.length === 0 &&
+          (list
+            ? state.skeletons === 0 && state.results === 2
+            : !state.urls.includes("/szukaj")),
+        `${from} "${query}": ${JSON.stringify({ ...state, documents })}`,
       );
+      if (query === "Asnyka 5") {
+        check(
+          !(await form.content()).includes("Nie znaleźliśmy nr"),
+          "hint example Asnyka 5: the register lacks the number",
+        );
+      }
+      await form.close();
     }
+
+  // Back and Forward: home, a list, a place; and a direct /szukaj?q= with
+  // one place, which replaces itself, so Back never returns to it (no loop).
+  const nav = await browser.newPage();
+  await nav.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+  const searchFor = async (query, url) => {
+    await nav.locator("#adres").click();
+    await nav.getByRole("combobox").pressSequentially(query);
+    await nav.getByRole("button", { name: "Szukaj" }).click();
+    await nav.waitForURL(`${server.origin}${url}`, { timeout: 5000 });
+  };
+  const steps = [];
+  try {
+    await searchFor("adama", "/szukaj?q=adama");
+    await nav.locator("main ul.govuk-list a").first().waitFor();
+    await searchFor("rynek", "/adres/0972447-19253");
+    await nav.goBack();
+    await nav.waitForURL(`${server.origin}/szukaj?q=adama`);
+    await nav.locator("main ul.govuk-list a").first().waitFor();
+    steps.push("back to the list");
+    await nav.goBack();
+    await nav.waitForURL(`${server.origin}/`);
+    steps.push("back home");
+    await nav.goForward();
+    await nav.waitForURL(`${server.origin}/szukaj?q=adama`);
+    steps.push("forward to the list");
+    await nav.goto(`${server.origin}/szukaj?q=rynek`);
+    await nav.waitForURL(`${server.origin}/adres/0972447-19253`);
+    await nav.goBack();
+    await nav.waitForURL(`${server.origin}/szukaj?q=adama`, {
+      timeout: 5000,
+    });
+    steps.push("back past the replaced /szukaj");
+  } catch (error) {
+    check(false, `Back/Forward: after ${JSON.stringify(steps)}: ${error}`);
   }
-  // The results stream in after the placeholder: wait for them to show.
-  await form
-    .locator("main ul.govuk-list a")
-    .first()
-    .waitFor({ timeout: 5000 })
-    .catch(() => {});
-  check(
-    (await form.locator("main ul.govuk-list a").count()) === 2,
-    "form search adama: not 2 results",
-  );
-  await form.close();
+  await nav.close();
   const ask = await plain.newPage();
   // The address page asks for the number on its waste card, linking the
   // waste subpage's question; the answer opens the address page with it.
@@ -979,11 +1072,10 @@ try {
     .catch(() => check(false, "fallback: /api/search did not answer"));
   await fallback.close();
 
-  // Typing straight after load, before accessible-autocomplete has loaded
-  // (it does once the page is idle), on Slow 4G + 4× CPU (as check-perf): no
-  // page error, the field stays, nothing typed is lost and the results
-  // appear. At 0 ms per key typing must end before the library mounts, so
-  // that path is really covered.
+  // Typing straight after load, before the page has hydrated, on Slow 4G +
+  // 4× CPU (as check-perf): the field is the library's from the first paint
+  // (server-rendered, hydrated in place), no page error, the field stays,
+  // nothing typed is lost and the results appear.
   for (const delay of [0, 60, 150]) {
     const context = await browser.newContext({
       viewport: { width: 360, height: 800 },
@@ -1005,16 +1097,12 @@ try {
     await field.pressSequentially("asnyka", { delay });
     // The field vanishing (the #33 bug) must fail the check, not hang it.
     const mounted = await field
-      .evaluate((el) => el.hasAttribute("aria-expanded"), null, {
-        timeout: 2000,
-      })
+      .evaluate((el) => el.getAttribute("role"), null, { timeout: 2000 })
       .catch(() => "missing");
-    if (delay === 0) {
-      check(
-        mounted === false,
-        `early typing: the field was ${mounted === "missing" ? "gone" : "already the library's"} when typing ended`,
-      );
-    }
+    check(
+      mounted === "combobox",
+      `early typing at ${delay} ms per key: the field was ${mounted} when typing ended`,
+    );
     await early
       .locator('[role="option"]:not([aria-disabled])', { hasText: "Asnyka" })
       .first()

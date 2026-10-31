@@ -1,11 +1,12 @@
 // iOS opens the keyboard only for focus given in the tap itself, never for
 // focus moved to another field afterwards, so the field a user taps must
-// already be accessible-autocomplete's own (task 95). In WebKit as an iPhone,
-// on a cold load of / and of /szukaj with the empty-search error: once the
-// page is idle, one tap focuses that very field and no field is added or
-// removed after it. On /szukaj, the error summary's link still moves focus
-// to the field. Typing straight after load loses nothing. Run after
-// `next build`; needs Playwright's WebKit.
+// already be accessible-autocomplete's own (task 95): its React build,
+// rendered on the server and hydrated in place (task 227). In WebKit as an
+// iPhone, on a cold load of / and of /szukaj: the field in the HTML is the
+// library's combobox, one tap focuses that very field and no field is added
+// or removed after it. After an empty search, the error summary's link
+// moves focus to the field. Typing straight after load loses nothing. Run
+// after `next build`; needs Playwright's WebKit.
 import { devices, webkit } from "playwright";
 import { finish, startServer } from "./lib/server.mjs";
 
@@ -16,8 +17,8 @@ const check = (ok, message) => {
   if (!ok) failures.push(message);
 };
 const iphone = devices["iPhone 15"];
-// Idle: the library's field (a combobox) is in place.
-const idle = (page) =>
+// The library's field (a combobox), from the first paint.
+const combobox = (page) =>
   page.locator('#adres[role="combobox"]').waitFor({ timeout: 10000 });
 
 // Counts every field added to or removed from the search from now on.
@@ -42,11 +43,11 @@ const watchFields = (page) =>
   });
 
 try {
-  for (const path of ["/", "/szukaj?q="]) {
+  for (const path of ["/", "/szukaj?q=adama"]) {
     const context = await browser.newContext(iphone);
     const page = await context.newPage();
     await page.goto(`${server.origin}${path}`, { waitUntil: "networkidle" });
-    await idle(page);
+    await combobox(page);
     const field = await page.locator("#adres").elementHandle();
     await watchFields(page);
     await page.locator("#adres").tap();
@@ -67,11 +68,11 @@ try {
     await context.close();
   }
 
-  // The error summary's link moves focus to the (final) field.
+  // An empty search: the error summary's link moves focus to the field.
   const context = await browser.newContext(iphone);
   const page = await context.newPage();
-  await page.goto(`${server.origin}/szukaj?q=`, { waitUntil: "networkidle" });
-  await idle(page);
+  await page.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Szukaj" }).tap();
   await page.locator('.govuk-error-summary__list a[href="#adres"]').tap();
   await page.waitForTimeout(300);
   const linked = await page.evaluate(() => ({
@@ -80,11 +81,11 @@ try {
   }));
   check(
     linked.id === "adres" && linked.role === "combobox",
-    `/szukaj?q=: the error summary link does not focus the field ${JSON.stringify(linked)}`,
+    `empty search: the error summary link does not focus the field ${JSON.stringify(linked)}`,
   );
   await context.close();
 
-  // Typing at once after load, before the library is in place: nothing lost.
+  // Typing at once after load, before hydration: nothing lost.
   for (const delay of [0, 30]) {
     const fast = await browser.newContext(iphone);
     const early = await fast.newPage();
@@ -93,7 +94,7 @@ try {
     await early.goto(`${server.origin}/`, { waitUntil: "commit" });
     await early.locator("#adres").tap();
     await early.keyboard.type("asnyka", { delay });
-    await idle(early);
+    await combobox(early);
     await early.waitForTimeout(500);
     const state = {
       errors,

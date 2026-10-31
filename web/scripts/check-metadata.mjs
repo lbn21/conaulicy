@@ -74,8 +74,8 @@ try {
     if (response.status !== status) {
       failures.push(`${path}: ${response.status}, want ${status}`);
     }
-    // /szukaj: static, one title for every outcome; its column (the h1)
-    // drawn in the browser.
+    // /szukaj: static, one title and one h1 for every outcome, both in the
+    // static shell; its results drawn in the browser.
     if (path.startsWith("/szukaj")) {
       const shown = (await renderedPage(`${server.origin}${path}`)).html;
       const h1 = all(shown, /<h1[^>]*>([\s\S]*?)<\/h1>/g);

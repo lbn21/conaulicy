@@ -128,7 +128,7 @@ export async function searchIndexOf(origin, home) {
 
 // A page as the browser shows it once every live block is in: the page's
 // static shell streams each block (IMGW, water, „Najbliższe dni”) after it,
-// behind a skeleton (components/live-block.tsx), and /szukaj's column and
+// behind a skeleton (components/live-block.tsx), and /szukaj's results and
 // „Dziś” render in the browser (components/day-word.tsx), so the server's
 // HTML alone has skeletons there. Chromium, JS on, reduced motion; the
 // skeletons gone (or 10 s); void elements written as React writes them

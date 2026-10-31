@@ -680,7 +680,7 @@ async function visit(browser, origin, state, pagePath, name) {
     });
     const page = await context.newPage();
     const response = await page.goto(origin + pagePath, { waitUntil: "load" });
-    // The banner and /szukaj's h1 come in after the shell.
+    // The banner and /szukaj's results come in after the shell.
     await page
       .waitForFunction(
         () =>
