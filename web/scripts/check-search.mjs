@@ -719,6 +719,12 @@ try {
       );
     }
   }
+  // The results stream in after the placeholder: wait for them to show.
+  await form
+    .locator("main ul.govuk-list a")
+    .first()
+    .waitFor({ timeout: 5000 })
+    .catch(() => {});
   check(
     (await form.locator("main ul.govuk-list a").count()) === 2,
     "form search adama: not 2 results",
