@@ -118,6 +118,29 @@ try {
       if (!java) messages.push(...(await checkRemotely(html, `file:${file}`)));
     }
   }
+  // With HTML_DIR, also the one-match search as served, its redirect not
+  // followed (for the reviewer; not validated: it may be a bare 308).
+  if (process.env.HTML_DIR)
+    for (const [ua, suffix] of [
+      [BROWSER_UA, ""],
+      [BOT_UA, ".bot"],
+    ]) {
+      const res = await fetch(`${server.origin}/szukaj?q=rynek`, {
+        headers: { "user-agent": ua },
+        redirect: "manual",
+      });
+      writeFileSync(
+        path.join(dir, `search-one${suffix}.html`),
+        await res.text(),
+      );
+      writeFileSync(
+        path.join(dir, `search-one${suffix}.headers.txt`),
+        [
+          `status: ${res.status}`,
+          ...[...res.headers].map(([k, v]) => `${k}: ${v}`),
+        ].join("\n"),
+      );
+    }
   if (java)
     messages = checkLocally(
       java,
