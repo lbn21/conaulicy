@@ -27,18 +27,21 @@ const ONE_PLACE = "/adres/0972447-19253";
 const server = await startServer(3313);
 const browser = await chromium.launch();
 try {
-  // Prefetching settles: after the hub's load (its links in view prefetch
+  // Prefetching settles: after a page's load (its links in view prefetch
   // their routes' App Shells) the network goes quiet, as checks waiting for
-  // "networkidle" need. If not, every request is listed.
-  {
+  // "networkidle" need. If not, what was requested more than twice is
+  // listed, with its headers.
+  for (const quietPath of [HUB, "/", "/ulice"]) {
     const quiet = await browser.newPage({
       viewport: { width: 360, height: 800 },
     });
-    // Per URL (query left out): how many requests, how they ended, and the
+    // Per URL (Next.js's _rsc left out): how many requests, how they ended, and the
     // first response's caching headers and its request's router headers.
     const seen = new Map();
     const entry = (request) => {
-      const url = request.url().replace(server.origin, "").split("?")[0];
+      const parsed = new URL(request.url());
+      parsed.searchParams.delete("_rsc");
+      const url = `${parsed.pathname}${parsed.search}`;
       if (!seen.has(url)) seen.set(url, { requests: 0, ended: {} });
       return seen.get(url);
     };
@@ -84,7 +87,7 @@ try {
     quiet.on("requestfailed", (request) =>
       end(request, request.failure()?.errorText ?? "failed"),
     );
-    await quiet.goto(`${server.origin}${HUB}`, { waitUntil: "load" });
+    await quiet.goto(`${server.origin}${quietPath}`, { waitUntil: "load" });
     const idle = await quiet
       .waitForLoadState("networkidle", { timeout: 15000 })
       .then(() => true)
@@ -92,7 +95,7 @@ try {
     const busy = [...seen].filter(([, e]) => e.requests > 2);
     check(
       idle,
-      `hub: the network never goes quiet after load; requested more than twice:\n  ${busy.map(([url, e]) => `${url} ${JSON.stringify(e)}`).join("\n  ")}\n  for comparison: ${[
+      `${quietPath}: the network never goes quiet after load; requested more than twice:\n  ${busy.map(([url, e]) => `${url} ${JSON.stringify(e)}`).join("\n  ")}\n  for comparison: ${[
         ...seen,
       ]
         .filter(
