@@ -22,7 +22,13 @@
 //
 // Runs against `next start` on the current build and the CI fixture.
 import { withHouseNumber } from "../lib/house.ts";
-import { finish, searchIndexOf, startServer } from "./lib/server.mjs";
+import {
+  BOT_UA,
+  BROWSER_UA,
+  finish,
+  searchIndexOf,
+  startServer,
+} from "./lib/server.mjs";
 
 const escapeHtml = (text) =>
   text
@@ -209,9 +215,11 @@ try {
   const search = (html) =>
     /<search[^>]*>[\s\S]*?<\/search>/.exec(html)?.[0] ?? "";
   for (const [q, parts] of SEARCH) {
-    const html = await (
-      await fetch(`${server.origin}/szukaj?q=${encodeURIComponent(q)}`)
-    ).text();
+    const page = (ua) =>
+      fetch(`${server.origin}/szukaj?q=${encodeURIComponent(q)}`, {
+        headers: { "user-agent": ua },
+      }).then((res) => res.text());
+    const html = await page(BROWSER_UA);
     const input = field(html);
     const error = q === "";
     const want = {
@@ -258,10 +266,17 @@ try {
     if (order.some((at, i) => at < 0 || (i > 0 && at < order[i - 1]))) {
       failures.push(`/szukaj?q=${q}: page order ${order}`);
     }
-    // Metadata in <head>, never streamed into <body> (htmlLimitedBots).
-    const head = html.slice(0, html.indexOf("</head>"));
+    // The metadata: in <head> for an HTML-limited bot; a browser may get
+    // it streamed, so anywhere in its document (next.config.ts).
+    const bot = await page(BOT_UA);
+    const head = bot.slice(0, bot.indexOf("</head>"));
     if (!head.includes("<title>") || !head.includes('name="robots"')) {
-      failures.push(`/szukaj?q=${q}: <title> or robots meta not in <head>`);
+      failures.push(
+        `/szukaj?q=${q} (bot): <title> or robots meta not in <head>`,
+      );
+    }
+    if (!html.includes("<title>") || !html.includes('name="robots"')) {
+      failures.push(`/szukaj?q=${q} (browser): no <title> or robots meta`);
     }
   }
   // One field: /szukaj's form is the home page's, but for its value.

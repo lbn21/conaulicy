@@ -10,7 +10,7 @@ import { writeFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import lighthouse from "lighthouse";
 import { chromium } from "playwright";
-import { finish, startServer } from "./lib/server.mjs";
+import { BROWSER_UA, finish, startServer } from "./lib/server.mjs";
 
 const PAGES = [
   { path: "/", name: "home" },
@@ -60,6 +60,10 @@ try {
         // Real throttling: Lighthouse's Slow 4G preset applied by Chrome
         // (request latency 150 ms × 3.75, 1.6 Mbps × 0.9) and 4× CPU.
         throttlingMethod: "devtools",
+        // A phone's Chrome, never a bot's user agent: Next.js renders a
+        // page per request for its HTML-limited bots, so the budgets
+        // measure what visitors get (lib/server.mjs).
+        emulatedUserAgent: BROWSER_UA,
       });
       if (lhr.configSettings.throttlingMethod !== "devtools") {
         throw new Error("Lighthouse did not use real (devtools) throttling");
