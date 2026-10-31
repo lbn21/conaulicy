@@ -174,11 +174,11 @@ jobs:
       - name: Accessibility (axe, WCAG 2.2 AA)
         run: node scripts/check-a11y.mjs
 
-      - name: Search popup (no layout shift, combobox keys)
-        run: node scripts/check-search.mjs
-
       - name: "Navigation (next/link: one document, live blocks, announcer, breadcrumbs)"
         run: node scripts/check-navigation.mjs
+
+      - name: Search popup (no layout shift, combobox keys)
+        run: node scripts/check-search.mjs
 
       # WebKit needs system libraries the runner lacks, hence --with-deps.
       - name: Install WebKit for the iPhone check

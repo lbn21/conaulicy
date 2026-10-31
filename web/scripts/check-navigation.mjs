@@ -25,6 +25,45 @@ const HUB = "/adres/0972447-00470";
 const server = await startServer(3313);
 const browser = await chromium.launch();
 try {
+  // Prefetching settles: after the hub's load (its links in view prefetch
+  // their routes' App Shells) the network goes quiet, as checks waiting for
+  // "networkidle" need. If not, every request is listed.
+  {
+    const quiet = await browser.newPage({
+      viewport: { width: 360, height: 800 },
+    });
+    const seen = new Map();
+    quiet.on("request", (request) => {
+      const headers = request.headers();
+      seen.set(request, {
+        url: request.url().replace(server.origin, ""),
+        prefetch:
+          headers["next-router-prefetch"] ??
+          headers["next-router-segment-prefetch"] ??
+          null,
+        status: "pending",
+      });
+    });
+    quiet.on("requestfinished", async (request) => {
+      const entry = seen.get(request);
+      if (entry) entry.status = (await request.response())?.status() ?? "none";
+    });
+    quiet.on("requestfailed", (request) => {
+      const entry = seen.get(request);
+      if (entry) entry.status = `failed ${request.failure()?.errorText}`;
+    });
+    await quiet.goto(`${server.origin}${HUB}`, { waitUntil: "load" });
+    const idle = await quiet
+      .waitForLoadState("networkidle", { timeout: 15000 })
+      .then(() => true)
+      .catch(() => false);
+    check(
+      idle,
+      `hub: the network never goes quiet after load (${seen.size} requests):\n  ${[...seen.values()].map((r) => JSON.stringify(r)).join("\n  ")}`,
+    );
+    await quiet.close();
+  }
+
   const page = await browser.newPage({ viewport: { width: 360, height: 800 } });
   const documents = [];
   // Page requests (RSC) for each path, not prefetches.
@@ -151,7 +190,9 @@ try {
   await arrived("home → example", examplePath, { crumbs: 1 });
 
   // The hub of the CI fixture's street: its waste and weather sections in.
-  await page.goto(`${server.origin}${HUB}`, { waitUntil: "networkidle" });
+  // "load", not "networkidle": the quiet network is checked above.
+  await page.goto(`${server.origin}${HUB}`, { waitUntil: "load" });
+  await visible("section#pogoda").waitFor();
   await page.evaluate(() => {
     window.__oneDocument = true;
   });
