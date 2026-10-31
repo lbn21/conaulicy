@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { cacheLife, cacheTag } from "next/cache";
 import { ImgwBanner } from "@/components/imgw-banner";
 import { PageMain } from "@/components/page-main";
+import { DATASET, IMGW } from "@/lib/headers";
 import { type ListedPlace, localityAnchor, placePath } from "@/lib/places";
 import { searchIndex } from "@/lib/schedule";
 import { pageMetadata } from "@/lib/share";
@@ -13,10 +15,6 @@ export const metadata: Metadata = pageMetadata({
     "Wszystkie ulice Lubaczowa i wsie gminy Lubaczów w jednym miejscu. Wybierz swoją i sprawdź wywóz śmieci, przerwy w dostawie wody i ostrzeżenia IMGW.",
 });
 
-// From the cached search index, as the sitemap: the same places, refreshed
-// with it (tag `dataset`, POST /api/revalidate), hourly as a safety net.
-export const revalidate = 3600;
-
 /**
  * Every place search can find, as plain links: for people who would rather
  * browse, without JS, and for search engines. The town's streets by first
@@ -24,6 +22,12 @@ export const revalidate = 3600;
  * under it if they have any. No client JS of its own.
  */
 export default async function AllPlacesPage() {
+  // From the cached search index, as the sitemap: the same places, purged
+  // with it (tag `dataset`, POST /api/revalidate). Cached as every page
+  // (next.config.ts `page`, 10 minutes: the banner's IMGW copy).
+  "use cache";
+  cacheLife("page");
+  cacheTag(DATASET, IMGW);
   const { list, noData } = await searchIndex();
   const without = new Set(noData);
   const town = list.townId ? localityAnchor(list.townId) : undefined;

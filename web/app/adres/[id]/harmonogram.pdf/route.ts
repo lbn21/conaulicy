@@ -43,8 +43,6 @@ import { FRACTIONS, TOKEN, tones } from "@/lib/waste-bin";
 import { WASTE_COLOURS as WASTE } from "@/lib/waste-colours";
 import { wastePath } from "@/lib/waste-module";
 
-export const runtime = "nodejs";
-
 // Printed QR codes and links point at the waste subpage
 // (/adres/<id>/smieci, with the house number) on the permanent address
 // (SITE_URL), never at a preview deployment.

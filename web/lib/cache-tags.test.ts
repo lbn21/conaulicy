@@ -157,3 +157,55 @@ test("the pages: IMGW's files in the store are read through one cache tagged IMG
     "app/ulice/page.tsx",
   ]);
 });
+
+test("the cached pages: each `use cache` scope tags what it reads", () => {
+  // Cache Components (next.config.ts): every page's cached scope calls
+  // cacheTag itself, with its data's tags, so the purges reach the page.
+  const scope = (tags: string) =>
+    new RegExp(`"use cache";\\n\\s+cacheLife\\("page"\\);\\n\\s+${tags}`);
+  // The banner, wherever it is shown; the pages reading the dataset tag
+  // all they render, the banner's IMGW too.
+  assert.match(
+    read("../components/imgw-banner.tsx"),
+    scope("cacheTag\\(IMGW\\);\\n\\s+const shown = banner"),
+  );
+  for (const path of ["../app/page.tsx", "../app/ulice/page.tsx"])
+    assert.match(read(path), scope("cacheTag\\(DATASET, IMGW\\);"), path);
+  assert.doesNotMatch(read("../app/szukaj/page.tsx"), /use cache/);
+  // The address pages: every module's tags; a subpage its module's and
+  // the place's (getPlace); their metadata the place's.
+  const modules = read("./modules.ts");
+  assert.match(modules, /load: getPlace,\n\s+tags: PLACE_TAGS,/);
+  assert.match(
+    modules,
+    /load: loadWater,\n\s+tags: \[\.\.\.PLACE_TAGS, WATER\],/,
+  );
+  assert.match(modules, /Date\.now\(\)\);\n\s+\},\n\s+tags: \[IMGW\],/);
+  assert.match(
+    read("./schedule.ts"),
+    /export const PLACE_TAGS = DAY_CACHE\.tags;/,
+  );
+  const modulesTags = (scopeTags: string, path: string, count = 1) =>
+    assert.equal(
+      read(path).match(new RegExp(scope(scopeTags).source, "g"))?.length,
+      count,
+      path,
+    );
+  modulesTags(
+    "const modules = [^;]+;\\n\\s+cacheTag\\(\\.\\.\\.modules\\.flatMap\\(\\(module\\) => module\\.tags\\)\\);",
+    "../components/hub.tsx",
+  );
+  modulesTags(
+    "const module = findSubpage\\(slug\\);\\n\\s+cacheTag\\(\\.\\.\\.PLACE_TAGS, \\.\\.\\.\\(module\\?\\.tags \\?\\? \\[\\]\\)\\);",
+    "../components/module-page.tsx",
+  );
+  modulesTags(
+    "cacheTag\\(\\.\\.\\.PLACE_TAGS\\);",
+    "../components/place-page.tsx",
+    2,
+  );
+  modulesTags(
+    "cacheTag\\(\\.\\.\\.PLACE_TAGS\\);",
+    "../components/water-page.tsx",
+  );
+});

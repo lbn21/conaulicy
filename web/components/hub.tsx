@@ -1,11 +1,7 @@
-import { Fragment } from "react";
+import { cacheLife, cacheTag } from "next/cache";
+import { Fragment, type ReactNode } from "react";
 import { Parts } from "@/components/parts";
-import {
-  AddressPage,
-  numberError,
-  PlaceNotFound,
-  StreetPage,
-} from "@/components/place-page";
+import { AddressPage, numberError, StreetPage } from "@/components/place-page";
 import { Upcoming } from "@/components/upcoming";
 import { MODULE_IDS } from "@/lib/address-routes";
 import { type Group, metaLine } from "@/lib/hub";
@@ -27,7 +23,7 @@ import { ordered } from "@/lib/upcoming";
 // of thing, task 131). A visible section break between sections. Dates in
 // the HTML are absolute; the relative words („Dziś”, „Teraz”) are the
 // island's, from the device's clock. What the sections list is the
-// server's, as of the render: a cached copy is refreshed by the ISR window
+// server's, as of the render: a cached copy is refreshed by the `page` profile
 // and the crons' purges after every check (app/adres/[id]/page.tsx). No calendar or PDF here: they
 // are on the waste subpage. A split street's number errors keep the street
 // page (StreetPage), GOV.UK's validation pattern.
@@ -118,21 +114,33 @@ const BREAK = (
   <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
 );
 
+/**
+ * The address page's body, cached (`use cache`, the `page` profile) with
+ * every module's tags: the page's params are awaited outside and passed in,
+ * and `unknown` (PlaceNotFound) passes through uncached, so its notFound()
+ * is thrown in the page's own render, never in the cache's.
+ */
 export async function HubMain({
   id,
   nr,
   missing = false,
+  unknown,
 }: {
   id: string;
   nr: string | null;
   /** ?nr= was sent without a usable number (/adres/[id]/numer). */
   missing?: boolean;
+  /** What an unknown place shows. */
+  unknown: ReactNode;
 }) {
+  "use cache";
+  cacheLife("page");
   const modules = MODULE_IDS.map((slug): Module<unknown> => MODULES[slug]);
+  cacheTag(...modules.flatMap((module) => module.tags));
   const [place, ...rest] = (await Promise.all(
     modules.map((module) => module.load(id, nr)),
   )) as [PlaceView | null, ...unknown[]];
-  if (!place) return <PlaceNotFound />;
+  if (!place) return <>{unknown}</>;
   if (numberError(place, missing)) {
     return <StreetPage place={place} missing={missing} />;
   }

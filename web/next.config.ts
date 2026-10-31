@@ -13,13 +13,31 @@ const nextConfig: NextConfig = {
   // shared Turbopack client runtime; bundling works today only because the
   // route never loads a standard font.
   serverExternalPackages: ["pdfkit"],
-  // Metadata always in <head>: on pages rendered per request (/szukaj),
-  // Next.js otherwise streams it for all but its list of bots, and tags
-  // resolved after the shell (a cold search index) land in <body>. Every
-  // user agent counts as "HTML-limited", the documented way to turn
-  // streaming metadata off. Prerendered pages are unaffected; /szukaj's
-  // body awaits the same data, so it costs no time.
-  htmlLimitedBots: /.*/,
+  // Cache Components (nextjs.org/docs/app/getting-started/caching): a page
+  // is prerendered, what it reads cached in `use cache` scopes with a
+  // cacheLife profile below and the cache tags of their data, so the crons'
+  // revalidateTag purges reach it (lib/headers.ts). Partial Prefetching set
+  // explicitly, as the docs ask. Next.js's own list of HTML-limited bots
+  // applies: they get metadata in <head>, browsers may get it streamed
+  // (/szukaj, rendered per request).
+  cacheComponents: true,
+  partialPrefetching: true,
+  cacheLife: {
+    // Every page: every one shows IMGW's warnings (the banner, or the
+    // address pages' „Najbliższe dni”), so none is cached for more than 10
+    // minutes; the crons also purge it by its tags. A stale copy is served
+    // once more while it regenerates. As the ISR window before (route
+    // segment revalidate = 600), with Next.js's default client stale time
+    // (5 minutes) and expireTime (a year).
+    page: { stale: 300, revalidate: 600, expire: 31_536_000 },
+    // The search index's own files (the sitemap): hourly, as its data
+    // cache (lib/schedule.ts CACHE), and purged with it by its tag.
+    dataset: { stale: 300, revalidate: 3600, expire: 31_536_000 },
+    // Request-time parts (task 218's plan, PR 3; unused so far): an expire
+    // under 5 minutes keeps them out of the prerender, resolved per request
+    // (nextjs.org/docs/app/api-reference/functions/cacheLife).
+    live: { stale: 30, revalidate: 60, expire: 120 },
+  },
   // The PDF route reads the TTF fonts with fs at runtime.
   outputFileTracingIncludes: {
     "/adres/[id]/harmonogram.pdf": ["./assets/fonts/*.ttf"],

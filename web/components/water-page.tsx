@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cacheLife, cacheTag } from "next/cache";
 import { NOT_FOUND_METADATA } from "@/components/page-not-found";
 import { Parts, textOf } from "@/components/parts";
 import { SubpageHeading } from "@/components/place-page";
@@ -12,7 +13,7 @@ import { withHouseNumber } from "@/lib/house";
 import type { Checked } from "@/lib/hub";
 import { indexable } from "@/lib/indexing";
 import { placePath, titleLabel } from "@/lib/places";
-import { getPlace } from "@/lib/schedule";
+import { getPlace, PLACE_TAGS } from "@/lib/schedule";
 import { shownNr } from "@/lib/schedule-notes";
 import { pageMetadata } from "@/lib/share";
 import { waterCalendarHref } from "@/lib/water-ics";
@@ -50,6 +51,9 @@ export async function waterMetadata(
   id: string,
   nr: string | null,
 ): Promise<Metadata> {
+  "use cache";
+  cacheLife("page");
+  cacheTag(...PLACE_TAGS);
   const place = await getPlace(id, nr);
   // As placeMetadata: Next.js's own noindex is the only robots tag.
   if (!place) return NOT_FOUND_METADATA;

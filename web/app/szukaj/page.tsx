@@ -26,6 +26,13 @@ import { ALL_PLACES } from "@/lib/static-pages";
 // none: what to try next. Rendered per request, so never cached by the CDN;
 // never indexed (next.config.ts sends the header).
 
+// Allowed to block (nextjs.org/docs/app/guides/building, "A blocking
+// product page"): the page waits for its query before it answers, so the
+// one-place redirect is a real 308 and the results are in the HTML, with
+// or without JS. Its metadata streams to browsers, in <head> for HTML-
+// limited bots (next.config.ts).
+export const instant = false;
+
 const EMPTY_ERROR = "Wpisz nazwę ulicy albo wsi";
 
 type Outcome =
