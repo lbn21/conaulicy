@@ -108,11 +108,12 @@ test("the shells: every `use cache` scope is cacheLife max and tags the dataset"
     "app/ulice/page.tsx: max DATASET",
     "components/hub.tsx: max ...PLACE_TAGS",
     "components/module-page.tsx: max ...PLACE_TAGS",
+    "components/place-crumbs.tsx: max ...PLACE_TAGS",
     "components/place-page.tsx: max ...PLACE_TAGS",
     "components/water-page.tsx: max ...PLACE_TAGS",
   ]);
   // Every scope is one of those.
-  assert.equal(calling(/"use cache"/).length, 7);
+  assert.equal(calling(/"use cache"/).length, 8);
   assert.match(
     read("./schedule.ts"),
     /export const PLACE_TAGS = DAY_CACHE\.tags;/,

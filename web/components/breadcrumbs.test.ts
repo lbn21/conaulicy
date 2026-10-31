@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { createElement, isValidElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -8,7 +9,6 @@ import AboutPage from "../app/o-projekcie/page.tsx";
 import PrivacyPage from "../app/prywatnosc/page.tsx";
 import { testPlace } from "../lib/water-fixture.ts";
 import { Breadcrumbs, type Crumb, HOME_CRUMB } from "./breadcrumbs.tsx";
-import { PageMain } from "./page-main.tsx";
 import { AddressPage, PlaceBreadcrumbs } from "./place-page.tsx";
 
 // GOV.UK's breadcrumbs (components/breadcrumbs.tsx): every item a link, the
@@ -68,16 +68,45 @@ test("address pages: home, the place's list, the address on a subpage", () => {
 });
 
 // GOV.UK places breadcrumbs before <main>, so the skip link
-// (#main-content) skips them (task 149).
-test("address pages: the breadcrumbs, then <main>", () => {
+// (#main-content) skips them (task 149). One <main>, the root layout's
+// (task 227: a page kept hidden by Next.js's Activity would repeat a page's
+// own), with the @breadcrumbs slot right before it.
+const root = new URL("../", import.meta.url);
+const source = (path: string) => readFileSync(new URL(path, root), "utf8");
+
+test("the layout: the breadcrumbs slot, then the one <main>", () => {
+  assert.match(
+    source("app/layout.tsx"),
+    /<div className="govuk-width-container">\s*\{breadcrumbs\}\s*<main className="govuk-main-wrapper" id="main-content">\s*\{children\}\s*<\/main>\s*<\/div>/,
+  );
+});
+
+test("no page or component renders a <main> or a main-content id", () => {
+  const files = ["app", "components"]
+    .flatMap((dir) =>
+      readdirSync(new URL(dir, root), { recursive: true, encoding: "utf8" })
+        .filter((path) => /\.tsx$/.test(path))
+        .map((path) => `${dir}/${path}`),
+    )
+    .filter((path) => path !== "app/layout.tsx");
+  assert.ok(files.length > 20);
+  for (const path of files) {
+    // JSX, not comments ("before <main>."): <main className=…> or <main>
+    // ending its line.
+    assert.doesNotMatch(
+      source(path),
+      /<main(\s+[a-zA-Z]|>\s*$)|id="main-content"/m,
+      path,
+    );
+  }
+});
+
+test("address pages: the column in <main>, no breadcrumbs of their own", () => {
   const html = renderToStaticMarkup(
     AddressPage({ place: testPlace(), children: null }),
   );
-  assert.match(
-    html,
-    /^<nav class="govuk-breadcrumbs[^"]*"[^>]*>[\s\S]*?<\/nav><main class="govuk-main-wrapper" id="main-content"><div class="govuk-grid-row">/,
-  );
-  assert.equal(html.match(/class="govuk-breadcrumbs[ "]/g)?.length, 1);
+  assert.match(html, /^<div class="govuk-grid-row">/);
+  assert.doesNotMatch(html, /govuk-breadcrumbs|<main/);
 });
 
 // The flat pages (and the 404): no breadcrumbs (GOV.UK: none on a site with
@@ -92,7 +121,7 @@ const elements = (node: unknown): ReactElement[] => {
   return [node, ...elements(children)];
 };
 
-test("the flat pages and the 404: no breadcrumbs, <main> outermost", () => {
+test("the flat pages and the 404: no breadcrumbs, no <main> of their own", () => {
   for (const page of [
     AboutPage(),
     PrivacyPage(),
@@ -100,7 +129,7 @@ test("the flat pages and the 404: no breadcrumbs, <main> outermost", () => {
     NotFound(),
   ]) {
     assert.ok(isValidElement(page));
-    assert.equal(page.type, PageMain);
     assert.ok(elements(page).every((el) => el.type !== Breadcrumbs));
+    assert.ok(elements(page).every((el) => el.type !== "main"));
   }
 });

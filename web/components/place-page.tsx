@@ -5,7 +5,6 @@ import { type ReactNode, Suspense } from "react";
 import { Breadcrumbs, type Crumb, HOME_CRUMB } from "@/components/breadcrumbs";
 import { CheckedLine } from "@/components/checked-line";
 import { ErrorSummary } from "@/components/error-summary";
-import { PageMain } from "@/components/page-main";
 import { NOT_FOUND_METADATA, PageNotFound } from "@/components/page-not-found";
 import { PickupSchedule } from "@/components/pickup-schedule";
 import {
@@ -231,13 +230,7 @@ function HouseNumberQuestion({
 /** The 404 page for an unknown place or module (see NotFound). */
 export function PlaceNotFound() {
   return (
-    <Suspense
-      fallback={
-        <PageMain>
-          <PageNotFound />
-        </PageMain>
-      }
-    >
+    <Suspense fallback={<PageNotFound />}>
       <NotFound />
     </Suspense>
   );
@@ -330,9 +323,10 @@ export function StreetPage({
 }
 
 /**
- * The address page's frame (the hub, and StreetPage): its breadcrumbs, then
- * <main> with the two-thirds column and its heading, the place's name as the
- * h1.
+ * The address page's frame (the hub, and StreetPage): the two-thirds column
+ * and its heading, the place's name as the h1, in the layout's <main>; its
+ * breadcrumbs are the layout's @breadcrumbs slot
+ * (components/place-crumbs.tsx).
  */
 export function AddressPage({
   place,
@@ -344,21 +338,16 @@ export function AddressPage({
   children: ReactNode;
 }) {
   return (
-    <>
-      <PlaceBreadcrumbs place={place} />
-      <PageMain>
-        <div className="govuk-grid-row">
-          <div className="govuk-grid-column-two-thirds">
-            <PlaceHeading
-              place={place}
-              heading={withHouseNumber(place.name, shownNr(place))}
-              error={error}
-            />
-            {children}
-          </div>
-        </div>
-      </PageMain>
-    </>
+    <div className="govuk-grid-row">
+      <div className="govuk-grid-column-two-thirds">
+        <PlaceHeading
+          place={place}
+          heading={withHouseNumber(place.name, shownNr(place))}
+          error={error}
+        />
+        {children}
+      </div>
+    </div>
   );
 }
 

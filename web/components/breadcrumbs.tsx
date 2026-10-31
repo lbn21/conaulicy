@@ -6,9 +6,10 @@ export const HOME_CRUMB: Crumb = { href: "/", label: "Strona główna" };
 /**
  * GOV.UK's breadcrumbs, every item a link and the page itself left out.
  * Only on the address pages: the rest of the site is flat (GOV.UK: none on
- * a flat site, the home page or an error page). Before <main>
- * (components/page-main.tsx), as GOV.UK places them, so the skip link skips
- * them (docs/layout.md). Its margin-top stands in for main's padding above
+ * a flat site, the home page or an error page). Before the layout's one
+ * <main>, from its @breadcrumbs slot (app/layout.tsx,
+ * components/place-crumbs.tsx), as GOV.UK places them, so the skip link
+ * skips them (docs/layout.md). Its margin-top stands in for main's padding above
  * it; GOV.UK's own margin-bottom (10 px) and main's padding make the gap to
  * what follows.
  */

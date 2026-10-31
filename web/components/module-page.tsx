@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import { cacheLife, cacheTag, io } from "next/cache";
 import type { ReactNode } from "react";
 import { BlockSkeleton, LiveBlock } from "@/components/live-block";
-import { PageMain } from "@/components/page-main";
 import { NOT_FOUND_METADATA } from "@/components/page-not-found";
-import { PlaceBreadcrumbs, SubpageHeading } from "@/components/place-page";
+import { SubpageHeading } from "@/components/place-page";
 import { Skeleton } from "@/components/skeleton";
 import { findSubpage } from "@/lib/modules";
 import { getPlace, PLACE_TAGS } from "@/lib/schedule";
@@ -112,25 +111,23 @@ export async function ModuleMain({
     module && !module.live ? module.load(id, nr) : null,
   ]);
   if (!module || !place || (!module.live && !data)) return <>{unknown}</>;
+  // Its breadcrumbs: the layout's @breadcrumbs slot (components/place-crumbs.tsx).
   return (
     <>
-      <PlaceBreadcrumbs place={place} subpage />
-      <PageMain>
-        {module.live ? (
-          <div className="govuk-grid-row">
-            <div className="govuk-grid-column-two-thirds">
-              <SubpageHeading place={place} heading={module.pageTitle} />
-              {live}
-            </div>
+      {module.live ? (
+        <div className="govuk-grid-row">
+          <div className="govuk-grid-column-two-thirds">
+            <SubpageHeading place={place} heading={module.pageTitle} />
+            {live}
           </div>
-        ) : (
-          <module.Details
-            data={data}
-            missing={missing}
-            checkedAt={module.checkedAt?.(data) ?? null}
-          />
-        )}
-      </PageMain>
+        </div>
+      ) : (
+        <module.Details
+          data={data}
+          missing={missing}
+          checkedAt={module.checkedAt?.(data) ?? null}
+        />
+      )}
     </>
   );
 }

@@ -6,7 +6,6 @@ import {
   SearchErrorSummary,
 } from "@/components/address-search";
 import { ImgwLive } from "@/components/imgw-banner";
-import { PageMain } from "@/components/page-main";
 import { SITE_URL } from "@/lib/config.generated";
 import { HOME_EXAMPLES } from "@/lib/examples";
 import { DATASET } from "@/lib/headers";
@@ -37,10 +36,10 @@ const WEBSITE = JSON.stringify({
 // in its own hole (components/imgw-banner.tsx).
 export default function Home() {
   return (
-    <PageMain>
+    <>
       <ImgwLive />
       <HomeBody />
-    </PageMain>
+    </>
   );
 }
 
