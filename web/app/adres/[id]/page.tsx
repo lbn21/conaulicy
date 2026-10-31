@@ -6,13 +6,8 @@ import { allPlaces } from "@/lib/prerender";
 // cached until the next import or deploy (the frame and the waste section,
 // cacheLife "max", purged by the import with the dataset tag), with every
 // block that changes between imports in its own <Suspense> hole, read per
-// request („Najbliższe dni”, water, weather: hubLive).
-
-// The App Shell and per-link prefetches must stay static; the holes render
-// only when the navigation completes the route
-// (nextjs.org/docs/app/api-reference/file-conventions/route-segment-config/ensureStatic,
-// 'prefetch'). 'navigation' would forbid the holes.
-export const ensureStatic = "prefetch";
+// request („Najbliższe dni”, water, weather: hubLive). Its prefetch stays
+// static (the root layout's ensureStatic).
 
 // Every known place at build (lib/prerender.ts), so none gets the fallback
 // shell.

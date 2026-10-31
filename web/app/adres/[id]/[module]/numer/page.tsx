@@ -9,7 +9,6 @@ import { PlaceNotFound } from "@/components/place-page";
 // rewrites it), as /adres/[id]/numer for the street page.
 // A static shell with a live hole, prerendered for every place, as the
 // subpage.
-export const ensureStatic = "prefetch";
 
 export { generateStaticParams } from "../page";
 

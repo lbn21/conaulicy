@@ -103,6 +103,36 @@ export function numberParam(segments: string[]): string {
     .join("/");
 }
 
+/** Which address page a path is: its place, module and house number. */
+export type AddressPage = {
+  id: string;
+  module: string | null;
+  nr: string | null;
+};
+
+/**
+ * The address page a path's segments name (["adres", id, …], as app/adres
+ * routes them: the page or a module's subpage, each plain, /numer or
+ * /nr/…), or null for any other path. For the breadcrumbs, which the root
+ * layout's @breadcrumbs slot draws from one catch-all page. The module is
+ * not checked here (an unknown one is a 404, components/place-crumbs.tsx).
+ */
+export function addressPage(segments: readonly string[]): AddressPage | null {
+  const [root, id, ...rest] = segments;
+  if (root !== "adres" || !id) return null;
+  const module =
+    rest.length > 0 && !RESERVED_SEGMENTS.includes(rest[0])
+      ? (rest.shift() ?? null)
+      : null;
+  if (rest.length === 0 || (rest.length === 1 && rest[0] === "numer")) {
+    return { id, module, nr: null };
+  }
+  if (rest[0] === "nr" && rest.length > 1) {
+    return { id, module, nr: numberParam(rest.slice(1)) };
+  }
+  return null;
+}
+
 /**
  * The page's own error variant (/adres/<id>/numer, /adres/<id>/smieci/numer)
  * for an address asked with an empty ?nr=; with any other value not in

@@ -5,6 +5,7 @@ import { getPathMatch } from "next/dist/shared/lib/router/utils/path-match";
 import {
   ADDRESS,
   ADDRESS_VARIANTS,
+  addressPage,
   FILE_NAMES,
   isModuleId,
   MODULE_IDS,
@@ -182,4 +183,41 @@ test("every file route under app/adres/[id]/ has its number redirect", () => {
     .map((entry) => entry.name);
   assert.deepEqual(folders.toSorted(), [...FILE_NAMES].toSorted());
   for (const name of FILE_NAMES) assert.ok(RESERVED_SEGMENTS.includes(name));
+});
+
+test("the breadcrumbs' catch-all finds the address page in a path", () => {
+  const id = "0972447-00470";
+  assert.deepEqual(addressPage(["adres", id]), { id, module: null, nr: null });
+  assert.deepEqual(addressPage(["adres", id, "numer"]), {
+    id,
+    module: null,
+    nr: null,
+  });
+  assert.deepEqual(addressPage(["adres", id, "nr", "7", "22"]), {
+    id,
+    module: null,
+    nr: "7/22",
+  });
+  assert.deepEqual(addressPage(["adres", id, "smieci"]), {
+    id,
+    module: "smieci",
+    nr: null,
+  });
+  assert.deepEqual(addressPage(["adres", id, "smieci", "numer"]), {
+    id,
+    module: "smieci",
+    nr: null,
+  });
+  assert.deepEqual(addressPage(["adres", id, "woda", "nr", "12a"]), {
+    id,
+    module: "woda",
+    nr: "12a",
+  });
+  // Any other path: no breadcrumbs.
+  assert.equal(addressPage([]), null);
+  assert.equal(addressPage(["ulice"]), null);
+  assert.equal(addressPage(["adres"]), null);
+  assert.equal(addressPage(["adres", id, "nr"]), null);
+  assert.equal(addressPage(["adres", id, "smieci", "inne"]), null);
+  assert.equal(addressPage(["adres", id, "harmonogram.pdf"]), null);
 });

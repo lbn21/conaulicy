@@ -7,7 +7,6 @@ import { PlaceNotFound, placeMetadata } from "@/components/place-page";
 // so this page is never served for a real number, which has /nr/….
 // A static shell with live holes, prerendered for every place, as the
 // address page (../page.tsx).
-export const ensureStatic = "prefetch";
 
 export { generateStaticParams } from "../page";
 
