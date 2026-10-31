@@ -23,8 +23,8 @@ export const metadata: Metadata = pageMetadata({
     "Wywóz śmieci, zapowiedziane przez gminę przerwy w dostawie wody i ostrzeżenia IMGW. Wpisz ulicę w Lubaczowie albo wieś w gminie i sprawdź terminy.",
 });
 
-// For search engines: the site's name. No SearchAction: the results page
-// (/szukaj) is never indexed.
+// For search engines: the site's name. No SearchAction: the search has no
+// results page (it lists results under its field).
 const WEBSITE = JSON.stringify({
   "@context": "https://schema.org",
   "@type": "WebSite",

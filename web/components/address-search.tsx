@@ -2,7 +2,6 @@
 
 import "accessible-autocomplete/dist/accessible-autocomplete.min.css";
 import Autocomplete from "accessible-autocomplete/react";
-import Form from "next/form";
 import { useRouter } from "next/navigation";
 import {
   createContext,
@@ -17,20 +16,23 @@ import {
   useState,
 } from "react";
 import { ErrorSummary } from "@/components/error-summary";
+import { ResultsSkeleton } from "@/components/search-skeleton";
 import { withHouseNumber } from "@/lib/house";
 import { whenIdle } from "@/lib/idle";
 import {
   addresses,
   type Matcher,
+  placeHref,
   SEARCH_ID,
   type SearchHit,
   searchTerms,
 } from "@/lib/search";
 import { HINT, LABEL } from "@/lib/search-hint";
 import { loadedIndex, loadIndex } from "@/lib/search-index";
-import { placeTarget, searchHref, searchQuery } from "@/lib/search-submit";
+import { type Outcome, outcomeOf, searchQuery } from "@/lib/search-submit";
+import { ALL_PLACES } from "@/lib/static-pages";
 
-// One search per page (the home page or /szukaj), so fixed ids.
+// One search, on the home page, so fixed ids.
 const INPUT_ID = "adres";
 const LABEL_ID = "adres-label";
 const HINT_ID = "adres-hint";
@@ -101,7 +103,7 @@ function closeList(container: HTMLElement | null) {
 
 /**
  * The suggestions' source: each query matched on the device, over the index
- * (lib/search-index.ts, shared with „Szukaj” and /szukaj's results), loaded
+ * (lib/search-index.ts, shared with „Szukaj”), loaded
  * once by `load`; if it cannot load, settled queries go to /api/search.
  * `note` is what the list says when it has no suggestion.
  */
@@ -171,16 +173,21 @@ function suggestions(indexUrl: string) {
 // of the page's column (SearchErrorSummary) and the error on the field, on
 // the page where it was submitted. `count` is how many times, so a repeat
 // draws a new summary, which takes focus again.
-const SearchError = createContext<{ count: number; report: () => void }>({
-  count: 0,
-  report: () => {},
-});
+const SearchError = createContext<{
+  count: number;
+  report: () => void;
+  clear: () => void;
+}>({ count: 0, report: () => {}, clear: () => {} });
 
 /** Holds the search's error state for the page's column. */
 export function SearchErrorProvider({ children }: { children: ReactNode }) {
   const [count, setCount] = useState(0);
   const value = useMemo(
-    () => ({ count, report: () => setCount((n) => n + 1) }),
+    () => ({
+      count,
+      report: () => setCount((n) => n + 1),
+      clear: () => setCount(0),
+    }),
     [count],
   );
   return <SearchError value={value}>{children}</SearchError>;
@@ -207,6 +214,69 @@ export function SearchErrorSummary() {
   );
 }
 
+// What „Szukaj” shows under the field: the index still loading, several
+// places, none, or the server's error. None is an answer, not an error
+// (GOV.UK's search pattern): plain text, the field left valid; GOV.UK's
+// error message and summary are only for an empty field (validation,
+// design-system.service.gov.uk/components/error-message).
+type Shown = Outcome | { kind: "loading" } | { kind: "failed" };
+
+// The outcome over the index; if it cannot load, over /api/search's answer
+// (ranked as the index would be, never one place opened unasked).
+async function find(indexUrl: string, q: string): Promise<Outcome> {
+  try {
+    return outcomeOf(await loadIndex(indexUrl), q);
+  } catch {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const hits = (await res.json()) as SearchHit[];
+    return hits.length === 0 ? { kind: "none", q } : { kind: "many", q, hits };
+  }
+}
+
+/** Several places to choose from, none, or why not; nothing for one. */
+function Results({ shown }: { shown: Shown }) {
+  if (shown.kind === "loading") return <ResultsSkeleton />;
+  if (shown.kind === "failed")
+    return <p className="govuk-body">{NOTES.error}</p>;
+  if (shown.kind === "many")
+    return (
+      <>
+        <h2 className="govuk-heading-m">Wyniki wyszukiwania</h2>
+        <p className="govuk-body">
+          {`Dla „${shown.q}” znaleźliśmy ${addresses(shown.hits.length)}. Wybierz swój.`}
+        </p>
+        <ul className="govuk-list">
+          {shown.hits.map((hit) => (
+            <li key={hit.id}>
+              <a href={placeHref(hit)} className="govuk-link">
+                {withHouseNumber(hit.label, hit.nr ?? null)}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </>
+    );
+  if (shown.kind === "none")
+    return (
+      <>
+        <h2 className="govuk-heading-m">{`Nie znaleźliśmy „${shown.q}”`}</h2>
+        <p className="govuk-body">Możesz:</p>
+        <ul className="govuk-list govuk-list--bullet">
+          <li>sprawdzić pisownię</li>
+          <li>wpisać samą nazwę ulicy albo wsi, na przykład Asnyka</li>
+          <li>
+            znaleźć swój adres na liście{" "}
+            <a href={ALL_PLACES.path} className="govuk-link">
+              {ALL_PLACES.text}
+            </a>
+          </li>
+        </ul>
+      </>
+    );
+  return null;
+}
+
 /**
  * The address search: alphagov accessible-autocomplete, unmodified, its
  * React build (README, "Using with React") set up through its documented
@@ -228,21 +298,24 @@ export function SearchErrorSummary() {
  * with the list open and nothing highlighted, so submitOnEnter does that.
  * confirmOnBlur stays off: leaving the field keeps what was typed.
  *
- * „Szukaj” (Next.js's <Form>: a client-side navigation to /szukaj, whose
- * shell it prefetches) decides on the device, over the same index, waiting
- * for it if it is not in yet: one place (a picked suggestion, or one clearly
- * best) opens its page straight away; anything else is /szukaj's list,
- * drawn at once from the index in memory. An empty field is GOV.UK's error,
- * on the page where it was submitted. The home page and /szukaj both render
- * the field, empty.
+ * „Szukaj” (or Enter) decides on the device, over the same index
+ * (lib/search-submit.ts): one place (a picked suggestion, or one clearly
+ * best) opens its page by client-side navigation (useRouter().push); several
+ * are listed under the field, none says what to try next, both on this page
+ * with no navigation; while the index is not in yet, a skeleton of one
+ * result holds their place. The list region is a polite live region, so
+ * what appears is announced. An empty field is GOV.UK's error, only after
+ * a submit.
  */
 export function AddressSearch({ indexUrl }: { indexUrl: string }) {
   const router = useRouter();
-  const { count, report } = use(SearchError);
+  const { count, report, clear } = use(SearchError);
   const error = count > 0 ? EMPTY_ERROR : null;
   const [search] = useState(() => suggestions(indexUrl));
+  const [shown, setShown] = useState<Shown | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const waiting = useRef(false);
+  // The latest press: an earlier one still waiting for the index is dropped.
+  const press = useRef(0);
 
   // The index once the page is idle (not with Save-Data on), or at the
   // field's first focus if that comes sooner. The first to come loads it,
@@ -268,40 +341,41 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
     return () => window.removeEventListener("pageshow", closeOnRestore);
   }, []);
 
+  // One place: its page (the field's page is kept, hidden, for Back:
+  // Next.js's Activity, with the list closed). Otherwise the list.
+  function show(outcome: Outcome) {
+    if (outcome.kind === "one") {
+      setShown(null);
+      router.push(placeHref(outcome.hit));
+    } else setShown(outcome);
+  }
+
   function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     const field = event.currentTarget.elements.namedItem("q");
     const q = searchQuery(field instanceof HTMLInputElement ? field.value : "");
+    const ticket = ++press.current;
     if (!q) {
-      event.preventDefault();
+      setShown(null);
       report();
       return;
     }
-    // Next.js keeps the page, hidden, for Back: with the list closed.
+    clear();
     closeList(containerRef.current);
     const index = loadedIndex(indexUrl);
     if (index) {
-      const place = placeTarget(index, q);
-      // One place: its page. Otherwise <Form> goes to /szukaj?q=.
-      if (place) {
-        event.preventDefault();
-        router.push(place);
-      }
+      show(outcomeOf(index, q));
       return;
     }
-    // The index is not in yet: decide once it is (or, if it cannot load,
-    // let /szukaj ask the server). One press at a time.
-    event.preventDefault();
-    if (waiting.current) return;
-    waiting.current = true;
-    loadIndex(indexUrl)
-      .then(
-        (loaded) => placeTarget(loaded, q),
-        () => null,
-      )
-      .then((place) => {
-        waiting.current = false;
-        router.push(place ?? searchHref(q));
-      });
+    setShown({ kind: "loading" });
+    find(indexUrl, q).then(
+      (outcome) => {
+        if (ticket === press.current) show(outcome);
+      },
+      () => {
+        if (ticket === press.current) setShown({ kind: "failed" });
+      },
+    );
   }
 
   // Enter with the list open and no suggestion highlighted: the library
@@ -328,7 +402,7 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
 
   return (
     <search id={SEARCH_ID} className="app-search">
-      <Form action="/szukaj" onSubmit={submit} onKeyDown={submitOnEnter}>
+      <form onSubmit={submit} onKeyDown={submitOnEnter}>
         <div
           className={
             error
@@ -391,7 +465,8 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
         >
           Szukaj
         </button>
-      </Form>
+      </form>
+      <div aria-live="polite">{shown && <Results shown={shown} />}</div>
     </search>
   );
 }

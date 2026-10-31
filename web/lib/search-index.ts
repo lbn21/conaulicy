@@ -1,11 +1,8 @@
 // The search index in the browser (/api/search-index/<version>, immutable),
-// fetched at most once per page and URL and shared by the search field
-// (components/address-search.tsx) and /szukaj's results
-// (components/search-results.tsx). One promise per URL, created outside
-// render and reused, as React's use() requires
-// (react.dev/reference/react/use, "Caching Promises for Client
-// Components"); once in, also read as it is (loadedIndex), so what is
-// rendered from it never waits. Client-safe.
+// fetched at most once per page and URL and shared by the search field's
+// suggestions and „Szukaj” (components/address-search.tsx). One promise per
+// URL; once in, also read as it is (loadedIndex), so „Szukaj” never waits
+// for it again. Client-safe.
 import { type Matcher, matcher, type SearchIndex } from "./search.ts";
 
 export type LoadedIndex = { places: SearchIndex; match: Matcher };

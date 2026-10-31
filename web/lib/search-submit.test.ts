@@ -2,12 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { matcher } from "./search.ts";
 import { PLACES } from "./search-fixture.ts";
-import {
-  outcomeOf,
-  placeTarget,
-  searchHref,
-  searchQuery,
-} from "./search-submit.ts";
+import { outcomeOf, placeTarget, searchQuery } from "./search-submit.ts";
 
 const index = { places: PLACES, match: matcher(PLACES) };
 
@@ -25,7 +20,7 @@ test("one clear place, typed or picked: straight to its page", () => {
   }
 });
 
-test("several places or none: /szukaj lists them", () => {
+test("several places or none: listed under the field", () => {
   for (const q of ["Kościuszki", "Mickiewicza", "a", "as", "xyzqq", "ul."]) {
     assert.equal(placeTarget(index, q), null, q);
   }
@@ -50,8 +45,4 @@ test("the query as the search reads it", () => {
   assert.equal(searchQuery("   "), "");
   assert.equal(searchQuery("  ul.   Rynek \n 5 "), "ul. Rynek 5");
   assert.equal(searchQuery("x".repeat(150)).length, 100);
-});
-
-test("/szukaj's address for a query", () => {
-  assert.equal(searchHref("Kościuszki 7a"), "/szukaj?q=Ko%C5%9Bciuszki%207a");
 });
