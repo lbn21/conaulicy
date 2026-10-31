@@ -1,7 +1,7 @@
-// Address search, the same everywhere: the search field (on the device, over
-// the index from /api/search-index), /api/search and /szukaj (on the server,
-// over the same index), so one query gives the same ranked places in all
-// three. uFuzzy (@leeoniya/ufuzzy) forgives a typo; around it, a Polish layer
+// Address search, the same everywhere: the search field and „Szukaj” (on
+// the device, over the index from /api/search-index) and /api/search (on the
+// server, over the same index), so one query gives the same ranked places in
+// both. uFuzzy (@leeoniya/ufuzzy) forgives a typo; around it, a Polish layer
 // reads the query (house number, postcode, "ul.", abbreviations, word
 // endings) and ranks the places.
 
@@ -28,7 +28,7 @@ export type SearchIndex = Array<[id: string, label: string, type: string]>;
 /** Id of the home page's search element. */
 export const SEARCH_ID = "szukaj";
 
-/** A query is cut to this many characters (/szukaj and /api/search). */
+/** A query is cut to this many characters („Szukaj” and /api/search). */
 export const MAX_QUERY_LENGTH = 100;
 
 /** At most this many places in the list. */
@@ -260,7 +260,7 @@ function identity(label: string, type: string): string {
 }
 
 // Fewer letters than this ("a", "as") are too little to pick one place by,
-// however its match ranks: /szukaj lists the places instead.
+// however its match ranks: „Szukaj” lists the places instead.
 const CLEAR_MIN = 3;
 
 type Found = {
@@ -278,7 +278,7 @@ export type Matcher = (q: string, limit?: number) => Found;
  * Prepares every label once; the matcher then runs on each keystroke. It
  * reads q every way (readings) and keeps the reading whose best place
  * matches best; on a tie, the earliest (as typed, then the last number). At
- * most `limit` places: the search field lists 8, /szukaj every one.
+ * most `limit` places: the suggestions list 8, „Szukaj” every one.
  */
 export function matcher(index: SearchIndex): Matcher {
   const sizes = new Map<string, number>();

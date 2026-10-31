@@ -82,7 +82,7 @@ test("address pages: the breadcrumbs, then <main>", () => {
 
 // The flat pages (and the 404): no breadcrumbs (GOV.UK: none on a site with
 // a flat structure). Their elements, not rendered: their async parts (the
-// IMGW banner) need the database. /szukaj, /ulice and / read it
+// IMGW banner) need the database. /ulice and / read it
 // themselves; they, and every page here, are checked in their HTML by
 // scripts/check-modules.mjs.
 const elements = (node: unknown): ReactElement[] => {
