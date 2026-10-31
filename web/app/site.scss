@@ -151,6 +151,11 @@ $app-header-colour: $app-header;
   vertical-align: middle;
 }
 
+// A loading placeholder (components/skeleton.tsx), as GOV.UK has none: its
+// text, in place, transparent on the bin markers' neutral grey. Not animated.
+// On one line, under the 80-line cap (scripts/check-own-css.mjs).
+.app-skeleton { background-color: govuk-colour("black", $variant: "tint-95"); color: transparent; }
+
 // Deviation from GOV.UK's tag tints (Jakub's decision, task 98): the IMGW
 // banner's level tags take the solid colours of IMGW's own warnings map
 // (WARNING_LEVELS in lib/palette.ts), with text black or white for 4.5:1 or

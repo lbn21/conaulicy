@@ -1,7 +1,10 @@
-// The search field's hint (components/address-search.tsx). Its examples are
-// real addresses: each leads straight to one place, and a house number is
-// one the address register has (search-hint.test.ts). No "use client" and
-// no CSS, so the tests can import it.
+// The search field's label and hint (components/address-search.tsx), also
+// drawn by /szukaj's placeholder (components/search-skeleton.tsx). The
+// hint's examples are real addresses: each leads straight to one place, and
+// a house number is one the address register has (search-hint.test.ts). No
+// "use client" and no CSS, so the tests and server components can import it.
+
+export const LABEL = "Ulica albo wieś";
 
 export type HintExample = { text: string; id: string; nr: string | null };
 

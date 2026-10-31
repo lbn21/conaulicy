@@ -65,6 +65,12 @@ Across the whole site the same job always uses the same component and style:
 - one freshness line: `CheckedLine` on the subpages; on the hub, the end of each section's meta line („Sprawdziliśmy …”, `metaLine`, `web/lib/hub.ts`).
 - Link text says where it goes (e.g. „Wszystkie odbiory śmieci”); never a bare „Szczegóły” or „Kliknij tutaj” (`web/scripts/check-modules.mjs` fails on one).
 
+## Loading placeholder
+
+GOV.UK has no skeleton, so ours is minimal (`Skeleton`, `web/components/skeleton.tsx`; Jakub's decision, task 222): the text that will be there, in the element and GOV.UK class it will have, transparent on GOV.UK's light grey (`.app-skeleton`, one line of `web/app/site.scss`), so each bar takes the real element's place line for line. Never animated. Hidden from assistive technology; once per placeholder, „Sprawdzamy…” in `govuk-visually-hidden` (`LOADING`), with no live region and no `aria-busy` (nothing is announced on load, and the fallback is replaced, not updated).
+
+`/szukaj` streams its results after its prerendered shell (header, IMGW banner, footer), with `web/components/search-skeleton.tsx` as the `<Suspense>` fallback: the h1, the field's label, hint, field and „Szukaj” exactly where the results page has them, then about one result (the line above the list and one address). One result moves nothing; none or several move what follows a little when they arrive (accepted, task 222).
+
 ## Home-screen app
 
 Opened from the home screen (`display-mode: standalone`), every page has a strip in the header's colour, 10 px deep, fixed at the top (`.govuk-template__body::before`, `web/app/site.scss`; task 136): Safari 26 takes the status bar's colour from it, not from theme-color. It is the only own fixed element, sits on the header's own colour when the page is not scrolled, and is hidden while the skip link is focused. In a browser tab nothing changes. The status bar style is `default`, never `black-translucent` (`web/app/layout.tsx`).
