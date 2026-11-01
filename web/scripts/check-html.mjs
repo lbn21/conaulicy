@@ -1,7 +1,8 @@
 // Validates the HTML of every key route with the Nu Html Checker (vnu.jar,
 // the engine behind validator.w3.org/nu). Fails on any error; lists warnings.
-// A prerendered address page has its real h1 and breadcrumbs in its static
-// HTML, not their skeletons.
+// Every route answers its expected status (never a 5xx), has an h1 in its
+// static HTML and exactly one <main id="main-content">; a prerendered address
+// page has its real h1 and breadcrumbs there, not their skeletons.
 // Each route as an HTML-limited bot gets it (metadata in <head>), and as a
 // browser does, unless Next.js streamed it the metadata (into <body>, as
 // documented); then only its bot copy. A
@@ -102,9 +103,25 @@ try {
           `${route.path}${suffix}: HTTP ${res.status}, expected ${expected}`,
         );
       }
+      // Every page, browser and bot: an h1 with text in the HTML before
+      // anything streamed after it (React's hidden <div id="S:…">), and
+      // exactly one #main-content, the layout's <main> (the skip link's
+      // target, docs/layout.md).
+      const streamedAt = html.indexOf('<div hidden id="S:');
+      const before = streamedAt === -1 ? html : html.slice(0, streamedAt);
+      if (!/<h1\b[^>]*>[^<]/.test(before)) {
+        statuses.push(`${route.path}${suffix}: no h1 in the static HTML`);
+      }
+      if (
+        (html.match(/id="main-content"/g) ?? []).length !== 1 ||
+        !/<main\b[^>]*id="main-content"/.test(before)
+      ) {
+        statuses.push(
+          `${route.path}${suffix}: not exactly one <main id="main-content"> in the static HTML`,
+        );
+      }
       // A prerendered address page's full load: its real breadcrumbs and h1
-      // in the HTML before anything streamed after it (React's hidden
-      // <div id="S:…">), not their skeletons (components/place-params.tsx,
+      // in the static HTML, not their skeletons (components/place-params.tsx,
       // task 228). A house number not prerendered (?nr=7a) streams them
       // on its first visit, as Next.js generates it (ensureStatic).
       if (
@@ -113,8 +130,6 @@ try {
         route.path.startsWith("/adres/") &&
         !/[?&]nr=./.test(route.path)
       ) {
-        const streamedAt = html.indexOf('<div hidden id="S:');
-        const before = streamedAt === -1 ? html : html.slice(0, streamedAt);
         if (
           !/<h1 class="govuk-heading-l">[^<]/.test(before) ||
           !before.includes('class="govuk-breadcrumbs__link"')

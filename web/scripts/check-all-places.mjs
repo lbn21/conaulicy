@@ -68,7 +68,7 @@ try {
   }
 
   // Every id once; the town's heading and every village's line by SIMC,
-  // where the breadcrumbs link (check-modules.mjs), the old ids kept.
+  // where the breadcrumbs link, the old ids kept.
   const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map(([, id]) => id);
   const repeated = ids.filter((id, i) => ids.indexOf(id) !== i);
   if (repeated.length > 0) failures.push(`/ulice: ids twice: ${repeated}`);

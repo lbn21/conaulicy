@@ -44,7 +44,7 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 
 ## Performance
 
-- **Hard gates** (Slow 4G + 4× CPU, `docs/perf.md`): LCP ≤ 1.8 s median, TBT ≤ 150 ms, search keystroke ≤ 50 ms. CLS is no longer a hard gate (Jakub's decision, 31 Oct 2026): a live block's reveal may shift the page a little; the checks hold it to web.dev's "good" CLS (≤ 0.1), a late font still moves nothing. They never move to make room for code; if one fails, report to Jakub. Checked by Lighthouse on demand, not in PR CI: run it before bigger UI changes (`gh workflow run ci.yml --ref <branch>`).
+- **Hard gates** (Slow 4G + 4× CPU, `docs/perf.md`): LCP ≤ 1.8 s median, TBT ≤ 150 ms, search keystroke ≤ 50 ms. CLS is no longer a hard gate (Jakub's decision, 31 Oct 2026): a live block's reveal may shift the page a little; the checks hold it to web.dev's "good" CLS (≤ 0.1), a late font still moves nothing. They never move to make room for code; if one fails, report to Jakub. Checked by Lighthouse by hand, not in CI: run `npm run check:perf` before bigger UI changes (`docs/perf.md`).
 - **Size budgets** adapt to GOV.UK Frontend and accessible-autocomplete: first-load JS ≤ 200 KB gzip, street HTML ≤ 30 KB gzip.
 
 ## Architecture and data

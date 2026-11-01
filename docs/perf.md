@@ -1,6 +1,6 @@
 # Performance budgets
 
-`web/scripts/check-perf.mjs` (Lighthouse) is a **manual check**, not part of pull request CI (task 75c): run it before bigger UI changes (layout, fonts, scripts, the search). On GitHub: `gh workflow run ci.yml --ref <branch>` (or Actions → CI → Run workflow) runs only the `perf` job, step "Performance (Lighthouse budgets)", against its own build of the app with its own throwaway Postgres and the CI fixture. `PERF_OUT=file.json` saves the numbers. The deterministic checks stay in every PR's CI: First-load JS budget and Fonts (no layout shift).
+`web/scripts/check-perf.mjs` (Lighthouse) is a **manual check**, not part of CI (task 75c; its on-demand CI job was removed in task 230): run it by hand before bigger UI changes (layout, fonts, scripts, the search), `npm run check:perf` against a build on the CI fixture (`npm run db:local`). `PERF_OUT=file.json` saves the numbers. Only the First-load JS budget stays in every PR's CI.
 
 ## Profile
 
@@ -25,7 +25,7 @@ Lighthouse (npm `lighthouse`, free, no Lighthouse CI server) with its mobile set
 | First-load JS | ≤ 200 KB gzip | `npm run budget` (separate step) |
 | Street PDF | ≤ 150 KB, 2–6 pages | `scripts/check-pdf.mjs` (separate step): CI fixture's city street, village and split street with `?nr=` |
 
-**Hard gates:** LCP, TBT and the search keystroke are what people feel. CLS left the hard gates (Jakub's decision, 31 Oct 2026): live blocks reveal after the static shell (`docs/layout.md`), and a little shift on reveal is accepted. It is still reported; `check-fonts` and `check-search` hold a reveal to web.dev's "good" CLS (0.1), and a late font must still move nothing (< 0.001). They never move to make room for code; if one fails, report to Jakub.
+**Hard gates:** LCP, TBT and the search keystroke are what people feel. CLS left the hard gates (Jakub's decision, 31 Oct 2026): live blocks reveal after the static shell (`docs/layout.md`), and a little shift on reveal is accepted. It is still reported by `check-perf`; the CI checks for layout shift (`check-fonts`, `check-search`) were removed in task 230. They never move to make room for code; if one fails, report to Jakub.
 
 **Adaptable:** the size budgets (first-load JS, HTML, fonts, PDF) follow GOV.UK Frontend's CSS and JS and alphagov accessible-autocomplete, which are used as-is. Since task 227 accessible-autocomplete (its React build, about 16 KB gzip) is part of the home page's first-load JS, rendered on the server and hydrated, instead of a chunk loaded once the page is idle: the field is the same element before and after hydration.
 

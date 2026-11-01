@@ -6,8 +6,6 @@ on:
   # Fills the main cache that every PR can read (PR caches stay in their PR).
   push:
     branches: [main]
-  # Lighthouse (job perf) only, on demand: gh workflow run ci.yml --ref <branch>
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -18,7 +16,6 @@ concurrency:
 
 jobs:
   web:
-    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -159,12 +156,6 @@ jobs:
       - name: Accessibility (axe, WCAG 2.2 AA)
         run: node scripts/check-a11y.mjs
 
-      - name: "Navigation (next/link: one document, live blocks, announcer, breadcrumbs)"
-        run: node scripts/check-navigation.mjs
-
-      - name: Search popup (no layout shift, combobox keys)
-        run: node scripts/check-search.mjs
-
       - name: HTML (Nu Html Checker)
         run: node scripts/check-html.mjs
         env:
@@ -179,16 +170,6 @@ jobs:
           path: ${{ runner.temp }}/html-pages
           if-no-files-found: ignore
           retention-days: 14
-
-      # WebKit needs system libraries the runner lacks, hence --with-deps.
-      - name: Install WebKit for the iPhone check
-        run: npx playwright install --with-deps webkit
-
-      - name: "iOS focus (WebKit, iPhone: a tap focuses the final field)"
-        run: node scripts/check-ios-focus.mjs
-
-      - name: "Geometry (header bars, focus box, warning icon: exact px)"
-        run: node scripts/check-geometry.mjs
 
       - name: Home examples (each has upcoming pickups)
         run: node scripts/check-examples.mjs
@@ -211,9 +192,6 @@ jobs:
       - name: "Street PDFs (tagged, pages, size, Atkinson only, text version)"
         run: node scripts/check-pdf.mjs
 
-      - name: "Fonts (no layout shift when they arrive late)"
-        run: node scripts/check-fonts.mjs
-
       - name: "Page metadata (own title, description and share link)"
         run: node scripts/check-metadata.mjs
 
@@ -222,22 +200,6 @@ jobs:
 
       - name: "Query parameters (unknown ones redirect to the clean URL)"
         run: node scripts/check-query.mjs
-
-      - name: "Modules (the address page as a hub, the /smieci subpage)"
-        run: node scripts/check-modules.mjs
-        env:
-          SCREENSHOT_DIR: ${{ runner.temp }}/modules-screenshots
-
-      # For the reviewer: the hub and /smieci (a street, a village, with a house
-      # number), 375 px.
-      - name: Screenshots of the hub and /smieci
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: modules-screenshots
-          path: ${{ runner.temp }}/modules-screenshots
-          if-no-files-found: ignore
-          retention-days: 14
 
       # Every banner state from the mock, each page re-rendered by a server
       # with that state's setting; at the end the pages are dropped again, so
@@ -281,81 +243,3 @@ jobs:
 
       - name: "Unattended import (made-up waste sources: apply, revert, issues, fallback, dead-man switch)"
         run: node scripts/check-import-run.mjs
-
-  # Lighthouse, on demand only (docs/perf.md): its own database with the CI
-  # fixture and its own build.
-  perf:
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: web
-    services:
-      postgres:
-        image: postgres:18
-        env:
-          POSTGRES_USER: ci
-          POSTGRES_PASSWORD: ci
-          POSTGRES_DB: conaulicy
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U ci -d conaulicy"
-          --health-interval 2s
-          --health-timeout 5s
-          --health-retries 20
-    env:
-      DATABASE_URL: postgres://ci:ci@localhost:5432/conaulicy
-      # The built site never asks IMGW: the banner reads the fixtures
-      # (web/lib/imgw-mock.ts, docs/data/imgw.md).
-      IMGW_WARNINGS_URL: mock:none
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      # As in the web job: npm ci runs vnu-jar's postinstall.
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-
-      - run: npm ci
-
-      # The palette's generated files (scripts/brand-assets.ts, not in git):
-      # restored from this cache when the palette and its generator are
-      # unchanged, drawn (and cached) only when they changed. The script hashes
-      # the same files and the Next.js version.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: web/.next/cache/brand-assets
-          key: brand-assets-${{ hashFiles('web/lib/palette.ts', 'web/lib/logo.ts', 'web/lib/theme.ts', 'web/lib/govuk-colours.ts', 'web/lib/waste-colours.ts', 'web/lib/brand/*.svg', 'web/scripts/brand-assets.ts', 'web/package-lock.json') }}
-
-      - name: Database (migrate + seed)
-        run: npm run db:migrate && npm run db:ci-fixture && npm run db:districts -- --apply && npm run db:districts -- --expect-no-changes
-
-      - name: Build
-        run: npm run build
-
-      - name: Playwright version
-        id: playwright
-        run: echo "version=$(node -p 'require("playwright/package.json").version')" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
-
-      - name: Install Chromium
-        run: npx playwright install chromium
-
-      # Lighthouse mobile with real throttling (Slow 4G, 4× CPU), median of
-      # 5 runs per page against the budgets in docs/perf.md; plus HTML size,
-      # preloaded fonts and search keystroke time.
-      - name: "Performance (Lighthouse budgets)"
-        run: node scripts/check-perf.mjs

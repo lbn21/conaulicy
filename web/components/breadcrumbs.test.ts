@@ -112,8 +112,8 @@ test("address pages: the column in <main>, no breadcrumbs of their own", () => {
 // The flat pages (and the 404): no breadcrumbs (GOV.UK: none on a site with
 // a flat structure). Their elements, not rendered: their async parts (the
 // IMGW banner) need the database. /ulice and / read it
-// themselves; they, and every page here, are checked in their HTML by
-// scripts/check-modules.mjs.
+// themselves; on every route, scripts/check-warnings.mjs checks in the HTML
+// that the crumbs appear only on address pages.
 const elements = (node: unknown): ReactElement[] => {
   if (Array.isArray(node)) return node.flatMap(elements);
   if (!isValidElement(node)) return [];

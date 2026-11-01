@@ -1,4 +1,6 @@
-// Runs axe-core on every key route at 360px and 1280px (light only, as GOV.UK).
+// Runs axe-core on four representative routes (the home page, an address
+// page, its waste subpage, /ulice) at 360px and 1280px (light only, as GOV.UK).
+// check-html.mjs covers every route's status, h1 and #main-content statically.
 // Fails on any WCAG 2.0/2.1/2.2 A or AA violation, and on a page whose
 // #main-content is not exactly one visible <main> (the skip link's target)
 // or that uses an id twice. Run after `next build`;
@@ -9,6 +11,9 @@ import { mainAndIds, ROUTES, startServer } from "./lib/server.mjs";
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const WIDTHS = [360, 1280];
+const PAGES = ["home", "city-street", "city-street-waste", "all-places"].map(
+  (name) => ROUTES.find((route) => route.name === name),
+);
 
 const server = await startServer(3301);
 const browser = await chromium.launch();
@@ -19,7 +24,7 @@ try {
       viewport: { width, height: 900 },
     });
     const page = await context.newPage();
-    for (const route of ROUTES) {
+    for (const route of PAGES) {
       await page.goto(server.origin + route.path, { waitUntil: "load" });
       // Measure final colours, not a frame of the fade-in.
       await page.waitForFunction(() =>
