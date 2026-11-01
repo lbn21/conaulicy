@@ -164,22 +164,29 @@ $app-header-colour: $app-header;
 @keyframes app-pulse { 50% { opacity: 0.55; } }
 
 // A live block's reveal (components/live-block.tsx), as Next.js's "Suspense
-// reveals" (nextjs.org/docs/app/guides/view-transitions): the skeleton
-// leaves fast, the block fades in and rises a little after it. Clicks during
-// a reveal reach the page. All of it off under prefers-reduced-motion
-// (web.dev/articles/prefers-reduced-motion): the block swaps at once. Some
-// rules on one line, under the cap (scripts/check-own-css.mjs).
+// reveals" (nextjs.org/docs/app/guides/view-transitions), opacity only: the
+// skeleton fades out and the block fades in, 150 ms each, at once, no slide
+// (task 233). The page itself (root) does not crossfade, as the guide's
+// anchored header: on a reload while scrolled it made the whole page jump,
+// and a navigation swaps at once. Clicks during a reveal reach the page.
+// All of it off under prefers-reduced-motion
+// (developer.mozilla.org/docs/Web/CSS/@media/prefers-reduced-motion): the
+// block swaps at once. Some rules on one line, under the cap
+// (scripts/check-own-css.mjs).
 ::view-transition { pointer-events: none; }
+::view-transition-group(root), ::view-transition-new(root) { animation: none; }
+::view-transition-old(root) { display: none; }
 ::view-transition-old(.app-leave) { animation: 150ms ease-out both app-fade reverse; }
-
-::view-transition-new(.app-arrive) {
-  animation:
-    210ms ease-in 150ms both app-fade,
-    400ms ease-out both app-rise;
-}
+::view-transition-new(.app-arrive) { animation: 150ms ease-out both app-fade; }
 
 @keyframes app-fade { from { opacity: 0; } }
-@keyframes app-rise { from { transform: translateY(govuk-spacing(2)); } }
+
+// The IMGW slot (components/imgw-banner.tsx) at least one govuk-body-s line
+// tall, its skeleton and its quiet line alike (task 233).
+.app-imgw {
+  @include govuk-font-size($size: 16);
+  min-height: 1lh;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .app-skeleton,

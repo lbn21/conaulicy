@@ -9,7 +9,8 @@ import { LOADING } from "@/components/skeleton";
 // shell. When the block arrives, the skeleton leaves and the block comes in
 // with React's <ViewTransition>, as Next.js's "Animate loading states with
 // Suspense reveals" (nextjs.org/docs/app/guides/view-transitions); the
-// motion is in app/site.scss, none under prefers-reduced-motion. Browsers
+// motion is in app/site.scss: a short fade, no slide and no page crossfade,
+// none under prefers-reduced-motion. Browsers
 // without view transitions swap at once. One rule for every block.
 
 /**

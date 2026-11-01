@@ -168,11 +168,17 @@ const SKELETON = (
   </div>
 );
 
-/** The banner in its own hole, with its skeleton (components/live-block.tsx). */
+/**
+ * The banner in its own hole, with its skeleton (components/live-block.tsx),
+ * in a slot at least one line tall (app-imgw), so the skeleton and the quiet
+ * line hold the same height.
+ */
 export function ImgwLive() {
   return (
-    <LiveBlock skeleton={SKELETON}>
-      <ImgwBanner />
-    </LiveBlock>
+    <div className="app-imgw">
+      <LiveBlock skeleton={SKELETON}>
+        <ImgwBanner />
+      </LiveBlock>
+    </div>
   );
 }
