@@ -110,7 +110,6 @@ jobs:
       - name: "Brand assets (from lib/palette.ts: skipped, restored or drawn)"
         run: node scripts/brand-assets.ts
 
-      # After the brand assets: knip loads next.config.ts, which writes them.
       - name: "Unused code (knip: files, exports, dependencies)"
         run: npm run check:unused
 

@@ -2,8 +2,8 @@
 // replaces GOV.UK's brand-blue group, the one part of GOV.UK's palette other
 // sites must not use; the rest of GOV.UK's palette is its own. Everything
 // reads it: the Sass, the icons and the share card (generated, not in git, by
-// scripts/brand-assets.ts, which next.config.ts runs), theme-color and the
-// manifest, the footer plate, the PDF, and the checks.
+// scripts/brand-assets.ts, which npm runs before dev and build), theme-color
+// and the manifest, the footer plate, the PDF, and the checks.
 // scripts/check-palette.mjs fails on a brand hex anywhere else.
 
 export const PRIMARY = "#6d2048";
