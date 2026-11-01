@@ -36,7 +36,7 @@ export default function ModulePage({
   params,
 }: PageProps<"/adres/[id]/[module]">) {
   return (
-    <PlaceSuspense>
+    <PlaceSuspense shape="subpage">
       <ModulePageContent params={params} />
     </PlaceSuspense>
   );

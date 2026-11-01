@@ -23,6 +23,7 @@ import {
 import { wasteUpcoming } from "@/lib/waste-upcoming";
 import { loadWater } from "@/lib/water-load";
 import {
+  NO_CUTS,
   type Water,
   waterChecked,
   waterSources,
@@ -30,6 +31,7 @@ import {
   waterUpcoming,
 } from "@/lib/water-module";
 import {
+  NO_WARNINGS,
   type Weather,
   weather,
   weatherChecked,
@@ -54,8 +56,8 @@ export type Module<D> = {
    */
   live?: boolean;
   /**
-   * A live module's usual status line (nothing planned, no warning): its
-   * skeleton's typical shape (components/hub.tsx).
+   * A live module's usual status line (nothing planned, no warning), its
+   * own words: its skeleton's typical shape (components/hub.tsx).
    */
   typical?: string;
   /**
@@ -147,7 +149,7 @@ const woda: Module<Water> = {
   pageTitle: "Przerwy w dostawie wody",
   load: loadWater,
   live: true,
-  typical: "Brak zapowiedzianych przerw w dostawie wody.",
+  typical: `${NO_CUTS}.`,
   upcoming: waterUpcoming,
   status: waterStatus,
   sources: waterSources,
@@ -167,7 +169,7 @@ const pogoda: Module<Weather> = {
     return weather(await imgwCopy(), Date.now());
   },
   live: true,
-  typical: "Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.",
+  typical: NO_WARNINGS,
   upcoming: weatherUpcoming,
   status: weatherStatus,
   sources: weatherSources,

@@ -1,5 +1,4 @@
-import { Suspense } from "react";
-import { PlaceCrumbs } from "@/components/place-crumbs";
+import { CrumbsSuspense, PlaceCrumbs } from "@/components/place-crumbs";
 
 // A module subpage's breadcrumbs (app/adres/[id]/[module]/page.tsx), before
 // <main>.
@@ -8,9 +7,9 @@ export { generateStaticParams } from "@/app/adres/[id]/[module]/page";
 
 export default function Crumbs({ params }: PageProps<"/adres/[id]/[module]">) {
   return (
-    <Suspense>
+    <CrumbsSuspense>
       <CrumbsContent params={params} />
-    </Suspense>
+    </CrumbsSuspense>
   );
 }
 

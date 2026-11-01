@@ -54,9 +54,10 @@ async function ModuleLive({
 }
 
 // A live subpage's typical shape: its checked line and one paragraph (no
-// cut planned, the usual state).
-const LIVE_SKELETON = (
-  <BlockSkeleton>
+// cut planned, the usual state); bare, so the page's fallback draws it too
+// (components/place-suspense.tsx).
+export const LIVE_SHAPE = (
+  <>
     <p className="govuk-hint govuk-!-font-size-16">
       <Skeleton>
         Komunikaty o wodzie sprawdziliśmy: 31 października, 14:20
@@ -68,13 +69,13 @@ const LIVE_SKELETON = (
         i MZGKiM.
       </Skeleton>
     </p>
-  </BlockSkeleton>
+  </>
 );
 
 /** A live module's subpage body for ModuleMain, its own hole. */
 export function moduleLive(id: string, slug: string, nr: string | null) {
   return (
-    <LiveBlock skeleton={LIVE_SKELETON}>
+    <LiveBlock skeleton={<BlockSkeleton>{LIVE_SHAPE}</BlockSkeleton>}>
       <ModuleLive slug={slug} id={id} nr={nr} />
     </LiveBlock>
   );

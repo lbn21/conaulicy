@@ -6,7 +6,7 @@ import { warsawToIso } from "../lib/dates.ts";
 import { span } from "../lib/hub.ts";
 import type { Item } from "../lib/upcoming.ts";
 import { blank } from "./skeleton.tsx";
-import { Upcoming } from "./upcoming.tsx";
+import { NOTHING_SOON, Upcoming } from "./upcoming.tsx";
 
 // „Najbliższe dni” (components/upcoming.tsx) as the server renders it per
 // request: what is not over at `now`, every date absolute, and in place of
@@ -80,10 +80,14 @@ test("00:05: the cut over is gone, the pickup stays", () => {
   assert.equal((html.match(/<li>/g) ?? []).length, 1);
 });
 
-test("nothing shown: no block, no heading, no break", () => {
-  assert.equal(list(Date.parse("2026-10-30T00:00:00+01:00")), "");
+// Nothing shown: the heading, one plain line, the break (task 235), so the
+// block is as tall as its skeleton.
+const EMPTY = `<section aria-labelledby="najblizsze-dni"><h2 id="najblizsze-dni" class="govuk-heading-m">Najbliższe dni</h2><p class="govuk-body">${NOTHING_SOON}</p></section><hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible"/>`;
+
+test("nothing shown: the heading, one plain line, the break", () => {
+  assert.equal(list(Date.parse("2026-10-30T00:00:00+01:00")), EMPTY);
   assert.equal(
     renderToStaticMarkup(createElement(Upcoming, { items: [], now: NOW })),
-    "",
+    EMPTY,
   );
 });

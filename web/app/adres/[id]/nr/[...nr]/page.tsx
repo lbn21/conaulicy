@@ -32,7 +32,7 @@ export default function PlaceWithNumberPage({
   params,
 }: PageProps<"/adres/[id]/nr/[...nr]">) {
   return (
-    <PlaceSuspense>
+    <PlaceSuspense shape="hub">
       <PlaceWithNumberPageContent params={params} />
     </PlaceSuspense>
   );
