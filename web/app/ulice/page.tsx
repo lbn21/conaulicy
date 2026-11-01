@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import Link from "next/link";
 import { ImgwLive } from "@/components/imgw-banner";
-import { addressPrefetch } from "@/lib/address-routes";
 import { DATASET } from "@/lib/headers";
 import { type ListedPlace, localityAnchor, placePath } from "@/lib/places";
 import { searchIndex } from "@/lib/schedule";
@@ -45,11 +44,7 @@ async function AllPlaces() {
   // schedule).
   const Place = ({ place }: { place: ListedPlace }) => (
     <>
-      <Link
-        href={placePath(place.id)}
-        prefetch={addressPrefetch(placePath(place.id))}
-        className="govuk-link"
-      >
+      <Link href={placePath(place.id)} className="govuk-link">
         {place.label}
       </Link>
       {without.has(place.id) && " (brak danych)"}

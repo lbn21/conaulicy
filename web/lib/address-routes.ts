@@ -31,20 +31,6 @@ export const FILE_NAMES = ["harmonogram.pdf", "woda.ics"];
  */
 export const RESERVED_SEGMENTS = ["nr", "numer", ...FILE_NAMES];
 
-/**
- * A link's `prefetch` (next/link): per link to an address page (/adres/…),
- * the default for every other page (task 231, Jakub's decision). With
- * Partial Prefetching a link to an address page then prefetches its own
- * URL's static content, the place's h1 included, not the route's shared App
- * Shell, which holds no place (its pages read their params outside
- * <Suspense>); ensureStatic 'prefetch' keeps it static output
- * (nextjs.org/docs/app/api-reference/components/link#prefetch,
- * nextjs.org/docs/app/guides/optimizing-prefetching#resolve-url-data-at-prefetch-time).
- */
-export function addressPrefetch(href: string): true | undefined {
-  return href.startsWith("/adres/") ? true : undefined;
-}
-
 export function isModuleId(slug: string): slug is ModuleId {
   return (MODULE_IDS as readonly string[]).includes(slug);
 }
