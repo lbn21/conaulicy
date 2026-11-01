@@ -209,7 +209,8 @@ function forget(page) {
 // home page or a 404), before <main>, as GOV.UK places them: the skip link
 // skips them and nothing stands above the banner in <main> (task 149). Read
 // without React's marks: the @breadcrumbs slot
-// (app/layout.tsx) is a boundary of its own.
+// (app/layout.tsx) is a boundary of its own, and so are an address page's
+// breadcrumbs (task 231).
 function crumbsPlaced(route, html) {
   const address = route.path.startsWith("/adres/") && !route.status;
   const main = html.slice(html.indexOf("<main"), html.indexOf("</main>"));
@@ -780,10 +781,17 @@ try {
   const plain = await startServer(port++);
   try {
     for (const route of ROUTES) {
-      const html = await (await fetch(plain.origin + route.path)).text();
-      crumbsPlaced(route, withoutReactMarks(html));
-      if (route.status) continue;
+      // The breadcrumbs as the browser shows them: an address page reads its
+      // place behind <Suspense> (components/place-suspense.tsx, task 231),
+      // so a house number not prerendered streams them after <main>,
+      // in React's hidden <div>, to be moved in place.
+      if (route.status) {
+        const html = await (await fetch(plain.origin + route.path)).text();
+        crumbsPlaced(route, withoutReactMarks(html));
+        continue;
+      }
       const shown = (await renderedPage(plain.origin + route.path)).html;
+      crumbsPlaced(route, shown);
       // The banner's pages: the quiet line; the address pages: neither.
       const quiet =
         /<a class="govuk-link" href="https:\/\/meteo\.imgw\.pl\/">Ostrzeżenia IMGW<\/a>: brak ostrzeżeń dla powiatu lubaczowskiego · sprawdziliśmy \d{1,2}:\d{2}<\/p>/.test(
