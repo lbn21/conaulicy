@@ -188,6 +188,14 @@ $app-header-colour: $app-header;
   min-height: 1lh;
 }
 
+// No scroll anchor inside the main content (task 234). On a reload Chromium
+// restores the scroll from a saved anchor, a selector found on the final
+// page; at first layout the main content still holds the live blocks'
+// skeletons, so the selector matches the wrong box and the page lands too
+// high. Without one it restores the plain offset; the height is final at
+// first layout (developer.mozilla.org/docs/Web/CSS/overflow-anchor).
+#main-content { overflow-anchor: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .app-skeleton,
   ::view-transition-old(*),
