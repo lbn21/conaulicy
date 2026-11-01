@@ -155,10 +155,14 @@ $app-header-colour: $app-header;
 // space as wide as its text, in place, on the bin markers' neutral grey,
 // with a subtle pulse (opacity only, so it runs on the compositor:
 // web.dev/articles/animations-guide). More modern than GOV.UK, which has no
-// loading state (Jakub's decision, 31 Oct 2026).
+// loading state (Jakub's decision, 31 Oct 2026). Unseen for its first 300 ms,
+// then a 150 ms fade in (app-fade, below), its space reserved from the
+// start: a load that quick shows no flash, as no progress indicator is
+// needed under about a second (nngroup.com/articles/progress-indicators;
+// task 235). A section break in a page's shape takes the class too.
 .app-skeleton {
   background-color: govuk-colour("black", $variant: "tint-95");
-  animation: app-pulse 1.6s ease-in-out infinite;
+  animation: app-fade 150ms ease-out 300ms both, app-pulse 1.6s ease-in-out 450ms infinite;
 }
 
 @keyframes app-pulse { 50% { opacity: 0.55; } }
@@ -171,7 +175,9 @@ $app-header-colour: $app-header;
 // and a navigation swaps at once. Clicks during a reveal reach the page.
 // All of it off under prefers-reduced-motion
 // (developer.mozilla.org/docs/Web/CSS/@media/prefers-reduced-motion): the
-// block swaps at once. Some rules on one line, under the cap
+// block swaps at once. A skeleton then has no pulse and no fade, but still
+// waits its 300 ms and appears at once: the wait is no motion, and it spares
+// a quick load the flash. Some rules on one line, under the cap
 // (scripts/check-own-css.mjs).
 ::view-transition { pointer-events: none; }
 ::view-transition-group(root), ::view-transition-new(root) { animation: none; }
@@ -197,7 +203,7 @@ $app-header-colour: $app-header;
 #main-content { overflow-anchor: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-skeleton,
+  .app-skeleton { animation: app-fade 0s 300ms both; }
   ::view-transition-old(*),
   ::view-transition-new(*),
   ::view-transition-group(*),
