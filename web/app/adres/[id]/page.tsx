@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: PageProps<"/adres/[id]">) {
 
 export default function PlacePage({ params }: PageProps<"/adres/[id]">) {
   return (
-    <PlaceSuspense>
+    <PlaceSuspense shape="hub">
       <PlacePageContent params={params} />
     </PlaceSuspense>
   );

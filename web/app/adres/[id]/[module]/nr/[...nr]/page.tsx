@@ -32,7 +32,7 @@ export default function ModuleWithNumberPage({
   params,
 }: PageProps<"/adres/[id]/[module]/nr/[...nr]">) {
   return (
-    <PlaceSuspense>
+    <PlaceSuspense shape="subpage">
       <ModuleWithNumberPageContent params={params} />
     </PlaceSuspense>
   );

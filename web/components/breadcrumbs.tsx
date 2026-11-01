@@ -5,6 +5,9 @@ export type Crumb = { href: string; label: string };
 /** The first crumb: the home page. */
 export const HOME_CRUMB: Crumb = { href: "/", label: "Strona główna" };
 
+/** The trail's classes, its skeleton's too (components/place-crumbs.tsx). */
+export const CRUMBS_CLASS = "govuk-breadcrumbs govuk-!-margin-top-7";
+
 /**
  * GOV.UK's breadcrumbs, every item a link and the page itself left out.
  * Only on the address pages: the rest of the site is flat (GOV.UK: none on
@@ -17,10 +20,7 @@ export const HOME_CRUMB: Crumb = { href: "/", label: "Strona główna" };
  */
 export function Breadcrumbs({ items }: { items: readonly Crumb[] }) {
   return (
-    <nav
-      className="govuk-breadcrumbs govuk-!-margin-top-7"
-      aria-label="Ścieżka nawigacyjna"
-    >
+    <nav className={CRUMBS_CLASS} aria-label="Ścieżka nawigacyjna">
       <ol className="govuk-breadcrumbs__list">
         {items.map(({ href, label }) => (
           <li key={href} className="govuk-breadcrumbs__list-item">

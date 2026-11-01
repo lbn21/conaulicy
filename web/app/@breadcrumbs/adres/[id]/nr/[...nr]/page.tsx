@@ -1,5 +1,4 @@
-import { Suspense } from "react";
-import { PlaceCrumbs } from "@/components/place-crumbs";
+import { CrumbsSuspense, PlaceCrumbs } from "@/components/place-crumbs";
 import { numberParam } from "@/lib/address-routes";
 
 // The address page's breadcrumbs with a house number
@@ -11,9 +10,9 @@ export default function Crumbs({
   params,
 }: PageProps<"/adres/[id]/nr/[...nr]">) {
   return (
-    <Suspense>
+    <CrumbsSuspense>
       <CrumbsContent params={params} />
-    </Suspense>
+    </CrumbsSuspense>
   );
 }
 

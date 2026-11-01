@@ -24,7 +24,7 @@ export default function ModuleMissingNumberPage({
   params,
 }: PageProps<"/adres/[id]/[module]/numer">) {
   return (
-    <PlaceSuspense>
+    <PlaceSuspense shape="subpage">
       <ModuleMissingNumberPageContent params={params} />
     </PlaceSuspense>
   );

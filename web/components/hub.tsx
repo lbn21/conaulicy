@@ -5,7 +5,7 @@ import { BlockSkeleton, LiveBlock } from "@/components/live-block";
 import { Parts, Status } from "@/components/parts";
 import { AddressPage, numberError, StreetPage } from "@/components/place-page";
 import { Skeleton } from "@/components/skeleton";
-import { Upcoming } from "@/components/upcoming";
+import { NOTHING_SOON, Upcoming } from "@/components/upcoming";
 import { MODULE_IDS, type ModuleId } from "@/lib/address-routes";
 import { metaLine } from "@/lib/hub";
 import { IMGW_ATTRIBUTION } from "@/lib/imgw-warnings";
@@ -17,7 +17,7 @@ import { ordered } from "@/lib/upcoming";
 // The address page, /adres/[id] (and /nr/…): the hub of modules
 // (lib/modules.ts, docs/tasks T102), under breadcrumbs. Under „Zmień
 // adres”, „Najbliższe dni” (components/upcoming.tsx), every module's items
-// in one order, only while one is shown; then a section per module, always,
+// in one order (or that nothing is coming); then a section per module, always,
 // in registry order (Śmieci, Woda, Pogoda; task 207), each its module's id
 // as its anchor (#woda): its h2, its status lines (what is next, or that
 // nothing is), a link saying where its subpage goes („Wszystkie odbiory
@@ -144,6 +144,8 @@ async function UpcomingLive({ id, nr }: { id: string; nr: string | null }) {
   await io();
   const modules = MODULE_IDS.map((slug): Module<unknown> => MODULES[slug]);
   const data = await Promise.all(modules.map((module) => module.load(id, nr)));
+  // No such place (waste's data is the place): the shell around this
+  // answers 404 and never draws this block, as ModuleLive.
   if (data[0] === null) return null;
   const items = ordered(
     modules.flatMap((module, i) =>
@@ -154,23 +156,60 @@ async function UpcomingLive({ id, nr }: { id: string; nr: string | null }) {
 }
 
 // The typical shapes the skeletons reserve (Jakub's decision, 31 Oct 2026:
-// shifts on reveal accepted for more or less content). „Najbliższe dni” is
-// as often empty as not: its heading's line only.
-const UPCOMING_SKELETON = (
-  <BlockSkeleton>
+// shifts on reveal accepted for more or less content), bare, so a live
+// block's skeleton and the whole page's (components/place-suspense.tsx)
+// draw the same ones. „Najbliższe dni” is as often empty as not: its
+// heading, its empty state's one line and its break, as tall as the empty
+// block (task 235). A break in a shape is a skeleton too (app-skeleton), so
+// it appears with the bars.
+const SHAPE_BREAK = (
+  <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible app-skeleton" />
+);
+
+const UPCOMING_SHAPE = (
+  <>
     <p className="govuk-heading-m">
       <Skeleton>Najbliższe dni</Skeleton>
     </p>
-  </BlockSkeleton>
+    <p className="govuk-body">
+      <Skeleton>{NOTHING_SOON}</Skeleton>
+    </p>
+    {SHAPE_BREAK}
+  </>
 );
 
-/** A live module's section body, typical: its status line, link and meta. */
-function sectionSkeleton(module: Module<unknown>) {
+const UPCOMING_SKELETON = <BlockSkeleton>{UPCOMING_SHAPE}</BlockSkeleton>;
+
+// The waste section's usual lines (lib/waste-module.ts wasteStatus): the
+// day, „Tego dnia odbiorą:”, the bins' row.
+const WASTE_STATUS_SHAPE = (
+  <>
+    <p className="govuk-body govuk-!-margin-bottom-2">
+      <Skeleton>Wtorek, 3 listopada</Skeleton>
+    </p>
+    <p className="govuk-body govuk-!-margin-bottom-2">
+      <Skeleton>Tego dnia odbiorą:</Skeleton>
+    </p>
+    <p className="govuk-body govuk-!-margin-bottom-4">
+      <Skeleton>papier, szkło</Skeleton>
+    </p>
+  </>
+);
+
+/**
+ * A section body, typical: its status lines (a live module's `typical`),
+ * its link and its meta line, as ModuleBody.
+ */
+function sectionShape(module: Module<unknown>) {
   return (
-    <BlockSkeleton>
-      <p className="govuk-body">
-        <Skeleton>{module.typical ?? ""}</Skeleton>
-      </p>
+    <>
+      {module.live ? (
+        <p className="govuk-body">
+          <Skeleton>{module.typical ?? ""}</Skeleton>
+        </p>
+      ) : (
+        WASTE_STATUS_SHAPE
+      )}
       {module.Details && (
         <p className="govuk-body">
           <Skeleton>{module.more}</Skeleton>
@@ -181,9 +220,37 @@ function sectionSkeleton(module: Module<unknown>) {
           Źródło: komunikaty. Sprawdziliśmy 31 października, 14:20.
         </Skeleton>
       </p>
-    </BlockSkeleton>
+    </>
   );
 }
+
+/** A live module's section body's skeleton. */
+const sectionSkeleton = (module: Module<unknown>) => (
+  <BlockSkeleton>{sectionShape(module)}</BlockSkeleton>
+);
+
+/**
+ * The hub's whole shape under „Zmień adres”, for the page's fallback
+ * (components/place-suspense.tsx): „Najbliższe dni”, every section's
+ * heading and body, the breaks, IMGW's wording.
+ */
+export const HUB_SHAPE = (
+  <>
+    {UPCOMING_SHAPE}
+    {MODULE_IDS.map((slug, i) => (
+      <Fragment key={slug}>
+        {i > 0 && SHAPE_BREAK}
+        <p className="govuk-heading-l">
+          <Skeleton>{MODULES[slug].title}</Skeleton>
+        </p>
+        {sectionShape(MODULES[slug])}
+      </Fragment>
+    ))}
+    <p className="govuk-hint govuk-!-font-size-16">
+      <Skeleton>{IMGW_ATTRIBUTION.join(" ")}</Skeleton>
+    </p>
+  </>
+);
 
 /** The address page's live blocks for HubMain, each its own hole. */
 export function hubLive(id: string, nr: string | null) {

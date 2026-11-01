@@ -22,7 +22,7 @@ export default function PlaceMissingNumberPage({
   params,
 }: PageProps<"/adres/[id]/numer">) {
   return (
-    <PlaceSuspense>
+    <PlaceSuspense shape="hub">
       <PlaceMissingNumberPageContent params={params} />
     </PlaceSuspense>
   );
