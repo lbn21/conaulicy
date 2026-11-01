@@ -18,7 +18,6 @@ import {
 } from "react";
 import { ErrorSummary } from "@/components/error-summary";
 import { ResultsSkeleton } from "@/components/search-skeleton";
-import { addressPrefetch } from "@/lib/address-routes";
 import { withHouseNumber } from "@/lib/house";
 import { whenIdle } from "@/lib/idle";
 import {
@@ -266,11 +265,7 @@ function Results({ shown }: { shown: Shown }) {
         <ul className="govuk-list">
           {shown.hits.map((hit) => (
             <li key={hit.id}>
-              <Link
-                href={placeHref(hit)}
-                prefetch={addressPrefetch(placeHref(hit))}
-                className="govuk-link"
-              >
+              <Link href={placeHref(hit)} className="govuk-link">
                 {withHouseNumber(hit.label, hit.nr ?? null)}
               </Link>
             </li>

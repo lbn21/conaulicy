@@ -6,11 +6,7 @@ import { Parts, Status } from "@/components/parts";
 import { AddressPage, numberError, StreetPage } from "@/components/place-page";
 import { Skeleton } from "@/components/skeleton";
 import { Upcoming } from "@/components/upcoming";
-import {
-  addressPrefetch,
-  MODULE_IDS,
-  type ModuleId,
-} from "@/lib/address-routes";
+import { MODULE_IDS, type ModuleId } from "@/lib/address-routes";
 import { metaLine } from "@/lib/hub";
 import { IMGW_ATTRIBUTION } from "@/lib/imgw-warnings";
 import { MODULES, type Module } from "@/lib/modules";
@@ -74,11 +70,7 @@ export function ModuleBody({
       {/* No source: nothing for the subpage to detail. */}
       {module.Details && sources.length > 0 && (
         <p className="govuk-body">
-          <Link
-            className="govuk-link"
-            href={subpageHref(module, place)}
-            prefetch={addressPrefetch(subpageHref(module, place))}
-          >
+          <Link className="govuk-link" href={subpageHref(module, place)}>
             {module.more}
           </Link>
         </p>
