@@ -5,8 +5,9 @@
 // at the root with no query, where iOS looks for it; public/icon-*.png) and
 // the share card (public/og.png). None is in git.
 //   node scripts/brand-assets.ts
-// next.config.ts runs it on every next dev and next build (Vercel's
-// included), and scripts/check-own-css.mjs before it compiles the Sass.
+// npm runs it before every `npm run dev` and `npm run build` (predev and
+// prebuild in package.json; Vercel and CI build with `npm run build`), and
+// scripts/check-own-css.mjs before it compiles the Sass.
 //
 // Work happens only when an input changed. The key is a hash of INPUTS (the
 // palette, the logo geometry, the SVG templates, this script) and the
@@ -224,5 +225,4 @@ export async function writeBrandAssets(): Promise<BrandAssetsResult> {
   return result;
 }
 
-// No top-level await: next.config.ts loads this file with require().
 if (import.meta.main) void writeBrandAssets();
