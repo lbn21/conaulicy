@@ -44,7 +44,7 @@ const QUIET = "brak ostrzeżeń dla powiatu lubaczowskiego";
 /** The line when there is no warning: „IMGW: brak ostrzeżeń … · sprawdziliśmy 14:52”. */
 function Quiet({ checkedAt }: { checkedAt: number | null }) {
   return (
-    <div className="govuk-grid-row">
+    <div className="govuk-grid-row app-imgw">
       <div className="govuk-grid-column-two-thirds">
         <p className="govuk-body-s">
           <a className="govuk-link" href={IMGW_PAGE}>
@@ -69,7 +69,7 @@ async function ImgwBanner() {
     );
   const several = shown.warnings.length > 1;
   return (
-    <div className="govuk-grid-row">
+    <div className="govuk-grid-row app-imgw">
       <div className="govuk-grid-column-two-thirds">
         {/* biome-ignore lint/a11y/useSemanticElements: GOV.UK's markup, unchanged (a div with role="region") */}
         <div
@@ -155,9 +155,11 @@ async function ImgwBanner() {
   );
 }
 
-// The typical shape: the quiet line (no warning is the usual state).
+// The typical shape: the quiet line (no warning is the usual state). Its
+// row, as the quiet line's and the banner's, is at least one line tall
+// (app-imgw), so the skeleton and the quiet line hold the same height.
 const SKELETON = (
-  <div className="govuk-grid-row">
+  <div className="govuk-grid-row app-imgw">
     <div className="govuk-grid-column-two-thirds">
       <BlockSkeleton>
         <p className="govuk-body-s">
