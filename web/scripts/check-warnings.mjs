@@ -208,7 +208,7 @@ function forget(page) {
 // GOV.UK's breadcrumbs only on an address page (none on a flat site, the
 // home page or a 404), before <main>, as GOV.UK places them: the skip link
 // skips them and nothing stands above the banner in <main> (task 149). Read
-// without React's marks, as check-modules reads them: the @breadcrumbs slot
+// without React's marks: the @breadcrumbs slot
 // (app/layout.tsx) is a boundary of its own.
 function crumbsPlaced(route, html) {
   const address = route.path.startsWith("/adres/") && !route.status;

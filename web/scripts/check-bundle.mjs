@@ -8,7 +8,7 @@ import path from "node:path";
 import { gzipSync } from "node:zlib";
 
 // Sized for GOV.UK Frontend's JS and accessible-autocomplete, used as-is
-// (docs/perf.md); the user-felt metrics are checked by check-perf.mjs.
+// (docs/perf.md); the user-felt metrics by check-perf.mjs, run by hand.
 const BUDGET = 200_000;
 
 const routes = JSON.parse(
