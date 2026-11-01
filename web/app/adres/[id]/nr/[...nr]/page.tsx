@@ -1,5 +1,6 @@
 import { HubMain, hubLive } from "@/components/hub";
 import { PlaceNotFound, placeMetadata } from "@/components/place-page";
+import { PlaceSuspense } from "@/components/place-suspense";
 import { numberParam } from "@/lib/address-routes";
 import { houseNumber } from "@/lib/house";
 import { firstAddress } from "@/lib/prerender";
@@ -27,9 +28,19 @@ export async function generateMetadata({
   return placeMetadata(id, given, houseNumber(given) === null);
 }
 
-export default async function PlaceWithNumberPage({
+export default function PlaceWithNumberPage({
   params,
 }: PageProps<"/adres/[id]/nr/[...nr]">) {
+  return (
+    <PlaceSuspense>
+      <PlaceWithNumberPageContent params={params} />
+    </PlaceSuspense>
+  );
+}
+
+async function PlaceWithNumberPageContent({
+  params,
+}: Pick<PageProps<"/adres/[id]/nr/[...nr]">, "params">) {
   const { id, nr } = await params;
   const given = numberParam(nr);
   return (

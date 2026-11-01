@@ -1,5 +1,6 @@
 import { HubMain, hubLive } from "@/components/hub";
 import { PlaceNotFound, placeMetadata } from "@/components/place-page";
+import { PlaceSuspense } from "@/components/place-suspense";
 
 // /adres/[id]?nr= with no usable house number (empty, or not a number) lands
 // here (proxy.ts rewrites it). A split street answers with the street page
@@ -17,9 +18,19 @@ export async function generateMetadata({
   return placeMetadata(id, null, true);
 }
 
-export default async function PlaceMissingNumberPage({
+export default function PlaceMissingNumberPage({
   params,
 }: PageProps<"/adres/[id]/numer">) {
+  return (
+    <PlaceSuspense>
+      <PlaceMissingNumberPageContent params={params} />
+    </PlaceSuspense>
+  );
+}
+
+async function PlaceMissingNumberPageContent({
+  params,
+}: Pick<PageProps<"/adres/[id]/numer">, "params">) {
   const { id } = await params;
   return (
     <HubMain
