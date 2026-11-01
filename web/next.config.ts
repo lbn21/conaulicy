@@ -3,7 +3,6 @@ import { NUMBER_REWRITES, numberRedirects } from "./lib/address-routes";
 import { SITE_URL } from "./lib/config.generated";
 import { headerList, SECURITY } from "./lib/headers";
 import { indexable, NOINDEX_NOFOLLOW } from "./lib/indexing";
-import { writeBrandAssets } from "./scripts/brand-assets";
 
 const nextConfig: NextConfig = {
   // No x-powered-by on any response.
@@ -79,10 +78,7 @@ const nextConfig: NextConfig = {
   },
 };
 
-// The palette's Sass, icons and share card (not in git), before Next.js reads
-// app/ and public/; redrawn only when the palette or its generator changed
-// (scripts/brand-assets.ts).
-export default async function config(): Promise<NextConfig> {
-  await writeBrandAssets();
-  return nextConfig;
-}
+// The palette's Sass, icons and share card (not in git) are written before
+// Next.js starts, by npm's predev and prebuild (scripts/brand-assets.ts), so
+// loading this config writes nothing.
+export default nextConfig;
