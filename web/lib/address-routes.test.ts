@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readdirSync } from "node:fs";
 import { test } from "node:test";
 import { getPathMatch } from "next/dist/shared/lib/router/utils/path-match";
+import { addressPrefetch } from "./address-prefetch.ts";
 import {
   ADDRESS,
   ADDRESS_VARIANTS,
@@ -15,6 +16,7 @@ import {
   RESERVED_SEGMENTS,
   SUBPAGE_IDS,
 } from "./address-routes.ts";
+import { placePath } from "./places.ts";
 
 test("waste first, then water, then weather; the weather has no subpage", () => {
   assert.deepEqual(MODULE_IDS, ["smieci", "woda", "pogoda"]);
@@ -182,4 +184,35 @@ test("every file route under app/adres/[id]/ has its number redirect", () => {
     .map((entry) => entry.name);
   assert.deepEqual(folders.toSorted(), [...FILE_NAMES].toSorted());
   for (const name of FILE_NAMES) assert.ok(RESERVED_SEGMENTS.includes(name));
+});
+
+test("full prefetch only for a canonical address page, never a redirect source", () => {
+  for (const id of ["0987654", "ul-mickiewicza", "zażółć gęślą"]) {
+    assert.equal(addressPrefetch(placePath(id)), true, id);
+    for (const module of SUBPAGE_IDS)
+      assert.equal(addressPrefetch(`${placePath(id)}/${module}`), true);
+  }
+  const redirects = numberRedirects().map(({ source }) => getPathMatch(source));
+  const others = [
+    // numberRedirects' sources
+    ...[...SUBPAGE_IDS, ...FILE_NAMES].flatMap((name) => [
+      `/adres/x/nr/50/${name}`,
+      `/adres/x/nr/7/22/${name}`,
+    ]),
+    // ?nr= is rewritten to a number page, a trailing slash redirected
+    placePath("x", "12a"),
+    "/adres/x/smieci?nr=5",
+    "/adres/x?utm=1",
+    "/adres/x/",
+    "/adres/x/nr/5",
+    "/adres/x/numer",
+    "/adres/x/pogoda",
+    "/adres/x/harmonogram.pdf",
+    "/adres/x/woda.ics",
+    "/adres/x#nr",
+    "/",
+    "/ulice#wsie-heading",
+  ];
+  assert.ok(others.some((path) => redirects.some((match) => match(path))));
+  for (const path of others) assert.equal(addressPrefetch(path), "auto", path);
 });

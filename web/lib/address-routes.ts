@@ -4,20 +4,9 @@
 // proxy.ts and lib/clean-query.ts share one list (lib/modules.ts is the
 // registry; it needs Next.js, so it cannot be loaded here).
 import { NR_QUERY } from "./house.ts";
+import { MODULE_IDS, type ModuleId, SUBPAGE_IDS } from "./module-ids.ts";
 
-/**
- * Module ids in registry order. Waste comes first; water, at this address,
- * before the weather for the whole powiat.
- */
-export const MODULE_IDS = ["smieci", "woda", "pogoda"] as const;
-
-export type ModuleId = (typeof MODULE_IDS)[number];
-
-/**
- * The modules with a subpage of their own, /adres/<id>/<module id>: the
- * others (weather) link their source instead.
- */
-export const SUBPAGE_IDS: readonly ModuleId[] = ["smieci", "woda"];
+export { MODULE_IDS, type ModuleId, SUBPAGE_IDS };
 
 /**
  * The subpages app/adres/[id]/[module]/ serves: all but the waste one, which

@@ -173,7 +173,7 @@ jobs:
       - name: Home examples (each has upcoming pickups)
         run: node scripts/check-examples.mjs
 
-      - name: "All places (/ulice: every place once, Polish order, no JS of its own)"
+      - name: "All places (/ulice: every place once, Polish order, no JS of its own but PlaceLink)"
         run: node scripts/check-all-places.mjs
         env:
           SCREENSHOT_DIR: ${{ runner.temp }}/ulice-screenshots

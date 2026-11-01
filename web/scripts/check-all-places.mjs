@@ -6,16 +6,21 @@
 // unique, and the town's heading and every village's line have their SIMC
 // ids; a village with streets is one link with its streets nested under it,
 // and the town is no place; and the route
-// loads no JS beyond what /dostepnosc, a page without client code, loads.
+// loads no JS beyond what /dostepnosc, a page without client code, loads,
+// but one small chunk: PlaceLink's prefetch on intent
+// (components/place-link.tsx, task 238).
 //
 // With SCREENSHOT_DIR, also saves screenshots of /ulice at 390 px and 1280 px
 // there (needs Playwright's Chromium). Runs against `next start` on the
 // current build.
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { gzipSync } from "node:zlib";
 import { finish, searchIndexOf, startServer } from "./lib/server.mjs";
 
 const collator = new Intl.Collator("pl");
+// PlaceLink's chunk, gzip: a wrapper around next/link (shared) and a state.
+const OWN_JS_MAX = 1024;
 const LINK = /<a class="govuk-link" href="\/adres\/([^"]+)">([^<]+)<\/a>/g;
 const LETTER = /<h3 class="govuk-heading-s">([^<]+)<\/h3>/g;
 // "ul. ", "al. ", "os. ", "pl. ": sorted by what follows.
@@ -130,12 +135,19 @@ try {
   const own = chunks("/ulice");
   const shared = new Set(chunks("/dostepnosc") ?? []);
   if (!own) failures.push("/ulice: not in route-bundle-stats.json");
-  for (const chunk of own ?? []) {
-    if (!shared.has(chunk)) failures.push(`/ulice: own JS ${chunk}`);
+  const extra = (own ?? []).filter((chunk) => !shared.has(chunk));
+  const extraGzip = extra.reduce(
+    (sum, chunk) => sum + gzipSync(readFileSync(chunk)).length,
+    0,
+  );
+  if (extra.length > 1 || extraGzip > OWN_JS_MAX) {
+    failures.push(
+      `/ulice: own JS beyond PlaceLink's, ${extraGzip} B gzip: ${extra.join(", ")}`,
+    );
   }
 
   console.log(
-    `/ulice: ${links.length} links for ${places.length} places; town ${streets.length} streets under ${letters.join(" ")}; ${own?.length ?? 0} JS chunks, all shared`,
+    `/ulice: ${links.length} links for ${places.length} places; town ${streets.length} streets under ${letters.join(" ")}; ${own?.length ?? 0} JS chunks, ${extra.length} its own (${extraGzip} B gzip)`,
   );
 
   if (process.env.SCREENSHOT_DIR) {

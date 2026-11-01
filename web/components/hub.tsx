@@ -1,8 +1,8 @@
 import { cacheLife, cacheTag, io } from "next/cache";
-import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 import { BlockSkeleton, LiveBlock } from "@/components/live-block";
 import { Parts, Status } from "@/components/parts";
+import { PlaceLink } from "@/components/place-link";
 import { AddressPage, numberError, StreetPage } from "@/components/place-page";
 import { Skeleton } from "@/components/skeleton";
 import { NOTHING_SOON, Upcoming } from "@/components/upcoming";
@@ -71,9 +71,9 @@ export function ModuleBody({
       {/* No source: nothing for the subpage to detail. */}
       {module.Details && sources.length > 0 && (
         <p className="govuk-body">
-          <Link className="govuk-link" href={subpageHref(module, place)}>
+          <PlaceLink className="govuk-link" href={subpageHref(module, place)}>
             {module.more}
-          </Link>
+          </PlaceLink>
         </p>
       )}
       {meta.length > 0 && (
