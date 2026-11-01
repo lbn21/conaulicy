@@ -4,20 +4,9 @@
 // proxy.ts and lib/clean-query.ts share one list (lib/modules.ts is the
 // registry; it needs Next.js, so it cannot be loaded here).
 import { NR_QUERY } from "./house.ts";
+import { MODULE_IDS, type ModuleId, SUBPAGE_IDS } from "./module-ids.ts";
 
-/**
- * Module ids in registry order. Waste comes first; water, at this address,
- * before the weather for the whole powiat.
- */
-export const MODULE_IDS = ["smieci", "woda", "pogoda"] as const;
-
-export type ModuleId = (typeof MODULE_IDS)[number];
-
-/**
- * The modules with a subpage of their own, /adres/<id>/<module id>: the
- * others (weather) link their source instead.
- */
-export const SUBPAGE_IDS: readonly ModuleId[] = ["smieci", "woda"];
+export { MODULE_IDS, type ModuleId, SUBPAGE_IDS };
 
 /**
  * The subpages app/adres/[id]/[module]/ serves: all but the waste one, which
@@ -46,27 +35,6 @@ const MODULE = `(?:/(?:${SUBPAGE_IDS.join("|")}))?`;
 
 /** /adres/<id> or /adres/<id>/<module>, which take ?nr=. */
 export const ADDRESS = new RegExp(`^(/adres/[^/]+${MODULE})/?$`);
-
-/**
- * A canonical address page or module subpage, /adres/<id> or
- * /adres/<id>/<module>: no query, no trailing slash, no number or error
- * variant. Every one is prerendered at build.
- */
-const CANONICAL = new RegExp(`^/adres/[^/?#]+${MODULE}$`);
-
-/**
- * A <Link>'s prefetch to an address (task 238): with Partial Prefetching,
- * `true` fetches the page's own static content along with the App Shell, so
- * its h1 is there when the navigation commits
- * (nextjs.org/docs/app/api-reference/components/link#prefetch). Only for a
- * canonical page, which is static output: never a redirect source
- * (numberRedirects, proxy.ts's 308s, a trailing slash) or a ?nr= rewritten
- * to a number page rendered on its first visit. Anything else gets
- * Next.js's default, the App Shell only.
- */
-export function addressPrefetch(href: string): true | "auto" {
-  return CANONICAL.test(href) ? true : "auto";
-}
 
 /** Their house-number and error variants, which take no query. */
 export const ADDRESS_VARIANTS = [

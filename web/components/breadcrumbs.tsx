@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { addressPrefetch } from "@/lib/address-routes";
+import { PlaceLink } from "@/components/place-link";
 
 export type Crumb = { href: string; label: string };
 
@@ -25,13 +24,9 @@ export function Breadcrumbs({ items }: { items: readonly Crumb[] }) {
       <ol className="govuk-breadcrumbs__list">
         {items.map(({ href, label }) => (
           <li key={href} className="govuk-breadcrumbs__list-item">
-            <Link
-              className="govuk-breadcrumbs__link"
-              href={href}
-              prefetch={addressPrefetch(href)}
-            >
+            <PlaceLink className="govuk-breadcrumbs__link" href={href}>
               {label}
-            </Link>
+            </PlaceLink>
           </li>
         ))}
       </ol>

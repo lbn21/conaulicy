@@ -7,7 +7,7 @@ import {
   SearchErrorSummary,
 } from "@/components/address-search";
 import { ImgwLive } from "@/components/imgw-banner";
-import { addressPrefetch } from "@/lib/address-routes";
+import { PlaceLink } from "@/components/place-link";
 import { SITE_URL } from "@/lib/config.generated";
 import { HOME_EXAMPLES } from "@/lib/examples";
 import { DATASET } from "@/lib/headers";
@@ -96,13 +96,9 @@ async function HomeBody() {
             <ul className="govuk-list">
               {places.map((place) => (
                 <li key={place.id}>
-                  <Link
-                    href={placeHref(place)}
-                    prefetch={addressPrefetch(placeHref(place))}
-                    className="govuk-link"
-                  >
+                  <PlaceLink href={placeHref(place)} className="govuk-link">
                     {place.label}
-                  </Link>
+                  </PlaceLink>
                 </li>
               ))}
             </ul>

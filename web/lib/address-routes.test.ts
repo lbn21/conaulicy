@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { readdirSync } from "node:fs";
 import { test } from "node:test";
 import { getPathMatch } from "next/dist/shared/lib/router/utils/path-match";
+import { addressPrefetch } from "./address-prefetch.ts";
 import {
   ADDRESS,
   ADDRESS_VARIANTS,
-  addressPrefetch,
   FILE_NAMES,
   isModuleId,
   MODULE_IDS,

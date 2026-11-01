@@ -2,23 +2,25 @@
 
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
+import { addressPrefetch } from "@/lib/address-prefetch";
 
-// A link in /ulice's long list of places (task 238). Next.js's default
-// prefetch for all of them (the address route's one App Shell); a link's
-// full prefetch, its place's own static content, only once someone shows
-// intent: a pointer over it, focus, or a touch, as the docs ask for many
-// visible links (nextjs.org/docs/app/guides/prefetching#hover-triggered-prefetch,
-// "With Partial Prefetching, use prefetch={active ? true : 'auto'}").
-// The same <a> as a plain <Link>: no markup, style or focus of its own.
-// Its href is always placePath(id), a canonical address page, never a
-// redirect source (lib/address-routes.ts addressPrefetch, its test); no
-// import of it, so this chunk stays small (scripts/check-all-places.mjs).
+// Every link to an address page (task 238): Next.js's default prefetch (the
+// address route's one App Shell) until someone shows intent, a pointer over
+// the link, focus or a touch; then, for a canonical address page only
+// (addressPrefetch), the full prefetch, its place's own static content
+// (nextjs.org/docs/app/guides/prefetching#hover-triggered-prefetch, "With
+// Partial Prefetching, use prefetch={active ? true : 'auto'}"). Never
+// prefetch={true} on first render: eagerly, on the home page, it kept the
+// network from going idle (CI, task 238). The same <a> as a plain <Link>:
+// no markup, style or focus of its own.
 
 export function PlaceLink({
   href,
+  className,
   children,
 }: {
   href: string;
+  className: string;
   children: ReactNode;
 }) {
   const [active, setActive] = useState(false);
@@ -26,8 +28,8 @@ export function PlaceLink({
   return (
     <Link
       href={href}
-      prefetch={active ? true : "auto"}
-      className="govuk-link"
+      prefetch={active ? addressPrefetch(href) : "auto"}
+      className={className}
       onMouseEnter={activate}
       onFocus={activate}
       onTouchStart={activate}

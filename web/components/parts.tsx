@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { Fragment } from "react";
 import { DayWord } from "@/components/day-word";
+import { PlaceLink } from "@/components/place-link";
 import { Bins } from "@/components/waste-bins";
-import { addressPrefetch } from "@/lib/address-routes";
 import type { Group, Part } from "@/lib/hub";
 import { capitalised } from "@/lib/upcoming";
 
@@ -58,14 +57,9 @@ export function Parts({ parts, lead }: { parts: Part[]; lead: boolean }) {
       </>
     );
     return part.href.startsWith("/") ? (
-      <Link
-        key={key}
-        href={part.href}
-        prefetch={addressPrefetch(part.href)}
-        className="govuk-link"
-      >
+      <PlaceLink key={key} href={part.href} className="govuk-link">
         {text}
-      </Link>
+      </PlaceLink>
     ) : (
       <a key={key} href={part.href} className="govuk-link">
         {text}

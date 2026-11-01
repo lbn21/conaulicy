@@ -46,7 +46,9 @@ async function AllPlaces() {
   // schedule).
   const Place = ({ place }: { place: ListedPlace }) => (
     <>
-      <PlaceLink href={placePath(place.id)}>{place.label}</PlaceLink>
+      <PlaceLink href={placePath(place.id)} className="govuk-link">
+        {place.label}
+      </PlaceLink>
       {without.has(place.id) && " (brak danych)"}
     </>
   );
