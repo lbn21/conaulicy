@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/skeleton";
 import type { Bins as BinList } from "@/lib/hub";
 import {
   BIN,
@@ -40,6 +41,16 @@ const SIZE: Record<Size, [number, number]> = {
   small: [14, 20],
 };
 
+/** A mark's classes: the small one 5px from its name. */
+const markClass = (size: Size) =>
+  size === "small" ? "app-bin govuk-!-margin-right-1" : "app-bin";
+
+/** A bin's list item: small ones side by side. */
+const itemClass = (size: Size) =>
+  size === "small"
+    ? "govuk-!-display-inline-block govuk-!-margin-right-3"
+    : undefined;
+
 function WasteMark({ tone, size }: { tone: string; size: Size }) {
   const token = TOKEN[tone];
   const fill = token ? `var(--waste-${token})` : "var(--app-bin-other)";
@@ -52,9 +63,7 @@ function WasteMark({ tone, size }: { tone: string; size: Size }) {
       width={width}
       height={height}
       viewBox={`0 0 ${BIN_WIDTH} ${BIN_HEIGHT}`}
-      className={
-        size === "small" ? "app-bin govuk-!-margin-right-1" : "app-bin"
-      }
+      className={markClass(size)}
       stroke={outline}
       strokeWidth="1.2"
       strokeLinejoin="round"
@@ -92,20 +101,42 @@ export function Bins({
   return (
     <ul className="govuk-list govuk-!-margin-bottom-0">
       {pickups.map((pickup) => (
-        <li
-          key={pickup.id}
-          className={
-            size === "small"
-              ? "govuk-!-display-inline-block govuk-!-margin-right-3"
-              : undefined
-          }
-        >
+        <li key={pickup.id} className={itemClass(size)}>
           <span aria-hidden="true">
             {tones(pickup.subtype).map((tone) => (
               <WasteMark key={tone} tone={tone} size={size} />
             ))}
           </span>
           {pickup.label}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Bins' shape in a loading placeholder (components/place-suspense.tsx): per
+ * name, a blank mark of the size, on the skeleton's grey, and its name's bar.
+ */
+export function BinsSkeleton({
+  labels,
+  size,
+}: {
+  labels: string[];
+  size: Size;
+}) {
+  const [width, height] = SIZE[size];
+  return (
+    <ul className="govuk-list govuk-!-margin-bottom-0">
+      {labels.map((label) => (
+        <li key={label} className={itemClass(size)}>
+          <svg
+            aria-hidden="true"
+            width={width}
+            height={height}
+            className={`${markClass(size)} app-skeleton`}
+          />
+          <Skeleton>{label}</Skeleton>
         </li>
       ))}
     </ul>

@@ -6,6 +6,7 @@ import { Parts, Status } from "@/components/parts";
 import { AddressPage, numberError, StreetPage } from "@/components/place-page";
 import { Skeleton } from "@/components/skeleton";
 import { NOTHING_SOON, Upcoming } from "@/components/upcoming";
+import { BinsSkeleton } from "@/components/waste-bins";
 import { MODULE_IDS, type ModuleId } from "@/lib/address-routes";
 import { metaLine } from "@/lib/hub";
 import { IMGW_ATTRIBUTION } from "@/lib/imgw-warnings";
@@ -158,30 +159,36 @@ async function UpcomingLive({ id, nr }: { id: string; nr: string | null }) {
 // The typical shapes the skeletons reserve (Jakub's decision, 31 Oct 2026:
 // shifts on reveal accepted for more or less content), bare, so a live
 // block's skeleton and the whole page's (components/place-suspense.tsx)
-// draw the same ones. „Najbliższe dni” is as often empty as not: its
-// heading, its empty state's one line and its break, as tall as the empty
-// block (task 235). A break in a shape is a skeleton too (app-skeleton), so
-// it appears with the bars.
+// draw the same ones. „Najbliższe dni”: its heading, its empty state's one
+// line and its break, as tall as the empty block, the usual state (20 of 24
+// addresses on 1 Nov 2026; a pickup tomorrow is a line or two taller; tasks
+// 235 and 237). In a <div>, as the block is in its <section>: right after
+// „Zmień adres” GOV.UK's `.govuk-body + .govuk-heading-m` would pad the
+// heading. A break in a shape is a skeleton too (app-skeleton), so it
+// appears with the bars.
 const SHAPE_BREAK = (
   <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible app-skeleton" />
 );
 
 const UPCOMING_SHAPE = (
   <>
-    <p className="govuk-heading-m">
-      <Skeleton>Najbliższe dni</Skeleton>
-    </p>
-    <p className="govuk-body">
-      <Skeleton>{NOTHING_SOON}</Skeleton>
-    </p>
+    <div>
+      <p className="govuk-heading-m">
+        <Skeleton>Najbliższe dni</Skeleton>
+      </p>
+      <p className="govuk-body">
+        <Skeleton>{NOTHING_SOON}</Skeleton>
+      </p>
+    </div>
     {SHAPE_BREAK}
   </>
 );
 
 const UPCOMING_SKELETON = <BlockSkeleton>{UPCOMING_SHAPE}</BlockSkeleton>;
 
-// The waste section's usual lines (lib/waste-module.ts wasteStatus): the
-// day, „Tego dnia odbiorą:”, the bins' row.
+// The waste section's usual lines (lib/waste-module.ts wasteStatus, as
+// components/parts.tsx Status draws them): the day, „Tego dnia odbiorą:”,
+// the bins' row.
 const WASTE_STATUS_SHAPE = (
   <>
     <p className="govuk-body govuk-!-margin-bottom-2">
@@ -190,11 +197,19 @@ const WASTE_STATUS_SHAPE = (
     <p className="govuk-body govuk-!-margin-bottom-2">
       <Skeleton>Tego dnia odbiorą:</Skeleton>
     </p>
-    <p className="govuk-body govuk-!-margin-bottom-4">
-      <Skeleton>papier, szkło</Skeleton>
-    </p>
+    <div className="govuk-!-margin-bottom-4">
+      <BinsSkeleton labels={["Zmieszane", "Papier", "Szkło"]} size="small" />
+    </div>
   </>
 );
+
+// The meta lines' usual wording: the waste schedule's, with its AI note,
+// and a live module's.
+const META = {
+  waste:
+    "Źródło: harmonogram Urzędu Miejskiego w Lubaczowie, Harmonogram 2026, Miasto Lubaczów, sektor 1. Daty przepisał program – jeśli coś się nie zgadza, ważniejszy jest harmonogram. Sprawdziliśmy 1 listopada, 5:17.",
+  live: "Źródło: komunikaty. Sprawdziliśmy 31 października, 14:20.",
+};
 
 /**
  * A section body, typical: its status lines (a live module's `typical`),
@@ -216,9 +231,7 @@ function sectionShape(module: Module<unknown>) {
         </p>
       )}
       <p className="govuk-body-s">
-        <Skeleton>
-          Źródło: komunikaty. Sprawdziliśmy 31 października, 14:20.
-        </Skeleton>
+        <Skeleton>{module.live ? META.live : META.waste}</Skeleton>
       </p>
     </>
   );
