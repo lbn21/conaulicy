@@ -20,6 +20,13 @@ export type ModuleId = (typeof MODULE_IDS)[number];
 export const SUBPAGE_IDS: readonly ModuleId[] = ["smieci", "woda"];
 
 /**
+ * The subpages app/adres/[id]/[module]/ serves: all but the waste one, which
+ * has its own folder (app/adres/[id]/smieci/), so its loading fallback is
+ * its own first screen (task 237).
+ */
+export const MODULE_ROUTE_IDS = SUBPAGE_IDS.filter((id) => id !== "smieci");
+
+/**
  * The address's files, /adres/<id>/<file>: route folders under
  * app/adres/[id]/, which take ?nr= as the subpages do.
  */

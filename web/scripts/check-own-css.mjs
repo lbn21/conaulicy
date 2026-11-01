@@ -2,7 +2,7 @@
 // classes and components only, plus app/site.scss for what GOV.UK has no
 // equivalent for. Fails when:
 // - a stylesheet appears outside the allowed list;
-// - site.scss passes 1 KB gzip compiled (the hard cap) or 105 lines of code
+// - site.scss passes 1 KB gzip compiled (the hard cap) or 107 lines of code
 //   (blank and comment-only lines are not counted), or uses a raw colour or px
 //   (except the exact declarations in RAW_PX, GOV.UK's own magic numbers);
 // - a page uses govuk-button--inverse (its hover and shadow are GOV.UK brand
@@ -78,8 +78,9 @@ const RAW_PX = [
   "line-height: 28px;",
 ];
 // 80, plus 25 for the skeletons' pulse and the live blocks' reveal (Jakub's
-// decision, 31 Oct 2026).
-const MAX_LINES = 105;
+// decision, 31 Oct 2026), plus 2 for a button's shape in GOV.UK's button box,
+// its shadow and pointer off (task 237).
+const MAX_LINES = 107;
 const MAX_GZIP = 1000;
 
 const failures = [];
