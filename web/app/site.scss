@@ -181,8 +181,8 @@ $app-header-colour: $app-header;
 
 @keyframes app-fade { from { opacity: 0; } }
 
-// The IMGW slot (components/imgw-banner.tsx) at least one govuk-body-s line
-// tall, its skeleton and its quiet line alike (task 233).
+// The IMGW row (components/imgw-banner.tsx) at least one govuk-body-s line
+// tall, its skeleton, its quiet line and its banner alike (task 233).
 .app-imgw {
   @include govuk-font-size($size: 16);
   min-height: 1lh;
