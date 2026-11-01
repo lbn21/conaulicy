@@ -661,7 +661,7 @@ export function waterCalendarHint(data: Water): string {
 }
 
 /** No cut announced: one phrase for the subpage and the address page. */
-const NO_CUTS = "Brak zapowiedzianych przerw";
+export const NO_CUTS = "Brak zapowiedzianych przerw";
 
 /** Where the sources announce cuts: "Gmina ogłasza je w …, a MZGKiM – w …". */
 const announced = (sources: SourceState[]): Part[] =>
