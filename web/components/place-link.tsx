@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
-import { addressPrefetch } from "@/lib/address-routes";
 
 // A link in /ulice's long list of places (task 238). Next.js's default
 // prefetch for all of them (the address route's one App Shell); a link's
@@ -11,6 +10,9 @@ import { addressPrefetch } from "@/lib/address-routes";
 // visible links (nextjs.org/docs/app/guides/prefetching#hover-triggered-prefetch,
 // "With Partial Prefetching, use prefetch={active ? true : 'auto'}").
 // The same <a> as a plain <Link>: no markup, style or focus of its own.
+// Its href is always placePath(id), a canonical address page, never a
+// redirect source (lib/address-routes.ts addressPrefetch, its test); no
+// import of it, so this chunk stays small (scripts/check-all-places.mjs).
 
 export function PlaceLink({
   href,
@@ -24,7 +26,7 @@ export function PlaceLink({
   return (
     <Link
       href={href}
-      prefetch={active ? addressPrefetch(href) : "auto"}
+      prefetch={active ? true : "auto"}
       className="govuk-link"
       onMouseEnter={activate}
       onFocus={activate}
