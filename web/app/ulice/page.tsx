@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import Link from "next/link";
 import { ImgwLive } from "@/components/imgw-banner";
+import { PlaceLink } from "@/components/place-link";
 import { DATASET } from "@/lib/headers";
 import { type ListedPlace, localityAnchor, placePath } from "@/lib/places";
 import { searchIndex } from "@/lib/schedule";
@@ -19,7 +20,8 @@ export const metadata: Metadata = pageMetadata({
  * Every place search can find, as plain links: for people who would rather
  * browse, without JS, and for search engines. The town's streets by first
  * letter (Polish order), then the villages, each a link, with their streets
- * under it if they have any. No client JS of its own.
+ * under it if they have any. Its only client JS is PlaceLink's prefetch on
+ * intent (components/place-link.tsx); the links work without it.
  */
 export default function AllPlacesPage() {
   return (
@@ -44,9 +46,7 @@ async function AllPlaces() {
   // schedule).
   const Place = ({ place }: { place: ListedPlace }) => (
     <>
-      <Link href={placePath(place.id)} className="govuk-link">
-        {place.label}
-      </Link>
+      <PlaceLink href={placePath(place.id)}>{place.label}</PlaceLink>
       {without.has(place.id) && " (brak danych)"}
     </>
   );
