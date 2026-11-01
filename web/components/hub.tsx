@@ -1,11 +1,16 @@
 import { cacheLife, cacheTag, io } from "next/cache";
+import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 import { BlockSkeleton, LiveBlock } from "@/components/live-block";
 import { Parts, Status } from "@/components/parts";
 import { AddressPage, numberError, StreetPage } from "@/components/place-page";
 import { Skeleton } from "@/components/skeleton";
 import { Upcoming } from "@/components/upcoming";
-import { MODULE_IDS, type ModuleId } from "@/lib/address-routes";
+import {
+  addressPrefetch,
+  MODULE_IDS,
+  type ModuleId,
+} from "@/lib/address-routes";
 import { metaLine } from "@/lib/hub";
 import { IMGW_ATTRIBUTION } from "@/lib/imgw-warnings";
 import { MODULES, type Module } from "@/lib/modules";
@@ -69,9 +74,13 @@ export function ModuleBody({
       {/* No source: nothing for the subpage to detail. */}
       {module.Details && sources.length > 0 && (
         <p className="govuk-body">
-          <a className="govuk-link" href={subpageHref(module, place)}>
+          <Link
+            className="govuk-link"
+            href={subpageHref(module, place)}
+            prefetch={addressPrefetch(subpageHref(module, place))}
+          >
             {module.more}
-          </a>
+          </Link>
         </p>
       )}
       {meta.length > 0 && (

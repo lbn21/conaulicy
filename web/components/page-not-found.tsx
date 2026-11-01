@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 /** Its H1 and title (GOV.UK: "Page not found"). */
 const NOT_FOUND_TITLE = "Nie znaleziono strony";
@@ -29,9 +30,9 @@ export function PageNotFound() {
           nieaktualny.
         </p>
         <p className="govuk-body">
-          <a href="/" className="govuk-link">
+          <Link href="/" className="govuk-link">
             Przejdź na stronę główną
-          </a>
+          </Link>
         </p>
       </div>
     </div>

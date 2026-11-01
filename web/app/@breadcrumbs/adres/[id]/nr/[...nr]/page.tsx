@@ -3,7 +3,6 @@ import { numberParam } from "@/lib/address-routes";
 
 // The address page's breadcrumbs with a house number
 // (app/adres/[id]/nr/[...nr]/page.tsx), before <main>.
-export const ensureStatic = "prefetch";
 
 export { generateStaticParams } from "@/app/adres/[id]/nr/[...nr]/page";
 

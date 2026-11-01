@@ -13,7 +13,6 @@ import { allPlaces } from "@/lib/prerender";
 // (lib/address-routes.ts).
 // A static shell, a live module's body in its own hole, as the address page
 // (../page.tsx).
-export const ensureStatic = "prefetch";
 
 // Every known place's every subpage (lib/prerender.ts).
 export async function generateStaticParams(): Promise<

@@ -16,7 +16,7 @@ import path from "node:path";
 import { finish, searchIndexOf, startServer } from "./lib/server.mjs";
 
 const collator = new Intl.Collator("pl");
-const LINK = /<a href="\/adres\/([^"]+)" class="govuk-link">([^<]+)<\/a>/g;
+const LINK = /<a class="govuk-link" href="\/adres\/([^"]+)">([^<]+)<\/a>/g;
 const LETTER = /<h3 class="govuk-heading-s">([^<]+)<\/h3>/g;
 // "ul. ", "al. ", "os. ", "pl. ": sorted by what follows.
 const ownName = (label) => label.replace(/^\p{L}+\.\s+/u, "");
@@ -30,7 +30,7 @@ try {
   const home = await (await fetch(`${server.origin}/`)).text();
   const { places } = await searchIndexOf(server.origin, home);
   if (places.length === 0) failures.push("/: no search index");
-  if (!/<a href="\/ulice" class="govuk-link">/.test(home)) {
+  if (!/<a class="govuk-link" href="\/ulice">/.test(home)) {
     failures.push("/: no link to /ulice");
   }
 
@@ -58,7 +58,7 @@ try {
   if (/target="_blank"/.test(main)) failures.push("/ulice: target=_blank");
   const noData = [
     ...main.matchAll(
-      /<a href="\/adres\/([^"]+)" class="govuk-link">[^<]*<\/a> \(brak danych\)/g,
+      /<a class="govuk-link" href="\/adres\/([^"]+)">[^<]*<\/a> \(brak danych\)/g,
     ),
   ].map(([, id]) => id);
   if (JSON.stringify(noData) !== JSON.stringify(["0972447-23434"])) {
@@ -77,22 +77,22 @@ try {
   // Villages with streets (each a place too: one link, its streets nested
   // under it), then one without, and a village part.
   const nested =
-    '</a><ul class="govuk-list govuk-!-margin-left-4 govuk-!-margin-top-1"><li><a href="/adres/';
+    '</a><ul class="govuk-list govuk-!-margin-left-4 govuk-!-margin-top-1"><li><a class="govuk-link" href="/adres/';
   for (const [id, line] of [
     [
       "m-0606234",
-      `<a href="/adres/0606234" class="govuk-link">Lisie Jamy (gm. Lubaczów)${nested}0606234-`,
+      `<a class="govuk-link" href="/adres/0606234">Lisie Jamy (gm. Lubaczów)${nested}0606234-`,
     ],
     [
       "m-0606286",
-      `<a href="/adres/0606286" class="govuk-link">Młodów (gm. Lubaczów)${nested}0606286-`,
+      `<a class="govuk-link" href="/adres/0606286">Młodów (gm. Lubaczów)${nested}0606286-`,
     ],
     [
       "m-0606180",
-      `<a href="/adres/0606180" class="govuk-link">Krowica Sama (gm. Lubaczów)${nested}0606180-`,
+      `<a class="govuk-link" href="/adres/0606180">Krowica Sama (gm. Lubaczów)${nested}0606180-`,
     ],
-    ["m-0606010", '<a href="/adres/0606010" class="govuk-link">'],
-    ["m-0606027", '<a href="/adres/0606027" class="govuk-link">'],
+    ["m-0606010", '<a class="govuk-link" href="/adres/0606010">'],
+    ["m-0606027", '<a class="govuk-link" href="/adres/0606027">'],
   ]) {
     if (!main.includes(`<li id="${id}">${line}`))
       failures.push(`/ulice: no line ${id}`);
@@ -100,7 +100,9 @@ try {
   // Every village line has one.
   const villages = main.slice(main.indexOf('id="wsie-heading"'));
   const lines = villages.match(/<ul class="govuk-list">([\s\S]*)<\/ul>/)?.[1];
-  const bare = (lines ?? "").match(/<li>(?!<a href="\/adres\/[^"]*-)/g);
+  const bare = (lines ?? "").match(
+    /<li>(?!<a class="govuk-link" href="\/adres\/[^"]*-)/g,
+  );
   if (bare) failures.push(`/ulice: ${bare.length} village lines without id`);
   for (const id of ["ulice-heading", "wsie-heading"]) {
     if (!ids.includes(id)) failures.push(`/ulice: no id ${id}`);

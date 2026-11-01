@@ -294,7 +294,7 @@ try {
       '<h1 class="govuk-heading-l">Nie znaleziono strony</h1>',
       "<title>Nie znaleziono strony – conaulicy.pl</title>",
       'href="mailto:kontakt@conaulicy.pl"',
-      '<a href="/" class="govuk-link">Przejdź na stronę główną</a>',
+      '<a class="govuk-link" href="/">Przejdź na stronę główną</a>',
     ].filter((part) => !html.includes(part));
     if (
       response.status !== 404 ||
@@ -371,7 +371,7 @@ try {
     const noData = new Set(
       [
         ...ulice.matchAll(
-          /<a href="\/adres\/([^"]+)" class="govuk-link">[^<]*<\/a> \(brak danych\)/g,
+          /<a class="govuk-link" href="\/adres\/([^"]+)">[^<]*<\/a> \(brak danych\)/g,
         ),
       ].map(([, id]) => `${SITE}/adres/${id}`),
     );

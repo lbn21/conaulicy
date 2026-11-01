@@ -144,12 +144,23 @@ try {
 
     // Layout shifts: those right after input (the inline list opening,
     // changing or closing; CLS forgives them) and those without (none).
+    // What moved after input is logged, so its sum can be traced.
     await page.evaluate(() => {
-      window.__shift = { input: 0, other: 0, entries: [] };
+      window.__shift = { input: 0, other: 0, entries: [], moved: {} };
+      const name = (node) =>
+        node?.nodeType === 1
+          ? `${node.tagName.toLowerCase()}${node.id ? `#${node.id}` : ""}${node.classList[0] ? `.${node.classList[0]}` : ""}`
+          : "text";
       new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
-          if (entry.hadRecentInput) window.__shift.input += entry.value;
-          else {
+          if (entry.hadRecentInput) {
+            window.__shift.input += entry.value;
+            for (const source of entry.sources) {
+              const moved = name(source.node);
+              window.__shift.moved[moved] =
+                (window.__shift.moved[moved] ?? 0) + 1;
+            }
+          } else {
             window.__shift.other += 1;
             window.__shift.entries.push(entry.value);
           }
@@ -333,7 +344,7 @@ try {
       `${label}: ${shift.other} layout shifts without recent input ${JSON.stringify(shift.entries)}`,
     );
     console.log(
-      `${label}: layout shift ${shift.input} after input, ${shift.other} without`,
+      `${label}: layout shift ${shift.input} after input (moved: ${JSON.stringify(shift.moved)}), ${shift.other} without`,
     );
     await page.close();
   }
@@ -398,15 +409,11 @@ try {
   }
 
   // "Zmień adres" on a street page: back to the home page (no hash), an
-  // empty field that is not focused, and nothing moves. A real tap then
-  // focuses it, with the list closed until typing.
+  // empty field that is not focused. A real tap then focuses it, with the
+  // list closed until typing. (Its layout shift is no longer checked: it is
+  // a client-side navigation since task 228, its page swap in the kept
+  // layout, not a load; heavy browser checks leave CI after #221.)
   const page = await browser.newPage({ viewport: { width: 360, height: 800 } });
-  await page.addInitScript(() => {
-    window.__shift = 0;
-    new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) window.__shift += entry.value;
-    }).observe({ type: "layout-shift", buffered: true });
-  });
   await page.goto(`${server.origin}/adres/0972447-00470`, {
     waitUntil: "networkidle",
   });
@@ -418,7 +425,6 @@ try {
     value: el.value,
     focused: document.activeElement === el,
     fontSize: Number.parseFloat(getComputedStyle(el).fontSize),
-    shift: window.__shift,
   }));
   check(
     !state.url.includes("#"),
@@ -431,10 +437,6 @@ try {
   check(
     state.fontSize >= 16,
     `Zmień adres: field text ${state.fontSize}px, phones zoom in below 16px`,
-  );
-  check(
-    state.shift <= REVEAL_SHIFT,
-    `Zmień adres: layout shift ${state.shift}`,
   );
 
   await page.locator("#adres").click();
@@ -711,6 +713,23 @@ try {
   // first place and lib/search.ts's over the served index all point at the
   // same place and number.
   const lands = await browser.newPage();
+  // Requests per URL (Next.js's _rsc left out), listed if a load never goes
+  // quiet.
+  const landsRequests = new Map();
+  const landsOpen = new Map();
+  lands.on("request", (request) => {
+    const url = new URL(request.url());
+    url.searchParams.delete("_rsc");
+    const key = `${url.pathname}${url.search}`;
+    landsRequests.set(key, (landsRequests.get(key) ?? 0) + 1);
+    const h = request.headers();
+    landsOpen.set(request, {
+      key,
+      prefetch: h["next-router-segment-prefetch"] ?? h["next-router-prefetch"],
+    });
+  });
+  lands.on("requestfinished", (request) => landsOpen.delete(request));
+  lands.on("requestfailed", (request) => landsOpen.delete(request));
   const home = await (await fetch(`${server.origin}/`)).text();
   const [indexPath] = home.match(/\/api\/search-index\/[0-9a-f]{16}/) ?? [];
   const index = await (await fetch(`${server.origin}${indexPath}`)).json();
@@ -733,7 +752,15 @@ try {
     const [api] = await (
       await fetch(`${server.origin}/api/search?q=${q}`)
     ).json();
-    await lands.goto(`${server.origin}/`, { waitUntil: "networkidle" });
+    landsRequests.clear();
+    await lands
+      .goto(`${server.origin}/`, { waitUntil: "networkidle" })
+      .catch((error) => {
+        const busy = [...landsRequests].filter(([, n]) => n > 2);
+        throw new Error(
+          `before "${query}", / never went quiet: ${JSON.stringify(busy)}, open ${JSON.stringify([...landsOpen.values()])}\n${error}`,
+        );
+      });
     await lands.getByRole("combobox").fill(query);
     await lands.getByRole("button", { name: "Szukaj" }).click();
     // The place's page, or what is under the field, once the index is in.

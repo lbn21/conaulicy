@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
+import Link from "next/link";
 import { ImgwLive } from "@/components/imgw-banner";
+import { addressPrefetch } from "@/lib/address-routes";
 import { DATASET } from "@/lib/headers";
 import { type ListedPlace, localityAnchor, placePath } from "@/lib/places";
 import { searchIndex } from "@/lib/schedule";
@@ -43,9 +45,13 @@ async function AllPlaces() {
   // schedule).
   const Place = ({ place }: { place: ListedPlace }) => (
     <>
-      <a href={placePath(place.id)} className="govuk-link">
+      <Link
+        href={placePath(place.id)}
+        prefetch={addressPrefetch(placePath(place.id))}
+        className="govuk-link"
+      >
         {place.label}
-      </a>
+      </Link>
       {without.has(place.id) && " (brak danych)"}
     </>
   );
@@ -60,9 +66,9 @@ async function AllPlaces() {
         </p>
         <p className="govuk-body govuk-!-margin-bottom-8">
           Wolisz wpisać adres?{" "}
-          <a href="/" className="govuk-link">
+          <Link href="/" className="govuk-link">
             Wyszukaj go na stronie głównej
-          </a>
+          </Link>
           .
         </p>
 

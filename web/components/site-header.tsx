@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PlateMask } from "@/components/plate-mask";
 import { LOGO_HEIGHT, LOGO_WIDTH, PLATE, WORDMARK } from "@/lib/logo";
 
@@ -19,7 +20,7 @@ export function SiteHeader() {
       <div className="govuk-generic-header">
         <div className="govuk-generic-header__container govuk-width-container">
           <div className="govuk-generic-header__logo">
-            <a href="/" className="govuk-generic-header__homepage-link">
+            <Link href="/" className="govuk-generic-header__homepage-link">
               <svg
                 aria-hidden="true"
                 width={WIDTH}
@@ -38,7 +39,7 @@ export function SiteHeader() {
               <span className="govuk-visually-hidden">
                 conaulicy.pl – strona główna
               </span>
-            </a>
+            </Link>
           </div>
         </div>
       </div>

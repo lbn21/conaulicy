@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CONTACT_HREF } from "@/components/contact-link";
 import { PlateMask } from "@/components/plate-mask";
 import { FEATURES } from "@/lib/config.generated";
@@ -72,9 +73,9 @@ export function SiteFooter() {
                     <ul className="govuk-footer__list">
                       {section.items.map((item) => (
                         <li key={item.href} className="govuk-footer__list-item">
-                          <a className="govuk-footer__link" href={item.href}>
+                          <Link className="govuk-footer__link" href={item.href}>
                             {item.text}
-                          </a>
+                          </Link>
                         </li>
                       ))}
                     </ul>
@@ -93,9 +94,9 @@ export function SiteFooter() {
                     key={item.path}
                     className="govuk-footer__inline-list-item"
                   >
-                    <a className="govuk-footer__link" href={item.path}>
+                    <Link className="govuk-footer__link" href={item.path}>
                       {item.text}
-                    </a>
+                    </Link>
                   </li>
                 ))}
                 <li className="govuk-footer__inline-list-item">

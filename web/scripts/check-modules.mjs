@@ -545,7 +545,7 @@ try {
   if (sections(ask.main)[0] !== "Śmieci") fail(SPLIT, "no waste section");
   if (
     !ask.main.includes(
-      `<a href="${SPLIT}/smieci" class="govuk-link">Podaj numer domu</a>`,
+      `<a class="govuk-link" href="${SPLIT}/smieci">Podaj numer domu</a>`,
     )
   )
     fail(SPLIT, "no „Podaj numer domu” to /smieci");

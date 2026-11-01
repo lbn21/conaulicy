@@ -52,7 +52,7 @@ try {
   const examples = home.slice(home.indexOf('id="sample-heading"'));
   const links = [
     ...examples.matchAll(
-      /<a href="\/adres\/([^"]+)" class="govuk-link">([^<]+)</g,
+      /<a class="govuk-link" href="\/adres\/([^"]+)">([^<]+)</g,
     ),
   ].map(([, id, label]) => ({ id, label }));
   const shown = links.map((l) => `${l.id} ${l.label}`).join(", ");

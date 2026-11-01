@@ -12,7 +12,6 @@ import { firstAddress } from "@/lib/prerender";
 // /adres/[id]/nr/… for the street page, any other non-empty ?nr= too.
 // A static shell with a live hole, as the subpage; one number prerendered
 // (lib/prerender.ts firstAddress), as /adres/[id]/nr/….
-export const ensureStatic = "prefetch";
 
 export async function generateStaticParams(): Promise<
   Array<{ id: string; module: string; nr: string[] }>

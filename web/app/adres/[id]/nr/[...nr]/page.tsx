@@ -12,7 +12,6 @@ import { firstAddress } from "@/lib/prerender";
 // A static shell with live holes, as the address page (../../page.tsx); one
 // number prerendered (lib/prerender.ts firstAddress), any other gets the
 // route's fallback shell on its first visit.
-export const ensureStatic = "prefetch";
 
 export async function generateStaticParams(): Promise<
   Array<{ id: string; nr: string[] }>
