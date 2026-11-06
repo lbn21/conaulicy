@@ -10,14 +10,15 @@ import { Skeleton } from "@/components/skeleton";
 // subpageData) sits behind one <Suspense> (react.dev/reference/react/Suspense),
 // so it all comes in together, after the slowest block. The skeleton is
 // generic, not the page's shape, so a new section needs no new one: the
-// h1's bar, „Zmień adres”'s, then four section cards, a little more than
-// the first screen on a phone (390×844) and a desktop (1280×800). The
-// skeleton and the page are both at least a screen tall (app-place,
-// app/site.scss: min-height 100vh), so the footer is below the first
-// screen before and after the reveal, whatever the page's length, and
-// nothing moves into view when a short page (/woda with no cuts) takes the
-// skeleton's place (task 240; web.dev/articles/optimize-cls, reserve the
-// space). The route's App Shell, shared by every
+// h1's bar, „Zmień adres”'s, then two section cards, lower than the
+// first screen (task 242). The skeleton and the page
+// alike fill the first screen (app-place, app/site.scss: min-height 80vh,
+// with the header and the breadcrumbs above it), so the footer is below
+// the first screen before and after the reveal, whatever the page's
+// length, and nothing moves into view when a short page (/woda with no
+// cuts) takes the skeleton's place (tasks 240 and 242;
+// web.dev/articles/optimize-cls, reserve the space). The route's App
+// Shell, shared by every
 // link to it, holds only this: no place, no date
 // (nextjs.org/docs/app/guides/adopting-partial-prefetching#move-url-data-behind-suspense).
 
@@ -46,8 +47,6 @@ const SKELETON = (
         <p className="govuk-body govuk-!-margin-bottom-6">
           <Skeleton>Zmień adres</Skeleton>
         </p>
-        {CARD}
-        {CARD}
         {CARD}
         {CARD}
       </BlockSkeleton>
