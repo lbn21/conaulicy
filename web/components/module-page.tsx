@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { io } from "next/cache";
 import { cache, type ReactNode } from "react";
 import { NOT_FOUND_METADATA } from "@/components/page-not-found";
-import { SubpageHeading } from "@/components/place-page";
+import { knownPlace, SubpageHeading } from "@/components/place-page";
 import { findSubpage } from "@/lib/modules";
 import { getPlace } from "@/lib/schedule";
 
@@ -66,6 +66,9 @@ export async function ModuleMain({
   /** What an unknown place or module shows. */
   unknown: ReactNode;
 }) {
+  // An unknown module or place: its 404 before anything is read per
+  // request (components/place-page.tsx knownPlace).
+  if (!findSubpage(slug) || !(await knownPlace(id))) return <>{unknown}</>;
   const loaded = await subpageData(id, slug, nr);
   if (!loaded?.place || (!loaded.module.live && !loaded.data)) {
     return <>{unknown}</>;

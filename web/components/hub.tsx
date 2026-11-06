@@ -2,7 +2,12 @@ import { io } from "next/cache";
 import { cache, Fragment, type ReactNode } from "react";
 import { Parts, Status } from "@/components/parts";
 import { PlaceLink } from "@/components/place-link";
-import { AddressPage, numberError, StreetPage } from "@/components/place-page";
+import {
+  AddressPage,
+  knownPlace,
+  numberError,
+  StreetPage,
+} from "@/components/place-page";
 import { Upcoming } from "@/components/upcoming";
 import { MODULE_IDS } from "@/lib/address-routes";
 import { metaLine } from "@/lib/hub";
@@ -143,6 +148,8 @@ export async function HubMain({
   /** What an unknown place shows. */
   unknown: ReactNode;
 }) {
+  // An unknown place: its 404 before anything is read per request.
+  if (!(await knownPlace(id))) return <>{unknown}</>;
   const data = await hubData(id, nr);
   const place = data[0];
   if (!place) return <>{unknown}</>;
