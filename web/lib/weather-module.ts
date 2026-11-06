@@ -75,7 +75,7 @@ function when(warning: Shown): string {
  * neither, that there is no warning.
  */
 /** The weather's status line with no warning in force. */
-export const NO_WARNINGS = "Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.";
+const NO_WARNINGS = "Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.";
 
 export function weatherStatus(data: Weather): Group[] {
   if (!data.banner) return [[[NO_WARNINGS]]];

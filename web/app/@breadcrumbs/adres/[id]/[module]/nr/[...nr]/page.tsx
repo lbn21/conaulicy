@@ -8,5 +8,5 @@ export { generateStaticParams } from "@/app/adres/[id]/[module]/nr/[...nr]/page"
 export default function Crumbs({
   params,
 }: PageProps<"/adres/[id]/[module]/nr/[...nr]">) {
-  return <CrumbsRoute params={params} subpage />;
+  return <CrumbsRoute params={params} />;
 }

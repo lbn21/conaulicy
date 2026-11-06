@@ -1,8 +1,4 @@
-import {
-  ModuleMain,
-  moduleLive,
-  moduleMetadata,
-} from "@/components/module-page";
+import { ModuleMain, moduleMetadata } from "@/components/module-page";
 import { PlaceNotFound } from "@/components/place-page";
 import { PlaceSuspense } from "@/components/place-suspense";
 import { numberParam } from "@/lib/address-routes";
@@ -11,10 +7,9 @@ import { houseNumber } from "@/lib/house";
 // A module subpage's routes, one body for all of them: a live module's
 // (app/adres/[id]/[module]/…) and the waste subpage's own
 // (app/adres/[id]/smieci/…, `waste`), each with its /nr/… and /numer
-// variants (lib/address-routes.ts). The waste subpage has its own folder so
-// that its fallback is its own first screen (task 237); a static segment
-// wins over [module]
-// (nextjs.org/docs/app/api-reference/file-conventions/dynamic-routes).
+// variants (lib/address-routes.ts). The waste subpage has its own folder
+// (task 237; a static segment wins over [module]:
+// nextjs.org/docs/app/api-reference/file-conventions/dynamic-routes).
 
 type SubpageParams = Promise<{ id: string; module?: string; nr?: string[] }>;
 
@@ -53,7 +48,7 @@ export function SubpageRoute({
   ...variant
 }: Variant & { params: SubpageParams }) {
   return (
-    <PlaceSuspense shape={variant.waste ? "waste" : "live"}>
+    <PlaceSuspense>
       <SubpageContent params={params} {...variant} />
     </PlaceSuspense>
   );
@@ -71,7 +66,6 @@ async function SubpageContent({
       nr={nr}
       missing={missing}
       unknown={<PlaceNotFound />}
-      live={variant.waste ? null : moduleLive(id, slug, nr)}
     />
   );
 }

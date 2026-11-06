@@ -153,26 +153,29 @@ $app-header-colour: $app-header;
 
 // A loading placeholder (components/skeleton.tsx), as GOV.UK has none: blank
 // space as wide as its text, in place, on the bin markers' neutral grey,
-// with a subtle pulse (opacity only, so it runs on the compositor:
-// web.dev/articles/animations-guide). More modern than GOV.UK, which has no
-// loading state (Jakub's decision, 31 Oct 2026). Seen as soon as it
-// renders, no delay and no fade in: a delay showed a blank page between the
-// click and the content (task 237). A section break in a page's shape takes
-// the class too, and a button's shape GOV.UK's button box (govuk-button on a
-// span): no shadow, and no pointer, so no :hover recolours it.
+// rounded as they are, with a subtle pulse (opacity only, so it runs on the
+// compositor: web.dev/articles/animations-guide). More modern than GOV.UK,
+// which has no loading state (Jakub's decision, 31 Oct 2026). Seen as soon
+// as it renders, no delay and no fade in (task 237). The address pages'
+// skeleton (components/place-suspense.tsx) sets its bars in section cards:
+// a border in the same grey (GOV.UK's form-element width, its only one
+// that thin), the same corners, GOV.UK's padding
+// classes (task 239). The card's rule on one line, under the cap.
 .app-skeleton {
   background-color: govuk-colour("black", $variant: "tint-95");
-  box-shadow: none;
-  pointer-events: none;
+  border-radius: govuk-spacing(1);
   animation: app-pulse 1.6s ease-in-out infinite;
 }
 
+.app-skeleton-card { border: $govuk-border-width-form-element solid govuk-colour("black", $variant: "tint-95"); border-radius: govuk-spacing(1); }
+
 @keyframes app-pulse { 50% { opacity: 0.55; } }
 
-// A live block's reveal (components/live-block.tsx), as Next.js's "Suspense
-// reveals" (nextjs.org/docs/app/guides/view-transitions), opacity only: the
-// skeleton fades out and the block fades in, 150 ms each, at once, no slide
-// (task 233). The page itself (root) does not crossfade, as the guide's
+// A live block's reveal (components/live-block.tsx: the IMGW row, and an
+// address page's whole content and its breadcrumbs, task 239), as Next.js's
+// "Suspense reveals" (nextjs.org/docs/app/guides/view-transitions), opacity
+// only: the skeleton fades out and the content fades in, 150 ms each, at
+// once, no slide (task 233). The page itself (root) does not crossfade, as the guide's
 // anchored header: on a reload while scrolled it made the whole page jump,
 // and a navigation swaps at once. Clicks during a reveal reach the page.
 // All of it off under prefers-reduced-motion
@@ -196,9 +199,8 @@ $app-header-colour: $app-header;
 
 // No scroll anchor inside the main content (task 234). On a reload Chromium
 // restores the scroll from a saved anchor, a selector found on the final
-// page; at first layout the main content still holds the live blocks'
-// skeletons, so the selector matches the wrong box and the page lands too
-// high. Without one it restores the plain offset; the height is final at
+// page; at first layout the main content still holds the skeleton, so
+// the selector matches the wrong box and the page lands too high. Without one it restores the plain offset; the height is final at
 // first layout (developer.mozilla.org/docs/Web/CSS/overflow-anchor).
 #main-content { overflow-anchor: none; }
 

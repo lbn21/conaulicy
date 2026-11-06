@@ -6,8 +6,8 @@ import { allPlaces } from "@/lib/prerender";
 // page; proxy.ts redirects a renamed place's old id. The folders nr, numer,
 // harmonogram.pdf and woda.ics win over this one, so no module is called that
 // (lib/address-routes.ts).
-// A static shell, a live module's body in its own hole, as the address page
-// (../page.tsx). The waste subpage has its own folder (../smieci, task 237).
+// The skeleton's static shell, the page read per request, as the address
+// page (../page.tsx). The waste subpage has its own folder (../smieci, task 237).
 
 // Every known place's every such subpage (lib/prerender.ts).
 export async function generateStaticParams(): Promise<

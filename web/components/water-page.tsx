@@ -37,9 +37,9 @@ import { sourcesAt } from "@/lib/water-sources";
 // (lib/water-ics.ts), then every planned cut still to come at this
 // address, a day each, with its hours and what is cut, then posts we could
 // not match to addresses, as links only, then the AI-read note and the
-// posts as the source. The heading is in the page's cached shell, the rest
-// read per request (components/module-page.tsx moduleLive), so the cuts are
-// those not over now, from the cron's last file. Dates are absolute; a
+// posts as the source. Read per request with the whole page
+// (components/module-page.tsx subpageData), so the cuts are those not over
+// now, from the cron's last file. Dates are absolute; a
 // day's „Dziś” or „Jutro” is the device's (components/day-word.tsx).
 
 const H1 = "Przerwy w dostawie wody";
@@ -73,9 +73,8 @@ export async function waterMetadata(
 }
 
 /**
- * The subpage's body, read per request (components/module-page.tsx
- * moduleLive) under the heading in the shell: first when we checked, from
- * the same read as the cuts.
+ * The subpage's body, under its heading (components/module-page.tsx
+ * ModuleMain): first when we checked, from the same read as the cuts.
  */
 export function WaterDetails({
   data,

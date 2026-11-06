@@ -1,4 +1,3 @@
-import { Skeleton } from "@/components/skeleton";
 import type { Bins as BinList } from "@/lib/hub";
 import {
   BIN,
@@ -108,35 +107,6 @@ export function Bins({
             ))}
           </span>
           {pickup.label}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-/**
- * Bins' shape in a loading placeholder (components/place-suspense.tsx): per
- * name, a blank mark of the size, on the skeleton's grey, and its name's bar.
- */
-export function BinsSkeleton({
-  labels,
-  size,
-}: {
-  labels: string[];
-  size: Size;
-}) {
-  const [width, height] = SIZE[size];
-  return (
-    <ul className="govuk-list govuk-!-margin-bottom-0">
-      {labels.map((label) => (
-        <li key={label} className={itemClass(size)}>
-          <svg
-            aria-hidden="true"
-            width={width}
-            height={height}
-            className={`${markClass(size)} app-skeleton`}
-          />
-          <Skeleton>{label}</Skeleton>
         </li>
       ))}
     </ul>
