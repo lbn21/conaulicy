@@ -1,110 +1,55 @@
-import { cacheLife, cacheTag } from "next/cache";
-import { type ReactNode, Suspense } from "react";
-import { CRUMBS_CLASS, HOME_CRUMB } from "@/components/breadcrumbs";
+import { hubData } from "@/components/hub";
+import { LiveBlock } from "@/components/live-block";
+import { subpageData } from "@/components/module-page";
 import { PlaceBreadcrumbs } from "@/components/place-page";
-import { Skeleton } from "@/components/skeleton";
+import { CRUMBS_SKELETON } from "@/components/place-suspense";
 import { numberParam } from "@/lib/address-routes";
-import { findSubpage } from "@/lib/modules";
-import { getPlace, PLACE_TAGS } from "@/lib/schedule";
 
-/**
- * The address pages' breadcrumbs, as the root layout's @breadcrumbs slot
- * renders them, before the layout's one <main> (app/layout.tsx,
- * docs/layout.md): the address page's (`module` null), or a module
- * subpage's. Nothing where the page is a 404: an unknown place, an unknown
- * module, or a module without its data (as HubMain and ModuleMain decide).
- * Cached as the pages' shells are (cacheLife "max", the place's tags).
- */
-async function PlaceCrumbs({
-  id,
-  nr,
-  module = null,
-}: {
-  id: string;
-  nr: string | null;
-  module?: string | null;
-}) {
-  "use cache";
-  cacheLife("max");
-  cacheTag(...PLACE_TAGS);
-  const subpage = module === null ? null : findSubpage(module);
-  if (module !== null && !subpage) return null;
-  const [place, data] = await Promise.all([
-    getPlace(id, nr),
-    subpage && !subpage.live ? subpage.load(id, nr) : null,
-  ]);
-  if (!place || (subpage && !subpage.live && !data)) return null;
-  return <PlaceBreadcrumbs place={place} subpage={subpage !== null} />;
-}
+type CrumbsParams = Promise<{ id: string; module?: string; nr?: string[] }>;
 
 /**
  * An address page's @breadcrumbs route (app/@breadcrumbs/adres/[id]/…),
- * one body for all of them: its params awaited behind CrumbsSuspense, as
- * the page's own (components/place-suspense.tsx). `subpage` for a module's
- * subpage; `module` for the waste subpage's own route, whose params hold no
- * module (components/subpage-route.tsx).
+ * one body for all of them, before the layout's one <main> (app/layout.tsx,
+ * docs/layout.md): the address page's, or a module subpage's (`module` for
+ * the waste subpage's own route, whose params hold no module:
+ * components/subpage-route.tsx). Its fallback is the page skeleton's first
+ * line (components/place-suspense.tsx), and it reads the page's own data,
+ * from the same request-scoped read (hubData, subpageData), so the trail
+ * and the page come in together (task 239).
  */
 export function CrumbsRoute({
   params,
   module,
-  subpage = module !== undefined,
 }: {
-  params: Promise<{ id: string; module?: string; nr?: string[] }>;
-  module?: string;
-  subpage?: boolean;
-}) {
-  return (
-    <CrumbsSuspense subpage={subpage}>
-      <CrumbsContent params={params} module={module} />
-    </CrumbsSuspense>
-  );
-}
-
-async function CrumbsContent({
-  params,
-  module: fixed,
-}: {
-  params: Promise<{ id: string; module?: string; nr?: string[] }>;
+  params: CrumbsParams;
   module?: string;
 }) {
-  const { id, module = fixed, nr } = await params;
   return (
-    <PlaceCrumbs
-      id={id}
-      nr={nr ? numberParam(nr) : null}
-      module={module ?? null}
-    />
+    <LiveBlock skeleton={CRUMBS_SKELETON}>
+      <PlaceCrumbs params={params} module={module} />
+    </LiveBlock>
   );
 }
 
 /**
- * The breadcrumbs behind their params (`children`), the fallback the
- * trail's typical width, so the page under it stays put (tasks 235 and 237):
- * on a subpage the address too, which wraps on a phone as the trail does.
- * Hidden from assistive technology: the page's own fallback says
- * „Sprawdzamy…”.
+ * The trail, or nothing where the page is a 404: an unknown place, an
+ * unknown module, or a module without its data (as HubMain and ModuleMain
+ * decide).
  */
-function CrumbsSuspense({
-  subpage,
-  children,
+async function PlaceCrumbs({
+  params,
+  module: fixed,
 }: {
-  subpage: boolean;
-  children: ReactNode;
+  params: CrumbsParams;
+  module?: string;
 }) {
-  const trail = `${HOME_CRUMB.label} Lubaczów${subpage ? " ul. Adama Mickiewicza" : ""}`;
-  return (
-    <Suspense
-      fallback={
-        <div className={CRUMBS_CLASS} aria-hidden="true">
-          <ol className="govuk-breadcrumbs__list">
-            <li className="govuk-breadcrumbs__list-item">
-              <Skeleton>{trail}</Skeleton>
-            </li>
-          </ol>
-        </div>
-      }
-    >
-      {children}
-    </Suspense>
-  );
+  const { id, module = fixed, nr: given } = await params;
+  const nr = given ? numberParam(given) : null;
+  if (module === undefined) {
+    const [place] = await hubData(id, nr);
+    return place && <PlaceBreadcrumbs place={place} />;
+  }
+  const loaded = await subpageData(id, module, nr);
+  if (!loaded?.place || (!loaded.module.live && !loaded.data)) return null;
+  return <PlaceBreadcrumbs place={loaded.place} subpage />;
 }

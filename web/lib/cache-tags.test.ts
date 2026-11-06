@@ -106,14 +106,12 @@ test("the shells: every `use cache` scope is cacheLife max and tags the dataset"
     "app/page.tsx: max DATASET",
     "app/sitemap.ts: dataset DATASET",
     "app/ulice/page.tsx: max DATASET",
-    "components/hub.tsx: max ...PLACE_TAGS",
-    "components/module-page.tsx: max ...PLACE_TAGS",
-    "components/place-crumbs.tsx: max ...PLACE_TAGS",
+    "components/place-page.tsx: max ...PLACE_TAGS",
     "components/place-page.tsx: max ...PLACE_TAGS",
     "components/water-page.tsx: max ...PLACE_TAGS",
   ]);
   // Every scope is one of those.
-  assert.equal(calling(/"use cache"/).length, 8);
+  assert.equal(calling(/"use cache"/).length, 5);
   assert.match(
     read("./schedule.ts"),
     /export const PLACE_TAGS = DAY_CACHE\.tags;/,
@@ -123,7 +121,7 @@ test("the shells: every `use cache` scope is cacheLife max and tags the dataset"
 
 test("the live blocks: read after io(), never inside a cached scope", () => {
   for (const [path, count] of [
-    ["../components/hub.tsx", 2],
+    ["../components/hub.tsx", 1],
     ["../components/module-page.tsx", 1],
     ["../components/imgw-banner.tsx", 1],
   ] as const)
@@ -132,17 +130,41 @@ test("the live blocks: read after io(), never inside a cached scope", () => {
       count,
       path,
     );
-  assert.doesNotMatch(read("../components/imgw-banner.tsx"), /use cache/);
-  // Every live module's body and „Najbliższe dni” through LiveBlock.
-  const hub = read("../components/hub.tsx");
-  assert.match(
-    hub,
-    /<LiveBlock skeleton=\{UPCOMING_SKELETON\}>\n\s+<UpcomingLive /,
-  );
-  assert.match(
-    hub,
-    /<LiveBlock key=\{slug\} skeleton=\{sectionSkeleton\(MODULES\[slug\]\)\}>\n\s+<ModuleLive /,
-  );
+  for (const path of [
+    "../components/hub.tsx",
+    "../components/module-page.tsx",
+    "../components/place-crumbs.tsx",
+    "../components/imgw-banner.tsx",
+  ])
+    assert.doesNotMatch(read(path), /use cache/, path);
   const modules = read("./modules.ts");
   assert.equal(modules.match(/\n\s+live: true,\n/g)?.length, 2);
+});
+
+test("the address pages: one read per request, every block at once, shared with the breadcrumbs (task 239)", () => {
+  // Every module's data in one Promise.all, after io(), behind React's
+  // cache(), so the page and its breadcrumbs share one read.
+  assert.match(
+    read("../components/hub.tsx"),
+    /export const hubData = cache\(async \(id: string, nr: string \| null\) => \{\n\s+await io\(\);\n\s+return \(await Promise\.all\(\n\s+MODULE_IDS\.map\(\(slug\) => MODULES\[slug\]\.load\(id, nr\)\),/,
+  );
+  assert.match(
+    read("../components/module-page.tsx"),
+    /export const subpageData = cache\(\n\s+async \(id: string, slug: string, nr: string \| null\) => \{\n\s+await io\(\);/,
+  );
+  const crumbs = read("../components/place-crumbs.tsx");
+  assert.match(crumbs, /await hubData\(id, nr\)/);
+  assert.match(crumbs, /await subpageData\(id, module, nr\)/);
+  // One boundary per address route, the page's and its trail's.
+  assert.deepEqual(calling(/<PlaceSuspense>/), [
+    "app/adres/[id]/nr/[...nr]/page.tsx",
+    "app/adres/[id]/numer/page.tsx",
+    "app/adres/[id]/page.tsx",
+    "components/subpage-route.tsx",
+  ]);
+  assert.deepEqual(calling(/<LiveBlock /), [
+    "components/imgw-banner.tsx",
+    "components/place-crumbs.tsx",
+    "components/place-suspense.tsx",
+  ]);
 });

@@ -17,8 +17,10 @@ const nextConfig: NextConfig = {
   // (nextjs.org/docs/app/api-reference/functions/cacheLife), so until the
   // next deploy, or the import's purge of the dataset tag for those built
   // from the database (app/api/revalidate). What changes between imports
-  // (IMGW, water, „Najbliższe dni”) is never in a shell: each block is its
-  // own <Suspense> hole, read per request (components/live-block.tsx).
+  // (IMGW, water, „Najbliższe dni”) is never in a shell: the IMGW row is
+  // its own <Suspense> hole, and the address pages are read per request,
+  // whole, behind one skeleton (components/live-block.tsx,
+  // components/place-suspense.tsx).
   // Partial Prefetching set explicitly, as the docs ask. Next.js's own list
   // of HTML-limited bots applies: they get metadata in <head>.
   cacheComponents: true,

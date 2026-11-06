@@ -228,6 +228,19 @@ function HouseNumberQuestion({
   );
 }
 
+/**
+ * Whether the place exists, cached as the address pages' metadata (the
+ * place's tags). Asked before the page is read per request (task 239), so
+ * an unknown place's 404 is decided in the cached part of the render,
+ * before the shell is sent, and the answer is a real 404, not a 200.
+ */
+export async function knownPlace(id: string): Promise<boolean> {
+  "use cache";
+  cacheLife("max");
+  cacheTag(...PLACE_TAGS);
+  return (await getPlace(id, null)) !== null;
+}
+
 /** The 404 page for an unknown place or module (see NotFound). */
 export function PlaceNotFound() {
   return (

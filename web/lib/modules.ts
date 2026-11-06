@@ -23,7 +23,6 @@ import {
 import { wasteUpcoming } from "@/lib/waste-upcoming";
 import { loadWater } from "@/lib/water-load";
 import {
-  NO_CUTS,
   type Water,
   waterChecked,
   waterSources,
@@ -31,7 +30,6 @@ import {
   waterUpcoming,
 } from "@/lib/water-module";
 import {
-  NO_WARNINGS,
   type Weather,
   weather,
   weatherChecked,
@@ -50,16 +48,11 @@ export type Module<D> = {
    */
   load(place: string, nr: string | null): Promise<D | null>;
   /**
-   * Its data changes between imports (a cron's file): its section body and
-   * subpage body are read per request, each in its own hole with a
-   * skeleton (components/live-block.tsx), never in the cached shell.
+   * Its data changes between imports (a cron's file). Every address page
+   * reads all its modules per request (task 239); a live module with no
+   * data yet says it has not been checked (components/hub.tsx).
    */
   live?: boolean;
-  /**
-   * A live module's usual status line (nothing planned, no warning), its
-   * own words: its skeleton's typical shape (components/hub.tsx).
-   */
-  typical?: string;
   /**
    * Its lines for the „Najbliższe dni” block (lib/upcoming.ts), structured:
    * the island words them and hides those over.
@@ -149,7 +142,6 @@ const woda: Module<Water> = {
   pageTitle: "Przerwy w dostawie wody",
   load: loadWater,
   live: true,
-  typical: `${NO_CUTS}.`,
   upcoming: waterUpcoming,
   status: waterStatus,
   sources: waterSources,
@@ -169,7 +161,6 @@ const pogoda: Module<Weather> = {
     return weather(await imgwCopy(), Date.now());
   },
   live: true,
-  typical: NO_WARNINGS,
   upcoming: weatherUpcoming,
   status: weatherStatus,
   sources: weatherSources,

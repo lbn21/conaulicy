@@ -1,132 +1,81 @@
-import { type ReactNode, Suspense } from "react";
-import { HUB_SHAPE } from "@/components/hub";
-import { BlockSkeleton } from "@/components/live-block";
-import { LIVE_SHAPE } from "@/components/module-page";
-import { blank, Skeleton } from "@/components/skeleton";
-import { CALENDAR_CHECK } from "@/components/subpage-parts";
-import { BinsSkeleton } from "@/components/waste-bins";
+import type { ReactNode } from "react";
+import { CRUMBS_CLASS } from "@/components/breadcrumbs";
+import { GovukFrontend } from "@/components/govuk-frontend";
+import { BlockSkeleton, LiveBlock } from "@/components/live-block";
+import { Skeleton } from "@/components/skeleton";
 
-// The address pages read their place from the URL (params) behind
-// <Suspense>, so their route's App Shell, shared by every link to it, holds
-// no place and a default <Link> prefetches it (task 231, Jakub's decision;
-// nextjs.org/docs/app/guides/adopting-partial-prefetching#move-url-data-behind-suspense).
-// After a click the place streams in; a prerendered place's full load has
-// it in its static HTML, after the skeleton (React's hidden <div>).
-// The fallback is the page's typical first screen (nextjs.org/docs/app/getting-started/caching:
-// a fallback that reserves space; task 237), so what a click shows at once
-// stays put when the page comes in: the h1's line, „Zmień adres”, then the
-// page's own shapes, the live blocks' too. Below the first screen it is
-// left simple: every address's page is as long as its own content.
+// The address pages and their subpages: one skeleton, one reveal (Jakub's
+// decision, task 239). The page's content (its params, then every block's
+// data at once: components/hub.tsx hubData, components/module-page.tsx
+// subpageData) sits behind one <Suspense> (react.dev/reference/react/Suspense),
+// so it all comes in together, after the slowest block. The skeleton is
+// generic, not the page's shape, so a new section needs no new one: the
+// h1's bar, „Zmień adres”'s, then four section cards, a little more than
+// the first screen on a phone (390×844) and a desktop (1280×800), so the
+// footer stays below it. The route's App Shell, shared by every
+// link to it, holds only this: no place, no date
+// (nextjs.org/docs/app/guides/adopting-partial-prefetching#move-url-data-behind-suspense).
 
-// „Zmień adres” (components/place-page.tsx PlaceHeading), spaced as there.
-const CHANGE = (
-  <p className="govuk-body govuk-!-margin-bottom-6">
-    <Skeleton>Zmień adres</Skeleton>
-  </p>
+/** A section card: a heading's bar and two lines'. */
+const CARD = (
+  <div className="app-skeleton-card govuk-!-padding-4 govuk-!-margin-bottom-6">
+    <p className="govuk-heading-s">
+      <Skeleton>Najbliższe dni</Skeleton>
+    </p>
+    <p className="govuk-body">
+      <Skeleton>Tego dnia odbiorą: zmieszane, papier</Skeleton>
+    </p>
+    <p className="govuk-body govuk-!-margin-bottom-0">
+      <Skeleton>Sprawdziliśmy 1 listopada</Skeleton>
+    </p>
+  </div>
 );
 
-// A subpage's caption, the place.
-const CAPTION = (
-  <span className="govuk-caption-l">
-    <Skeleton>Lubaczów, ul. Adama Mickiewicza</Skeleton>
-  </span>
+const SKELETON = (
+  <div className="govuk-grid-row">
+    <div className="govuk-grid-column-two-thirds">
+      <BlockSkeleton>
+        <p className="govuk-heading-l">
+          <Skeleton>ul. Adama Mickiewicza</Skeleton>
+        </p>
+        <p className="govuk-body govuk-!-margin-bottom-6">
+          <Skeleton>Zmień adres</Skeleton>
+        </p>
+        {CARD}
+        {CARD}
+        {CARD}
+        {CARD}
+      </BlockSkeleton>
+    </div>
+  </div>
 );
 
-const SHAPES = {
-  /** The address page (components/hub.tsx). */
-  hub: (
-    <>
-      <p className="govuk-heading-l">
-        <Skeleton>ul. Adama Mickiewicza</Skeleton>
-      </p>
-      {CHANGE}
-      {HUB_SHAPE}
-    </>
-  ),
-  /**
-   * A live module's subpage (components/module-page.tsx), one shape for
-   * every one, as the module is in the params too: the water's.
-   */
-  live: (
-    <>
-      {CAPTION}
-      <p className="govuk-heading-l">
-        <Skeleton>Przerwy w dostawie wody</Skeleton>
-      </p>
-      {CHANGE}
-      {LIVE_SHAPE}
-    </>
-  ),
-  /**
-   * The waste subpage (components/place-page.tsx WasteDetails), its own
-   * route (app/adres/[id]/smieci): its checked line, the calendar's button,
-   * hint and details, the PDF link, then the next pickup's big date and its
-   * first bins (components/pickup-schedule.tsx NextPickup). The button's
-   * shape is GOV.UK's button box (app/site.scss).
-   */
-  waste: (
-    <>
-      {CAPTION}
-      <p className="govuk-heading-l">
-        <Skeleton>Odbiór śmieci</Skeleton>
-      </p>
-      {CHANGE}
-      <p className="govuk-hint govuk-!-font-size-16">
-        <Skeleton>Wywozy sprawdziliśmy: 1 listopada, 5:17</Skeleton>
-      </p>
-      <span className="govuk-button app-skeleton">
-        {blank("Dodaj do kalendarza")}
-      </span>
-      <p className="govuk-body">
-        <Skeleton>Plik z datami wywozu.</Skeleton>
-      </p>
-      <div className="govuk-details">
-        <p className="govuk-body govuk-!-margin-bottom-1">
-          <Skeleton>{CALENDAR_CHECK}</Skeleton>
-        </p>
-      </div>
-      <p className="govuk-body">
-        <Skeleton>Harmonogram do druku (PDF)</Skeleton>
-      </p>
-      {/* In its own <div>, as NextPickup's: right after a govuk-body,
-          GOV.UK's `.govuk-body + .govuk-heading-s` would pad the date. */}
-      <div className="govuk-!-margin-bottom-6">
-        <p className="govuk-heading-s govuk-!-margin-bottom-3">
-          <span className="govuk-!-display-block govuk-!-font-size-27">
-            <Skeleton>Najbliższy odbiór</Skeleton>
-          </span>
-          <span className="govuk-!-display-block govuk-!-font-size-80">
-            <Skeleton>12</Skeleton>
-          </span>
-          <span className="govuk-!-display-block govuk-!-font-size-24">
-            <Skeleton>listopada, czwartek</Skeleton>
-          </span>
-        </p>
-        <BinsSkeleton labels={["Zmieszane", "Papier", "Szkło"]} size="large" />
-      </div>
-    </>
-  ),
-};
+/**
+ * The skeleton's first line, the breadcrumbs', in the layout's @breadcrumbs
+ * slot before <main> (components/place-crumbs.tsx). Hidden from assistive
+ * technology: the page's own skeleton says „Sprawdzamy…”.
+ */
+export const CRUMBS_SKELETON = (
+  <div className={CRUMBS_CLASS} aria-hidden="true">
+    <ol className="govuk-breadcrumbs__list">
+      <li className="govuk-breadcrumbs__list-item">
+        <Skeleton>Strona główna Lubaczów</Skeleton>
+      </li>
+    </ol>
+  </div>
+);
 
-/** An address page's content (`children` awaits the params), as above. */
-export function PlaceSuspense({
-  shape,
-  children,
-}: {
-  shape: keyof typeof SHAPES;
-  children: ReactNode;
-}) {
+/**
+ * An address page's content (`children` awaits the params), as above. It
+ * comes in after the layout, so it starts GOV.UK Frontend's components
+ * itself (its buttons, the error summary's focus), once it is there;
+ * those the layout already started are skipped.
+ */
+export function PlaceSuspense({ children }: { children: ReactNode }) {
   return (
-    <Suspense
-      fallback={
-        <div className="govuk-grid-row">
-          <div className="govuk-grid-column-two-thirds">
-            <BlockSkeleton>{SHAPES[shape]}</BlockSkeleton>
-          </div>
-        </div>
-      }
-    >
+    <LiveBlock skeleton={SKELETON}>
       {children}
-    </Suspense>
+      <GovukFrontend />
+    </LiveBlock>
   );
 }
