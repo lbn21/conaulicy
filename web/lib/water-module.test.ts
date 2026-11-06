@@ -25,6 +25,7 @@ import {
   zukFile,
 } from "./water-fixture.ts";
 import {
+  aiNote,
   type Cut,
   cutWhere,
   GMINA_NEWS,
@@ -34,7 +35,6 @@ import {
   outsideRange,
   scope,
   staleNote,
-  WATER_AI_NOTE,
   type Water,
   water,
   waterAiNote,
@@ -939,7 +939,7 @@ test("town, a ZUK cut: its post the only „Źródło”, never MZGKiM's page", 
   assert.deepEqual(waterSources(data), [
     [{ href: POST_URL, text: "komunikat gminy z 23 października 2026" }],
   ]);
-  assert.equal(waterAiNote(data), WATER_AI_NOTE);
+  assert.equal(waterAiNote(data), aiNote("gminy"));
 });
 
 test("town, both sources' cuts: both posts, both in the AI note", () => {
