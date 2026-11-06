@@ -2,16 +2,16 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { warsawToIso } from "../lib/dates.ts";
+import { todayInWarsaw, warsawToIso } from "../lib/dates.ts";
 import { span } from "../lib/hub.ts";
 import type { Item } from "../lib/upcoming.ts";
-import { blank } from "./skeleton.tsx";
 import { NOTHING_SOON, Upcoming } from "./upcoming.tsx";
+import { WarsawToday } from "./warsaw-today.tsx";
 
 // „Najbliższe dni” (components/upcoming.tsx) as the server renders it per
-// request: what is not over at `now`, every date absolute, and in place of
-// „Dziś” or „Jutro” a word-wide skeleton (the device's, after hydration:
-// components/day-word.tsx). At 23:58 on Wednesday 28 Oct, and at 00:05.
+// request: what is not over at `now`, every date absolute, the lead „Dziś”
+// or „Jutro” for the server's Warsaw day, in the HTML (components/day-word.tsx).
+// At 23:58 on Wednesday 28 Oct, and at 00:05.
 const wall = (w: string) => warsawToIso(w) as string;
 const NOW = Date.parse("2026-10-28T23:58:00+01:00");
 const LATER = Date.parse("2026-10-29T00:05:00+01:00");
@@ -40,12 +40,15 @@ const ITEMS: Item[] = [
 ];
 
 const list = (now: number) =>
-  renderToStaticMarkup(createElement(Upcoming, { items: ITEMS, now }));
+  renderToStaticMarkup(
+    createElement(
+      WarsawToday,
+      { day: todayInWarsaw(new Date(now)) },
+      createElement(Upcoming, { items: ITEMS, now }),
+    ),
+  );
 
-// The skeleton the server leaves for the device's word.
-const WORD = `<span class="app-skeleton" aria-hidden="true">${blank("Jutro")}</span>`;
-
-test("server render: absolute words, the word a skeleton, GOV.UK's list, section links", () => {
+test("server render: the server day's words, GOV.UK's list, section links", () => {
   const html = list(NOW);
   assert.match(
     html,
@@ -53,15 +56,15 @@ test("server render: absolute words, the word a skeleton, GOV.UK's list, section
   );
   assert.ok(
     html.includes(
-      `<strong>${WORD}</strong> od 22:00 do czwartku 29 października, 0:00 nie będzie wody.`,
+      "<strong>Dziś</strong> od 22:00 do czwartku 29 października, 0:00 nie będzie wody.",
     ),
     html,
   );
   assert.ok(
-    html.includes(`<strong>${WORD}</strong> odbiór śmieci: papier, szkło.`),
+    html.includes("<strong>Jutro</strong> odbiór śmieci: papier, szkło."),
     html,
   );
-  assert.doesNotMatch(html, /Dziś|Teraz|jutra/);
+  assert.doesNotMatch(html, /app-skeleton|Teraz|jutra/);
   assert.match(
     html,
     /<a class="govuk-link" href="#woda">Szczegóły i źródło<span class="govuk-visually-hidden">: woda<\/span><\/a>/,
@@ -76,7 +79,8 @@ test("server render: absolute words, the word a skeleton, GOV.UK's list, section
 test("00:05: the cut over is gone, the pickup stays", () => {
   const html = list(LATER);
   assert.doesNotMatch(html, /wody/);
-  assert.match(html, /odbiór śmieci: papier, szkło\./);
+  // Thursday's pickup is „Dziś” now, the server's day being Thursday.
+  assert.match(html, /<strong>Dziś<\/strong> odbiór śmieci: papier, szkło\./);
   assert.equal((html.match(/<li>/g) ?? []).length, 1);
 });
 

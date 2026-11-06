@@ -13,7 +13,7 @@ export const LOADING = "Sprawdzamy…";
  * aria-hidden (a crawler, a text-only browser) finds no words in a
  * placeholder.
  */
-export const blank = (text: string) => text.replace(/\S/gu, "\u2002");
+const blank = (text: string) => text.replace(/\S/gu, "\u2002");
 
 /**
  * A loading placeholder (GOV.UK has none): blank space as wide as the text

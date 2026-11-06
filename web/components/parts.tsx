@@ -2,11 +2,11 @@ import { Fragment } from "react";
 import { DayWord } from "@/components/day-word";
 import { PlaceLink } from "@/components/place-link";
 import { Bins } from "@/components/waste-bins";
+import { capitalised } from "@/lib/dates";
 import type { Group, Part } from "@/lib/hub";
-import { capitalised } from "@/lib/upcoming";
 
 // A module's lines (lib/hub.ts Part): text, links, bins, IMGW's tags and a
-// section's day lead („Dziś: ”, the device's, components/day-word.tsx), for
+// section's day lead („Dziś: ”, components/day-word.tsx), for
 // the address page's sections and the module subpages.
 
 /** Parts as plain text, for a key in a list. */
@@ -23,7 +23,7 @@ export const textOf = (parts: Part[]) =>
 
 /**
  * A line's parts as text, links, bins (a row of small ones), tags and day
- * leads. `lead`: a day lead gets the device's „Dziś: ” (DayWord); false
+ * leads. `lead`: a day lead gets its „Dziś: ” (DayWord); false
  * where none should (then a day lead is its date alone).
  */
 export function Parts({ parts, lead }: { parts: Part[]; lead: boolean }) {

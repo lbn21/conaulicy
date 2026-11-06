@@ -11,8 +11,13 @@ import { Skeleton } from "@/components/skeleton";
 // so it all comes in together, after the slowest block. The skeleton is
 // generic, not the page's shape, so a new section needs no new one: the
 // h1's bar, „Zmień adres”'s, then four section cards, a little more than
-// the first screen on a phone (390×844) and a desktop (1280×800), so the
-// footer stays below it. The route's App Shell, shared by every
+// the first screen on a phone (390×844) and a desktop (1280×800). The
+// skeleton and the page are both at least a screen tall (app-place,
+// app/site.scss: min-height 100vh), so the footer is below the first
+// screen before and after the reveal, whatever the page's length, and
+// nothing moves into view when a short page (/woda with no cuts) takes the
+// skeleton's place (task 240; web.dev/articles/optimize-cls, reserve the
+// space). The route's App Shell, shared by every
 // link to it, holds only this: no place, no date
 // (nextjs.org/docs/app/guides/adopting-partial-prefetching#move-url-data-behind-suspense).
 
@@ -73,9 +78,11 @@ export const CRUMBS_SKELETON = (
  */
 export function PlaceSuspense({ children }: { children: ReactNode }) {
   return (
-    <LiveBlock skeleton={SKELETON}>
-      {children}
-      <GovukFrontend />
-    </LiveBlock>
+    <div className="app-place">
+      <LiveBlock skeleton={SKELETON}>
+        {children}
+        <GovukFrontend />
+      </LiveBlock>
+    </div>
   );
 }

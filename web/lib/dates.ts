@@ -133,3 +133,25 @@ export function isoWithOffset(at: number): string {
   const mm = String(abs % 60).padStart(2, "0");
   return `${local}${sign}${hh}:${mm}`;
 }
+
+/** "przerwa" → "Przerwa". */
+export const capitalised = (text: string) =>
+  text.charAt(0).toUpperCase() + text.slice(1);
+
+/**
+ * A section's first line on `today` (a Warsaw day): „Dziś: ”, „Jutro: ” or
+ * „Za 5 dni: ” (2 to 7 days) before the absolute `text`; further, or past,
+ * the text alone.
+ */
+export function dayLead(day: string, text: string, today: string): string {
+  const n = (Date.parse(day) - Date.parse(today)) / 86_400_000;
+  const lead =
+    n === 0
+      ? "Dziś"
+      : n === 1
+        ? "Jutro"
+        : n >= 2 && n <= 7
+          ? `Za ${n} dni`
+          : null;
+  return lead ? `${lead}: ${text}` : capitalised(text);
+}

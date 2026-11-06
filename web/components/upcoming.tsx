@@ -3,7 +3,7 @@ import { type Item, LINK_NAME, visible, words } from "@/lib/upcoming";
 
 // „Najbliższe dni” (lib/upcoming.ts), read per request in its own block
 // (components/hub.tsx UpcomingLive): what is shown at `now`, in the one
-// order, every date absolute, the lead's „Dziś” or „Jutro” the device's
+// order, every date absolute, the lead's „Dziś” or „Jutro” with them
 // (components/day-word.tsx). Always its heading: with nothing shown, one
 // plain line, so the block keeps its place (task 235).
 
