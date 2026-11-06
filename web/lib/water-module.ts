@@ -630,10 +630,6 @@ const cutSources = (data: Water) => {
     .filter((source) => used.has(source.id));
 };
 
-/** The gmina's AI-read note: the shape of every source's. */
-export const WATER_AI_NOTE =
-  "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest komunikat gminy.";
-
 /** The AI-read note for one source's posts, `of` its genitive. */
 export function aiNote(of: string): string {
   return `Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest komunikat ${of}.`;

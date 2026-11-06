@@ -182,19 +182,6 @@ export type ZukFile = {
   retries: Retry[];
 };
 
-/**
- * Whether the Warsaw day changed between `from` (exclusive, the previous
- * file's checkedAt) and `to` (inclusive, this run's start); never without a
- * previous file. The cron purges DAY on it (lib/zuk-cron.ts).
- */
-export function dayChanged(
-  previous: ZukFile | null,
-  from: Date,
-  to: Date,
-): boolean {
-  return previous !== null && todayInWarsaw(from) !== todayInWarsaw(to);
-}
-
 /** The file, or null if it is not one of this version. */
 export function parseZukFile(body: string): ZukFile | null {
   try {

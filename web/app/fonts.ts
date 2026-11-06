@@ -10,7 +10,7 @@ import localFont from "next/font/local";
 // in on that page view (the next one has it cached). The fallback matches
 // on average, but a single line can still be a few pixels wider or narrower,
 // so a breadcrumb or a heading near the edge wraps differently: a late swap
-// moved /adres/<id>/smieci by 0.21 at 375px (task 141, scripts/check-fonts.mjs).
+// moved /adres/<id>/smieci by 0.21 at 375px (task 141).
 
 export const atkinson = localFont({
   src: [
