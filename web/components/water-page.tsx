@@ -40,7 +40,7 @@ import { sourcesAt } from "@/lib/water-sources";
 // posts as the source. Read per request with the whole page
 // (components/module-page.tsx subpageData), so the cuts are those not over
 // now, from the cron's last file. Dates are absolute; a
-// day's „Dziś” or „Jutro” is the device's (components/day-word.tsx).
+// day's „Dziś” or „Jutro” comes with them (components/day-word.tsx).
 
 const H1 = "Przerwy w dostawie wody";
 

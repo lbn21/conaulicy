@@ -492,11 +492,7 @@ function WasteBody({
             </a>
           </p>
 
-          <PickupSchedule
-            days={place.days}
-            renderedOn={place.today}
-            later={laterNote(place.days)}
-          />
+          <PickupSchedule days={place.days} later={laterNote(place.days)} />
 
           {!place.verified && <AiReadNote text={unverifiedNote(place.gmina)} />}
           <SourceInset>

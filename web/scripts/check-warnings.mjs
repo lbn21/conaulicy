@@ -623,7 +623,7 @@ async function hubChecks(origin, state) {
     .map(([, line]) => line)
     .filter((line) => line.includes("ostrzeżenie IMGW"));
   const line = new RegExp(
-    // The lead: the device's „Dziś”, „Jutro” or the start's date, absolute.
+    // The lead: „Dziś”, „Jutro” (the server's day) or the start's date, absolute.
     `^<strong>(?:(?:Dziś|Jutro)(?: od ${TIME})?|\\p{Lu}\\p{L}+, \\d{1,2} \\p{L}+(?:, od ${TIME})?):</strong> ostrzeżenie IMGW – silny wiatr <strong class="govuk-tag govuk-tag--(?:yellow|orange|red)">Stopień [1-3] z 3</strong>, do (?:${DAY}, )?${TIME}\\.</span><span class="govuk-!-display-block">Cały powiat\\.</span><a class="govuk-link" href="#pogoda">Szczegóły i źródło<span class="govuk-visually-hidden">: pogoda</span></a>$`,
     "u",
   );

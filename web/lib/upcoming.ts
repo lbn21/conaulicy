@@ -1,10 +1,11 @@
 // The address page's „Najbliższe dni” block (components/upcoming.tsx) and
 // its sections' day leads: what each module gives the block (Item), the one
 // order, and its words. The server makes every label, absolute (dates,
-// clock times); only „Dziś”, „Jutro” and „Za 5 dni” are the device's
-// (components/day-word.tsx, dayLead), with no locale formatting, and the
+// clock times); only „Dziś”, „Jutro” and „Za 5 dni” follow the day
+// (components/day-word.tsx, lib/dates.ts dayLead), with no locale formatting, and the
 // unit tests' from a fixed day. Pure and client-safe.
 import { MODULE_IDS, type ModuleId } from "./address-routes.ts";
+import { capitalised } from "./dates.ts";
 
 /** When something happens, with its labels made on the server. */
 export type Span = {
@@ -75,12 +76,8 @@ export const visible = (item: Item, now: number) =>
   (item.shownFrom === null || Date.parse(item.shownFrom) <= now) &&
   now < Date.parse(item.span.end);
 
-/** "przerwa" → "Przerwa". */
-export const capitalised = (text: string) =>
-  text.charAt(0).toUpperCase() + text.slice(1);
-
 /**
- * A line's words: the lead (bold), as the device's „Dziś” or „Jutro” and
+ * A line's words: the lead (bold), as „Dziś” or „Jutro” and
  * what follows that word (components/day-word.tsx), or else the date
  * („Piątek, 30 października:”); the rest; the second sentence.
  */
@@ -142,22 +139,4 @@ export function words(item: Item, now: number): Words {
     case "smieci":
       return { ...lead, text: [`odbiór śmieci: ${item.bins}.`], second };
   }
-}
-
-/**
- * A section's first line on `today` (a Warsaw day): „Dziś: ”, „Jutro: ” or
- * „Za 5 dni: ” (2 to 7 days) before the absolute `text`; further, or past,
- * the text alone.
- */
-export function dayLead(day: string, text: string, today: string): string {
-  const n = (Date.parse(day) - Date.parse(today)) / 86_400_000;
-  const lead =
-    n === 0
-      ? "Dziś"
-      : n === 1
-        ? "Jutro"
-        : n >= 2 && n <= 7
-          ? `Za ${n} dni`
-          : null;
-  return lead ? `${lead}: ${text}` : capitalised(text);
 }

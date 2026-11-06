@@ -1,16 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { relativeWord, todayInWarsaw, warsawToIso } from "./dates.ts";
-import { span } from "./hub.ts";
 import {
   capitalised,
   dayLead,
-  type Item,
-  ordered,
-  visible,
-  type Words,
-  words,
-} from "./upcoming.ts";
+  relativeWord,
+  todayInWarsaw,
+  warsawToIso,
+} from "./dates.ts";
+import { span } from "./hub.ts";
+import { type Item, ordered, visible, type Words, words } from "./upcoming.ts";
 
 // Wednesday 28 Oct 2026; Warsaw is UTC+1 (CET since Sunday's 3:00).
 const at = (iso: string) => Date.parse(iso);

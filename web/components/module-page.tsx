@@ -3,6 +3,7 @@ import { io } from "next/cache";
 import { cache, type ReactNode } from "react";
 import { NOT_FOUND_METADATA } from "@/components/page-not-found";
 import { knownPlace, SubpageHeading } from "@/components/place-page";
+import { WarsawToday } from "@/components/warsaw-today";
 import { findSubpage } from "@/lib/modules";
 import { getPlace } from "@/lib/schedule";
 
@@ -76,14 +77,21 @@ export async function ModuleMain({
   const { module, place, data } = loaded;
   const checkedAt = data ? (module.checkedAt?.(data) ?? null) : null;
   // Its breadcrumbs: the layout's @breadcrumbs slot (components/place-crumbs.tsx).
-  return module.live ? (
-    <div className="govuk-grid-row">
-      <div className="govuk-grid-column-two-thirds">
-        <SubpageHeading place={place} heading={module.pageTitle} />
-        {data !== null && <module.Details data={data} checkedAt={checkedAt} />}
-      </div>
-    </div>
-  ) : (
-    <module.Details data={data} missing={missing} checkedAt={checkedAt} />
+  // „Dziś” and „Jutro” for the read's Warsaw day (components/warsaw-today.tsx).
+  return (
+    <WarsawToday day={place.today}>
+      {module.live ? (
+        <div className="govuk-grid-row">
+          <div className="govuk-grid-column-two-thirds">
+            <SubpageHeading place={place} heading={module.pageTitle} />
+            {data !== null && (
+              <module.Details data={data} checkedAt={checkedAt} />
+            )}
+          </div>
+        </div>
+      ) : (
+        <module.Details data={data} missing={missing} checkedAt={checkedAt} />
+      )}
+    </WarsawToday>
   );
 }

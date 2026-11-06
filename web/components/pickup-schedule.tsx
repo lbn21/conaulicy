@@ -14,7 +14,7 @@ import {
 const HERO_COUNT = 3;
 
 // A day as its date, absolute, with its weekday; „dziś, ” or „jutro, ”
-// before it is the device's (components/day-word.tsx), never the server's.
+// before it (components/day-word.tsx).
 function SpokenDay({ iso }: { iso: string }) {
   return (
     <>
@@ -89,18 +89,15 @@ function DayList({ days }: { days: PickupDay[] }) {
 
 export function PickupSchedule({
   days,
-  renderedOn,
   later = null,
 }: {
   days: PickupDay[];
-  /** Warsaw day the server rendered for. */
-  renderedOn: string;
   /** After the last date: when the next dates come (laterNote). */
   later?: string | null;
 }) {
-  // From the device's day on: the page is cached until the next import or
-  // deploy, so the server's day may be past (components/warsaw-today.ts).
-  const today = useWarsawToday(renderedOn);
+  // From today on: the server's day, then the device's, as a page can
+  // outlive its day (components/warsaw-today.tsx).
+  const today = useWarsawToday();
   const visible = days.filter((day) => day.date >= today);
 
   if (visible.length === 0) {

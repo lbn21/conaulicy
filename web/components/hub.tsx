@@ -9,6 +9,7 @@ import {
   StreetPage,
 } from "@/components/place-page";
 import { Upcoming } from "@/components/upcoming";
+import { WarsawToday } from "@/components/warsaw-today";
 import { MODULE_IDS } from "@/lib/address-routes";
 import { metaLine } from "@/lib/hub";
 import { IMGW_ATTRIBUTION } from "@/lib/imgw-warnings";
@@ -36,8 +37,9 @@ import { ordered } from "@/lib/upcoming";
 // every block's data at once (hubData), so it all comes in together, each
 // live module with its „Sprawdziliśmy” from the same read. Its static shell
 // holds only the skeleton: no date and no waste type is ever prerendered.
-// Dates are absolute; „Dziś” and „Jutro” are the device's
-// (components/day-word.tsx).
+// Dates are absolute; „Dziś” and „Jutro” come with them, for the read's
+// Warsaw day (WarsawToday, place.today), then the device's
+// (components/warsaw-today.tsx).
 
 type Loaded = { module: Module<unknown>; data: unknown };
 
@@ -153,9 +155,19 @@ export async function HubMain({
   const data = await hubData(id, nr);
   const place = data[0];
   if (!place) return <>{unknown}</>;
-  if (numberError(place, missing)) {
-    return <StreetPage place={place} missing={missing} />;
-  }
+  return (
+    <WarsawToday day={place.today}>
+      {numberError(place, missing) ? (
+        <StreetPage place={place} missing={missing} />
+      ) : (
+        <Hub data={data} place={place} />
+      )}
+    </WarsawToday>
+  );
+}
+
+/** The address page's sections, as HubMain. */
+function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
   const modules = MODULE_IDS.map((slug): Module<unknown> => MODULES[slug]);
   const items = ordered(
     modules.flatMap((module, i) =>

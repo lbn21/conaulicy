@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
-import { createElement, Fragment } from "react";
+import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { todayInWarsaw } from "../lib/dates.ts";
 import { MODULES } from "../lib/modules.ts";
 import { CUT_100 } from "../lib/mzgkim-fixture.ts";
 import type { PlaceView } from "../lib/schedule.ts";
@@ -25,8 +26,8 @@ import {
 } from "../lib/water-module.ts";
 import { STALE_MS, zukView } from "../lib/zuk-data.ts";
 import { AddressPage, SubpageHeading, WasteDetails } from "./place-page.tsx";
-import { blank } from "./skeleton.tsx";
 import { CALENDAR_CHECK, CALENDAR_STEPS } from "./subpage-parts.tsx";
+import { WarsawToday } from "./warsaw-today.tsx";
 import { WaterDetails } from "./water-page.tsx";
 import { eventProperties } from "./web-analytics.tsx";
 
@@ -38,14 +39,15 @@ const CHECKED = "2026-10-25T12:20:00.000Z";
 const NOW = new Date("2026-10-25T12:30:00Z");
 const ZUKI = testPlace();
 
-// The /woda page as it reaches the browser: the heading from the cached
-// shell (components/module-page.tsx), then the body read per request.
+// The /woda page as it reaches the browser, read per request
+// (components/module-page.tsx): the heading, then the body, for the
+// server's Warsaw day (WarsawToday).
 const waterPage = (posts = [storedPost(POST_39885, CHECKED)], place = ZUKI) => {
   const data = water(bothViews(posts, CHECKED, NOW), place);
   return renderToStaticMarkup(
     createElement(
-      Fragment,
-      null,
+      WarsawToday,
+      { day: todayInWarsaw() },
       createElement(SubpageHeading, {
         place: data.place,
         heading: "Przerwy w dostawie wody",
@@ -493,8 +495,8 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
     const data = water(bothViews([], checked, now, town), place);
     return renderToStaticMarkup(
       createElement(
-        Fragment,
-        null,
+        WarsawToday,
+        { day: todayInWarsaw(now) },
         createElement(SubpageHeading, {
           place: data.place,
           heading: "Przerwy w dostawie wody",
@@ -511,7 +513,7 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
   );
   assert.match(
     html,
-    /<h2 id="dzien-2026-10-06" class="govuk-heading-m"><span class="app-skeleton" aria-hidden="true">\u2002{6}<\/span> wtorek, 6 października<\/h2><dl class="govuk-summary-list"><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Godziny<\/dt><dd class="govuk-summary-list__value">8:30–15:00<\/dd><\/div><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Gdzie<\/dt><dd class="govuk-summary-list__value">cała ulica Niemirowska<\/dd>/,
+    /<h2 id="dzien-2026-10-06" class="govuk-heading-m">Za 3 dni: wtorek, 6 października<\/h2><dl class="govuk-summary-list"><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Godziny<\/dt><dd class="govuk-summary-list__value">8:30–15:00<\/dd><\/div><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Gdzie<\/dt><dd class="govuk-summary-list__value">cała ulica Niemirowska<\/dd>/,
   );
   assert.match(
     html,
@@ -546,9 +548,10 @@ test("/smieci: after the last date, the next year's line (task 205)", () => {
   );
 });
 
-test("/woda day headings: the date, absolute, its „Dziś: ” the device's (a skeleton in the HTML)", () => {
-  // The server's clock never changes them (components/day-word.tsx; the
-  // words themselves: lib/upcoming.test.ts dayLead).
+test("/woda day headings: the date, absolute, its „Dziś: ” the server's day's, in the HTML", () => {
+  // No skeleton: the word comes with the page, for the read's Warsaw day
+  // (components/day-word.tsx; the words themselves: lib/upcoming.test.ts
+  // dayLead).
   const heading = (at: string) => {
     mock.timers.enable({ apis: ["Date"], now: new Date(at) });
     try {
@@ -559,12 +562,15 @@ test("/woda day headings: the date, absolute, its „Dziś: ” the device's (a 
       mock.timers.reset();
     }
   };
-  for (const at of ["2026-10-27T05:00:00Z", "2026-10-19T12:00:00Z"])
-    assert.equal(
-      heading(at),
-      `<span class="app-skeleton" aria-hidden="true">${blank("Jutro:")}</span> wtorek, 27 października`,
-      at,
-    );
+  assert.equal(
+    heading("2026-10-27T05:00:00Z"),
+    "Dziś: wtorek, 27 października",
+  );
+  assert.equal(
+    heading("2026-10-26T22:59:00Z"),
+    "Jutro: wtorek, 27 października",
+  );
+  assert.equal(heading("2026-10-19T12:00:00Z"), "Wtorek, 27 października");
   // No cut: no day heading, the page as before.
   mock.timers.enable({ apis: ["Date"], now: NOW });
   try {
