@@ -79,7 +79,8 @@ const RAW_PX = [
 ];
 // 80, plus 25 for the skeletons' pulse and the live blocks' reveal (Jakub's
 // decision, 31 Oct 2026), plus 2 for a button's shape in GOV.UK's button box,
-// its shadow and pointer off (task 237).
+// its shadow and pointer off (task 237), now the address pages' skeleton
+// cards and rounded bars (task 239).
 const MAX_LINES = 107;
 const MAX_GZIP = 1000;
 

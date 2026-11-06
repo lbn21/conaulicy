@@ -19,7 +19,7 @@ import { Skeleton } from "@/components/skeleton";
 /** A section card: a heading's bar and two lines'. */
 const CARD = (
   <div className="app-skeleton-card govuk-!-padding-4 govuk-!-margin-bottom-6">
-    <p className="govuk-heading-m">
+    <p className="govuk-heading-s">
       <Skeleton>Najbliższe dni</Skeleton>
     </p>
     <p className="govuk-body">
