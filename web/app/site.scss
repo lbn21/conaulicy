@@ -202,13 +202,7 @@ $app-header-colour: $app-header;
 // page; at first layout the main content still holds the skeleton, so
 // the selector matches the wrong box and the page lands too high. Without one it restores the plain offset; the height is final at
 // first layout (developer.mozilla.org/docs/Web/CSS/overflow-anchor).
-// An address page's content, its skeleton and the page alike, fills the
-// first screen (components/place-suspense.tsx, tasks 240 and 242): 80vh,
-// with the header and the breadcrumbs above it, puts the footer at the fold
-// or below it up to 810px tall (a phone) and 1085px (a desktop), so a short
-// page never pulls it into view at the reveal and leaves less blank space
-// than 100vh. On one line with the rule above, under the cap.
-#main-content { overflow-anchor: none; } .app-place { min-height: 80vh; }
+#main-content { overflow-anchor: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .app-skeleton,

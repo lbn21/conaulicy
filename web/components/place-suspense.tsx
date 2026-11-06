@@ -10,16 +10,11 @@ import { Skeleton } from "@/components/skeleton";
 // subpageData) sits behind one <Suspense> (react.dev/reference/react/Suspense),
 // so it all comes in together, after the slowest block. The skeleton is
 // generic, not the page's shape, so a new section needs no new one: the
-// h1's bar, „Zmień adres”'s, then two section cards, lower than the
-// first screen (task 242). The skeleton and the page
-// alike fill the first screen (app-place, app/site.scss: min-height 80vh,
-// with the header and the breadcrumbs above it), so the footer is below
-// the first screen before and after the reveal, whatever the page's
-// length, and nothing moves into view when a short page (/woda with no
-// cuts) takes the skeleton's place (tasks 240 and 242;
-// web.dev/articles/optimize-cls, reserve the space). The route's App
-// Shell, shared by every
-// link to it, holds only this: no place, no date
+// h1's bar, „Zmień adres”'s, then one section card, about as tall as the
+// shortest page (/woda with no cuts; task 243, Jakub's decision). No
+// min-height: on a short page the footer stays put at the reveal, on a long
+// one it moves down, already below the first screen. The route's App
+// Shell, shared by every link to it, holds only this: no place, no date
 // (nextjs.org/docs/app/guides/adopting-partial-prefetching#move-url-data-behind-suspense).
 
 /** A section card: a heading's bar and two lines'. */
@@ -47,7 +42,6 @@ const SKELETON = (
         <p className="govuk-body govuk-!-margin-bottom-6">
           <Skeleton>Zmień adres</Skeleton>
         </p>
-        {CARD}
         {CARD}
       </BlockSkeleton>
     </div>
@@ -77,11 +71,9 @@ export const CRUMBS_SKELETON = (
  */
 export function PlaceSuspense({ children }: { children: ReactNode }) {
   return (
-    <div className="app-place">
-      <LiveBlock skeleton={SKELETON}>
-        {children}
-        <GovukFrontend />
-      </LiveBlock>
-    </div>
+    <LiveBlock skeleton={SKELETON}>
+      {children}
+      <GovukFrontend />
+    </LiveBlock>
   );
 }
