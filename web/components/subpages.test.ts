@@ -412,18 +412,8 @@ test("village: the hub's water in every state, /woda never MZGKiM", () => {
   const hub = {
     cut: [
       ["Cała wieś Lisie Jamy.", "Cała wieś Lisie Jamy."],
-      [
-        [
-          [
-            {
-              day: "2026-10-26",
-              text: "poniedziałek, 26 października, 8:00–16:00",
-            },
-          ],
-          ["Gdzie: cała wieś Lisie Jamy"],
-        ],
-        [["Kolejne dni: czwartek, 29 października"]],
-      ],
+      // The cuts are „Najbliższe dni”'s alone: nothing more to say (task 257).
+      [],
       "brak zapowiedzianych przerw",
       [
         [

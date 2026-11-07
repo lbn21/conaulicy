@@ -189,9 +189,8 @@ test("matching: a village part takes its own cuts and its whole village's", () =
     cutWhere(outages[0] as Cut, PILIPY_PART),
     "ulica Pilipy w Młodowie",
   );
-  assert.deepEqual(lines(waterAt(PILIPY_PART))[1], [
-    "Gdzie: ulica Pilipy w Młodowie",
-  ]);
+  // The section never repeats it: „Najbliższe dni” lists the cut.
+  assert.deepEqual(lines(waterAt(PILIPY_PART)), []);
   // In part: „w części ulicy Pilipy”, the street's words with its village.
   const pilipyPart = cut({
     ...villageStreet,
@@ -202,7 +201,7 @@ test("matching: a village part takes its own cuts and its whole village's", () =
   const inPart = waterAt(PILIPY_PART, only(pilipyPart));
   assert.equal(
     whereOf(inPart),
-    "Część ulicy – sprawdź niżej, których domów dotyczy.",
+    "Część ulicy – których domów dotyczy, sprawdź w szczegółach.",
   );
   assert.equal(
     cutWhere(inPart.outages[0] as Cut, PILIPY_PART),
@@ -481,7 +480,7 @@ test("block's where: from the scope and our names, never the note", () => {
   const noted = cut({ ...SOBIESKIEGO_RANGE, scope: { type: "whole" } });
   assert.equal(
     where(sobieskiego(null), only(noted)),
-    "Część ulicy – sprawdź niżej, których domów dotyczy.",
+    "Część ulicy – których domów dotyczy, sprawdź w szczegółach.",
   );
   // Numbers.
   const numbers = cut({
@@ -532,15 +531,15 @@ test("block's where: a street's range, „Obejmuje Twój dom” only inside it",
     ).map((item) => item.second);
   assert.deepEqual(items(null), [
     "Ulica Jana III Sobieskiego, numery 23–47.",
-    "Część ulicy – sprawdź niżej, których domów dotyczy.",
+    "Część ulicy – których domów dotyczy, sprawdź w szczegółach.",
   ]);
   assert.deepEqual(items("30"), [
     "Obejmuje Twój dom (nr 30).",
-    "Część ulicy – sprawdź niżej, których domów dotyczy.",
+    "Część ulicy – których domów dotyczy, sprawdź w szczegółach.",
   ]);
   // 5 is outside 23–47: that cut is left out.
   assert.deepEqual(items("5"), [
-    "Część ulicy – sprawdź niżej, których domów dotyczy.",
+    "Część ulicy – których domów dotyczy, sprawdź w szczegółach.",
   ]);
   const opakaCut = post().items.find((d) => d.place.localityId === "0606317");
   assert.ok(opakaCut);
@@ -550,26 +549,26 @@ test("block's where: a street's range, „Obejmuje Twój dom” only inside it",
   assert.equal(opakaWhere("105"), "Obejmuje Twój dom (nr 105).");
 });
 
-test("section: the cut, where, as written, and the post as its source", () => {
-  // A town street's ZUK cut: its post the only „Źródło”, never MZGKiM's.
-  assert.deepEqual(waterStatus(waterAt(ZUKI)), [
-    [
-      [{ day: "2026-10-27", text: "wtorek, 27 października, 8:00–16:00" }],
-      ["Gdzie: cała ulica Żuki"],
-    ],
-  ]);
+test("section: never the cuts again, the post as its source", () => {
+  // „Najbliższe dni” lists each cut; the section adds nothing for a plain
+  // one (task 257). A town street's ZUK cut: its post the only „Źródło”,
+  // never MZGKiM's.
+  assert.deepEqual(waterStatus(waterAt(ZUKI)), []);
   assert.deepEqual(waterSources(waterAt(ZUKI)), [
     [{ href: POST_URL, text: "komunikat gminy z 23 października 2026" }],
   ]);
   assert.equal(waterAiNote(waterAt(ZUKI)), aiNote("gminy"));
-  assert.deepEqual(lines(waterAt(ZALUZE)), [
-    [{ day: "2026-10-28", text: "środa, 28 października, 8:00–16:00" }],
-    ["Gdzie: Załuże: Podłęże od numeru 44 do numeru 92"],
-  ]);
-  // More days: a group of their own.
-  assert.deepEqual(waterStatus(waterAt(LISIE_JAMY_CICHA)).slice(1), [
-    [["Kolejne dni: czwartek, 29 października"]],
-  ]);
+  // Its where, as written, is the subpage's.
+  assert.equal(
+    cutWhere(waterAt(ZALUZE).outages[0], ZALUZE),
+    "Załuże: Podłęże od numeru 44 do numeru 92",
+  );
+  assert.deepEqual(lines(waterAt(ZALUZE)), []);
+  // More days: each in the list, none in the section.
+  const days = waterAt(LISIE_JAMY_CICHA);
+  assert.equal(waterUpcoming(days).length, days.outages.length);
+  assert.ok(days.outages.length > 1);
+  assert.deepEqual(waterStatus(days), []);
   assert.deepEqual(waterSources(waterAt(LISIE_JAMY_CICHA)), [
     [{ href: POST_URL, text: "komunikat gminy z 23 października 2026" }],
   ]);
@@ -700,10 +699,7 @@ test("town, an MZGKiM cut: shown as a ZUK cut, its own post the source", () => {
       "Cała ulica Niemirowska.",
     ],
   );
-  assert.deepEqual(lines(data), [
-    [{ day: "2026-10-06", text: "wtorek, 6 października, 8:30–15:00" }],
-    ["Gdzie: cała ulica Niemirowska"],
-  ]);
+  assert.deepEqual(lines(data), []);
   assert.deepEqual(waterSources(data), [
     [{ href: POST_5237, text: "komunikat MZGKiM z 2 października 2026" }],
   ]);
@@ -723,9 +719,7 @@ test("town, an MZGKiM cut: shown as a ZUK cut, its own post the source", () => {
   assert.deepEqual(data.notices, []);
   // "Osiedle Mazury" (the gazetteer, task 151): each of its streets, whole.
   const estate = townAt(LESZKA_BIALEGO, cut, OCT_3, OCT_3_CHECKED);
-  assert.deepEqual(lines(estate)[1], [
-    "Gdzie: cała ulica Księcia Leszka Białego",
-  ]);
+  assert.equal(whereOf(estate), "Cała ulica Księcia Leszka Białego.");
   // TERYT's part Mazury (no address) is no longer cut.
   assert.deepEqual(townAt(MAZURY, cut, OCT_3, OCT_3_CHECKED).outages, []);
 });
@@ -810,12 +804,13 @@ test("town, an MZGKiM street in part: „w części ulicy”, its words as writt
   const data = townAt(SOBIESKIEGO_TOWN, cut, JUN_1, JUN_1_CHECKED);
   assert.equal(
     whereOf(data),
-    "Część ulicy – sprawdź niżej, których domów dotyczy.",
+    "Część ulicy – których domów dotyczy, sprawdź w szczegółach.",
   );
   // The source's own words end the line: no full stop after them.
-  assert.deepEqual(lines(data)[1], [
-    "Gdzie: ulica Jana III Sobieskiego: od siedziby Straży Pożarnej w kierunku Dąbrowy",
-  ]);
+  assert.equal(
+    cutWhere(data.outages[0], data.place),
+    "ulica Jana III Sobieskiego: od siedziby Straży Pożarnej w kierunku Dąbrowy",
+  );
   assert.deepEqual(waterSources(data), [
     [{ href: POST_5108, text: "komunikat MZGKiM z 1 czerwca 2026" }],
   ]);
@@ -961,7 +956,7 @@ test("freshness: the checked line always, the stale note only after 1 h", () => 
     "Komunikaty o wodzie sprawdziliśmy: 25 października, 13:20",
   );
   assert.equal(staleNote(fresh), null);
-  assert.equal(lines(fresh).length, 2);
+  assert.equal(lines(fresh).length, 0);
 
   const stale = at(STALE_MS + 1);
   assert.equal(
@@ -974,8 +969,8 @@ test("freshness: the checked line always, the stale note only after 1 h", () => 
     href: GMINA_NEWS,
     text: "aktualności gminy Lubaczów",
   });
-  // The cuts stay, the note joins them.
-  assert.deepEqual(waterStatus(stale).at(-1), [note]);
+  // The cuts stay in the list; the section has the note.
+  assert.deepEqual(waterStatus(stale), [[note]]);
   assert.equal(waterUpcoming(stale).length, 1);
   assert.match(waterNone(at(STALE_MS + 1)), /przy ostatnim sprawdzeniu/);
 });
@@ -1056,7 +1051,7 @@ test("past cuts: gone at their end in Warsaw, not in UTC", () => {
   // ul. Żuki's cut is on Tuesday 27 Oct, 8:00-16:00; Warsaw is UTC+1.
   const at = (iso: string) => waterAt(ZUKI, [post()], new Date(iso), iso);
   assert.equal(waterUpcoming(at("2026-10-27T14:59:59Z")).length, 1);
-  assert.equal(lines(at("2026-10-27T14:59:59Z")).length, 2);
+  assert.equal(lines(at("2026-10-27T14:59:59Z")).length, 0);
   const after = at("2026-10-27T15:00:00Z");
   assert.deepEqual(after.outages, []);
   assert.deepEqual(waterUpcoming(after), []);
@@ -1087,10 +1082,10 @@ test("dev mock: MZGKiM's 5237 moved to now, its cut the day after tomorrow", () 
     { "gmina-lubaczow": zukView(zukFile([], CHECKED), NOW), mzgkim: view },
     NIEMIROWSKA,
   );
-  assert.deepEqual(lines(data).slice(0, 2), [
-    [{ day: "2026-10-27", text: "wtorek, 27 października, 8:30–15:00" }],
-    ["Gdzie: cała ulica Niemirowska"],
-  ]);
+  assert.deepEqual(
+    waterUpcoming(data).map((item) => [item.span.start, item.second]),
+    [["2026-10-27T08:30:00+01:00", "Cała ulica Niemirowska."]],
+  );
   // Starzyny swapped for Asnyka, a street of the CI fixture.
   const asnyka = water(
     { "gmina-lubaczow": zukView(zukFile([], CHECKED), NOW), mzgkim: view },
@@ -1201,10 +1196,7 @@ test("village: 39885 as edited, the group on 27.10, the whole village on 29.10",
     ],
   );
   assert.equal(whereOf(data), "Ulice Długa, Wąska, Leśna i Zielona.");
-  assert.deepEqual(lines(data).slice(0, 2), [
-    [{ day: "2026-10-27", text: "wtorek, 27 października, 8:00–12:00" }],
-    ["Gdzie: część wsi Lisie Jamy: ulice Długa, Wąska, Leśna i Zielona"],
-  ]);
+  assert.deepEqual(lines(data), []);
 });
 
 test("village: a whole-village cut in the same slot hides the group; notes kept", () => {
@@ -1292,8 +1284,6 @@ test("part: its village's partial cut, the village named, a hint to check", () =
     assert.deepEqual(
       lines(data),
       [
-        [{ day: "2026-10-28", text: "środa, 28 października, 8:00–16:00" }],
-        ["Gdzie: Załuże: Podłęże od numeru 44 do numeru 92"],
         [
           `${part.name} należy do miejscowości Załuże, a komunikat dotyczy tylko jej części. Sprawdź, czy obejmuje Twój dom. Zobacz `,
           { href: "/adres/0606464", text: "stronę miejscowości Załuże" },
@@ -1322,7 +1312,7 @@ test("part: Opaka's 104–110 reaches Żuki, Kamienna and Tuczarnia", () => {
         whereOf(data),
         "Część wsi Opaka – może nie obejmować tej miejscowości. Sprawdź niżej.",
       );
-      assert.match(String(lines(data)[2]?.[0]), / należy do miejscowości /);
+      assert.match(String(lines(data)[0]?.[0]), / należy do miejscowości /);
     }
   }
 });
@@ -1345,9 +1335,7 @@ test("nr: a cut that covers it says so; one that leaves it out, in the section",
       nr,
     );
   assert.deepEqual(zaluze("10").outages, []);
-  assert.deepEqual(lines(zaluze("44"))[1], [
-    "Gdzie: Załuże: Podłęże od numeru 44 do numeru 92 (obejmuje nr 44)",
-  ]);
+  assert.deepEqual(lines(zaluze("44")), []);
   const [only44] = zaluze("44").outages;
   assert.equal(
     cutWhere(only44 as Cut, zaluze("44").place),
