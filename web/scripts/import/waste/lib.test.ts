@@ -4,6 +4,7 @@ import { parse as parseYaml } from "yaml";
 import {
   checkReply,
   databaseRows,
+  MONTHS,
   memberLists,
   parseReviewed,
   polishHolidays,
@@ -20,20 +21,8 @@ const RULES = {
   counts: { factor: 0.5, slack: 2 },
 };
 const FILE = { sector: 1, year: 2026 };
-const HEADERS = [
-  "STYCZEŃ",
-  "LUTY",
-  "MARZEC",
-  "KWIECIEŃ",
-  "MAJ",
-  "CZERWIEC",
-  "LIPIEC",
-  "SIERPIEŃ",
-  "WRZESIEŃ",
-  "PAŹDZIERNIK",
-  "LISTOPAD",
-  "GRUDZIEŃ",
-];
+// The month headers as the schedules print them.
+const HEADERS = MONTHS.map((month) => month.toLocaleUpperCase("pl"));
 const IDS = ["00470", "02974"];
 
 /** A small city reply in the prompt's shape: January, two bands. */
@@ -241,37 +230,24 @@ test("validation: weekday per row, holiday shifts, year, counts", () => {
     bio: [[5, 19], [], [2, 4], [7, 20], ...Array.from({ length: 8 }, () => [])],
   };
   const { events } = rowsToEvents("z", 2026, rows, { bio: ["bio"] }, src);
-  const problems = validateSchedule({
-    zoneId: "z",
-    year: 2026,
-    events,
-    checks: ALL,
-    rules: RULES,
-    previous: null,
-    anomalies: new Set(),
-  });
-  assert.deepEqual(problems, [
+  const validate = (
+    anomalies: string[] = [],
+    previous: Map<string, number> | null = null,
+  ) =>
+    validateSchedule({
+      zoneId: "z",
+      year: 2026,
+      events,
+      checks: ALL,
+      rules: RULES,
+      previous,
+      anomalies: new Set(anomalies),
+    });
+  assert.deepEqual(validate(), [
     "z: 2026-03-04 (bio) is not on the row's usual weekday and no public holiday explains it",
   ]);
-  const approved = validateSchedule({
-    zoneId: "z",
-    year: 2026,
-    events,
-    checks: ALL,
-    rules: RULES,
-    previous: null,
-    anomalies: new Set(["z|2026-03-04"]),
-  });
-  assert.deepEqual(approved, []);
-  const counts = validateSchedule({
-    zoneId: "z",
-    year: 2026,
-    events,
-    checks: ALL,
-    rules: RULES,
-    previous: new Map([["bio", 26]]),
-    anomalies: new Set(["z|2026-03-04"]),
-  });
+  assert.deepEqual(validate(["z|2026-03-04"]), []);
+  const counts = validate(["z|2026-03-04"], new Map([["bio", 26]]));
   assert.match(counts[0], /bio 6 dates, 26 last year/);
   assert.deepEqual(
     rowsToEvents("z", 2026, { bio: [[31], [30]] }, { bio: ["bio"] }, src)

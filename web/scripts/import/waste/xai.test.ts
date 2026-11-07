@@ -3,32 +3,14 @@
 // mocked (an injected fetcher); no test reaches the network.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { crc32, deflateSync } from "node:zlib";
 import { callXai } from "../../../lib/zuk-ai.ts";
 import { schedulePrompt } from "./prompts.ts";
 import { readSchedule, WASTE_TIMEOUT_MS } from "./xai.ts";
 
-/** A 1×1 white PNG, made here (no source file). */
-function tinyPng(): Buffer {
-  const chunk = (type: string, data: Buffer) => {
-    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
-    const length = Buffer.alloc(4);
-    length.writeUInt32BE(data.length);
-    const crc = Buffer.alloc(4);
-    crc.writeUInt32BE(crc32(body));
-    return Buffer.concat([length, body, crc]);
-  };
-  const header = Buffer.alloc(13);
-  header.writeUInt32BE(1, 0);
-  header.writeUInt32BE(1, 4);
-  header.set([8, 2, 0, 0, 0], 8);
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk("IHDR", header),
-    chunk("IDAT", deflateSync(Buffer.from([0, 255, 255, 255]))),
-    chunk("IEND", Buffer.alloc(0)),
-  ]);
-}
+// The client sends the image's bytes as given: a PNG's signature, a JPG's
+// markers, never a real schedule.
+const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const JPG = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
 
 const KEY = "xai-test-key-never-shown";
 const recorder = (status = 200) => {
@@ -51,13 +33,12 @@ const recorder = (status = 200) => {
   return { calls, fetcher };
 };
 
-test("waste request: model, effort, one user message, prompt then image (pinned)", async () => {
-  const png = tinyPng();
+test("waste request: model, effort, one user message, prompt then image as given (pinned)", async () => {
   const prompt = schedulePrompt("gmina").text;
   const { calls, fetcher } = recorder();
   const reply = await readSchedule(
     prompt,
-    { body: png, mime: "image/png" },
+    { body: PNG, mime: "image/png" },
     "gmina-s1-2026",
     { fetcher, apiKey: KEY },
   );
@@ -82,7 +63,7 @@ test("waste request: model, effort, one user message, prompt then image (pinned)
             {
               type: "image_url",
               image_url: {
-                url: `data:image/png;base64,${png.toString("base64")}`,
+                url: `data:image/png;base64,${PNG.toString("base64")}`,
                 detail: "high",
               },
             },
@@ -101,24 +82,20 @@ test("waste request: model, effort, one user message, prompt then image (pinned)
   });
   // 3000 × $2/1M + (900 + 9000) × $6/1M.
   assert.equal(reply.costUsd.toFixed(4), "0.0654");
-});
-
-test("waste request: a JPG goes as image/jpeg, as is", async () => {
-  const { calls, fetcher } = recorder();
-  const jpg = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
-  await readSchedule("p", { body: jpg, mime: "image/jpeg" }, "miasto-s1", {
+  // A JPG goes as image/jpeg, as is.
+  await readSchedule("p", { body: JPG, mime: "image/jpeg" }, "miasto-s1", {
     fetcher,
     apiKey: KEY,
   });
-  const body = JSON.parse(calls[0].init.body as string);
   assert.equal(
-    body.messages[0].content[1].image_url.url,
-    `data:image/jpeg;base64,${jpg.toString("base64")}`,
+    JSON.parse(calls[1].init.body as string).messages[0].content[1].image_url
+      .url,
+    `data:image/jpeg;base64,${JPG.toString("base64")}`,
   );
 });
 
 test("waste client: HTTP 500, a timeout, no key: it fails, the key never shown", async () => {
-  const image = { body: tinyPng(), mime: "image/png" as const };
+  const image = { body: PNG, mime: "image/png" as const };
   const deps = { fetcher: recorder(500).fetcher, apiKey: KEY };
   await assert.rejects(readSchedule("p", image, "x", deps), (error: Error) => {
     assert.equal(error.message, "xAI: HTTP 500");

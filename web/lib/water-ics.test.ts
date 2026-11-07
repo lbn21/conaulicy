@@ -6,10 +6,13 @@ import { CUT_100 } from "./mzgkim-fixture.ts";
 import type { PlaceView } from "./schedule.ts";
 import {
   bothViews,
+  CHECKED,
   KROWICA_RANGE,
   lisiePartly,
   mzgkimPost,
+  NOW,
   POST_39885,
+  POST_39885_URL as POST_URL,
   SOBIESKIEGO_RANGE,
   sobieskiego,
   storedPost,
@@ -24,12 +27,6 @@ import {
 import { water } from "./water-module.ts";
 import type { StoredPost } from "./zuk-data.ts";
 
-// Sunday 25 Oct 2026, 13:30 in Warsaw (CET since 3:00 today); 39885 cuts
-// ul. Żuki in Lubaczów on Tuesday 27 Oct, 8:00-16:00.
-const CHECKED = "2026-10-25T12:20:00.000Z";
-const NOW = new Date("2026-10-25T12:30:00Z");
-const POST_URL =
-  "https://www.gminalubaczow.pl/2026/10/23/przerwy-w-dostawie-wody-26-29-10-2026/";
 const ZUKI_UID = "woda-39885-0972447-0972447-26555-2026-10-27@conaulicy.pl";
 // The /woda page each event and its alarm link to, from SITE_URL.
 const ZUKI_PAGE = `${SITE_URL}/adres/0972447-26555/woda`;
@@ -278,25 +275,6 @@ test("a streetless village with a house number: the link keeps ?nr=, folded", ()
   assert.ok(lines(ics).some((line) => line.includes(page)));
 });
 
-test("39885's Załuże, Podłęże 44–92: an event for nr 50, none for nr 10", () => {
-  const zaluze = (givenNr: string) =>
-    testPlace({
-      id: "0606464",
-      kind: "wies",
-      name: "Załuże",
-      label: "Załuże",
-      localityId: "0606464",
-      streetId: null,
-      givenNr,
-    });
-  const ics = (nr: string) => waterCalendar(at([post()], zaluze(nr)), NOW);
-  assert.equal(events(ics("50")), 1);
-  assert.deepEqual(value(ics("50"), "DTSTART;TZID=Europe/Warsaw"), [
-    "20261028T080000",
-  ]);
-  assert.equal(events(ics("10")), 0);
-});
-
 test("house numbers in a village with streets: the village's UID, the range as written", () => {
   const [base] = post().items;
   const krowica: Disruption = {
@@ -355,6 +333,24 @@ test("a house number outside a cut's range: no event; inside: the UID with the n
   assert.deepEqual(value(inside, "UID"), [
     `woda-${POST_39885}-0606116-0606116-20431-nr-30-${first.date}@conaulicy.pl`,
   ]);
+  // A streetless village's range: 39885's Załuże, Podłęże 44–92.
+  const zaluze = (givenNr: string) =>
+    waterCalendar(
+      at([post()], {
+        ...ZUKI,
+        id: "0606464",
+        kind: "wies",
+        name: "Załuże",
+        localityId: "0606464",
+        streetId: null,
+        givenNr,
+      }),
+      NOW,
+    );
+  assert.deepEqual(value(zaluze("50"), "DTSTART;TZID=Europe/Warsaw"), [
+    "20261028T080000",
+  ]);
+  assert.equal(events(zaluze("10")), 0);
 });
 
 test("an MZGKiM cut: its own UID, its post as the source and the note", () => {

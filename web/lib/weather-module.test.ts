@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { checkedLine } from "./hub.ts";
 import { banner, UNREADABLE } from "./imgw-banner.ts";
-import { derived1809, NO_WARNINGS_2026_10_18 } from "./imgw-fixture.ts";
-import { type Feed, parseFeed } from "./imgw-warnings.ts";
+import {
+  copyCheckedAt as copy,
+  NO_WARNINGS_2026_10_18,
+} from "./imgw-fixture.ts";
+import { parseFeed } from "./imgw-warnings.ts";
 import {
   weather,
   weatherChecked,
@@ -12,17 +15,8 @@ import {
   weatherUpcoming,
 } from "./weather-module.ts";
 
-const quiet = () => {};
 const at = (iso: string) => Date.parse(iso);
-
-// The derived 1809 warning (not real): level 1, 25 Oct 13:00-19:00; the
-// last good check at `checkedAt`, the feed file written then too.
-const copy = (checkedAt: string, items = parseFeed(derived1809(), quiet)) => ({
-  feed: { fetchedAt: checkedAt, items } satisfies Feed,
-  checkedAt: at(checkedAt),
-});
-
-const none = parseFeed(JSON.parse(NO_WARNINGS_2026_10_18), quiet);
+const none = parseFeed(JSON.parse(NO_WARNINGS_2026_10_18), () => {});
 
 test("a warning: one item, absolute lines with its tag, its source", () => {
   const now = at("2026-10-25T14:00:00+01:00");

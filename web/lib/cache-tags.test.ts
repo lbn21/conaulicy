@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { datasetHeaders } from "./gate.ts";
 import { DATASET } from "./headers.ts";
+import { calling, SOURCES, source } from "./test-sources.ts";
 
 // The caching model (next.config.ts, docs/perf.md): every page is a static
 // shell cached for the longest time (cacheLife "max"); the shells built
@@ -11,24 +11,6 @@ import { DATASET } from "./headers.ts";
 // „Najbliższe dni”) is never in a shell: each block reads its Blob file per
 // request through the Blob's CDN, after io(), in its own hole. No cron
 // purges anything.
-
-const read = (path: string) =>
-  readFileSync(new URL(path, import.meta.url), "utf8");
-
-const root = new URL("../", import.meta.url);
-const sources = ["app", "components", "lib"]
-  .flatMap((dir) =>
-    readdirSync(new URL(dir, root), {
-      recursive: true,
-      encoding: "utf8",
-    }).map((path) => `${dir}/${path}`),
-  )
-  .filter((path) => /\.tsx?$/.test(path) && !/\.test\.ts$/.test(path))
-  .sort();
-const calling = (pattern: RegExp) =>
-  sources.filter((path) =>
-    pattern.test(readFileSync(new URL(path, root), "utf8")),
-  );
 
 test("datasetHeaders: the one tag, DATASET", () => {
   assert.equal(DATASET, "dataset");
@@ -44,19 +26,19 @@ test("the only purge is the import's, of DATASET", () => {
     "app/api/revalidate/route.ts",
   ]);
   assert.match(
-    read("../app/api/revalidate/route.ts"),
+    source("app/api/revalidate/route.ts"),
     /revalidateTag\(DATASET, \{ expire: 0 \}\);/,
   );
   assert.doesNotMatch(
-    read("../app/api/cron/zuk/route.ts"),
+    source("app/api/cron/zuk/route.ts"),
     /purge:|revalidateTag/,
   );
-  assert.doesNotMatch(read("./zuk-cron.ts"), /purge\(/);
+  assert.doesNotMatch(source("lib/zuk-cron.ts"), /purge\(/);
 });
 
 test("the crons' files: no Next cache in front of them; the pages read the Blob's CDN, the crons its origin", () => {
-  const store = read("./live-store.ts");
-  const zuk = read("./zuk-store.ts");
+  const store = source("lib/live-store.ts");
+  const zuk = source("lib/zuk-store.ts");
   assert.doesNotMatch(store, /unstable_cache|cacheTag/);
   assert.doesNotMatch(zuk, /unstable_cache|cacheTag/);
   assert.match(store, /useCache: cdn,/);
@@ -66,7 +48,7 @@ test("the crons' files: no Next cache in front of them; the pages read the Blob'
   // The crons: the origin, so a run compares with the last write.
   assert.match(zuk, /return readBlobFile\(pathname\);/);
   assert.match(
-    read("../app/api/cron/zuk/route.ts"),
+    source("app/api/cron/zuk/route.ts"),
     /readFeed: \(\) => readBlobFile\(FEED_PATH\),/,
   );
   // Written with the minimum CDN lifetime, 60 s.
@@ -95,9 +77,9 @@ test("IMGW: asked only by the cron; its copy read only in live blocks", () => {
 });
 
 test("the shells: every `use cache` scope is cacheLife max and tags the dataset", () => {
-  const scopes = sources.flatMap((path) =>
+  const scopes = SOURCES.flatMap((path) =>
     [
-      ...readFileSync(new URL(path, root), "utf8").matchAll(
+      ...source(path).matchAll(
         /"use cache";\n\s+cacheLife\("(\w+)"\);\n\s+cacheTag\(([^)]*)\);/g,
       ),
     ].map((m) => `${path}: ${m[1]} ${m[2]}`),
@@ -113,31 +95,31 @@ test("the shells: every `use cache` scope is cacheLife max and tags the dataset"
   // Every scope is one of those.
   assert.equal(calling(/"use cache"/).length, 5);
   assert.match(
-    read("./schedule.ts"),
+    source("lib/schedule.ts"),
     /export const PLACE_TAGS = DAY_CACHE\.tags;/,
   );
-  assert.match(read("./schedule.ts"), /const DAY_CACHE = CACHE;/);
+  assert.match(source("lib/schedule.ts"), /const DAY_CACHE = CACHE;/);
 });
 
 test("the live blocks: read after io(), never inside a cached scope", () => {
   for (const [path, count] of [
-    ["../components/hub.tsx", 1],
-    ["../components/module-page.tsx", 1],
-    ["../components/imgw-banner.tsx", 1],
+    ["components/hub.tsx", 1],
+    ["components/module-page.tsx", 1],
+    ["components/imgw-banner.tsx", 1],
   ] as const)
     assert.equal(
-      read(path).match(/\n\s+await io\(\);\n/g)?.length,
+      source(path).match(/\n\s+await io\(\);\n/g)?.length,
       count,
       path,
     );
   for (const path of [
-    "../components/hub.tsx",
-    "../components/module-page.tsx",
-    "../components/place-crumbs.tsx",
-    "../components/imgw-banner.tsx",
+    "components/hub.tsx",
+    "components/module-page.tsx",
+    "components/place-crumbs.tsx",
+    "components/imgw-banner.tsx",
   ])
-    assert.doesNotMatch(read(path), /use cache/, path);
-  const modules = read("./modules.ts");
+    assert.doesNotMatch(source(path), /use cache/, path);
+  const modules = source("lib/modules.ts");
   assert.equal(modules.match(/\n\s+live: true,\n/g)?.length, 2);
 });
 
@@ -145,19 +127,19 @@ test("the address pages: one read per request, every block at once, shared with 
   // Every module's data in one Promise.all, after io(), behind React's
   // cache(), so the page and its breadcrumbs share one read.
   assert.match(
-    read("../components/hub.tsx"),
+    source("components/hub.tsx"),
     /export const hubData = cache\(async \(id: string, nr: string \| null\) => \{\n\s+await io\(\);\n\s+return \(await Promise\.all\(\n\s+MODULE_IDS\.map\(\(slug\) => MODULES\[slug\]\.load\(id, nr\)\),/,
   );
   assert.match(
-    read("../components/module-page.tsx"),
+    source("components/module-page.tsx"),
     /export const subpageData = cache\(\n\s+async \(id: string, slug: string, nr: string \| null\) => \{\n\s+await io\(\);/,
   );
-  const crumbs = read("../components/place-crumbs.tsx");
+  const crumbs = source("components/place-crumbs.tsx");
   assert.match(crumbs, /await hubData\(id, nr\)/);
   assert.match(crumbs, /await subpageData\(id, module, nr\)/);
   // ?nr= read after navigation(), so the shell and prefetch stay static.
   assert.match(
-    read("../components/place-page.tsx"),
+    source("components/place-page.tsx"),
     /await navigation\(\);\n\s+return houseQuery\(\(await searchParams\)\.nr\);/,
   );
   // One boundary per address route, the page's and its trail's.

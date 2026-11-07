@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { banner, imgwCopyOf, POWIAT, UNREADABLE } from "./imgw-banner.ts";
-import { derived1809, REAL_2026_10_24 } from "./imgw-fixture.ts";
+import {
+  copyCheckedAt as copy,
+  derived1809,
+  REAL_2026_10_24,
+} from "./imgw-fixture.ts";
 import {
   type Feed,
   feedFile,
@@ -19,12 +23,6 @@ const at = (iso: string) => Date.parse(iso);
 const WIND =
   "Prawdopodobieństwo: 75%. Prognozuje się wystąpienie dość silnego wiatru o średniej prędkości do 35 km/h, w porywach do 75 km/h, z południa.";
 const SOURCE = IMGW_ATTRIBUTION.join(" ");
-
-// The last good check at `checkedAt`; the feed file written then too.
-const copy = (checkedAt: string, items = parseFeed(derived1809(), quiet)) => ({
-  feed: { fetchedAt: checkedAt, items } satisfies Feed,
-  checkedAt: at(checkedAt),
-});
 
 // More 1809 warnings, from the real feed's first item.
 function extra(
@@ -49,8 +47,9 @@ function extra(
   );
 }
 
-test("the banner covers our one powiat", () => {
+test("the banner covers our one powiat, 1809, from our gminas", () => {
   assert.deepEqual([...POWIATS], [POWIAT]);
+  assert.equal(POWIAT, "1809");
 });
 
 test("one warning in force: title, tag, until when, source, details, footer", () => {

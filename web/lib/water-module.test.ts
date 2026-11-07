@@ -13,11 +13,14 @@ import { PART_STREETS } from "./part-streets.ts";
 import type { PlaceView } from "./schedule.ts";
 import {
   bothViews,
+  CHECKED,
   KROWICA_RANGE,
   lisiePartly,
   mockFile,
   mzgkimPost,
+  NOW,
   POST_39885,
+  POST_39885_URL as POST_URL,
   SOBIESKIEGO_RANGE,
   sobieskiego,
   storedPost,
@@ -73,14 +76,10 @@ const lines = (data: Water) => waterStatus(data).flat();
 const waterLine = (at: Parameters<typeof checkedLine>[0]) =>
   checkedLine(at, "woda");
 
-// Sunday 25 Oct 2026, 13:30 in Warsaw (CET since 3:00 today); 39885's cuts
-// are 26-29 Oct, all 8:00-16:00.
-const CHECKED = "2026-10-25T12:20:00.000Z";
-const NOW = new Date("2026-10-25T12:30:00Z");
-const POST_URL =
-  "https://www.gminalubaczow.pl/2026/10/23/przerwy-w-dostawie-wody-26-29-10-2026/";
-
 const place = testPlace;
+/** A village or a part of one, by its SIMC id. */
+const village = (id: string, name: string, givenNr: string | null = null) =>
+  place({ id, kind: "wies", name, localityId: id, streetId: null, givenNr });
 
 const ZUKI = place({});
 const ASNYKA = place({ id: "0972447-00470", streetId: "0972447-00470" });
@@ -90,42 +89,19 @@ const DABKOW_ZUKI = place({
   localityId: "0606004",
   streetId: "0606004-26555",
 });
-const ZALUZE = place({
-  id: "0606464",
-  kind: "wies",
-  name: "Załuże",
-  localityId: "0606464",
-  streetId: null,
-});
+const ZALUZE = village("0606464", "Załuże");
 const LISIE_JAMY_CICHA = place({
   id: "0606234-02974",
   localityId: "0606234",
   streetId: "0606234-02974",
 });
 // Pilipy, a part of Młodów (SIMC 0606300); Młodów also has a ul. Pilipy.
-const PILIPY_PART = place({
-  id: "0606300",
-  kind: "wies",
-  localityId: "0606300",
-  streetId: null,
-});
+const PILIPY_PART = village("0606300", "Pilipy");
 
 // Smolińce, a part of Lisie Jamy: a village, outside MZGKiM's area.
-const SMOLINCE = place({
-  id: "0606257",
-  kind: "wies",
-  name: "Smolińce",
-  localityId: "0606257",
-  streetId: null,
-});
+const SMOLINCE = village("0606257", "Smolińce");
 // Mazury, a part of the town.
-const MAZURY = place({
-  id: "0972453",
-  kind: "wies",
-  name: "Mazury",
-  localityId: "0972453",
-  streetId: null,
-});
+const MAZURY = village("0972453", "Mazury");
 
 const GMINA = { href: GMINA_NEWS, text: "aktualności gminy Lubaczów" };
 const MZGKIM = { href: MZGKIM_NEWS, text: "komunikaty MZGKiM" };
@@ -268,13 +244,7 @@ test("matching: a village part takes its village's partial cuts, never its other
 });
 
 test("matching: 39885's whole villages reach their parts, one cut a day", () => {
-  const BASZNIA = place({
-    id: "0605909",
-    kind: "wies",
-    name: "Basznia",
-    localityId: "0605909",
-    streetId: null,
-  });
+  const BASZNIA = village("0605909", "Basznia");
   const at = (address: PlaceView) =>
     waterAt(address).outages.map((d) => [d.date, d.start, d.end, d.place]);
   const day = (date: string, localityId: string) => [
@@ -318,55 +288,59 @@ test("matching: house numbers in a village with streets, the village and every s
   );
   assert.equal(matches(ZALUZE, krowica), false);
   assert.equal(scope(krowica), "Krowica Sama: od nr 10 do nr 50");
-  // A village's range in a village with streets is never filtered by nr.
-  const village = place({
-    id: "0606180",
-    kind: "wies",
-    name: "Krowica Sama",
+  // A village's range in a village with streets is never filtered by nr,
+  // on the village or on its streets.
+  const krowicaSama = village("0606180", "Krowica Sama", "99");
+  const street = place({
+    id: "0606180-51473",
     localityId: "0606180",
-    streetId: null,
+    streetId: "0606180-51473",
     givenNr: "99",
   });
-  assert.deepEqual(waterAt(village, [post({ items: [krowica] })]).outages, [
-    krowica,
-  ]);
+  for (const address of [krowicaSama, street])
+    assert.deepEqual(waterAt(address, [post({ items: [krowica] })]).outages, [
+      krowica,
+    ]);
+  assert.equal(outsideRange(krowica, "99"), false);
 });
 
 const SOBIESKIEGO = cut(SOBIESKIEGO_RANGE);
 const ranged = (ranges: Array<{ from: string; to: string }>) =>
   cut({ ...SOBIESKIEGO_RANGE, scope: { type: "ranges", ranges } });
 const only = (item: Disruption) => [post({ items: [item] })];
+// Opaka, a streetless village: 39885 cuts its nr 104–110 on 27 Oct.
+const opaka = (givenNr: string | null) => village("0606317", "Opaka", givenNr);
 
-test("house number: outside a street's range, the cut is not shown", () => {
+test("house number: outside a street's range, the cut left out, said once", () => {
   const at = (nr: string | null) => waterAt(sobieskiego(nr), only(SOBIESKIEGO));
   const five = at("5");
   assert.deepEqual(five.outages, []);
   assert.deepEqual(waterUpcoming(five), []);
-  // task 188: the section says the cut leaves nr 5 out.
+  assert.equal(five.hiddenForNr, true);
+  // task 188: the section says the cut leaves nr 5 out; /woda's trace too.
   assert.deepEqual(lines(five), [
     ["Pod nr 5: brak zapowiedzianych przerw."],
     [
       "Gmina zapowiedziała przerwę na tej ulicy – poniedziałek, 26 października, 8:00–16:00 – ale według komunikatu nie obejmuje nr 5.",
     ],
   ]);
-  assert.equal(at("30").outages.length, 1);
-  // Letters ignored: 30a and 47a are inside 23–47, 22a is not.
-  for (const nr of ["30", "30a", "47", "47a", null])
+  assert.equal(
+    waterTrace(five),
+    "Gmina zapowiedziała też przerwę na tej ulicy, ale według komunikatu nie obejmuje nr 5.",
+  );
+  // Whole numbers compared, letters ignored: 30a and 47a are inside 23–47,
+  // 22a is not; no number, or not a number: shown.
+  for (const nr of ["30", "30a", "47", "47a", "abc", null]) {
     assert.deepEqual(at(nr).outages, [SOBIESKIEGO], String(nr));
+    assert.equal(at(nr).hiddenForNr, false, String(nr));
+    assert.equal(waterTrace(at(nr)), null, String(nr));
+  }
   assert.deepEqual(at("22a").outages, []);
-});
-
-test("house number: outsideRange compares whole numbers, shown on doubt", () => {
-  assert.equal(outsideRange(SOBIESKIEGO, null), false);
-  assert.equal(outsideRange(SOBIESKIEGO, "5"), true);
-  for (const nr of ["30", "30a", "47"])
-    assert.equal(outsideRange(SOBIESKIEGO, nr), false, nr);
-  // Either part of "7/22" inside is enough.
+  // Either part of "7/22" inside is enough; a range we cannot read, shown.
   const twenties = ranged([{ from: "20", to: "30" }]);
   assert.equal(outsideRange(twenties, "7/22"), false);
   assert.equal(outsideRange(twenties, "7/2"), true);
   assert.equal(outsideRange(ranged([{ from: "x", to: "30" }]), "5"), false);
-  assert.equal(outsideRange(SOBIESKIEGO, "abc"), false);
 });
 
 test("house number: two ranges, listed numbers, unknown and whole", () => {
@@ -400,28 +374,7 @@ test("house number: two ranges, listed numbers, unknown and whole", () => {
   }
 });
 
-test("house number: a village's range in a village with streets, always shown", () => {
-  const krowica = cut(KROWICA_RANGE);
-  const street = place({
-    id: "0606180-51473",
-    localityId: "0606180",
-    streetId: "0606180-51473",
-    givenNr: "99",
-  });
-  assert.deepEqual(waterAt(street, only(krowica)).outages, [krowica]);
-  assert.equal(outsideRange(krowica, "99"), false);
-});
-
 test("house number: a streetless village and a village part, filtered", () => {
-  const opaka = (givenNr: string | null) =>
-    place({
-      id: "0606317",
-      kind: "wies",
-      name: "Opaka",
-      localityId: "0606317",
-      streetId: null,
-      givenNr,
-    });
   // 39885: Opaka „od numeru 104 do 110” on 27 Oct.
   const opakaCuts = (nr: string | null) =>
     waterAt(opaka(nr)).outages.filter((d) => d.place.localityId === "0606317");
@@ -436,62 +389,18 @@ test("house number: a streetless village and a village part, filtered", () => {
     scope: { type: "ranges", ranges: [{ from: "44", to: "92" }] },
     note: "od numeru 44 do numeru 92",
   });
-  const czarne = place({
-    id: "0606470",
-    kind: "wies",
-    localityId: "0606470",
-    streetId: null,
-    givenNr: "10",
-  });
+  const czarne = village("0606470", "Czarne", "10");
   assert.deepEqual(waterAt(czarne, only(part)).outages, []);
   assert.equal(waterAt(czarne, only(part)).hiddenForNr, true);
 });
 
-test("house number: one trace line when a cut was left out", () => {
-  const sob = (nr: string | null) =>
-    waterAt(sobieskiego(nr), only(SOBIESKIEGO));
-  assert.equal(sob("5").hiddenForNr, true);
+test("house number: a village's trace line; none for a cut of unknown houses", () => {
   assert.equal(
-    waterTrace(sob("5")),
-    "Gmina zapowiedziała też przerwę na tej ulicy, ale według komunikatu nie obejmuje nr 5.",
-  );
-  for (const nr of ["30", null]) {
-    assert.equal(sob(nr).hiddenForNr, false);
-    assert.equal(waterTrace(sob(nr)), null);
-  }
-  const opaka = place({
-    id: "0606317",
-    kind: "wies",
-    localityId: "0606317",
-    streetId: null,
-    givenNr: "5",
-  });
-  assert.equal(
-    waterTrace(waterAt(opaka)),
+    waterTrace(waterAt(opaka("5"))),
     "Gmina zapowiedziała też przerwę w tej miejscowości, ale według komunikatu nie obejmuje nr 5.",
   );
   const odd = cut({ ...SOBIESKIEGO_RANGE, scope: { type: "unknown" } });
   assert.equal(waterTrace(waterAt(sobieskiego("999"), only(odd))), null);
-});
-
-test("house number: 39885's Załuże, Podłęże 44–92, by its houses", () => {
-  const zaluze = (givenNr: string | null) => waterAt({ ...ZALUZE, givenNr });
-  const text = (nr: string | null) => whereOf(zaluze(nr));
-  // 50 is inside: the cut, certain.
-  assert.deepEqual(
-    zaluze("50").outages.map((d) => d.uid),
-    ["zuk-39885-2026-10-28-0606464"],
-  );
-  // task 188: the number it covers is named.
-  assert.equal(text("50"), "Obejmuje Twój dom (nr 50).");
-  // 10 is outside: left out, with the trace line.
-  assert.deepEqual(zaluze("10").outages, []);
-  assert.equal(
-    waterTrace(zaluze("10")),
-    "Gmina zapowiedziała też przerwę w tej miejscowości, ale według komunikatu nie obejmuje nr 10.",
-  );
-  // No number: part of the village.
-  assert.equal(text(null), "Załuże, numery 44–92.");
 });
 
 const ZUKI_CUT = { localityId: "0972447", streetId: "0972447-26555" };
@@ -559,13 +468,7 @@ test("block: every cut its own item, its span from the wall times", () => {
 test("block's where: from the scope and our names, never the note", () => {
   const where = (address: PlaceView, posts?: StoredPost[]) =>
     whereOf(waterAt(address, posts));
-  const dabkow = place({
-    id: "0606004",
-    kind: "wies",
-    localityId: "0606004",
-    streetId: null,
-  });
-  assert.equal(where(dabkow), "Cała wieś Dąbków.");
+  assert.equal(where(village("0606004", "Dąbków")), "Cała wieś Dąbków.");
   assert.equal(where(ZUKI), "Cała ulica Żuki.");
   // 39885's Załuże „Podłęże od numeru 44 do numeru 92”: its ranges, our
   // name (Podłęże is no TERYT place); the note is never read.
@@ -639,15 +542,6 @@ test("block's where: a street's range, „Obejmuje Twój dom” only inside it",
   assert.deepEqual(items("5"), [
     "Część ulicy – sprawdź niżej, których domów dotyczy.",
   ]);
-  // A streetless village's range, as 39885's Opaka 104–110.
-  const opaka = (givenNr: string | null) =>
-    place({
-      id: "0606317",
-      kind: "wies",
-      localityId: "0606317",
-      streetId: null,
-      givenNr,
-    });
   const opakaCut = post().items.find((d) => d.place.localityId === "0606317");
   assert.ok(opakaCut);
   const opakaWhere = (nr: string | null) =>
@@ -657,12 +551,17 @@ test("block's where: a street's range, „Obejmuje Twój dom” only inside it",
 });
 
 test("section: the cut, where, as written, and the post as its source", () => {
+  // A town street's ZUK cut: its post the only „Źródło”, never MZGKiM's.
   assert.deepEqual(waterStatus(waterAt(ZUKI)), [
     [
       [{ day: "2026-10-27", text: "wtorek, 27 października, 8:00–16:00" }],
       ["Gdzie: cała ulica Żuki"],
     ],
   ]);
+  assert.deepEqual(waterSources(waterAt(ZUKI)), [
+    [{ href: POST_URL, text: "komunikat gminy z 23 października 2026" }],
+  ]);
+  assert.equal(waterAiNote(waterAt(ZUKI)), aiNote("gminy"));
   assert.deepEqual(lines(waterAt(ZALUZE)), [
     [{ day: "2026-10-28", text: "środa, 28 października, 8:00–16:00" }],
     ["Gdzie: Załuże: Podłęże od numeru 44 do numeru 92"],
@@ -929,19 +828,6 @@ test("town, an MZGKiM street in part: „w części ulicy”, its words as writt
   assert.deepEqual(townAt(basznia, cut, JUN_1, JUN_1_CHECKED).outages, []);
 });
 
-test("town, a ZUK cut: its post the only „Źródło”, never MZGKiM's page", () => {
-  const data = waterAt(ZUKI);
-  assert.deepEqual(lines(data), [
-    [{ day: "2026-10-27", text: "wtorek, 27 października, 8:00–16:00" }],
-    ["Gdzie: cała ulica Żuki"],
-  ]);
-  assert.equal(waterEmpty(data), null);
-  assert.deepEqual(waterSources(data), [
-    [{ href: POST_URL, text: "komunikat gminy z 23 października 2026" }],
-  ]);
-  assert.equal(waterAiNote(data), aiNote("gminy"));
-});
-
 test("town, both sources' cuts: both posts, both in the AI note", () => {
   // 5237's Niemirowska cut moved to 28 Oct and to ul. Żuki (made up).
   const [, niemirowska] = mzgkimPost(CUT_100, CHECKED).items;
@@ -1133,13 +1019,10 @@ test("notices: a link, only where the gate found the locality", () => {
   assert.deepEqual(waterUpcoming(data), []);
   // Szczutków is not in its text.
   assert.ok(!notice.localityIds.includes("0606375"));
-  const szczutkow = place({
-    id: "0606375",
-    kind: "wies",
-    localityId: "0606375",
-    streetId: null,
-  });
-  assert.deepEqual(waterAt(szczutkow, [notice]).notices, []);
+  assert.deepEqual(
+    waterAt(village("0606375", "Szczutków"), [notice]).notices,
+    [],
+  );
 });
 
 test("notices: a village's notice is listed on its parts", () => {
@@ -1149,22 +1032,10 @@ test("notices: a village's notice is listed on its parts", () => {
     items: [],
     localityIds: ["0606234"],
   });
-  const smolince = place({
-    id: "0606257",
-    kind: "wies",
-    localityId: "0606257",
-    streetId: null,
-  });
-  assert.equal(waterAt(smolince, [notice]).notices.length, 1);
+  assert.equal(waterAt(SMOLINCE, [notice]).notices.length, 1);
   // Not the other way: a part's notice is not its village's.
   const partNotice = post({ ...notice, localityIds: ["0606257"] });
-  const lisieJamy = place({
-    id: "0606234",
-    kind: "wies",
-    localityId: "0606234",
-    streetId: null,
-  });
-  assert.deepEqual(waterAt(lisieJamy, [partNotice]).notices, []);
+  assert.deepEqual(waterAt(LISIE_JAMY, [partNotice]).notices, []);
 });
 
 test("notices: never for ai-deferred, not-water or water-quality posts", () => {
@@ -1232,8 +1103,6 @@ test("dev mock: MZGKiM's 5237 moved to now, its cut the day after tomorrow", () 
 
 // Task 188: partial cuts on village, part and /nr pages.
 
-const village = (id: string, name: string, givenNr: string | null = null) =>
-  place({ id, kind: "wies", name, localityId: id, streetId: null, givenNr });
 const LISIE_JAMY = village("0606234", "Lisie Jamy");
 const MLODOW = village("0606286", "Młodów");
 const CZARNE = village("0606470", "Czarne");
@@ -1456,10 +1325,6 @@ test("part: Opaka's 104–110 reaches Żuki, Kamienna and Tuczarnia", () => {
       assert.match(String(lines(data)[2]?.[0]), / należy do miejscowości /);
     }
   }
-  // Opaka itself: filtered by its number, as ever.
-  const opaka = (nr: string) => waterAt(village("0606317", "Opaka", nr));
-  assert.equal(opaka("5").outages.length, 0);
-  assert.equal(opaka("105").outages.length, 1);
 });
 
 test("part: a whole village's cut stays plain, no hint", () => {
@@ -1471,7 +1336,15 @@ test("part: a whole village's cut stays plain, no hint", () => {
 });
 
 test("nr: a cut that covers it says so; one that leaves it out, in the section", () => {
+  // 39885's Załuże, Podłęże 44–92, by its houses.
   const zaluze = (nr: string) => waterAt({ ...ZALUZE, givenNr: nr });
+  for (const nr of ["44", "50", "92"])
+    assert.deepEqual(
+      zaluze(nr).outages.map((d) => d.uid),
+      ["zuk-39885-2026-10-28-0606464"],
+      nr,
+    );
+  assert.deepEqual(zaluze("10").outages, []);
   assert.deepEqual(lines(zaluze("44"))[1], [
     "Gdzie: Załuże: Podłęże od numeru 44 do numeru 92 (obejmuje nr 44)",
   ]);

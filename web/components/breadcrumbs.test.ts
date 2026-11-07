@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { createElement, isValidElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -7,6 +6,7 @@ import AccessibilityPage from "../app/dostepnosc/page.tsx";
 import NotFound from "../app/not-found.tsx";
 import AboutPage from "../app/o-projekcie/page.tsx";
 import PrivacyPage from "../app/prywatnosc/page.tsx";
+import { SOURCES, source } from "../lib/test-sources.ts";
 import { testPlace } from "../lib/water-fixture.ts";
 import { Breadcrumbs, type Crumb, HOME_CRUMB } from "./breadcrumbs.tsx";
 import { AddressPage, PlaceBreadcrumbs } from "./place-page.tsx";
@@ -71,8 +71,6 @@ test("address pages: home, the place's list, the address on a subpage", () => {
 // (#main-content) skips them (task 149). One <main>, the root layout's
 // (task 227: a page kept hidden by Next.js's Activity would repeat a page's
 // own), with the @breadcrumbs slot right before it.
-const root = new URL("../", import.meta.url);
-const source = (path: string) => readFileSync(new URL(path, root), "utf8");
 
 test("the layout: the breadcrumbs slot, then the one <main>", () => {
   assert.match(
@@ -82,13 +80,10 @@ test("the layout: the breadcrumbs slot, then the one <main>", () => {
 });
 
 test("no page or component renders a <main> or a main-content id", () => {
-  const files = ["app", "components"]
-    .flatMap((dir) =>
-      readdirSync(new URL(dir, root), { recursive: true, encoding: "utf8" })
-        .filter((path) => /\.tsx$/.test(path))
-        .map((path) => `${dir}/${path}`),
-    )
-    .filter((path) => path !== "app/layout.tsx");
+  const files = SOURCES.filter(
+    (path) =>
+      /^(app|components)\/.*\.tsx$/.test(path) && path !== "app/layout.tsx",
+  );
   assert.ok(files.length > 20);
   for (const path of files) {
     // JSX, not comments ("before <main>."): <main className=…> or <main>

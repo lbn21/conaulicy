@@ -27,6 +27,14 @@ import {
 import { PLACES, reading, realPosts } from "./zuk-fixture.ts";
 
 export const POST_39885 = 39885;
+export const POST_39885_URL =
+  "https://www.gminalubaczow.pl/2026/10/23/przerwy-w-dostawie-wody-26-29-10-2026/";
+
+// The tests' read: Sunday 25 Oct 2026, 13:30 in Warsaw (CET since 3:00 that
+// day), the file checked at 13:20; 39885's cuts are 26-29 Oct, all
+// 8:00-16:00, ul. Żuki's on Tuesday 27 Oct.
+export const CHECKED = "2026-10-25T12:20:00.000Z";
+export const NOW = new Date("2026-10-25T12:30:00Z");
 
 /**
  * A made-up cut by house numbers in Krowica Sama, a village with streets:

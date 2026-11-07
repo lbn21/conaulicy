@@ -15,11 +15,8 @@ const TODAY = "2026-10-19";
 const { etl } = fixture(TODAY, "http://127.0.0.1:1");
 const checked = new Map(etl.meta.sources.map((s) => [s.doc, TODAY]));
 
-test("the fixture is valid", () => {
+test("validation: the fixture is valid; broken ids and references found", () => {
   assert.deepEqual(validate(etl), []);
-});
-
-test("validation finds broken ids and references", () => {
   const broken = structuredClone(etl);
   broken.events[0].start = "2026-13-40x";
   broken.streets[0].localityId = "simc-0000000";
@@ -149,6 +146,13 @@ const ULIC = parseUlic(
 );
 
 test("street names and types come from TERYT ULIC", () => {
+  // Without TERYT fields (an ETL output before the migration): the ETL's.
+  const before = transform(etl, checked).rows.streets.find(
+    (s) => s.id === "0972447-00470",
+  );
+  assert.equal(before?.name, "Adama Asnyka");
+  assert.equal(before?.nazwa1, null);
+
   const named = withTeryt(etl, ULIC);
   assert.deepEqual(named.errors, []);
   assert.deepEqual(named.warnings, []);
@@ -173,11 +177,4 @@ test("street names and types come from TERYT ULIC", () => {
   // A street TERYT does not have is an error.
   const missing = withTeryt(etl, ULIC.slice(1));
   assert.match(missing.errors.join("\n"), /00470.*not in TERYT ULIC/);
-});
-
-test("without TERYT fields the ETL's name stays (before the migration)", () => {
-  const { rows } = transform(etl, checked);
-  const row = rows.streets.find((s) => s.id === "0972447-00470");
-  assert.equal(row?.name, "Adama Asnyka");
-  assert.equal(row?.nazwa1, null);
 });

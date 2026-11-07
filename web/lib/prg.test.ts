@@ -1,11 +1,10 @@
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
-import path from "node:path";
 import { test } from "node:test";
 import { houseNumber, prgNumber } from "./house.ts";
 import { placePath } from "./places.ts";
 import { isValidHouseNumber, numberWarning } from "./prg.ts";
 import { PRG_NUMBERS } from "./prg-numbers.generated.ts";
+import { calling, source } from "./test-sources.ts";
 
 test("PRG's numbers: no spaces, letters upper case, slash forms kept", () => {
   assert.equal(prgNumber(" 10a "), "10A");
@@ -71,17 +70,7 @@ test("the site's own number links pass the check, at every place the register ha
 });
 
 test("the numbers stay on the server: one server-only module reads them", () => {
-  const source = (file: string) =>
-    readFileSync(path.join(import.meta.dirname, "..", file), "utf8");
   assert.match(source("lib/prg.ts"), /^import "server-only";\n/);
-  const readers = ["app", "components", "lib"].flatMap((dir) =>
-    readdirSync(path.join(import.meta.dirname, "..", dir), {
-      recursive: true,
-      encoding: "utf8",
-    })
-      .filter((file) => /\.tsx?$/.test(file) && !file.includes(".test."))
-      .map((file) => path.join(dir, file))
-      .filter((file) => source(file).includes("prg-numbers.generated")),
-  );
+  const readers = calling(/prg-numbers\.generated/);
   assert.deepEqual(readers, ["lib/prg.ts"]);
 });

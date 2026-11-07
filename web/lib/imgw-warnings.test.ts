@@ -233,10 +233,6 @@ test("the mock's store files: as a good run checkedAgo minutes back left them; a
   await assert.rejects(mockFiles("mock:1809?fail=500", now));
 });
 
-test("our powiats come from our gminas: 1809 only", () => {
-  assert.deepEqual([...POWIATS], ["1809"]);
-});
-
 test("the mock answers from the fixtures, never in production; upstream from the env var", async () => {
   const feed = (url: string) => fetchFeed(url, { fetch: mockFetch });
   assert.deepEqual((await feed("mock:none")).items, []);

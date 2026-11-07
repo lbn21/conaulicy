@@ -11,28 +11,18 @@ import {
 } from "./address-routes.ts";
 import { placePath } from "./places.ts";
 
+// The exact list: unique, plain path segments, in the pages' order.
 test("waste first, then water, then weather; the weather has no subpage", () => {
   assert.deepEqual(MODULE_IDS, ["smieci", "woda", "pogoda"]);
-  assert.equal(MODULE_IDS[0], "smieci");
   assert.deepEqual(SUBPAGE_IDS, ["smieci", "woda"]);
   for (const id of SUBPAGE_IDS) assert.ok(isModuleId(id), id);
-});
-
-test("module ids are unique", () => {
-  assert.equal(new Set(MODULE_IDS).size, MODULE_IDS.length);
 });
 
 test("no module is called like another folder", () => {
   for (const id of MODULE_IDS) assert.ok(!FILE_NAMES.includes(id), id);
   assert.equal(isModuleId("harmonogram.pdf"), false);
-  assert.equal(isModuleId("smieci"), true);
   assert.equal(isModuleId("pogoda"), true);
-  assert.equal(isModuleId("woda"), true);
   assert.equal(isModuleId("prad"), false);
-});
-
-test("module ids are plain path segments", () => {
-  for (const id of MODULE_IDS) assert.match(id, /^[a-z]+$/);
 });
 
 test("the street page and a module subpage take ?nr=", () => {

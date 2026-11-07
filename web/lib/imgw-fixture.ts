@@ -1,6 +1,7 @@
 // IMGW meteo warning fixtures for the unit tests and the dev mock
 // (lib/imgw-mock.ts). A fixture, so code (scripts/check-tracked-data.mjs).
 // Format: docs/data/imgw.md.
+import { type Feed, parseFeed } from "./imgw-warnings.ts";
 
 /**
  * Real: GET https://danepubliczne.imgw.pl/api/data/warningsmeteo on 24 Oct
@@ -83,3 +84,16 @@ export function derived1809(): unknown[] {
       : warning,
   );
 }
+
+/**
+ * IMGW's copy as the pages read it (lib/imgw-banner.ts imgwCopyOf): the last
+ * good check at `checkedAt`, the feed file written then too; by default the
+ * derived 1809 warning (level 1, 25 Oct 13:00-19:00).
+ */
+export const copyCheckedAt = (
+  checkedAt: string,
+  items: Feed["items"] = parseFeed(derived1809(), () => {}),
+) => ({
+  feed: { fetchedAt: checkedAt, items } satisfies Feed,
+  checkedAt: Date.parse(checkedAt),
+});
