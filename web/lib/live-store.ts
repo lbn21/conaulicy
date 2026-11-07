@@ -1,6 +1,6 @@
 import "server-only";
 import { get, put } from "@vercel/blob";
-import { type ImgwRead, imgwCopyOf, UNREADABLE } from "./imgw-banner.ts";
+import { type ImgwRead, imgwCopyOf, UNREADABLE } from "./imgw-shown.ts";
 import { upstream } from "./imgw-warnings.ts";
 
 // The private Blob store (BLOB_READ_WRITE_TOKEN): the crons' files, read
@@ -68,8 +68,8 @@ async function imgwFiles(
 
 /**
  * The last good copy of IMGW's feed and its last good check, or null when
- * the cron has written none yet: the banner's (components/imgw-banner.tsx)
- * and the weather module's (lib/modules.ts), read per request through the
+ * the cron has written none yet: the weather module's (lib/modules.ts),
+ * read per request through the
  * Blob's CDN, never cached by Next. Pages never ask IMGW. The
  * store unreadable, or its feed file not one: UNREADABLE, an expected
  * error as a value, which the pages render as a notice (Next.js, "Handling

@@ -124,7 +124,7 @@ export async function searchIndexOf(origin, home) {
 }
 
 // A page as the browser shows it once every live block is in: the page's
-// static shell streams each block (IMGW, water, „Najbliższe dni”) after it,
+// static shell streams each block (an address page's content) after it,
 // behind a skeleton (components/live-block.tsx), and „Dziś” renders in the
 // browser (components/day-word.tsx), so the server's
 // HTML alone has skeletons there. Chromium, JS on, reduced motion; the

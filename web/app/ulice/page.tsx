@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import Link from "next/link";
-import { ImgwLive } from "@/components/imgw-banner";
 import { PlaceLink } from "@/components/place-link";
 import { DATASET } from "@/lib/headers";
 import { type ListedPlace, localityAnchor, placePath } from "@/lib/places";
@@ -22,20 +21,12 @@ export const metadata: Metadata = pageMetadata({
  * letter (Polish order), then the villages, each a link, with their streets
  * under it if they have any. Its only client JS is PlaceLink's prefetch on
  * intent (components/place-link.tsx); the links work without it.
+ *
+ * Static: from the cached search index, as the sitemap, the same places,
+ * cached until the next import (tag `dataset`, POST /api/revalidate) or
+ * deploy.
  */
-export default function AllPlacesPage() {
-  return (
-    <>
-      <ImgwLive />
-      <AllPlaces />
-    </>
-  );
-}
-
-// The page's static shell but the IMGW banner (its own hole): from the
-// cached search index, as the sitemap, the same places, cached until the
-// next import (tag `dataset`, POST /api/revalidate) or deploy.
-async function AllPlaces() {
+export default async function AllPlacesPage() {
   "use cache";
   cacheLife("max");
   cacheTag(DATASET);

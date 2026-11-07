@@ -86,7 +86,7 @@ export function derived1809(): unknown[] {
 }
 
 /**
- * IMGW's copy as the pages read it (lib/imgw-banner.ts imgwCopyOf): the last
+ * IMGW's copy as the pages read it (lib/imgw-shown.ts imgwCopyOf): the last
  * good check at `checkedAt`, the feed file written then too; by default the
  * derived 1809 warning (level 1, 25 Oct 13:00-19:00).
  */

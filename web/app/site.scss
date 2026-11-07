@@ -171,8 +171,8 @@ $app-header-colour: $app-header;
 
 @keyframes app-pulse { 50% { opacity: 0.55; } }
 
-// A live block's reveal (components/live-block.tsx: the IMGW row, and an
-// address page's whole content and its breadcrumbs, task 239), as Next.js's
+// A live block's reveal (components/live-block.tsx: an address page's
+// whole content and its breadcrumbs, task 239), as Next.js's
 // "Suspense reveals" (nextjs.org/docs/app/guides/view-transitions), opacity
 // only: the skeleton fades out and the content fades in, 150 ms each, at
 // once, no slide (task 233). The page itself (root) does not crossfade, as the guide's
@@ -189,13 +189,6 @@ $app-header-colour: $app-header;
 ::view-transition-new(.app-arrive) { animation: 150ms ease-out both app-fade; }
 
 @keyframes app-fade { from { opacity: 0; } }
-
-// The IMGW row (components/imgw-banner.tsx) at least one govuk-body-s line
-// tall, its skeleton, its quiet line and its banner alike (task 233).
-.app-imgw {
-  @include govuk-font-size($size: 16);
-  min-height: 1lh;
-}
 
 // No scroll anchor inside the main content (task 234). On a reload Chromium
 // restores the scroll from a saved anchor, a selector found on the final

@@ -6,7 +6,6 @@ import {
   SearchErrorProvider,
   SearchErrorSummary,
 } from "@/components/address-search";
-import { ImgwLive } from "@/components/imgw-banner";
 import { PlaceLink } from "@/components/place-link";
 import { SITE_URL } from "@/lib/config.generated";
 import { HOME_EXAMPLES } from "@/lib/examples";
@@ -35,20 +34,10 @@ const WEBSITE = JSON.stringify({
   inLanguage: LANG,
 }).replace(/</g, "\\u003c");
 
-// The page's static shell: everything but the IMGW banner, read per request
-// in its own hole (components/imgw-banner.tsx).
-export default function Home() {
-  return (
-    <>
-      <ImgwLive />
-      <HomeBody />
-    </>
-  );
-}
-
-// Cached until the next import or deploy (cacheLife "max"), tagged with
-// what it reads: the dataset (examples, index), which the import purges.
-async function HomeBody() {
+// The page, static: cached until the next import or deploy (cacheLife
+// "max"), tagged with what it reads: the dataset (examples, index), which
+// the import purges.
+export default async function Home() {
   "use cache";
   cacheLife("max");
   cacheTag(DATASET);
