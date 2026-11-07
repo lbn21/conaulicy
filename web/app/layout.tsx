@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
+import { FragmentLink } from "@/components/fragment-link";
 import { GovukFrontend } from "@/components/govuk-frontend";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -80,13 +81,13 @@ export default function RootLayout({
           // biome-ignore lint/security/noDangerouslySetInnerHtml: GOV.UK's support snippet must run before the page renders
           dangerouslySetInnerHTML={{ __html: supportScript }}
         />
-        <a
+        <FragmentLink
           href="#main-content"
           className="govuk-skip-link"
           data-module="govuk-skip-link"
         >
           Przejdź do treści
-        </a>
+        </FragmentLink>
         <SiteHeader />
         {/* GOV.UK's <main>, the skip link's target, one for the whole site:
             a layout is never duplicated, while Next.js keeps a page left by
