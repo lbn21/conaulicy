@@ -514,7 +514,7 @@ const placeCached = unstable_cache(
   // null; v4: sources' seenAt (task 121); v3: task 118 added importedAt,
   // task 120 dropped it again; v2 entries lack localityId and streetId
   // (task 117).
-  ["place-v6"],
+  ["place-v7"],
   DAY_CACHE,
 );
 
