@@ -1,10 +1,12 @@
-// The routes smoke (task 252): four checks of the built site on one
+// The routes smoke (task 252): five checks of the built site on one
 // `next start` and the CI fixture, each in scripts/routes/:
 //   examples    the home page's examples have upcoming pickups;
 //   all-places  /ulice lists every place once, in Polish order;
 //   metadata    each page's title, description, share tags and manifest;
 //   query       unknown query parameters redirect to the clean URL, the
-//               search lands on its place, renamed ids redirect.
+//               search lands on its place, renamed ids redirect;
+//   in-page     in-page links land, Back after them shows the right page
+//               (task 259).
 // Every check by default; name some to run only those
 // (`node scripts/check-routes.mjs examples`). With CHECK_URL, a deployed
 // site instead of a local server (examples only: the others need the
@@ -12,6 +14,7 @@
 import { closeRenderedPages, finish, startServer } from "./lib/server.mjs";
 import { check as allPlaces } from "./routes/all-places.mjs";
 import { check as examples } from "./routes/examples.mjs";
+import { check as inPage } from "./routes/in-page.mjs";
 import { check as metadata } from "./routes/metadata.mjs";
 import { check as query } from "./routes/query.mjs";
 
@@ -20,6 +23,7 @@ const CHECKS = {
   "all-places": allPlaces,
   metadata,
   query,
+  "in-page": inPage,
 };
 
 const asked = process.argv.slice(2);

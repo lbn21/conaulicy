@@ -1,8 +1,16 @@
+import { FragmentLink } from "@/components/fragment-link";
+
 /**
  * GOV.UK's error summary, focused on load by its JS (lib/govuk-frontend):
  * one error, linked to its field (`href`, e.g. "#nr").
  */
-export function ErrorSummary({ error, href }: { error: string; href: string }) {
+export function ErrorSummary({
+  error,
+  href,
+}: {
+  error: string;
+  href: `#${string}`;
+}) {
   return (
     <div className="govuk-error-summary" data-module="govuk-error-summary">
       <div role="alert">
@@ -10,7 +18,7 @@ export function ErrorSummary({ error, href }: { error: string; href: string }) {
         <div className="govuk-error-summary__body">
           <ul className="govuk-list govuk-error-summary__list">
             <li>
-              <a href={href}>{error}</a>
+              <FragmentLink href={href}>{error}</FragmentLink>
             </li>
           </ul>
         </div>

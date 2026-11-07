@@ -197,21 +197,6 @@ $app-header-colour: $app-header;
 // first layout (developer.mozilla.org/docs/Web/CSS/overflow-anchor).
 #main-content { overflow-anchor: none; }
 
-// The target of an in-page link (task 258), as GOV.UK has no :target
-// style: on the address page „Szczegóły i źródło” goes to its module's
-// section (#woda), often already in view on a large screen, so the link
-// seemed to do nothing. Any section that is the target is highlighted in
-// GOV.UK's pale yellow (yellow tint-80; text, links and secondary text keep
-// 4.5:1 or more), spread evenly round it by an outline (no layout change),
-// while it is the target, as Wikipedia's footnotes. Still, so nothing to
-// stop under prefers-reduced-motion; no fade out, which the 1 KB cap has no
-// room for. No tabindex: as GOV.UK's contents links, the browser moves its
-// focus navigation starting point to the target, so Tab goes on from there.
-section:target {
-  background-color: govuk-colour("yellow", $variant: "tint-80");
-  outline: govuk-spacing(2) solid govuk-colour("yellow", $variant: "tint-80");
-}
-
 @media (prefers-reduced-motion: reduce) {
   .app-skeleton,
   ::view-transition-old(*),

@@ -1,4 +1,5 @@
 import { DayWord } from "@/components/day-word";
+import { FragmentLink } from "@/components/fragment-link";
 import { type Item, LINK_NAME, visible, words } from "@/lib/upcoming";
 
 // „Najbliższe dni” (lib/upcoming.ts), read per request in its own block
@@ -58,12 +59,12 @@ export function Upcoming({ items, now }: { items: Item[]; now: number }) {
                   {second && (
                     <span className="govuk-!-display-block">{second}</span>
                   )}
-                  <a className="govuk-link" href={`#${item.module}`}>
+                  <FragmentLink className="govuk-link" href={`#${item.module}`}>
                     Szczegóły i źródło
                     <span className="govuk-visually-hidden">
                       {`: ${LINK_NAME[item.module]}`}
                     </span>
-                  </a>
+                  </FragmentLink>
                 </li>
               );
             })}

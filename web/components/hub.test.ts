@@ -176,9 +176,8 @@ test("address page: no warning, Pogoda says so once, no IMGW link but the source
   assert.match(pogoda, /Źródło: <a [^>]*>IMGW-PIB<\/a>/);
 });
 
-// „Szczegóły i źródło” (components/upcoming.tsx) goes to #<module>: each
-// such anchor is a hub section's id, the :target that app/site.scss
-// highlights (task 258).
+// „Szczegóły i źródło” (components/upcoming.tsx, a FragmentLink) goes to
+// #<module>: each such anchor is a hub section's id (tasks 258, 259).
 test("hub: every „Szczegóły i źródło” anchor is a section's id (task 258)", () => {
   for (const id of Object.keys(LINK_NAME) as (keyof typeof MODULES)[]) {
     const html = renderToStaticMarkup(
