@@ -1,7 +1,8 @@
 // npm run db:import -- --from <dir> [--teryt <dir>] [--approvals <yaml>]
 //                       [--apply]
 //
-// Loads the ETL output (docs/import-plan.md section 3). Without --apply it is
+// Loads the ETL output (format: scripts/lib/import-data.ts; the original
+// plan, docs/import-plan.md, is in git history). Without --apply it is
 // a dry run: validate, check the sources, print the diff against the
 // database, write nothing. With --apply, one transaction: rows are upserted
 // and rows missing from the input deleted. Then the site's cache is

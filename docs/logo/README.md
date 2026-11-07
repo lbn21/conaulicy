@@ -4,15 +4,6 @@ Jakub picked **A “Tabliczka”** (task 20), refined in task 22 (below). The **
 
 ## A “Tabliczka”, refined (task 22)
 
-![Comparison sheet v2](comparison-sheet-a-v2.png)
-
-`comparison-sheet-a-v2.png`, rendered from the SVGs here, shows:
-- the new flat A against the previous one, with the centring overlay;
-- the enamel hero on dark and light;
-- the OG card;
-- the header at 360 px, dark and light;
-- the favicons at 16, 32 and 180 px.
-
 **One plate, two tiers.** The flat mark and the realistic hero share the same geometry (`source/make_logo_a.py`, `plate_geometry`):
 
 - **Plate:** 41.3 × 34, corner radius 9.5.
@@ -25,7 +16,7 @@ Jakub picked **A “Tabliczka”** (task 20), refined in task 22 (below). The **
 - **Pads to the rim, by ink box:** left 6.24, right 4.56, top 4.38, bottom 6.42. They look equal because the right side is only a period and the top only one stem.
 - **Previous A:** left 10.29, right 9.09, top 3.74, bottom 8.94, so it sat visibly high.
 
-See `debug/a-centring-overlay.png`, which shows plate centre lines, ink box and centre, mass centroid and rim edge. The numbers are in `debug/a-measure.json`.
+`source/make_logo_a.py` also writes `a-centring-overlay.svg` (plate centre lines, ink box and centre, mass centroid and rim edge) and `measure.json` with the numbers into its output folder.
 
 **Kerning.** u|l −14 units, l|. +6, set by eye at 400 %.
 
@@ -53,7 +44,6 @@ See `debug/a-centring-overlay.png`, which shows plate centre lines, ink box and 
 **Files.**
 - `a-logo-{dark,light,mono}.svg`: lockup.
 - `a-mark-{dark,light,mono}.svg`: plate only.
-- The previous A is kept in `previous/` for comparison.
 
 **Rebuild.** Needs `fonttools` and `uharfbuzz`:
 1. `python docs/logo/source/make_logo_a.py <out>`
@@ -61,39 +51,14 @@ See `debug/a-centring-overlay.png`, which shows plate centre lines, ink box and 
 
 ## The three original options (task 20)
 
-![Comparison sheet](comparison-sheet.png)
-
-`comparison-sheet.png`: per variant, the favicon at 16, 32 and 180 px and the header at 360 px wide, dark and light. Rendered with Playwright from the SVGs in this folder.
-
-## The three ideas
-
-| | Name | Idea | Mark vs. name | Favicon |
-|---|---|---|---|---|
-| **A** | Tabliczka | A compact enamel plate: filled amber, with a fine inset rim like pressed enamel; “ul.” knocked out. Calm and solid. | The plate is a badge; “conaulicy” sits beside it in the text colour. | The plate alone, no rim: “ul.” as large as it gets. |
-| **B** | Latarnia | A hanging sign: outlined plate on a wall bracket, lit by a small street lantern with a warm glow (the palette is called Latarnia). The most illustrative. | The sign carries “ul.” in amber; “conaulicy” beside it. | The sign alone, hanging from a hook on a V cord; no bracket or lamp at 16 px. |
-| **C** | Ulica conaulicy | The name is the street: one wide plate with gently bowed edges reads “ul. conaulicy”, small “ul.” and the name sharing a baseline. The boldest, and the name and the mark are one. | Everything is on the plate. | The plate's first letter, “c”, on a bowed tile. |
-
-All three avoid the blue-and-white MSI street sign, the city's herb and any official symbol, and use only the Latarnia amber: `#FFB547` on dark, `#9A5700` on light.
-
-## Files (per variant `a`, `b`, `c`)
-
-| File | What |
-|---|---|
-| `{v}-logo-dark.svg` | Full mark (plate + conaulicy) for the dark theme |
-| `{v}-logo-light.svg` | Full mark for the light theme |
-| `{v}-logo-mono.svg` | One colour, `currentColor` (B drops the lantern glow) |
-| `{v}-favicon.svg` | Simplified 32×32 favicon, legible at 16 px; switches amber with `prefers-color-scheme` |
-| `{v}-icon-32.png` | PNG fallback, transparent |
-| `{v}-icon-180.png` | Apple touch icon, on the night tile |
-| `{v}-icon-512.png` | PWA icon, on the night tile |
-| `{v}-icon-maskable-512.png` | Maskable PWA icon: full-bleed tile, mark inside the 80 % safe circle |
+Task 20 explored three ideas: **A** “Tabliczka” (shipped), **B** “Latarnia” (a hanging sign with a lantern) and **C** “Ulica conaulicy” (one wide plate reading “ul. conaulicy”). B, C, the previous A and the comparison sheets were removed in t249; they are in git history. All three avoided the blue-and-white MSI street sign, the city's herb and any official symbol.
 
 ## How they are made
 
 - Letters are Atkinson Hyperlegible Next **700**, shaped with HarfBuzz (kerning on), then optically kerned by hand (“u–l” closed up, “l–.” opened, “c–o” opened, “l–i” and “c–y” tightened) and **outlined to paths**. No font is embedded.
 - Knock-outs use an SVG mask, so the plate's text shows whatever is behind it, in every theme and in `currentColor`.
 - Paths only, no raster, no `<text>`. Optimised with SVGO 4.1.0 (`source/svgo.config.mjs`: `inlineStyles` off so the favicon's colour-scheme media query survives). Logos are 2.8–3.4 KB, favicons 0.7–1 KB.
-- `source/make_logos.py` regenerates the task-20 SVGs, A in its previous form included, so write to a temporary folder (needs `fonttools` and `uharfbuzz`), then:
+- `source/make_logos.py` regenerates the task-20 SVGs (A in its previous form, B and C), so write to a temporary folder (needs `fonttools` and `uharfbuzz`), then:
   `npx svgo@4.1.0 --config docs/logo/source/svgo.config.mjs -f <out> -o <opt>`
 
 ## Shipped (task 23)

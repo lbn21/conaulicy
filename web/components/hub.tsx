@@ -19,7 +19,7 @@ import type { PlaceView } from "@/lib/schedule";
 import { ordered } from "@/lib/upcoming";
 
 // The address page, /adres/[id] (and /nr/…): the hub of modules
-// (lib/modules.ts, docs/tasks T102), under breadcrumbs. Under „Zmień
+// (lib/modules.ts, task 102), under breadcrumbs. Under „Zmień
 // adres”, „Najbliższe dni” (components/upcoming.tsx), every module's items
 // in one order (or that nothing is coming); then a section per module, always,
 // in registry order (Śmieci, Woda, Pogoda; task 207), each its module's id

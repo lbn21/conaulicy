@@ -4,10 +4,7 @@ node_modules/
 !.env.example
 .next/
 dist/
-__pycache__/
-*.pyc
 .DS_Store
-etl/out/
 
 # Data never goes in git: raw sources live in private S3 (docs/data/sources.md),
 # pulled into .cache/ by `npm run sources:pull`.

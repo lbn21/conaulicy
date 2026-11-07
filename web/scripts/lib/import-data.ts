@@ -1,6 +1,7 @@
 // The ETL output (etl/out/*.json) turned into database rows, without touching
 // the network or the database: validation, ids, labels, sources, approvals.
-// docs/import-plan.md section 2. Used by scripts/import.ts; tested on its own.
+// Used by scripts/import.ts; tested on its own. (The original plan,
+// docs/import-plan.md, is in git history.)
 import { createHash } from "node:crypto";
 import type { EventType } from "../../lib/data-model.ts";
 import type {

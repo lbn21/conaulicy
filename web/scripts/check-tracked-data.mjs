@@ -2,7 +2,7 @@
 // bucket (docs/data/sources.md) and processed data is never committed. Under
 // docs/data/ only the manifest, the inventory and notes may be tracked;
 // anywhere else, PDF, JPEG, JSON, CSV, XML and HTML files must be on the allow-list
-// (config, migration metadata, design and logo assets). Test fixtures are
+// (config and migration metadata). Test fixtures are
 // code (scripts/lib/import-fixture.ts, scripts/ci-fixture.ts).
 import { execFileSync } from "node:child_process";
 import path from "node:path";
@@ -21,8 +21,6 @@ const ALLOWED = [
   /^web\/drizzle\/meta\/[^/]+\.json$/,
   /^\.cursor\/cli\.json$/,
   /^etl\/sources\.schema\.json$/,
-  /^design\/proposals\/([^/]+\/)?index\.html$/,
-  /^docs\/logo\/debug\/a-measure\.json$/,
 ];
 
 const tracked = execFileSync("git", ["-C", ROOT, "ls-files", "-z"], {

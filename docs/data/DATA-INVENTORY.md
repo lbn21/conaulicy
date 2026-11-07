@@ -19,7 +19,7 @@ In the private S3 bucket under `sources/<origin>/<fetch date>/`; keys, public UR
 | `meta/2026-10-18/build_sample.py` | **prototype** (not production): manual 2026 transcription → sample JSON + weekday check |
 | `meta/2026-10-18/schedule-2026.sample.json` (486 events), `meta/2026-10-18/address-register.sample.json`, `meta/2026-10-18/weekday-anomalies.txt` | samples for task-10 / task-11 |
 
-> The transcription in `build_sample.py` is my manual reading of the JPGs/PDFs. It is a **seed for the review**, not the source of truth. Task-10 must extract it independently and compare 1:1 (test plan §4 MVP-PLAN).
+> The transcription in `build_sample.py` is my manual reading of the JPGs/PDFs. It is a **seed for the review**, not the source of truth. Task-10 must extract it independently and compare 1:1 (v1's test plan, now an open question in MVP-PLAN §7.4).
 
 ## 1. Waste schedules
 

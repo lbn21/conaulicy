@@ -1,5 +1,5 @@
 // The address page's modules: waste, water and the weather today; power and
-// others later (docs/tasks T102). Each one has a section on the address
+// others later (task 102). Each one has a section on the address
 // page (components/hub.tsx), always, in registry order, and a subpage of
 // its own, /adres/<id>/<id of the module>, if it has one. The ids and their
 // order live in lib/address-routes.ts, so the unit tests and the URL rules
