@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { checkedLine } from "./hub.ts";
-import { banner, UNREADABLE } from "./imgw-banner.ts";
 import {
   copyCheckedAt as copy,
   NO_WARNINGS_2026_10_18,
 } from "./imgw-fixture.ts";
+import { shownWarnings, UNREADABLE } from "./imgw-shown.ts";
 import { parseFeed } from "./imgw-warnings.ts";
 import {
   weather,
@@ -18,7 +18,18 @@ import {
 const at = (iso: string) => Date.parse(iso);
 const none = parseFeed(JSON.parse(NO_WARNINGS_2026_10_18), () => {});
 
-test("a warning: one item, absolute lines with its tag, its source", () => {
+const WIND =
+  "Prognozuje się wystąpienie dość silnego wiatru o średniej prędkości do 35 km/h, w porywach do 75 km/h, z południa.";
+const MORE = [
+  [
+    {
+      href: "https://meteo.imgw.pl/",
+      text: "Szczegóły i mapa na meteo.imgw.pl",
+    },
+  ],
+];
+
+test("a warning: one item with its tag and times; the section only IMGW's words", () => {
   const now = at("2026-10-25T14:00:00+01:00");
   const data = weather(copy("2026-10-25T13:52:10+01:00"), now);
   assert.ok(data);
@@ -44,19 +55,15 @@ test("a warning: one item, absolute lines with its tag, its source", () => {
       secondUntil: null,
     },
   ]);
-  // The same whether in force or to come: a cached copy stays true.
+  // The section: which warning, IMGW's description and probability, its
+  // page; never its tag or times again (task 257). The same whether in
+  // force or to come.
   assert.deepEqual(weatherStatus(data), [
-    [
-      ["Silny wiatr ", tag],
-      [
-        {
-          day: "2026-10-25",
-          text: "niedziela, 25 października, 13:00–19:00",
-        },
-      ],
-      ["Gdzie: cały powiat lubaczowski"],
-    ],
+    [["Silny wiatr, stopień 1 z 3"], [`${WIND} Prawdopodobieństwo: 75%.`]],
+    MORE,
   ]);
+  const said = JSON.stringify(weatherStatus(data));
+  assert.doesNotMatch(said, /govuk-tag|13:00|19:00|października/);
   const before = weather(
     copy("2026-10-25T11:52:10+01:00"),
     at("2026-10-25T12:00:00+01:00"),
@@ -68,11 +75,11 @@ test("a warning: one item, absolute lines with its tag, its source", () => {
   ]);
 });
 
-test("the same warnings as the banner, from the same copy", () => {
+test("the same warnings in the list and the section, from the same copy", () => {
   const now = at("2026-10-25T14:00:00+01:00");
   const found = copy("2026-10-25T13:52:10+01:00");
   const data = weather(found, now);
-  assert.deepEqual(data?.banner, banner(found, now));
+  assert.deepEqual(data?.shown, shownWarnings(found, now));
 });
 
 test("no warning: no alert, a line saying so, still a source", () => {
@@ -111,7 +118,7 @@ test("stale: the notice first, linked to IMGW, then the warnings", () => {
       ".",
     ],
   ]);
-  assert.equal(warnings.at(-1)?.[0], "Gdzie: cały powiat lubaczowski");
+  assert.deepEqual(warnings[0], ["Silny wiatr, stopień 1 z 3"]);
   assert.equal(weatherUpcoming(data).length, 1);
   assert.equal(
     weatherChecked(data)?.getTime(),

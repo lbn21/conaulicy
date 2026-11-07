@@ -55,25 +55,19 @@ test("the crons' files: no Next cache in front of them; the pages read the Blob'
   assert.match(store, /cacheControlMaxAge: 60,/);
 });
 
-test("IMGW: asked only by the cron; its copy read only in live blocks", () => {
+test("IMGW: asked only by the cron; its copy read only on the address pages", () => {
   assert.deepEqual(calling(/\bfetchFeed\(/), [
     "lib/imgw-cron.ts",
     "lib/imgw-mock.ts",
     "lib/imgw-warnings.ts",
   ]);
+  // The weather module, loaded only by the address pages (hubData).
   assert.deepEqual(calling(/\bimgwCopy\(/), [
-    "components/imgw-banner.tsx",
     "lib/live-store.ts",
     "lib/modules.ts",
   ]);
-  // The banner, in its own hole, on every page but the address pages.
-  assert.deepEqual(calling(/<ImgwLive \/>/), [
-    "app/dostepnosc/page.tsx",
-    "app/o-projekcie/page.tsx",
-    "app/page.tsx",
-    "app/prywatnosc/page.tsx",
-    "app/ulice/page.tsx",
-  ]);
+  // No IMGW banner on any other page (task 257).
+  assert.deepEqual(calling(/\bimgw-banner\b|<ImgwLive/), []);
 });
 
 test("the shells: every `use cache` scope is cacheLife max and tags the dataset", () => {
@@ -105,7 +99,6 @@ test("the live blocks: read after io(), never inside a cached scope", () => {
   for (const [path, count] of [
     ["components/hub.tsx", 1],
     ["components/module-page.tsx", 1],
-    ["components/imgw-banner.tsx", 1],
   ] as const)
     assert.equal(
       source(path).match(/\n\s+await io\(\);\n/g)?.length,
@@ -116,7 +109,6 @@ test("the live blocks: read after io(), never inside a cached scope", () => {
     "components/hub.tsx",
     "components/module-page.tsx",
     "components/place-crumbs.tsx",
-    "components/imgw-banner.tsx",
   ])
     assert.doesNotMatch(source(path), /use cache/, path);
   const modules = source("lib/modules.ts");
@@ -148,7 +140,6 @@ test("the address pages: one read per request, every block at once, shared with 
     "components/subpage-route.tsx",
   ]);
   assert.deepEqual(calling(/<LiveBlock /), [
-    "components/imgw-banner.tsx",
     "components/place-crumbs.tsx",
     "components/place-suspense.tsx",
   ]);

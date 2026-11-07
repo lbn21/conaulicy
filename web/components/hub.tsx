@@ -25,8 +25,9 @@ import { ordered } from "@/lib/upcoming";
 // adres”, „Najbliższe dni” (components/upcoming.tsx), every module's items
 // in one order (or that nothing is coming); then a section per module, always,
 // in registry order (Śmieci, Woda, Pogoda; task 207), each its module's id
-// as its anchor (#woda): its h2, its status lines (what is next, or that
-// nothing is), a link saying where its subpage goes („Wszystkie odbiory
+// as its anchor (#woda): its h2, its status lines (only what „Najbliższe
+// dni” does not say, task 257: each cut and warning is listed there
+// alone), a link saying where its subpage goes („Wszystkie odbiory
 // śmieci”), then its meta line, small: „Źródło: …”, and when we checked.
 // No summary lists or cards (GOV.UK keeps cards for lists of the same type
 // of thing, task 131). A visible section break between sections. No

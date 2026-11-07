@@ -15,7 +15,7 @@
 // - except in the plain .govuk-tag rule: govuk-frontend 6.5.1 hard-codes the
 //   default tag as blue (tag/_mixin.scss), with no setting. Every tag we
 //   render has a colour modifier (check-own-css fails on one without), so
-//   the blue is always overridden and never shown (task 98, the IMGW banner).
+//   the blue is always overridden and never shown (task 98: IMGW's level tags).
 // or if app/_settings.scss stops turning off GOV.UK's default font face.
 // Credits: the compiled CSS must carry GOV.UK Frontend's licence notice;
 // /dostepnosc must link the MIT licence and the font's OFL (served from

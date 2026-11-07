@@ -1,8 +1,8 @@
 import { type ReactNode, Suspense, ViewTransition } from "react";
 import { LOADING } from "@/components/skeleton";
 
-// A block whose data changes between imports: the IMGW row, and an address
-// page's whole content and its breadcrumbs (components/place-suspense.tsx,
+// A block whose data changes between imports: an address page's whole
+// content and its breadcrumbs (components/place-suspense.tsx,
 // task 239): its own <Suspense> hole in the page's static shell
 // (nextjs.org/docs/app/getting-started/caching, "Prerendering"), so the
 // shell keeps its long lifetime and the block is read per request, its

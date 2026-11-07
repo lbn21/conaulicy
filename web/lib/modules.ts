@@ -62,9 +62,11 @@ export type Module<D> = {
    */
   upcoming(data: D): Item[];
   /**
-   * Its section's lines, under the h2, always at least one: what is next,
-   * or that nothing is (absolute dates only, a first line's day lead the
-   * island's; what is next is as of the render, app/adres/[id]/page.tsx).
+   * Its section's lines, under the h2: only what „Najbliższe dni” does not
+   * say (task 257). Waste: what is next, or that nothing is (absolute
+   * dates only, a first line's day lead the island's). Water and weather
+   * never list their cuts or warnings again: none at all is possible for
+   * water, whose link and sources follow.
    */
   status(data: D): Group[];
   /**
@@ -153,10 +155,11 @@ const woda: Module<Water> = {
   Details: WaterDetails,
 };
 
-// IMGW's warnings for the powiat (all our gminas lie in one), as the
-// banner other pages show, from the same last good copy; no copy yet,
-// simply left out; the store unreadable, the same notice as the banner. No
-// subpage: its source, linked in the meta line, is IMGW's own page.
+// IMGW's warnings for the powiat (all our gminas lie in one), shown only
+// on the address page (task 257): each in „Najbliższe dni”, IMGW's own
+// description in its section; no copy yet, „Jeszcze tego nie
+// sprawdziliśmy”; the store unreadable, a notice. No subpage: its source,
+// linked in the meta line, is IMGW's own page.
 const pogoda: Module<Weather> = {
   id: "pogoda",
   title: "Pogoda",

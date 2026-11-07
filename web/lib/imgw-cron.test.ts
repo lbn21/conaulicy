@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { banner, imgwCopyOf, POWIAT } from "./imgw-banner.ts";
 import { type ImgwCronDeps, runImgw } from "./imgw-cron.ts";
+import { imgwCopyOf, POWIAT, shownWarnings } from "./imgw-shown.ts";
 import { IMGW_URL, parseFeedFile } from "./imgw-warnings.ts";
 import { IMGW_KEY, parseChecks } from "./live-status.ts";
 import { handleZukCron, type ZukCronDeps } from "./zuk-cron.ts";
@@ -225,7 +225,7 @@ test("an unchanged feed is never written again: the pages read the same copy, it
     assert.equal(w.store.get(FEED), before.get(FEED));
   }
   const now = T0.getTime() + 46 * 60_000;
-  const shown = banner(
+  const shown = shownWarnings(
     imgwCopyOf(w.store.get(FEED) ?? null, w.store.get(CHECKS) ?? null),
     now,
   );
