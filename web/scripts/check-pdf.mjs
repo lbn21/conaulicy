@@ -9,7 +9,7 @@
 // ended, and its page offers neither the PDF nor the calendar file. The PDF,
 // ICS and search responses carry the dataset cache tag, and no other, so
 // an import's revalidate purges their CDN copies; so does every address
-// route's shell (hub, /numer, /nr/…, each subpage), cached until then
+// route's shell (hub, each subpage), cached until then
 // (cacheLife "max"). No cron purges anything. The QR code, read back from the page,
 // and every printed link open the waste subpage on SITE_URL. Run after
 // `next build`; needs poppler-utils (pdfinfo, pdffonts, pdftotext).
@@ -82,14 +82,8 @@ const TAGGED = [
 // cached with cacheLife "max" changes before the next deploy.
 const PAGE_TAGS = [
   "/adres/0972447-00470",
-  "/adres/0972447-00470/numer",
-  "/adres/0972447-00470/nr/5",
   "/adres/0972447-00470/smieci",
-  "/adres/0972447-00470/smieci/numer",
-  "/adres/0972447-00470/smieci/nr/5",
   "/adres/0972447-00470/woda",
-  "/adres/0972447-00470/woda/numer",
-  "/adres/0972447-00470/woda/nr/5",
 ];
 
 // The tags of the ISR entry `next start` wrote for a page, found by its
