@@ -8,7 +8,7 @@ To launch: remove `SITE_BASIC_AUTH` from Production in Vercel, then redeploy (he
 
 `conaulicy.vercel.app` always redirects (308, path and query kept) to `https://conaulicy.pl`; other hosts, such as preview URLs, are not redirected.
 
-CI checks both builds: `web/scripts/check-indexing.mjs --expect=noindex|index`.
+CI checks the CI build as served (`web/scripts/check-indexing.mjs --expect=noindex`), and unit-tests the production settings of `next.config.ts` headers and redirects and `robots.txt` (`web/lib/next-config.test.ts`). Before launch, check a production-like build by hand: `VERCEL_ENV=production npm run build`, then `node scripts/check-indexing.mjs --expect=index` (the sitemap complete, every URL in it indexable).
 
 No Vercel WAF at launch; on the cacheable page and API routes, unknown query parameters are redirected to the clean URL (tasks 62, 63); files and Next.js metadata routes keep their query.
 

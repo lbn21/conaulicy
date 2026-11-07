@@ -5,7 +5,10 @@
 //                     SITE_BASIC_AUTH): no X-Robots-Tag, meta robots says
 //                     index, follow; robots.txt allows all but /api/ and
 //                     names the sitemap; conaulicy.vercel.app redirects (308)
-//                     to conaulicy.pl, path and query kept.
+//                     to conaulicy.pl, path and query kept. By hand
+//                     before launch (docs/launch.md); CI unit-tests the
+//                     production headers, redirects and robots.txt
+//                     (lib/next-config.test.ts) instead of a second build.
 // Both: /sitemap.xml is well-formed; empty unless indexable, else the five
 // static pages (/ulice included) and every place in the search index but
 // those /ulice marks „(brak danych)”, each with its waste subpage
@@ -23,7 +26,7 @@
 // one noindex, none index), and no description; an unknown module
 // (/adres/<id>/<slug>) and one without a subpage (/pogoda) too; asked
 // without following redirects, and never under a renamed id (the 308s of
-// /api/place-redirects, scripts/check-query.mjs). Both: /, an
+// /api/place-redirects, scripts/routes/query.mjs). Both: /, an
 // address page and a calendar send the five security headers.
 //
 // Runs against `next start` on the current build and the CI fixture.
@@ -259,7 +262,7 @@ try {
     "/adres/9999999",
     "/adres/abc",
     // An unknown street (0972447-99999 is the fixture's renamed one: a 308,
-    // scripts/check-query.mjs).
+    // scripts/routes/query.mjs).
     "/adres/0972447-88888",
     // An unknown module, with and without a number; a module of an unknown
     // place.
