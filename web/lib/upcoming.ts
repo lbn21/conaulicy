@@ -1,11 +1,11 @@
-// The address page's „Najbliższe dni” block (components/upcoming.tsx) and
-// its sections' day leads: what each module gives the block (Item), the one
-// order, and its words. The server makes every label, absolute (dates,
+// The address page's „Najbliższe dni” timeline (components/upcoming.tsx,
+// task 261): what each module gives the block (Item), the one order, the
+// days of the window (timeline) and each card's words. The server makes every label, absolute (dates,
 // clock times); only „Dziś”, „Jutro” and „Za 5 dni” follow the day
 // (components/day-word.tsx, lib/dates.ts dayLead), with no locale formatting, and the
 // unit tests' from a fixed day. Pure and client-safe.
 import { MODULE_IDS } from "./address-routes.ts";
-import { capitalised } from "./dates.ts";
+import { addDays, capitalised, todayInWarsaw } from "./dates.ts";
 
 /** When something happens, with its labels made on the server. */
 export type Span = {
@@ -22,6 +22,8 @@ export type Span = {
   about: boolean;
   /** The start's day, absolute: "piątek, 30 października". */
   date: string;
+  /** The start's day after „od”: "piątku 30 października". */
+  since: string;
   /** The end's day after „do”: "soboty 31 października". */
   until: string;
 };
@@ -69,67 +71,100 @@ export const visible = (item: Item, now: number) =>
   (item.shownFrom === null || Date.parse(item.shownFrom) <= now) &&
   now < Date.parse(item.span.end);
 
+/** The block's window: today and the next six days (task 261). */
+export const WINDOW_DAYS = 7;
+
+/** A day on the timeline with what happens on it, in the one order. */
+export type DayRow = { kind: "day"; day: string; items: Item[] };
+
+/** A run of days with nothing on them: one line, `from` to `to`. */
+export type EmptyRow = { kind: "empty"; from: string; to: string };
+
 /**
- * A line's words: the lead (bold), as „Dziś” or „Jutro” and
- * what follows that word (components/day-word.tsx), or else the date
- * („Piątek, 30 października:”); the rest; the second sentence.
+ * The timeline at `now` (task 261): every day of the window, today first,
+ * as a day with its items or, for days with none, one line per run of
+ * empty days; then `later`, the days past the window that have something
+ * (a cut announced further ahead), with no empty lines between them. An
+ * item is on its start's day, or today if it began earlier and is not
+ * over: once, never on each day it lasts.
  */
-export type Words = {
-  day: string;
-  /** After „Dziś” or „Jutro”: "" for a cut or a pickup, „ od 13:00:” for a warning. */
-  afterWord: string;
-  /** The lead when the day is neither. */
-  date: string;
+export function timeline(
+  items: Item[],
+  now: number,
+): { week: Array<DayRow | EmptyRow>; later: DayRow[] } {
+  const today = todayInWarsaw(new Date(now));
+  const byDay = new Map<string, Item[]>();
+  for (const item of items.filter((it) => visible(it, now))) {
+    const day = item.span.day < today ? today : item.span.day;
+    byDay.set(day, [...(byDay.get(day) ?? []), item]);
+  }
+  const week: Array<DayRow | EmptyRow> = [];
+  for (let i = 0; i < WINDOW_DAYS; i++) {
+    const day = addDays(today, i);
+    const dayItems = byDay.get(day);
+    const last = week.at(-1);
+    if (dayItems) week.push({ kind: "day", day, items: dayItems });
+    else if (last?.kind === "empty") last.to = day;
+    else week.push({ kind: "empty", from: day, to: day });
+  }
+  const end = addDays(today, WINDOW_DAYS - 1);
+  const later = [...byDay]
+    .filter(([day]) => day > end)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([day, dayItems]): DayRow => ({ kind: "day", day, items: dayItems }));
+  return { week, later };
+}
+
+/**
+ * A card's words on its timeline `day`: when (its hours, „Od 8:00 do
+ * 16:00”, or null with none), what happens (IMGW's level as its tag), and
+ * the second sentence. The date is the day's, above the card, so it is
+ * named here only when another day's: the start's, when the item began
+ * before `day` („Od czwartku 29 października, 22:00 do 4:00”), the end's
+ * when it ends after. The second sentence is dropped at its secondUntil,
+ * as of `now` (the block is read per request). Absolute only.
+ */
+export type CardWords = {
+  when: string | null;
   text: Array<string | Tag>;
   second: string | null;
 };
 
-/**
- * An item's words: absolute only, so the server says nothing that depends
- * on today; the end's day is named when it is not the start's: „do
- * czwartku 29 października, 4:00”. The second sentence is dropped at its
- * secondUntil, as of `now` (the block is read per request).
- */
-export function words(item: Item, now: number): Words {
+export function cardWords(item: Item, day: string, now: number): CardWords {
   const { span } = item;
-  const endDay = span.endDay === span.day ? "" : `${span.until}, `;
-  const end = span.to && `${endDay}${span.about ? "ok. " : ""}${span.to}`;
+  const earlier = span.day !== day;
+  const since = earlier
+    ? `od ${span.since}${span.from ? `, ${span.from}` : ""}`
+    : span.from && `od ${span.from}`;
+  const endDay = span.endDay === day ? "" : `${span.until}, `;
+  const until = span.to && `do ${endDay}${span.about ? "ok. " : ""}${span.to}`;
+  const hours = [since, until].filter(Boolean).join(" ");
   const second =
     item.secondUntil === null || now < Date.parse(item.secondUntil)
       ? item.second
       : null;
-  const date = capitalised(span.date);
-  const lead = { day: span.day, afterWord: "", date: `${date}:` };
+  const when = hours ? capitalised(hours) : null;
   switch (item.module) {
     case "woda": {
       // A failure: „(awaria)” right after what happens.
       const cut = item.emergency ? " (awaria)" : "";
       const text =
-        span.from && end
-          ? `od ${span.from} do ${end} nie będzie wody${cut}.`
+        span.from && span.to
+          ? `Nie będzie wody${cut}.`
           : span.from
-            ? `od ${span.from} nie będzie wody${cut}. Komunikat nie podaje, do której.`
-            : end
-              ? `do ${end} nie będzie wody${cut}.`
-              : `będzie przerwa w dostawie wody${cut}. Komunikat nie podaje godzin.`;
-      return { ...lead, text: [text], second };
+            ? `Nie będzie wody${cut}. Komunikat nie podaje, do której.`
+            : span.to
+              ? `Nie będzie wody${cut}.`
+              : `Będzie przerwa w dostawie wody${cut}. Komunikat nie podaje godzin.`;
+      return { when, text: [text], second };
     }
-    case "pogoda": {
-      // A missing time left out, as the water's: no „od”, no „do”.
-      const from = span.from ? ` od ${span.from}` : "";
+    case "pogoda":
       return {
-        day: span.day,
-        afterWord: `${from}:`,
-        date: `${date}${from && `,${from}`}:`,
-        text: [
-          `ostrzeżenie IMGW – ${item.event} `,
-          item.level,
-          end ? `, do ${end}.` : ".",
-        ],
+        when,
+        text: [`Ostrzeżenie IMGW – ${item.event} `, item.level],
         second,
       };
-    }
     case "smieci":
-      return { ...lead, text: [`odbiór śmieci: ${item.bins}.`], second };
+      return { when, text: [`Odbiorą: ${item.bins}.`], second };
   }
 }

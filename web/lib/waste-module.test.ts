@@ -93,7 +93,7 @@ test("every fraction of the zone that day: „wszystkie pojemniki”", () => {
   );
 });
 
-test("the block: the next two days, from the day before, bins in running text", () => {
+test("the block: every pickup in the week's window (task 261), bins in running text", () => {
   const items = wasteUpcoming(
     place({
       fractions: ["zmieszane", "bio"],
@@ -104,13 +104,15 @@ test("the block: the next two days, from the day before, bins in running text", 
           pickups: [pickup("Zmieszane", "06:00"), pickup("Bio")],
         },
         { date: "2026-10-30", pickups: [pickup("Bio")] },
+        // The window's last day (today + 6), then the first day past it.
+        { date: "2026-11-01", pickups: [pickup("Papier")] },
         { date: "2026-11-02", pickups: [pickup("Zmieszane")] },
       ],
     }),
   );
   assert.deepEqual(
     items.map((item) => item.module === "smieci" && item.bins),
-    ["wszystkie pojemniki", "bio"],
+    ["wszystkie pojemniki", "bio", "papier"],
   );
   assert.deepEqual(items[0], {
     module: "smieci",
@@ -123,9 +125,11 @@ test("the block: the next two days, from the day before, bins in running text", 
       to: null,
       about: false,
       date: "środa, 28 października",
+      since: "środy 28 października",
       until: "czwartku 29 października",
     },
-    shownFrom: "2026-10-27T00:00:00+01:00",
+    // From the day it enters the window (six days before, summer time).
+    shownFrom: "2026-10-22T00:00:00+02:00",
     bins: "wszystkie pojemniki",
     second: "Wystaw je do 6:00 rano.",
     secondUntil: "2026-10-28T06:00:00+01:00",

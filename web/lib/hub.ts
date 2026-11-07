@@ -131,8 +131,9 @@ export function span(
   about = false,
 ): Span {
   const until = endOf(day, end);
+  const from = start ?? midnight(day);
   return {
-    start: start ?? midnight(day),
+    start: from,
     end: until,
     day,
     endDay: end ? warsawDay(Date.parse(end)) : day,
@@ -140,6 +141,7 @@ export function span(
     to: end ? clockTime(Date.parse(end)) : null,
     about,
     date: absoluteDay(day),
+    since: dayGenitive(Date.parse(from)),
     until: dayGenitive(Date.parse(until)),
   };
 }

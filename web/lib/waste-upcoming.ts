@@ -5,25 +5,31 @@ import type { PlaceView } from "@/lib/schedule";
 import { addDays, warsawToIso } from "./dates.ts";
 import { span } from "./hub.ts";
 import { putOutLine } from "./schedule-notes.ts";
-import type { Item } from "./upcoming.ts";
+import { type Item, WINDOW_DAYS } from "./upcoming.ts";
 import { allBins } from "./waste-module.ts";
 
 /**
- * The block's pickups: the next two days (today and tomorrow at most are
- * shown, from the day before; the island moves on without a new render),
- * the bins in running text, and when to put them out until that time.
+ * The block's pickups: every one in its window (today and the next six
+ * days, WINDOW_DAYS; task 261, so a day without one is truly empty), each
+ * shown from the day it enters the window, the bins in running text, and
+ * when to put them out until that time.
  */
 export function wasteUpcoming(place: PlaceView): Item[] {
   if (place.askNumber || place.zoneId === null) return [];
   return place.days
-    .filter((day) => day.date >= place.today)
-    .slice(0, 2)
+    .filter(
+      (day) =>
+        day.date >= place.today &&
+        day.date <= addDays(place.today, WINDOW_DAYS - 1),
+    )
     .map((day) => {
       const time = day.pickups.find((pickup) => pickup.putOutBy)?.putOutBy;
       return {
         module: "smieci",
         span: span(day.date, null, null),
-        shownFrom: warsawToIso(`${addDays(day.date, -1)} 00:00:00`),
+        shownFrom: warsawToIso(
+          `${addDays(day.date, 1 - WINDOW_DAYS)} 00:00:00`,
+        ),
         bins: allBins(place, day)
           ? "wszystkie pojemniki"
           : day.pickups

@@ -417,6 +417,7 @@ test("block: every cut its own item, its span from the wall times", () => {
         to: "16:00",
         about: false,
         date: "wtorek, 27 października",
+        since: "wtorku 27 października",
         until: "wtorku 27 października",
       },
       shownFrom: null,

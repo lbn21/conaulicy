@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  absoluteDay,
+  addDays,
   capitalised,
   dayLead,
   relativeWord,
@@ -8,7 +10,13 @@ import {
   warsawToIso,
 } from "./dates.ts";
 import { span } from "./hub.ts";
-import { type Item, ordered, visible, type Words, words } from "./upcoming.ts";
+import {
+  cardWords,
+  type Item,
+  ordered,
+  timeline,
+  WINDOW_DAYS,
+} from "./upcoming.ts";
 
 // Wednesday 28 Oct 2026; Warsaw is UTC+1 (CET since Sunday's 3:00).
 const at = (iso: string) => Date.parse(iso);
@@ -44,28 +52,33 @@ const warning = (from: string, to: string): Item => ({
 const pickup = (day: string, bins = "papier, szkło"): Item => ({
   module: "smieci",
   span: span(day, null, null),
-  // The day before, as wasteUpcoming.
-  shownFrom: wall(
-    `${new Date(Date.parse(day) - 86_400_000).toISOString().slice(0, 10)} 00:00:00`,
-  ),
+  // From the day it enters the window, as wasteUpcoming.
+  shownFrom: wall(`${addDays(day, 1 - WINDOW_DAYS)} 00:00:00`),
   bins,
   second: "Wystaw je do 6:00 rano.",
   secondUntil: wall(`${day} 06:00:00`),
 });
 
 /**
- * The words as one line of text, the tag's text in [ ], the lead as the
- * device puts it at `now` (components/day-word.tsx, label).
+ * An item as the timeline shows it at `now`, as one line of text: its
+ * day's heading as the device puts it (components/timeline-day.tsx),
+ * then its card (its hours, what happens, the tag's text in [ ]), joined
+ * by „ · ”, the second sentence after |; null when not shown.
  */
 const said = (item: Item, now: number) => {
-  if (!visible(item, now)) return null;
-  const w: Words = words(item, now);
-  const word = relativeWord(w.day, todayInWarsaw(new Date(now)));
-  const lead = word ? `${capitalised(word)}${w.afterWord}` : w.date;
-  const text = w.text
+  const { week, later } = timeline([item], now);
+  const row = [...week, ...later].find(
+    (r) => r.kind === "day" && r.items.includes(item),
+  );
+  if (row?.kind !== "day") return null;
+  const word = relativeWord(row.day, todayInWarsaw(new Date(now)));
+  const lead = word ? capitalised(word) : capitalised(absoluteDay(row.day));
+  const { when, text, second } = cardWords(item, row.day, now);
+  const what = text
     .map((part) => (typeof part === "string" ? part : `[${part.text}]`))
     .join("");
-  return `${lead} ${text}${w.second ? ` | ${w.second}` : ""}`;
+  const line = [lead, when, what].filter(Boolean).join(" · ");
+  return second ? `${line} | ${second}` : line;
 };
 
 const DAY = cut("2026-10-28", "2026-10-28 08:00:00", "2026-10-28 16:00:00");
@@ -74,7 +87,7 @@ test("water, one day: before, under way (the same absolute words), over", () => 
   for (const time of ["07:00", "08:00", "15:59"])
     assert.equal(
       said(DAY, at(`2026-10-28T${time}:00+01:00`)),
-      "Dziś od 8:00 do 16:00 nie będzie wody. | Cała wieś Wzorowo.",
+      "Dziś · Od 8:00 do 16:00 · Nie będzie wody. | Cała wieś Wzorowo.",
       time,
     );
   // Ended at 16:00: gone, though the day goes on.
@@ -85,11 +98,11 @@ test("water: tomorrow, later, an estimate, a failure", () => {
   const now = at("2026-10-27T20:00:00+01:00");
   assert.equal(
     said(DAY, now),
-    "Jutro od 8:00 do 16:00 nie będzie wody. | Cała wieś Wzorowo.",
+    "Jutro · Od 8:00 do 16:00 · Nie będzie wody. | Cała wieś Wzorowo.",
   );
   assert.equal(
     said(DAY, at("2026-10-26T20:00:00+01:00")),
-    "Środa, 28 października: od 8:00 do 16:00 nie będzie wody. | Cała wieś Wzorowo.",
+    "Środa, 28 października · Od 8:00 do 16:00 · Nie będzie wody. | Cała wieś Wzorowo.",
   );
   const about = cut(
     "2026-10-28",
@@ -107,75 +120,64 @@ test("water: tomorrow, later, an estimate, a failure", () => {
   );
   assert.equal(
     said(about, at("2026-10-28T09:00:00+01:00")),
-    "Dziś od 8:00 do ok. 16:00 nie będzie wody (awaria). | Cała wieś Wzorowo.",
-  );
-  assert.equal(
-    said(about, now),
-    "Jutro od 8:00 do ok. 16:00 nie będzie wody (awaria). | Cała wieś Wzorowo.",
+    "Dziś · Od 8:00 do ok. 16:00 · Nie będzie wody (awaria). | Cała wieś Wzorowo.",
   );
 });
 
-test("water: a failure, one form for every lead", () => {
+test("water: a failure, one form on every day", () => {
   const failure = (start: string | null, end: string | null) =>
     cut("2026-10-30", start, end, { emergency: true, second: null });
   const now = at("2026-10-28T12:00:00+01:00");
   assert.equal(
     said(failure("2026-10-30 08:00:00", "2026-10-30 16:00:00"), now),
-    "Piątek, 30 października: od 8:00 do 16:00 nie będzie wody (awaria).",
+    "Piątek, 30 października · Od 8:00 do 16:00 · Nie będzie wody (awaria).",
   );
+  // No hours: no „when” line.
   assert.equal(
     said(failure(null, null), now),
-    "Piątek, 30 października: będzie przerwa w dostawie wody (awaria). Komunikat nie podaje godzin.",
+    "Piątek, 30 października · Będzie przerwa w dostawie wody (awaria). Komunikat nie podaje godzin.",
   );
   assert.equal(
     said(failure("2026-10-30 08:00:00", null), at("2026-10-30T09:00:00+01:00")),
-    "Dziś od 8:00 nie będzie wody (awaria). Komunikat nie podaje, do której.",
+    "Dziś · Od 8:00 · Nie będzie wody (awaria). Komunikat nie podaje, do której.",
   );
 });
 
-test("water: a night cut across midnight", () => {
+test("water: a night cut across midnight, on its start's day, then today's", () => {
   const night = cut("2026-10-28", "2026-10-28 22:00:00", "2026-10-29 04:00:00");
   // The end's day named, absolute.
   for (const time of ["20:00", "23:00"])
     assert.equal(
       said(night, at(`2026-10-28T${time}:00+01:00`)),
-      "Dziś od 22:00 do czwartku 29 października, 4:00 nie będzie wody. | Cała wieś Wzorowo.",
+      "Dziś · Od 22:00 do czwartku 29 października, 4:00 · Nie będzie wody. | Cała wieś Wzorowo.",
       time,
     );
-  // After midnight it started yesterday: its date, no word.
+  // After midnight it began yesterday: under today, its start's day named,
+  // the end's not (today's).
   assert.equal(
     said(night, at("2026-10-29T01:00:00+01:00")),
-    "Środa, 28 października: od 22:00 do czwartku 29 października, 4:00 nie będzie wody. | Cała wieś Wzorowo.",
+    "Dziś · Od środy 28 października, 22:00 do 4:00 · Nie będzie wody. | Cała wieś Wzorowo.",
   );
   assert.equal(said(night, at("2026-10-29T04:00:00+01:00")), null);
-  // Two days ahead, the end's day is named.
-  assert.equal(
-    said(night, at("2026-10-26T12:00:00+01:00")),
-    "Środa, 28 października: od 22:00 do czwartku 29 października, 4:00 nie będzie wody. | Cała wieś Wzorowo.",
-  );
 });
 
 test("water: no end, no start, no times", () => {
   const open = cut("2026-10-28", "2026-10-28 08:00:00", null);
   assert.equal(
-    said(open, at("2026-10-28T07:00:00+01:00")),
-    "Dziś od 8:00 nie będzie wody. Komunikat nie podaje, do której. | Cała wieś Wzorowo.",
-  );
-  assert.equal(
     said(open, at("2026-10-28T23:59:00+01:00")),
-    "Dziś od 8:00 nie będzie wody. Komunikat nie podaje, do której. | Cała wieś Wzorowo.",
+    "Dziś · Od 8:00 · Nie będzie wody. Komunikat nie podaje, do której. | Cała wieś Wzorowo.",
   );
   // Without an end: until the end of its day.
   assert.equal(said(open, at("2026-10-29T00:00:00+01:00")), null);
   const until = cut("2026-10-28", null, "2026-10-28 16:00:00");
   assert.equal(
     said(until, at("2026-10-28T11:00:00+01:00")),
-    "Dziś do 16:00 nie będzie wody. | Cała wieś Wzorowo.",
+    "Dziś · Do 16:00 · Nie będzie wody. | Cała wieś Wzorowo.",
   );
   const none = cut("2026-10-28", null, null);
   assert.equal(
     said(none, at("2026-10-27T11:00:00+01:00")),
-    "Jutro będzie przerwa w dostawie wody. Komunikat nie podaje godzin. | Cała wieś Wzorowo.",
+    "Jutro · Będzie przerwa w dostawie wody. Komunikat nie podaje godzin. | Cała wieś Wzorowo.",
   );
 });
 
@@ -187,7 +189,7 @@ test("the 25 Oct DST change: the repeated hour and a 25-hour day", () => {
   assert.equal(twice.span.end, "2026-10-25T02:30:00+01:00");
   assert.equal(
     said(twice, at("2026-10-25T01:00:00Z")),
-    "Dziś od 2:30 do 2:30 nie będzie wody. | Cała wieś Wzorowo.",
+    "Dziś · Od 2:30 do 2:30 · Nie będzie wody. | Cała wieś Wzorowo.",
   );
   assert.equal(said(twice, at("2026-10-25T01:30:00Z")), null);
   // A pickup on the 25th lasts 25 hours: today until 23:59 CET.
@@ -196,7 +198,7 @@ test("the 25 Oct DST change: the repeated hour and a 25-hour day", () => {
   assert.equal(sunday.span.end, "2026-10-26T00:00:00+01:00");
   assert.equal(
     said(sunday, at("2026-10-25T22:59:00Z")),
-    "Dziś odbiór śmieci: papier, szkło.",
+    "Dziś · Odbiorą: papier, szkło.",
   );
   assert.equal(said(sunday, at("2026-10-25T23:00:00Z")), null);
 });
@@ -205,54 +207,51 @@ test("IMGW: in force, tomorrow, later, over", () => {
   const wind = warning("2026-10-29 13:00:00", "2026-10-30 02:00:00");
   assert.equal(
     said(wind, at("2026-10-29T14:00:00+01:00")),
-    "Dziś od 13:00: ostrzeżenie IMGW – silny wiatr [Stopień 1 z 3], do piątku 30 października, 2:00. | Cały powiat.",
+    "Dziś · Od 13:00 do piątku 30 października, 2:00 · Ostrzeżenie IMGW – silny wiatr [Stopień 1 z 3] | Cały powiat.",
   );
   assert.equal(
     said(wind, at("2026-10-28T14:00:00+01:00")),
-    "Jutro od 13:00: ostrzeżenie IMGW – silny wiatr [Stopień 1 z 3], do piątku 30 października, 2:00. | Cały powiat.",
+    "Jutro · Od 13:00 do piątku 30 października, 2:00 · Ostrzeżenie IMGW – silny wiatr [Stopień 1 z 3] | Cały powiat.",
+  );
+  // In force past midnight: under today, from yesterday.
+  assert.equal(
+    said(wind, at("2026-10-30T01:00:00+01:00")),
+    "Dziś · Od czwartku 29 października, 13:00 do 2:00 · Ostrzeżenie IMGW – silny wiatr [Stopień 1 z 3] | Cały powiat.",
   );
   const storm = warning("2026-10-31 13:00:00", "2026-10-31 19:00:00");
   assert.equal(
     said(storm, at("2026-10-28T14:00:00+01:00")),
-    "Sobota, 31 października, od 13:00: ostrzeżenie IMGW – silny wiatr [Stopień 1 z 3], do 19:00. | Cały powiat.",
-  );
-  assert.equal(
-    said(storm, at("2026-10-31T09:00:00+01:00")),
-    "Dziś od 13:00: ostrzeżenie IMGW – silny wiatr [Stopień 1 z 3], do 19:00. | Cały powiat.",
+    "Sobota, 31 października · Od 13:00 do 19:00 · Ostrzeżenie IMGW – silny wiatr [Stopień 1 z 3] | Cały powiat.",
   );
   assert.equal(said(storm, at("2026-10-31T19:00:00+01:00")), null);
 });
 
-test("IMGW without times: no „od”, no „do”, as the water's", () => {
+test("IMGW without times: no „when” line, as the water's", () => {
   const bare: Item = {
     ...warning("2026-10-31 13:00:00", "2026-10-31 19:00:00"),
   };
   bare.span = { ...bare.span, from: null, to: null };
   assert.equal(
     said(bare, at("2026-10-30T12:00:00+01:00")),
-    "Jutro: ostrzeżenie IMGW – silny wiatr [Stopień 1 z 3]. | Cały powiat.",
-  );
-  assert.equal(
-    said(bare, at("2026-10-28T12:00:00+01:00")),
-    "Sobota, 31 października: ostrzeżenie IMGW – silny wiatr [Stopień 1 z 3]. | Cały powiat.",
+    "Jutro · Ostrzeżenie IMGW – silny wiatr [Stopień 1 z 3] | Cały powiat.",
   );
 });
 
-test("pickups: today and tomorrow only; put out until its time", () => {
+test("pickups: every one in the window (task 261); put out until its time", () => {
   const friday = pickup("2026-10-30");
-  // Two days ahead: not yet.
-  assert.equal(said(friday, at("2026-10-28T23:59:00+01:00")), null);
+  // Seven days ahead (today + 7): not yet; six days ahead: in the window.
+  assert.equal(said(friday, at("2026-10-23T12:00:00+02:00")), null);
   assert.equal(
-    said(friday, at("2026-10-29T00:00:00+01:00")),
-    "Jutro odbiór śmieci: papier, szkło. | Wystaw je do 6:00 rano.",
+    said(friday, at("2026-10-24T00:00:00+02:00")),
+    "Piątek, 30 października · Odbiorą: papier, szkło. | Wystaw je do 6:00 rano.",
   );
   assert.equal(
-    said(friday, at("2026-10-30T05:59:00+01:00")),
-    "Dziś odbiór śmieci: papier, szkło. | Wystaw je do 6:00 rano.",
+    said(friday, at("2026-10-29T00:00:00+01:00")),
+    "Jutro · Odbiorą: papier, szkło. | Wystaw je do 6:00 rano.",
   );
   assert.equal(
     said(friday, at("2026-10-30T06:00:00+01:00")),
-    "Dziś odbiór śmieci: papier, szkło.",
+    "Dziś · Odbiorą: papier, szkło.",
   );
   assert.equal(said(friday, at("2026-10-31T00:00:00+01:00")), null);
   assert.equal(
@@ -260,8 +259,96 @@ test("pickups: today and tomorrow only; put out until its time", () => {
       pickup("2026-10-29", "wszystkie pojemniki"),
       at("2026-10-28T12:00:00+01:00"),
     ),
-    "Jutro odbiór śmieci: wszystkie pojemniki. | Wystaw je do 6:00 rano.",
+    "Jutro · Odbiorą: wszystkie pojemniki. | Wystaw je do 6:00 rano.",
   );
+});
+
+// The timeline's days at noon on Wednesday 28 Oct: today and the next six,
+// to Tuesday 3 Nov.
+const NOON = at("2026-10-28T12:00:00+01:00");
+const shape = (items: Item[], now = NOON) => {
+  const { week, later } = timeline(ordered(items), now);
+  const row = (r: (typeof week)[number]) =>
+    r.kind === "day"
+      ? `${r.day}:${r.items.length}`
+      : r.from === r.to
+        ? `${r.from} empty`
+        : `${r.from}..${r.to} empty`;
+  return { week: week.map(row), later: later.map(row) };
+};
+
+test("timeline: nothing at all, one line for the whole week", () => {
+  assert.deepEqual(shape([]), {
+    week: ["2026-10-28..2026-11-03 empty"],
+    later: [],
+  });
+});
+
+test("timeline: days with items; one empty day its own line, a run one line", () => {
+  const items = [
+    pickup("2026-10-28"),
+    cut("2026-10-28", "2026-10-28 13:00:00", "2026-10-28 15:00:00"),
+    pickup("2026-10-30"),
+    warning("2026-11-03 13:00:00", "2026-11-03 19:00:00"),
+  ];
+  assert.deepEqual(shape(items), {
+    week: [
+      "2026-10-28:2",
+      "2026-10-29 empty",
+      "2026-10-30:1",
+      "2026-10-31..2026-11-02 empty",
+      "2026-11-03:1",
+    ],
+    later: [],
+  });
+  // A day's items in the one order (start, then end, then the registry).
+  const { week } = timeline(ordered(items), NOON);
+  assert.equal(week[0].kind === "day" && week[0].items[0].module, "smieci");
+});
+
+test("timeline: today empty, a run from tomorrow to the end", () => {
+  assert.deepEqual(shape([pickup("2026-10-29")]), {
+    week: ["2026-10-28 empty", "2026-10-29:1", "2026-10-30..2026-11-03 empty"],
+    later: [],
+  });
+});
+
+test("timeline: an item past the window goes to „later”, no empty lines there", () => {
+  const far = cut("2026-11-10", "2026-11-10 08:00:00", "2026-11-10 12:00:00");
+  const farther = cut(
+    "2026-11-12",
+    "2026-11-12 08:00:00",
+    "2026-11-12 12:00:00",
+  );
+  assert.deepEqual(shape([farther, far]), {
+    week: ["2026-10-28..2026-11-03 empty"],
+    later: ["2026-11-10:1", "2026-11-12:1"],
+  });
+});
+
+test("timeline: an item under way since yesterday is today's, once", () => {
+  // From Tuesday 22:00 to Thursday 4:00: on Wednesday it is today's alone,
+  // never also on Thursday.
+  const long = cut("2026-10-27", "2026-10-27 22:00:00", "2026-10-29 04:00:00");
+  assert.deepEqual(shape([long]), {
+    week: ["2026-10-28:1", "2026-10-29..2026-11-03 empty"],
+    later: [],
+  });
+  // What is over is not shown, so its day is empty.
+  assert.deepEqual(shape([DAY], at("2026-10-28T16:00:00+01:00")).week, [
+    "2026-10-28..2026-11-03 empty",
+  ]);
+});
+
+test("timeline: the window by Warsaw days, across the DST change", () => {
+  // Late on Saturday 24 Oct (UTC, Warsaw still CEST): the window is 24-30 Oct.
+  assert.deepEqual(shape([], at("2026-10-24T21:30:00Z")).week, [
+    "2026-10-24..2026-10-30 empty",
+  ]);
+  // 22:30 UTC is Sunday 0:30 in Warsaw (CEST): 25-31 Oct.
+  assert.deepEqual(shape([], at("2026-10-24T22:30:00Z")).week, [
+    "2026-10-25..2026-10-31 empty",
+  ]);
 });
 
 test("order: start, then end, then the registry; never the time", () => {

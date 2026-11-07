@@ -46,6 +46,7 @@ test("a warning: one item with its tag and times; the section only IMGW's words"
         to: "19:00",
         about: false,
         date: "niedziela, 25 października",
+        since: "niedzieli 25 października",
         until: "niedzieli 25 października",
       },
       shownFrom: null,
