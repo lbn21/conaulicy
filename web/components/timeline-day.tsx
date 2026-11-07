@@ -76,7 +76,7 @@ export function EmptyDays({ from, to }: { from: DayLabel; to: DayLabel }) {
   const end = last ?? `${to.weekday} ${to.date} ${to.month}`;
   return (
     <li className={dayClass(true, first === "dziś")}>
-      <p className="govuk-hint govuk-!-margin-bottom-0">
+      <p className="govuk-hint govuk-!-margin-top-0 govuk-!-margin-bottom-0">
         <time dateTime={from.day}>{start}</time>
         {!one && (
           <>

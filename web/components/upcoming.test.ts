@@ -93,7 +93,7 @@ test("server render: one ordered list of days, the date first, no links", () => 
   );
   assert.ok(
     html.includes(
-      '<p class="govuk-hint govuk-!-margin-bottom-0"><time dateTime="2026-10-30">Piątek 30 października</time> – <time dateTime="2026-11-03">wtorek 3 listopada</time><span aria-hidden="true"> · </span><span class="govuk-visually-hidden">: </span>nic zaplanowanego</p>',
+      '<p class="govuk-hint govuk-!-margin-top-0 govuk-!-margin-bottom-0"><time dateTime="2026-10-30">Piątek 30 października</time> – <time dateTime="2026-11-03">wtorek 3 listopada</time><span aria-hidden="true"> · </span><span class="govuk-visually-hidden">: </span>nic zaplanowanego</p>',
     ),
     html,
   );
