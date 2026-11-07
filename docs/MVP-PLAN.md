@@ -24,7 +24,7 @@ Status: **built** = on `main`, which deploys to production with every merge.
 | Waste calendar (ICS) | built | One subscription per zone (webcal, Google, Outlook, `.ics` file), updated in place when dates change |
 | Printable schedule (PDF) | built | A4, with a QR code and a printed link back to the waste page |
 | Water cuts (`/adres/<id>/woda`) | built | Gmina: ZUK Mokrzyca's posts on gminalubaczow.pl. Town: MZGKiM's announcements. Checked every 15 minutes; an item that fails the checks is not shown, and residents get a link to the post instead. A per-address calendar of cuts (`woda.ics`) |
-| IMGW weather warnings | built | A banner on every page and the Pogoda section, for the powiat lubaczowski; the last good copy is kept when IMGW does not answer |
+| IMGW weather warnings | built | On the address page only (task 257): each warning once in „Najbliższe dni”, IMGW's own description in the Pogoda section, for the powiat lubaczowski; the last good copy is kept when IMGW does not answer |
 | All places (`/ulice`) | built | A plain list of every street and village |
 | Static pages | built | `/o-projekcie`, `/prywatnosc`, `/dostepnosc` (accessibility statement and credits) |
 | Reporting an error | built | By email only: kontakt@conaulicy.pl. No form, no GitHub Issues |
