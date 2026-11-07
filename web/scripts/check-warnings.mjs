@@ -203,7 +203,8 @@ async function hubChecks(origin, state) {
   ].map(([, level]) => Number(level));
   const more = `<p class="govuk-body"><a href="https://meteo.imgw.pl/" class="govuk-link">${MORE}</a></p>`;
   const tags = hub.match(/<strong class="govuk-tag /g)?.length ?? 0;
-  const brak = hub.split(NO_WARNINGS).length - 1;
+  // As markup: the text alone is also in React's payload (its scripts).
+  const brak = hub.split(`<p class="govuk-body">${NO_WARNINGS}</p>`).length - 1;
   const problems = [
     lines.length !== n && `${lines.length} warning lines, want ${n}`,
     ...lines.filter((l) => !line.test(l)).map((l) => `line ${l}`),
