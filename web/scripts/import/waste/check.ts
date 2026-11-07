@@ -9,6 +9,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
+import { type Etl, unsourced } from "../../lib/import-data.ts";
 import type { Queryable } from "../core/db.ts";
 import type { Domain } from "../core/domain.ts";
 import { ROOT } from "../core/paths.ts";
@@ -75,12 +76,18 @@ export const check: Domain["check"] = async ({
   digest,
   out: extracted,
   zoneName,
+  checkedAt,
   reviews,
   runUrl,
 }) => {
   const source = anySource as WasteSource;
   const file = anyFile as Found;
   const out = extracted as Extracted;
+  // No source, no display: such an event is a finding, never imported.
+  const events: Etl["events"] = out.events;
+  const noSource = unsourced(
+    events.map((e) => ({ id: e.id, sourceUrl: e.source.url, checkedAt })),
+  );
   const rules = (config.domains.waste as WasteSettings).validate;
   const checks = new Set(source.waste.validate);
   const validate = (previous: Map<string, number> | null) =>
@@ -110,7 +117,8 @@ export const check: Domain["check"] = async ({
     return [];
   }
   // --extract-only: no database and no review PR; findings are problems.
-  if (!db) return [...(out.read?.findings ?? []), ...validate(null)];
+  if (!db)
+    return [...(out.read?.findings ?? []), ...noSource, ...validate(null)];
   const previous = await lastYear(db, out, rules.counts.minMonths);
 
   // A merged review: a person approved these dates; the date rules apply.
@@ -121,7 +129,7 @@ export const check: Domain["check"] = async ({
       digest,
       `Superseded: ${file.name} (sha256 ${digest}) has a merged review.${runUrl ? ` ${runUrl}` : ""}`,
     );
-    return validate(previous);
+    return [...noSource, ...validate(previous)];
   }
   // Neither a merged review nor a reading: never applied.
   if (!out.read) {
@@ -178,7 +186,7 @@ export const check: Domain["check"] = async ({
       "",
       "### Kontrole odczytu (dosłowne)",
       "",
-      ...list(findings, "wszystkie przeszły"),
+      ...list([...findings, ...noSource], "wszystkie przeszły"),
       "",
       "### Daty: odczyt i baza",
       "",

@@ -152,10 +152,14 @@ async function readAndCheck(
   fetcher: typeof fetch,
   zone: string,
   layout: Layout,
+  // Where the file is published, and the day it was checked, if not these.
+  { url = "", checkedAt = "2026-10-21" } = {},
 ) {
   const reviews = new Reviews(http);
   const sector = Number(zone.at(-1));
-  const { file, digest } = fileOf(zone, layout, sector);
+  const found = fileOf(zone, layout, sector);
+  const { digest } = found;
+  const file = url ? { ...found.file, url } : found.file;
   const source = SOURCES[layout];
   const out = await wasteAi({
     fetcher,
@@ -178,6 +182,7 @@ async function readAndCheck(
     digest,
     out,
     zoneName: `Strefa ${zone}`,
+    checkedAt,
     issues,
     reviews,
     dryRun: false,
@@ -236,6 +241,64 @@ for (const [name, zone, layout] of CORRECT)
     assert.ok(!pr?.body.includes("**różnica**"));
     assert.ok(pr?.body.includes("**Bez id (null):**\n\n- brak"));
   });
+
+test("no source, no display: an event without its source is a review PR finding, never imported", async () => {
+  for (const [opts, why] of [
+    [{ url: "docs/data/gmina-s1.pdf" }, "is not http(s)"],
+    [{ checkedAt: "" }, "has no checkedAt"],
+  ] as const) {
+    process.env.REVIEWS_FILE = path.join(dir, `reviews-nosource-${why}.json`);
+    const { out, problems, held } = await readAndCheck(
+      fixtureFetcher("gmina-s1"),
+      "waste:gmina-s1",
+      "gmina",
+      opts,
+    );
+    assert.ok(out.events.length > 0);
+    // Held for its blocking review PR: nothing applies.
+    assert.deepEqual(problems, []);
+    assert.equal(held?.blocks, true);
+    const [pr] = reviewPrs();
+    const body = pr?.body ?? "";
+    assert.ok(!body.includes("- wszystkie przeszły"));
+    for (const e of out.events)
+      assert.ok(body.includes(`- events: ${e.id} `), e.id);
+    assert.ok(body.includes(why));
+  }
+  // With --extract-only (no database), the same findings are its problems.
+  const reviews = new Reviews(http);
+  const { file, digest } = fileOf("waste:gmina-s1", "gmina", 1);
+  const out = await wasteAi({
+    fetcher: fixtureFetcher("gmina-s1"),
+    apiKey: "test-key",
+    render: () => TINY_PNG,
+  })({
+    source: SOURCES.gmina,
+    file: { ...file, url: " " },
+    body: Buffer.from("waste:gmina-s1"),
+    doc: file.name,
+    digest,
+    reviews,
+  });
+  const problems = await check({
+    db: null,
+    config,
+    source: SOURCES.gmina,
+    file,
+    digest,
+    out,
+    zoneName: "",
+    checkedAt: "2026-10-21",
+    issues,
+    reviews,
+    dryRun: true,
+    runUrl: "",
+  });
+  assert.deepEqual(
+    problems.filter((p) => p.endsWith(" has no source url")).length,
+    out.events.length,
+  );
+});
 
 test("the S2 slips: every literal check passes, the review shows September and October, nothing applies", async () => {
   for (const name of ["miasto-s2-slip-r1", "miasto-s2-slip-r2"]) {
@@ -342,6 +405,7 @@ test("no reading and no merged review: held, never applied", async () => {
     digest,
     out,
     zoneName: zone,
+    checkedAt: "2026-10-21",
     issues,
     reviews,
     dryRun: false,

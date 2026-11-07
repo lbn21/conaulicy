@@ -43,6 +43,7 @@ import {
   guardTarget,
   type Rows,
   transform,
+  unsourced,
   validate,
   withTeryt,
 } from "./lib/import-data.ts";
@@ -304,6 +305,13 @@ async function main() {
   const approvals = readApprovals(args.approvals);
   const { rows, zoneHashes, warnings } = transform(etl, checkedAt, approvals);
   for (const w of warnings) console.log(`Approval: ${w}`);
+  // No source, no display: an event without one is never written.
+  const noSource = unsourced(rows.events);
+  if (noSource.length > 0) {
+    fail(
+      `Events without a source (${noSource.length}), nothing written:\n${noSource.slice(0, 20).join("\n")}`,
+    );
+  }
 
   const db = drizzle(url, { casing: "snake_case" });
   const [curGminy, curLocalities, curStreets, curZones, curMembers, curEvents] =
