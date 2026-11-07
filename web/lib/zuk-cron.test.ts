@@ -131,33 +131,33 @@ const saved = (w: World): ZukFile => {
 const byId = (w: World, id: number) => saved(w).active.find((p) => p.id === id);
 const seenOf = (w: World, id: number) => saved(w).seen.find((p) => p.id === id);
 const ids = (posts: Array<{ id: number }>) => posts.map((p) => p.id);
-const cron = (w: World, over: Partial<ZukCronDeps> = {}) =>
+/** The route, as Vercel Cron calls it. */
+const handle = (
+  d: ZukCronDeps,
+  more: ZukCronDeps[] = [],
+  imgw?: Parameters<typeof handleZukCron>[4],
+  checks?: Parameters<typeof handleZukCron>[5],
+  auth = `Bearer ${SECRET}`,
+) =>
   handleZukCron(
     new Request("https://conaulicy.pl/api/cron/zuk", {
-      headers: { authorization: `Bearer ${SECRET}` },
+      headers: { authorization: auth },
     }),
     SECRET,
-    { ...deps(w), ...over },
+    d,
+    more,
+    imgw,
+    checks,
   );
+const cron = (w: World, over: Partial<ZukCronDeps> = {}) =>
+  handle({ ...deps(w), ...over });
 
-test("auth: Vercel Cron's bearer secret, nothing else", async () => {
+test("auth: the cron gate (secret.test.ts) before anything is fetched", async () => {
   const w = world();
-  const call = (auth: string | null, secret: string | undefined = SECRET) =>
-    handleZukCron(
-      new Request("https://conaulicy.pl/api/cron/zuk", {
-        headers: auth ? { authorization: auth } : {},
-      }),
-      secret,
-      deps(w),
-    );
-  assert.equal((await call(null)).status, 401);
-  assert.equal((await call("Bearer wrong")).status, 401);
-  assert.equal((await call(SECRET)).status, 401);
-  // No CRON_SECRET set: nobody gets in.
-  assert.equal((await call("Bearer ", "")).status, 401);
-  assert.equal((await call("Bearer undefined", undefined)).status, 401);
+  const denied = await handle(deps(w), [], undefined, undefined, "Bearer x");
+  assert.equal(denied.status, 401);
   assert.equal(w.urls.length, 0);
-  const ok = await call(`Bearer ${SECRET}`);
+  const ok = await cron(w);
   assert.equal(ok.status, 200);
   assert.equal(ok.headers.get("cache-control"), "no-store");
 });
@@ -289,28 +289,13 @@ test("an older reader: every post read again, four a run", async () => {
   await readsTheRest(w);
 });
 
-test("unchanged posts: no model call, no places query, results kept", async () => {
+test("unchanged posts: no model call or places query, results kept, a new checkedAt every run", async () => {
   const w = world();
   await runZuk(deps(w));
   await runZuk(deps(w));
   const before = saved(w);
   w.aiCalls = [];
   w.placesLoads = 0;
-  w.writes = [];
-  w.now = new Date(NOW.getTime() + 15 * 60_000);
-  const summary = await runZuk(deps(w));
-  assert.deepEqual(w.aiCalls, []);
-  assert.equal(w.placesLoads, 0);
-  assert.equal(summary.changed, false);
-  assert.deepEqual(saved(w).active, before.active);
-  assert.deepEqual(saved(w).seen, before.seen);
-});
-
-test("unchanged posts: every run writes a new checkedAt, generatedAt kept", async () => {
-  const w = world();
-  await runZuk(deps(w));
-  await runZuk(deps(w));
-  const generated = saved(w).generatedAt;
   for (const minutes of [15, 30]) {
     w.writes = [];
     w.now = new Date(NOW.getTime() + minutes * 60_000);
@@ -318,8 +303,12 @@ test("unchanged posts: every run writes a new checkedAt, generatedAt kept", asyn
     assert.equal(summary.changed, false);
     assert.equal(w.writes.length, 1);
     assert.equal(saved(w).checkedAt, w.now.toISOString());
-    assert.equal(saved(w).generatedAt, generated);
+    assert.equal(saved(w).generatedAt, before.generatedAt);
+    assert.deepEqual(saved(w).active, before.active);
+    assert.deepEqual(saved(w).seen, before.seen);
   }
+  assert.deepEqual(w.aiCalls, []);
+  assert.equal(w.placesLoads, 0);
 });
 
 /**
@@ -354,40 +343,25 @@ test("no purge: the pages read every written run's checkedAt; after a failed one
   assert.equal(pageCheckedAt(w), latest);
 });
 
-test("an edited post is read again", async () => {
+test("an edited post is read again; not read this run, its old reading kept", async () => {
   const w = world();
   await runZuk(deps(w));
   await runZuk(deps(w));
-  w.aiCalls = [];
-  w.posts = RECENT.map((p) =>
-    p.id === 39885 ? { ...p, modified: "2026-10-24T09:00:00" } : p,
-  ).filter((p) => p.id === 39885);
-  w.now = new Date(NOW.getTime() + 60_000);
-  const summary = await runZuk(deps(w));
-  assert.deepEqual(w.aiCalls, [39885]);
-  assert.equal(summary.changed, true);
-  assert.equal(saved(w).generatedAt, w.now.toISOString());
-  assert.equal(byId(w, 39885)?.modified, "2026-10-24T09:00:00");
-});
-
-test("an edited post not read this run: its old reading kept, read later", async () => {
-  const w = world({ posts: [RECENT[0]] });
-  await runZuk(deps(w));
   const kept = byId(w, 39885);
   assert.ok(kept);
-  w.posts = RECENT.map((p) =>
-    p.id === 39885 ? { ...p, modified: "2026-10-24T09:00:00" } : p,
-  ).filter((p) => p.id === 39885);
+  w.posts = [{ ...RECENT[0], modified: "2026-10-24T09:00:00" }];
+  w.now = new Date(NOW.getTime() + 60_000);
   w.aiFails = true;
   w.aiCalls = [];
-  w.now = new Date(NOW.getTime() + 60_000);
   await runZuk(deps(w));
   assert.deepEqual(w.aiCalls, [39885]);
   assert.deepEqual(byId(w, 39885), kept);
   w.aiFails = false;
   w.aiCalls = [];
-  await runZuk(deps(w));
+  const summary = await runZuk(deps(w));
   assert.deepEqual(w.aiCalls, [39885]);
+  assert.equal(summary.changed, true);
+  assert.equal(saved(w).generatedAt, w.now.toISOString());
   assert.equal(byId(w, 39885)?.modified, "2026-10-24T09:00:00");
 });
 
@@ -445,33 +419,17 @@ test("the gmina's site down: 502, the old file and checkedAt untouched", async (
 });
 
 test("imgw: runs beside the water run, listed under imgw, never its result or status", async () => {
-  const request = (auth: string) =>
-    new Request("https://conaulicy.pl/api/cron/zuk", {
-      headers: { authorization: auth },
-    });
   let calls = 0;
   const imgw = async () => {
     calls++;
     return { checked: true as const, changed: true };
   };
   // Denied: not run.
-  const denied = await handleZukCron(
-    request("Bearer x"),
-    SECRET,
-    deps(world()),
-    [],
-    imgw,
-  );
+  const denied = await handle(deps(world()), [], imgw, undefined, "Bearer x");
   assert.equal(denied.status, 401);
   assert.equal(calls, 0);
   const w = world();
-  const ok = await handleZukCron(
-    request(`Bearer ${SECRET}`),
-    SECRET,
-    deps(w),
-    [],
-    imgw,
-  );
+  const ok = await handle(deps(w), [], imgw);
   assert.equal(ok.status, 200);
   assert.equal(calls, 1);
   const body = await ok.json();
@@ -481,13 +439,7 @@ test("imgw: runs beside the water run, listed under imgw, never its result or st
   const failing = async () => {
     throw new Error("imgw broke");
   };
-  const again = await handleZukCron(
-    request(`Bearer ${SECRET}`),
-    SECRET,
-    deps(w),
-    [],
-    failing,
-  );
+  const again = await handle(deps(w), [], failing);
   assert.equal(again.status, 200);
   const { imgw: failed, ...water } = await again.json();
   assert.deepEqual(failed, { error: "failed" });
@@ -501,13 +453,7 @@ test("imgw: runs beside the water run, listed under imgw, never its result or st
   assert.equal(water.posts, RECENT.length);
   // The water run down: its 502 stays, the IMGW result beside it.
   w.posts = "down";
-  const down = await handleZukCron(
-    request(`Bearer ${SECRET}`),
-    SECRET,
-    deps(w),
-    [],
-    imgw,
-  );
+  const down = await handle(deps(w), [], imgw);
   assert.equal(down.status, 502);
   assert.deepEqual(await down.json(), {
     error: "source unavailable",
@@ -516,9 +462,6 @@ test("imgw: runs beside the water run, listed under imgw, never its result or st
 });
 
 test("checks: one status write per run, after every run, each source's check in it", async () => {
-  const request = new Request("https://conaulicy.pl/api/cron/zuk", {
-    headers: { authorization: `Bearer ${SECRET}` },
-  });
   const w = world();
   let status: string | null = null;
   // The water file's and the status file's writes, in order.
@@ -547,7 +490,7 @@ test("checks: one status write per run, after every run, each source's check in 
     },
   };
   const good = async () => ({ checked: true as const, changed: false });
-  await handleZukCron(request, SECRET, run(), [mzgkim], good, checks);
+  await handle(run(), [mzgkim], good, checks);
   assert.deepEqual(order, ["water", "checks"]);
   const first = parseChecks(status);
   const at = NOW.toISOString();
@@ -563,7 +506,7 @@ test("checks: one status write per run, after every run, each source's check in 
   w.now = new Date(NOW.getTime() + 15 * 60_000);
   const later = w.now.toISOString();
   const down = async () => ({ error: "feed unavailable" });
-  await handleZukCron(request, SECRET, run(), [mzgkim], down, checks);
+  await handle(run(), [mzgkim], down, checks);
   assert.deepEqual(order, ["checks"]);
   assert.deepEqual(parseChecks(status)?.sources, {
     [waterKey("gmina-lubaczow")]: {
@@ -586,14 +529,7 @@ test("checks: one status write per run, after every run, each source's check in 
       throw new Error("blob down");
     },
   };
-  const response = await handleZukCron(
-    request,
-    SECRET,
-    run(),
-    [],
-    good,
-    broken,
-  );
+  const response = await handle(run(), [], good, broken);
   assert.equal(response.status, 502);
   assert.deepEqual(order, []);
   assert.deepEqual(
@@ -718,36 +654,28 @@ test("post_type water_quality: its places through the gate, its day, not shown",
   assert.deepEqual(w.aiCalls, []);
 });
 
-test("post_type water_quality: no place passing the gate, no places", async () => {
-  // Opaka is ours but not in the text; "Nowy Dwór" is in neither.
-  const w = world({
-    posts: [QUALITY],
-    readings: {
-      [NEW]: qualityReading([qualityItem("Opaka"), qualityItem("Nowy Dwór")]),
-    },
-  });
-  await runZuk(deps(w));
-  const post = byId(w, NEW);
-  assert.equal(post?.reason, WATER_QUALITY);
-  assert.deepEqual(post?.places, []);
-  assert.ok(w.logs.some((l) => l.zuk === "ai" && l.places === 0));
-});
-
-test("post_type water_quality: a day not in the text drops that place", async () => {
-  const w = world({
-    posts: [QUALITY],
-    readings: {
-      [NEW]: qualityReading(
-        [qualityItem("Huta Kryształowa", "2026-10-30")],
-        "lifted",
+test("post_type water_quality: a place not passing the gate, or a day not in the text, dropped", async () => {
+  // Opaka is ours but not in the text; "Nowy Dwór" is in neither; 30 Oct
+  // is not in the text.
+  for (const [items, status, log] of [
+    [[qualityItem("Opaka"), qualityItem("Nowy Dwór")], "warning", "places"],
+    [[qualityItem("Huta Kryształowa", "2026-10-30")], "lifted", "rejected"],
+  ] as const) {
+    const w = world({
+      posts: [QUALITY],
+      readings: { [NEW]: qualityReading([...items], status) },
+    });
+    await runZuk(deps(w));
+    const post = byId(w, NEW);
+    assert.equal(post?.reason, WATER_QUALITY);
+    assert.equal(post?.qualityStatus, status);
+    assert.deepEqual(post?.places, []);
+    assert.ok(
+      w.logs.some(
+        (l) => l.zuk === "ai" && l[log] === (log === "places" ? 0 : 1),
       ),
-    },
-  });
-  await runZuk(deps(w));
-  const post = byId(w, NEW);
-  assert.equal(post?.qualityStatus, "lifted");
-  assert.deepEqual(post?.places, []);
-  assert.ok(w.logs.some((l) => l.zuk === "ai" && l.rejected === 1));
+    );
+  }
 });
 
 test("the model decides what a post is: no word filter before it", async () => {

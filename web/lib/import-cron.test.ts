@@ -37,29 +37,23 @@ function deps(w: World, over: Partial<ImportCronDeps> = {}): ImportCronDeps {
 
 const call = (
   w: World,
-  auth: string | null = `Bearer ${SECRET}`,
+  auth = `Bearer ${SECRET}`,
   over: Partial<ImportCronDeps> = {},
-  secret: string | undefined = SECRET,
 ) =>
   handleImportCron(
     new Request("https://conaulicy.pl/api/cron/import", {
-      headers: auth ? { authorization: auth } : {},
+      headers: { authorization: auth },
     }),
-    secret,
+    SECRET,
     deps(w, over),
   );
 
 const noToken = (w: World) =>
   assert.doesNotMatch(JSON.stringify(w.logs), new RegExp(TOKEN));
 
-test("auth: Vercel Cron's bearer secret, nothing else", async () => {
+test("auth: the cron gate (secret.test.ts) before anything is dispatched", async () => {
   const w = world();
-  assert.equal((await call(w, null)).status, 401);
   assert.equal((await call(w, "Bearer wrong")).status, 401);
-  assert.equal((await call(w, SECRET)).status, 401);
-  // No CRON_SECRET set: nobody gets in.
-  assert.equal((await call(w, "Bearer ", {}, "")).status, 401);
-  assert.equal((await call(w, "Bearer undefined", {}, undefined)).status, 401);
   assert.equal(w.calls.length, 0);
 });
 
