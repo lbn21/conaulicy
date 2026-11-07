@@ -19,7 +19,7 @@
 // or if app/_settings.scss stops turning off GOV.UK's default font face.
 // Credits: the compiled CSS must carry GOV.UK Frontend's licence notice;
 // /dostepnosc must link the MIT licence and the font's OFL (served from
-// public/fonts/OFL.txt, a copy of the one beside the font files).
+// public/fonts/OFL.txt, the same text as in THIRD-PARTY-NOTICES.md).
 // Footer: our markup with govuk-footer classes, identical on every page,
 // with the CC BY 4.0 line for our texts, and navigation (with its section
 // break) only when it has links; never the crown, the crest, the
@@ -192,9 +192,18 @@ for (const section of footer.split('class="govuk-footer__section ').slice(1)) {
 }
 if (/govuk-crest|assets\/images\//.test(css))
   failures.push("compiled CSS: a GOV.UK image URL (crest)");
-const ofl = (dir) => readFileSync(path.join(ROOT, dir, "OFL.txt"), "utf8");
-if (ofl("public/fonts") !== ofl("assets/fonts"))
-  failures.push("public/fonts/OFL.txt differs from assets/fonts/OFL.txt");
+const ofl = readFileSync(path.join(ROOT, "public/fonts/OFL.txt"), "utf8");
+const notices = readFileSync(
+  path.join(ROOT, "../THIRD-PARTY-NOTICES.md"),
+  "utf8",
+);
+if (
+  !ofl.includes("SIL OPEN FONT LICENSE Version 1.1") ||
+  !notices.includes(ofl.trim())
+)
+  failures.push(
+    "public/fonts/OFL.txt is not the OFL text in THIRD-PARTY-NOTICES.md",
+  );
 
 console.log(
   `GOV.UK assets: ${files.length} files in ${SCAN.join(", ")} scanned (${cssFiles} CSS).`,
