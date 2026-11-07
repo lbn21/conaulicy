@@ -17,8 +17,8 @@ const CANONICAL = new RegExp(
  * with the App Shell, so its h1 is there when the navigation commits
  * (nextjs.org/docs/app/api-reference/components/link#prefetch). Only for a
  * canonical page, which is static output: never a redirect source
- * (lib/address-routes.ts numberRedirects, proxy.ts's 308s, a trailing
- * slash) or a ?nr= rewritten to a number page rendered on its first visit.
+ * (proxy.ts's 308s, a trailing slash) or a ?nr=, which the page reads from
+ * searchParams, so its prefetch would be rendered per request.
  * Anything else keeps Next.js's default, the App Shell only.
  */
 export function addressPrefetch(href: string): true | "auto" {

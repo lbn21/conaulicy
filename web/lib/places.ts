@@ -123,7 +123,7 @@ export function placePath(id: string, nr?: string | null): string {
 
 /**
  * A moved place's path (place_redirects): /adres/<oldId> and everything
- * under it (/harmonogram.pdf, /nr/…, /numer), query included, on newId.
+ * under it (/smieci, /harmonogram.pdf, …), query included, on newId.
  * Null for any other path.
  */
 export function movedPath(

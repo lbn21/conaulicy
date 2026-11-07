@@ -14,8 +14,8 @@ import { STATIC_PAGES } from "@/lib/static-pages";
 const PAGES = ["/", ...STATIC_PAGES.map(({ path }) => path)];
 
 // Two URLs per place, as their canonical links (components/place-page.tsx):
-// its address page and its waste subpage (/adres/<id>/smieci); never the
-// /nr/ or /numer variants, PDFs or calendars, and no place we have no pickup
+// its address page and its waste subpage (/adres/<id>/smieci); never a
+// ?nr=, PDFs or calendars, and no place we have no pickup
 // data for (its pages are noindex).
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // While gated, proxy.ts blocks it anyway.

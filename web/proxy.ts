@@ -3,10 +3,9 @@ import {
   type NextRequest,
   NextResponse,
 } from "next/server";
-import { ADDRESS, numberErrorPath } from "@/lib/address-routes";
+import { ADDRESS } from "@/lib/address-routes";
 import { cleanQuery } from "@/lib/clean-query";
 import { PRIVATE_NO_STORE, TEXT_PLAIN } from "@/lib/headers";
-import { NR_QUERY } from "@/lib/house";
 import { NOINDEX_NOFOLLOW } from "@/lib/indexing";
 import { movedPath } from "@/lib/places";
 import { sameSecret } from "@/lib/secret";
@@ -34,34 +33,14 @@ const GATED_HEADERS = {
   "Cache-Control": PRIVATE_NO_STORE,
 };
 
-const NR = new RegExp(`^${NR_QUERY}$`);
-
-// A street page (or a module subpage) asked with an empty ?nr= goes to its
-// own cached page, which shows the GOV.UK error on a split street; any
-// other value not in NR's shape to its number variant, which checks it and
-// says so. Numbers in that shape are rewritten in next.config.ts; a
-// rewrite's `has` cannot match an empty value, hence here.
-function missingNumber(request: NextRequest): URL | null {
-  const nr = request.nextUrl.searchParams.get("nr");
-  if (nr === null || NR.test(nr)) return null;
-  const path = numberErrorPath(request.nextUrl.pathname, nr);
-  if (!path) return null;
-  const url = request.nextUrl.clone();
-  url.pathname = path;
-  url.search = "";
-  return url;
-}
-
-// Renamed places (old id → new id, /api/place-redirects). An address with
-// ?nr= is rewritten to another page (next.config.ts, missingNumber), and a
-// redirect from a rewritten page carries Location twice (Next.js replays the
-// render's headers onto the response), so its 308 is answered here, before
-// the rewrite. A module subpage (/adres/<id>/smieci) gets the same doubled
-// Location from its own redirect, and so does the plain page since it is a
-// stored static result (Cache Components, task 220), so every address's 308
-// is answered here, with or without ?nr=. The PDF redirects itself. The map stays
-// in memory: a cold instance fetches it once (from the CDN), later
-// refreshes run after the response, so a normal request pays only a lookup.
+// Renamed places (old id → new id, /api/place-redirects). A redirect from
+// an address page or a module subpage (/adres/<id>/smieci) carries Location
+// twice, as each is a stored static result (Cache Components, task 220)
+// and Next.js replays the render's headers onto the response, so every
+// address's 308 is answered here, with or without ?nr=. The PDF redirects
+// itself. The map stays in memory: a cold instance fetches it once (from the
+// CDN), later refreshes run after the response, so a normal request pays
+// only a lookup.
 const MOVED_TTL = 5 * 60_000;
 let moved: { map: Record<string, string>; at: number } | null = null;
 let loading: Promise<void> | null = null;
@@ -121,14 +100,8 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const renamed = await movedAddress(request, event);
   if (renamed) return NextResponse.redirect(renamed, 308);
 
-  const rewrite = missingNumber(request);
-  const pass = (headers?: Record<string, string>) =>
-    rewrite
-      ? NextResponse.rewrite(rewrite, { headers })
-      : NextResponse.next({ headers });
-
   const expected = process.env.SITE_BASIC_AUTH;
-  if (!expected) return pass();
+  if (!expected) return NextResponse.next();
 
   // Open to everyone, so crawlers read the Disallow instead of a 401.
   if (request.nextUrl.pathname === "/robots.txt") {
@@ -151,7 +124,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     });
   }
 
-  return pass(GATED_HEADERS);
+  return NextResponse.next({ headers: GATED_HEADERS });
 }
 
 export const config = {

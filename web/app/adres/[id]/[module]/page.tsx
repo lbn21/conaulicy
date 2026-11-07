@@ -3,9 +3,9 @@ import { MODULE_ROUTE_IDS } from "@/lib/address-routes";
 import { allPlaces } from "@/lib/prerender";
 
 // A module's subpage (components/module-page.tsx), cached like the street
-// page; proxy.ts redirects a renamed place's old id. The folders nr, numer,
+// page; proxy.ts redirects a renamed place's old id. The folders
 // harmonogram.pdf and woda.ics win over this one, so no module is called that
-// (lib/address-routes.ts).
+// (lib/address-routes.ts FILE_NAMES).
 // The skeleton's static shell, the page read per request, as the address
 // page (../page.tsx). The waste subpage has its own folder (../smieci, task 237).
 
@@ -21,12 +21,14 @@ export async function generateStaticParams(): Promise<
 
 export function generateMetadata({
   params,
+  searchParams,
 }: PageProps<"/adres/[id]/[module]">) {
-  return subpageMetadata(params);
+  return subpageMetadata(params, searchParams);
 }
 
 export default function ModulePage({
   params,
+  searchParams,
 }: PageProps<"/adres/[id]/[module]">) {
-  return <SubpageRoute params={params} />;
+  return <SubpageRoute params={params} searchParams={searchParams} />;
 }

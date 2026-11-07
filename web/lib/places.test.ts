@@ -250,8 +250,8 @@ test("a moved place: every address under the old id, query kept", () => {
     "/adres/0972447-00470/harmonogram.pdf?nr=12",
   );
   assert.equal(
-    move("/adres/0972447-99999/numer"),
-    "/adres/0972447-00470/numer",
+    move("/adres/0972447-99999/smieci?nr="),
+    "/adres/0972447-00470/smieci?nr=",
   );
   // Only that id: never a longer one, nor another page.
   assert.equal(move("/adres/0972447-999990"), null);

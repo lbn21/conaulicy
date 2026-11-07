@@ -155,10 +155,13 @@ test("the address pages: one read per request, every block at once, shared with 
   const crumbs = read("../components/place-crumbs.tsx");
   assert.match(crumbs, /await hubData\(id, nr\)/);
   assert.match(crumbs, /await subpageData\(id, module, nr\)/);
+  // ?nr= read after navigation(), so the shell and prefetch stay static.
+  assert.match(
+    read("../components/place-page.tsx"),
+    /await navigation\(\);\n\s+return houseQuery\(\(await searchParams\)\.nr\);/,
+  );
   // One boundary per address route, the page's and its trail's.
   assert.deepEqual(calling(/<PlaceSuspense>/), [
-    "app/adres/[id]/nr/[...nr]/page.tsx",
-    "app/adres/[id]/numer/page.tsx",
     "app/adres/[id]/page.tsx",
     "components/subpage-route.tsx",
   ]);

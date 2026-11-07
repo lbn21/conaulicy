@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   houseNumber,
+  houseQuery,
   inRange,
   isPartial,
-  NR_QUERY,
   withHouseNumber,
 } from "./house.ts";
 
@@ -62,12 +62,14 @@ test("even, odd, ranges and letters", () => {
   assert.equal(inRange("abc", whole), false);
 });
 
-test("?nr= pattern: house numbers go to the cached page, the rest to /numer", () => {
-  const nr = new RegExp(`^${NR_QUERY}$`);
-  for (const value of ["12", "12a", "12A", "7/22", "12/14b"]) {
-    assert.equal(nr.test(value), true, value);
+test("?nr=: a house number as given, missing when empty or not a number", () => {
+  assert.deepEqual(houseQuery(undefined), { nr: null, missing: false });
+  assert.deepEqual(houseQuery(""), { nr: null, missing: true });
+  for (const value of ["12", "12a", "12A", "7/22", "12/14b", "12 a"]) {
+    assert.deepEqual(houseQuery(value), { nr: value, missing: false }, value);
   }
-  for (const value of ["", "abc", "12 a", "12345", "7/", "-1"]) {
-    assert.equal(nr.test(value), false, value);
+  for (const value of ["abc", " ", "12345", "7/", "-1", "+44"]) {
+    assert.deepEqual(houseQuery(value), { nr: value, missing: true }, value);
   }
+  assert.deepEqual(houseQuery(["5", "7"]), { nr: "5", missing: false });
 });
