@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { checkedLine } from "./hub.ts";
 import type { PlaceView } from "./schedule.ts";
+import { hasUpcoming } from "./schedule-notes.ts";
 import {
   sourcesOf,
   wasteChecked,
   wasteNote,
   wastePath,
+  wasteSchedule,
   wasteSources,
   wasteStatus,
 } from "./waste-module.ts";
@@ -346,4 +348,46 @@ test("sources: one per document, its files' oldest lastSeenAt", () => {
       },
     ],
   );
+});
+
+// What harmonogram.pdf draws (app/adres/[id]/harmonogram.pdf/route.ts): the
+// days and the footer's sources of getPlace's view, built by wasteSchedule;
+// no upcoming day there, no PDF (404).
+const upcomingRow = (id: string, start: string, sourceUrl: string) => ({
+  id,
+  start,
+  subtype: "zmieszane",
+  label: "Zmieszane",
+  shiftedFrom: null,
+  verified: true,
+  payload: null,
+  sourceDoc: `doc-${id}`,
+  sourceRef: `Harmonogram ${id}`,
+  sourceUrl,
+  checkedAt: "2026-10-20",
+  seenAt: null,
+});
+
+test("PDF: an event without a source prints no date and no footer source", () => {
+  const view = wasteSchedule([
+    upcomingRow("a", "2026-11-03", "https://example.org/a.pdf"),
+    upcomingRow("b", "2026-11-10", ""),
+    {
+      ...upcomingRow("c", "2026-11-17", "https://example.org/c.pdf"),
+      checkedAt: "",
+    },
+  ]);
+  assert.deepEqual(
+    view.days.map((d) => [d.date, d.pickups.map((p) => p.id)]),
+    [["2026-11-03", ["a"]]],
+  );
+  assert.deepEqual(
+    view.sources.map((s) => s.url),
+    ["https://example.org/a.pdf"],
+  );
+  // Only unsourced dates: nothing upcoming, so the address has no PDF.
+  const none = wasteSchedule([upcomingRow("b", "2026-11-10", " ")]);
+  assert.deepEqual(none.days, []);
+  assert.deepEqual(none.sources, []);
+  assert.equal(hasUpcoming(none.days, "2026-11-01"), false);
 });

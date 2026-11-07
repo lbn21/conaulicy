@@ -29,6 +29,7 @@ import {
   zoneMembers,
   zones,
 } from "@/lib/db";
+import { hasSource } from "@/lib/event-source";
 import { DATASET } from "@/lib/headers";
 import { houseNumber } from "@/lib/house";
 import {
@@ -52,7 +53,7 @@ import {
   type SearchIndex,
 } from "@/lib/search";
 import { FRACTIONS } from "@/lib/waste-bin";
-import { sourcesOf } from "@/lib/waste-module";
+import { wasteSchedule } from "@/lib/waste-module";
 
 // Every read goes through Next's data cache, tagged DATASET: a traffic spike
 // hits the cache, not Neon. After an import, POST /api/revalidate purges the
@@ -446,15 +447,22 @@ async function zoneEvents(zoneId: string, from: string) {
   return rows.sort((a, b) => a.start.localeCompare(b.start) || bySubtype(a, b));
 }
 
-/** Every fraction a zone has, from all its events, in display order. */
+/**
+ * Every fraction a zone has, from all its events with a source
+ * (lib/event-source.ts), in display order.
+ */
 async function zoneFractions(zoneId: string) {
   const rows = await db()
-    .selectDistinct({ subtype: events.subtype })
+    .selectDistinct({
+      subtype: events.subtype,
+      sourceUrl: events.sourceUrl,
+      checkedAt: events.checkedAt,
+    })
     .from(events)
     .where(eq(events.zoneId, zoneId));
-  return rows
-    .map((row) => row.subtype)
-    .sort((a, b) => SUBTYPE_ORDER.indexOf(a) - SUBTYPE_ORDER.indexOf(b));
+  return [...new Set(rows.filter(hasSource).map((row) => row.subtype))].sort(
+    (a, b) => SUBTYPE_ORDER.indexOf(a) - SUBTYPE_ORDER.indexOf(b),
+  );
 }
 
 // Keyed by the Warsaw day, so past pickups drop out at midnight.
@@ -474,23 +482,6 @@ const placeCached = unstable_cache(
     // On a split street the number picks the zone; one that picks none is
     // set aside, and the page asks again.
     const askNumber = zone.split && !zone.id;
-
-    const days: PickupDay[] = [];
-    for (const event of upcoming) {
-      const pickup: Pickup = {
-        id: event.id,
-        subtype: event.subtype,
-        label: event.label,
-        putOutBy:
-          typeof event.payload?.putOutBy === "string"
-            ? event.payload.putOutBy
-            : null,
-        shiftedFrom: event.shiftedFrom,
-      };
-      const last = days.at(-1);
-      if (last?.date === event.start) last.pickups.push(pickup);
-      else days.push({ date: event.start, pickups: [pickup] });
-    }
 
     return {
       id: place.id,
@@ -513,13 +504,12 @@ const placeCached = unstable_cache(
       knownNr: false,
       today,
       schedulePage: place.schedulePage,
-      days,
       fractions,
-      sources: sourcesOf(upcoming),
-      verified: upcoming.every((e) => e.verified),
+      // Only events with their source and day checked (lib/event-source.ts).
+      ...wasteSchedule(upcoming),
     };
   },
-  // v6: the zone's fractions (task 207); v5: villages with streets are
+  // v7: only events with a source (t256); v6: the zone's fractions (task 207); v5: villages with streets are
   // places (task 127), older entries say null; v4: sources' seenAt (task
   // 121); v3: task 118 added importedAt, task 120 dropped it again; v2
   // entries lack localityId and streetId (task 117).

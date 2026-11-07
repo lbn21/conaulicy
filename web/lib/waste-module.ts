@@ -3,8 +3,9 @@
 // unit tests need no database, and client-safe: the section's lines are
 // drawn on the device (components/waste-status.tsx). Its „Najbliższe dni”
 // items are lib/waste-upcoming.ts's.
-import type { PickupDay, PlaceView, SourceView } from "@/lib/schedule";
+import type { Pickup, PickupDay, PlaceView, SourceView } from "@/lib/schedule";
 import { absoluteDay, todayInWarsaw } from "./dates.ts";
+import { hasSource } from "./event-source.ts";
 import type { Checked, Group, Part } from "./hub.ts";
 import { placePath, scheduleName, scheduleOwner } from "./places.ts";
 import {
@@ -117,6 +118,49 @@ export function wasteSources(place: PlaceView): Part[][] {
     source.url ? { href: source.url, text: name } : name,
     `, ${source.label}`,
   ]);
+}
+
+/** An upcoming events row, as lib/schedule.ts reads it. */
+type UpcomingRow = SourceRow & {
+  id: string;
+  start: string;
+  subtype: string;
+  label: string;
+  shiftedFrom: string | null;
+  verified: boolean;
+  payload: Record<string, unknown> | null;
+};
+
+/**
+ * The street page's (and its PDF's) days, sources and verified flag from the
+ * zone's upcoming events, in their order. An event without its source or the
+ * day checked is left out (no source, no display; lib/event-source.ts).
+ */
+export function wasteSchedule(
+  rows: UpcomingRow[],
+): Pick<PlaceView, "days" | "sources" | "verified"> {
+  const shown = rows.filter(hasSource);
+  const days: PickupDay[] = [];
+  for (const event of shown) {
+    const pickup: Pickup = {
+      id: event.id,
+      subtype: event.subtype,
+      label: event.label,
+      putOutBy:
+        typeof event.payload?.putOutBy === "string"
+          ? event.payload.putOutBy
+          : null,
+      shiftedFrom: event.shiftedFrom,
+    };
+    const last = days.at(-1);
+    if (last?.date === event.start) last.pickups.push(pickup);
+    else days.push({ date: event.start, pickups: [pickup] });
+  }
+  return {
+    days,
+    sources: sourcesOf(shown),
+    verified: shown.every((e) => e.verified),
+  };
 }
 
 /** An upcoming event's source, with its file's source_files.lastSeenAt. */
