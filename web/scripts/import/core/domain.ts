@@ -85,6 +85,8 @@ export type Domain = {
     digest: string;
     out: Extracted;
     zoneName: string;
+    /** The day the file was last compared with the original (Domain.rows). */
+    checkedAt: string;
     issues: Issues;
     reviews: Reviews;
     dryRun: boolean;

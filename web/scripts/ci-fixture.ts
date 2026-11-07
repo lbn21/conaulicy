@@ -31,6 +31,7 @@ import { normalize } from "../lib/normalize.ts";
 import { localitySearchLabel, streetLabel, terytName } from "../lib/places.ts";
 import { polishHolidays } from "./import/waste/lib.ts";
 import { GMINA_SCHEDULE_PAGES } from "./lib/gmina-pages.ts";
+import { unsourced } from "./lib/import-data.ts";
 import { localDatabaseUrl } from "./lib/local-db.ts";
 
 // A placeholder, never a public page: the fixture only lives in CI.
@@ -389,6 +390,14 @@ async function main() {
       })),
     ),
   );
+
+  // No source, no display (lib/event-source.ts): every fixture event is
+  // shown, so the site's checks run on all of them.
+  const noSource = unsourced(eventRows);
+  if (noSource.length > 0)
+    throw new Error(
+      `CI fixture: events without a source:\n${noSource.join("\n")}`,
+    );
 
   await db.transaction(async (tx) => {
     for (const table of [

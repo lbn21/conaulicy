@@ -5,6 +5,7 @@ import {
   eventsSha256,
   stripPrefix,
   transform,
+  unsourced,
   validate,
   withTeryt,
 } from "./import-data.ts";
@@ -29,6 +30,28 @@ test("validation: the fixture is valid; broken ids and references found", () => 
   assert.match(errors, /not sha256/);
   assert.match(errors, /unknown locality simc-0000000/);
   assert.match(errors, /unknown street ulic-x/);
+});
+
+test("no source, no display: the fixture's events all have one; one without is rejected", () => {
+  // Nothing in the fixture disappears from the site under the rule.
+  const { rows } = transform(etl, checked);
+  assert.ok(rows.events.length > 0);
+  assert.deepEqual(unsourced(rows.events), []);
+  // A source never checked (no checkedAt) or a url that is not http(s):
+  // scripts/import.ts writes nothing and lists each event.
+  const [first, second] = etl.events;
+  const broken = structuredClone(etl);
+  broken.events[1].source.url = "docs/data/test/gmina-s1.txt";
+  const unchecked = new Map(
+    [...checked].filter(([doc]) => doc !== first.source.doc),
+  );
+  const found = unsourced(transform(broken, unchecked).rows.events);
+  assert.ok(found.includes(`events: ${first.id} has no checkedAt`));
+  assert.ok(
+    found.includes(
+      `events: ${second.id} source url "docs/data/test/gmina-s1.txt" is not http(s)`,
+    ),
+  );
 });
 
 test("prefixes are stripped; the Asnyka URL id survives", () => {

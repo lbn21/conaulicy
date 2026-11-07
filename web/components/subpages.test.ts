@@ -6,6 +6,7 @@ import { todayInWarsaw } from "../lib/dates.ts";
 import { MODULES } from "../lib/modules.ts";
 import { CUT_100 } from "../lib/mzgkim-fixture.ts";
 import type { PlaceView } from "../lib/schedule.ts";
+import { wasteSchedule } from "../lib/waste-module.ts";
 import {
   bothViews,
   CHECKED,
@@ -570,4 +571,35 @@ test("/woda day headings: the date, absolute, its „Dziś: ” the server's day
   } finally {
     mock.timers.reset();
   }
+});
+
+test("/smieci: an event without its source is not on the page", () => {
+  const row = (id: string, start: string, sourceUrl: string) => ({
+    id,
+    start,
+    subtype: "zmieszane",
+    label: `Zmieszane ${id}`,
+    shiftedFrom: null,
+    verified: false,
+    payload: null,
+    sourceDoc: "doc",
+    sourceRef: "Harmonogram testowy",
+    sourceUrl,
+    checkedAt: "2026-10-20",
+    seenAt: null,
+  });
+  const html = wastePage(
+    wasteSchedule([
+      row("shown", "2026-10-27", "https://example.org/harmonogram.pdf"),
+      row("nourl", "2026-10-28", ""),
+      {
+        ...row("nocheck", "2026-10-29", "https://example.org/b.pdf"),
+        checkedAt: "",
+      },
+    ]),
+  );
+  assert.ok(html.includes("Zmieszane shown"));
+  assert.ok(!html.includes("Zmieszane nourl"));
+  assert.ok(!html.includes("Zmieszane nocheck"));
+  assert.ok(!html.includes("https://example.org/b.pdf"));
 });

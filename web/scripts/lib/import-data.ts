@@ -12,6 +12,7 @@ import type {
   zoneMembers,
   zones,
 } from "../../lib/db/schema.ts";
+import { missingSource, type Sourced } from "../../lib/event-source.ts";
 import { normalize } from "../../lib/normalize.ts";
 import {
   localitySearchLabel,
@@ -202,6 +203,17 @@ export function validate(etl: Etl): string[] {
       errors.push(`events: ${e.id} source url differs from meta.sources`);
   }
   return errors;
+}
+
+/**
+ * Events the site may not show (no source, no display; lib/event-source.ts),
+ * one finding each: the import rejects them instead of writing them.
+ */
+export function unsourced(events: Array<Sourced & { id: string }>): string[] {
+  return events.flatMap((e) => {
+    const why = missingSource(e);
+    return why ? [`events: ${e.id} ${why}`] : [];
+  });
 }
 
 /**

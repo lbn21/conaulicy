@@ -124,3 +124,22 @@ test("waste calendar without dates: no event, no note on next year", () => {
     "Wywóz śmieci – Gmina Lubaczów\\, sektor 1",
   ]);
 });
+
+test("waste calendar: an event without its source or checked day is left out", () => {
+  const ics = wasteCalendar(
+    {
+      ...ZONE,
+      events: [
+        pickup("a1", "2026-11-30"),
+        { ...pickup("nourl", "2026-12-07"), sourceUrl: "" },
+        { ...pickup("blank", "2026-12-14"), sourceUrl: "   " },
+        { ...pickup("notweb", "2026-12-21"), sourceUrl: "docs/data/a.pdf" },
+        { ...pickup("nocheck", "2026-12-28"), checkedAt: "" },
+      ],
+    },
+    new Date("2026-10-25T12:00:00Z"),
+  );
+  assert.equal(events(ics), 1);
+  assert.deepEqual(value(ics, "UID"), ["a1@conaulicy"]);
+  assert.deepEqual(value(ics, "DTSTART"), ["20261130"]);
+});

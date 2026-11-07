@@ -1,5 +1,6 @@
 import { longDate } from "./date-labels.ts";
 import { addDays, WARSAW } from "./dates.ts";
+import { hasSource } from "./event-source.ts";
 import {
   calendarBody,
   calendarHead,
@@ -43,11 +44,15 @@ type WasteZone = {
   }[];
 };
 
-/** The zone's file: one all-day event per pickup. */
+/**
+ * The zone's file: one all-day event per pickup with its source and the day
+ * checked (no source, no display; lib/event-source.ts).
+ */
 export function wasteCalendar(zone: WasteZone, now: Date): string {
   const stamp = icsUtc(now);
+  const shown = zone.events.filter(hasSource);
   // The next year's dates, in the calendar's description (no event).
-  const later = laterNote(zone.events.map((event) => ({ date: event.start })));
+  const later = laterNote(shown.map((event) => ({ date: event.start })));
   const lines = [
     ...calendarHead("Wywoz smieci", wasteCalendarName(zone.name)),
     ...(later ? [`X-WR-CALDESC:${escapeText(later)}`] : []),
@@ -55,7 +60,7 @@ export function wasteCalendar(zone: WasteZone, now: Date): string {
   ];
   const notUs = zone.gmina ? disclaimer(zone.gmina) : DISCLAIMER;
 
-  for (const event of zone.events) {
+  for (const event of shown) {
     const putOutBy = event.payload?.putOutBy;
     const description = [
       typeof putOutBy === "string" ? putOutNote(putOutBy) : null,
