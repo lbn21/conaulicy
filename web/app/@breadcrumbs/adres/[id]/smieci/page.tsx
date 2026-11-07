@@ -4,6 +4,11 @@ import { CrumbsRoute } from "@/components/place-crumbs";
 
 export { generateStaticParams } from "@/app/adres/[id]/smieci/page";
 
-export default function Crumbs({ params }: PageProps<"/adres/[id]/smieci">) {
-  return <CrumbsRoute params={params} module="smieci" />;
+export default function Crumbs({
+  params,
+  searchParams,
+}: PageProps<"/adres/[id]/smieci">) {
+  return (
+    <CrumbsRoute params={params} searchParams={searchParams} module="smieci" />
+  );
 }

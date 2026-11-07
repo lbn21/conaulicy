@@ -1,11 +1,14 @@
 import { hubData } from "@/components/hub";
 import { LiveBlock } from "@/components/live-block";
 import { subpageData } from "@/components/module-page";
-import { PlaceBreadcrumbs } from "@/components/place-page";
+import {
+  type AddressSearch,
+  numberQuery,
+  PlaceBreadcrumbs,
+} from "@/components/place-page";
 import { CRUMBS_SKELETON } from "@/components/place-suspense";
-import { numberParam } from "@/lib/address-routes";
 
-type CrumbsParams = Promise<{ id: string; module?: string; nr?: string[] }>;
+type CrumbsParams = Promise<{ id: string; module?: string }>;
 
 /**
  * An address page's @breadcrumbs route (app/@breadcrumbs/adres/[id]/…),
@@ -19,14 +22,20 @@ type CrumbsParams = Promise<{ id: string; module?: string; nr?: string[] }>;
  */
 export function CrumbsRoute({
   params,
+  searchParams,
   module,
 }: {
   params: CrumbsParams;
+  searchParams: AddressSearch;
   module?: string;
 }) {
   return (
     <LiveBlock skeleton={CRUMBS_SKELETON}>
-      <PlaceCrumbs params={params} module={module} />
+      <PlaceCrumbs
+        params={params}
+        searchParams={searchParams}
+        module={module}
+      />
     </LiveBlock>
   );
 }
@@ -38,13 +47,15 @@ export function CrumbsRoute({
  */
 async function PlaceCrumbs({
   params,
+  searchParams,
   module: fixed,
 }: {
   params: CrumbsParams;
+  searchParams: AddressSearch;
   module?: string;
 }) {
-  const { id, module = fixed, nr: given } = await params;
-  const nr = given ? numberParam(given) : null;
+  const { id, module = fixed } = await params;
+  const { nr } = await numberQuery(searchParams);
   if (module === undefined) {
     const [place] = await hubData(id, nr);
     return place && <PlaceBreadcrumbs place={place} />;

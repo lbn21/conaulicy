@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { cacheLife, cacheTag } from "next/cache";
+import { cacheLife, cacheTag, navigation } from "next/cache";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
@@ -14,7 +14,7 @@ import {
   SourceInset,
 } from "@/components/subpage-parts";
 import type { ModuleId } from "@/lib/address-routes";
-import { withHouseNumber } from "@/lib/house";
+import { houseQuery, withHouseNumber } from "@/lib/house";
 import type { Checked } from "@/lib/hub";
 import { indexable } from "@/lib/indexing";
 import {
@@ -43,11 +43,38 @@ import { noDataHeading } from "@/lib/waste-module";
 // The street or village page's parts: its metadata (the address page's,
 // /adres/[id], components/hub.tsx), its heading, and its waste body, which
 // the waste subpage (/adres/[id]/smieci) shows under breadcrumbs and the
-// address page's error variants show whole (StreetPage). With a house
-// number, /adres/[id]?nr=… is rewritten in next.config.ts to
-// /adres/[id]/nr/…, so it stays a cached page. Any other ?nr= (empty, or
-// not a house number) goes to /adres/[id]/numer (proxy.ts), which a split
-// street answers with an error. Canonical is always /adres/[id].
+// address page shows whole as its error (StreetPage). A house number is
+// ?nr=, read from searchParams (numberQuery); an empty one, or one that is
+// no house number, a split street answers with an error. Canonical is
+// always /adres/[id].
+
+/** An address route's searchParams (its PageProps'). */
+export type AddressSearch = Promise<
+  Record<string, string | string[] | undefined>
+>;
+
+/**
+ * The page's ?nr= (lib/house.ts houseQuery), read per request after
+ * navigation(), so an address route's App Shell and per-link prefetch stay
+ * static output (ensureStatic 'prefetch', app/layout.tsx;
+ * nextjs.org/docs/app/api-reference/functions/navigation). Asked after
+ * knownPlace, so an unknown place's 404 is still decided first.
+ */
+export async function numberQuery(searchParams: AddressSearch) {
+  await navigation();
+  return houseQuery((await searchParams).nr);
+}
+
+/**
+ * An address route's ?nr= for its generateMetadata, or null for an unknown
+ * place: decided from params first (knownPlace, cached), before
+ * searchParams is read, as the page does (HubMain, ModuleMain), so a 404's
+ * metadata never waits on the query.
+ */
+export async function metadataQuery(id: string, searchParams: AddressSearch) {
+  if (!(await knownPlace(id))) return null;
+  return houseQuery((await searchParams).nr);
+}
 
 /**
  * A place without dates to show: why, then the gmina's own schedule (linked
@@ -138,7 +165,7 @@ async function addressMetadata(
   const h1 =
     page === "waste" ? `${WASTE_H1}: wszystkie terminy – ${name}` : name;
   const title = numberError(place, missing) ? `Błąd: ${h1}` : h1;
-  // The house-number and /numer variants describe the place itself.
+  // With a house number, or an empty one, it describes the place itself.
   const whole = nr ? await getPlace(id, null) : place;
   return {
     ...pageMetadata({
@@ -147,8 +174,9 @@ async function addressMetadata(
       description: placeDescription(whole ?? place, page),
     }),
     // Never a search result, its links still followed once the site is
-    // indexable: /numer, an error variant of the street page, and a place
-    // we have no dates for (its page only links the gmina's schedule).
+    // indexable: ?nr= without a usable number, an error of the street page,
+    // and a place we have no dates for (its page only links the gmina's
+    // schedule).
     ...((missing || place.invalidNr !== null || noData(place)) && {
       robots: { index: false, follow: indexable() },
     }),
@@ -317,9 +345,9 @@ export function SubpageHeading({
 }
 
 /**
- * Today's street page, whole: the address page's error variants (/numer,
- * and a number no part of the street has) keep it, GOV.UK's validation
- * pattern with the question.
+ * Today's street page, whole: the address page's errors (?nr= without a
+ * usable number, and a number no part of the street has) keep it, GOV.UK's
+ * validation pattern with the question.
  */
 export function StreetPage({
   place,
@@ -402,7 +430,7 @@ export function PlaceBreadcrumbs({
     items.push({
       label: withHouseNumber(place.name, shownNr(place)),
       // The number as given, even where it changes nothing (the address
-      // page then says so); none on /numer.
+      // page then says so); none for an empty ?nr=.
       href: placePath(place.id, place.givenNr),
     });
   }

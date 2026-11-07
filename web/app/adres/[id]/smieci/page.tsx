@@ -7,10 +7,16 @@ import { SubpageRoute, subpageMetadata } from "@/components/subpage-route";
 
 export { generateStaticParams } from "../page";
 
-export function generateMetadata({ params }: PageProps<"/adres/[id]/smieci">) {
-  return subpageMetadata(params, { waste: true });
+export function generateMetadata({
+  params,
+  searchParams,
+}: PageProps<"/adres/[id]/smieci">) {
+  return subpageMetadata(params, searchParams, { waste: true });
 }
 
-export default function WastePage({ params }: PageProps<"/adres/[id]/smieci">) {
-  return <SubpageRoute params={params} waste />;
+export default function WastePage({
+  params,
+  searchParams,
+}: PageProps<"/adres/[id]/smieci">) {
+  return <SubpageRoute params={params} searchParams={searchParams} waste />;
 }

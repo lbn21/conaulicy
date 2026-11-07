@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import { NUMBER_REWRITES, numberRedirects } from "./lib/address-routes";
 import { SITE_URL } from "./lib/config.generated";
 import { headerList, SECURITY } from "./lib/headers";
 import { indexable, NOINDEX_NOFOLLOW } from "./lib/indexing";
@@ -35,12 +34,6 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/adres/[id]/harmonogram.pdf": ["./assets/fonts/*.ttf"],
   },
-  // A house number in the query (?nr=12a, ?nr=7/22) keeps the street page
-  // and its module subpages cached: it becomes a path. Any other ?nr= is
-  // routed by proxy.ts (a rewrite cannot see an empty value).
-  async rewrites() {
-    return { beforeFiles: NUMBER_REWRITES };
-  },
   // headers() and redirects() are evaluated at build time (baked into the
   // routes manifest). On Vercel VERCEL_ENV and SITE_BASIC_AUTH are set at
   // build, so this is right, but changing SITE_BASIC_AUTH needs a redeploy
@@ -65,12 +58,9 @@ const nextConfig: NextConfig = {
   },
   // The Vercel address goes to the permanent one, path and query kept. Only
   // this host: preview URLs (conaulicy-git-*.vercel.app) keep working. 308
-  // keeps the method, so a POST /api/revalidate still arrives. A subpage or
-  // file after a house number goes to the base address's one
-  // (lib/address-routes.ts numberRedirects).
+  // keeps the method, so a POST /api/revalidate still arrives.
   async redirects() {
     return [
-      ...numberRedirects(),
       {
         source: "/:path*",
         has: [{ type: "host", value: "conaulicy.vercel.app" }],

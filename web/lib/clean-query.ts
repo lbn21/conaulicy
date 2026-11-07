@@ -5,7 +5,7 @@
 // own paths, the revalidate hook, unknown paths) is never touched: Next.js
 // links its icons with a cache-busting query.
 
-import { ADDRESS, ADDRESS_VARIANTS } from "./address-routes.ts";
+import { ADDRESS } from "./address-routes.ts";
 import { STATIC_PAGES } from "./static-pages.ts";
 
 // The home page and the static pages: /, /ulice, …
@@ -16,7 +16,6 @@ const PAGES = new RegExp(
 const ROUTES: [RegExp, string[]][] = [
   [PAGES, []],
   [ADDRESS, ["nr"]],
-  ...ADDRESS_VARIANTS.map((path): [RegExp, string[]] => [path, []]),
   [/^\/adres\/[^/]+\/harmonogram\.pdf$/, ["nr"]],
   [/^\/adres\/[^/]+\/woda\.ics$/, ["nr"]],
   [/^\/ics\/[^/]+$/, []],
@@ -30,7 +29,7 @@ const ROUTES: [RegExp, string[]][] = [
  * its route does not read, or an allowed one twice; null when it is clean or
  * the path is not one of the routes above.
  * Keeps the first value of each allowed parameter, in allowlist order, empty
- * values included (?nr= still reaches the /numer page). Values are
+ * values included (an empty ?nr= is the address page's own error). Values are
  * re-encoded by URLSearchParams.
  */
 export function cleanQuery(

@@ -13,8 +13,8 @@
 // static pages (/ulice included) and every place in the search index but
 // those /ulice marks „(brak danych)”, each with its waste subpage
 // (/adres/<id>/smieci, canonical itself), nothing else. The address page and
-// /smieci canonicalise to themselves, ?nr= (and its /nr/… path) left out. PDFs and calendars send
-// X-Robots-Tag: noindex; the number-error page (/numer) and a place
+// /smieci canonicalise to themselves, ?nr= left out. PDFs and calendars send
+// X-Robots-Tag: noindex; the number error (an empty ?nr=) and a place
 // without data have meta robots noindex; the
 // static pages have one canonical link each (the home page's as the
 // sitemap has it, no trailing slash). Indexable: every URL in the sitemap
@@ -217,10 +217,10 @@ try {
       [`${place}?nr=7a`, place],
       [`${place}/smieci`, `${place}/smieci`],
       [`${place}/smieci?nr=7a`, `${place}/smieci`],
-      // The rewritten paths themselves, and a number with a slash.
-      [`${place}/nr/5`, place],
-      [`${place}/smieci/nr/5`, `${place}/smieci`],
+      // A number with a slash, an empty one.
+      [`${place}?nr=7/22`, place],
       [`${place}/smieci?nr=7/22`, `${place}/smieci`],
+      [`${place}?nr=`, place],
     ]) {
       const html = await (await fetch(`${server.origin}${path}`)).text();
       const links = [...html.matchAll(CANONICAL)].map(([, href]) => href);
@@ -267,12 +267,14 @@ try {
     // An unknown module, with and without a number; a module of an unknown
     // place.
     "/adres/0972447-00470/nie-ma-takiego-modulu",
-    "/adres/0972447-00470/nie-ma-takiego-modulu/nr/12",
-    "/adres/0972447-00470/nie-ma-takiego-modulu/numer",
+    "/adres/0972447-00470/nie-ma-takiego-modulu?nr=12",
     "/adres/9999999/smieci",
     // A module without a subpage (the weather).
     "/adres/0972447-00470/pogoda",
-    "/adres/0972447-00470/pogoda/nr/12",
+    "/adres/0972447-00470/pogoda?nr=12",
+    // The old number paths are gone (task 254).
+    "/adres/0972447-00470/nr/12",
+    "/adres/0972447-00470/numer",
   ]) {
     const id = path.split("/")[2];
     if (path.startsWith("/adres/") && Object.hasOwn(renamed, id)) {
@@ -407,7 +409,7 @@ try {
     for (const loc of locs) {
       if (
         (loc !== SITE && !loc.startsWith(`${SITE}/`)) ||
-        /\/nr\/|\/numer|\.pdf|\/ics\/|\/adres\/[^/]+\/(?!smieci$)[^/]/.test(loc)
+        /\?|\.pdf|\/ics\/|\/adres\/[^/]+\/(?!smieci$)[^/]/.test(loc)
       ) {
         failures.push(`/sitemap.xml: ${loc}`);
       }
@@ -472,6 +474,6 @@ try {
 finish(
   failures,
   index
-    ? `Indexing (${PAGES.join(", ")}): indexable, robots.txt open, vercel.app redirects, sitemap complete, every URL in it indexable with its own title; PDF, ICS, /numer, no-data places noindex; 404s whole pages; canonicals.`
+    ? `Indexing (${PAGES.join(", ")}): indexable, robots.txt open, vercel.app redirects, sitemap complete, every URL in it indexable with its own title; PDF, ICS, an empty ?nr=, no-data places noindex; 404s whole pages; canonicals.`
     : `Indexing (${PAGES.join(", ")}): noindex everywhere, robots.txt closed, sitemap empty; PDF, ICS noindex; 404s whole pages; canonicals.`,
 );

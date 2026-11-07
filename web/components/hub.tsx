@@ -4,8 +4,10 @@ import { Parts, Status } from "@/components/parts";
 import { PlaceLink } from "@/components/place-link";
 import {
   AddressPage,
+  type AddressSearch,
   knownPlace,
   numberError,
+  numberQuery,
   StreetPage,
 } from "@/components/place-page";
 import { Upcoming } from "@/components/upcoming";
@@ -18,7 +20,7 @@ import { placePath } from "@/lib/places";
 import type { PlaceView } from "@/lib/schedule";
 import { ordered } from "@/lib/upcoming";
 
-// The address page, /adres/[id] (and /nr/…): the hub of modules
+// The address page, /adres/[id] (and ?nr=): the hub of modules
 // (lib/modules.ts, task 102), under breadcrumbs. Under „Zmień
 // adres”, „Najbliższe dni” (components/upcoming.tsx), every module's items
 // in one order (or that nothing is coming); then a section per module, always,
@@ -139,19 +141,18 @@ export const hubData = cache(async (id: string, nr: string | null) => {
  */
 export async function HubMain({
   id,
-  nr,
-  missing = false,
+  searchParams,
   unknown,
 }: {
   id: string;
-  nr: string | null;
-  /** ?nr= was sent without a usable number (/adres/[id]/numer). */
-  missing?: boolean;
+  /** The page's, for its ?nr= (numberQuery). */
+  searchParams: AddressSearch;
   /** What an unknown place shows. */
   unknown: ReactNode;
 }) {
   // An unknown place: its 404 before anything is read per request.
   if (!(await knownPlace(id))) return <>{unknown}</>;
+  const { nr, missing } = await numberQuery(searchParams);
   const data = await hubData(id, nr);
   const place = data[0];
   if (!place) return <>{unknown}</>;

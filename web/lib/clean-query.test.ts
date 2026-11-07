@@ -30,9 +30,6 @@ test("the street page, its PDF, water calendar and module subpages keep only nr"
     ["/adres/X/smieci?nr=12&x=1", "?nr=12"],
     ["/adres/X/smieci?nr=7/22", null],
     ["/adres/X/smieci?nr=", null],
-    ["/adres/X/smieci/nr/12?x=1", ""],
-    ["/adres/X/smieci/nr/7/22", null],
-    ["/adres/X/smieci/numer?nr=1", ""],
   ];
   for (const [url, expected] of cases) assert.equal(clean(url), expected, url);
 });
@@ -55,10 +52,6 @@ test("the other cacheable routes take no parameters", () => {
   assert.equal(clean("/ics/Z?x=1"), "");
   assert.equal(clean("/api/search-index/abc?x=1"), "");
   assert.equal(clean("/api/place-redirects?x=1"), "");
-  assert.equal(clean("/adres/X/numer?nr=1"), "");
-  assert.equal(clean("/adres/X/nr/12?nr=1"), "");
-  assert.equal(clean("/adres/X/nr/12?x=1"), "");
-  assert.equal(clean("/adres/X/nr/7/22?x=1"), "");
 });
 
 test("files, metadata and unknown paths are never touched", () => {
@@ -71,6 +64,9 @@ test("files, metadata and unknown paths are never touched", () => {
   assert.equal(clean("/sitemap.xml?x=1"), null);
   assert.equal(clean("/nie-ma-takiej-strony?x=1"), null);
   assert.equal(clean("/adres/X/cos-innego?x=1"), null);
+  // The old number paths are no route of ours (task 254): a plain 404.
+  assert.equal(clean("/adres/X/nr/12?x=1"), null);
+  assert.equal(clean("/adres/X/numer?x=1"), null);
 });
 
 test("no query, nothing to do", () => {
@@ -90,5 +86,4 @@ test("internal paths are never touched", () => {
 
 test("an unknown module is not a route of ours", () => {
   assert.equal(clean("/adres/X/prad?x=1"), null);
-  assert.equal(clean("/adres/X/prad/nr/12?x=1"), null);
 });

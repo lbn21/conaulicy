@@ -2,14 +2,19 @@ import type { Metadata } from "next";
 import { io } from "next/cache";
 import { cache, type ReactNode } from "react";
 import { NOT_FOUND_METADATA } from "@/components/page-not-found";
-import { knownPlace, SubpageHeading } from "@/components/place-page";
+import {
+  type AddressSearch,
+  knownPlace,
+  numberQuery,
+  SubpageHeading,
+} from "@/components/place-page";
 import { WarsawToday } from "@/components/warsaw-today";
 import { findSubpage } from "@/lib/modules";
 import { getPlace } from "@/lib/schedule";
 
 // A module's subpage, /adres/[id]/[module] (lib/modules.ts), with the same
-// house-number and /numer variants as the address page
-// (lib/address-routes.ts), under the place's breadcrumbs (before <main>), the
+// ?nr= as the address page (components/place-page.tsx numberQuery), under
+// the place's breadcrumbs (before <main>), the
 // same for every module. An unknown module, or one without a subpage (the weather), is a
 // 404. Canonical: the subpage itself. Read per request, whole, behind one
 // <Suspense> with one skeleton, as the address page (components/hub.tsx).
@@ -56,20 +61,20 @@ export const subpageData = cache(
 export async function ModuleMain({
   id,
   slug,
-  nr,
-  missing = false,
+  searchParams,
   unknown,
 }: {
   id: string;
   slug: string;
-  nr: string | null;
-  missing?: boolean;
+  /** The page's, for its ?nr= (numberQuery). */
+  searchParams: AddressSearch;
   /** What an unknown place or module shows. */
   unknown: ReactNode;
 }) {
   // An unknown module or place: its 404 before anything is read per
   // request (components/place-page.tsx knownPlace).
   if (!findSubpage(slug) || !(await knownPlace(id))) return <>{unknown}</>;
+  const { nr, missing } = await numberQuery(searchParams);
   const loaded = await subpageData(id, slug, nr);
   if (!loaded?.place || (!loaded.module.live && !loaded.data)) {
     return <>{unknown}</>;
