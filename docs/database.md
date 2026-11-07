@@ -1,6 +1,6 @@
 # Database
 
-One Neon project (Vercel Marketplace, free plan, fra1) and, for now, **one shared database: the Neon branch `main`** (endpoint `ep-snowy-cherry-b9v656vm`). The separate `preview` branch from docs/import-plan.md section 1 was abandoned; Jakub deletes it.
+One Neon project (Vercel Marketplace, free plan, fra1) and, for now, **one shared database: the Neon branch `main`** (endpoint `ep-snowy-cherry-b9v656vm`). The separate `preview` branch from the original import plan (docs/import-plan.md, now in git history) was abandoned; Jakub deletes it.
 
 | Environment | Database | Env vars |
 |---|---|---|

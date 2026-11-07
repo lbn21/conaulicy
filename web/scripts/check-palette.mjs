@@ -6,8 +6,8 @@
 // - docs/logo/a-logo-light.svg, a-mark-light.svg: the plate, for download.
 // With --fix it rewrites those to the palette. And no raw hex at all in the
 // site's code (web/app, components, lib) outside its colour homes: palette.ts,
-// govuk-colours.ts and waste-colours.ts. History (docs/tasks,
-// docs/reports) may quote old values. The generated files are not in git.
+// govuk-colours.ts and waste-colours.ts. Git history may quote
+// old values. The generated files are not in git.
 //   node scripts/check-palette.mjs [--fix]
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
