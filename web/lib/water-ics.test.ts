@@ -4,6 +4,7 @@ import { SITE_URL } from "./config.generated.ts";
 import type { Disruption } from "./disruptions.ts";
 import { CUT_100 } from "./mzgkim-fixture.ts";
 import type { PlaceView } from "./schedule.ts";
+import { events, folded, lines, value } from "./test-ics.ts";
 import {
   bothViews,
   CHECKED,
@@ -52,24 +53,6 @@ const at = (
   now = NOW,
   checkedAt = CHECKED,
 ) => water(bothViews(posts, checkedAt, now), place);
-
-/** The file unfolded, one property per line. */
-const lines = (ics: string) => ics.replace(/\r\n /g, "").split("\r\n");
-
-/** Every line folded to 75 octets. */
-const folded = (ics: string) => {
-  for (const line of ics.split("\r\n"))
-    assert.ok(new TextEncoder().encode(line).length <= 75, line);
-};
-
-const events = (ics: string) => ics.split("BEGIN:VEVENT").length - 1;
-
-const value = (ics: string, name: string) =>
-  lines(ics)
-    .filter(
-      (line) => line.startsWith(`${name}:`) || line.startsWith(`${name};`),
-    )
-    .map((line) => line.slice(line.indexOf(":") + 1));
 
 test("a cut at the address: one event, Warsaw hours, place and source", () => {
   const ics = waterCalendar(at([post()]), NOW);

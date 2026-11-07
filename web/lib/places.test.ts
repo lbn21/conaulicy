@@ -14,6 +14,8 @@ import {
   terytName,
   titleLabel,
   villageLabel,
+  type ZoneCandidate,
+  zoneByNumber,
 } from "./places.ts";
 
 test("village parts name their village, villages their gmina", () => {
@@ -152,6 +154,96 @@ test("pickZone: a split street needs the house number", () => {
   assert.equal(pickZone([lowOdd, even], { ...street, nr: "11" }), null);
   // A number on a street that is not split changes nothing.
   assert.equal(pickZone([town], { ...street, nr: "12" }), "z-town");
+});
+
+test("zoneByNumber: a split street's ranges, their bounds and letters", () => {
+  const part = (
+    zoneId: string,
+    houseFrom: string | null,
+    houseTo: string | null,
+  ) => ({
+    zoneId,
+    localityId: "L",
+    streetId: "L-1",
+    houseFrom,
+    houseTo,
+    parity: null,
+  });
+  // 1–10, 10a–20, 21 and up; 20a lies in none of them.
+  const ranges: ZoneCandidate[] = [
+    part("z-low", null, "10"),
+    part("z-mid", "10a", "20"),
+    part("z-high", "21", null),
+  ];
+  const town = { zoneId: "z-town", localityId: "L", streetId: null };
+  const street = { localityId: "L", parentId: null, streetId: "L-1" };
+  const zone = (nr: string | null, candidates = ranges) =>
+    zoneByNumber(candidates, street, nr);
+
+  assert.deepEqual(zone(null), { id: null, split: true });
+  for (const [nr, id] of [
+    ["1", "z-low"],
+    ["7/22", "z-low"],
+    ["10", "z-low"],
+    ["10a", "z-mid"],
+    ["12", "z-mid"],
+    ["12a", "z-mid"],
+    ["20", "z-mid"],
+    ["21", "z-high"],
+    ["21b", "z-high"],
+    ["9999", "z-high"],
+  ]) {
+    assert.deepEqual(zone(nr), { id, split: true }, nr);
+  }
+  // Outside every range: none, or the town's zone if there is one.
+  assert.deepEqual(zone("20a"), { id: null, split: true });
+  assert.deepEqual(zone("20a", [...ranges, town]), {
+    id: "z-town",
+    split: true,
+  });
+});
+
+test("zoneByNumber: odd and even sides, one with a bound", () => {
+  const even = {
+    zoneId: "z-even",
+    localityId: "L",
+    streetId: "L-1",
+    houseFrom: "2",
+    houseTo: null,
+    parity: "even" as const,
+  };
+  const odd = {
+    ...even,
+    zoneId: "z-odd",
+    houseFrom: "1",
+    houseTo: "9",
+    parity: "odd" as const,
+  };
+  const street = { localityId: "L", parentId: null, streetId: "L-1" };
+  for (const [nr, id] of [
+    ["1", "z-odd"],
+    ["9", "z-odd"],
+    ["9a", null],
+    ["11", null],
+    ["2", "z-even"],
+    ["12a", "z-even"],
+    ["12/14", "z-even"],
+    ["100", "z-even"],
+  ] as const) {
+    assert.deepEqual(
+      zoneByNumber([even, odd], street, nr),
+      { id, split: true },
+      nr,
+    );
+  }
+  // A street that is not split: its zone, whatever the number.
+  const whole = { zoneId: "z-whole", localityId: "L", streetId: "L-1" };
+  for (const nr of [null, "1", "12a"]) {
+    assert.deepEqual(zoneByNumber([whole], street, nr), {
+      id: "z-whole",
+      split: false,
+    });
+  }
 });
 
 test("/ulice lists the town by letter in Polish order, villages with their streets", () => {
