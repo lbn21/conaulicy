@@ -30,6 +30,11 @@
 // Each state's pages are dropped from the ISR cache first, so they render
 // with that server's setting. With SCREENSHOT_DIR, saves <width>-<state>.png
 // (DPR 2) and one contact sheet per width. Run after `next build`.
+//
+// With --ci (CI, task 252): mock:none and the three warnings only (markup,
+// axe, focus, zoom, contrast, the hub); the other states' copy and order are
+// lib/imgw-banner.test.ts's and lib/weather-module.test.ts's. Without it,
+// every state: run it by hand when the banner changes.
 import {
   existsSync,
   mkdirSync,
@@ -61,6 +66,7 @@ const NO_WARNINGS = "Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.";
 const WIDTHS = [375, 1280];
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const SHOTS = process.env.SCREENSHOT_DIR;
+const CI = process.argv.includes("--ci");
 
 // levels: the tags expected, in order (null: no banner); upcoming: which
 // items are to come; notice: the notice expected first; opened: also checked
@@ -819,7 +825,9 @@ try {
     await plain.stop();
   }
 
-  for (const state of [...STATES, UNREADABLE, PLACEMENT]) {
+  for (const state of CI
+    ? STATES.filter((state) => state.name === "three-l1-l2-l3")
+    : [...STATES, UNREADABLE, PLACEMENT]) {
     const pages = state.pages ?? [PAGE];
     for (const page of [...pages, HUB, `${HUB}/smieci`]) forget(page);
     const server = await startServer(port++, { IMGW_WARNINGS_URL: state.url });
@@ -842,21 +850,24 @@ try {
     }
   }
   // The store unreadable: the 404 page as ever, with no banner.
-  const unreadable = await startServer(port++, {
-    IMGW_WARNINGS_URL: UNREADABLE.url,
-  });
-  try {
-    const response = await fetch(unreadable.origin + NOT_FOUND);
-    const html = await response.text();
-    if (response.status !== 404 || html.includes("govuk-notification-banner"))
-      failures.push(
-        `${UNREADABLE.name} ${NOT_FOUND}: HTTP ${response.status} (want 404), or a banner`,
-      );
-    else
-      console.log(`ok    ${UNREADABLE.name} ${NOT_FOUND}: HTTP 404, no banner`);
-  } finally {
-    await unreadable.stop();
-  }
+  const unreadable = CI
+    ? null
+    : await startServer(port++, { IMGW_WARNINGS_URL: UNREADABLE.url });
+  if (unreadable)
+    try {
+      const response = await fetch(unreadable.origin + NOT_FOUND);
+      const html = await response.text();
+      if (response.status !== 404 || html.includes("govuk-notification-banner"))
+        failures.push(
+          `${UNREADABLE.name} ${NOT_FOUND}: HTTP ${response.status} (want 404), or a banner`,
+        );
+      else
+        console.log(
+          `ok    ${UNREADABLE.name} ${NOT_FOUND}: HTTP 404, no banner`,
+        );
+    } finally {
+      await unreadable.stop();
+    }
   for (const page of [PAGE, HUB, `${HUB}/smieci`, ...PLACEMENT.pages])
     forget(page);
   if (SHOTS) {
@@ -873,5 +884,5 @@ try {
 
 finish(
   failures,
-  `IMGW banner: ${STATES.length + 2} states, every page as expected.`,
+  `IMGW banner: ${CI ? "mock:none and three warnings (--ci)" : `${STATES.length + 2} states`}, every page as expected.`,
 );
