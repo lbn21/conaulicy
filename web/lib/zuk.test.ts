@@ -13,8 +13,8 @@ import {
   reading,
   reading39885Edited,
   realPosts,
+  TRUTH,
 } from "./zuk-fixture.ts";
-import { TRUTH } from "./zuk-fixture-b.ts";
 import { ZUK_PLACES } from "./zuk-places.generated.ts";
 
 const CHECKED = "2026-10-25T07:00:00Z";
