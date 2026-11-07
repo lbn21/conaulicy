@@ -8,8 +8,8 @@
 //   warning; the breadcrumbs only on the address pages, right before
 //   <main> (task 149);
 // - per state, on the address page: each warning once in „Najbliższe dni”
-//   (its day lead, the event, its tag, until when, „Cały powiat.”,
-//   „Szczegóły i źródło” to #pogoda), the only tags on the page; „Pogoda”
+//   (its day lead, the event, its tag, until when, „Cały powiat.”, no
+//   link; task 260), the only tags on the page; „Pogoda”
 //   never lists them again: the notice first if any (its link IMGW's
 //   page), then per warning, highest first, which one in words and IMGW's
 //   own description with its probability, then „Szczegóły i mapa na
@@ -190,7 +190,7 @@ async function hubChecks(origin, state) {
     .filter((line) => line.includes("ostrzeżenie IMGW"));
   const line = new RegExp(
     // The lead: „Dziś”, „Jutro” (the server's day) or the start's date, absolute.
-    `^<strong>(?:(?:Dziś|Jutro)(?: od ${TIME})?|\\p{Lu}\\p{L}+, \\d{1,2} \\p{L}+(?:, od ${TIME})?):</strong> ostrzeżenie IMGW – silny wiatr <strong class="govuk-tag govuk-tag--(?:yellow|orange|red)">Stopień [1-3] z 3</strong>, do (?:${DAY}, )?${TIME}\\.</span><span class="govuk-!-display-block">Cały powiat\\.</span><a class="govuk-link" href="#pogoda">Szczegóły i źródło<span class="govuk-visually-hidden">: pogoda</span></a>$`,
+    `^<strong>(?:(?:Dziś|Jutro)(?: od ${TIME})?|\\p{Lu}\\p{L}+, \\d{1,2} \\p{L}+(?:, od ${TIME})?):</strong> ostrzeżenie IMGW – silny wiatr <strong class="govuk-tag govuk-tag--(?:yellow|orange|red)">Stopień [1-3] z 3</strong>, do (?:${DAY}, )?${TIME}\\.</span><span class="govuk-!-display-block">Cały powiat\\.</span>$`,
     "u",
   );
   const from = hub.indexOf('<section id="pogoda"');

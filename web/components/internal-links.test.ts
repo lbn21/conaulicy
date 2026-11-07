@@ -106,11 +106,7 @@ test("every plain <a> is another site, mailto: or a file (task 259)", () => {
 });
 
 test("the in-page links are FragmentLinks, to ids (task 259)", () => {
-  for (const file of [
-    "app/layout.tsx",
-    "components/error-summary.tsx",
-    "components/upcoming.tsx",
-  ]) {
+  for (const file of ["app/layout.tsx", "components/error-summary.tsx"]) {
     const code = readFileSync(join(WEB, file), "utf8");
     assert.match(code, /<FragmentLink\b[^>]*\shref=/, file);
     assert.doesNotMatch(code, /<a\s/, file);

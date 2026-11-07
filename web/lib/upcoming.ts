@@ -4,7 +4,7 @@
 // clock times); only „Dziś”, „Jutro” and „Za 5 dni” follow the day
 // (components/day-word.tsx, lib/dates.ts dayLead), with no locale formatting, and the
 // unit tests' from a fixed day. Pure and client-safe.
-import { MODULE_IDS, type ModuleId } from "./address-routes.ts";
+import { MODULE_IDS } from "./address-routes.ts";
 import { capitalised } from "./dates.ts";
 
 /** When something happens, with its labels made on the server. */
@@ -48,13 +48,6 @@ export type Item = Base &
     /** "papier, szkło" or "wszystkie pojemniki". */
     | { module: "smieci"; bins: string }
   );
-
-/** The link's hidden end: „Szczegóły i źródło: woda”. */
-export const LINK_NAME: Record<ModuleId, string> = {
-  smieci: "odbiór śmieci",
-  woda: "woda",
-  pogoda: "pogoda",
-};
 
 /**
  * The one order: start, then end, then the registry (MODULE_IDS). It does

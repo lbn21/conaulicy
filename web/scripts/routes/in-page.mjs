@@ -1,6 +1,6 @@
 // In-page links and Back (task 259), in Chromium on the built site. On the
-// first home example's address page: the skip link and each „Szczegóły i
-// źródło” (FragmentLinks, components/fragment-link.tsx) land on their id;
+// first home example's address page: the skip link (a FragmentLink,
+// components/fragment-link.tsx) lands on <main>;
 // then the logo opens the home page, without the hash, and Back shows the
 // address page again, its URL and its content (a plain <a href="#…"> made a
 // history entry the App Router did not know, and Back showed the home page
@@ -45,14 +45,8 @@ export async function check(server, failures) {
     await page.waitForFunction(() => !document.querySelector(".app-skeleton"));
     const name = await page.locator(VISIBLE_H1).innerText();
 
-    // Each in-page link: its target in view, the URL its hash.
-    const hashes = await page
-      .locator("#najblizsze-dni ~ ul a")
-      .evaluateAll((all) => all.map((a) => a.getAttribute("href")));
-    const links = [
-      { selector: ".govuk-skip-link", hash: "#main-content" },
-      ...hashes.map((hash) => ({ selector: `a[href="${hash}"]`, hash })),
-    ];
+    // The skip link: its target in view, the URL its hash.
+    const links = [{ selector: ".govuk-skip-link", hash: "#main-content" }];
     for (const { selector, hash } of links) {
       await page.locator(selector).first().focus();
       await page.keyboard.press("Enter");
@@ -87,5 +81,5 @@ export async function check(server, failures) {
   } finally {
     await browser.close();
   }
-  return `In-page links: ${landed.join(", ")} land, Back after the logo shows the address page, #pogoda opens there.`;
+  return `In-page links: ${landed.join(", ")} lands, Back after the logo shows the address page, #pogoda opens there.`;
 }
