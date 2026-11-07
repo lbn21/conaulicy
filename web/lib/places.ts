@@ -207,6 +207,22 @@ export function pickZone(
 }
 
 /**
+ * A place's waste zone with the house number as given (lib/schedule.ts
+ * wasteZoneFor reads the candidates): the zone, or null, and whether the
+ * street is split by house numbers.
+ */
+export function zoneByNumber(
+  candidates: ZoneCandidate[],
+  place: ZonePlace,
+  nr: string | null,
+): { id: string | null; split: boolean } {
+  return {
+    id: pickZone(candidates, { ...place, nr }),
+    split: isSplitStreet(candidates, place),
+  };
+}
+
+/**
  * Whether we have pickup data for a place: a zone of its own, its locality's
  * or its village's, or (a split street) zones for parts of it. Candidates may
  * be every zone member: pickZone ignores other places' entries.

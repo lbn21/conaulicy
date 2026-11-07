@@ -34,15 +34,14 @@ import { houseNumber } from "@/lib/house";
 import {
   gminaShortName,
   hasZone,
-  isSplitStreet,
   movedPath,
   type PlaceList,
-  pickZone,
   placeList,
   streetLabel,
   streetName,
   UNLISTED_PREFIXES,
   villageLabel,
+  zoneByNumber,
 } from "@/lib/places";
 import { isValidHouseNumber } from "@/lib/prg";
 import {
@@ -430,10 +429,7 @@ async function wasteZoneFor(place: Place, nr: string | null) {
       ? or(eq(zoneMembers.streetId, place.streetId), wholeLocality)
       : wholeLocality,
   );
-  return {
-    id: pickZone(candidates, { ...place, nr }),
-    split: isSplitStreet(candidates, place),
-  };
+  return zoneByNumber(candidates, place, nr);
 }
 
 function bySubtype(a: ZoneEvent, b: ZoneEvent): number {
