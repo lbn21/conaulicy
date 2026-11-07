@@ -1,6 +1,7 @@
 // The only own CSS (docs/govuk-audit.md): what GOV.UK has no equivalent for.
 // GOV.UK Sass functions and mixins only; no raw colours or px.
 // Capped by scripts/check-own-css.mjs.
+@use "sass:math";
 @use "settings" as *;
 @use "govuk-frontend/dist/govuk/components/generic-header/mixin" as generic-header;
 
@@ -227,3 +228,43 @@ $app-header-colour: $app-header;
   background-color: $app-warning-level-3;
   color: govuk-functional-colour(inverse-text);
 }
+
+// „Najbliższe dni”'s timeline (components/upcoming.tsx, task 261, a
+// prototype): GOV.UK has none, so this is MOJ's Timeline pattern in our
+// words (design-patterns.service.justice.gov.uk/components/timeline): one
+// line on the left (GOV.UK's focus width, 3px), a 15px marker per day, its
+// centre on the line and on the heading's first line (19/25 at all sizes:
+// 5px above and below), the cards to the right. A day with something: a
+// solid marker; today's in the brand colour, with a ring that pulses three
+// times after it renders (4.5 s, transform and opacity only, then gone; Jakub,
+// task 261) and none under reduced motion; an empty day: a hollow one. Each
+// card is a section card's border (the skeleton's), today's with the brand
+// colour on the left, as GOV.UK's inset text.
+.app-timeline { margin: 0 0 govuk-spacing(4); padding: 0; list-style: none; }
+
+.app-timeline__day { position: relative; padding: 0 0 govuk-spacing(4) govuk-spacing(6); }
+.app-timeline__day::before, .app-timeline__day::after { content: ""; position: absolute; }
+.app-timeline__day::before { inset: 0 auto 0 math.div(govuk-spacing(3) - $govuk-focus-width, 2); width: $govuk-focus-width; background: govuk-functional-colour(border); }
+
+.app-timeline__day:first-child::before { top: govuk-spacing(3); }
+.app-timeline__day:last-child::before { bottom: auto; height: govuk-spacing(3); }
+
+.app-timeline__day::after, .app-timeline__day--today > :first-child::after { top: govuk-spacing(1); left: 0; width: govuk-spacing(3); height: govuk-spacing(3); box-sizing: border-box; border-radius: 50%; }
+.app-timeline__day::after { border: $govuk-focus-width solid govuk-functional-colour(text); background: govuk-functional-colour(text); }
+
+.app-timeline__day--empty::after { border-color: govuk-functional-colour(border); background: govuk-functional-colour(body-background); }
+.app-timeline__day--today::after { border-color: govuk-functional-colour(brand); background: govuk-functional-colour(brand); }
+.app-timeline__day--today > :first-child::after { content: ""; position: absolute; background: govuk-functional-colour(brand); opacity: 0; animation: app-ring 1.5s ease-out 3; }
+
+@keyframes app-ring { from { transform: scale(1); opacity: 0.5; } to { transform: scale(2.4); opacity: 0; } }
+
+.app-timeline__cards { margin-bottom: 0; }
+
+.app-timeline__card { border: $govuk-border-width-form-element solid govuk-functional-colour(border); border-radius: govuk-spacing(1); }
+
+.app-timeline__day--today .app-timeline__card { border-left: $govuk-border-width solid govuk-functional-colour(brand); }
+
+.app-timeline__icon { margin-right: govuk-spacing(2); vertical-align: middle; }
+
+// After the ring's rule, so it wins: no pulse, the static marker alone.
+@media (prefers-reduced-motion: reduce) { .app-timeline__day--today > :first-child::after { animation: none; } }

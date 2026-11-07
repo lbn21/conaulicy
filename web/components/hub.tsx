@@ -29,8 +29,9 @@ import { ordered } from "@/lib/upcoming";
 // dni” does not say, task 257: each cut and warning is listed there
 // alone), a link saying where its subpage goes („Wszystkie odbiory
 // śmieci”), then its meta line, small: „Źródło: …”, and when we checked.
-// No summary lists or cards (GOV.UK keeps cards for lists of the same type
-// of thing, task 131). A visible section break between sections. No
+// No summary lists or cards in the sections (GOV.UK keeps cards for lists
+// of the same type of thing, task 131); „Najbliższe dni”'s timeline has its
+// own small cards (task 261, a prototype). A visible section break between sections. No
 // calendar or PDF here: they are on the waste subpage. A split street's
 // number errors keep the street page (StreetPage), GOV.UK's validation
 // pattern.

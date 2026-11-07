@@ -9,7 +9,7 @@
 //   <main> (task 149);
 // - per state, on the address page: each warning once in „Najbliższe dni”
 //   (its day lead, the event, its tag, until when, „Cały powiat.”, no
-//   link; task 260), the only tags on the page; „Pogoda”
+//   link; task 260), the only level tags on the page; „Pogoda”
 //   never lists them again: the notice first if any (its link IMGW's
 //   page), then per warning, highest first, which one in words and IMGW's
 //   own description with its probability, then „Szczegóły i mapa na
@@ -164,7 +164,7 @@ function crumbsPlaced(route, html) {
 }
 
 // The address page with the state's warnings: each once, in „Najbliższe
-// dni”, the only tags on the page; „Pogoda” IMGW's words, never the list
+// dni”, the only level tags on the page; „Pogoda” IMGW's words, never the list
 // again; nothing of it on /smieci.
 async function hubChecks(origin, state) {
   const label = `${state.name} ${HUB}`;
@@ -181,16 +181,19 @@ async function hubChecks(origin, state) {
       /<section id="([a-z]+)" aria-labelledby="\1-heading"><h2 id="\1-heading" class="govuk-heading-l">([^<]*)</g,
     ),
   ].map(([, , title]) => title);
+  // „Najbliższe dni”'s cards (task 261): a warning's is its type's tag,
+  // its hours, IMGW's event and level's tag, „Cały powiat.”.
   const lines = [
     ...hub.matchAll(
-      /<li><span class="govuk-!-display-block">([\s\S]*?)<\/li>/g,
+      /<li class="app-timeline__card govuk-!-padding-3">([\s\S]*?)<\/li>/g,
     ),
   ]
     .map(([, line]) => line)
-    .filter((line) => line.includes("ostrzeżenie IMGW"));
+    .filter((line) => line.includes("Ostrzeżenie IMGW"));
   const line = new RegExp(
-    // The lead: „Dziś”, „Jutro” (the server's day) or the start's date, absolute.
-    `^<strong>(?:(?:Dziś|Jutro)(?: od ${TIME})?|\\p{Lu}\\p{L}+, \\d{1,2} \\p{L}+(?:, od ${TIME})?):</strong> ostrzeżenie IMGW – silny wiatr <strong class="govuk-tag govuk-tag--(?:yellow|orange|red)">Stopień [1-3] z 3</strong>, do (?:${DAY}, )?${TIME}\\.</span><span class="govuk-!-display-block">Cały powiat\\.</span>$`,
+    // Its hours: from (the start's day too when it began before its day),
+    // to (the end's day too when after it).
+    `^<p class="govuk-body govuk-!-margin-bottom-2"><svg [^>]*><path [^>]*></path></svg><strong class="govuk-tag govuk-tag--purple">Pogoda</strong></p>(?:<p class="govuk-body govuk-!-font-weight-bold govuk-!-margin-bottom-1">Od (?:${DAY}, )?${TIME}(?: do (?:${DAY}, )?${TIME})?</p>)?<p class="govuk-body govuk-!-margin-bottom-0">Ostrzeżenie IMGW – silny wiatr <strong class="govuk-tag govuk-tag--(?:yellow|orange|red)">Stopień [1-3] z 3</strong></p><p class="govuk-body govuk-!-margin-top-1 govuk-!-margin-bottom-0">Cały powiat\\.</p>$`,
     "u",
   );
   const from = hub.indexOf('<section id="pogoda"');
@@ -202,13 +205,16 @@ async function hubChecks(origin, state) {
     ),
   ].map(([, level]) => Number(level));
   const more = `<p class="govuk-body"><a href="https://meteo.imgw.pl/" class="govuk-link">${MORE}</a></p>`;
-  const tags = hub.match(/<strong class="govuk-tag /g)?.length ?? 0;
+  // IMGW's level tags; the timeline's type tags are besides (task 261).
+  const tags =
+    hub.match(/<strong class="govuk-tag govuk-tag--(?:yellow|orange|red)"/g)
+      ?.length ?? 0;
   // As markup: the text alone is also in React's payload (its scripts).
   const brak = hub.split(`<p class="govuk-body">${NO_WARNINGS}</p>`).length - 1;
   const problems = [
     lines.length !== n && `${lines.length} warning lines, want ${n}`,
     ...lines.filter((l) => !line.test(l)).map((l) => `line ${l}`),
-    tags !== n && `${tags} tags on the page, want ${n}`,
+    tags !== n && `${tags} level tags on the page, want ${n}`,
     section.includes("govuk-tag") && "a tag in Pogoda",
     described.join() !== state.levels.join() &&
       `Pogoda describes ${described}, want ${state.levels}`,
@@ -314,7 +320,11 @@ async function deepChecks(browser, origin) {
 
   // The tags (in „Najbliższe dni”): IMGW's level colours, readable.
   const tags = await page.evaluate(() =>
-    [...document.querySelectorAll("main .govuk-tag")].map((t) => {
+    [
+      ...document.querySelectorAll(
+        "main :is(.govuk-tag--yellow, .govuk-tag--orange, .govuk-tag--red)",
+      ),
+    ].map((t) => {
       const s = getComputedStyle(t);
       return [t.className, s.color, s.backgroundColor];
     }),

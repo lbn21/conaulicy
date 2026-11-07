@@ -95,7 +95,8 @@ const VILLAGE = testPlace({
 const WIND =
   "Prognozuje się wystąpienie dość silnego wiatru o średniej prędkości do 35 km/h, w porywach do 75 km/h, z południa.";
 
-const count = (html: string, text: string) => html.split(text).length - 1;
+const count = (html: string, text: string | RegExp) =>
+  html.split(text).length - 1;
 
 /** Each module's section, as Hub draws it, `data` its loaded data. */
 const body = <D>(module: Module<D>, data: D) =>
@@ -139,8 +140,8 @@ test("address page: each cut and warning once, in „Najbliższe dni”; the sec
   const pogoda = body(MODULES.pogoda, warnings);
   const page = list + woda + pogoda;
   // Every cut once, in the list; the Woda section only its link and source.
-  assert.equal(count(list, "nie będzie wody"), 2);
-  assert.equal(count(page, "nie będzie wody"), 2);
+  assert.equal(count(list, "Nie będzie wody"), 2);
+  assert.equal(count(page.toLowerCase(), "nie będzie wody"), 2);
   assert.equal(count(page, "Cała wieś Lisie Jamy."), 2);
   assert.doesNotMatch(woda, /2[69] października|Gdzie:|Kolejne dni/);
   assert.match(
@@ -149,8 +150,11 @@ test("address page: each cut and warning once, in „Najbliższe dni”; the sec
   );
   // The warning once, in the list (its tag, when); the Pogoda section
   // IMGW's own words, once, and IMGW's page.
-  assert.equal(count(page, "ostrzeżenie IMGW – silny wiatr"), 1);
-  assert.equal(count(page, 'class="govuk-tag '), 1);
+  assert.equal(count(page, "Ostrzeżenie IMGW – silny wiatr"), 1);
+  // Its level's tag, the page's one IMGW tag; the timeline's type tags
+  // (task 261) besides: Woda twice, Pogoda once.
+  assert.equal(count(page, /govuk-tag--(?:yellow|orange|red)/), 1);
+  assert.equal(count(list, 'class="govuk-tag '), 4);
   assert.equal(count(page, "19:00"), 1);
   assert.equal(count(page, WIND), 1);
   assert.equal(count(pogoda, "Prawdopodobieństwo: 75%."), 1);
