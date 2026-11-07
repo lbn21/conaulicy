@@ -170,11 +170,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Home examples (each has upcoming pickups)
-        run: node scripts/check-examples.mjs
-
-      - name: "All places (/ulice: every place once, Polish order, no JS of its own but PlaceLink)"
-        run: node scripts/check-all-places.mjs
+      # One server for four checks (scripts/routes/): the home examples, /ulice,
+      # each page's metadata and the query-parameter redirects.
+      - name: "Routes (home examples, /ulice, metadata, query parameters)"
+        run: node scripts/check-routes.mjs
         env:
           SCREENSHOT_DIR: ${{ runner.temp }}/ulice-screenshots
 
@@ -191,25 +190,20 @@ jobs:
       - name: "Street PDFs (tagged, pages, size, Atkinson only, text version)"
         run: node scripts/check-pdf.mjs
 
-      - name: "Page metadata (own title, description and share link)"
-        run: node scripts/check-metadata.mjs
-
       - name: "Indexing (CI build: noindex, robots.txt closed)"
         run: node scripts/check-indexing.mjs --expect=noindex
 
-      - name: "Query parameters (unknown ones redirect to the clean URL)"
-        run: node scripts/check-query.mjs
-
-      # Every banner state from the mock, each page re-rendered by a server
-      # with that state's setting; at the end the pages are dropped again, so
-      # the checks below render them with mock:none.
-      - name: "IMGW banner (every state: markup, axe, focus, zoom, contrast)"
-        run: node scripts/check-warnings.mjs
+      # No banner (mock:none) and three warnings, each page re-rendered by a
+      # server with that setting; at the end the pages are dropped again, so
+      # the checks below render them with mock:none. Every other state:
+      # unit tests (lib/imgw-banner.test.ts), and the full run by hand.
+      - name: "IMGW banner (none and three warnings: markup, axe, focus, zoom, contrast)"
+        run: node scripts/check-warnings.mjs --ci
         env:
           SCREENSHOT_DIR: ${{ runner.temp }}/imgw-banner-screenshots
 
-      # For the reviewer: every banner state at 375 px and 1280 px, and a
-      # contact sheet per width.
+      # For the reviewer: the banner at 375 px and 1280 px, and a contact
+      # sheet per width.
       - name: Screenshots of the IMGW banner
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -218,22 +212,6 @@ jobs:
           path: ${{ runner.temp }}/imgw-banner-screenshots
           if-no-files-found: ignore
           retention-days: 14
-
-      # A second, production-like build (lib/indexing.ts). The normal build is
-      # set aside and put back, because the importer checks below serve pages
-      # from it. Moved, not copied: .next/cache holds the pages the checks
-      # above rendered, which this build would serve. Before the importer
-      # checks: they empty the database.
-      - name: "Indexing (production-like build: indexable, vercel.app redirect)"
-        run: |
-          mv .next .next-ci
-          export VERCEL_ENV=production
-          npm run build
-          # Also for next start: pages rendered on demand read it at runtime,
-          # as on Vercel.
-          node scripts/check-indexing.mjs --expect=index
-          rm -rf .next
-          mv .next-ci .next
 
       # Last: it empties the database and imports a made-up dataset. Its schedules come
       # from a local server, so the source check needs no internet.

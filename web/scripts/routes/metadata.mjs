@@ -17,13 +17,7 @@
 // description that leads with the waste, and no "prąd" in its HTML or the manifest (no power data).
 //
 // Runs against `next start` on the current build.
-import {
-  closeRenderedPages,
-  finish,
-  notFoundAt,
-  ROUTES,
-  startServer,
-} from "./lib/server.mjs";
+import { notFoundAt, ROUTES } from "../lib/server.mjs";
 
 const SITE = "https://conaulicy.pl";
 const HOME_H1 = "Sprawdź swoją ulicę w Lubaczowie i gminie";
@@ -55,12 +49,10 @@ const decode = (text) =>
 const meta = (html, attr, name) =>
   all(html, new RegExp(`<meta ${attr}="${name}" content="([^"]*)"\\/?>`, "g"));
 
-const server = await startServer(3309);
-const failures = [];
 const titles = new Map();
 const descriptions = new Map();
 
-try {
+export async function check(server, failures) {
   for (const { path, status = 200 } of ROUTES) {
     // An unknown address: notFoundAt's rule (scripts/lib/server.mjs), then
     // its cached 404 checked as any page.
@@ -245,12 +237,5 @@ try {
         `manifest icon ${src}: ${response.status} ${response.headers.get("content-type")}`,
       );
   }
-} finally {
-  await closeRenderedPages();
-  server.stop();
+  return `Metadata: ${ROUTES.length} pages titled "<H1> – conaulicy.pl" (a place's with its locality); ${titles.size} with their own title and description.`;
 }
-
-finish(
-  failures,
-  `Metadata: ${ROUTES.length} pages titled "<H1> – conaulicy.pl" (a place's with its locality); ${titles.size} with their own title and description.`,
-);

@@ -94,7 +94,7 @@ const STREETS = [
 ] as const;
 
 // The CI fixture is the only place a redirect is made without review: it
-// is made-up data (scripts/check-query.mjs checks the 308s).
+// is made-up data (scripts/routes/query.mjs checks the 308s).
 const REDIRECTS = [
   {
     oldId: "0972447-99999",
