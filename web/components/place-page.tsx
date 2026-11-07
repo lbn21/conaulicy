@@ -66,6 +66,17 @@ export async function numberQuery(searchParams: AddressSearch) {
 }
 
 /**
+ * An address route's ?nr= for its generateMetadata, or null for an unknown
+ * place: decided from params first (knownPlace, cached), before
+ * searchParams is read, as the page does (HubMain, ModuleMain), so a 404's
+ * metadata never waits on the query.
+ */
+export async function metadataQuery(id: string, searchParams: AddressSearch) {
+  if (!(await knownPlace(id))) return null;
+  return houseQuery((await searchParams).nr);
+}
+
+/**
  * A place without dates to show: why, then the gmina's own schedule (linked
  * when we know its page).
  */

@@ -1,7 +1,12 @@
 import { ModuleMain, moduleMetadata } from "@/components/module-page";
-import { type AddressSearch, PlaceNotFound } from "@/components/place-page";
+import { NOT_FOUND_METADATA } from "@/components/page-not-found";
+import {
+  type AddressSearch,
+  metadataQuery,
+  PlaceNotFound,
+} from "@/components/place-page";
 import { PlaceSuspense } from "@/components/place-suspense";
-import { houseQuery } from "@/lib/house";
+import { findSubpage } from "@/lib/modules";
 
 // A module subpage's routes, one body for both: a live module's
 // (app/adres/[id]/[module]/) and the waste subpage's own
@@ -29,12 +34,11 @@ export async function subpageMetadata(
   searchParams: AddressSearch,
   variant: Variant = {},
 ) {
-  const [{ id, slug }, query] = await Promise.all([
-    subpageOf(params, variant),
-    searchParams,
-  ]);
-  const { nr, missing } = houseQuery(query.nr);
-  return moduleMetadata(id, slug, nr, missing);
+  const { id, slug } = await subpageOf(params, variant);
+  // An unknown module or place: its 404 before ?nr= is read (metadataQuery).
+  const query = findSubpage(slug) && (await metadataQuery(id, searchParams));
+  if (!query) return NOT_FOUND_METADATA;
+  return moduleMetadata(id, slug, query.nr, query.missing);
 }
 
 /** A subpage route's page: its params behind PlaceSuspense, as above. */

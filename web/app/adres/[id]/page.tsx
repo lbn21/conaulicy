@@ -1,7 +1,11 @@
 import { HubMain } from "@/components/hub";
-import { PlaceNotFound, placeMetadata } from "@/components/place-page";
+import { NOT_FOUND_METADATA } from "@/components/page-not-found";
+import {
+  metadataQuery,
+  PlaceNotFound,
+  placeMetadata,
+} from "@/components/place-page";
 import { PlaceSuspense } from "@/components/place-suspense";
-import { houseQuery } from "@/lib/house";
 import { allPlaces } from "@/lib/prerender";
 
 // The address page, the hub of modules (components/hub.tsx): its static
@@ -21,9 +25,10 @@ export async function generateMetadata({
   params,
   searchParams,
 }: PageProps<"/adres/[id]">) {
-  const [{ id }, query] = await Promise.all([params, searchParams]);
-  const { nr, missing } = houseQuery(query.nr);
-  return placeMetadata(id, nr, missing);
+  const { id } = await params;
+  const query = await metadataQuery(id, searchParams);
+  if (!query) return NOT_FOUND_METADATA;
+  return placeMetadata(id, query.nr, query.missing);
 }
 
 export default function PlacePage({
