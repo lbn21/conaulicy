@@ -10,8 +10,9 @@ const nextConfig: NextConfig = {
   // PDFKit reads its own data files from __dirname, so it must stay a real
   // node_modules package instead of being bundled. Costs about 0.45 KB in the
   // shared Turbopack client runtime; bundling works today only because the
-  // route never loads a standard font.
-  serverExternalPackages: ["pdfkit"],
+  // route never loads a standard font. fontkit, which the PDF route also
+  // measures ink with, stays the one copy PDFKit itself loads.
+  serverExternalPackages: ["pdfkit", "fontkit"],
   // Cache Components (nextjs.org/docs/app/getting-started/caching): every
   // page is a static shell cached for the longest time, cacheLife "max"
   // (nextjs.org/docs/app/api-reference/functions/cacheLife), so until the
