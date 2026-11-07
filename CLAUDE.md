@@ -1,7 +1,9 @@
 # conaulicy.pl
 
-A free site for Lubaczów residents. Type your street, see the next waste pickups, add them to your calendar (ICS).
-First release is waste pickups only. Guiding principle: modern, clean, minimal, simple.
+A free site for Lubaczów residents. Type your street, see what is coming at your address (waste pickups, water cuts, IMGW warnings), add the pickups to your calendar (ICS).
+Guiding principle: modern, clean, minimal, simple.
+
+**Which document wins:** [docs/MVP-PLAN.md](docs/MVP-PLAN.md) is the product plan (goals, scope, features and their status, out of scope, backlog) and wins on product questions. This file holds the technical rules for coding agents and wins on technical questions. Keep each in its own file; don't copy one into the other.
 
 ## Stack
 
@@ -50,7 +52,7 @@ First release is waste pickups only. Guiding principle: modern, clean, minimal, 
 ## Architecture and data
 
 - **Caching (Jakub's decision, 31 Oct 2026):** every page is a static shell cached for the longest time (`cacheLife("max")`: until the next deploy, or for pages built from the database until an import's purge of the `dataset` tag, `POST /api/revalidate`, the only purge). Waste dates are absolute, with their weekday („wtorek, 3 listopada”); „Dziś”, „Jutro” are the device's (`use(browser())`, `web/components/day-word.tsx`), never the server's. The IMGW banner is its own `<Suspense>` hole with its skeleton (`web/components/live-block.tsx`). The address pages hold nothing date-dependent in their static shell (task 239): the whole page is read per request behind one skeleton, every block's data at once (`Promise.all`, after `io()`), the live files through the Blob's CDN (≤ 60 s behind a cron write), each „Sprawdziliśmy” from the same read. No cron purges anything. The address routes are `ensureStatic = 'prefetch'`, every known place prerendered. One function invocation per view of a page with a hole (accepted).
-- No over-engineering: static pages, CDN cache and the fewest possible API routes. Storage: Neon Postgres (Vercel Marketplace, free plan, fra1), Drizzle ORM; schema in `web/lib/db/schema.ts`, migrations in `web/drizzle/`. No state library or CMS, and nothing built "for later" (put it in the backlog).
+- No over-engineering: static pages, CDN cache and the fewest possible API routes. Storage: Neon Postgres (Vercel Marketplace, free plan, fra1), Drizzle ORM; schema in `web/lib/db/schema.ts`, migrations in `web/drizzle/`. No state library or CMS, and nothing built "for later" (put it in the backlog, `docs/MVP-PLAN.md` §8).
 - Data never goes in git: the processed dataset is not committed, and raw sources live in a private S3 bucket (`docs/data/sources.md`; `npm run sources:pull` fills the gitignored `.cache/sources/`). CI fails if a data file is tracked (`check-tracked-data`).
 - CI runs on a made-up fixture (`npm run db:ci-fixture`, `web/scripts/ci-fixture.ts`) in a throwaway local Postgres; it refuses any other database, and production never holds it.
 - Local development uses only `npm run db:local` (`web/docker-compose.yml`: Postgres 18 on 127.0.0.1 with the same fixture; `db:local:reset`, `db:local:stop`). No real or production data is ever copied locally: no dumps, snapshots or Neon branches (Jakub's decision, 24 Oct 2026).
