@@ -40,7 +40,7 @@
     "check:teryt": "node scripts/check-teryt.ts",
     "import:run": "node --env-file-if-exists=.env.local scripts/import/core/run.ts",
     "import:revert": "node --env-file-if-exists=.env.local scripts/import/core/revert.ts",
-    "test": "node --import ./scripts/lib/no-network.mjs --import ./scripts/lib/server-only.mjs --import ./scripts/lib/tsx.mjs --test \"lib/**/*.test.ts\" \"scripts/**/*.test.ts\" \"components/**/*.test.ts\""
+    "test": "node --import ./scripts/lib/no-network.mjs --import ./scripts/lib/server-only.mjs --import tsx --test \"lib/**/*.test.ts\" \"scripts/**/*.test.ts\" \"components/**/*.test.ts\""
   },
   "dependencies": {
     "@leeoniya/ufuzzy": "1.0.19",
@@ -49,17 +49,20 @@
     "@vercel/blob": "2.8.2",
     "accessible-autocomplete": "3.0.2",
     "drizzle-orm": "0.45.3",
+    "fontkit": "2.0.4",
     "govuk-frontend": "6.5.1",
     "next": "16.4.2",
     "pdfkit": "0.20.2",
     "pg": "8.23.1",
     "qrcode": "1.5.4",
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "server-only": "0.0.1"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
     "@biomejs/biome": "2.5.15",
+    "@types/fontkit": "2.0.9",
     "@types/node": "24.19.2",
     "@types/pdfkit": "0.17.6",
     "@types/pg": "8.23.1",
@@ -72,6 +75,7 @@
     "lighthouse": "13.5.0",
     "playwright": "1.64.1",
     "sass": "1.105.1",
+    "tsx": "4.23.15",
     "typescript": "7.0.2",
     "vnu-jar": "26.10.12",
     "yaml": "2.9.1"

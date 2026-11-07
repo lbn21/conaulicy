@@ -32,7 +32,7 @@ import { WaterDetails } from "./water-page.tsx";
 import { eventProperties } from "./web-analytics.tsx";
 
 // The address subpages' one layout (docs/layout.md), rendered as the pages
-// render them (scripts/lib/tsx.mjs): /woda and /smieci in the same order,
+// render them (the tsx loader, npm test): /woda and /smieci in the same order,
 // with the same calendar block. Sunday 25 Oct 2026; 39885 cuts ul. Żuki on
 // Tuesday 27 Oct, 8:00-16:00.
 const CHECKED = "2026-10-25T12:20:00.000Z";
