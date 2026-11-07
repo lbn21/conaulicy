@@ -13,11 +13,14 @@ import { PART_STREETS } from "./part-streets.ts";
 import type { PlaceView } from "./schedule.ts";
 import {
   bothViews,
+  CHECKED,
   KROWICA_RANGE,
   lisiePartly,
   mockFile,
   mzgkimPost,
+  NOW,
   POST_39885,
+  POST_39885_URL as POST_URL,
   SOBIESKIEGO_RANGE,
   sobieskiego,
   storedPost,
@@ -72,13 +75,6 @@ const lines = (data: Water) => waterStatus(data).flat();
 
 const waterLine = (at: Parameters<typeof checkedLine>[0]) =>
   checkedLine(at, "woda");
-
-// Sunday 25 Oct 2026, 13:30 in Warsaw (CET since 3:00 today); 39885's cuts
-// are 26-29 Oct, all 8:00-16:00.
-const CHECKED = "2026-10-25T12:20:00.000Z";
-const NOW = new Date("2026-10-25T12:30:00Z");
-const POST_URL =
-  "https://www.gminalubaczow.pl/2026/10/23/przerwy-w-dostawie-wody-26-29-10-2026/";
 
 const place = testPlace;
 /** A village or a part of one, by its SIMC id. */

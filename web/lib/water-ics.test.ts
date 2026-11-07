@@ -6,10 +6,13 @@ import { CUT_100 } from "./mzgkim-fixture.ts";
 import type { PlaceView } from "./schedule.ts";
 import {
   bothViews,
+  CHECKED,
   KROWICA_RANGE,
   lisiePartly,
   mzgkimPost,
+  NOW,
   POST_39885,
+  POST_39885_URL as POST_URL,
   SOBIESKIEGO_RANGE,
   sobieskiego,
   storedPost,
@@ -24,12 +27,6 @@ import {
 import { water } from "./water-module.ts";
 import type { StoredPost } from "./zuk-data.ts";
 
-// Sunday 25 Oct 2026, 13:30 in Warsaw (CET since 3:00 today); 39885 cuts
-// ul. Żuki in Lubaczów on Tuesday 27 Oct, 8:00-16:00.
-const CHECKED = "2026-10-25T12:20:00.000Z";
-const NOW = new Date("2026-10-25T12:30:00Z");
-const POST_URL =
-  "https://www.gminalubaczow.pl/2026/10/23/przerwy-w-dostawie-wody-26-29-10-2026/";
 const ZUKI_UID = "woda-39885-0972447-0972447-26555-2026-10-27@conaulicy.pl";
 // The /woda page each event and its alarm link to, from SITE_URL.
 const ZUKI_PAGE = `${SITE_URL}/adres/0972447-26555/woda`;

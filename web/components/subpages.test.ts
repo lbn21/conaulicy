@@ -8,7 +8,9 @@ import { CUT_100 } from "../lib/mzgkim-fixture.ts";
 import type { PlaceView } from "../lib/schedule.ts";
 import {
   bothViews,
+  CHECKED,
   mzgkimPost,
+  NOW,
   POST_39885,
   SOBIESKIEGO_RANGE,
   sobieskiego,
@@ -33,10 +35,7 @@ import { eventProperties } from "./web-analytics.tsx";
 
 // The address subpages' one layout (docs/layout.md), rendered as the pages
 // render them (the tsx loader, npm test): /woda and /smieci in the same order,
-// with the same calendar block. Sunday 25 Oct 2026; 39885 cuts ul. Żuki on
-// Tuesday 27 Oct, 8:00-16:00.
-const CHECKED = "2026-10-25T12:20:00.000Z";
-const NOW = new Date("2026-10-25T12:30:00Z");
+// with the same calendar block, at the water fixture's CHECKED and NOW.
 const ZUKI = testPlace();
 
 // The /woda page as it reaches the browser, read per request
