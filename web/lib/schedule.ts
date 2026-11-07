@@ -509,10 +509,11 @@ const placeCached = unstable_cache(
       ...wasteSchedule(upcoming),
     };
   },
-  // v7: only events with a source (t256); v6: the zone's fractions (task 207); v5: villages with streets are
-  // places (task 127), older entries say null; v4: sources' seenAt (task
-  // 121); v3: task 118 added importedAt, task 120 dropped it again; v2
-  // entries lack localityId and streetId (task 117).
+  // v7: only events with a source (t256); v6: the zone's fractions (task
+  // 207); v5: villages with streets are places (task 127), older entries say
+  // null; v4: sources' seenAt (task 121); v3: task 118 added importedAt,
+  // task 120 dropped it again; v2 entries lack localityId and streetId
+  // (task 117).
   ["place-v6"],
   DAY_CACHE,
 );
