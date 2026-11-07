@@ -18,16 +18,10 @@
 // 404, with or without a number.
 //
 // Runs against `next start` on the current build and the CI fixture.
-import { withHouseNumber } from "../lib/house.ts";
-import { matcher } from "../lib/search.ts";
-import { placeTarget } from "../lib/search-submit.ts";
-import {
-  fetchJson,
-  finish,
-  notFoundAt,
-  searchIndexOf,
-  startServer,
-} from "./lib/server.mjs";
+import { withHouseNumber } from "../../lib/house.ts";
+import { matcher } from "../../lib/search.ts";
+import { placeTarget } from "../../lib/search-submit.ts";
+import { fetchJson, notFoundAt, searchIndexOf } from "../lib/server.mjs";
 
 const STREET = "/adres/0972447-00470";
 const SPLIT = "/adres/0972447-90004";
@@ -98,10 +92,7 @@ const LANDS = [
   ["asn", "/adres/0972447-00470"],
 ];
 
-const server = await startServer(3308);
-const failures = [];
-
-try {
+export async function check(server, failures) {
   const home = await (await fetch(`${server.origin}/`)).text();
   const chunk = /\/_next\/static\/[^"]+\.js/.exec(home)?.[0];
   if (chunk) CASES.push(["GET", `${chunk}?x=1`, 200]);
@@ -201,11 +192,5 @@ try {
   if (moved["0972447-99999"] !== "0972447-00470") {
     failures.push(`/api/place-redirects: ${JSON.stringify(moved)}`);
   }
-} finally {
-  server.stop();
+  return `Query parameters: ${CASES.length} cases; unknown ones redirect to the clean URL, allowed ones and assets served.`;
 }
-
-finish(
-  failures,
-  `Query parameters: ${CASES.length} cases; unknown ones redirect to the clean URL, allowed ones and assets served.`,
-);

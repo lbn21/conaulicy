@@ -7,22 +7,17 @@
 // the CI fixture, locally .env.local's data (build with `SITE_BASIC_AUTH= npm run
 // build`). With CHECK_URL it checks a deployed site instead, e.g.
 // CHECK_URL=https://conaulicy.pl (plus SITE_BASIC_AUTH while the gate is on).
-import { HOME_EXAMPLES } from "../lib/examples.ts";
-import { finish, startServer } from "./lib/server.mjs";
+import { HOME_EXAMPLES } from "../../lib/examples.ts";
 
-const server = process.env.CHECK_URL
-  ? { origin: process.env.CHECK_URL.replace(/\/$/, ""), stop: () => {} }
-  : await startServer(3305);
 const headers =
   process.env.CHECK_URL && process.env.SITE_BASIC_AUTH
     ? {
         Authorization: `Basic ${Buffer.from(process.env.SITE_BASIC_AUTH).toString("base64")}`,
       }
     : {};
-const failures = [];
 const names = new Map();
 
-try {
+export async function check(server, failures) {
   for (const id of HOME_EXAMPLES) {
     const response = await fetch(`${server.origin}/adres/${id}`, { headers });
     const html = await response.text();
@@ -63,8 +58,5 @@ try {
     failures.push(`home examples: ${shown}\n  expected ${expected}`);
   }
   console.log(`Home examples (${server.origin}): ${shown}`);
-} finally {
-  server.stop();
+  return "Home examples: every one has upcoming pickups.";
 }
-
-finish(failures, "Home examples: every one has upcoming pickups.");

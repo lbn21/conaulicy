@@ -16,7 +16,7 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
-import { finish, searchIndexOf, startServer } from "./lib/server.mjs";
+import { searchIndexOf } from "../lib/server.mjs";
 
 const collator = new Intl.Collator("pl");
 // PlaceLink's chunk, gzip: a wrapper around next/link (shared) and a state.
@@ -28,18 +28,15 @@ const ownName = (label) => label.replace(/^\p{L}+\.\s+/u, "");
 const inOrder = (values) =>
   values.every((v, i) => i === 0 || collator.compare(values[i - 1], v) <= 0);
 
-const server = await startServer(3310);
-const failures = [];
-
-try {
-  const home = await (await fetch(`${server.origin}/`)).text();
-  const { places } = await searchIndexOf(server.origin, home);
+export async function check({ origin }, failures) {
+  const home = await (await fetch(`${origin}/`)).text();
+  const { places } = await searchIndexOf(origin, home);
   if (places.length === 0) failures.push("/: no search index");
   if (!/<a class="govuk-link" href="\/ulice">/.test(home)) {
     failures.push("/: no link to /ulice");
   }
 
-  const response = await fetch(`${server.origin}/ulice`);
+  const response = await fetch(`${origin}/ulice`);
   const html = await response.text();
   if (response.status !== 200) failures.push(`/ulice: ${response.status}`);
   const main = html.slice(html.indexOf("<main"), html.indexOf("</main>"));
@@ -160,7 +157,7 @@ try {
         const page = await browser.newPage({
           viewport: { width, height: 900 },
         });
-        await page.goto(`${server.origin}/ulice`, { waitUntil: "load" });
+        await page.goto(`${origin}/ulice`, { waitUntil: "load" });
         const file = path.join(dir, `ulice-${width}.png`);
         await page.screenshot({ path: file, fullPage: true });
         console.log(`Screenshot: ${file}`);
@@ -169,8 +166,5 @@ try {
       await browser.close();
     }
   }
-} finally {
-  server.stop();
+  return "/ulice: every place once, Polish order, no JS of its own.";
 }
-
-finish(failures, "/ulice: every place once, Polish order, no JS of its own.");
