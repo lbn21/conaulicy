@@ -90,7 +90,7 @@ export function derived1809(): unknown[] {
  * good check at `checkedAt`, the feed file written then too; by default the
  * derived 1809 warning (level 1, 25 Oct 13:00-19:00).
  */
-export const imgwCopy = (
+export const copyCheckedAt = (
   checkedAt: string,
   items: Feed["items"] = parseFeed(derived1809(), () => {}),
 ) => ({

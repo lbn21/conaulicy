@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { checkedLine } from "./hub.ts";
 import { banner, UNREADABLE } from "./imgw-banner.ts";
-import { imgwCopy as copy, NO_WARNINGS_2026_10_18 } from "./imgw-fixture.ts";
+import {
+  copyCheckedAt as copy,
+  NO_WARNINGS_2026_10_18,
+} from "./imgw-fixture.ts";
 import { parseFeed } from "./imgw-warnings.ts";
 import {
   weather,

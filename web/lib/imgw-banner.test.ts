@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { banner, imgwCopyOf, POWIAT, UNREADABLE } from "./imgw-banner.ts";
 import {
-  imgwCopy as copy,
+  copyCheckedAt as copy,
   derived1809,
   REAL_2026_10_24,
 } from "./imgw-fixture.ts";
