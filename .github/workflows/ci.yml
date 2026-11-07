@@ -39,7 +39,7 @@ jobs:
           --health-retries 20
     env:
       DATABASE_URL: postgres://ci:ci@localhost:5432/conaulicy
-      # The built site never asks IMGW: the banner reads the fixtures
+      # The built site never asks IMGW: the address page reads the fixtures
       # (web/lib/imgw-mock.ts, docs/data/imgw.md).
       IMGW_WARNINGS_URL: mock:none
     steps:
@@ -193,23 +193,23 @@ jobs:
       - name: "Indexing (CI build: noindex, robots.txt closed)"
         run: node scripts/check-indexing.mjs --expect=noindex
 
-      # No banner (mock:none) and three warnings, each page re-rendered by a
-      # server with that setting; at the end the pages are dropped again, so
-      # the checks below render them with mock:none. Every other state:
-      # unit tests (lib/imgw-banner.test.ts), and the full run by hand.
-      - name: "IMGW banner (none and three warnings: markup, axe, focus, zoom, contrast)"
+      # No warning (mock:none) and three warnings, the address page
+      # re-rendered by a server with that setting; at the end its pages are
+      # dropped again, so the checks below render them with mock:none.
+      # Every other state: unit tests (lib/imgw-shown.test.ts,
+      # lib/weather-module.test.ts), and the full run by hand.
+      - name: "IMGW warnings (address page only, each once: markup, axe, focus, zoom, contrast)"
         run: node scripts/check-warnings.mjs --ci
         env:
-          SCREENSHOT_DIR: ${{ runner.temp }}/imgw-banner-screenshots
+          SCREENSHOT_DIR: ${{ runner.temp }}/imgw-warnings-screenshots
 
-      # For the reviewer: the banner at 375 px and 1280 px, and a contact
-      # sheet per width.
-      - name: Screenshots of the IMGW banner
+      # For the reviewer: the address page at 375 px and 1280 px.
+      - name: Screenshots of the IMGW warnings
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: imgw-banner-screenshots
-          path: ${{ runner.temp }}/imgw-banner-screenshots
+          name: imgw-warnings-screenshots
+          path: ${{ runner.temp }}/imgw-warnings-screenshots
           if-no-files-found: ignore
           retention-days: 14
 
