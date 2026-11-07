@@ -275,25 +275,6 @@ test("a streetless village with a house number: the link keeps ?nr=, folded", ()
   assert.ok(lines(ics).some((line) => line.includes(page)));
 });
 
-test("39885's Załuże, Podłęże 44–92: an event for nr 50, none for nr 10", () => {
-  const zaluze = (givenNr: string) =>
-    testPlace({
-      id: "0606464",
-      kind: "wies",
-      name: "Załuże",
-      label: "Załuże",
-      localityId: "0606464",
-      streetId: null,
-      givenNr,
-    });
-  const ics = (nr: string) => waterCalendar(at([post()], zaluze(nr)), NOW);
-  assert.equal(events(ics("50")), 1);
-  assert.deepEqual(value(ics("50"), "DTSTART;TZID=Europe/Warsaw"), [
-    "20261028T080000",
-  ]);
-  assert.equal(events(ics("10")), 0);
-});
-
 test("house numbers in a village with streets: the village's UID, the range as written", () => {
   const [base] = post().items;
   const krowica: Disruption = {
@@ -352,6 +333,24 @@ test("a house number outside a cut's range: no event; inside: the UID with the n
   assert.deepEqual(value(inside, "UID"), [
     `woda-${POST_39885}-0606116-0606116-20431-nr-30-${first.date}@conaulicy.pl`,
   ]);
+  // A streetless village's range: 39885's Załuże, Podłęże 44–92.
+  const zaluze = (givenNr: string) =>
+    waterCalendar(
+      at([post()], {
+        ...ZUKI,
+        id: "0606464",
+        kind: "wies",
+        name: "Załuże",
+        localityId: "0606464",
+        streetId: null,
+        givenNr,
+      }),
+      NOW,
+    );
+  assert.deepEqual(value(zaluze("50"), "DTSTART;TZID=Europe/Warsaw"), [
+    "20261028T080000",
+  ]);
+  assert.equal(events(zaluze("10")), 0);
 });
 
 test("an MZGKiM cut: its own UID, its post as the source and the note", () => {
