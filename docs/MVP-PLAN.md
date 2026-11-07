@@ -19,7 +19,7 @@ Status: **built** = on `main`, which deploys to production with every merge.
 | Feature | Status | Notes |
 |---|---|---|
 | Address search: town streets, villages and village parts | built | In the browser over a small cached index; optional house number („Asnyka 12”), checked against the address register (PRG) as a hint only |
-| Address page (`/adres/<id>`) | built | „Najbliższe dni” (everything coming, in one order), then a section per module: Śmieci, Woda, Pogoda. „Zmień adres” goes back to the home page's search |
+| Address page (`/adres/<id>`) | built | „Najbliższe dni” (a vertical timeline of the next seven days, task 261: a prototype in review), then a section per module: Śmieci, Woda, Pogoda. „Zmień adres” goes back to the home page's search |
 | Waste pickups (`/adres/<id>/smieci`) | built | Upcoming pickups and the full year for the address's zone; on a split street, the zone is chosen by house number |
 | Waste calendar (ICS) | built | One subscription per zone (webcal, Google, Outlook, `.ics` file), updated in place when dates change |
 | Printable schedule (PDF) | built | A4, with a QR code and a printed link back to the waste page |
