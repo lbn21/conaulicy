@@ -35,14 +35,11 @@ test("Warsaw midnight, DST starting (28 Mar 2027, CET to CEST)", () => {
   assert.equal(word("2027-03-28T22:00:00Z", "2027-03-29", "label"), "Dziś");
 });
 
-test("lead: „Za n dni” up to a week, then the date; past days the date", () => {
-  const lead = (at: string) => word(at, "2026-10-25", "lead");
+test("lead: dayLead's words (lib/upcoming.test.ts) for the server's day", () => {
   assert.equal(
-    lead("2026-10-20T12:00:00Z"),
+    word("2026-10-20T12:00:00Z", "2026-10-25", "lead"),
     "Za 5 dni: niedziela, 25 października",
   );
-  assert.equal(lead("2026-10-17T12:00:00Z"), "Niedziela, 25 października");
-  assert.equal(lead("2026-10-26T12:00:00Z"), "Niedziela, 25 października");
 });
 
 test("no server day (outside WarsawToday): the date alone, no word", () => {
