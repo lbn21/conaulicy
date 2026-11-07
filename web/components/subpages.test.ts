@@ -24,7 +24,7 @@ import {
   waterTrace,
   waterUpcoming,
 } from "../lib/water-module.ts";
-import { STALE_MS, zukView } from "../lib/zuk-data.ts";
+import { STALE_MS, type StoredPost, zukView } from "../lib/zuk-data.ts";
 import { AddressPage, SubpageHeading, WasteDetails } from "./place-page.tsx";
 import { CALENDAR_CHECK, CALENDAR_STEPS } from "./subpage-parts.tsx";
 import { WarsawToday } from "./warsaw-today.tsx";
@@ -42,17 +42,22 @@ const ZUKI = testPlace();
 // The /woda page as it reaches the browser, read per request
 // (components/module-page.tsx): the heading, then the body, for the
 // server's Warsaw day (WarsawToday).
-const waterPage = (posts = [storedPost(POST_39885, CHECKED)], place = ZUKI) => {
-  const data = water(bothViews(posts, CHECKED, NOW), place);
+const waterPage = (
+  posts = [storedPost(POST_39885, CHECKED)],
+  place = ZUKI,
+  // MZGKiM's posts, and the read's times and Warsaw day, where not these.
+  { town = [] as StoredPost[], checked = CHECKED, now = NOW, day = "" } = {},
+) => {
+  const data = water(bothViews(posts, checked, now, town), place);
   return renderToStaticMarkup(
     createElement(
       WarsawToday,
-      { day: todayInWarsaw() },
+      { day: day || todayInWarsaw() },
       createElement(SubpageHeading, {
         place: data.place,
         heading: "Przerwy w dostawie wody",
       }),
-      createElement(WaterDetails, { data, checkedAt: new Date(CHECKED) }),
+      createElement(WaterDetails, { data, checkedAt: new Date(checked) }),
     ),
   );
 };
@@ -491,20 +496,8 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
     id: "0972447-14183",
     streetId: "0972447-14183",
   });
-  const page = (town: ReturnType<typeof mzgkimPost>[], place = niemirowska) => {
-    const data = water(bothViews([], checked, now, town), place);
-    return renderToStaticMarkup(
-      createElement(
-        WarsawToday,
-        { day: todayInWarsaw(now) },
-        createElement(SubpageHeading, {
-          place: data.place,
-          heading: "Przerwy w dostawie wody",
-        }),
-        createElement(WaterDetails, { data, checkedAt: new Date(checked) }),
-      ),
-    );
-  };
+  const page = (town: StoredPost[], place = niemirowska) =>
+    waterPage([], place, { town, checked, now, day: todayInWarsaw(now) });
   const html = page([mzgkimPost(CUT_100, checked)]);
   assert.ok(ascending(order(html, [...SKELETON, ...AFTER])));
   assert.match(
