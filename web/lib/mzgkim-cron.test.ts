@@ -371,31 +371,34 @@ test("the route: a source down or throwing never stops the other", async () => {
       ["mzgkim"],
     );
   }
-  // An MZGKiM failure of any kind: caught and reported.
-  {
+  // An MZGKiM failure of any kind, its Blob unreadable or unwritable:
+  // caught and reported, the gmina's file written.
+  for (const fails of ["readFile", "writeFile"] as const) {
     const g = { gminaDown: false, gminaFile: null as string | null };
     const w = world();
     const broken = {
       ...deps(w),
-      readFile: async () => {
+      [fails]: async () => {
         throw new Error("blob: 500");
       },
     };
     const response = await route(gmina(g), [broken]);
-    assert.equal(response.status, 200);
+    assert.equal(response.status, 200, fails);
     assert.deepEqual((await response.json()).sources, {
       mzgkim: { error: "failed" },
     });
+    assert.ok(g.gminaFile, "the gmina's file written");
+    assert.equal(w.file, null);
     assert.ok(
       w.logs.some(
         (l) =>
           l.zuk === "error" && l.source === "mzgkim" && l.error === "blob: 500",
       ),
+      fails,
     );
   }
-  // Either source's Blob throwing: the other still writes its file.
+  // The gmina's Blob broken: 500, MZGKiM's file written.
   {
-    // The gmina's Blob broken: 500, MZGKiM's file written.
     const g1 = { gminaDown: false, gminaFile: null as string | null };
     const w1 = world();
     const brokenGmina = {
@@ -410,22 +413,5 @@ test("the route: a source down or throwing never stops the other", async () => {
     assert.equal(b1.error, "failed");
     assert.equal(b1.sources.mzgkim.aiCalls, 2);
     assert.equal(saved(w1).active.length, 1);
-    // MZGKiM's Blob broken: 200, the gmina's file written.
-    const g2 = { gminaDown: false, gminaFile: null as string | null };
-    const w2 = world();
-    const r2 = await route(gmina(g2), [
-      {
-        ...deps(w2),
-        writeFile: async () => {
-          throw new Error("blob: 500");
-        },
-      },
-    ]);
-    assert.equal(r2.status, 200);
-    assert.deepEqual((await r2.json()).sources, {
-      mzgkim: { error: "failed" },
-    });
-    assert.ok(g2.gminaFile, "the gmina's file written");
-    assert.equal(w2.file, null);
   }
 });
