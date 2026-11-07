@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { todayInWarsaw } from "../lib/dates.ts";
 import { copyCheckedAt } from "../lib/imgw-fixture.ts";
 import { MODULES, type Module } from "../lib/modules.ts";
-import { ordered } from "../lib/upcoming.ts";
+import { LINK_NAME, ordered } from "../lib/upcoming.ts";
 import {
   CHECKED,
   NOW,
@@ -174,4 +174,19 @@ test("address page: no warning, Pogoda says so once, no IMGW link but the source
   );
   assert.doesNotMatch(pogoda, /Szczegóły i mapa/);
   assert.match(pogoda, /Źródło: <a [^>]*>IMGW-PIB<\/a>/);
+});
+
+// „Szczegóły i źródło” (components/upcoming.tsx) goes to #<module>: each
+// such anchor is a hub section's id, the :target that app/site.scss
+// highlights (task 258).
+test("hub: every „Szczegóły i źródło” anchor is a section's id (task 258)", () => {
+  for (const id of Object.keys(LINK_NAME) as (keyof typeof MODULES)[]) {
+    const html = renderToStaticMarkup(
+      createElement(ModuleSection, { module: MODULES[id] as Module<unknown> }),
+    );
+    assert.match(
+      html,
+      new RegExp(`^<section id="${id}" aria-labelledby="${id}-heading">`),
+    );
+  }
 });
