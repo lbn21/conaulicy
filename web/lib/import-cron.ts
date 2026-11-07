@@ -4,6 +4,7 @@
 // production import. One try: a failed dispatch waits for tomorrow's run.
 // Dependencies come in, so the tests mock them.
 
+import "server-only";
 import { NO_STORE } from "./headers.ts";
 import { cronDenied } from "./secret.ts";
 
