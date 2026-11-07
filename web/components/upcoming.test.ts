@@ -48,7 +48,7 @@ const list = (now: number) =>
     ),
   );
 
-test("server render: the server day's words, GOV.UK's list, section links", () => {
+test("server render: the server day's words, GOV.UK's list, no links", () => {
   const html = list(NOW);
   assert.match(
     html,
@@ -65,14 +65,8 @@ test("server render: the server day's words, GOV.UK's list, section links", () =
     html,
   );
   assert.doesNotMatch(html, /app-skeleton|Teraz|jutra/);
-  assert.match(
-    html,
-    /<a class="govuk-link" href="#woda">Szczegóły i źródło<span class="govuk-visually-hidden">: woda<\/span><\/a>/,
-  );
-  assert.match(
-    html,
-    /href="#smieci">Szczegóły i źródło<span class="govuk-visually-hidden">: odbiór śmieci<\/span>/,
-  );
+  // No links in the list (task 260): each source is in its section.
+  assert.doesNotMatch(html, /<a\s|Szczegóły i źródło/);
   assert.match(html, /<hr class="govuk-section-break[^"]*"\/>$/);
 });
 
