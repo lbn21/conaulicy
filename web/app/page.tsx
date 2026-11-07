@@ -25,14 +25,15 @@ export const metadata: Metadata = pageMetadata({
 });
 
 // For search engines: the site's name. No SearchAction: the search has no
-// results page (it lists results under its field).
+// results page (it lists results under its field). `<` escaped, as Next.js's
+// JSON-LD guide does, so no value can close the <script>.
 const WEBSITE = JSON.stringify({
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: SITE_NAME,
   url: `${SITE_URL}/`,
   inLanguage: LANG,
-});
+}).replace(/</g, "\\u003c");
 
 // The page's static shell: everything but the IMGW banner, read per request
 // in its own hole (components/imgw-banner.tsx).

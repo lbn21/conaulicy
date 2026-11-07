@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { create, type Font } from "fontkit";
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 import { SITE_URL } from "@/lib/config.generated";
@@ -271,39 +272,32 @@ function fitSize(
   return min;
 }
 
-type InkFont = {
-  _font: {
-    font: {
-      unitsPerEm: number;
-      layout(text: string): {
-        glyphs: Array<{
-          bbox: { minX: number; maxX: number; minY: number; maxY: number };
-        }>;
-        positions: Array<{ xAdvance: number }>;
-      };
-    };
-  };
-};
+/** A TTF file's one font, read with fontkit (PDFKit's own font reader). */
+function fontOf(file: Buffer): Font {
+  const font = create(file);
+  if ("fonts" in font) throw new Error("A font collection, not one font");
+  return font;
+}
 
-// A document of its own, only for measuring: reading glyphs through the
-// PDF's own fonts would disturb their text layer (pdftotext lost characters).
-const measurer = new PDFDocument({ autoFirstPage: false });
-measurer.registerFont("regular", REGULAR);
-measurer.registerFont("bold", BOLD);
+// Faces of their own, only for measuring, laid out as PDFKit lays out the
+// text (fontkit, default features): reading glyphs through the PDF's own
+// fonts would disturb their text layer (pdftotext lost characters).
+const FACES: Record<string, Font> = {
+  regular: fontOf(REGULAR),
+  bold: fontOf(BOLD),
+};
 
 /**
  * How far a text's ink reaches above and below its baseline, in pt, from its
- * glyphs' boxes, and from its start to its first and last ink. PDFKit keeps
- * an embedded font's fontkit font as _font.font. For a wrapped paragraph
- * above and below cover every line.
+ * glyphs' boxes, and from its start to its first and last ink. For a wrapped
+ * paragraph above and below cover every line.
  */
 function inkOf(
   font: string,
   size: number,
   text: string,
 ): { above: number; below: number; left: number; right: number } {
-  measurer.font(font);
-  const { font: face } = (measurer as unknown as InkFont)._font;
+  const face = FACES[font];
   const run = face.layout(text);
   const boxes = run.glyphs.map((glyph) => glyph.bbox);
   const scale = size / face.unitsPerEm;

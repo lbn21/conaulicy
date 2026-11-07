@@ -8,6 +8,7 @@
 // it (status/checks.json; lib/zuk-cron.ts handleZukCron); nothing is
 // purged, the pages read the files per request. No Next.js imports, so the unit tests
 // run it as is; dependencies come in.
+import "server-only";
 import {
   type Feed,
   feedFile,

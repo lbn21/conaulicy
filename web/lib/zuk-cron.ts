@@ -26,6 +26,7 @@
 // (MZGKiM's feed) has each post's page fetched right before the model
 // reads it; a source without edit times tells an edit by its digest.
 
+import "server-only";
 import { createHash } from "node:crypto";
 import { addDays, isoWithOffset, todayInWarsaw } from "./dates.ts";
 import type { District } from "./districts.ts";

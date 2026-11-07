@@ -2,6 +2,5 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": ["scripts/check-*.mjs"],
   "project": ["**/*.{ts,tsx,mjs,scss,sass}"],
-  "ignoreDependencies": ["server-only"],
   "ignoreBinaries": ["pdftoppm"]
 }

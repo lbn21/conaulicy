@@ -5,7 +5,7 @@
 // order live in lib/address-routes.ts, so the unit tests and the URL rules
 // can read them without Next.js; this registry must list exactly those.
 import type { Metadata } from "next";
-import type { ComponentType } from "react";
+import type { ReactNode } from "react";
 import { WasteDetails, wasteMetadata } from "@/components/place-page";
 import { WasteStatus } from "@/components/waste-status";
 import { WaterDetails, waterMetadata } from "@/components/water-page";
@@ -38,6 +38,9 @@ import {
   weatherUpcoming,
 } from "@/lib/weather-module";
 
+// Its functions and components are method signatures, so a typed module
+// (Module<PlaceView>) is also a Module<unknown> where the pages pass a
+// module's own data back to it (components/hub.tsx).
 export type Module<D> = {
   id: ModuleId;
   /** Its section's h2. */
@@ -69,7 +72,7 @@ export type Module<D> = {
    * render (a Client Component): waste, whose next pickup moves on with the
    * day while the shell is cached.
    */
-  Status?: ComponentType<{ data: D }>;
+  Status?(props: { data: D }): ReactNode;
   /** Its sources, in its section's meta line: a link each. */
   sources(data: D): Part[][];
   /**
@@ -102,11 +105,11 @@ export type Module<D> = {
        * The subpage body. `missing`: ?nr= came without a usable number;
        * `checkedAt`: the module's, for its heading.
        */
-      Details: ComponentType<{
+      Details(props: {
         data: D;
         missing?: boolean;
         checkedAt?: Checked;
-      }>;
+      }): ReactNode;
     }
   | {
       /** No subpage: no link but its source's, in the meta line. */
@@ -169,8 +172,8 @@ const pogoda: Module<Weather> = {
 
 // A module's data type stays its own; the pages only pass it from load()
 // to its section and to Details.
-// biome-ignore lint/suspicious/noExplicitAny: one registry for every data type
-export const MODULES: { [K in ModuleId]: Module<any> } = {
+type ModuleData = { smieci: PlaceView; woda: Water; pogoda: Weather };
+export const MODULES: { [K in ModuleId]: Module<ModuleData[K]> } = {
   smieci: waste,
   woda,
   pogoda,
