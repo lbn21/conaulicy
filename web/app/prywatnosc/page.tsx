@@ -15,7 +15,7 @@ export const metadata: Metadata = pageMetadata({
 // (forwards mail sent to our address).
 const VERCEL_PRIVACY = "https://vercel.com/legal/privacy-policy";
 const VERCEL_DPA = "https://vercel.com/legal/dpa";
-const IMPROVMX_PRIVACY = "https://improvmx.com/privacy/";
+const IMPROVMX_PRIVACY = "https://improvmx.com/transparency/privacy-policy/";
 
 export default function PrivacyPage() {
   return (
