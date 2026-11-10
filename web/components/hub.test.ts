@@ -138,19 +138,9 @@ test("timeline: a card per day from today, 2+ empty days as one, Intl's titles",
     count(timeline, '<li class="app-timeline__empty app-timeline__range">'),
     2,
   );
-  // No waste schedule here: an empty day speaks only for water and the
-  // weather (task 276).
-  assert.equal(count(timeline, "Woda i pogoda: nic nie zaplanowano."), 2);
+  // No waste schedule here, and an empty day still says just that (task 278).
+  assert.equal(count(timeline, "Nic nie zaplanowano."), 2);
   assert.doesNotMatch(timeline, /Później/);
-});
-
-test("timeline: every module covers a street with a schedule, so „Nic nie zaplanowano.”", () => {
-  const timeline = section(page(STREET, CUTS, WARNINGS), "najblizsze-dni");
-  assert.match(
-    timeline,
-    /<p class="govuk-body-s govuk-!-margin-bottom-0">Nic nie zaplanowano\.<\/p>/,
-  );
-  assert.doesNotMatch(timeline, /: nic nie zaplanowano/);
 });
 
 test("timeline: each cut and warning once, its row, „Szczegóły” to its subpage", () => {

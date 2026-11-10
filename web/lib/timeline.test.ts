@@ -9,14 +9,7 @@ import {
   warsawToIso,
 } from "./dates.ts";
 import { span } from "./hub.ts";
-import {
-  collapse,
-  days,
-  type Entry,
-  later,
-  nothingText,
-  onDay,
-} from "./timeline.ts";
+import { collapse, days, type Entry, later, onDay } from "./timeline.ts";
 import type { Item } from "./upcoming.ts";
 
 // The address page's timeline (lib/timeline.ts) and its dates' words
@@ -262,21 +255,4 @@ test("section day lead: „Dziś”, „Jutro”, „Za N dni” for 2 to 7 days
     ),
     "Jutro: poniedziałek",
   );
-});
-
-test("nothingText: plain when every module covers the address, else by name; none, null", () => {
-  assert.equal(
-    nothingText(["Śmieci", "Woda", "Pogoda"], 3),
-    "Nic nie zaplanowano.",
-  );
-  assert.equal(
-    nothingText(["Woda", "Pogoda"], 3),
-    "Woda i pogoda: nic nie zaplanowano.",
-  );
-  assert.equal(nothingText(["Pogoda"], 3), "Pogoda: nic nie zaplanowano.");
-  assert.equal(
-    nothingText(["Woda", "Pogoda", "Prąd"], 4),
-    "Woda, pogoda i prąd: nic nie zaplanowano.",
-  );
-  assert.equal(nothingText([], 3), null);
 });
