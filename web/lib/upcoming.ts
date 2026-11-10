@@ -47,7 +47,7 @@ export type Item = Base &
     /** `event` lower-case, in running text: "silny wiatr". */
     | { module: "pogoda"; event: string; level: Tag }
     /** "papier, szkło" or "wszystkie pojemniki". */
-    | { module: "smieci"; bins: string; pickups: Bins["bins"] }
+    | { module: "smieci"; bins: string; pickups?: Bins["bins"] }
   );
 
 /**

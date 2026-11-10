@@ -7,7 +7,7 @@ export function WasteRow({ entry: { item } }: { entry: Entry }) {
   if (item.module !== "smieci") return null;
   return (
     <>
-      <Bins pickups={item.pickups} size="small" />
+      <Bins pickups={item.pickups ?? []} size="small" />
       {item.second && (
         <p className="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0">
           {item.second}

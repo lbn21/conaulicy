@@ -43,6 +43,70 @@ import type { PlaceView } from "@/lib/schedule";
 // Warsaw day (WarsawToday, place.today), then the device's
 // (components/warsaw-today.tsx).
 
+// The old hub's section parts, kept only until its tests are rewritten
+// (TODO t263: remove with hub.test.ts).
+type Loaded = { module: Module<unknown>; data: unknown };
+
+/**
+ * A module's section body: its status, the link to its subpage (if it has
+ * one), then its meta line, last.
+ */
+export function ModuleBody({
+  loaded: { module, data },
+  place,
+}: {
+  loaded: Loaded;
+  place: PlaceView;
+}) {
+  const sources = module.sources(data);
+  const meta = metaLine(
+    sources,
+    module.note?.(data) ?? null,
+    module.checkedAt?.(data) ?? null,
+  );
+  return (
+    <>
+      {module.Status ? (
+        <module.Status data={data} />
+      ) : (
+        <Status groups={module.status(data)} />
+      )}
+      {/* No source: nothing for the subpage to detail. */}
+      {module.Details && sources.length > 0 && (
+        <p className="govuk-body">
+          <PlaceLink className="govuk-link" href={subpageHref(module, place)}>
+            {module.more}
+          </PlaceLink>
+        </p>
+      )}
+      {meta.length > 0 && (
+        <p className="govuk-body-s">
+          <Parts parts={meta} lead />
+        </p>
+      )}
+    </>
+  );
+}
+
+/** A module's section: its h2, then its body (ModuleBody, or a live block). */
+export function ModuleSection({
+  module,
+  children,
+}: {
+  module: Module<unknown>;
+  children?: ReactNode;
+}) {
+  const heading = `${module.id}-heading`;
+  return (
+    <section id={module.id} aria-labelledby={heading}>
+      <h2 id={heading} className="govuk-heading-l">
+        {module.title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
 /**
  * Everything the address page shows, read per request (after io(), so
  * nothing date-dependent is ever prerendered: task 239), every module's
