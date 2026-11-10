@@ -6,7 +6,8 @@ export type Crumb = { href: string; label: string };
 export const HOME_CRUMB: Crumb = { href: "/", label: "Strona główna" };
 
 /** The trail's classes, its skeleton's too (components/place-suspense.tsx). */
-export const CRUMBS_CLASS = "govuk-breadcrumbs govuk-!-margin-top-7";
+export const CRUMBS_CLASS =
+  "govuk-breadcrumbs govuk-breadcrumbs--collapse-on-mobile govuk-!-margin-top-7";
 
 /**
  * GOV.UK's breadcrumbs, every item a link and the page itself left out.
@@ -16,7 +17,9 @@ export const CRUMBS_CLASS = "govuk-breadcrumbs govuk-!-margin-top-7";
  * components/place-crumbs.tsx), as GOV.UK places them, so the skip link
  * skips them (docs/layout.md). Its margin-top stands in for main's padding above
  * it; GOV.UK's own margin-bottom (10 px) and main's padding make the gap to
- * what follows.
+ * what follows. Collapsed on mobile (GOV.UK's modifier: the first and last
+ * crumb on one line, a long one wrapping after its chevron), so a chevron
+ * never starts a line on its own (task 273).
  */
 export function Breadcrumbs({ items }: { items: readonly Crumb[] }) {
   return (

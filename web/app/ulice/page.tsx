@@ -17,10 +17,10 @@ export const metadata: Metadata = pageMetadata({
 
 /**
  * Every place search can find, as plain links: for people who would rather
- * browse, without JS, and for search engines. The town's streets by first
+ * browse, and for search engines. The town's streets by first
  * letter (Polish order), then the villages, each a link, with their streets
  * under it if they have any. Its only client JS is PlaceLink's prefetch on
- * intent (components/place-link.tsx); the links work without it.
+ * intent (components/place-link.tsx).
  *
  * Static: from the cached search index, as the sitemap, the same places,
  * cached until the next import (tag `dataset`, POST /api/revalidate) or

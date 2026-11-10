@@ -46,12 +46,17 @@ test("lead: dayLead's words (lib/timeline.test.ts) for the server's day", () => 
   );
 });
 
-test("title: „ · ” and Intl's relative day, grey body-s, after a card's date", () => {
+test("title: „ · ” and Intl's relative day, never wrapped mid-phrase, grey body-s, after a card's date", () => {
   const title = (day: string) =>
     word("2026-11-10T12:00:00Z", day, "title").replace(/<[^>]+>/g, "");
   assert.deepEqual(
     ["2026-11-10", "2026-11-11", "2026-11-12", "2026-11-14"].map(title),
-    [" · dzisiaj", " · jutro", " · pojutrze", " · za 4 dni"],
+    [
+      " ·\u00a0dzisiaj",
+      " ·\u00a0jutro",
+      " ·\u00a0pojutrze",
+      " ·\u00a0za\u00a04\u00a0dni",
+    ],
   );
   assert.match(
     word("2026-11-10T12:00:00Z", "2026-11-10", "title"),
@@ -60,7 +65,7 @@ test("title: „ · ” and Intl's relative day, grey body-s, after a card's dat
   // Across the DST change, by Warsaw days.
   assert.equal(
     word("2026-10-24T22:30:00Z", "2026-10-26", "title").replace(/<[^>]+>/g, ""),
-    " · jutro",
+    " ·\u00a0jutro",
   );
 });
 
