@@ -187,7 +187,7 @@ const pogoda: Module<Weather> = {
   Row: WeatherRow,
   sources: weatherSources,
   checkedAt: weatherChecked,
-  checkedLabel: "Ostrzeżenia IMGW sprawdziliśmy",
+  checkedLabel: "Ostrzeżenia pogodowe sprawdziliśmy",
   description: (place) => `${pogodaTitle} dla ${POWIAT.of}: ${place.label}.`,
   Details: WeatherDetails,
 };

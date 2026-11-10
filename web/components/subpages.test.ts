@@ -625,7 +625,7 @@ test("/pogoda: a warning as a summary card, IMGW's words, the source", () => {
   );
   assert.match(
     html,
-    /<p class="govuk-hint govuk-!-font-size-16">Ostrzeżenia IMGW sprawdziliśmy: 25 października 13:52<\/p><div class="govuk-summary-card">/,
+    /<p class="govuk-hint govuk-!-font-size-16">Ostrzeżenia pogodowe sprawdziliśmy: 25 października 13:52<\/p><div class="govuk-summary-card">/,
   );
   assert.match(
     html,
@@ -661,7 +661,7 @@ test("/pogoda, the copy old: the notice first, linked to IMGW, then the warnings
   const html = weatherPage(data);
   assert.match(
     html,
-    /<p class="govuk-hint govuk-!-font-size-16">Ostrzeżenia IMGW sprawdziliśmy: 25 października 12:59<\/p><div class="govuk-inset-text"><p class="govuk-body">Nie udało się teraz pobrać ostrzeżeń IMGW\. Pokazujemy ostatnie dane z 12:59\. Aktualne znajdziesz na <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">meteo\.imgw\.pl<\/a>\.<\/p><\/div><div class="govuk-summary-card">/,
+    /<p class="govuk-hint govuk-!-font-size-16">Ostrzeżenia pogodowe sprawdziliśmy: 25 października 12:59<\/p><div class="govuk-inset-text"><p class="govuk-body">Nie udało się teraz pobrać ostrzeżeń IMGW\. Pokazujemy ostatnie dane z 12:59\. Aktualne znajdziesz na <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">meteo\.imgw\.pl<\/a>\.<\/p><\/div><div class="govuk-summary-card">/,
   );
   assert.doesNotMatch(html, /Brak ostrzeżeń/);
 });

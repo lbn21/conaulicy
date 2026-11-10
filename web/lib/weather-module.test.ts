@@ -135,8 +135,8 @@ test("checked line: the last good check, warning or not", () => {
       at("2026-10-25T13:52:10+01:00"),
     );
     assert.equal(
-      checkedLine(weatherChecked(data), "Ostrzeżenia IMGW sprawdziliśmy"),
-      "Ostrzeżenia IMGW sprawdziliśmy: 25 października 13:52",
+      checkedLine(weatherChecked(data), "Ostrzeżenia pogodowe sprawdziliśmy"),
+      "Ostrzeżenia pogodowe sprawdziliśmy: 25 października 13:52",
     );
   }
 });
@@ -150,7 +150,7 @@ test("the store unreadable now: the notice alone, no item, no check time", () =>
   ]);
   assert.equal(weatherChecked(data), null);
   assert.equal(
-    checkedLine(weatherChecked(data), "Ostrzeżenia IMGW sprawdziliśmy"),
+    checkedLine(weatherChecked(data), "Ostrzeżenia pogodowe sprawdziliśmy"),
     null,
   );
 });

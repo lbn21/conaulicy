@@ -71,7 +71,7 @@ No client JS, no dismiss button, no `role="alert"`.
 - over `STALE_MS` (60 min): a notice, with or without a warning, its link to meteo.imgw.pl (`weatherNotices`: in the address page's inset above the timeline; first on `/pogoda`): with warnings „Nie udało się teraz pobrać ostrzeżeń IMGW. Pokazujemy ostatnie dane z 9:52. Aktualne znajdziesz na meteo.imgw.pl.”, the warnings still listed; without „Nie udało się teraz pobrać ostrzeżeń IMGW. Ostatnie dane mamy z 9:52. Aktualne znajdziesz na meteo.imgw.pl.”, the notice alone;
 - from `MAX_AGE_MS` (3 h): the old warnings are no longer shown (the timeline, `/pogoda`), the notice alone: „Od 9:52 nie udało się nam pobrać ostrzeżeń IMGW, więc ich nie pokazujemy. Aktualne znajdziesz na meteo.imgw.pl.”;
 - the time is the day and time („z piątku 30 października, 9:52”) when the last data is not from today (Warsaw);
-- the store cannot be read now: the notice alone, „Nie udało się teraz sprawdzić ostrzeżeń IMGW. Aktualne znajdziesz na meteo.imgw.pl.”, and no „Ostrzeżenia IMGW sprawdziliśmy” time on `/pogoda`.
+- the store cannot be read now: the notice alone, „Nie udało się teraz sprawdzić ostrzeżeń IMGW. Aktualne znajdziesz na meteo.imgw.pl.”, and no „Ostrzeżenia pogodowe sprawdziliśmy” time on `/pogoda`.
 
 Read per request, a page shows the notice as soon as the threshold has passed.
 
