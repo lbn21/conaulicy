@@ -20,7 +20,7 @@
 // sitemap has it, no trailing slash). Indexable: every URL in the sitemap
 // answers 200 with no noindex (meta or X-Robots-Tag), canonicalises to
 // itself, and has a title of its own. 404s (an unknown path, unknown
-// addresses) are whole pages in the raw HTML: status 404, the
+// addresses) are whole pages in the raw HTML, no JS needed: status 404, the
 // layout (lang, stylesheet), GOV.UK's "page not found" H1, its link home
 // („Przejdź na stronę główną”), robots meta noindex (one or more tags, every
 // one noindex, none index), and no description; an unknown module
@@ -279,8 +279,9 @@ try {
       failures.push(`${path}: ${id} is renamed (a 308), not a 404 to check`);
       continue;
     }
-    // An unknown address: a 404 from its first answer on (notFoundAt,
-    // scripts/lib/server.mjs).
+    // An unknown address: its first answer may be the route's fallback
+    // shell's 200 (notFoundAt, scripts/lib/server.mjs); the page below is
+    // its cached 404.
     if (path.startsWith("/adres/")) {
       const wrong = await notFoundAt(`${server.origin}${path}`);
       if (wrong) failures.push(`${path}: ${wrong}`);

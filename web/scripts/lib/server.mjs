@@ -180,20 +180,35 @@ export async function closeRenderedPages() {
 }
 
 /**
- * An unknown address (or module): a 404 from the first answer on. The
- * address routes check the place before their skeleton's Suspense boundary
- * (components/place-page.tsx knownRoute), so the status is sent after the
- * check, never a fallback shell's 200 (task 273). Asked twice: the first
- * answer and a cached one. Returns what failed, or null.
+ * An unknown address (or module): a 404. The address routes serve a known
+ * place's prerendered shell; an id never prerendered first gets the route's
+ * fallback shell, its status sent before the page knows the place is
+ * unknown (ensureStatic 'prefetch':
+ * nextjs.org/docs/app/api-reference/file-conventions/route-segment-config/ensureStatic),
+ * so that one first answer may be a 200, but only with the 404 page and
+ * noindex; every later one is the cached 404. Returns what failed, or null.
  */
 export async function notFoundAt(url) {
-  for (const answer of ["first", "second"]) {
-    const response = await fetch(url, { redirect: "manual" });
-    await response.arrayBuffer();
-    if (response.status !== 404)
-      return `${response.status} on the ${answer} answer, want 404`;
+  const first = await fetch(url);
+  const html = await first.text();
+  if (
+    first.status !== 404 &&
+    !(
+      first.status === 200 &&
+      html.includes('<meta name="robots" content="noindex"/>') &&
+      html.includes("Nie ma takiej strony")
+    )
+  )
+    return `${first.status}, want 404 (or a first 200 with the 404 page and noindex)`;
+  // The 404 is generated in the background after the first answer.
+  let status = first.status;
+  for (let i = 0; i < 20 && status !== 404; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const again = await fetch(url);
+    await again.arrayBuffer();
+    status = again.status;
   }
-  return null;
+  return status === 404 ? null : `${status} after the first answer, want 404`;
 }
 
 /**

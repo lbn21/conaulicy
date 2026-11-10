@@ -1,7 +1,6 @@
 import { HubMain } from "@/components/hub";
 import { NOT_FOUND_METADATA } from "@/components/page-not-found";
 import {
-  knownRoute,
   metadataQuery,
   PlaceNotFound,
   placeMetadata,
@@ -32,12 +31,10 @@ export async function generateMetadata({
   return placeMetadata(id, query.nr, query.missing);
 }
 
-export default async function PlacePage({
+export default function PlacePage({
   params,
   searchParams,
 }: PageProps<"/adres/[id]">) {
-  // An unknown place: a real 404, before the skeleton (knownRoute).
-  await knownRoute((await params).id);
   return (
     <PlaceSuspense>
       <PlacePageContent params={params} searchParams={searchParams} />
