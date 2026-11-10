@@ -9,7 +9,7 @@ export function WasteRow({ entry: { item } }: { entry: Entry }) {
     <>
       <Bins pickups={item.pickups ?? []} size="small" />
       {item.second && (
-        <p className="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0">
+        <p className="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0">
           {item.second}
         </p>
       )}

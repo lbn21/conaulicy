@@ -233,7 +233,7 @@ $app-header-colour: $app-header;
 // from the first dot to the last, a dot per day on it, a card per day with
 // a caret at its dot. All of it decorative pseudo-elements; the markup stays
 // an ol of days. Mobile-first, the same at every width. Dots 15px on a 1px
-// line, centred on every card's 16/20 date line (--app-y: the card's border,
+// line, centred on every card's 19/25 date line (--app-y: the card's border,
 // its padding, half the line); the caret's centre on the same y. One padding
 // for every card, GOV.UK's margins inside it trimmed (task 266).
 // Colours: a day with items on the brand's surface (tint-95, its border
@@ -247,7 +247,7 @@ $app-caret: govuk-spacing(2);
 
 .app-timeline { position: relative; margin: 0 0 govuk-spacing(6); padding: 0; list-style: none; }
 .app-timeline::before { content: ""; position: absolute; top: 0; bottom: 0; left: ($app-dot - $app-hair) * .5; border-left: $app-hair solid govuk-functional-colour(border); }
-.app-timeline > li { --app-y: #{$app-hair + govuk-spacing(3) + govuk-spacing(2)}; position: relative; margin: 0; padding: 0 0 govuk-spacing(4) govuk-spacing(6); }
+.app-timeline > li { --app-y: #{$app-hair + govuk-spacing(3) + govuk-spacing(2) + govuk-spacing(1) * .5}; position: relative; margin: 0; padding: 0 0 govuk-spacing(4) govuk-spacing(6); }
 .app-timeline > li:last-child { padding-bottom: 0; }
 
 // The line's ends: the page's background over it above the first dot and
@@ -289,12 +289,14 @@ $app-caret: govuk-spacing(2);
 .app-timeline__card--empty { --app-bg: color-mix(in srgb, #{govuk-colour("black", $variant: "tint-95")} 35%, #{govuk-colour("white")}); --app-line: #{govuk-functional-colour(border)}; }
 .app-timeline__title, .app-timeline__card--empty > p { color: govuk-functional-colour(secondary-text); }
 .app-timeline__today .app-timeline__title { color: govuk-functional-colour(brand); }
-// After the date, its relative word: small, regular, grey (task 268).
-.app-timeline__title .app-timeline__when { color: govuk-functional-colour(secondary-text); font-size: .875em; font-weight: normal; }
+// After the date, its relative word: body-s, regular, grey (tasks 268-269).
+.app-timeline__title .app-timeline__when { color: govuk-functional-colour(secondary-text); }
 .app-timeline__card .govuk-summary-list__key { color: govuk-functional-colour(brand); }
+// Two sizes in a card (task 269): the date heading-s, all else body-s.
+.app-timeline__card :is(.govuk-summary-list, .govuk-list, .govuk-tag) { @include govuk-font-size($size: 16); }
 
 // Inside a card one rhythm: key and value a 5px step apart on mobile,
-// „Szczegóły” (16/20, task 267) 10px under every value (a list's last
+// „Szczegóły” 10px under every value (a list's last
 // item no margin of its own), rows 10px apart on tablet, nothing under the
 // last row (GOV.UK's no-border row) but the card's padding.
 .app-timeline__card .govuk-summary-list__value { margin-bottom: govuk-spacing(2); }

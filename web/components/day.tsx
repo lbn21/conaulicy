@@ -18,8 +18,9 @@ import type { DayGroup, Entry } from "@/lib/timeline";
 export const NOTHING = "Nic nie zaplanowano.";
 
 /**
- * A timeline card, every kind the same (task 266): the date as an h3, a
- * small bold line of its own (16/20, its dot's line), then the body.
+ * A timeline card, every kind the same (task 266): the date as an h3,
+ * GOV.UK's heading-s (19/25, its dot's line), then the body, all of it
+ * body-s (16/20, task 269).
  */
 export function TimelineCard({
   title,
@@ -38,7 +39,7 @@ export function TimelineCard({
           : "app-timeline__card"
       }
     >
-      <h3 className="govuk-body-s govuk-!-font-weight-bold govuk-!-margin-bottom-2 app-timeline__title">
+      <h3 className="govuk-heading-s govuk-!-margin-bottom-2 app-timeline__title">
         {title}
       </h3>
       {children}
@@ -79,7 +80,7 @@ export function Day({
     >
       <TimelineCard title={title} empty={empty}>
         {empty ? (
-          <p className="govuk-body govuk-!-margin-bottom-0">{NOTHING}</p>
+          <p className="govuk-body-s govuk-!-margin-bottom-0">{NOTHING}</p>
         ) : (
           <FunctionRows entries={entries} place={place} />
         )}

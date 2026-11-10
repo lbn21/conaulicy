@@ -15,9 +15,9 @@ export function WaterRow({ entry: { item, continued } }: { entry: Entry }) {
       : `Przerwa w dostawie wody${cut}. Komunikat nie podaje godzin.`;
   return (
     <>
-      <p className="govuk-body govuk-!-margin-bottom-0">{text}</p>
+      <p className="govuk-body-s govuk-!-margin-bottom-0">{text}</p>
       {item.second && (
-        <p className="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0">
+        <p className="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0">
           {item.second}
         </p>
       )}

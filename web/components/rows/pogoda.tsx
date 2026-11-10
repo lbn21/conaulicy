@@ -8,7 +8,7 @@ export function WeatherRow({ entry: { item, continued } }: { entry: Entry }) {
   if (item.module !== "pogoda") return null;
   const when = fromTo(item.span, continued);
   return (
-    <p className="govuk-body govuk-!-margin-bottom-0">
+    <p className="govuk-body-s govuk-!-margin-bottom-0">
       <strong className={item.level.tag}>{item.level.text}</strong>{" "}
       {capitalised(item.event)}
       {continued ? `, trwa ${when}.` : when ? `, ${when}.` : "."}
