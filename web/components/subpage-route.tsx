@@ -2,6 +2,7 @@ import { ModuleMain, moduleMetadata } from "@/components/module-page";
 import { NOT_FOUND_METADATA } from "@/components/page-not-found";
 import {
   type AddressSearch,
+  knownRoute,
   metadataQuery,
   PlaceNotFound,
 } from "@/components/place-page";
@@ -41,12 +42,17 @@ export async function subpageMetadata(
   return moduleMetadata(id, slug, query.nr, query.missing);
 }
 
-/** A subpage route's page: its params behind PlaceSuspense, as above. */
-export function SubpageRoute({
+/**
+ * A subpage route's page: an unknown place or module a real 404 before the
+ * skeleton (knownRoute), then its params behind PlaceSuspense, as above.
+ */
+export async function SubpageRoute({
   params,
   searchParams,
   ...variant
 }: Variant & { params: SubpageParams; searchParams: AddressSearch }) {
+  const { id, slug } = await subpageOf(params, variant);
+  await knownRoute(id, findSubpage(slug) !== null);
   return (
     <PlaceSuspense>
       <SubpageContent

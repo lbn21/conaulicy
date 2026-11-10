@@ -190,19 +190,27 @@ function noData(place: PlaceView): boolean {
 
 /**
  * Throws notFound() inside a Suspense boundary whose fallback is the 404
- * page. Thrown outside one, Next.js 16 sends an empty error shell (no
- * layout, no text) and draws the page only with JS; here the server HTML has
- * the full page, and Next.js still answers 404 (it sets the status when an
- * error ends a boundary). With JS, Next.js renders app/not-found.tsx, the
- * same content.
+ * page: only for a place gone between the route's check (knownRoute) and
+ * its read. With JS, Next.js renders app/not-found.tsx, the same content.
  */
 function NotFound(): never {
   notFound();
 }
 
 /**
+ * An unknown place's (or module's) 404, before any Suspense boundary, so
+ * the answer's status is 404, never the streamed shell's 200
+ * (nextjs.org/docs/app/guides/streaming#status-codes; task 273). The site
+ * needs JavaScript (Jakub's decision), so Next.js's own 404 rendering is
+ * enough.
+ */
+export async function knownRoute(id: string, known = true): Promise<void> {
+  if (!known || !(await knownPlace(id))) notFound();
+}
+
+/**
  * A street split by house numbers: ask for the number, like a GOV.UK
- * question page. A plain GET form, so it works without JS.
+ * question page. A plain GET form.
  */
 function HouseNumberQuestion({
   place,

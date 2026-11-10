@@ -75,7 +75,6 @@ const files = new Map();
 let messages = [];
 const streamed = [];
 const statuses = [];
-const streamedNotFound = [];
 try {
   for (const route of ROUTES) {
     for (const [ua, suffix] of [
@@ -87,18 +86,9 @@ try {
       });
       const html = await res.text();
       const expected = route.status ?? 200;
-      // An unknown address's first answer is the route's fallback shell,
-      // its 200 sent before the page knows the place is unknown
-      // (ensureStatic 'prefetch', task 226; a bot's render likewise, task
-      // 220): Next.js then sends the 404 page with noindex
-      // (nextjs.org/docs/app/guides/streaming#status-codes). Later answers
-      // are the cached 404 (scripts/lib/server.mjs notFoundAt).
-      const notFound =
-        expected === 404 &&
-        res.status === 200 &&
-        html.includes('<meta name="robots" content="noindex"/>');
-      if (notFound) streamedNotFound.push(route.path);
-      else if (res.status !== expected) {
+      // An unknown address is a 404 from its first answer on, browser and
+      // bot (components/place-page.tsx knownRoute, task 273).
+      if (res.status !== expected) {
         statuses.push(
           `${route.path}${suffix}: HTTP ${res.status}, expected ${expected}`,
         );
@@ -180,7 +170,7 @@ const engine = java
   ? `vnu.jar ${execFileSync(java, ["-jar", VNU_JAR, "--version"], { encoding: "utf8" }).trim()}`
   : "validator.w3.org/nu";
 console.log(
-  `\n${files.size} documents (${ROUTES.length} pages, browser and bot; metadata streamed to the browser, its bot copy only: ${streamed.join(", ") || "none"}; 404 as 200 + noindex for the bot: ${streamedNotFound.join(", ") || "none"}), ${errors.length} errors, ${warnings.length} warnings (${engine}).`,
+  `\n${files.size} documents (${ROUTES.length} pages, browser and bot; metadata streamed to the browser, its bot copy only: ${streamed.join(", ") || "none"}), ${errors.length} errors, ${warnings.length} warnings (${engine}).`,
 );
 if (!process.env.HTML_DIR) rmSync(dir, { recursive: true, force: true });
 process.exit(errors.length > 0 || statuses.length > 0 ? 1 : 0);
