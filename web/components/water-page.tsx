@@ -143,7 +143,7 @@ export function WaterDetails({
           <AiReadNote text={waterAiNote(data)} />
           <SourceInset>
             {waterSources(data).map((parts) => (
-              <p key={textOf(parts)} className="govuk-body">
+              <p key={textOf(parts)} className="govuk-body-s">
                 Źródło: <Parts parts={parts} lead={false} />
               </p>
             ))}
