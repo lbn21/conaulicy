@@ -14,7 +14,7 @@ import { AddressPage, PlaceBreadcrumbs } from "./place-page.tsx";
 // GOV.UK's breadcrumbs (components/breadcrumbs.tsx): every item a link, the
 // page itself left out, the same markup on every page that has them.
 const NAV =
-  '<nav class="govuk-breadcrumbs govuk-!-margin-top-7" aria-label="Ścieżka nawigacyjna"><ol class="govuk-breadcrumbs__list">';
+  '<nav class="govuk-breadcrumbs govuk-breadcrumbs--collapse-on-mobile govuk-!-margin-top-7" aria-label="Ścieżka nawigacyjna"><ol class="govuk-breadcrumbs__list">';
 const item = (href: string, text: string) =>
   `<li class="govuk-breadcrumbs__list-item"><a class="govuk-breadcrumbs__link" href="${href}">${text}</a></li>`;
 const crumbs = (...items: string[]) => `${NAV}${items.join("")}</ol></nav>`;
