@@ -1,8 +1,8 @@
 // What the waste module (lib/modules.ts) says about a place on the address
 // page, from today's street page data (PlaceView, unchanged). Pure, so the
-// unit tests need no database, and client-safe: the section's lines are
-// drawn on the device (components/waste-status.tsx). Its „Najbliższe dni”
-// items are lib/waste-upcoming.ts's.
+// unit tests need no database, and client-safe. Its lines are the address
+// page's notices when there are no dates to show (lib/modules.ts); its
+// timeline items are lib/waste-upcoming.ts's.
 import type { Pickup, PickupDay, PlaceView, SourceView } from "@/lib/schedule";
 import { absoluteDay, todayInWarsaw } from "./dates.ts";
 import { hasSource } from "./event-source.ts";
@@ -67,7 +67,7 @@ export const allBins = (place: PlaceView, day: PickupDay) =>
 
 /**
  * The section's lines, always some: the next pickup's day (absolute, its
- * „Dziś” or „Za 5 dni” put by the island; the day as of the render),
+ * „Dziś” or „Za 5 dni” put by DayWord; the day as of the render),
  * what goes that day („wszystkie pojemniki” when
  * it is every fraction the place has, more than one) and when to put them
  * out; on a split street without a number, the question's page; or why

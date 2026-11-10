@@ -15,14 +15,14 @@ import type { DayGroup, Entry } from "@/lib/timeline";
 // „Później” a card at the ringed end of the line (task 265).
 
 /** What an empty day or run says. */
-export const NOTHING = "Nic nie zaplanowano.";
+const NOTHING = "Nic nie zaplanowano.";
 
 /**
  * A timeline card, every kind the same (task 266): the date as an h3,
  * GOV.UK's heading-s (19/25, its dot's line), then the body, all of it
  * body-s (16/20, task 269).
  */
-export function TimelineCard({
+function TimelineCard({
   title,
   empty = false,
   children,

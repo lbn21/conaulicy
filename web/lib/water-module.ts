@@ -362,7 +362,7 @@ const KIND = new Map(ZUK_PLACES.localities.map((l) => [l.id, l.kind]));
 /**
  * The word for a whole locality, from its TERYT kind: „wieś” (genitive
  * „wsi”) for a village, „miejscowość” („miejscowości”) for anything else.
- * One rule for the Woda section (scope) and „Najbliższe dni”.
+ * One rule for /woda (scope) and the timeline.
  */
 function placeWord(localityId: string): { is: string; of: string } {
   return KIND.get(localityId) === "wies"
@@ -487,7 +487,7 @@ function upcomingWhere(cut: Cut, place: Water["place"]): string {
   return `Część ${street ? "ulicy" : word.of} – których domów dotyczy, sprawdź w szczegółach.`;
 }
 
-/** The block's items: every cut still to come here, each its own. */
+/** The timeline's items: every cut still to come here, each its own. */
 export function waterUpcoming(data: Water): Item[] {
   return data.outages.map((cut) => ({
     module: "woda",
@@ -497,10 +497,8 @@ export function waterUpcoming(data: Water): Item[] {
       endInstant(cut),
       cut.endEstimated,
     ),
-    shownFrom: null,
     emergency: cut.cause === "emergency",
     second: upcomingWhere(cut, data.place),
-    secondUntil: null,
   }));
 }
 
@@ -581,8 +579,9 @@ const placeWords = (data: Water) =>
   data.place.streetId === null ? "w tej miejscowości" : "na tej ulicy";
 
 /**
- * The section's lines: only what „Najbliższe dni” does not say, as it
- * lists every cut (waterUpcoming). With a cut: the parent village's hint
+ * The water's lines that the timeline does not say, as it lists every
+ * cut (waterUpcoming); the address page shows them as notices
+ * (waterNotices). With a cut: the parent village's hint
  * (its item says „Sprawdź niżej”), a number the register does not have
  * beside a cut of only some houses, a cut here left out for the house
  * number, notices, the stale note; often nothing, the subpage's link and

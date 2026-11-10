@@ -7,15 +7,18 @@ import {
   FILE_NAMES,
   isModuleId,
   MODULE_IDS,
+  MODULE_ROUTE_IDS,
   SUBPAGE_IDS,
 } from "./address-routes.ts";
 import { placePath } from "./places.ts";
 
 // The exact list: unique, plain path segments, in the pages' order.
-test("waste first, then water, then weather; the weather has no subpage", () => {
+test("waste first, then water, then weather; each has a subpage", () => {
   assert.deepEqual(MODULE_IDS, ["smieci", "woda", "pogoda"]);
-  assert.deepEqual(SUBPAGE_IDS, ["smieci", "woda"]);
+  assert.deepEqual(SUBPAGE_IDS, ["smieci", "woda", "pogoda"]);
   for (const id of SUBPAGE_IDS) assert.ok(isModuleId(id), id);
+  // Waste has its own folder; the others are app/adres/[id]/[module]/.
+  assert.deepEqual(MODULE_ROUTE_IDS, ["woda", "pogoda"]);
 });
 
 test("no module is called like another folder", () => {
@@ -31,9 +34,9 @@ test("the street page and a module subpage take ?nr=", () => {
   assert.ok(ADDRESS.test("/adres/0972447-00470/smieci"));
   assert.ok(ADDRESS.test("/adres/0972447-00470/smieci/"));
   assert.ok(ADDRESS.test("/adres/0972447-00470/woda"));
+  assert.ok(ADDRESS.test("/adres/0972447-00470/pogoda"));
+  // No such module: no ?nr= (its URL is a 404).
   assert.ok(!ADDRESS.test("/adres/0972447-00470/prad"));
-  // A module without a subpage takes no ?nr= (its URL is a 404).
-  assert.ok(!ADDRESS.test("/adres/0972447-00470/pogoda"));
   assert.ok(!ADDRESS.test("/adres/0972447-00470/numer"));
   assert.ok(!ADDRESS.test("/adres/0972447-00470/harmonogram.pdf"));
   assert.ok(!ADDRESS.test("/adres/0972447-00470/woda.ics"));
@@ -62,7 +65,6 @@ test("full prefetch only for a canonical address page, never a redirect source",
     "/adres/x/smieci?nr=5",
     "/adres/x?utm=1",
     "/adres/x/",
-    "/adres/x/pogoda",
     "/adres/x/harmonogram.pdf",
     "/adres/x/woda.ics",
     "/adres/x#nr",

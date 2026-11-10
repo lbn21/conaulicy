@@ -9,7 +9,11 @@ import { WarsawToday } from "./warsaw-today.tsx";
 // The day word as the server renders it (components/day-word.tsx): for the
 // Warsaw day of the request's instant, so in the HTML, never a skeleton.
 // Around Warsaw midnight, on an ordinary night and on both DST nights.
-const word = (at: string, day: string, form: "lead" | "word" | "label") =>
+const word = (
+  at: string,
+  day: string,
+  form: "lead" | "word" | "label" | "title",
+) =>
   renderToStaticMarkup(
     createElement(
       WarsawToday,
@@ -35,19 +39,38 @@ test("Warsaw midnight, DST starting (28 Mar 2027, CET to CEST)", () => {
   assert.equal(word("2027-03-28T22:00:00Z", "2027-03-29", "label"), "Dziś");
 });
 
-test("lead: dayLead's words (lib/upcoming.test.ts) for the server's day", () => {
+test("lead: dayLead's words (lib/timeline.test.ts) for the server's day", () => {
   assert.equal(
     word("2026-10-20T12:00:00Z", "2026-10-25", "lead"),
     "Za 5 dni: niedziela, 25 października",
   );
 });
 
+test("title: „ · ” and Intl's relative day, grey body-s, after a card's date", () => {
+  const title = (day: string) =>
+    word("2026-11-10T12:00:00Z", day, "title").replace(/<[^>]+>/g, "");
+  assert.deepEqual(
+    ["2026-11-10", "2026-11-11", "2026-11-12", "2026-11-14"].map(title),
+    [" · dzisiaj", " · jutro", " · pojutrze", " · za 4 dni"],
+  );
+  assert.match(
+    word("2026-11-10T12:00:00Z", "2026-11-10", "title"),
+    /^<span class="govuk-!-font-size-16 govuk-!-font-weight-regular app-timeline__when">/,
+  );
+  // Across the DST change, by Warsaw days.
+  assert.equal(
+    word("2026-10-24T22:30:00Z", "2026-10-26", "title").replace(/<[^>]+>/g, ""),
+    " · jutro",
+  );
+});
+
 test("no server day (outside WarsawToday): the date alone, no word", () => {
-  const html = (form: "lead" | "word" | "label") =>
+  const html = (form: "lead" | "word" | "label" | "title") =>
     renderToStaticMarkup(
       createElement(DayWord, { day: "2026-10-25", form, text: "x" }),
     );
   assert.equal(html("word"), "");
   assert.equal(html("label"), "x");
   assert.equal(html("lead"), "X");
+  assert.equal(html("title"), "");
 });

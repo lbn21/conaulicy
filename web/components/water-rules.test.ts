@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { todayInWarsaw } from "../lib/dates.ts";
 import type { Disruption, DisruptionScope } from "../lib/disruptions.ts";
-import { visible } from "../lib/upcoming.ts";
+import { onDay, days as timelineDays } from "../lib/timeline.ts";
+import type { Item } from "../lib/upcoming.ts";
 import { bothViews, testPlace, zukFile } from "../lib/water-fixture.ts";
 import { waterCalendar, waterCalendarHref } from "../lib/water-ics.ts";
 import {
@@ -87,7 +89,7 @@ const CUTS = [
 ];
 const RENDERED = new Date("2026-10-27T12:00:00Z");
 
-test("over at its end: the section's cuts at `now`, the block's too", () => {
+test("over at its end: the module's cuts at `now`, the timeline's too", () => {
   // Warsaw is UTC+1 (CET) on every one of these days.
   const table: Array<[string, string[]]> = [
     [
@@ -118,11 +120,16 @@ test("over at its end: the section's cuts at `now`, the block's too", () => {
       days,
       iso,
     );
-    // The block, rendered now or earlier (the island's clock), agrees.
-    const block = (items: ReturnType<typeof waterUpcoming>) =>
-      items
-        .filter((item) => visible(item, now.getTime()))
-        .map((item) => item.span.day);
+    // The timeline at `now` (lib/timeline.ts), from items read now or
+    // earlier, agrees: each cut once, on its first day still shown.
+    const block = (items: Item[]) =>
+      [
+        ...new Set(
+          timelineDays(todayInWarsaw(now), 7).flatMap((day) =>
+            onDay(items, day, now.getTime()).map((entry) => entry.item),
+          ),
+        ),
+      ].map((item) => item.span.day);
     assert.deepEqual(block(waterUpcoming(data)), days, iso);
     assert.deepEqual(block(cached), days, iso);
   }

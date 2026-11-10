@@ -10,7 +10,7 @@ import { todayInWarsaw } from "@/lib/dates";
 
 // The Warsaw day for what an address page shows from today on: „Dziś” and
 // „Jutro” (components/day-word.tsx) and the waste dates
-// (components/pickup-schedule.tsx, components/waste-status.tsx). The page is
+// (components/pickup-schedule.tsx). The page is
 // read per request (components/hub.tsx hubData), so the server renders it
 // for its day, given here by WarsawToday from the same read; the words are
 // in the HTML with the rest of the page. A page can outlive its day: a tab
