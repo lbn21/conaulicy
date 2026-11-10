@@ -179,7 +179,7 @@ test("„Wszystko o Twoim adresie” and „Skąd to wiemy”: a link and a meta
   assert.deepEqual(texts(known, "strong"), ["Woda.", "Pogoda."]);
   assert.match(
     known,
-    /<strong>Pogoda\.<\/strong> Źródło: <a [^>]*href="https:\/\/meteo\.imgw\.pl\/"[^>]*>IMGW-PIB<\/a>\. Sprawdziliśmy 25 października, 13:20\.<\/p>/,
+    /<strong>Pogoda\.<\/strong> Źródło: <a [^>]*href="https:\/\/meteo\.imgw\.pl\/"[^>]*>IMGW-PIB<\/a>\. Sprawdziliśmy 25 października 13:20\.<\/p>/,
   );
   // IMGW's required wording, once.
   assert.equal(count(html, "Instytut Meteorologii i Gospodarki Wodnej"), 1);

@@ -14,7 +14,7 @@ import {
 import { Timeline } from "@/components/timeline";
 import { WarsawToday } from "@/components/warsaw-today";
 import { MODULE_IDS } from "@/lib/address-routes";
-import { type Group, metaLine } from "@/lib/hub";
+import { type Group, metaLine, unchecked } from "@/lib/hub";
 import { IMGW_ATTRIBUTION } from "@/lib/imgw-warnings";
 import { MODULES, type Module } from "@/lib/modules";
 import type { PlaceView } from "@/lib/schedule";
@@ -96,20 +96,16 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
   const items = modules.flatMap((module, i) =>
     data[i] === null ? [] : module.upcoming(data[i]),
   );
-  // Lines that belong to no day; a live module not checked says so, so
-  // an empty day never claims „nothing” for it.
+  // Lines that belong to no day; a module not checked says so, so an
+  // empty day never claims „nothing” for it.
   const notices: Group[] = modules.flatMap((module, i) =>
-    data[i] === null
-      ? module.live
-        ? [[[`Nie udało się sprawdzić ${module.subject}.`]]]
-        : []
-      : module.notices(data[i]),
+    data[i] === null ? [[[unchecked(module)]]] : module.notices(data[i]),
   );
   const loaded = modules.flatMap((module, i) =>
     data[i] === null ? [] : [{ module, data: data[i] }],
   );
   const links = loaded.filter(
-    ({ module, data }) => module.Details && module.sources(data).length > 0,
+    ({ module, data }) => module.sources(data).length > 0,
   );
   return (
     <AddressPage place={place}>
@@ -131,7 +127,7 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
                   className="govuk-link"
                   href={subpageHref(module, place)}
                 >
-                  {module.Details ? module.more : null}
+                  {module.more}
                 </PlaceLink>
               </li>
             ))}
@@ -146,7 +142,7 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
           const meta = metaLine(
             module.sources(data),
             module.note?.(data) ?? null,
-            module.checkedAt?.(data) ?? null,
+            module.checkedAt(data),
           );
           if (meta.length === 0) return null;
           return (

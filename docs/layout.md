@@ -4,18 +4,20 @@ Every page follows one consistent layout (Jakub's decision, task 125). Read this
 
 ## Address subpages: one skeleton
 
-Every `/adres/<id>/<module>` page (`smieci`, `woda`, and later `prad` or any new module) has the same skeleton, in this order:
+Every `/adres/<id>/<module>` page (`smieci`, `woda`, `pogoda`, and any new module) has the same skeleton, in this order, from one frame: `Subpage` (`web/components/module-page.tsx`, built on `AddressPage`, `web/components/place-page.tsx`), filled only from the module's fields (`Module`, `web/lib/modules.ts`); the module's `Details` is the body alone, from step 5 (task 279):
 
 1. Breadcrumbs: `PlaceBreadcrumbs` (`web/components/place-page.tsx`, built on the shared `Breadcrumbs`, below), rendered by the root layout's `@breadcrumbs` slot before `<main>` (below); everything below is inside it, from `ModuleMain` (`web/components/module-page.tsx`).
-2. Caption (place, street) + h1: `SubpageHeading` (`web/components/place-page.tsx`).
+2. Caption (place, street) + h1 (`Module.pageTitle`); before them, GOV.UK's error summary when the module has an error (`Module.error`: waste's house-number question).
 3. „Zmień adres”: part of the same heading (GOV.UK "Change" pattern).
-4. „Wywozy sprawdziliśmy …” (waste), „Komunikaty o wodzie sprawdziliśmy …” (water), „Ostatnio sprawdziliśmy …” (weather): `CheckedLine` (`web/components/checked-line.tsx`), from the module's `checkedAt` (`web/lib/modules.ts`), its label per module in `web/lib/hub.ts` (`CHECKED`).
+4. „Wywozy sprawdziliśmy …” (waste), „Komunikaty o wodzie sprawdziliśmy …” (water), „Ostrzeżenia pogodowe sprawdziliśmy …” (weather): `checkedLine` (`web/lib/hub.ts`) from the module's `checkedAt` and its `checkedLabel` (`web/lib/modules.ts`), one `Intl.DateTimeFormat` for the time („10 listopada 22:40”, or the day alone).
 5. The calendar block: `CalendarBlock` (`web/components/subpage-parts.tsx`), a primary `govuk-button` link to the module's ICS file, a hint under it (only the page's own sentence on what the file is), then a closed `govuk-details` „Jak dodać i sprawdzić, czy się udało?” with the shared `CALENDAR_STEPS`: how to add it on an iPhone and on Android, what to check and try, and Google Calendar on a computer; a browser never knows whether the import worked, so the copy never says it did. Only the hint comes from the page; the rest, details included, lives only in the component, the same on every page. Its `event` prop and properties are what `web/components/web-analytics.tsx` sends on a click: waste `calendar_add` with `zone` and `source`, water `water_calendar_add` with `place` (the place id). Shown only when the file has at least one event (water: `waterCalendarHref`, `web/lib/water-ics.ts`; waste: a zone with upcoming dates).
-6. The module's content (waste: the pickup list; water: the cuts, a day each, then „Inne komunikaty”).
+6. The module's content (waste: the pickup list; water: the cuts, a day each, their hours as the timeline's, „od 8:00 do 14:00” (`fromTo`), then „Inne komunikaty”; weather: a summary card per warning).
 7. The AI-read note: `AiReadNote` (`web/components/subpage-parts.tsx`), GOV.UK's warning text. Wording per source: `UNVERIFIED_NOTE` (`web/lib/schedule-notes.ts`) for the gmina's schedule, `waterAiNote` (`web/lib/water-module.ts`) for the water posts, naming the source of the cuts shown (the gmina's, MZGKiM's or both).
-8. The source in an inset: `SourceInset` (`web/components/subpage-parts.tsx`), one „Źródło: …” paragraph per source.
+8. The source in an inset: `SourceInset` (`web/components/subpage-parts.tsx`), one „Źródło: …” paragraph per `Module.sources` (the hub's „Skąd to wiemy” reads the same); `/pogoda` adds IMGW's required wording, and links IMGW only there.
 
-With no calendar file, or nothing to show, the rest keeps the same order. New subpages reuse these shared components instead of re-creating them. `web/components/subpages.test.ts` renders `/smieci` and `/woda` and checks the order and that both calendar blocks have the same markup.
+With no calendar file, or nothing to show, the rest keeps the same order. A module with no data now (`load` → null: no IMGW copy yet, say) shows steps 1–3, then the hub's one line, „Nie udało się sprawdzić ‹`Module.subject`›.” (`unchecked`, `web/lib/hub.ts`), as plain `govuk-body`. New subpages reuse these shared components instead of re-creating them. `web/components/subpages.test.ts` renders `/smieci`, `/woda` and `/pogoda` through `Subpage`, checks their order, the no-data state, and that both calendar blocks have the same markup.
+
+Metadata, one builder for every module (`moduleMetadata`, `web/components/subpage-route.tsx`): the title „‹h1› – ‹place›” („Błąd: ” first on `Module.error`), `Module.description`, and `noindex` unless `Module.indexed` says it may be a search result (waste only, as the address page: `indexedPlace`).
 
 ### Recorded deviations
 
@@ -57,7 +59,7 @@ Every link to a page of the site is Next.js's `<Link>` (`next/link`, nextjs.org/
 
 ## Titles
 
-GOV.UK's title is the page's h1, then „ – conaulicy.pl”. A place's pages add its locality to the title only, never to the h1, so that search results for the same street name in two places differ (Jakub's decision, task 133): the hub „ul. Leśna, Lubaczów – conaulicy.pl”, a village's street „ul. Leśna, Basznia Dolna – conaulicy.pl”, a whole village „Antoniki, gm. Lubaczów – conaulicy.pl”; `/smieci` „Odbiór śmieci: wszystkie terminy – ul. Leśna, Lubaczów – conaulicy.pl”, `/woda` „Przerwy w dostawie wody – ul. Leśna, Lubaczów – conaulicy.pl”. Built from the place's label (`titleLabel`, `web/lib/places.ts`); `web/scripts/routes/metadata.mjs` checks the pattern, `check-indexing.mjs --expect=index` (by hand, before launch) that no two titles in the sitemap are the same.
+GOV.UK's title is the page's h1, then „ – conaulicy.pl”. A place's pages add its locality to the title only, never to the h1, so that search results for the same street name in two places differ (Jakub's decision, task 133): the hub „ul. Leśna, Lubaczów – conaulicy.pl”, a village's street „ul. Leśna, Basznia Dolna – conaulicy.pl”, a whole village „Antoniki, gm. Lubaczów – conaulicy.pl”; `/smieci` „Odbiór śmieci – ul. Leśna, Lubaczów – conaulicy.pl”, `/woda` „Przerwy w dostawie wody – ul. Leśna, Lubaczów – conaulicy.pl”. Built from the place's label (`titleLabel`, `web/lib/places.ts`); `web/scripts/routes/metadata.mjs` checks the pattern, `check-indexing.mjs --expect=index` (by hand, before launch) that no two titles in the sitemap are the same.
 
 ## Headings
 
@@ -80,7 +82,7 @@ One rule (task 275, Jakub's decision): **19 px for content, 16 px for metadata a
 | Content: body, lists, summary lists, insets, details, warning text, buttons, the search field, its hint and suggestions | GOV.UK's default | 19, regular (keys and warning text bold) |
 | Inside a hub timeline card (task 269) | `govuk-body-s`, the card rule in `site.scss` | 16, regular; keys bold |
 | Sources („Źródło: …”, the hub's „Skąd to wiemy”, the subpages' `SourceInset` paragraphs) | `govuk-body-s` | 16, regular, text colour |
-| Timestamps („Sprawdziliśmy …”, `CheckedLine`) and IMGW's required wording (hub and `/pogoda`) | `govuk-hint govuk-!-font-size-16` | 16, regular, secondary |
+| Timestamps („Sprawdziliśmy …”, `checkedLine`) and IMGW's required wording (hub and `/pogoda`) | `govuk-hint govuk-!-font-size-16` | 16, regular, secondary |
 | Chrome: breadcrumbs (GOV.UK's own 16) and the footer (`govuk-!-font-size-16` on `.govuk-footer`, a deviation, below) | | 16, regular |
 
 On purpose, so nobody "fixes" them:
@@ -102,7 +104,7 @@ Across the whole site the same job always uses the same component and style:
 
 - one button style per action (adding to a calendar: the primary `govuk-button`, `CalendarBlock`);
 - one place for what is coming soon (the hub's timeline, `Timeline` in `web/components/timeline.tsx`): a card per day, a row per item with „Szczegóły” to its subpage; each module's source and check time in „Skąd to wiemy” (task 263);
-- one freshness line: `CheckedLine` on the subpages; on the hub, the end of each module's meta line in „Skąd to wiemy” („Sprawdziliśmy …”, `metaLine`, `web/lib/hub.ts`).
+- one freshness line: the subpages' checked line (`checkedLine`, step 4 above); on the hub, the end of each module's meta line in „Skąd to wiemy” („Sprawdziliśmy …”, `metaLine`, `web/lib/hub.ts`).
 - Link text says where it goes (e.g. „Wszystkie odbiory śmieci”); never a bare „Kliknij tutaj”. The timeline's „Szczegóły” is GOV.UK's summary-list action, with its visually hidden suffix („Szczegóły o odbiorze śmieci, wtorek, 10 listopada”), as GOV.UK's „Change”.
 
 ## Live blocks and loading placeholders
@@ -125,7 +127,7 @@ Opened from the home screen (`display-mode: standalone`), every page has a strip
 
 The hub is date-first (task 263; restyled in tasks 264-269, Jakub's accepted design; `web/components/hub.tsx`). Under „Zmień adres”, in this order:
 
-1. The lines that belong to no day, in one `govuk-inset-text`, only when there are any (`Module.notices`, `web/lib/modules.ts`): the split street's „Podaj numer domu”, why a place has no waste dates (only the waste schedule is missing, never the place: „Nie mamy jeszcze harmonogramu wywozu śmieci dla tej ulicy. Sprawdź odbiory w harmonogramie …”, task 276), a water source we could not check, IMGW's stale notice (`docs/data/imgw.md`), and „Nie udało się sprawdzić …” for a live module with no data, so an empty day never claims „nothing” for it. Its paragraphs are `govuk-body`, 19 px, on purpose: content, not metadata (Typography, above).
+1. The lines that belong to no day, in one `govuk-inset-text`, only when there are any (`Module.notices`, `web/lib/modules.ts`): the split street's „Podaj numer domu”, why a place has no waste dates (only the waste schedule is missing, never the place: „Nie mamy jeszcze harmonogramu wywozu śmieci dla tej ulicy. Sprawdź odbiory w harmonogramie …”, task 276), a water source we could not check, IMGW's stale notice (`docs/data/imgw.md`), and „Nie udało się sprawdzić …” for a module with no data (`unchecked`, as its subpage), so an empty day never claims „nothing” for it. Its paragraphs are `govuk-body`, 19 px, on purpose: content, not metadata (Typography, above).
 2. „Najbliższe 7 dni” (`web/components/timeline.tsx`, `web/lib/timeline.ts`; h2 `govuk-heading-m`): an `ol.app-timeline`, a card per Warsaw day from the read's day (`days`, `onDay`): every module's items on that day, in registry order (`MODULE_IDS`), then by start; an item over at the read is gone; one that spans days is on each, „trwa” after its first. Two or more empty days in a row are one grey card titled by Intl's `formatRange` („10–15 listopada”, years only when they differ, no relative word; `collapse`, `dayRange`), today included: with nothing in the whole window, one range card, then „Później” (task 272); a single empty day keeps its own. An empty card says „Nic nie zaplanowano.”, on every place, with or without a waste schedule (task 278; the notice above says what is missing). Each card's title is an h3 `govuk-heading-s`: the date, absolute, and after it Intl's relative word („ · jutro”, `DayWord` form `title`, the device's day), body-s and grey. Its rows are a GOV.UK summary list (`web/components/function-rows.tsx`): the key the module's `rowLabel`, the value its `Row` (`web/components/rows/*`: the bins, the water cut's hours and where, IMGW's tag, event and times), the action „Szczegóły” to the module's subpage with a visually hidden „o …, ‹date›”. Then „Później”: the next item per module after the window, its date with weekday and year (`later`, `dayWithYear`). The line, dots, carets and the grey of empty days are CSS only (`site.scss` `.app-timeline`); every date is the same grey, and the first dot, where the line starts (today), is filled in the brand colour whatever its card (`li:first-child`, task 272).
 3. „Wszystko o Twoim adresie”: a `govuk-list` of each module's subpage link saying where it goes (its `more`), for each module with a source here.
 4. „Skąd to wiemy”: per module, `govuk-body-s`, its title in bold, then its meta line: „Źródło: ‹its sources›.”, its `note`, „Sprawdziliśmy …” (`metaLine`, `web/lib/hub.ts`); each part only when there is one. Then IMGW's required wording, as secondary text.

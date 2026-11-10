@@ -15,7 +15,7 @@ import {
 import { wasteUpcoming } from "./waste-upcoming.ts";
 
 const wasteLine = (at: Parameters<typeof checkedLine>[0]) =>
-  checkedLine(at, "smieci");
+  checkedLine(at, "Wywozy sprawdziliśmy");
 
 const pickup = (label: string, putOutBy: string | null = null) => ({
   id: label,
@@ -239,7 +239,7 @@ test("checked line: events.checkedAt, a day; source_files.lastSeenAt, Warsaw day
   ];
   const at = wasteChecked(place({ sources }));
   assert.ok(at instanceof Date);
-  assert.equal(wasteLine(at), "Wywozy sprawdziliśmy: 25 października, 5:03");
+  assert.equal(wasteLine(at), "Wywozy sprawdziliśmy: 25 października 5:03");
 });
 
 test("checked line: the oldest of several sources, times and days alike; none without a date", () => {
@@ -276,7 +276,7 @@ test("checked line: the oldest of several sources, times and days alike; none wi
         }),
       ),
     ),
-    "Wywozy sprawdziliśmy: 24 października, 6:01",
+    "Wywozy sprawdziliśmy: 24 października 6:01",
   );
   // A file seen today, another source without a row checked days ago.
   assert.equal(
@@ -307,7 +307,7 @@ test("checked line: the oldest of several sources, times and days alike; none wi
         }),
       ),
     ),
-    "Wywozy sprawdziliśmy: 24 października, 23:30",
+    "Wywozy sprawdziliśmy: 24 października 23:30",
   );
 });
 

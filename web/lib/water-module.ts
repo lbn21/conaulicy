@@ -38,6 +38,7 @@ import { absoluteDay, warsawToIso } from "./dates.ts";
 import type { Disruption, Notice } from "./disruptions.ts";
 import { hasSource } from "./event-source.ts";
 import { capitalised, type Group, merged, type Part, span } from "./hub.ts";
+import { LIST } from "./locale.ts";
 import { PART_STREETS, VILLAGE_IN } from "./part-streets.ts";
 import { placePath } from "./places.ts";
 import type { Item } from "./upcoming.ts";
@@ -320,6 +321,10 @@ export function water(
   };
 }
 
+/** /woda's description: the place, and whose posts the dates come from. */
+export const waterDescription = (place: PlaceView) =>
+  `Zapowiedziane przerwy w dostawie wody: ${place.label}. Daty i godziny z komunikatów ${listed(sourcesAt(place.localityId).map((s) => s.of))}.`;
+
 /** The water subpage, with the house number as given. */
 export function waterPath(place: Pick<PlaceView, "id" | "givenNr">): string {
   return `${placePath(place.id)}/woda${place.givenNr ? `?nr=${place.givenNr}` : ""}`;
@@ -351,10 +356,7 @@ function when(cut: Cut): string {
 }
 
 /** "a", "a i b", "a, b i c". */
-const listed = (items: string[]) =>
-  items.length > 1
-    ? `${items.slice(0, -1).join(", ")} i ${items.at(-1)}`
-    : (items[0] ?? "");
+const listed = (items: string[]) => LIST.format(items);
 
 /** TERYT's kind of each locality (SIMC). */
 const KIND = new Map(ZUK_PLACES.localities.map((l) => [l.id, l.kind]));
@@ -394,7 +396,7 @@ export function scope(cut: Cut): string {
   if (cut.note) return `${name}: ${cut.note}`;
   if (cut.scope.type === "ranges") {
     const ranges = cut.scope.ranges.map((r) => `od ${r.from} do ${r.to}`);
-    return `${name}: numery ${ranges.join(" i ")}`;
+    return `${name}: numery ${listed(ranges)}`;
   }
   if (cut.scope.type === "numbers")
     return `${name}: numery ${cut.scope.numbers.join(", ")}`;
@@ -460,7 +462,7 @@ function placeWhere(cut: Cut, place: Water["place"]): string {
 function houses(cut: Cut): string | null {
   const { scope } = cut;
   if (scope.type === "ranges")
-    return scope.ranges.map((r) => `${r.from}–${r.to}`).join(" i ");
+    return listed(scope.ranges.map((r) => `${r.from}–${r.to}`));
   if (scope.type === "numbers") return scope.numbers.join(", ");
   return null;
 }
@@ -487,16 +489,23 @@ function upcomingWhere(cut: Cut, place: Water["place"]): string {
   return `Część ${street ? "ulicy" : word.of} – których domów dotyczy, sprawdź w szczegółach.`;
 }
 
+/** A cut's span (lib/hub.ts span): its day, its hours if given. */
+export const cutSpan = (cut: Cut) =>
+  span(
+    cut.date,
+    cut.start && warsawToIso(cut.start),
+    endInstant(cut),
+    cut.endEstimated,
+  );
+
+/** A cut without hours: its row, on the timeline and on /woda. */
+export const NO_HOURS = "Komunikat nie podaje godzin.";
+
 /** The timeline's items: every cut still to come here, each its own. */
 export function waterUpcoming(data: Water): Item[] {
   return data.outages.map((cut) => ({
     module: "woda",
-    span: span(
-      cut.date,
-      cut.start && warsawToIso(cut.start),
-      endInstant(cut),
-      cut.endEstimated,
-    ),
+    span: cutSpan(cut),
     emergency: cut.cause === "emergency",
     second: upcomingWhere(cut, data.place),
   }));
@@ -513,7 +522,7 @@ export function noticeLink(notice: Notice): Part {
     const one = doubt.length === 1;
     return {
       href: notice.source.url,
-      text: `${who} pisze tylko ${doubt.map((d) => `„${d.words}”`).join(" i ")}, więc nie wiemy na pewno, czy chodzi o ${one ? "ulicę, czy o całe osiedle" : "ulice, czy o całe osiedla"} – zajrzyj do komunikatu`,
+      text: `${who} pisze tylko ${listed(doubt.map((d) => `„${d.words}”`))}, więc nie wiemy na pewno, czy chodzi o ${one ? "ulicę, czy o całe osiedle" : "ulice, czy o całe osiedla"} – zajrzyj do komunikatu`,
       hidden: `„${notice.title}”`,
     };
   }
@@ -533,14 +542,16 @@ export function noticeLink(notice: Notice): Part {
   };
 }
 
-/** Links joined with „ i ”. */
+/** Links as a list ("a, b i c"): Intl's words between them. */
 const joined = (links: Part[]): Part[] =>
-  links.flatMap((link, i) => (i === 0 ? [link] : [" i ", link]));
+  LIST.formatToParts(links.map((_, i) => String(i))).map((part) =>
+    part.type === "element" ? links[Number(part.value)] : part.value,
+  );
 
 /** Some, not all, of the address's sources: then the texts name them. */
 const named = (data: Water, some: SourceState[]) =>
   some.length < data.sources.length
-    ? ` ${some.map((s) => s.source.of).join(" i ")}`
+    ? ` ${listed(some.map((s) => s.source.of))}`
     : "";
 
 const down = (data: Water) => data.sources.filter((s) => s.unavailable);
@@ -656,7 +667,7 @@ export function aiNote(of: string): string {
 export function waterAiNote(data: Water): string {
   const used = cutSources(data);
   if (used.length > 1)
-    return `Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejsze są komunikaty ${used.map((s) => s.of).join(" i ")}.`;
+    return `Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejsze są komunikaty ${listed(used.map((s) => s.of))}.`;
   return aiNote((used[0] ?? GMINA).of);
 }
 

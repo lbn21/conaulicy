@@ -7,9 +7,8 @@
 // parses. Every page in ROUTES, those included: the title is GOV.UK's
 // "<H1> – conaulicy.pl", but a place's pages name its locality too (Jakub's
 // decision, task 133): the address page "<H1>, <locality> – conaulicy.pl",
-// the waste subpage "<H1>: wszystkie terminy – <place>, <locality> –
-// conaulicy.pl", the water and weather subpages "<H1> – <place>,
-// <locality> – conaulicy.pl" ("Błąd: " first with an error summary); a few of them
+// every module's subpage "<H1> – <place>, <locality> – conaulicy.pl"
+// ("Błąd: " first with an error summary); a few of them
 // exactly (TITLES). The share title is the same, and the share name
 // conaulicy.pl. The home page's Apple web-app tags (a "default" status bar,
 // never black-translucent) and the manifest's id, scope, display and icons.
@@ -29,9 +28,9 @@ const TITLES = {
   "/adres/0606234-90008": "ul. Leśna, Lisie Jamy – conaulicy.pl",
   "/adres/0606010": "Dąbrowa, gm. Lubaczów – conaulicy.pl",
   "/adres/0972447-00470/smieci":
-    "Odbiór śmieci: wszystkie terminy – ul. Adama Asnyka, Lubaczów – conaulicy.pl",
+    "Odbiór śmieci – ul. Adama Asnyka, Lubaczów – conaulicy.pl",
   "/adres/0606010/smieci":
-    "Odbiór śmieci: wszystkie terminy – Dąbrowa, gm. Lubaczów – conaulicy.pl",
+    "Odbiór śmieci – Dąbrowa, gm. Lubaczów – conaulicy.pl",
   "/adres/0972447-00470/woda":
     "Przerwy w dostawie wody – ul. Adama Asnyka, Lubaczów – conaulicy.pl",
   "/adres/0606010/woda":
@@ -86,12 +85,9 @@ export async function check(server, failures) {
         )
       : null;
     const hub = /^\/adres\/[^/?]+(?:\?|$)/.test(path) && status === 200;
-    const prefix =
-      {
-        smieci: `${error}${h1[0]}: wszystkie terminy – ${place}, `,
-        woda: `${error}${h1[0]} – ${place}, `,
-        pogoda: `${error}${h1[0]} – ${place}, `,
-      }[subpage] ?? `${error}${h1[0]}, `;
+    const prefix = subpage
+      ? `${error}${h1[0]} – ${place}, `
+      : `${error}${h1[0]}, `;
     const ok =
       subpage || hub
         ? title[0]?.startsWith(prefix) &&

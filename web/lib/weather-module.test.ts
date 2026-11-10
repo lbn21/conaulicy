@@ -38,7 +38,7 @@ test("a warning: one item with its tag and times; no notice on the hub", () => {
       },
       event: "silny wiatr",
       level: tag,
-      second: "Cały powiat.",
+      second: "Cały powiat lubaczowski.",
     },
   ]);
   // IMGW's own description is /pogoda's (components/subpages.test.ts).
@@ -135,8 +135,8 @@ test("checked line: the last good check, warning or not", () => {
       at("2026-10-25T13:52:10+01:00"),
     );
     assert.equal(
-      checkedLine(weatherChecked(data), "pogoda"),
-      "Ostatnio sprawdziliśmy: 25 października, 13:52",
+      checkedLine(weatherChecked(data), "Ostrzeżenia pogodowe sprawdziliśmy"),
+      "Ostrzeżenia pogodowe sprawdziliśmy: 25 października 13:52",
     );
   }
 });
@@ -149,5 +149,8 @@ test("the store unreadable now: the notice alone, no item, no check time", () =>
     [[`Nie udało się teraz sprawdzić ostrzeżeń IMGW.${NOTICE_END}`, link, "."]],
   ]);
   assert.equal(weatherChecked(data), null);
-  assert.equal(checkedLine(weatherChecked(data), "pogoda"), null);
+  assert.equal(
+    checkedLine(weatherChecked(data), "Ostrzeżenia pogodowe sprawdziliśmy"),
+    null,
+  );
 });

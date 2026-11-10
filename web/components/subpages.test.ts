@@ -29,17 +29,13 @@ import {
   waterTrace,
   waterUpcoming,
 } from "../lib/water-module.ts";
-import {
-  type Weather,
-  weather,
-  weatherChecked,
-} from "../lib/weather-module.ts";
+import { type Weather, weather } from "../lib/weather-module.ts";
 import { STALE_MS, type StoredPost, zukView } from "../lib/zuk-data.ts";
-import { AddressPage, SubpageHeading, WasteDetails } from "./place-page.tsx";
+import { Subpage } from "./module-page.tsx";
+import { AddressPage } from "./place-page.tsx";
 import { CALENDAR_CHECK, CALENDAR_STEPS } from "./subpage-parts.tsx";
 import { WarsawToday } from "./warsaw-today.tsx";
 import { WaterDetails } from "./water-page.tsx";
-import { WeatherDetails } from "./weather-page.tsx";
 import { eventProperties } from "./web-analytics.tsx";
 
 // The address subpages' one layout (docs/layout.md), rendered as the pages
@@ -48,7 +44,7 @@ import { eventProperties } from "./web-analytics.tsx";
 const ZUKI = testPlace();
 
 // The /woda page as it reaches the browser, read per request
-// (components/module-page.tsx): the heading, then the body, for the
+// (components/module-page.tsx Subpage): the frame, then the body, for the
 // server's Warsaw day (WarsawToday).
 const waterPage = (
   posts = [storedPost(POST_39885, CHECKED)],
@@ -61,49 +57,48 @@ const waterPage = (
     createElement(
       WarsawToday,
       { day: day || todayInWarsaw() },
-      createElement(SubpageHeading, {
-        place: data.place,
-        heading: "Przerwy w dostawie wody",
-      }),
-      createElement(WaterDetails, { data, checkedAt: new Date(checked) }),
+      createElement(Subpage, { module: MODULES.woda, place: data.place, data }),
     ),
   );
 };
 
-const wastePage = (place: Partial<PlaceView> = {}, missing = false) =>
-  renderToStaticMarkup(
-    createElement(WasteDetails, {
+const wastePage = (place: Partial<PlaceView> = {}, missing = false) => {
+  const data = testPlace({
+    zoneId: "waste:miasto-s2",
+    verified: false,
+    days: [
+      {
+        date: "2026-10-27",
+        pickups: [
+          {
+            id: "p1",
+            subtype: "zmieszane",
+            label: "Zmieszane",
+            putOutBy: null,
+            shiftedFrom: null,
+          },
+        ],
+      },
+    ],
+    sources: [
+      {
+        label: "stan na 1 października",
+        url: null,
+        checkedAt: null,
+        seenAt: CHECKED,
+      },
+    ],
+    ...place,
+  });
+  return renderToStaticMarkup(
+    createElement(Subpage, {
+      module: MODULES.smieci,
+      place: data,
+      data,
       missing,
-      data: testPlace({
-        zoneId: "waste:miasto-s2",
-        verified: false,
-        days: [
-          {
-            date: "2026-10-27",
-            pickups: [
-              {
-                id: "p1",
-                subtype: "zmieszane",
-                label: "Zmieszane",
-                putOutBy: null,
-                shiftedFrom: null,
-              },
-            ],
-          },
-        ],
-        sources: [
-          {
-            label: "stan na 1 października",
-            url: null,
-            checkedAt: null,
-            seenAt: null,
-          },
-        ],
-        ...place,
-      }),
-      checkedAt: new Date(CHECKED),
     }),
   );
+};
 
 /** Where each marker first appears; -1 if it does not. */
 const order = (html: string, markers: string[]) =>
@@ -476,12 +471,7 @@ test("village: the hub's water in every state, /woda never MZGKiM", () => {
       hub[state],
       state,
     );
-    const html = renderToStaticMarkup(
-      createElement(WaterDetails, {
-        data,
-        checkedAt: view.checkedAt ? new Date(view.checkedAt) : null,
-      }),
-    );
+    const html = renderToStaticMarkup(createElement(WaterDetails, { data }));
     assert.doesNotMatch(html, /MZGKiM/, state);
   }
 });
@@ -504,7 +494,7 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
   );
   assert.match(
     html,
-    /<h2 id="dzien-2026-10-06" class="govuk-heading-m">Za 3 dni: wtorek, 6 października<\/h2><dl class="govuk-summary-list"><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Godziny<\/dt><dd class="govuk-summary-list__value">8:30–15:00<\/dd><\/div><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Gdzie<\/dt><dd class="govuk-summary-list__value">cała ulica Niemirowska<\/dd>/,
+    /<h2 id="dzien-2026-10-06" class="govuk-heading-m">Za 3 dni: wtorek, 6 października<\/h2><dl class="govuk-summary-list"><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Godziny<\/dt><dd class="govuk-summary-list__value">od 8:30 do 15:00<\/dd><\/div><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Gdzie<\/dt><dd class="govuk-summary-list__value">cała ulica Niemirowska<\/dd>/,
   );
   assert.match(
     html,
@@ -602,24 +592,20 @@ test("/smieci: an event without its source is not on the page", () => {
   assert.ok(!html.includes("https://example.org/b.pdf"));
 });
 
-// /pogoda (components/weather-page.tsx, task 263): the subpage's heading,
+// /pogoda (components/weather-page.tsx, task 263): the subpage's frame,
 // then IMGW's warnings for the powiat, each a GOV.UK summary card, then
-// IMGW's page and the source, with IMGW's required wording.
+// the source (IMGW's page), with IMGW's required wording.
 const weatherPage = (data: Weather) =>
   renderToStaticMarkup(
     createElement(
       "main",
       null,
-      createElement(SubpageHeading, {
-        place: ZUKI,
-        heading: "Ostrzeżenia pogodowe IMGW",
-      }),
-      createElement(WeatherDetails, { data, checkedAt: weatherChecked(data) }),
+      createElement(Subpage, { module: MODULES.pogoda, place: ZUKI, data }),
     ),
   );
 const IMGW_NOW = Date.parse("2026-10-25T14:00:00+01:00");
 const SOURCE_INSET =
-  /<div class="govuk-inset-text"><p class="govuk-body-s">Źródło: <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">IMGW-PIB<\/a><\/p><p class="govuk-hint govuk-!-font-size-16">Źródłem pochodzenia danych jest Instytut Meteorologii [^<]+<\/p><\/div><\/main>$/;
+  /<div class="govuk-inset-text"><p class="govuk-body-s">Źródło: <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">IMGW-PIB<\/a><\/p><p class="govuk-hint govuk-!-font-size-16">Źródłem pochodzenia danych jest Instytut Meteorologii [^<]+<\/p><\/div><\/div><\/div><\/main>$/;
 
 test("/pogoda: a subpage of every address, its h1 and the registry's", () => {
   const pogoda = findSubpage("pogoda");
@@ -629,17 +615,17 @@ test("/pogoda: a subpage of every address, its h1 and the registry's", () => {
   assert.equal(findSubpage("prad"), null);
 });
 
-test("/pogoda: a warning as a summary card, IMGW's words, its page, the source", () => {
+test("/pogoda: a warning as a summary card, IMGW's words, the source", () => {
   const data = weather(copyCheckedAt("2026-10-25T13:52:10+01:00"), IMGW_NOW);
   assert.ok(data);
   const html = weatherPage(data);
   assert.match(
     html,
-    /^<main><span class="govuk-caption-l">Lubaczów, ul\. Żuki<\/span><h1 class="govuk-heading-l">Ostrzeżenia pogodowe IMGW<\/h1><p class="govuk-body govuk-!-margin-bottom-6"><a [^>]*href="\/"[^>]*>Zmień adres/,
+    /^<main><div class="govuk-grid-row"><div class="govuk-grid-column-two-thirds"><span class="govuk-caption-l">Lubaczów, ul\. Żuki<\/span><h1 class="govuk-heading-l">Ostrzeżenia pogodowe IMGW<\/h1><p class="govuk-body govuk-!-margin-bottom-6"><a [^>]*href="\/"[^>]*>Zmień adres/,
   );
   assert.match(
     html,
-    /<p class="govuk-hint govuk-!-font-size-16">Ostatnio sprawdziliśmy: 25 października, 13:52<\/p><div class="govuk-summary-card">/,
+    /<p class="govuk-hint govuk-!-font-size-16">Ostrzeżenia pogodowe sprawdziliśmy: 25 października 13:52<\/p><div class="govuk-summary-card">/,
   );
   assert.match(
     html,
@@ -648,15 +634,13 @@ test("/pogoda: a warning as a summary card, IMGW's words, its page, the source",
   assert.equal(html.split('class="govuk-summary-card"').length - 1, 1);
   // Every tag has its colour modifier (CLAUDE.md: never the plain tag).
   assert.doesNotMatch(html, /class="govuk-tag"/);
-  assert.match(
-    html,
-    /<p class="govuk-body"><a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">Szczegóły i mapa na meteo\.imgw\.pl<\/a><\/p>/,
-  );
+  // One link to IMGW: the source's.
+  assert.equal(html.split('href="https://meteo.imgw.pl/"').length - 1, 1);
   assert.match(html, SOURCE_INSET);
   assert.doesNotMatch(html, /Brak ostrzeżeń|Nie udało się/);
 });
 
-test("/pogoda without a warning: one line saying so, no IMGW page link, still the source", () => {
+test("/pogoda without a warning: one line saying so, still the source", () => {
   const data = weather(
     copyCheckedAt("2026-10-25T13:52:10+01:00", []),
     IMGW_NOW,
@@ -667,7 +651,7 @@ test("/pogoda without a warning: one line saying so, no IMGW page link, still th
     html,
     /<\/p><p class="govuk-body">Brak ostrzeżeń IMGW dla powiatu lubaczowskiego\.<\/p><div class="govuk-inset-text">/,
   );
-  assert.doesNotMatch(html, /govuk-summary-card|Szczegóły i mapa/);
+  assert.doesNotMatch(html, /govuk-summary-card/);
   assert.match(html, SOURCE_INSET);
 });
 
@@ -677,7 +661,7 @@ test("/pogoda, the copy old: the notice first, linked to IMGW, then the warnings
   const html = weatherPage(data);
   assert.match(
     html,
-    /<p class="govuk-hint govuk-!-font-size-16">Ostatnio sprawdziliśmy: 25 października, 12:59<\/p><div class="govuk-inset-text">Nie udało się teraz pobrać ostrzeżeń IMGW\. Pokazujemy ostatnie dane z 12:59\. Aktualne znajdziesz na <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">meteo\.imgw\.pl<\/a>\.<\/div><div class="govuk-summary-card">/,
+    /<p class="govuk-hint govuk-!-font-size-16">Ostrzeżenia pogodowe sprawdziliśmy: 25 października 12:59<\/p><div class="govuk-inset-text"><p class="govuk-body">Nie udało się teraz pobrać ostrzeżeń IMGW\. Pokazujemy ostatnie dane z 12:59\. Aktualne znajdziesz na <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">meteo\.imgw\.pl<\/a>\.<\/p><\/div><div class="govuk-summary-card">/,
   );
   assert.doesNotMatch(html, /Brak ostrzeżeń/);
 });
@@ -688,10 +672,43 @@ test("/pogoda, the store unreadable: the notice alone, no check time, no „Brak
   const html = weatherPage(data);
   assert.match(
     html,
-    /Zmień adres.*?<\/p><div class="govuk-inset-text">Nie udało się teraz sprawdzić ostrzeżeń IMGW\. Aktualne znajdziesz na <a [^>]*>meteo\.imgw\.pl<\/a>\.<\/div><div class="govuk-inset-text"><p class="govuk-body-s">Źródło:/,
+    /Zmień adres.*?<\/p><div class="govuk-inset-text"><p class="govuk-body">Nie udało się teraz sprawdzić ostrzeżeń IMGW\. Aktualne znajdziesz na <a [^>]*>meteo\.imgw\.pl<\/a>\.<\/p><\/div><div class="govuk-inset-text"><p class="govuk-body-s">Źródło:/,
   );
-  assert.doesNotMatch(
+  assert.doesNotMatch(html, /sprawdziliśmy|Brak ostrzeżeń|govuk-summary-card/);
+});
+
+test("/pogoda: the subpages' skeleton, in the same order as /smieci and /woda", () => {
+  const data = weather(copyCheckedAt("2026-10-25T13:52:10+01:00"), IMGW_NOW);
+  assert.ok(data);
+  const html = weatherPage(data);
+  // No calendar file for the weather: the skeleton up to the checked line.
+  assert.ok(
+    ascending(
+      order(html, [
+        ...SKELETON.slice(0, -1),
+        "govuk-summary-card",
+        'class="govuk-inset-text"',
+      ]),
+    ),
     html,
-    /Ostatnio sprawdziliśmy|Brak ostrzeżeń|govuk-summary-card/,
   );
+});
+
+test("every subpage with no data now: its frame, then the hub's one line, nothing else", () => {
+  for (const [module, line] of [
+    [MODULES.woda, "Nie udało się sprawdzić przerw w dostawie wody."],
+    [MODULES.pogoda, "Nie udało się sprawdzić ostrzeżeń IMGW."],
+  ] as const) {
+    const html = renderToStaticMarkup(
+      createElement(Subpage, { module, place: ZUKI, data: null }),
+    );
+    assert.match(
+      html,
+      new RegExp(
+        `<h1 class="govuk-heading-l">${module.pageTitle}</h1><p class="govuk-body govuk-!-margin-bottom-6"><a [^>]*>Zmień adres.*?</a></p><p class="govuk-body">${line.replace(/\./g, "\\.")}</p></div></div>$`,
+      ),
+      module.id,
+    );
+    assert.doesNotMatch(html, /sprawdziliśmy|govuk-inset-text|role="button"/);
+  }
 });
