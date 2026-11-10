@@ -125,10 +125,10 @@ test("timeline: a card per day from today, 2+ empty days as one, Intl's titles",
   // 25-31 Oct: today, the cut on 26, 27-28 empty, the cut on 29, 30-31
   // empty; nothing after the window, so no „Później”.
   assert.deepEqual(texts(timeline, "h3"), [
-    "Niedziela, 25 października · dzisiaj",
-    "Poniedziałek, 26 października · jutro",
+    "Niedziela, 25 października ·\u00a0dzisiaj",
+    "Poniedziałek, 26 października ·\u00a0jutro",
     "27–28 października",
-    "Czwartek, 29 października · za 4 dni",
+    "Czwartek, 29 października ·\u00a0za\u00a04\u00a0dni",
     "30–31 października",
   ]);
   assert.equal(count(timeline, "<li"), 5);
@@ -224,7 +224,7 @@ test("waste: its pickups by day, „Później” the next one per module with it
   assert.deepEqual(texts(timeline, "h3"), [
     // An empty today and tomorrow: one run (task 272).
     "25–26 października",
-    "Wtorek, 27 października · pojutrze",
+    "Wtorek, 27 października ·\u00a0pojutrze",
     "28–31 października",
     "Później",
   ]);
