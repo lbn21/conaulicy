@@ -707,6 +707,17 @@ export function waterEmpty(data: Water): Part[] | null {
   return merged(parts);
 }
 
+/**
+ * The hub's water lines that belong to no day (task 263): the section's
+ * status without its plain „Brak zapowiedzianych przerw.” (the timeline
+ * says so); a source we could not check stays.
+ */
+export function waterNotices(data: Water): Group[] {
+  return waterStatus(data).filter(
+    (group) => !(group.length === 1 && group[0].join("") === `${NO_CUTS}.`),
+  );
+}
+
 /** After the cuts or the empty text: a cut here left out for the number. */
 export function waterTrace(data: Water): string | null {
   const [cut] = data.hidden;

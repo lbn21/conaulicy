@@ -42,14 +42,15 @@ export function weather(copy: ImgwRead, now: number): Weather | null {
 
 // IMGW's three levels: the tag's colour, never the only signal (its text
 // says the level).
-const TAG = {
+export const TAG = {
   1: "govuk-tag govuk-tag--yellow",
   2: "govuk-tag govuk-tag--orange",
   3: "govuk-tag govuk-tag--red",
 } as const;
 
 /** „Stopień 2 z 3”. */
-const levelText = (warning: ShownWarning) => `Stopień ${warning.level} z 3`;
+export const levelText = (warning: ShownWarning) =>
+  `Stopień ${warning.level} z 3`;
 
 /** The block's items: one per warning in force or to come, the powiat's. */
 export function weatherUpcoming(data: Weather): Item[] {
@@ -65,10 +66,10 @@ export function weatherUpcoming(data: Weather): Item[] {
 }
 
 /** The weather's status line with no warning in force. */
-const NO_WARNINGS = "Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.";
+export const NO_WARNINGS = "Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.";
 
 /** After the descriptions: IMGW's page, with the map. */
-const IMGW_MORE = "Szczegóły i mapa na meteo.imgw.pl";
+export const IMGW_MORE = "Szczegóły i mapa na meteo.imgw.pl";
 
 /**
  * The section's lines: the notice first when the copy is old (its link
@@ -97,6 +98,11 @@ export function weatherStatus(data: Weather): Group[] {
   if (warnings.length > 0)
     groups.push([[{ href: IMGW_PAGE, text: IMGW_MORE }]]);
   return groups;
+}
+
+/** The hub's IMGW lines that belong to no day: the notice, if any. */
+export function weatherNotices(data: Weather): Group[] {
+  return data.shown?.notice ? weatherStatus(data).slice(0, 1) : [];
 }
 
 /** „Źródło”: IMGW's page. */

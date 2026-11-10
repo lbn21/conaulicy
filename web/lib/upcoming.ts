@@ -6,6 +6,7 @@
 // unit tests' from a fixed day. Pure and client-safe.
 import { MODULE_IDS } from "./address-routes.ts";
 import { capitalised } from "./dates.ts";
+import type { Bins } from "./hub.ts";
 
 /** When something happens, with its labels made on the server. */
 export type Span = {
@@ -46,7 +47,7 @@ export type Item = Base &
     /** `event` lower-case, in running text: "silny wiatr". */
     | { module: "pogoda"; event: string; level: Tag }
     /** "papier, szkło" or "wszystkie pojemniki". */
-    | { module: "smieci"; bins: string }
+    | { module: "smieci"; bins: string; pickups: Bins["bins"] }
   );
 
 /**

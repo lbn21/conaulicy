@@ -11,9 +11,10 @@ import { capitalised, dayLead, relativeWord } from "@/lib/dates";
  * lead: a section's first line, „Dziś: ”, „Jutro: ” or „Za 5 dni: ” before
  * `text`, else `text` capitalised (lib/dates.ts dayLead). word: „dziś, ”
  * or „jutro, ” before the date that follows, else nothing. label: „Dziś” or
- * „Jutro” and `afterWord`, else `text`.
+ * „Jutro” and `afterWord`, else `text`. title: „Dziś, ” or „Jutro, ” before
+ * `text`, else `text` capitalised (a timeline card's, task 263).
  */
-type Form = "lead" | "word" | "label";
+type Form = "lead" | "word" | "label" | "title";
 
 type Props = {
   /** The Warsaw day, "2026-11-03". */
@@ -32,5 +33,7 @@ export function DayWord({ day, form, text = "", afterWord = "" }: Props) {
   // No server day (outside WarsawToday) and not yet the device's: no word.
   const word = today ? relativeWord(day, today) : null;
   if (form === "word") return word ? `${word}, ` : null;
+  if (form === "title")
+    return word ? `${capitalised(word)}, ${text}` : capitalised(text);
   return word ? `${capitalised(word)}${afterWord}` : text;
 }

@@ -7,12 +7,17 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { WasteDetails, wasteMetadata } from "@/components/place-page";
+import { WeatherRow } from "@/components/rows/pogoda";
+import { WasteRow } from "@/components/rows/smieci";
+import { WaterRow } from "@/components/rows/woda";
 import { WasteStatus } from "@/components/waste-status";
 import { WaterDetails, waterMetadata } from "@/components/water-page";
+import { WeatherDetails, weatherMetadata } from "@/components/weather-page";
 import { isModuleId, type ModuleId, SUBPAGE_IDS } from "@/lib/address-routes";
 import type { Checked, Group, Part } from "@/lib/hub";
 import { imgwCopy } from "@/lib/live-store";
 import { getPlace, type PlaceView } from "@/lib/schedule";
+import type { Entry } from "@/lib/timeline";
 import type { Item } from "@/lib/upcoming";
 import {
   wasteChecked,
@@ -25,6 +30,7 @@ import { loadWater } from "@/lib/water-load";
 import {
   type Water,
   waterChecked,
+  waterNotices,
   waterSources,
   waterStatus,
   waterUpcoming,
@@ -33,6 +39,7 @@ import {
   type Weather,
   weather,
   weatherChecked,
+  weatherNotices,
   weatherSources,
   weatherStatus,
   weatherUpcoming,
@@ -69,6 +76,22 @@ export type Module<D> = {
    * water, whose link and sources follow.
    */
   status(data: D): Group[];
+  /**
+   * The hub's lines that belong to no day (task 263), above the timeline:
+   * the split street's question, no schedule, a source we could not
+   * check, posts we could not read. Usually none.
+   */
+  notices(data: D): Group[];
+  /** Its row's key in a timeline card: „Śmieci”, „Ostrzeżenie IMGW”. */
+  rowLabel: string;
+  /** After „Szczegóły”, for screen readers only: „o odbiorze śmieci”. */
+  hiddenLabel: string;
+  /** In the timeline's summary sentence: „odbiór śmieci”. */
+  noun: string;
+  /** After „Nie udało się sprawdzić”: „przerw w dostawie wody”. */
+  subject: string;
+  /** Its row's value on a day: the short summary. */
+  Row(props: { entry: Entry }): ReactNode;
   /**
    * Its section's lines drawn on the device instead of status() as of the
    * render (a Client Component): waste, whose next pickup moves on with the
@@ -130,6 +153,17 @@ const waste: Module<PlaceView> = {
   upcoming: wasteUpcoming,
   status: wasteStatus,
   Status: WasteStatus,
+  notices: (place) =>
+    place.askNumber ||
+    place.zoneId === null ||
+    !place.days.some((day) => day.date >= place.today)
+      ? wasteStatus(place)
+      : [],
+  rowLabel: "Śmieci",
+  hiddenLabel: "o odbiorze śmieci",
+  noun: "odbiór śmieci",
+  subject: "odbiorów śmieci",
+  Row: WasteRow,
   sources: wasteSources,
   note: wasteNote,
   checkedAt: wasteChecked,
@@ -149,6 +183,12 @@ const woda: Module<Water> = {
   live: true,
   upcoming: waterUpcoming,
   status: waterStatus,
+  notices: waterNotices,
+  rowLabel: "Woda",
+  hiddenLabel: "o przerwie w dostawie wody",
+  noun: "przerwa w dostawie wody",
+  subject: "przerw w dostawie wody",
+  Row: WaterRow,
   sources: waterSources,
   checkedAt: waterChecked,
   metadata: waterMetadata,
@@ -163,14 +203,24 @@ const woda: Module<Water> = {
 const pogoda: Module<Weather> = {
   id: "pogoda",
   title: "Pogoda",
+  more: "Ostrzeżenia pogodowe IMGW",
+  pageTitle: "Ostrzeżenia pogodowe IMGW",
   async load() {
     return weather(await imgwCopy(), Date.now());
   },
   live: true,
   upcoming: weatherUpcoming,
   status: weatherStatus,
+  notices: weatherNotices,
+  rowLabel: "Ostrzeżenie IMGW",
+  hiddenLabel: "o ostrzeżeniu IMGW",
+  noun: "ostrzeżenie IMGW",
+  subject: "ostrzeżeń IMGW",
+  Row: WeatherRow,
   sources: weatherSources,
   checkedAt: weatherChecked,
+  metadata: weatherMetadata,
+  Details: WeatherDetails,
 };
 
 // A module's data type stays its own; the pages only pass it from load()

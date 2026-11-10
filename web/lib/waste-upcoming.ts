@@ -9,20 +9,19 @@ import type { Item } from "./upcoming.ts";
 import { allBins } from "./waste-module.ts";
 
 /**
- * The block's pickups: the next two days (today and tomorrow at most are
- * shown, from the day before; the island moves on without a new render),
+ * The timeline's pickups (lib/timeline.ts): every day from today on,
  * the bins in running text, and when to put them out until that time.
  */
 export function wasteUpcoming(place: PlaceView): Item[] {
   if (place.askNumber || place.zoneId === null) return [];
   return place.days
     .filter((day) => day.date >= place.today)
-    .slice(0, 2)
     .map((day) => {
       const time = day.pickups.find((pickup) => pickup.putOutBy)?.putOutBy;
       return {
         module: "smieci",
         span: span(day.date, null, null),
+        pickups: day.pickups,
         shownFrom: warsawToIso(`${addDays(day.date, -1)} 00:00:00`),
         bins: allBins(place, day)
           ? "wszystkie pojemniki"

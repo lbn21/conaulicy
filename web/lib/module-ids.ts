@@ -14,4 +14,4 @@ export type ModuleId = (typeof MODULE_IDS)[number];
  * The modules with a subpage of their own, /adres/<id>/<module id>: the
  * others (weather) link their source instead.
  */
-export const SUBPAGE_IDS: readonly ModuleId[] = ["smieci", "woda"];
+export const SUBPAGE_IDS: readonly ModuleId[] = ["smieci", "woda", "pogoda"];
