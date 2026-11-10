@@ -1,21 +1,16 @@
 import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import { CheckedLine } from "@/components/checked-line";
-import { NOT_FOUND_METADATA } from "@/components/page-not-found";
 import { Parts, textOf } from "@/components/parts";
 import {
   AiReadNote,
   CalendarBlock,
+  moduleMetadata,
   SourceInset,
 } from "@/components/subpage-parts";
 import { absoluteDay } from "@/lib/dates";
-import { withHouseNumber } from "@/lib/house";
 import type { Checked } from "@/lib/hub";
-import { indexable } from "@/lib/indexing";
-import { placePath, titleLabel } from "@/lib/places";
 import { getPlace, PLACE_TAGS } from "@/lib/schedule";
-import { shownNr } from "@/lib/schedule-notes";
-import { pageMetadata } from "@/lib/share";
 import { waterCalendarHref } from "@/lib/water-ics";
 import {
   cutWhere,
@@ -44,10 +39,7 @@ import { sourcesAt } from "@/lib/water-sources";
 
 const H1 = "Przerwy w dostawie wody";
 
-/**
- * Title "Przerwy w dostawie wody – <place>", its own canonical; never a
- * search result (its content lasts days), its links followed.
- */
+/** /woda's metadata (components/subpage-parts.tsx moduleMetadata). */
 export async function waterMetadata(
   id: string,
   nr: string | null,
@@ -55,21 +47,18 @@ export async function waterMetadata(
   "use cache";
   cacheLife("max");
   cacheTag(...PLACE_TAGS);
-  const place = await getPlace(id, nr);
-  // As placeMetadata: Next.js's own noindex is the only robots tag.
-  if (!place) return NOT_FOUND_METADATA;
-  return {
-    ...pageMetadata({
-      path: `${placePath(id)}/woda`,
-      title: `${H1} – ${withHouseNumber(titleLabel(place.label), shownNr(place))}`,
-      description: `Zapowiedziane przerwy w dostawie wody: ${place.label}. Daty i godziny z komunikatów ${sourcesAt(
+  return moduleMetadata(
+    id,
+    await getPlace(id, nr),
+    "woda",
+    H1,
+    (place) =>
+      `Zapowiedziane przerwy w dostawie wody: ${place.label}. Daty i godziny z komunikatów ${sourcesAt(
         place.localityId,
       )
         .map((s) => s.of)
         .join(" i ")}.`,
-    }),
-    robots: { index: false, follow: indexable() },
-  };
+  );
 }
 
 /**
