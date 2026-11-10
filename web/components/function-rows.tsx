@@ -26,7 +26,7 @@ export function FunctionRows({
   dateOnly?: boolean;
 }) {
   return (
-    <dl className="govuk-summary-list">
+    <dl className="govuk-summary-list govuk-!-margin-bottom-0">
       {entries.map((entry, i) => {
         const module: Module<unknown> = MODULES[entry.item.module];
         const date = absoluteDay(entry.item.span.day);

@@ -5,14 +5,17 @@ import { absoluteDay, capitalised, dayFace } from "@/lib/dates";
 import type { PlaceView } from "@/lib/schedule";
 import type { DayGroup, Entry } from "@/lib/timeline";
 
-// The timeline's cards (task 263): GOV.UK's summary card, its title an h3.
-// A day („Dziś, wtorek, 10 listopada”, DayWord), a run of empty days
-// („Środa 11 – sobota 14 listopada”), and „Później”.
+// The timeline's days (task 263, restyled in task 264): each an li of
+// components/timeline.tsx's ol (site.scss .app-timeline). A day with
+// items is a card, its date an h3 („Dziś, wtorek, 10 listopada”, DayWord);
+// an empty day or run of them („Środa 11 – sobota 14 listopada”) only a
+// muted line, no card; „Później” a card past the dashed end of the line.
 
 /** What an empty day or run says. */
 export const NOTHING = "Nic nie zaplanowano.";
 
-export function SummaryCard({
+/** A timeline card: the h3, then the rows. */
+export function TimelineCard({
   title,
   children,
 }: {
@@ -20,11 +23,9 @@ export function SummaryCard({
   children: ReactNode;
 }) {
   return (
-    <div className="govuk-summary-card">
-      <div className="govuk-summary-card__title-wrapper">
-        <h3 className="govuk-summary-card__title">{title}</h3>
-      </div>
-      <div className="govuk-summary-card__content">{children}</div>
+    <div className="app-timeline__card">
+      <h3 className="govuk-heading-s govuk-!-margin-bottom-2">{title}</h3>
+      {children}
     </div>
   );
 }
@@ -39,7 +40,7 @@ function rangeTitle(from: string, to: string): string {
   );
 }
 
-/** A day's card, or a run of empty days'. */
+/** A day's li: a card, or for empty days a muted line. */
 export function Day({
   group: { from, to, entries },
   place,
@@ -47,24 +48,44 @@ export function Day({
   group: DayGroup;
   place: PlaceView;
 }) {
-  const title =
-    from === to ? (
-      <DayWord day={from} form="title" text={absoluteDay(from)} />
-    ) : (
-      rangeTitle(from, to)
-    );
-  return (
-    <SummaryCard title={title}>
-      {entries.length === 0 ? (
-        <p className="govuk-body govuk-!-margin-bottom-0">{NOTHING}</p>
+  const today = from === place.today;
+  if (entries.length === 0) {
+    const text =
+      from === to ? (
+        <DayWord day={from} form="title" text={absoluteDay(from)} />
       ) : (
+        rangeTitle(from, to)
+      );
+    return (
+      <li
+        className={
+          today
+            ? "app-timeline__empty app-timeline__today"
+            : "app-timeline__empty"
+        }
+      >
+        <p className="govuk-hint govuk-!-margin-bottom-0">
+          <time dateTime={from}>{text}</time> · {NOTHING}
+        </p>
+      </li>
+    );
+  }
+  return (
+    <li className={today ? "app-timeline__today" : undefined}>
+      <TimelineCard
+        title={
+          <time dateTime={from}>
+            <DayWord day={from} form="title" text={absoluteDay(from)} />
+          </time>
+        }
+      >
         <FunctionRows entries={entries} place={place} />
-      )}
-    </SummaryCard>
+      </TimelineCard>
+    </li>
   );
 }
 
-/** „Później”: the next item per module after the window; none, no card. */
+/** „Później”: the next item per module after the window; none, no li. */
 export function LaterCard({
   entries,
   place,
@@ -74,8 +95,10 @@ export function LaterCard({
 }) {
   if (entries.length === 0) return null;
   return (
-    <SummaryCard title="Później">
-      <FunctionRows entries={entries} place={place} dateOnly />
-    </SummaryCard>
+    <li className="app-timeline__later">
+      <TimelineCard title="Później">
+        <FunctionRows entries={entries} place={place} dateOnly />
+      </TimelineCard>
+    </li>
   );
 }

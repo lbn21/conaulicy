@@ -37,17 +37,13 @@ export function Timeline({
       <p className="govuk-body">
         {summary(items, place.today, n, (id) => MODULES[id].noun, now)}
       </p>
-      <ol className="govuk-list">
+      {/* A vertical timeline (site.scss .app-timeline, task 264): the
+          line, dots and carets are CSS only. */}
+      <ol className="app-timeline">
         {groups.map((group) => (
-          <li key={group.from}>
-            <Day group={group} place={place} />
-          </li>
+          <Day key={group.from} group={group} place={place} />
         ))}
-        {after.length > 0 && (
-          <li>
-            <LaterCard entries={after} place={place} />
-          </li>
-        )}
+        {after.length > 0 && <LaterCard entries={after} place={place} />}
       </ol>
     </section>
   );
