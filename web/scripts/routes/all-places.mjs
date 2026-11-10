@@ -2,7 +2,8 @@
 // of the search index exactly once, to /adres/<id>, and nothing else; the
 // town's streets and their letter headings are in Polish order (by the
 // street's own name, not its prefix); a place without pickup data (the
-// fixture's street in no zone, only it) says „(brak danych)”; every id is
+// fixture's street in no zone) is a link like any other, no „(brak
+// danych)” (task 276); every id is
 // unique, and the town's heading and every village's line have their SIMC
 // ids; a village with streets is one link with its streets nested under it,
 // and the town is no place; and the route
@@ -58,16 +59,10 @@ export async function check({ origin }, failures) {
     if (!known.has(id)) failures.push(`/ulice: ${id} is not in the index`);
   }
   if (/target="_blank"/.test(main)) failures.push("/ulice: target=_blank");
-  const noData = [
-    ...main.matchAll(
-      /<a class="govuk-link" href="\/adres\/([^"]+)">[^<]*<\/a> \(brak danych\)/g,
-    ),
-  ].map(([, id]) => id);
-  if (JSON.stringify(noData) !== JSON.stringify(["0972447-23434"])) {
-    failures.push(
-      `/ulice: „(brak danych)” on ${JSON.stringify(noData)}, want only 0972447-23434`,
-    );
+  if (!counts.has("0972447-23434")) {
+    failures.push("/ulice: no link to the street without a schedule");
   }
+  if (/brak danych/i.test(main)) failures.push("/ulice: „brak danych”");
 
   // Every id once; the town's heading and every village's line by SIMC,
   // where the breadcrumbs link, the old ids kept.

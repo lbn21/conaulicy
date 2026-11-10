@@ -297,8 +297,8 @@ export async function search(q: string): Promise<SearchHit[]> {
  * device with no request per keystroke. The version is a hash of the
  * content: its URL changes with the data, so the CDN may keep each version
  * for good. `list` is the same places grouped for /ulice, and `noData`
- * those without pickup data (no zone, lib/places.ts hasZone); both stay on
- * the server.
+ * those without pickup data (no zone, lib/places.ts hasZone), which the
+ * sitemap leaves out; both stay on the server.
  */
 export const searchIndex = unstable_cache(
   async (): Promise<{
