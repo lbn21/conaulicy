@@ -86,8 +86,6 @@ export type Module<D> = {
   rowLabel: string;
   /** After „Szczegóły”, for screen readers only: „o odbiorze śmieci”. */
   hiddenLabel: string;
-  /** In the timeline's summary sentence: „odbiór śmieci”. */
-  noun: string;
   /** After „Nie udało się sprawdzić”: „przerw w dostawie wody”. */
   subject: string;
   /** Its row's value on a day: the short summary. */
@@ -161,7 +159,6 @@ const waste: Module<PlaceView> = {
       : [],
   rowLabel: "Śmieci",
   hiddenLabel: "o odbiorze śmieci",
-  noun: "odbiór śmieci",
   subject: "odbiorów śmieci",
   Row: WasteRow,
   sources: wasteSources,
@@ -186,7 +183,6 @@ const woda: Module<Water> = {
   notices: waterNotices,
   rowLabel: "Woda",
   hiddenLabel: "o przerwie w dostawie wody",
-  noun: "przerwa w dostawie wody",
   subject: "przerw w dostawie wody",
   Row: WaterRow,
   sources: waterSources,
@@ -214,7 +210,6 @@ const pogoda: Module<Weather> = {
   notices: weatherNotices,
   rowLabel: "Ostrzeżenie IMGW",
   hiddenLabel: "o ostrzeżeniu IMGW",
-  noun: "ostrzeżenie IMGW",
   subject: "ostrzeżeń IMGW",
   Row: WeatherRow,
   sources: weatherSources,

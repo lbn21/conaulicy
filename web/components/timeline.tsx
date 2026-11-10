@@ -1,10 +1,9 @@
 import { Day, LaterCard } from "@/components/day";
-import { MODULES } from "@/lib/modules";
 import type { PlaceView } from "@/lib/schedule";
-import { collapse, days, later, onDay, summary } from "@/lib/timeline";
+import { collapse, days, later, onDay } from "@/lib/timeline";
 import type { Item } from "@/lib/upcoming";
 
-// „Najbliższe 7 dni” (task 263): h2, one summary sentence, then a card per
+// „Najbliższe 7 dni” (task 263): h2, then a card per
 // day from the read's day (lib/timeline.ts; a run of 2+ empty days after
 // today as one), then „Później”. Never fetches: the hub's one read
 // (components/hub.tsx hubData) gives every module's items.
@@ -34,9 +33,6 @@ export function Timeline({
       <h2 id="najblizsze-dni" className="govuk-heading-m">
         Najbliższe {n} dni
       </h2>
-      <p className="govuk-body">
-        {summary(items, place.today, n, (id) => MODULES[id].noun, now)}
-      </p>
       {/* A vertical timeline (site.scss .app-timeline, task 264): the
           line, dots and carets are CSS only. */}
       <ol className="app-timeline">
