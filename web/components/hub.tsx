@@ -18,7 +18,6 @@ import { type Group, metaLine } from "@/lib/hub";
 import { IMGW_ATTRIBUTION } from "@/lib/imgw-warnings";
 import { MODULES, type Module } from "@/lib/modules";
 import type { PlaceView } from "@/lib/schedule";
-import { nothingText } from "@/lib/timeline";
 
 // The address page, /adres/[id] (and ?nr=): a date-first hub of modules
 // (lib/modules.ts, task 102; task 263), under breadcrumbs. Under „Zmień
@@ -109,13 +108,6 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
   const loaded = modules.flatMap((module, i) =>
     data[i] === null ? [] : [{ module, data: data[i] }],
   );
-  // An empty day speaks only for the modules that cover the address.
-  const nothing = nothingText(
-    loaded
-      .filter(({ module, data }) => module.covers?.(data) ?? true)
-      .map(({ module }) => module.title),
-    modules.length,
-  );
   const links = loaded.filter(
     ({ module, data }) => module.Details && module.sources(data).length > 0,
   );
@@ -126,12 +118,7 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
           <Status groups={notices} />
         </div>
       )}
-      <Timeline
-        items={items}
-        place={place}
-        now={Date.now()}
-        nothing={nothing}
-      />
+      <Timeline items={items} place={place} now={Date.now()} />
       {links.length > 0 && (
         <section aria-labelledby="wszystko">
           <h2 id="wszystko" className="govuk-heading-m">

@@ -10,10 +10,12 @@ import type { DayGroup, Entry } from "@/lib/timeline";
 // items is a card, its date an h3 („Wtorek, 10 listopada · dzisiaj”, the
 // word DayWord's, task 268); an empty day or run of them („11–15
 // listopada”, Intl's formatRange, no word) a muted grey card, its date the
-// same h3 over lib/timeline.ts nothingText („Nic nie zaplanowano.”, task
-// 266; for the modules that cover the address, task 276), a run's line dashed
-// alongside its card (task 268);
+// same h3 over „Nic nie zaplanowano.” (task 266; on every place, task 278),
+// a run's line dashed alongside its card (task 268);
 // „Później” a card at the ringed end of the line (task 265).
+
+/** What an empty day or run says. */
+const NOTHING = "Nic nie zaplanowano.";
 
 /**
  * A timeline card, every kind the same (task 266): the date as an h3,
@@ -49,12 +51,9 @@ function TimelineCard({
 export function Day({
   group: { from, to, entries },
   place,
-  nothing,
 }: {
   group: DayGroup;
   place: PlaceView;
-  /** What an empty day says (nothingText); null: nothing. */
-  nothing: string | null;
 }) {
   const title =
     from === to ? (
@@ -76,9 +75,7 @@ export function Day({
     >
       <TimelineCard title={title} empty={empty}>
         {empty ? (
-          nothing && (
-            <p className="govuk-body-s govuk-!-margin-bottom-0">{nothing}</p>
-          )
+          <p className="govuk-body-s govuk-!-margin-bottom-0">{NOTHING}</p>
         ) : (
           <FunctionRows entries={entries} place={place} />
         )}

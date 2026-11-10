@@ -12,14 +12,11 @@ export function Timeline({
   items,
   place,
   now,
-  nothing,
   n = 7,
 }: {
   items: Item[];
   place: PlaceView;
   now: number;
-  /** What an empty day says (lib/timeline.ts nothingText). */
-  nothing: string | null;
   n?: number;
 }) {
   const list = days(place.today, n);
@@ -40,7 +37,7 @@ export function Timeline({
           line, dots and carets are CSS only. */}
       <ol className="app-timeline">
         {groups.map((group) => (
-          <Day key={group.from} group={group} place={place} nothing={nothing} />
+          <Day key={group.from} group={group} place={place} />
         ))}
         {after.length > 0 && <LaterCard entries={after} place={place} />}
       </ol>
