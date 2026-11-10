@@ -70,3 +70,24 @@ export function collapse(list: string[], byDay: Entry[][]): DayGroup[] {
   });
   return groups;
 }
+
+const LIST = new Intl.ListFormat("pl", { type: "conjunction" });
+
+/** What an empty day or run says when every module covers the address. */
+const NOTHING = "Nic nie zaplanowano.";
+
+/**
+ * What an empty day or run says (task 276): „Nic nie zaplanowano.” when
+ * every module covers the address; else for those that do, by their names
+ * (Module.title, lib/modules.ts), „Woda i pogoda: nic nie zaplanowano.”,
+ * so a place without a waste schedule never reads as no pickup; none, null
+ * (the notices above say why).
+ */
+export function nothingText(covered: string[], total: number): string | null {
+  if (covered.length === total) return NOTHING;
+  if (covered.length === 0) return null;
+  const names = LIST.format(
+    covered.map((name) => name.toLocaleLowerCase("pl")),
+  );
+  return `${names.charAt(0).toLocaleUpperCase("pl")}${names.slice(1)}: ${NOTHING.toLocaleLowerCase("pl")}`;
+}
