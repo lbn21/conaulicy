@@ -56,7 +56,7 @@ function FooterPlate() {
 export function SiteFooter() {
   return (
     <footer className="govuk-template__footer">
-      <div className="govuk-footer">
+      <div className="govuk-footer govuk-!-font-size-16">
         <div className="govuk-width-container">
           <FooterPlate />
           {NAVIGATION_SHOWN && (
