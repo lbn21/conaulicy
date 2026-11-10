@@ -16,11 +16,21 @@ import {
   SHORT_UNVERIFIED_NOTE,
 } from "./schedule-notes.ts";
 
-/** A place we have no pickup data for: the street page's heading. */
-export function noDataHeading(kind: PlaceView["kind"]): string {
-  return kind === "ulica"
-    ? "Tej ulicy jeszcze nie mamy"
-    : "Tej wsi jeszcze nie mamy";
+/**
+ * A place we have no waste schedule for (task 276: only the schedule is
+ * missing; the place and its other modules are there): the waste
+ * subpage's heading, and the address page's notice.
+ */
+export function noScheduleHeading(kind: PlaceView["kind"]): string {
+  return `Nie mamy jeszcze harmonogramu wywozu śmieci dla ${kind === "ulica" ? "tej ulicy" : "tej wsi"}`;
+}
+
+/** „Sprawdź odbiory w harmonogramie Urzędu Miejskiego.”, after `lead`. */
+export function checkSchedule(
+  place: Pick<PlaceView, "gmina">,
+  lead = "Sprawdź",
+): string {
+  return `${lead} odbiory w harmonogramie ${scheduleOwner(place.gmina)}.`;
 }
 
 /** The street page's words for a split street, before the number. */
@@ -34,9 +44,9 @@ export function wastePath(place: Pick<PlaceView, "id" | "nr">): string {
 
 // No dates to show: why, then the gmina's own schedule (linked when we know
 // its page), as the street page says it.
-function noDates(place: PlaceView, why: string): Part[] {
+function noDates(place: PlaceView, text: string): Part[] {
   return [
-    `${why} Do tego czasu sprawdź odbiory w harmonogramie ${scheduleOwner(place.gmina)}.`,
+    text,
     ...(place.schedulePage
       ? [
           " ",
@@ -89,14 +99,21 @@ export function wasteStatus(place: PlaceView): Group[] {
       [
         noDates(
           place,
-          `${noDataHeading(place.kind)}. Harmonogramu tu nie zgadujemy.`,
+          `${noScheduleHeading(place.kind)}. ${checkSchedule(place)}`,
         ),
       ],
     ];
   }
   const next = place.days.find((day) => day.date >= place.today);
   if (!next || !hasUpcoming(place.days, place.today)) {
-    return [[noDates(place, `${NO_MORE_DATES}. ${NO_MORE_DATES_NEXT}`)]];
+    return [
+      [
+        noDates(
+          place,
+          `${NO_MORE_DATES}. ${NO_MORE_DATES_NEXT} ${checkSchedule(place, "Do tego czasu sprawdź")}`,
+        ),
+      ],
+    ];
   }
   const all = allBins(place, next);
   const groups: Group[] = [

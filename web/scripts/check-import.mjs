@@ -138,7 +138,9 @@ try {
   );
   const unzoned = await page(`/adres/${FIXTURE_IDS.unzonedStreet}`);
   check(
-    unzoned.text.includes("Tej ulicy jeszcze nie mamy") &&
+    unzoned.text.includes(
+      "Nie mamy jeszcze harmonogramu wywozu śmieci dla tej ulicy",
+    ) &&
       unzoned.text.includes(
         "Otwórz harmonogram Urzędu Miejskiego w Lubaczowie",
       ),

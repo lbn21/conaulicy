@@ -30,18 +30,14 @@ export default async function AllPlacesPage() {
   "use cache";
   cacheLife("max");
   cacheTag(DATASET);
-  const { list, noData } = await searchIndex();
-  const without = new Set(noData);
+  const { list } = await searchIndex();
   const town = list.townId ? localityAnchor(list.townId) : undefined;
-  // A place we have no dates for says so (its page links the gmina's
-  // schedule).
+  // Every place alike: one without a waste schedule still has its page,
+  // its water and IMGW's warnings (task 276).
   const Place = ({ place }: { place: ListedPlace }) => (
-    <>
-      <PlaceLink href={placePath(place.id)} className="govuk-link">
-        {place.label}
-      </PlaceLink>
-      {without.has(place.id) && " (brak danych)"}
-    </>
+    <PlaceLink href={placePath(place.id)} className="govuk-link">
+      {place.label}
+    </PlaceLink>
   );
 
   return (

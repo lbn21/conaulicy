@@ -67,6 +67,12 @@ export type Module<D> = {
    */
   upcoming(data: D): Item[];
   /**
+   * Whether an empty day in the timeline is its answer for this address
+   * (lib/timeline.ts nothingText; task 276): left out, whenever it loaded.
+   * Waste: only with dates to show (no notice).
+   */
+  covers?(data: D): boolean;
+  /**
    * The hub's lines that belong to no day (task 263), above the timeline:
    * the split street's question, no schedule, a source we could not
    * check, posts we could not read. Usually none.
@@ -133,12 +139,11 @@ const waste: Module<PlaceView> = {
   pageTitle: "Odbiór śmieci",
   load: getPlace,
   upcoming: wasteUpcoming,
-  notices: (place) =>
-    place.askNumber ||
-    place.zoneId === null ||
-    !place.days.some((day) => day.date >= place.today)
-      ? wasteStatus(place)
-      : [],
+  covers: (place) =>
+    !place.askNumber &&
+    place.zoneId !== null &&
+    place.days.some((day) => day.date >= place.today),
+  notices: (place) => (waste.covers?.(place) ? [] : wasteStatus(place)),
   rowLabel: "Śmieci",
   hiddenLabel: "o odbiorze śmieci",
   subject: "odbiorów śmieci",

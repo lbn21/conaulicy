@@ -25,7 +25,7 @@ Status: **built** = on `main`, which deploys to production with every merge.
 | Printable schedule (PDF) | built | A4, with a QR code and a printed link back to the waste page |
 | Water cuts (`/adres/<id>/woda`) | built | Gmina: ZUK Mokrzyca's posts on gminalubaczow.pl. Town: MZGKiM's announcements. Checked every 15 minutes; an item that fails the checks is not shown, and residents get a link to the post instead. A per-address calendar of cuts (`woda.ics`) |
 | IMGW weather warnings (`/adres/<id>/pogoda`) | built | On the address page and its `/pogoda` subpage only (tasks 257, 263): each warning on its days in the timeline, IMGW's own description on `/pogoda` (a card per warning, never indexed), for the powiat lubaczowski; the last good copy is kept when IMGW does not answer |
-| All places (`/ulice`) | built | A plain list of every street and village |
+| All places (`/ulice`) | built | A plain list of every street and village, every one alike (no „(brak danych)”: a place without a waste schedule still has water and IMGW, task 276) |
 | Static pages | built | `/o-projekcie`, `/prywatnosc`, `/dostepnosc` (accessibility statement and credits) |
 | Reporting an error | built | By email only: kontakt@conaulicy.pl. No form, no GitHub Issues |
 | Statistics | built | Vercel Web Analytics, cookieless, production only; events `calendar_add`, `pdf_open`, `water_calendar_add` |
@@ -103,7 +103,7 @@ Never: paid ads, mass messages, tagging people, looking like the gmina.
 ## 7. Open questions
 
 1. **Town S2 = S3:** the two sectors' 2026 tables are pixel-identical in the source. Both were reviewed and imported; **TBD (Jakub):** whether this was ever confirmed (eGmina BOM or the 2025 files).
-2. **Town streets with no sector** (11 in v1: Gierymskiego, Kossaka, Chełmońskiego, Grottgera, Ustronna, Działkowa, Łąkowa, Podleśna, al. kard. Jaworskiego, os. Mickiewicza, os. Unii Lubelskiej): the site says it has no data and guesses nothing. **TBD (Jakub):** whether this is still so.
+2. **Town streets with no sector** (11 in v1: Gierymskiego, Kossaka, Chełmońskiego, Grottgera, Ustronna, Działkowa, Łąkowa, Podleśna, al. kard. Jaworskiego, os. Mickiewicza, os. Unii Lubelskiej): the site says it has no waste schedule for them yet and guesses nothing; water and IMGW work as anywhere (task 276). **TBD (Jakub):** whether this is still so.
 3. **Gmina column 1 „zmieszane i bio”:** are both collected on every date? The site says what the PDF says. **TBD (Jakub).**
 4. **v1's release gate** (a 100 % match for a full year of one town and one gmina sector, against hand-transcribed golden files): **TBD (Jakub)** whether it still applies, or the per-file human review PR replaced it.
 5. **PGE power cuts:** a link only, unless an official feed or permission appears. **TBD (Jakub).**

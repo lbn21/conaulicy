@@ -11,7 +11,8 @@
 //                     (lib/next-config.test.ts) instead of a second build.
 // Both: /sitemap.xml is well-formed; empty unless indexable, else the five
 // static pages (/ulice included) and every place in the search index but
-// those /ulice marks „(brak danych)”, each with its waste subpage
+// the fixture's one without a waste schedule (street-without-schedule, the
+// only one: scripts/routes/all-places.mjs), each with its waste subpage
 // (/adres/<id>/smieci, canonical itself), nothing else. The address page and
 // /smieci canonicalise to themselves, ?nr= left out. PDFs and calendars send
 // X-Robots-Tag: noindex; the number error (an empty ?nr=) and a place
@@ -369,19 +370,10 @@ try {
     const home = await (await fetch(`${server.origin}/`)).text();
     const { places } = await searchIndexOf(server.origin, home);
     if (places.length === 0) failures.push("/: no search index");
-    // Places without data: /ulice marks them, the sitemap leaves them out.
-    const ulice = await (await fetch(`${server.origin}/ulice`)).text();
-    const noData = new Set(
-      [
-        ...ulice.matchAll(
-          /<a class="govuk-link" href="\/adres\/([^"]+)">[^<]*<\/a> \(brak danych\)/g,
-        ),
-      ].map(([, id]) => `${SITE}/adres/${id}`),
-    );
-    const withoutSchedule = `${SITE}${ROUTES.find((route) => route.name === "street-without-schedule").path}`;
-    if (!noData.has(withoutSchedule)) {
-      failures.push(`/ulice: ${withoutSchedule} not „(brak danych)”`);
-    }
+    // The place without a waste schedule: the sitemap leaves it out.
+    const noData = new Set([
+      `${SITE}${ROUTES.find((route) => route.name === "street-without-schedule").path}`,
+    ]);
     const placeUrls = places
       .map(([id]) => `${SITE}/adres/${encodeURIComponent(id)}`)
       .filter((url) => !noData.has(url))
