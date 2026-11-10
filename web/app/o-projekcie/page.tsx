@@ -41,9 +41,9 @@ export default function AboutPage() {
         </p>
         <p className="govuk-body">
           Ostrzeżenia pogodowe IMGW dla powiatu lubaczowskiego pokazujemy przy
-          adresie: w „Najbliższe dni” i w części „Pogoda”, gdzie przeczytasz
-          też, czego się spodziewać. Gdy ostrzeżeń nie ma, napiszemy o tym w
-          części „Pogoda”.
+          adresie: w „Najbliższych 7 dniach” i na stronie „Ostrzeżenia pogodowe
+          IMGW”, gdzie przeczytasz też, czego się spodziewać. Gdy ostrzeżeń nie
+          ma, napiszemy o tym na tej stronie.
         </p>
         <p className="govuk-body">
           Strona jest darmowa i niekomercyjna. Nie ma na niej reklam ani kont.
