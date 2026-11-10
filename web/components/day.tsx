@@ -9,23 +9,36 @@ import type { DayGroup, Entry } from "@/lib/timeline";
 // components/timeline.tsx's ol (site.scss .app-timeline). A day with
 // items is a card, its date an h3 („Dziś, wtorek, 10 listopada”, DayWord);
 // an empty day or run of them („Środa 11 – sobota 14 listopada”) a muted
-// grey card, one line (today's date in bold); „Później” a card at the
-// ringed end of the line (task 265).
+// grey card, its date the same h3 over „Nic nie zaplanowano.” (task 266);
+// „Później” a card at the ringed end of the line (task 265).
 
 /** What an empty day or run says. */
 export const NOTHING = "Nic nie zaplanowano.";
 
-/** A timeline card: the h3, then the rows. */
+/**
+ * A timeline card, every kind the same (task 266): the date as an h3, a
+ * small bold line of its own (16/20, its dot's line), then the body.
+ */
 export function TimelineCard({
   title,
+  empty = false,
   children,
 }: {
   title: ReactNode;
+  empty?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div className="app-timeline__card">
-      <h3 className="govuk-heading-s govuk-!-margin-bottom-2">{title}</h3>
+    <div
+      className={
+        empty
+          ? "app-timeline__card app-timeline__card--empty"
+          : "app-timeline__card"
+      }
+    >
+      <h3 className="govuk-body-s govuk-!-font-weight-bold govuk-!-margin-bottom-2 app-timeline__title">
+        {title}
+      </h3>
       {children}
     </div>
   );
@@ -50,45 +63,30 @@ export function Day({
   place: PlaceView;
 }) {
   const today = from === place.today;
-  if (entries.length === 0) {
-    const text =
-      from === to ? (
+  const title = (
+    <time dateTime={from}>
+      {from === to ? (
         <DayWord day={from} form="title" text={absoluteDay(from)} />
       ) : (
         rangeTitle(from, to)
-      );
-    return (
-      <li
-        className={
-          today
-            ? "app-timeline__empty app-timeline__today"
-            : "app-timeline__empty"
-        }
-      >
-        <div className="app-timeline__card app-timeline__card--empty">
-          <p className="govuk-hint govuk-!-margin-bottom-0">
-            <time
-              dateTime={from}
-              className={today ? "govuk-!-font-weight-bold" : undefined}
-            >
-              {text}
-            </time>{" "}
-            · {NOTHING}
-          </p>
-        </div>
-      </li>
-    );
-  }
+      )}
+    </time>
+  );
+  const empty = entries.length === 0;
   return (
-    <li className={today ? "app-timeline__today" : undefined}>
-      <TimelineCard
-        title={
-          <time dateTime={from}>
-            <DayWord day={from} form="title" text={absoluteDay(from)} />
-          </time>
-        }
-      >
-        <FunctionRows entries={entries} place={place} />
+    <li
+      className={
+        [empty && "app-timeline__empty", today && "app-timeline__today"]
+          .filter(Boolean)
+          .join(" ") || undefined
+      }
+    >
+      <TimelineCard title={title} empty={empty}>
+        {empty ? (
+          <p className="govuk-body govuk-!-margin-bottom-0">{NOTHING}</p>
+        ) : (
+          <FunctionRows entries={entries} place={place} />
+        )}
       </TimelineCard>
     </li>
   );

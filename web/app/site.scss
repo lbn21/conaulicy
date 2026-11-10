@@ -233,11 +233,13 @@ $app-header-colour: $app-header;
 // from the first dot to the last, a dot per day on it, a card per day with
 // a caret at its dot. All of it decorative pseudo-elements; the markup stays
 // an ol of days. Mobile-first, the same at every width. Dots 15px on a 1px
-// line, centred on the card's first 19/25 line (--app-y: the card's border,
-// its padding, half a line); the caret's centre on the same y.
+// line, centred on every card's 16/20 date line (--app-y: the card's border,
+// its padding, half the line); the caret's centre on the same y. One padding
+// for every card, GOV.UK's margins inside it trimmed (task 266).
 // Colours: a day with items on the brand's surface (tint-95, its border
 // tint-50), its labels in the brand colour; an empty day or run all grey
-// (GOV.UK's black tint-95 and border, secondary text); today in the brand
+// (a barely-there grey: GOV.UK's black tint-95 a third over white, its
+// border, secondary text); dates in secondary text, today's in the brand
 // colour, its dot with a soft halo (task 265).
 $app-dot: govuk-spacing(3);
 $app-hair: $govuk-border-width-form-element * .5;
@@ -245,8 +247,7 @@ $app-caret: govuk-spacing(2);
 
 .app-timeline { position: relative; margin: 0 0 govuk-spacing(6); padding: 0; list-style: none; }
 .app-timeline::before { content: ""; position: absolute; top: 0; bottom: 0; left: ($app-dot - $app-hair) * .5; border-left: $app-hair solid govuk-functional-colour(border); }
-.app-timeline > li { --app-y: #{$app-hair + govuk-spacing(3) + govuk-spacing(5) * .5}; position: relative; margin: 0; padding: 0 0 govuk-spacing(4) govuk-spacing(6); }
-.app-timeline > .app-timeline__empty { --app-y: #{$app-hair + govuk-spacing(2) + govuk-spacing(5) * .5}; }
+.app-timeline > li { --app-y: #{$app-hair + govuk-spacing(3) + govuk-spacing(2)}; position: relative; margin: 0; padding: 0 0 govuk-spacing(4) govuk-spacing(6); }
 .app-timeline > li:last-child { padding-bottom: 0; }
 
 // The line's ends: the page's background over it above the first dot and
@@ -282,15 +283,20 @@ $app-caret: govuk-spacing(2);
 @keyframes app-beat { from { box-shadow: 0 0 0 0 color-mix(in srgb, govuk-functional-colour(brand) 40%, transparent); } }
 
 .app-timeline__card { --app-bg: #{govuk-functional-colour(surface-background)}; --app-line: #{govuk-functional-colour(surface-border)}; position: relative; padding: govuk-spacing(3); border: $app-hair solid var(--app-line); border-radius: govuk-spacing(1); background: var(--app-bg); }
-.app-timeline__card--empty { --app-bg: #{govuk-colour("black", $variant: "tint-95")}; --app-line: #{govuk-functional-colour(border)}; padding-block: govuk-spacing(2); }
+.app-timeline__card--empty { --app-bg: color-mix(in srgb, #{govuk-colour("black", $variant: "tint-95")} 35%, #{govuk-colour("white")}); --app-line: #{govuk-functional-colour(border)}; }
+.app-timeline__title, .app-timeline__card--empty > p { color: govuk-functional-colour(secondary-text); }
+.app-timeline__today .app-timeline__title { color: govuk-functional-colour(brand); }
 .app-timeline__today > .app-timeline__card { --app-line: #{govuk-functional-colour(brand)}; }
 .app-timeline__today > .app-timeline__card--empty { --app-line: #{govuk-functional-colour(secondary-text)}; }
 .app-timeline__card .govuk-summary-list__key { color: govuk-functional-colour(brand); }
 
-// The last row ends the card: GOV.UK's no-border row, and on mobile no
-// row or action margin under it, so the card's padding alone is below.
+// Inside a card one rhythm: key, value and „Szczegóły” a 5px step apart on
+// mobile (a row's end a 15px one), rows 10px apart on tablet, nothing under
+// the last row (GOV.UK's no-border row) but the card's padding.
+.app-timeline__card .govuk-summary-list__value { margin-bottom: govuk-spacing(1); }
+.app-timeline__card .govuk-summary-list__row:first-child > * { padding-top: 0; }
 .app-timeline__card .govuk-summary-list__row:last-child,
-.app-timeline__card .govuk-summary-list__row:last-child > :last-child { margin-bottom: 0; }
+.app-timeline__card .govuk-summary-list__row:last-child > * { margin-bottom: 0; padding-bottom: 0; }
 
 // The caret: a square turned 45°, its two outer sides the card's border,
 // its centre on the card's left edge, level with the dot.
