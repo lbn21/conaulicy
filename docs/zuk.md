@@ -47,7 +47,7 @@ Vercel Blob. No database writes.
    whole post a Notice: a link, no date.
 5. Drops cuts that are over (`itemCount` keeps how many were read), sorts
    the posts into `active` and `seen` (below) and writes the file on every
-   run: `checkedAt` is this run (the pages' „Ostatnio sprawdziliśmy”),
+   run: `checkedAt` is this run (the pages' „Komunikaty o wodzie sprawdziliśmy”),
    `generatedAt` the last run that changed what the pages read (every
    `checkedAt` in it aside, and the `rejected` list). About 96 small Blob
    writes a day. A run with rejected items logs them in one line,

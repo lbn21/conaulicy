@@ -62,7 +62,7 @@ No public endpoint (task 98: `/api/warnings` was removed), and no banner (task 2
 Warnings are powiat-wide, so every address shows the same ones (powiat `1809`, `POWIAT` in `lib/imgw-shown.ts`): those in force or to come (`shownWarnings`), highest level first, then by start.
 
 - **The address page's timeline** has a row per warning on each day it covers („Ostrzeżenie IMGW”: a tag „Stopień N z 3”, the event, from and until when, absolute; „trwa” on the days after its first), with „Szczegóły” to `/pogoda`. The tag uses IMGW's own solid level colours #ffbe00 / #ff5a00 / #d60000 (from `lvlToColorOsmet` in shared.imgw.pl's warnings widget, `WARNING_LEVELS` in `web/lib/palette.ts`; black text on 1 and 2, white on 3; the text says the level too). Never IMGW's own description there. Its source and last good check are in „Skąd to wiemy”, with IMGW's required wording.
-- **`/pogoda`**: the checked line, then per warning, highest first, a GOV.UK summary card (the event; Stopień with its tag, Kiedy, Gdzie: „Cały powiat lubaczowski”, Opis IMGW: `tresc` verbatim and „Prawdopodobieństwo: 75%.”); then the link „Szczegóły i mapa na meteo.imgw.pl”; then the source in an inset, with the required wording. With no warning and a fresh copy, one line: „Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.” Never indexed (the powiat's, the same at every address). With no copy in the store yet, the address page says „Nie udało się sprawdzić ostrzeżeń IMGW.”
+- **`/pogoda`**: the checked line, then per warning, highest first, a GOV.UK summary card (the event; Stopień with its tag, Kiedy, Gdzie: „Cały powiat lubaczowski”, Opis IMGW: `tresc` verbatim and „Prawdopodobieństwo: 75%.”, `Intl.NumberFormat`); then the source in an inset, IMGW's only link on the page, with the required wording. With no warning and a fresh copy, one line: „Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.” Never indexed (the powiat's, the same at every address). With no copy in the store yet, the address page and `/pogoda` say „Nie udało się sprawdzić ostrzeżeń IMGW.”
 
 No client JS, no dismiss button, no `role="alert"`.
 
@@ -71,7 +71,7 @@ No client JS, no dismiss button, no `role="alert"`.
 - over `STALE_MS` (60 min): a notice, with or without a warning, its link to meteo.imgw.pl (`weatherNotices`: in the address page's inset above the timeline; first on `/pogoda`): with warnings „Nie udało się teraz pobrać ostrzeżeń IMGW. Pokazujemy ostatnie dane z 9:52. Aktualne znajdziesz na meteo.imgw.pl.”, the warnings still listed; without „Nie udało się teraz pobrać ostrzeżeń IMGW. Ostatnie dane mamy z 9:52. Aktualne znajdziesz na meteo.imgw.pl.”, the notice alone;
 - from `MAX_AGE_MS` (3 h): the old warnings are no longer shown (the timeline, `/pogoda`), the notice alone: „Od 9:52 nie udało się nam pobrać ostrzeżeń IMGW, więc ich nie pokazujemy. Aktualne znajdziesz na meteo.imgw.pl.”;
 - the time is the day and time („z piątku 30 października, 9:52”) when the last data is not from today (Warsaw);
-- the store cannot be read now: the notice alone, „Nie udało się teraz sprawdzić ostrzeżeń IMGW. Aktualne znajdziesz na meteo.imgw.pl.”, and no „Ostatnio sprawdziliśmy” time on `/pogoda`.
+- the store cannot be read now: the notice alone, „Nie udało się teraz sprawdzić ostrzeżeń IMGW. Aktualne znajdziesz na meteo.imgw.pl.”, and no „Ostrzeżenia IMGW sprawdziliśmy” time on `/pogoda`.
 
 Read per request, a page shows the notice as soon as the threshold has passed.
 
