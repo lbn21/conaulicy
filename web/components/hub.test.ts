@@ -132,7 +132,8 @@ test("timeline: a card per day from today, 2+ empty days as one, Intl's titles",
     "30–31 października",
   ]);
   assert.equal(count(timeline, "<li"), 5);
-  assert.match(timeline, /^.*?<li class="app-timeline__today">/);
+  // No class marks today: the first dot is CSS's (li:first-child).
+  assert.doesNotMatch(timeline, /app-timeline__today/);
   assert.equal(
     count(timeline, '<li class="app-timeline__empty app-timeline__range">'),
     2,
@@ -199,15 +200,13 @@ test("a live module not checked says so; nothing is claimed for it", () => {
     /<div class="govuk-inset-text">.*<p class="govuk-body">Nie udało się sprawdzić przerw w dostawie wody\.<\/p><p class="govuk-body">Nie udało się sprawdzić ostrzeżeń IMGW\.<\/p><\/div>/,
   );
   assert.doesNotMatch(html, /Wszystkie przerwy w wodzie|Ostrzeżenia pogodowe/);
-  // With nothing at all: today, then the other six days as one run.
+  // With nothing at all: the whole window, today included, one run.
   assert.deepEqual(texts(section(html, "najblizsze-dni"), "h3"), [
-    "Niedziela, 25 października · dzisiaj",
-    "26–31 października",
+    "25–31 października",
   ]);
-  // Today is never merged, even empty.
   assert.match(
     html,
-    /<li class="app-timeline__empty app-timeline__today"><div class="app-timeline__card app-timeline__card--empty">/,
+    /<ol class="app-timeline"><li class="app-timeline__empty app-timeline__range"><div class="app-timeline__card app-timeline__card--empty">/,
   );
 });
 
@@ -223,9 +222,8 @@ test("waste: its pickups by day, „Później” the next one per module with it
   const html = page(STREET);
   const timeline = section(html, "najblizsze-dni");
   assert.deepEqual(texts(timeline, "h3"), [
-    "Niedziela, 25 października · dzisiaj",
-    // A single empty day: its own card, a day's title.
-    "Poniedziałek, 26 października · jutro",
+    // An empty today and tomorrow: one run (task 272).
+    "25–26 października",
     "Wtorek, 27 października · pojutrze",
     "28–31 października",
     "Później",

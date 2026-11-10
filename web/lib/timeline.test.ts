@@ -74,16 +74,8 @@ test("days: n calendar days from today, across months, years and DST", () => {
   ]);
 });
 
-test("collapse: today its own; 2+ empty days after it one card; one empty day its own", () => {
+test("collapse: 2+ empty days one card, today included; one empty day its own", () => {
   const list = days("2026-11-10", 7);
-  // Nothing at all: today, then the other six as one run.
-  assert.deepEqual(
-    shape(
-      list,
-      list.map(() => E),
-    ),
-    ["2026-11-10: 0", "2026-11-11..2026-11-16: 0"],
-  );
   // A single empty day between two busy ones stays its own.
   assert.deepEqual(shape(list, [ONE, E, ONE, E, E, ONE, E]), [
     "2026-11-10: 1",
@@ -93,16 +85,53 @@ test("collapse: today its own; 2+ empty days after it one card; one empty day it
     "2026-11-15: 1",
     "2026-11-16: 0",
   ]);
-  // An empty today is never merged into the run after it.
+  // A run including today folds into one card (task 272).
   assert.deepEqual(shape(list, [E, E, E, ONE, ONE, ONE, ONE]), [
-    "2026-11-10: 0",
-    "2026-11-11..2026-11-12: 0",
+    "2026-11-10..2026-11-12: 0",
     "2026-11-13: 1",
     "2026-11-14: 1",
     "2026-11-15: 1",
     "2026-11-16: 1",
   ]);
+  // A single empty today before a busy tomorrow stays its own.
+  assert.deepEqual(shape(list, [E, ONE, ONE, ONE, ONE, ONE, ONE]).slice(0, 2), [
+    "2026-11-10: 0",
+    "2026-11-11: 1",
+  ]);
   assert.deepEqual(shape([], []), []);
+});
+
+test("collapse: a run ends the day before the next item, the window's last day included", () => {
+  // conaulicy.pl/adres/0972447-19253 on 10 Nov: a pickup on the 16th, the
+  // window's last day, so the run is 10–15 and the 16th its own card.
+  const now = Date.parse("2026-11-10T20:00:00Z");
+  const list = days("2026-11-10", 7);
+  const items = [pickup("2026-11-16"), pickup("2026-11-30")];
+  assert.deepEqual(
+    shape(
+      list,
+      list.map((day) => onDay(items, day, now)),
+    ),
+    ["2026-11-10..2026-11-15: 0", "2026-11-16: 1"],
+  );
+  assert.deepEqual(
+    later(items, list[list.length - 1]).map((item) => item.span.start),
+    [items[1].span.start],
+  );
+});
+
+test("collapse: all 7 days empty is one range, then „Później”", () => {
+  const now = Date.parse("2026-11-10T20:00:00Z");
+  const list = days("2026-11-10", 7);
+  const items = [pickup("2026-11-30")];
+  assert.deepEqual(
+    shape(
+      list,
+      list.map((day) => onDay(items, day, now)),
+    ),
+    ["2026-11-10..2026-11-16: 0"],
+  );
+  assert.deepEqual(later(items, list[list.length - 1]), items);
 });
 
 test("onDay: registry order, then start; a multi-day item on each day, „continued” after its first", () => {
