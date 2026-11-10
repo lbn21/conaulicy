@@ -38,7 +38,7 @@ import {
 } from "@/lib/schedule-notes";
 import { pageMetadata } from "@/lib/share";
 import { ALL_PLACES } from "@/lib/static-pages";
-import { noDataHeading } from "@/lib/waste-module";
+import { checkSchedule, noScheduleHeading } from "@/lib/waste-module";
 
 // The street or village page's parts: its metadata (the address page's,
 // /adres/[id], components/hub.tsx), its heading, and its waste body, which
@@ -96,9 +96,7 @@ function NoDates({
       <h2 id={id} className="govuk-heading-m">
         {heading}
       </h2>
-      <p className="govuk-body">
-        {`${text} Do tego czasu sprawdź odbiory w harmonogramie ${scheduleOwner(place.gmina)}.`}
-      </p>
+      <p className="govuk-body">{text}</p>
       {place.schedulePage && (
         <p className="govuk-body">
           <a href={place.schedulePage} className="govuk-link">
@@ -486,8 +484,8 @@ function WasteBody({
       ) : place.zoneId === null ? (
         <NoDates
           id="empty-heading"
-          heading={noDataHeading(place.kind)}
-          text="Harmonogramu tu nie zgadujemy."
+          heading={noScheduleHeading(place.kind)}
+          text={checkSchedule(place)}
           place={place}
         />
       ) : !hasUpcoming(place.days, place.today) ? (
@@ -496,7 +494,7 @@ function WasteBody({
         <NoDates
           id="ended-heading"
           heading={NO_MORE_DATES}
-          text={NO_MORE_DATES_NEXT}
+          text={`${NO_MORE_DATES_NEXT} ${checkSchedule(place, "Do tego czasu sprawdź")}`}
           place={place}
         />
       ) : (

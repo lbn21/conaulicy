@@ -169,13 +169,20 @@ test("no dates: why, then the gmina's schedule, always a line", () => {
     place({ zoneId: null, days: [], schedulePage: page }),
   ).flat();
   assert.equal(none.length, 1);
-  assert.match(String(none[0][0]), /^Tej ulicy jeszcze nie mamy\./);
+  // Only the waste schedule is missing, not the place (task 276).
+  assert.equal(
+    none[0][0],
+    "Nie mamy jeszcze harmonogramu wywozu śmieci dla tej ulicy. Sprawdź odbiory w harmonogramie Urzędu Miejskiego.",
+  );
   assert.deepEqual(none[0].at(-1), {
     href: page,
     text: "Otwórz harmonogram Urzędu Miejskiego w Lubaczowie",
   });
   const ended = wasteStatus(place({ today: "2026-11-01" })).flat();
-  assert.match(String(ended[0][0]), /^Nie mamy jeszcze kolejnych terminów/);
+  assert.equal(
+    ended[0][0],
+    "Nie mamy jeszcze kolejnych terminów. Dodamy je, gdy tylko gmina ogłosi nowy harmonogram. Do tego czasu sprawdź odbiory w harmonogramie Urzędu Miejskiego.",
+  );
   assert.equal(ended[0].length, 1);
 });
 
