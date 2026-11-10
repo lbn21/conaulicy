@@ -279,19 +279,18 @@ $app-caret: govuk-spacing(2);
 // Today: a static dot filled in the brand colour (task 267).
 .app-timeline > .app-timeline__today::before { border-color: govuk-functional-colour(brand); background: govuk-functional-colour(brand); }
 
-// A run of empty days (task 267): a second dot at the card's foot, as far
-// from its bottom as the first is from its top, and a dashed line between
-// them over the solid one (the page's background under the dashes).
-.app-timeline__range > .app-timeline__card::after,
-.app-timeline__range > .app-timeline__card > p::before { content: ""; position: absolute; left: -(govuk-spacing(6) + $app-hair); width: $app-dot; }
-.app-timeline__range > .app-timeline__card::after { top: calc(var(--app-y) - #{$app-hair}); bottom: calc(var(--app-y) - #{$app-hair}); background: repeating-linear-gradient(govuk-functional-colour(border) 0 govuk-spacing(1), transparent 0 govuk-spacing(2)) 50% 0 no-repeat, govuk-functional-colour(body-background); background-size: $app-hair 100%, auto; }
-.app-timeline__range > .app-timeline__card > p::before { z-index: 1; bottom: calc(var(--app-y) - #{$app-hair + $app-dot * .5}); box-sizing: border-box; height: $app-dot; border: $govuk-border-width-form-element solid govuk-functional-colour(border); border-radius: 50%; background: govuk-colour("white"); }
-.app-timeline > .app-timeline__range:last-child::after { top: auto; height: var(--app-y); }
+// A run of empty days (task 268): one dot, and the line dashed alongside
+// its whole card (the page's background under the dashes), to the dot only
+// when it ends the line.
+.app-timeline__range > .app-timeline__card::after { content: ""; position: absolute; top: -$app-hair; bottom: -$app-hair; left: -(govuk-spacing(6) + $app-hair); width: $app-dot; background: repeating-linear-gradient(govuk-functional-colour(border) 0 govuk-spacing(1), transparent 0 govuk-spacing(2)) 50% 0 no-repeat, govuk-functional-colour(body-background); background-size: $app-hair 100%, auto; }
+.app-timeline__range:last-child > .app-timeline__card::after { bottom: auto; height: var(--app-y); }
 
 .app-timeline__card { --app-bg: #{govuk-functional-colour(surface-background)}; --app-line: #{govuk-functional-colour(surface-border)}; position: relative; padding: govuk-spacing(3); border: $app-hair solid var(--app-line); border-radius: govuk-spacing(1); background: var(--app-bg); }
 .app-timeline__card--empty { --app-bg: color-mix(in srgb, #{govuk-colour("black", $variant: "tint-95")} 35%, #{govuk-colour("white")}); --app-line: #{govuk-functional-colour(border)}; }
 .app-timeline__title, .app-timeline__card--empty > p { color: govuk-functional-colour(secondary-text); }
 .app-timeline__today .app-timeline__title { color: govuk-functional-colour(brand); }
+// After the date, its relative word: small, regular, grey (task 268).
+.app-timeline__title .app-timeline__when { color: govuk-functional-colour(secondary-text); font-size: .875em; font-weight: normal; }
 .app-timeline__card .govuk-summary-list__key { color: govuk-functional-colour(brand); }
 
 // Inside a card one rhythm: key and value a 5px step apart on mobile,

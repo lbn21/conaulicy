@@ -1,5 +1,5 @@
 import { PlaceLink } from "@/components/place-link";
-import { absoluteDay, capitalised } from "@/lib/dates";
+import { absoluteDay, capitalised, dayWithYear } from "@/lib/dates";
 import { MODULES, type Module } from "@/lib/modules";
 import { placePath } from "@/lib/places";
 import type { PlaceView } from "@/lib/schedule";
@@ -7,7 +7,7 @@ import type { Entry } from "@/lib/timeline";
 
 // A timeline card's rows (task 263): GOV.UK's summary list, a row per
 // entry, its key the module's row label, its value the module's Row (or,
-// in „Później”, the date alone), its action „Szczegóły” to the module's
+// in „Później”, the date alone, with its year), its action „Szczegóły” to the module's
 // subpage, with a visually hidden suffix saying which (GOV.UK's „Change”
 // links). The rows own no markup or links of their own.
 
@@ -48,7 +48,11 @@ export function FunctionRows({
           >
             <dt className="govuk-summary-list__key">{module.rowLabel}</dt>
             <dd className="govuk-summary-list__value">
-              {dateOnly ? capitalised(date) : <module.Row entry={entry} />}
+              {dateOnly ? (
+                capitalised(dayWithYear(entry.item.span.day))
+              ) : (
+                <module.Row entry={entry} />
+              )}
             </dd>
             {module.Details && (
               <dd className="govuk-summary-list__actions">

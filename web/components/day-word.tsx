@@ -11,9 +11,9 @@ import { capitalised, dayLead, relativeDay, relativeWord } from "@/lib/dates";
  * lead: a section's first line, „Dziś: ”, „Jutro: ” or „Za 5 dni: ” before
  * `text`, else `text` capitalised (lib/dates.ts dayLead). word: „dziś, ”
  * or „jutro, ” before the date that follows, else nothing. label: „Dziś” or
- * „Jutro” and `afterWord`, else `text`. title: Intl's relative day
- * („Dzisiaj”, „Jutro”, „Za 6 dni”) and „ · ” before `text` (a timeline
- * card's, task 267), else `text` capitalised.
+ * „Jutro” and `afterWord`, else `text`. title: „ · ” and Intl's relative
+ * day („dzisiaj”, „jutro”, „za 6 dni”), after a timeline card's date, small
+ * and grey (site.scss .app-timeline__when, task 268), else nothing.
  */
 type Form = "lead" | "word" | "label" | "title";
 
@@ -33,9 +33,9 @@ export function DayWord({ day, form, text = "", afterWord = "" }: Props) {
   if (form === "lead") return dayLead(day, text, today);
   // No server day (outside WarsawToday) and not yet the device's: no word.
   if (form === "title")
-    return today
-      ? `${capitalised(relativeDay(day, today))} · ${text}`
-      : capitalised(text);
+    return today ? (
+      <span className="app-timeline__when">{` · ${relativeDay(day, today)}`}</span>
+    ) : null;
   const word = today ? relativeWord(day, today) : null;
   if (form === "word") return word ? `${word}, ` : null;
   return word ? `${capitalised(word)}${afterWord}` : text;

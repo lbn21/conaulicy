@@ -1,17 +1,17 @@
 import type { ReactNode } from "react";
 import { DayWord } from "@/components/day-word";
 import { FunctionRows } from "@/components/function-rows";
-import { absoluteDay, dayRange } from "@/lib/dates";
+import { absoluteDay, capitalised, dayRange } from "@/lib/dates";
 import type { PlaceView } from "@/lib/schedule";
 import type { DayGroup, Entry } from "@/lib/timeline";
 
 // The timeline's days (task 263, restyled in task 264): each an li of
 // components/timeline.tsx's ol (site.scss .app-timeline). A day with
-// items is a card, its date an h3 („Dzisiaj · wtorek, 10 listopada”,
-// DayWord); an empty day or run of them („Jutro · środa, 11 listopada –
-// niedziela, 15 listopada”, Intl's formatRange) a muted grey card, its date
-// the same h3 over „Nic nie zaplanowano.” (task 266), a run with a dot at
-// each end and a dashed line between (task 267);
+// items is a card, its date an h3 („Wtorek, 10 listopada · dzisiaj”, the
+// word DayWord's, task 268); an empty day or run of them („11–15
+// listopada”, Intl's formatRange, no word) a muted grey card, its date the
+// same h3 over „Nic nie zaplanowano.” (task 266), a run's line dashed
+// alongside its card (task 268);
 // „Później” a card at the ringed end of the line (task 265).
 
 /** What an empty day or run says. */
@@ -55,15 +55,15 @@ export function Day({
   place: PlaceView;
 }) {
   const today = from === place.today;
-  const title = (
-    <time dateTime={from}>
-      <DayWord
-        day={from}
-        form="title"
-        text={from === to ? absoluteDay(from) : dayRange(from, to)}
-      />
-    </time>
-  );
+  const title =
+    from === to ? (
+      <>
+        <time dateTime={from}>{capitalised(absoluteDay(from))}</time>
+        <DayWord day={from} form="title" />
+      </>
+    ) : (
+      <time dateTime={from}>{dayRange(from, to)}</time>
+    );
   const empty = entries.length === 0;
   return (
     <li
