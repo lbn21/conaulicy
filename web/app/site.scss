@@ -117,9 +117,10 @@ $app-header-colour: $app-header;
 }
 
 // The street search: alphagov accessible-autocomplete with its own CSS,
-// unchanged, plus two things. Its rows set no font family (on GOV.UK they
-// inherit GOV.UK's), so they get GOV.UK's, as the field; sizes stay the
-// library's. And it paints the highlighted suggestion in GOV.UK's brand blue,
+// unchanged, plus two things. Its field, hint and rows set no font family (on
+// GOV.UK they inherit GOV.UK's) and the pre-v6 scale's 16px below 641px, so
+// they get GOV.UK's 19, as .govuk-input (task 275): 25px line, 5px padding
+// and 4px border fit the library's 40px field. And it paints the highlighted suggestion in GOV.UK's brand blue,
 // which sites off GOV.UK must not use. Here it takes the brand role (ROLES
 // in lib/palette.ts) instead. Outside forced-colours mode only, so its
 // system-colour rule still applies there. check-govuk-assets checks this
@@ -129,8 +130,8 @@ $app-header-colour: $app-header;
   scroll-margin-top: govuk-spacing(3);
 }
 
-.app-search .autocomplete__option {
-  @include govuk-font($size: false);
+.app-search :is(.autocomplete__input, .autocomplete__hint, .autocomplete__option) {
+  @include govuk-font($size: 19);
 }
 
 @media (forced-colors: none) {
