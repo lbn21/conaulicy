@@ -46,8 +46,8 @@ export default function AccessibilityPage() {
                 druku każdy rodzaj ma też swój kształt.
               </li>
               <li>
-                Wyszukiwarka adresów działa też bez JavaScriptu: wpisz ulicę
-                albo wieś i wybierz „Szukaj”.
+                Strona potrzebuje JavaScriptu. Bez niego nie zobaczysz
+                wyszukiwarki ani dat pod swoim adresem.
               </li>
             </ul>
           </section>
