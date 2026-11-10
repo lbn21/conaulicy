@@ -23,10 +23,10 @@ const CARD = (
     <p className="govuk-heading-s">
       <Skeleton>Najbliższe dni</Skeleton>
     </p>
-    <p className="govuk-body">
+    <p className="govuk-body-s">
       <Skeleton>Tego dnia odbiorą: zmieszane, papier</Skeleton>
     </p>
-    <p className="govuk-body govuk-!-margin-bottom-0">
+    <p className="govuk-body-s govuk-!-margin-bottom-0">
       <Skeleton>Sprawdziliśmy 1 listopada</Skeleton>
     </p>
   </div>
