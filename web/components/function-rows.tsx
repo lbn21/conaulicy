@@ -57,7 +57,7 @@ export function FunctionRows({
             {module.Details && (
               <dd className="govuk-summary-list__actions">
                 <PlaceLink
-                  className="govuk-link govuk-!-font-size-16"
+                  className="govuk-link"
                   href={subpageHref(module, place)}
                 >
                   Szczegóły

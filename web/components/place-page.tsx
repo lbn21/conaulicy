@@ -525,7 +525,7 @@ function WasteBody({
           {!place.verified && <AiReadNote text={unverifiedNote(place.gmina)} />}
           <SourceInset>
             {place.sources.map((source) => (
-              <p key={source.label} className="govuk-body">
+              <p key={source.label} className="govuk-body-s">
                 Źródło:{" "}
                 {source.url ? (
                   <a href={source.url} className="govuk-link">

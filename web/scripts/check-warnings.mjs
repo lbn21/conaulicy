@@ -196,7 +196,7 @@ async function hubChecks(origin, state) {
       return list;
     }, []);
   const row = new RegExp(
-    `^<dt class="govuk-summary-list__key">Ostrzeżenie IMGW</dt><dd class="govuk-summary-list__value"><p class="govuk-body-s govuk-!-margin-bottom-0"><strong class="govuk-tag govuk-tag--(?:yellow|orange|red)">Stopień [1-3] z 3</strong> Silny wiatr(?:, (?:trwa )?(?:od (?:${DAY}, )?${TIME} )?do (?:${DAY}, )?${TIME})?\\.</p></dd><dd class="govuk-summary-list__actions"><a class="govuk-link govuk-!-font-size-16" href="${WEATHER}">Szczegóły<span class="govuk-visually-hidden"> o ostrzeżeniu IMGW, \\p{L}+, \\d{1,2} \\p{L}+</span></a></dd>$`,
+    `^<dt class="govuk-summary-list__key">Ostrzeżenie IMGW</dt><dd class="govuk-summary-list__value"><p class="govuk-body-s govuk-!-margin-bottom-0"><strong class="govuk-tag govuk-tag--(?:yellow|orange|red)">Stopień [1-3] z 3</strong> Silny wiatr(?:, (?:trwa )?(?:od (?:${DAY}, )?${TIME} )?do (?:${DAY}, )?${TIME})?\\.</p></dd><dd class="govuk-summary-list__actions"><a class="govuk-link" href="${WEATHER}">Szczegóły<span class="govuk-visually-hidden"> o ostrzeżeniu IMGW, \\p{L}+, \\d{1,2} \\p{L}+</span></a></dd>$`,
     "u",
   );
   const rows = days.flatMap((day, i) =>

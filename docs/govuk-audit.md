@@ -140,6 +140,9 @@ $app-latarnia: ( /* the amber group below */ );
 - **Second exception, approved by Jakub (task 27, step 5c):** alphagov accessible-autocomplete's unchanged CSS paints the highlighted and hovered suggestion in `#1d70b8` (`.autocomplete__option--focused,.autocomplete__option:hover`).
   - `site.scss` overrides only that rule's colours with the brand role (`govuk-functional-colour(brand)`, white text), outside forced-colours mode, so the blue is never rendered.
   - `check-govuk-assets.mjs` allows `#1d70b8` only in that exact rule and fails unless the override ships.
+- **Third and fourth deviations, approved by Jakub (task 275, typography):** one rule, 19 px for content and 16 px for metadata and chrome (`docs/layout.md`, Typography).
+  - The footer takes `govuk-!-font-size-16` on `.govuk-footer` (`site-footer.tsx`): v6's footer is 19 (v5's 16); ours matches the breadcrumbs' 16. No own CSS.
+  - accessible-autocomplete's field, hint and suggestions set GOV.UK's pre-v6 16 px below 641 px; `site.scss` gives all three `govuk-font($size: 19)`, as `.govuk-input`, so the field reads the same at every width. Its 40 px height is unchanged (25 + 10 + 4 = 39).
 - **`theme-color`:** `#4d2c00`, the header's colour (latarnia shade-50, task 88), as GOV.UK's template uses its header colour.
 
 **Autocomplete: alphagov `accessible-autocomplete` vs our combobox, restyled with GOV.UK classes**

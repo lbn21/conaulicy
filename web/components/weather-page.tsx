@@ -122,13 +122,15 @@ export function WeatherDetails({
         </p>
       )}
       <SourceInset>
-        <p className="govuk-body">
+        <p className="govuk-body-s">
           Źródło:{" "}
           <a href={IMGW_PAGE} className="govuk-link">
             IMGW-PIB
           </a>
         </p>
-        <p className="govuk-body">{IMGW_ATTRIBUTION.join(" ")}</p>
+        <p className="govuk-hint govuk-!-font-size-16">
+          {IMGW_ATTRIBUTION.join(" ")}
+        </p>
       </SourceInset>
     </>
   );

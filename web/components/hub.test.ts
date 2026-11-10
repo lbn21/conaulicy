@@ -149,11 +149,11 @@ test("timeline: each cut and warning once, its row, „Szczegóły” to its sub
   assert.equal(count(html, 'class="govuk-tag '), 1);
   assert.match(
     html,
-    /<dt class="govuk-summary-list__key">Ostrzeżenie IMGW<\/dt><dd class="govuk-summary-list__value"><p class="govuk-body-s govuk-!-margin-bottom-0"><strong class="govuk-tag govuk-tag--yellow">Stopień 1 z 3<\/strong> Silny wiatr, od 13:00 do 19:00\.<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link govuk-!-font-size-16" href="\/adres\/0606257\/pogoda">Szczegóły<span class="govuk-visually-hidden"> o ostrzeżeniu IMGW, niedziela, 25 października<\/span><\/a><\/dd>/,
+    /<dt class="govuk-summary-list__key">Ostrzeżenie IMGW<\/dt><dd class="govuk-summary-list__value"><p class="govuk-body-s govuk-!-margin-bottom-0"><strong class="govuk-tag govuk-tag--yellow">Stopień 1 z 3<\/strong> Silny wiatr, od 13:00 do 19:00\.<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link" href="\/adres\/0606257\/pogoda">Szczegóły<span class="govuk-visually-hidden"> o ostrzeżeniu IMGW, niedziela, 25 października<\/span><\/a><\/dd>/,
   );
   assert.match(
     html,
-    /<dt class="govuk-summary-list__key">Woda<\/dt><dd class="govuk-summary-list__value"><p class="govuk-body-s govuk-!-margin-bottom-0">Od 8:00 do 16:00 nie będzie wody\.<\/p><p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0">Cała wieś Lisie Jamy\.<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link govuk-!-font-size-16" href="\/adres\/0606257\/woda">Szczegóły<span class="govuk-visually-hidden"> o przerwie w dostawie wody, poniedziałek, 26 października<\/span><\/a><\/dd>/,
+    /<dt class="govuk-summary-list__key">Woda<\/dt><dd class="govuk-summary-list__value"><p class="govuk-body-s govuk-!-margin-bottom-0">Od 8:00 do 16:00 nie będzie wody\.<\/p><p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0">Cała wieś Lisie Jamy\.<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link" href="\/adres\/0606257\/woda">Szczegóły<span class="govuk-visually-hidden"> o przerwie w dostawie wody, poniedziałek, 26 października<\/span><\/a><\/dd>/,
   );
   // IMGW's own description is /pogoda's alone.
   assert.doesNotMatch(html, /Prawdopodobieństwo|Prognozuje się/);
@@ -230,7 +230,7 @@ test("waste: its pickups by day, „Później” the next one per module with it
   ]);
   assert.match(
     timeline,
-    /<dt class="govuk-summary-list__key">Śmieci<\/dt><dd class="govuk-summary-list__value">.*?Papier.*?<p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0">Wystaw je do 6:00 rano\.<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link govuk-!-font-size-16" href="\/adres\/0000001-00001\/smieci">Szczegóły<span class="govuk-visually-hidden"> o odbiorze śmieci, wtorek, 27 października<\/span>/,
+    /<dt class="govuk-summary-list__key">Śmieci<\/dt><dd class="govuk-summary-list__value">.*?Papier.*?<p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0">Wystaw je do 6:00 rano\.<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link" href="\/adres\/0000001-00001\/smieci">Szczegóły<span class="govuk-visually-hidden"> o odbiorze śmieci, wtorek, 27 października<\/span>/,
   );
   // „Później”: only the next pickup after the window, its date the value.
   const later = /<li class="app-timeline__later">.*?<\/li>/.exec(timeline)?.[0];

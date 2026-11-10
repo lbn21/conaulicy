@@ -154,7 +154,7 @@ test("/woda: the AI note in a warning text, the source in an inset", () => {
   );
   assert.match(
     html,
-    /<div class="govuk-inset-text"><p class="govuk-body">Źródło: <a href="https:\/\/www\.gminalubaczow\.pl\/[^"]+" class="govuk-link">komunikat gminy z 23 października 2026<\/a><\/p><\/div>/,
+    /<div class="govuk-inset-text"><p class="govuk-body-s">Źródło: <a href="https:\/\/www\.gminalubaczow\.pl\/[^"]+" class="govuk-link">komunikat gminy z 23 października 2026<\/a><\/p><\/div>/,
   );
   // A town street: the cut's own post is its only source, never MZGKiM's.
   assert.doesNotMatch(html, /MZGKiM/);
@@ -512,7 +512,7 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
   );
   assert.match(
     html,
-    /<div class="govuk-inset-text"><p class="govuk-body">Źródło: <a href="https:\/\/mzgkim\.lubaczow\.pl\/przerwa-w-dostawie-wody-100\/" class="govuk-link">komunikat MZGKiM z 2 października 2026<\/a><\/p><\/div>/,
+    /<div class="govuk-inset-text"><p class="govuk-body-s">Źródło: <a href="https:\/\/mzgkim\.lubaczow\.pl\/przerwa-w-dostawie-wody-100\/" class="govuk-link">komunikat MZGKiM z 2 października 2026<\/a><\/p><\/div>/,
   );
   // Its cut shown here: its area off our list is not linked again.
   assert.doesNotMatch(html, /Inne komunikaty/);
@@ -619,7 +619,7 @@ const weatherPage = (data: Weather) =>
   );
 const IMGW_NOW = Date.parse("2026-10-25T14:00:00+01:00");
 const SOURCE_INSET =
-  /<div class="govuk-inset-text"><p class="govuk-body">Źródło: <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">IMGW-PIB<\/a><\/p><p class="govuk-body">Źródłem pochodzenia danych jest Instytut Meteorologii [^<]+<\/p><\/div><\/main>$/;
+  /<div class="govuk-inset-text"><p class="govuk-body-s">Źródło: <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">IMGW-PIB<\/a><\/p><p class="govuk-hint govuk-!-font-size-16">Źródłem pochodzenia danych jest Instytut Meteorologii [^<]+<\/p><\/div><\/main>$/;
 
 test("/pogoda: a subpage of every address, its h1 and the registry's", () => {
   const pogoda = findSubpage("pogoda");
@@ -688,7 +688,7 @@ test("/pogoda, the store unreadable: the notice alone, no check time, no „Brak
   const html = weatherPage(data);
   assert.match(
     html,
-    /Zmień adres.*?<\/p><div class="govuk-inset-text">Nie udało się teraz sprawdzić ostrzeżeń IMGW\. Aktualne znajdziesz na <a [^>]*>meteo\.imgw\.pl<\/a>\.<\/div><div class="govuk-inset-text"><p class="govuk-body">Źródło:/,
+    /Zmień adres.*?<\/p><div class="govuk-inset-text">Nie udało się teraz sprawdzić ostrzeżeń IMGW\. Aktualne znajdziesz na <a [^>]*>meteo\.imgw\.pl<\/a>\.<\/div><div class="govuk-inset-text"><p class="govuk-body-s">Źródło:/,
   );
   assert.doesNotMatch(
     html,
