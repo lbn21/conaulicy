@@ -48,13 +48,13 @@ function NextPickup({ day }: { day: PickupDay }) {
             Najbliższy odbiór: <SpokenDay iso={day.date} />
           </span>
           <span aria-hidden="true">
-            <span className="govuk-!-display-block govuk-!-font-size-27">
+            <span className="govuk-!-display-block">
               <DayWord day={day.date} form="label" text="Najbliższy odbiór" />
             </span>
             <span className="govuk-!-display-block govuk-!-font-size-80">
               {face.day}
             </span>
-            <span className="govuk-!-display-block govuk-!-font-size-24">
+            <span className="govuk-!-display-block govuk-!-font-size-24 govuk-!-font-weight-regular">
               {face.month}, {face.weekday}
             </span>
           </span>
