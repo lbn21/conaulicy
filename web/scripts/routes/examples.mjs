@@ -1,5 +1,6 @@
 // Checks the home page's examples (lib/examples.ts): each one opens an
-// address page whose waste card has the next pickup, and a waste subpage
+// address page whose timeline has a waste row (in the 7 days or
+// „Później”, components/timeline.tsx), and a waste subpage
 // with upcoming pickups, and the home page links to each, in order,
 // labelled with the place's own name (the page's h1). Fails otherwise.
 //
@@ -26,13 +27,12 @@ export async function check(server, failures) {
     if (response.status !== 200 || !name) {
       failures.push(`/adres/${id}: ${response.status}, not a place page`);
     } else if (
-      // Its date, absolute, its „Dziś: ”, „Jutro: ” or „Za 5 dni: ” before
-      // it in the HTML, for the server's day (components/day-word.tsx).
-      !/>Śmieci<\/h2><p class="govuk-body govuk-!-margin-bottom-2">(?:(?:Dziś|Jutro|Za [2-7] dni): \p{Ll}|\p{Lu})\p{L}+, \d{1,2} \p{L}+<\/p>/u.test(
+      // A waste row in the timeline's ol, in the HTML (the read's day).
+      !/<ol class="app-timeline">(?:(?!<\/ol>)[\s\S])*<dt class="govuk-summary-list__key">Śmieci<\/dt>/.test(
         html,
       )
     ) {
-      failures.push(`/adres/${id} (${name}): no next pickup in its section`);
+      failures.push(`/adres/${id} (${name}): no pickup in its timeline`);
     } else {
       const waste = await fetch(`${server.origin}/adres/${id}/smieci`, {
         headers,
