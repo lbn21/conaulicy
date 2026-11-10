@@ -8,8 +8,9 @@ import type { DayGroup, Entry } from "@/lib/timeline";
 // The timeline's days (task 263, restyled in task 264): each an li of
 // components/timeline.tsx's ol (site.scss .app-timeline). A day with
 // items is a card, its date an h3 („Dziś, wtorek, 10 listopada”, DayWord);
-// an empty day or run of them („Środa 11 – sobota 14 listopada”) only a
-// muted line, no card; „Później” a card past the dashed end of the line.
+// an empty day or run of them („Środa 11 – sobota 14 listopada”) a muted
+// grey card, one line (today's date in bold); „Później” a card at the
+// ringed end of the line (task 265).
 
 /** What an empty day or run says. */
 export const NOTHING = "Nic nie zaplanowano.";
@@ -40,7 +41,7 @@ function rangeTitle(from: string, to: string): string {
   );
 }
 
-/** A day's li: a card, or for empty days a muted line. */
+/** A day's li: a card, for empty days a muted one. */
 export function Day({
   group: { from, to, entries },
   place,
@@ -64,9 +65,17 @@ export function Day({
             : "app-timeline__empty"
         }
       >
-        <p className="govuk-hint govuk-!-margin-bottom-0">
-          <time dateTime={from}>{text}</time> · {NOTHING}
-        </p>
+        <div className="app-timeline__card app-timeline__card--empty">
+          <p className="govuk-hint govuk-!-margin-bottom-0">
+            <time
+              dateTime={from}
+              className={today ? "govuk-!-font-weight-bold" : undefined}
+            >
+              {text}
+            </time>{" "}
+            · {NOTHING}
+          </p>
+        </div>
       </li>
     );
   }

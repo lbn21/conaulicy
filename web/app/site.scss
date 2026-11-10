@@ -228,26 +228,39 @@ $app-header-colour: $app-header;
   color: govuk-functional-colour(inverse-text);
 }
 
-// The address page's timeline (components/timeline.tsx, task 264), as
-// CodyHouse's vertical timeline, our own CSS: a thin line on the left, a dot
-// per day on it, a card per day with a caret at its dot. All of it
-// decorative pseudo-elements; the markup stays an ol of days. Mobile-first,
-// the same at every width. Dots 15px on a 1px line, centred on the card's
-// h3 (19/25 at 15px padding) or an empty day's 19/25 line.
+// The address page's timeline (components/timeline.tsx, tasks 264-265), as
+// CodyHouse's vertical timeline, our own CSS: one unbroken line on the left
+// from the first dot to the last, a dot per day on it, a card per day with
+// a caret at its dot. All of it decorative pseudo-elements; the markup stays
+// an ol of days. Mobile-first, the same at every width. Dots 15px on a 1px
+// line, centred on the card's first 19/25 line (--app-y: the card's border,
+// its padding, half a line); the caret's centre on the same y.
+// Colours: a day with items on the brand's surface (tint-95, its border
+// tint-50), its labels in the brand colour; an empty day or run all grey
+// (GOV.UK's black tint-95 and border, secondary text); today in the brand
+// colour, its dot with a soft halo (task 265).
 $app-dot: govuk-spacing(3);
 $app-hair: $govuk-border-width-form-element * .5;
+$app-caret: govuk-spacing(2);
 
 .app-timeline { position: relative; margin: 0 0 govuk-spacing(6); padding: 0; list-style: none; }
-.app-timeline > li { position: relative; margin: 0; padding: 0 0 govuk-spacing(4) govuk-spacing(6); }
-.app-timeline > li::after { content: ""; position: absolute; top: 0; bottom: 0; left: ($app-dot - $app-hair) * .5; border-left: $app-hair solid govuk-functional-colour(border); }
-.app-timeline > li:first-child::after { top: govuk-spacing(4); }
-.app-timeline > li:last-child::after { bottom: auto; height: govuk-spacing(4); }
+.app-timeline::before { content: ""; position: absolute; top: 0; bottom: 0; left: ($app-dot - $app-hair) * .5; border-left: $app-hair solid govuk-functional-colour(border); }
+.app-timeline > li { --app-y: #{$app-hair + govuk-spacing(3) + govuk-spacing(5) * .5}; position: relative; margin: 0; padding: 0 0 govuk-spacing(4) govuk-spacing(6); }
+.app-timeline > .app-timeline__empty { --app-y: #{$app-hair + govuk-spacing(2) + govuk-spacing(5) * .5}; }
+.app-timeline > li:last-child { padding-bottom: 0; }
+
+// The line's ends: the page's background over it above the first dot and
+// below the last, so it runs dot to dot with no seams between days.
+.app-timeline > li:first-child::after,
+.app-timeline > li:last-child::after { content: ""; position: absolute; left: 0; width: $app-dot; background: govuk-functional-colour(body-background); }
+.app-timeline > li:first-child::after { top: 0; height: var(--app-y); }
+.app-timeline > li:last-child::after { top: var(--app-y); bottom: 0; }
 
 .app-timeline > li::before {
   content: "";
   position: absolute;
   z-index: 1;
-  top: govuk-spacing(4);
+  top: calc(var(--app-y) - #{$app-dot * .5});
   left: 0;
   box-sizing: border-box;
   width: $app-dot;
@@ -257,22 +270,28 @@ $app-hair: $govuk-border-width-form-element * .5;
   background: govuk-colour("white");
 }
 
-// Today: filled in the brand colour, with a soft halo.
-.app-timeline > .app-timeline__today::before {
-  border-color: govuk-functional-colour(brand);
-  background: govuk-functional-colour(brand);
-  box-shadow: 0 0 0 govuk-spacing(1) color-mix(in srgb, govuk-functional-colour(brand) 20%, transparent);
-}
+.app-timeline > .app-timeline__empty::before { border-color: govuk-functional-colour(border); }
 
-// Empty days: no card, a muted hollow dot on the label's line.
-.app-timeline > .app-timeline__empty::before { top: govuk-spacing(1); border-width: $app-hair; border-color: govuk-functional-colour(border); }
+// „Później”: past the window, a ringed dot (a dot in a ring).
+.app-timeline > .app-timeline__later::before { background: govuk-functional-colour(secondary-text); box-shadow: inset 0 0 0 $app-hair * 2 govuk-colour("white"); }
 
-// „Później”: past the window, a dashed line and a dashed dot.
-.app-timeline > .app-timeline__later::after { border-left-style: dashed; }
-.app-timeline > .app-timeline__later::before { border-style: dashed; }
+// Today: filled in the brand colour, with a soft halo that beats three
+// times (4.8 s, under GOV.UK's 5 s) unless motion is reduced, then rests.
+.app-timeline > .app-timeline__today::before { border-color: govuk-functional-colour(brand); background: govuk-functional-colour(brand); box-shadow: 0 0 0 govuk-spacing(1) color-mix(in srgb, govuk-functional-colour(brand) 20%, transparent); }
+@media (prefers-reduced-motion: no-preference) { .app-timeline > .app-timeline__today::before { animation: app-beat 1.6s ease-out 3; } }
+@keyframes app-beat { from { box-shadow: 0 0 0 0 color-mix(in srgb, govuk-functional-colour(brand) 40%, transparent); } }
 
-.app-timeline__card { position: relative; padding: govuk-spacing(3); border: $app-hair solid govuk-functional-colour(border); border-radius: govuk-spacing(1); background: govuk-colour("white"); }
+.app-timeline__card { --app-bg: #{govuk-functional-colour(surface-background)}; --app-line: #{govuk-functional-colour(surface-border)}; position: relative; padding: govuk-spacing(3); border: $app-hair solid var(--app-line); border-radius: govuk-spacing(1); background: var(--app-bg); }
+.app-timeline__card--empty { --app-bg: #{govuk-colour("black", $variant: "tint-95")}; --app-line: #{govuk-functional-colour(border)}; padding-block: govuk-spacing(2); }
+.app-timeline__today > .app-timeline__card { --app-line: #{govuk-functional-colour(brand)}; }
+.app-timeline__today > .app-timeline__card--empty { --app-line: #{govuk-functional-colour(secondary-text)}; }
+.app-timeline__card .govuk-summary-list__key { color: govuk-functional-colour(brand); }
+
+// The last row ends the card: GOV.UK's no-border row, and on mobile no
+// row or action margin under it, so the card's padding alone is below.
+.app-timeline__card .govuk-summary-list__row:last-child,
+.app-timeline__card .govuk-summary-list__row:last-child > :last-child { margin-bottom: 0; }
 
 // The caret: a square turned 45°, its two outer sides the card's border,
 // its centre on the card's left edge, level with the dot.
-.app-timeline__card::before { content: ""; position: absolute; top: govuk-spacing(3) + (govuk-spacing(5) - govuk-spacing(2)) * .5; left: -(govuk-spacing(2) * .5) - $app-hair; box-sizing: border-box; width: govuk-spacing(2); height: govuk-spacing(2); border-bottom: $app-hair solid govuk-functional-colour(border); border-left: $app-hair solid govuk-functional-colour(border); background: govuk-colour("white"); transform: rotate(45deg); }
+.app-timeline__card::before { content: ""; position: absolute; top: calc(var(--app-y) - #{$app-hair + $app-caret * .5}); left: -($app-caret * .5) - $app-hair; box-sizing: border-box; width: $app-caret; height: $app-caret; border-bottom: $app-hair solid var(--app-line); border-left: $app-hair solid var(--app-line); background: var(--app-bg); transform: rotate(45deg); }

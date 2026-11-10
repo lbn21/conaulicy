@@ -35,11 +35,16 @@ export function FunctionRows({
             // A fixed order (lib/timeline.ts), never reordered.
             // biome-ignore lint/suspicious/noArrayIndexKey: see above
             key={i}
-            className={
-              module.Details
-                ? "govuk-summary-list__row"
-                : "govuk-summary-list__row govuk-summary-list__row--no-actions"
-            }
+            // The last row ends the card: no border under it (task 265).
+            className={[
+              "govuk-summary-list__row",
+              module.Details ? "" : "govuk-summary-list__row--no-actions",
+              i === entries.length - 1
+                ? "govuk-summary-list__row--no-border"
+                : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
           >
             <dt className="govuk-summary-list__key">{module.rowLabel}</dt>
             <dd className="govuk-summary-list__value">
