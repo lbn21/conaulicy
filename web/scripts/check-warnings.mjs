@@ -371,7 +371,12 @@ async function deepChecks(browser, origin) {
       return [t.className, s.color, s.backgroundColor];
     }),
   );
-  if (tags.length !== 3) failures.push(`${tags.length} tags, want 3`);
+  // One per IMGW row: a warning that spans midnight has a row on each day.
+  const rows = await page
+    .locator("main .govuk-summary-list__key", { hasText: "Ostrzeżenie IMGW" })
+    .count();
+  if (rows < 3 || tags.length !== rows)
+    failures.push(`${tags.length} tags, want one per IMGW row (${rows}, ≥ 3)`);
   const rgb = (hex) =>
     `rgb(${[1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16)).join(", ")})`;
   for (const [cls, fg, bg] of tags) {
