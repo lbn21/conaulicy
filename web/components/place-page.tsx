@@ -4,7 +4,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
 import { Breadcrumbs, type Crumb, HOME_CRUMB } from "@/components/breadcrumbs";
-import { CheckedLine } from "@/components/checked-line";
 import { ErrorSummary } from "@/components/error-summary";
 import { NOT_FOUND_METADATA, PageNotFound } from "@/components/page-not-found";
 import { PickupSchedule } from "@/components/pickup-schedule";
@@ -13,9 +12,7 @@ import {
   CalendarBlock,
   SourceInset,
 } from "@/components/subpage-parts";
-import type { ModuleId } from "@/lib/address-routes";
 import { houseQuery, withHouseNumber } from "@/lib/house";
-import type { Checked } from "@/lib/hub";
 import { indexable } from "@/lib/indexing";
 import {
   localityAnchor,
@@ -38,7 +35,11 @@ import {
 } from "@/lib/schedule-notes";
 import { pageMetadata } from "@/lib/share";
 import { ALL_PLACES } from "@/lib/static-pages";
-import { checkSchedule, noScheduleHeading } from "@/lib/waste-module";
+import {
+  checkSchedule,
+  noScheduleHeading,
+  wasteSources,
+} from "@/lib/waste-module";
 
 // The street or village page's parts: its metadata (the address page's,
 // /adres/[id], components/hub.tsx), its heading, and its waste body, which
@@ -123,32 +124,11 @@ export function numberError(place: PlaceView, missing: boolean): string | null {
     : null;
 }
 
+/** The address page's metadata, cached as the page it describes. */
 export async function placeMetadata(
   id: string,
   nr: string | null,
   missing = false,
-): Promise<Metadata> {
-  return addressMetadata(id, nr, missing, "address");
-}
-
-/**
- * The waste subpage's (/adres/<id>/smieci): its own canonical, title
- * "Odbiór śmieci: wszystkie terminy – <place>" and description.
- */
-export async function wasteMetadata(
-  id: string,
-  nr: string | null,
-  missing = false,
-): Promise<Metadata> {
-  return addressMetadata(id, nr, missing, "waste");
-}
-
-// Cached as the page it describes (its params awaited outside, passed in).
-async function addressMetadata(
-  id: string,
-  nr: string | null,
-  missing: boolean,
-  page: "address" | "waste",
 ): Promise<Metadata> {
   "use cache";
   cacheLife("max");
@@ -156,34 +136,36 @@ async function addressMetadata(
   const place = await getPlace(id, nr);
   // As app/not-found.tsx: Next.js's own noindex is the only robots tag.
   if (!place) return NOT_FOUND_METADATA;
-  // GOV.UK: the title is the H1 (the waste subpage's, then its place), and
-  // "Error: " first, so screen readers hear it first. The place adds its
-  // locality, the H1 does not (Jakub's decision, task 133: docs/layout.md).
+  // GOV.UK: the title is the H1, and "Error: " first, so screen readers
+  // hear it first. The place adds its locality, the H1 does not (Jakub's
+  // decision, task 133: docs/layout.md).
   const name = withHouseNumber(titleLabel(place.label), shownNr(place));
-  const h1 =
-    page === "waste" ? `${WASTE_H1}: wszystkie terminy – ${name}` : name;
-  const title = numberError(place, missing) ? `Błąd: ${h1}` : h1;
   // With a house number, or an empty one, it describes the place itself.
   const whole = nr ? await getPlace(id, null) : place;
   return {
     ...pageMetadata({
-      path: page === "waste" ? `${placePath(id)}/smieci` : placePath(id),
-      title,
-      description: placeDescription(whole ?? place, page),
+      path: placePath(id),
+      title: numberError(place, missing) ? `Błąd: ${name}` : name,
+      description: placeDescription(whole ?? place),
     }),
-    // Never a search result, its links still followed once the site is
-    // indexable: ?nr= without a usable number, an error of the street page,
-    // and a place we have no dates for (its page only links the gmina's
-    // schedule).
-    ...((missing || place.invalidNr !== null || noData(place)) && {
+    ...(!indexedPlace(place, missing) && {
       robots: { index: false, follow: indexable() },
     }),
   };
 }
 
-/** No pickup data at all, as lib/places.ts hasZone (/ulice, the sitemap). */
-function noData(place: PlaceView): boolean {
-  return place.zoneId === null && !place.askNumber;
+/**
+ * The address page and the waste subpage may be search results, but not:
+ * ?nr= without a usable number, an error of the street page, and a place
+ * we have no dates for (its page only links the gmina's schedule; as
+ * lib/places.ts hasZone, /ulice, the sitemap).
+ */
+export function indexedPlace(place: PlaceView, missing: boolean): boolean {
+  return !(
+    missing ||
+    place.invalidNr !== null ||
+    (place.zoneId === null && !place.askNumber)
+  );
 }
 
 /**
@@ -277,68 +259,55 @@ export function PlaceNotFound() {
 }
 
 /**
- * The top of the street page, the address page and the waste subpage:
- * GOV.UK's error summary, the caption (the subpage's: its h1 does not name
- * the place; the address page's locality is in its breadcrumbs), the h1, a house number the address
- * register does not have (numberWarning) or the street does not need
- * (sharedNumberNote), „Zmień adres”, then on a subpage when
- * its module last checked its source (Module.checkedAt).
+ * The address pages' frame (the hub, StreetPage, and every module's
+ * subpage, components/module-page.tsx): the two-thirds column, GOV.UK's
+ * error summary, the caption (a subpage's: its h1 does not name the place;
+ * the address page's locality is in its breadcrumbs), the h1 (the place's
+ * name by default), a house number the address register does not have
+ * (numberWarning) or the street does not need (sharedNumberNote), „Zmień
+ * adres”, then on a subpage when its module last checked its source
+ * (lib/hub.ts checkedLine), small, secondary text; then `children`, in the
+ * layout's <main>. Its breadcrumbs are the layout's @breadcrumbs slot
+ * (components/place-crumbs.tsx).
  */
-function PlaceHeading({
+export function AddressPage({
   place,
   caption,
   heading,
   error = null,
-  checkedAt = null,
-  module = "smieci",
+  checked = null,
+  children,
 }: {
   place: PlaceView;
   caption?: string;
-  heading: string;
+  heading?: string;
   error?: string | null;
-  checkedAt?: Checked;
-  /** Whose check the line under „Zmień adres” is. */
-  module?: ModuleId;
+  checked?: string | null;
+  children: ReactNode;
 }) {
   const name = withHouseNumber(place.name, shownNr(place));
   const note = numberWarning(place) ?? sharedNumberNote(place);
   return (
-    <>
-      {error && <ErrorSummary error={error} href="#nr" />}
-      {caption && <span className="govuk-caption-l">{caption}</span>}
-      <h1 className="govuk-heading-l">{heading}</h1>
-      {note && <p className="govuk-body">{note}</p>}
-      {/* Like GOV.UK's "Change": back to the search on the home page. Spaced
+    <div className="govuk-grid-row">
+      <div className="govuk-grid-column-two-thirds">
+        {error && <ErrorSummary error={error} href="#nr" />}
+        {caption && <span className="govuk-caption-l">{caption}</span>}
+        <h1 className="govuk-heading-l">{heading ?? name}</h1>
+        {note && <p className="govuk-body">{note}</p>}
+        {/* Like GOV.UK's "Change": back to the search on the home page. Spaced
           like the section breaks below (--l), so the first h2 never sits
           right under it. */}
-      <p className="govuk-body govuk-!-margin-bottom-6">
-        <Link href="/" className="govuk-link govuk-link--no-visited-state">
-          Zmień adres<span className="govuk-visually-hidden"> {name}</span>
-        </Link>
-      </p>
-      <CheckedLine at={checkedAt} module={module} />
-    </>
-  );
-}
-
-/**
- * A live module subpage's heading (components/module-page.tsx), in the
- * shell: the place as its caption, then the h1; its checked line is the
- * live body's, from the same read as its data.
- */
-export function SubpageHeading({
-  place,
-  heading,
-}: {
-  place: PlaceView;
-  heading: string;
-}) {
-  return (
-    <PlaceHeading
-      place={place}
-      caption={placeCaption(place)}
-      heading={heading}
-    />
+        <p className="govuk-body govuk-!-margin-bottom-6">
+          <Link href="/" className="govuk-link govuk-link--no-visited-state">
+            Zmień adres<span className="govuk-visually-hidden"> {name}</span>
+          </Link>
+        </p>
+        {checked && (
+          <p className="govuk-hint govuk-!-font-size-16">{checked}</p>
+        )}
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -357,42 +326,13 @@ export function StreetPage({
   const error = numberError(place, missing);
   return (
     <AddressPage place={place} error={error}>
-      <WasteBody place={place} error={error} />
+      <WasteBody data={place} error={error} />
     </AddressPage>
   );
 }
 
-/**
- * The address page's frame (the hub, and StreetPage): the two-thirds column
- * and its heading, the place's name as the h1, in the layout's <main>; its
- * breadcrumbs are the layout's @breadcrumbs slot
- * (components/place-crumbs.tsx).
- */
-export function AddressPage({
-  place,
-  error = null,
-  children,
-}: {
-  place: PlaceView;
-  error?: string | null;
-  children: ReactNode;
-}) {
-  return (
-    <div className="govuk-grid-row">
-      <div className="govuk-grid-column-two-thirds">
-        <PlaceHeading
-          place={place}
-          heading={withHouseNumber(place.name, shownNr(place))}
-          error={error}
-        />
-        {children}
-      </div>
-    </div>
-  );
-}
-
 /** "Lubaczów, ul. Adama Asnyka 12"; a village alone: "Basznia Dolna". */
-function placeCaption(place: PlaceView): string {
+export function placeCaption(place: PlaceView): string {
   const name = withHouseNumber(place.name, shownNr(place));
   return place.kind === "ulica" ? `${place.area}, ${name}` : name;
 }
@@ -436,45 +376,15 @@ export function PlaceBreadcrumbs({
 }
 
 /**
- * The waste module's subpage body (lib/modules.ts, /adres/<id>/smieci,
- * under ModuleMain's breadcrumbs): today's street page, the h1 „Odbiór
- * śmieci”.
+ * The street page's dates, files and sources, or why there are none: the
+ * waste module's subpage body (lib/modules.ts, /adres/<id>/smieci), and
+ * StreetPage's.
  */
-export function WasteDetails({
+export function WasteBody({
   data: place,
-  missing = false,
-  checkedAt = null,
-}: {
-  data: PlaceView;
-  missing?: boolean;
-  checkedAt?: Checked;
-}) {
-  const error = numberError(place, missing);
-  return (
-    <div className="govuk-grid-row">
-      <div className="govuk-grid-column-two-thirds">
-        <PlaceHeading
-          place={place}
-          caption={placeCaption(place)}
-          heading={WASTE_H1}
-          error={error}
-          checkedAt={checkedAt}
-        />
-        <WasteBody place={place} error={error} />
-      </div>
-    </div>
-  );
-}
-
-/** The waste subpage's h1. */
-const WASTE_H1 = "Odbiór śmieci";
-
-/** The street page's dates, files and sources, or why there are none. */
-function WasteBody({
-  place,
   error,
 }: {
-  place: PlaceView;
+  data: PlaceView;
   error: string | null;
 }) {
   return (
@@ -521,21 +431,7 @@ function WasteBody({
           <PickupSchedule days={place.days} later={laterNote(place.days)} />
 
           {!place.verified && <AiReadNote text={unverifiedNote(place.gmina)} />}
-          <SourceInset>
-            {place.sources.map((source) => (
-              <p key={source.label} className="govuk-body-s">
-                Źródło:{" "}
-                {source.url ? (
-                  <a href={source.url} className="govuk-link">
-                    {scheduleName(place.gmina)}
-                  </a>
-                ) : (
-                  scheduleName(place.gmina)
-                )}
-                , {source.label}
-              </p>
-            ))}
-          </SourceInset>
+          <SourceInset sources={wasteSources(place)} />
         </>
       )}
     </>

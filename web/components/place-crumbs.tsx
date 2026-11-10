@@ -41,9 +41,8 @@ export function CrumbsRoute({
 }
 
 /**
- * The trail, or nothing where the page is a 404: an unknown place, an
- * unknown module, or a module without its data (as HubMain and ModuleMain
- * decide).
+ * The trail, or nothing where the page is a 404: an unknown place or an
+ * unknown module (as HubMain and ModuleMain decide).
  */
 async function PlaceCrumbs({
   params,
@@ -61,6 +60,6 @@ async function PlaceCrumbs({
     return place && <PlaceBreadcrumbs place={place} />;
   }
   const loaded = await subpageData(id, module, nr);
-  if (!loaded?.place || (!loaded.module.live && !loaded.data)) return null;
+  if (!loaded?.place) return null;
   return <PlaceBreadcrumbs place={loaded.place} subpage />;
 }

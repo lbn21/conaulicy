@@ -1,20 +1,16 @@
-import type { Metadata } from "next";
-import { cacheLife, cacheTag } from "next/cache";
-import { CheckedLine } from "@/components/checked-line";
-import { Parts, textOf } from "@/components/parts";
+import { Parts } from "@/components/parts";
+import { fromTo } from "@/components/rows/when";
 import {
   AiReadNote,
   CalendarBlock,
-  moduleMetadata,
   SourceInset,
 } from "@/components/subpage-parts";
 import { absoluteDay } from "@/lib/dates";
-import type { Checked } from "@/lib/hub";
-import { getPlace, PLACE_TAGS } from "@/lib/schedule";
 import { waterCalendarHref } from "@/lib/water-ics";
 import {
+  cutSpan,
   cutWhere,
-  hours,
+  NO_HOURS,
   noticeLink,
   staleNote,
   type Water,
@@ -24,7 +20,6 @@ import {
   waterSources,
   waterTrace,
 } from "@/lib/water-module";
-import { sourcesAt } from "@/lib/water-sources";
 
 // The water module's subpage, /adres/<id>/woda (lib/modules.ts), under
 // ModuleMain's breadcrumbs, in the subpages' one layout (docs/layout.md):
@@ -37,41 +32,8 @@ import { sourcesAt } from "@/lib/water-sources";
 // now, from the cron's last file. Dates are absolute; a
 // day's „Dziś” or „Jutro” comes with them (components/day-word.tsx).
 
-const H1 = "Przerwy w dostawie wody";
-
-/** /woda's metadata (components/subpage-parts.tsx moduleMetadata). */
-export async function waterMetadata(
-  id: string,
-  nr: string | null,
-): Promise<Metadata> {
-  "use cache";
-  cacheLife("max");
-  cacheTag(...PLACE_TAGS);
-  return moduleMetadata(
-    id,
-    await getPlace(id, nr),
-    "woda",
-    H1,
-    (place) =>
-      `Zapowiedziane przerwy w dostawie wody: ${place.label}. Daty i godziny z komunikatów ${sourcesAt(
-        place.localityId,
-      )
-        .map((s) => s.of)
-        .join(" i ")}.`,
-  );
-}
-
-/**
- * The subpage's body, under its heading (components/module-page.tsx
- * ModuleMain): first when we checked, from the same read as the cuts.
- */
-export function WaterDetails({
-  data,
-  checkedAt = null,
-}: {
-  data: Water;
-  checkedAt?: Checked;
-}) {
+/** The subpage's body, under its heading (components/module-page.tsx Subpage). */
+export function WaterDetails({ data }: { data: Water }) {
   const note = staleNote(data);
   const empty = waterEmpty(data);
   const trace = waterTrace(data);
@@ -79,7 +41,6 @@ export function WaterDetails({
   const calendar = waterCalendarHref(data);
   return (
     <>
-      <CheckedLine at={checkedAt} module="woda" />
       {note && (
         <div className="govuk-inset-text">
           <Parts parts={note} lead={false} />
@@ -111,7 +72,7 @@ export function WaterDetails({
                   <div className="govuk-summary-list__row">
                     <dt className="govuk-summary-list__key">Godziny</dt>
                     <dd className="govuk-summary-list__value">
-                      {hours(cut) ?? "komunikat ich nie podaje"}
+                      {fromTo(cutSpan(cut), false) || NO_HOURS}
                     </dd>
                   </div>
                   <div className="govuk-summary-list__row">
@@ -141,13 +102,7 @@ export function WaterDetails({
       {!empty && (
         <>
           <AiReadNote text={waterAiNote(data)} />
-          <SourceInset>
-            {waterSources(data).map((parts) => (
-              <p key={textOf(parts)} className="govuk-body-s">
-                Źródło: <Parts parts={parts} lead={false} />
-              </p>
-            ))}
-          </SourceInset>
+          <SourceInset sources={waterSources(data)} />
         </>
       )}
     </>

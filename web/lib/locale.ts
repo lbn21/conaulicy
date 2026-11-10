@@ -3,3 +3,6 @@
 export const LANG = "pl";
 /** Polish dates (Intl.DateTimeFormat) and the PDF's language. */
 export const LOCALE = "pl-PL";
+
+/** Polish lists: "a", "a i b", "a, b i c" (Intl.ListFormat). */
+export const LIST = new Intl.ListFormat(LOCALE, { type: "conjunction" });

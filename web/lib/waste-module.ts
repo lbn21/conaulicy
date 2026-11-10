@@ -219,7 +219,7 @@ export function sourcesOf(rows: SourceRow[]): SourceView[] {
  * When an import last saw the place's source files (source_files.lastSeenAt,
  * a time), or, for a source without one, the day we last compared it with
  * the original (events.checkedAt): the oldest of several, a day counting as
- * older than any time on that day. „Ostatnio sprawdziliśmy …”.
+ * older than any time on that day. „Wywozy sprawdziliśmy …”.
  */
 export function wasteChecked(place: PlaceView): Checked {
   let oldest: { key: string; at: Date | string } | null = null;

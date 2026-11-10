@@ -2,8 +2,13 @@
 // what a module gives it, its items' spans (lib/upcoming.ts) and each
 // section's meta line. Pure, so the unit tests read it.
 
-import type { ModuleId } from "./address-routes.ts";
-import { clockTime, dayGenitive, dayMonth, warsawDay } from "./date-labels.ts";
+import {
+  clockTime,
+  dayGenitive,
+  dayMonth,
+  dayMonthTime,
+  warsawDay,
+} from "./date-labels.ts";
 import { addDays, capitalised, warsawNoon, warsawToIso } from "./dates.ts";
 import type { Span, Tag } from "./upcoming.ts";
 
@@ -42,33 +47,30 @@ export type Group = Line[];
  */
 export type Checked = Date | string | null;
 
-/** What each module's check line says it checked; any other: „Ostatnio”. */
-const CHECKED: Partial<Record<ModuleId, string>> = {
-  smieci: "Wywozy sprawdziliśmy",
-  woda: "Komunikaty o wodzie sprawdziliśmy",
-};
-
-/** "25 października, 14:20", or "23 października" for a day; Polish time. */
-function checkedWhen(at: Date | string): string {
-  if (typeof at === "string") return dayMonth(warsawNoon(at).getTime());
-  const ms = at.getTime();
-  return `${dayMonth(ms)}, ${clockTime(ms)}`;
-}
+/** "25 października 14:20", or "23 października" for a day; Polish time. */
+const checkedWhen = (at: Date | string) =>
+  typeof at === "string"
+    ? dayMonth(warsawNoon(at).getTime())
+    : dayMonthTime(at.getTime());
 
 /**
  * When a module last checked its source, on its subpage, in Polish time,
- * absolute: "Wywozy sprawdziliśmy: 25 października, 14:20", or "…
- * 23 października" for a day. null: nothing to say.
+ * absolute, after its `label` (Module.checkedLabel): "Wywozy sprawdziliśmy:
+ * 25 października 14:20", or "… 23 października" for a day. null: nothing
+ * to say.
  */
-export function checkedLine(at: Checked, module: ModuleId): string | null {
-  if (!at) return null;
-  return `${CHECKED[module] ?? "Ostatnio sprawdziliśmy"}: ${checkedWhen(at)}`;
+export function checkedLine(at: Checked, label: string): string | null {
+  return at ? `${label}: ${checkedWhen(at)}` : null;
 }
+
+/** A module with no data now: „Nie udało się sprawdzić ‹its subject›.” */
+export const unchecked = (module: { subject: string }) =>
+  `Nie udało się sprawdzić ${module.subject}.`;
 
 /**
  * The last line of a module's section on the address page: „Źródło: ‹its
  * sources, joined with ;›.”, then `note` (a full sentence), then
- * „Sprawdziliśmy 25 października, 14:20.”, absolute. Each only when there
+ * „Sprawdziliśmy 25 października 14:20.”, absolute. Each only when there
  * is one; nothing at all: no parts.
  */
 export function metaLine(

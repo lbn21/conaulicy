@@ -33,7 +33,7 @@ const warning = (from: string, to: string): Item => ({
   span: span(from.slice(0, 10), wall(from), wall(to)),
   event: "silny wiatr",
   level: LEVEL,
-  second: "Cały powiat.",
+  second: "Cały powiat lubaczowski.",
 });
 
 const pickup = (day: string): Item => ({

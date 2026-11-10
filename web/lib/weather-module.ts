@@ -26,6 +26,12 @@ export type Weather = {
 /** The source, short. */
 const SHORT = "IMGW-PIB";
 
+/** Where every warning applies: all our gminas lie in one powiat. */
+export const POWIAT = {
+  name: "Cały powiat lubaczowski",
+  of: "powiatu lubaczowskiego",
+};
+
 /**
  * The module's data, or null when there is no copy of the feed yet: then
  * the address page says it has not been checked yet. The store
@@ -58,15 +64,12 @@ export function weatherUpcoming(data: Weather): Item[] {
     span: span(warsawDay(Date.parse(warning.from)), warning.from, warning.to),
     event: warning.event.charAt(0).toLowerCase() + warning.event.slice(1),
     level: { tag: TAG[warning.level], text: levelText(warning) },
-    second: "Cały powiat.",
+    second: `${POWIAT.name}.`,
   }));
 }
 
 /** /pogoda's line with no warning in force. */
-export const NO_WARNINGS = "Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.";
-
-/** After /pogoda's warnings: IMGW's page, with the map. */
-export const IMGW_MORE = "Szczegóły i mapa na meteo.imgw.pl";
+export const NO_WARNINGS = `Brak ostrzeżeń IMGW dla ${POWIAT.of}.`;
 
 /**
  * The hub's IMGW lines that belong to no day (task 263): the notice when
@@ -92,7 +95,7 @@ export function weatherSources(): Part[][] {
   return [[{ href: IMGW_PAGE, text: SHORT }]];
 }
 
-/** The last good check of IMGW: „Ostatnio sprawdziliśmy …”; none when unknown. */
+/** The last good check of IMGW; none when unknown. */
 export function weatherChecked(data: Weather): Date | null {
   return data.checkedAt === null ? null : new Date(data.checkedAt);
 }

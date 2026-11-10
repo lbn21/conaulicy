@@ -38,7 +38,6 @@ export function FunctionRows({
             // The last row ends the card: no border under it (task 265).
             className={[
               "govuk-summary-list__row",
-              module.Details ? "" : "govuk-summary-list__row--no-actions",
               i === entries.length - 1
                 ? "govuk-summary-list__row--no-border"
                 : "",
@@ -54,19 +53,17 @@ export function FunctionRows({
                 <module.Row entry={entry} />
               )}
             </dd>
-            {module.Details && (
-              <dd className="govuk-summary-list__actions">
-                <PlaceLink
-                  className="govuk-link"
-                  href={subpageHref(module, place)}
-                >
-                  Szczegóły
-                  <span className="govuk-visually-hidden">
-                    {` ${module.hiddenLabel}, ${date}`}
-                  </span>
-                </PlaceLink>
-              </dd>
-            )}
+            <dd className="govuk-summary-list__actions">
+              <PlaceLink
+                className="govuk-link"
+                href={subpageHref(module, place)}
+              >
+                Szczegóły
+                <span className="govuk-visually-hidden">
+                  {` ${module.hiddenLabel}, ${date}`}
+                </span>
+              </PlaceLink>
+            </dd>
           </div>
         );
       })}

@@ -1,35 +1,23 @@
-import type { Metadata } from "next";
 import { io } from "next/cache";
 import { cache, type ReactNode } from "react";
-import { NOT_FOUND_METADATA } from "@/components/page-not-found";
 import {
+  AddressPage,
   type AddressSearch,
   knownPlace,
   numberQuery,
-  SubpageHeading,
+  placeCaption,
 } from "@/components/place-page";
 import { WarsawToday } from "@/components/warsaw-today";
-import { findSubpage } from "@/lib/modules";
-import { getPlace } from "@/lib/schedule";
+import { checkedLine, unchecked } from "@/lib/hub";
+import { findSubpage, type Module } from "@/lib/modules";
+import { getPlace, type PlaceView } from "@/lib/schedule";
 
 // A module's subpage, /adres/[id]/[module] (lib/modules.ts), with the same
 // ?nr= as the address page (components/place-page.tsx numberQuery), under
-// the place's breadcrumbs (before <main>), the
-// same for every module. An unknown module, or one without a subpage (the weather), is a
-// 404. Canonical: the subpage itself. Read per request, whole, behind one
+// the place's breadcrumbs (before <main>): one frame for every module
+// (Subpage), its body the module's Details. An unknown module is a 404.
+// Its metadata: components/subpage-route.tsx. Read per request, whole, behind one
 // <Suspense> with one skeleton, as the address page (components/hub.tsx).
-
-export async function moduleMetadata(
-  id: string,
-  slug: string,
-  nr: string | null,
-  missing = false,
-): Promise<Metadata> {
-  const module = findSubpage(slug);
-  // As placeMetadata: Next.js's own noindex is the only robots tag.
-  if (!module) return NOT_FOUND_METADATA;
-  return module.metadata(id, nr, missing);
-}
 
 /**
  * Everything a subpage shows, read per request (after io(), so nothing
@@ -53,10 +41,8 @@ export const subpageData = cache(
 
 /**
  * A subpage's content (subpageData), whole, behind the page's one
- * <Suspense> (components/place-suspense.tsx): a live module's heading and
- * its body (Module.Details, its checked line from the same read as its
- * data), or the waste subpage. `unknown` is what an unknown place or
- * module shows.
+ * <Suspense> (components/place-suspense.tsx). `unknown` is what an
+ * unknown place or module shows.
  */
 export async function ModuleMain({
   id,
@@ -76,27 +62,53 @@ export async function ModuleMain({
   if (!findSubpage(slug) || !(await knownPlace(id))) return <>{unknown}</>;
   const { nr, missing } = await numberQuery(searchParams);
   const loaded = await subpageData(id, slug, nr);
-  if (!loaded?.place || (!loaded.module.live && !loaded.data)) {
-    return <>{unknown}</>;
-  }
+  if (!loaded?.place) return <>{unknown}</>;
   const { module, place, data } = loaded;
-  const checkedAt = data ? (module.checkedAt?.(data) ?? null) : null;
   // Its breadcrumbs: the layout's @breadcrumbs slot (components/place-crumbs.tsx).
   // „Dziś” and „Jutro” for the read's Warsaw day (components/warsaw-today.tsx).
   return (
     <WarsawToday day={place.today}>
-      {module.live ? (
-        <div className="govuk-grid-row">
-          <div className="govuk-grid-column-two-thirds">
-            <SubpageHeading place={place} heading={module.pageTitle} />
-            {data !== null && (
-              <module.Details data={data} checkedAt={checkedAt} />
-            )}
-          </div>
-        </div>
-      ) : (
-        <module.Details data={data} missing={missing} checkedAt={checkedAt} />
-      )}
+      <Subpage module={module} place={place} data={data} missing={missing} />
     </WarsawToday>
+  );
+}
+
+/**
+ * Every module's subpage, one frame (components/place-page.tsx
+ * AddressPage): the place as the caption, the module's h1, its error, when
+ * it last checked its source (from the same read as its data); then its
+ * body (Module.Details), or, with no data now, the address page's line
+ * that it could not be checked (lib/hub.ts unchecked).
+ */
+export function Subpage({
+  module,
+  place,
+  data,
+  missing = false,
+}: {
+  module: Module<unknown>;
+  place: PlaceView;
+  data: unknown;
+  missing?: boolean;
+}) {
+  const error = module.error?.(place, missing) ?? null;
+  return (
+    <AddressPage
+      place={place}
+      caption={placeCaption(place)}
+      heading={module.pageTitle}
+      error={error}
+      checked={
+        data === null
+          ? null
+          : checkedLine(module.checkedAt(data), module.checkedLabel)
+      }
+    >
+      {data === null ? (
+        <p className="govuk-body">{unchecked(module)}</p>
+      ) : (
+        <module.Details data={data} error={error} />
+      )}
+    </AddressPage>
   );
 }

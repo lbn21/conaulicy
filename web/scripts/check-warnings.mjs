@@ -13,8 +13,8 @@
 //   any, in the inset above the timeline (its link IMGW's page); never
 //   IMGW's own description. /pogoda: the notice first if any, then per
 //   warning, highest first, a summary card with its tag and IMGW's own
-//   description with its probability, then „Szczegóły i mapa na
-//   meteo.imgw.pl”; nothing of it on /smieci;
+//   description with its probability, then the source, IMGW's only link
+//   (task 279); nothing of it on /smieci;
 // - three warnings: axe at 375 and 1280 px on the address page and
 //   /pogoda, keyboard focus on a timeline row's „Szczegóły” and on IMGW's
 //   link, 320 px and 200% zoom with no horizontal scroll on both, the
@@ -49,7 +49,8 @@ const HUB = "/adres/0972447-00470";
 const WEATHER = `${HUB}/pogoda`;
 // /pogoda with no warning (lib/weather-module.ts).
 const NO_WARNINGS = "Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.";
-const MORE = "Szczegóły i mapa na meteo.imgw.pl";
+// /pogoda's one link to IMGW: its source.
+const SOURCE = "IMGW-PIB";
 const WIDTHS = [375, 1280];
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const SHOTS = process.env.SCREENSHOT_DIR;
@@ -217,7 +218,8 @@ async function hubChecks(origin, state) {
       /<h2 class="govuk-summary-card__title">Silny wiatr<\/h2>[\s\S]*?<strong class="govuk-tag govuk-tag--(?:yellow|orange|red)">Stopień ([1-3]) z 3<\/strong>[\s\S]*?<dd class="govuk-summary-list__value">Prognozuje się [^<]+ Prawdopodobieństwo: \d{1,3}%\.<\/dd>/g,
     ),
   ].map(([, level]) => Number(level));
-  const more = `<p class="govuk-body"><a href="https://meteo.imgw.pl/" class="govuk-link">${MORE}</a></p>`;
+  const imgwLinks =
+    weather.split('<a href="https://meteo.imgw.pl/"').length - 1;
   const tags = hub.match(/<strong class="govuk-tag /g)?.length ?? 0;
   const weatherTags = weather.match(/<strong class="govuk-tag /g)?.length ?? 0;
   // As markup: the text alone is also in React's payload (its scripts).
@@ -240,13 +242,16 @@ async function hubChecks(origin, state) {
     described.join() !== state.levels.join() &&
       `/pogoda describes ${described}, want ${state.levels}`,
     weatherTags !== n && `${weatherTags} tags on /pogoda, want ${n}`,
-    weather.includes(more) !== n > 0 && `„${MORE}” with ${n} warnings`,
+    imgwLinks !== (state.notice ? 2 : 1) &&
+      `${imgwLinks} links to IMGW on /pogoda`,
     // The notice: in the hub's inset and first on /pogoda; none when fresh.
     (state.notice
       ? !notice(
           '<div class="govuk-inset-text">(?:(?!</div>)[\\s\\S])*<p class="govuk-body">',
         ).test(hub) ||
-        !notice('</p><div class="govuk-inset-text">').test(weather)
+        !notice(
+          '</p><div class="govuk-inset-text"><p class="govuk-body">',
+        ).test(weather)
       : /[Nn]ie udało się[^<]*ostrzeżeń IMGW/.test(hub + weather)) &&
       "the notice",
     // „Brak ostrzeżeń” once, only fresh with none, only on /pogoda.
@@ -351,7 +356,7 @@ async function deepChecks(browser, origin) {
   // page, at both widths (the summary list's actions move under the value
   // on a phone).
   const weather = await open(browser, origin, 1280, 2, WEATHER);
-  await focusCheck(weather.page, MORE, WEATHER);
+  await focusCheck(weather.page, SOURCE, WEATHER);
   await weather.context.close();
   for (const width of WIDTHS) {
     const hub = await openHub(browser, origin, width);

@@ -62,6 +62,17 @@ export function dayMonth(at: number): string {
   }).format(at);
 }
 
+/** An instant's Warsaw day, month and time. Example: "25 października 14:20". */
+export function dayMonthTime(at: number): string {
+  return new Intl.DateTimeFormat(LOCALE, {
+    timeZone: WARSAW,
+    day: "numeric",
+    month: "long",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(at);
+}
+
 /** An instant's Warsaw date. Example: "2026-10-25". */
 export function warsawDay(at: number): string {
   return todayInWarsaw(new Date(at));

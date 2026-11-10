@@ -1,40 +1,11 @@
-import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { NOT_FOUND_METADATA } from "@/components/page-not-found";
-import { withHouseNumber } from "@/lib/house";
-import { indexable } from "@/lib/indexing";
-import { placePath, titleLabel } from "@/lib/places";
-import type { PlaceView } from "@/lib/schedule";
-import { shownNr } from "@/lib/schedule-notes";
-import { pageMetadata } from "@/lib/share";
+import { Parts, textOf } from "@/components/parts";
+import { merged, type Part } from "@/lib/hub";
 
 // The parts every address subpage shares (CLAUDE.md, "One layout for every
 // address subpage"), in its order: the calendar block under the checked
 // line, the AI-read note after the module's content, then the source in an
 // inset. One component each, so the subpages cannot drift.
-
-/**
- * A module subpage's metadata (/woda, /pogoda): "<h1> – <place>", its own
- * canonical; never a search result (its content lasts days), its links
- * followed. No place: Next.js's own noindex, the only robots tag.
- */
-export function moduleMetadata(
-  id: string,
-  place: PlaceView | null,
-  module: string,
-  h1: string,
-  description: (place: PlaceView) => string,
-): Metadata {
-  if (!place) return NOT_FOUND_METADATA;
-  return {
-    ...pageMetadata({
-      path: `${placePath(id)}/${module}`,
-      title: `${h1} – ${withHouseNumber(titleLabel(place.label), shownNr(place))}`,
-      description: description(place),
-    }),
-    robots: { index: false, follow: indexable() },
-  };
-}
 
 /** The details' summary: how to add the file, and a browser never knows if it worked. */
 export const CALENDAR_CHECK = "Jak dodać i sprawdzić, czy się udało?";
@@ -121,7 +92,25 @@ export function AiReadNote({ text }: { text: string }) {
   );
 }
 
-/** The sources, a paragraph each, in GOV.UK's inset text. */
-export function SourceInset({ children }: { children: ReactNode }) {
-  return <div className="govuk-inset-text">{children}</div>;
+/**
+ * The sources (Module.sources), „Źródło: ” and a paragraph each, in
+ * GOV.UK's inset text; `children` after them (IMGW's required wording).
+ */
+export function SourceInset({
+  sources,
+  children,
+}: {
+  sources: Part[][];
+  children?: ReactNode;
+}) {
+  return (
+    <div className="govuk-inset-text">
+      {sources.map((parts) => (
+        <p key={textOf(parts)} className="govuk-body-s">
+          <Parts parts={merged(["Źródło: ", ...parts])} lead={false} />
+        </p>
+      ))}
+      {children}
+    </div>
+  );
 }

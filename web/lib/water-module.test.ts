@@ -74,7 +74,7 @@ const whereOf = (data: Water) => waterUpcoming(data)[0]?.second;
 const lines = (data: Water) => waterStatus(data).flat();
 
 const waterLine = (at: Parameters<typeof checkedLine>[0]) =>
-  checkedLine(at, "woda");
+  checkedLine(at, "Komunikaty o wodzie sprawdziliśmy");
 
 const place = testPlace;
 /** A village or a part of one, by its SIMC id. */
@@ -679,7 +679,7 @@ test("town, fresh, no cut: the villages' none, both sources' posts", () => {
     assert.deepEqual(waterSources(data), [[GMINA], [MZGKIM]]);
     assert.equal(
       waterLine(waterChecked(data)),
-      "Komunikaty o wodzie sprawdziliśmy: 25 października, 13:20",
+      "Komunikaty o wodzie sprawdziliśmy: 25 października 13:20",
     );
   }
 });
@@ -950,7 +950,7 @@ test("freshness: the checked line always, the stale note only after 1 h", () => 
   const fresh = at(STALE_MS);
   assert.equal(
     waterLine(waterChecked(fresh)),
-    "Komunikaty o wodzie sprawdziliśmy: 25 października, 13:20",
+    "Komunikaty o wodzie sprawdziliśmy: 25 października 13:20",
   );
   assert.equal(staleNote(fresh), null);
   assert.equal(lines(fresh).length, 0);
@@ -958,7 +958,7 @@ test("freshness: the checked line always, the stale note only after 1 h", () => 
   const stale = at(STALE_MS + 1);
   assert.equal(
     waterLine(waterChecked(stale)),
-    "Komunikaty o wodzie sprawdziliśmy: 25 października, 13:20",
+    "Komunikaty o wodzie sprawdziliśmy: 25 października 13:20",
   );
   const note = staleNote(stale);
   assert.ok(note);
