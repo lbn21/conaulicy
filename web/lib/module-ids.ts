@@ -11,7 +11,8 @@ export const MODULE_IDS = ["smieci", "woda", "pogoda"] as const;
 export type ModuleId = (typeof MODULE_IDS)[number];
 
 /**
- * The modules with a subpage of their own, /adres/<id>/<module id>: the
- * others (weather) link their source instead.
+ * The modules with a subpage of their own, /adres/<id>/<module id>: every
+ * one today (/pogoda since task 263); a module without one would link its
+ * source instead.
  */
-export const SUBPAGE_IDS: readonly ModuleId[] = ["smieci", "woda"];
+export const SUBPAGE_IDS: readonly ModuleId[] = ["smieci", "woda", "pogoda"];

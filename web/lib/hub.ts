@@ -4,13 +4,7 @@
 
 import type { ModuleId } from "./address-routes.ts";
 import { clockTime, dayGenitive, dayMonth, warsawDay } from "./date-labels.ts";
-import {
-  absoluteDay,
-  addDays,
-  capitalised,
-  warsawNoon,
-  warsawToIso,
-} from "./dates.ts";
+import { addDays, capitalised, warsawNoon, warsawToIso } from "./dates.ts";
 import type { Span, Tag } from "./upcoming.ts";
 
 export { capitalised };
@@ -25,7 +19,7 @@ export type Bins = {
 
 /**
  * A section's first line: its absolute `text` ("piątek, 30 października"),
- * before which the island puts „Dziś”, „Jutro” or „Za 5 dni” (`day`, a
+ * before which DayWord puts „Dziś”, „Jutro” or „Za 5 dni” (`day`, a
  * Warsaw day; lib/dates.ts dayLead).
  */
 type DayLead = { day: string; text: string };
@@ -139,7 +133,6 @@ export function span(
     from: start ? clockTime(Date.parse(start)) : null,
     to: end ? clockTime(Date.parse(end)) : null,
     about,
-    date: absoluteDay(day),
     until: dayGenitive(Date.parse(until)),
   };
 }

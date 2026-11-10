@@ -93,7 +93,7 @@ test("every fraction of the zone that day: „wszystkie pojemniki”", () => {
   );
 });
 
-test("the block: the next two days, from the day before, bins in running text", () => {
+test("the timeline: every pickup from today on, its bins, in running text", () => {
   const items = wasteUpcoming(
     place({
       fractions: ["zmieszane", "bio"],
@@ -110,7 +110,7 @@ test("the block: the next two days, from the day before, bins in running text", 
   );
   assert.deepEqual(
     items.map((item) => item.module === "smieci" && item.bins),
-    ["wszystkie pojemniki", "bio"],
+    ["wszystkie pojemniki", "bio", "zmieszane"],
   );
   assert.deepEqual(items[0], {
     module: "smieci",
@@ -122,13 +122,11 @@ test("the block: the next two days, from the day before, bins in running text", 
       from: null,
       to: null,
       about: false,
-      date: "środa, 28 października",
       until: "czwartku 29 października",
     },
-    shownFrom: "2026-10-27T00:00:00+01:00",
     bins: "wszystkie pojemniki",
+    pickups: [pickup("Zmieszane", "06:00"), pickup("Bio")],
     second: "Wystaw je do 6:00 rano.",
-    secondUntil: "2026-10-28T06:00:00+01:00",
   });
   assert.equal(items[1].second, null);
   assert.deepEqual(wasteUpcoming(place({ askNumber: true, zoneId: null })), []);

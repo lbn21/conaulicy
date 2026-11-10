@@ -72,9 +72,10 @@ const CASES = [
   ["GET", "/adres/0972447-88888/smieci", 404],
   ["GET", "/adres/0972447-88888/smieci?nr=12", 404],
   ["GET", `${STREET}/nie-ma-takiego-modulu`, 404],
-  // A module without a subpage (the weather): a 404, its query untouched.
-  ["GET", `${STREET}/pogoda`, 404],
-  ["GET", `${STREET}/pogoda?nr=12`, 404],
+  // The weather subpage (task 263): the street page's rules too.
+  ["GET", `${STREET}/pogoda`, 200],
+  ["GET", `${STREET}/pogoda?nr=12`, 200],
+  ["GET", `${STREET}/pogoda?x=1`, 308, `${STREET}/pogoda`],
   ["GET", "/api/place-redirects", 200],
 ];
 

@@ -1,9 +1,8 @@
 // What the weather module (lib/modules.ts) says on the address page: IMGW's
 // warnings for the powiat (lib/imgw-shown.ts), with a notice when the copy
-// is old. „Najbliższe dni” lists each warning (when, its level); the
-// Pogoda section never lists them again, it gives what the list does not:
-// IMGW's own description of each, its probability, and IMGW's page. Pure,
-// so the unit tests read every state.
+// is old. The timeline has each warning (when, its level); /pogoda
+// (components/weather-page.tsx) adds IMGW's own description of each, its
+// probability, and IMGW's page. Pure, so the unit tests read every state.
 import { warsawDay } from "./date-labels.ts";
 import { type Group, type Part, span } from "./hub.ts";
 import {
@@ -42,61 +41,50 @@ export function weather(copy: ImgwRead, now: number): Weather | null {
 
 // IMGW's three levels: the tag's colour, never the only signal (its text
 // says the level).
-const TAG = {
+export const TAG = {
   1: "govuk-tag govuk-tag--yellow",
   2: "govuk-tag govuk-tag--orange",
   3: "govuk-tag govuk-tag--red",
 } as const;
 
 /** „Stopień 2 z 3”. */
-const levelText = (warning: ShownWarning) => `Stopień ${warning.level} z 3`;
+export const levelText = (warning: ShownWarning) =>
+  `Stopień ${warning.level} z 3`;
 
-/** The block's items: one per warning in force or to come, the powiat's. */
+/** The timeline's items: one per warning in force or to come, the powiat's. */
 export function weatherUpcoming(data: Weather): Item[] {
   return (data.shown?.warnings ?? []).map((warning) => ({
     module: "pogoda",
     span: span(warsawDay(Date.parse(warning.from)), warning.from, warning.to),
-    shownFrom: null,
     event: warning.event.charAt(0).toLowerCase() + warning.event.slice(1),
     level: { tag: TAG[warning.level], text: levelText(warning) },
     second: "Cały powiat.",
-    secondUntil: null,
   }));
 }
 
-/** The weather's status line with no warning in force. */
-const NO_WARNINGS = "Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.";
+/** /pogoda's line with no warning in force. */
+export const NO_WARNINGS = "Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.";
 
-/** After the descriptions: IMGW's page, with the map. */
-const IMGW_MORE = "Szczegóły i mapa na meteo.imgw.pl";
+/** After /pogoda's warnings: IMGW's page, with the map. */
+export const IMGW_MORE = "Szczegóły i mapa na meteo.imgw.pl";
 
 /**
- * The section's lines: the notice first when the copy is old (its link
- * IMGW's page); then per warning, which one (its event and level, in
- * words: the tag is the list's) and IMGW's own description with its
- * probability; then IMGW's page. With neither, that there is no warning.
- * No times: „Najbliższe dni” has them.
+ * The hub's IMGW lines that belong to no day (task 263): the notice when
+ * the copy is old or unreadable, its link IMGW's page; else none.
  */
-export function weatherStatus(data: Weather): Group[] {
-  if (!data.shown) return [[[NO_WARNINGS]]];
-  const { notice, warnings } = data.shown;
-  const groups: Group[] = [];
-  if (notice)
-    groups.push([
-      [
-        `${notice} ${CURRENT.text} `,
-        { href: IMGW_PAGE, text: CURRENT.link },
-        ".",
-      ],
-    ]);
-  for (const warning of warnings)
-    groups.push([
-      [`${warning.event}, ${levelText(warning).toLowerCase()}`],
-      [`${warning.text} Prawdopodobieństwo: ${warning.probability}%.`],
-    ]);
-  if (warnings.length > 0)
-    groups.push([[{ href: IMGW_PAGE, text: IMGW_MORE }]]);
-  return groups;
+export function weatherNotices(data: Weather): Group[] {
+  const notice = data.shown?.notice;
+  return notice
+    ? [
+        [
+          [
+            `${notice} ${CURRENT.text} `,
+            { href: IMGW_PAGE, text: CURRENT.link },
+            ".",
+          ],
+        ],
+      ]
+    : [];
 }
 
 /** „Źródło”: IMGW's page. */

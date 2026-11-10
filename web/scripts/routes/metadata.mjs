@@ -8,8 +8,8 @@
 // "<H1> – conaulicy.pl", but a place's pages name its locality too (Jakub's
 // decision, task 133): the address page "<H1>, <locality> – conaulicy.pl",
 // the waste subpage "<H1>: wszystkie terminy – <place>, <locality> –
-// conaulicy.pl", the water subpage "<H1> – <place>, <locality> –
-// conaulicy.pl" ("Błąd: " first with an error summary); a few of them
+// conaulicy.pl", the water and weather subpages "<H1> – <place>,
+// <locality> – conaulicy.pl" ("Błąd: " first with an error summary); a few of them
 // exactly (TITLES). The share title is the same, and the share name
 // conaulicy.pl. The home page's Apple web-app tags (a "default" status bar,
 // never black-translucent) and the manifest's id, scope, display and icons.
@@ -36,6 +36,8 @@ const TITLES = {
     "Przerwy w dostawie wody – ul. Adama Asnyka, Lubaczów – conaulicy.pl",
   "/adres/0606010/woda":
     "Przerwy w dostawie wody – Dąbrowa, gm. Lubaczów – conaulicy.pl",
+  "/adres/0972447-00470/pogoda":
+    "Ostrzeżenia pogodowe IMGW – ul. Adama Asnyka, Lubaczów – conaulicy.pl",
 };
 
 const all = (html, pattern) => [...html.matchAll(pattern)].map(([, v]) => v);
@@ -72,7 +74,9 @@ export async function check(server, failures) {
     const error = html.includes('class="govuk-error-summary"') ? "Błąd: " : "";
     // A subpage: its h1, then its place (the breadcrumb before it), then
     // the locality; the address page: its h1, then the locality.
-    const subpage = /^\/adres\/[^/]+\/(smieci|woda)(?:\?|$)/.exec(path)?.[1];
+    const subpage = /^\/adres\/[^/]+\/(smieci|woda|pogoda)(?:\?|$)/.exec(
+      path,
+    )?.[1];
     const place = subpage
       ? decode(
           all(
@@ -86,6 +90,7 @@ export async function check(server, failures) {
       {
         smieci: `${error}${h1[0]}: wszystkie terminy – ${place}, `,
         woda: `${error}${h1[0]} – ${place}, `,
+        pogoda: `${error}${h1[0]} – ${place}, `,
       }[subpage] ?? `${error}${h1[0]}, `;
     const ok =
       subpage || hub

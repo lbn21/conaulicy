@@ -227,3 +227,84 @@ $app-header-colour: $app-header;
   background-color: $app-warning-level-3;
   color: govuk-functional-colour(inverse-text);
 }
+
+// The address page's timeline (components/timeline.tsx, tasks 264-265), as
+// CodyHouse's vertical timeline, our own CSS: one unbroken line on the left
+// from the first dot to the last, a dot per day on it, a card per day with
+// a caret at its dot. All of it decorative pseudo-elements; the markup stays
+// an ol of days. Mobile-first, the same at every width. Dots 15px on a 1px
+// line, centred on every card's 19/25 date line (--app-y: the card's border,
+// its padding, half the line); the caret's centre on the same y. One padding
+// for every card, GOV.UK's margins inside it trimmed (task 266).
+// Colours: a day with items on the brand's surface (tint-95, its border
+// tint-50), its labels in the brand colour; an empty day or run all grey
+// (a barely-there grey: GOV.UK's black tint-95 a third over white, its
+// border, secondary text); dates in secondary text, today's in the brand
+// colour on its own kind's border, its dot filled (task 267).
+$app-dot: govuk-spacing(3);
+$app-hair: $govuk-border-width-form-element * .5;
+$app-caret: govuk-spacing(2);
+
+.app-timeline { position: relative; margin: 0 0 govuk-spacing(6); padding: 0; list-style: none; }
+.app-timeline::before { content: ""; position: absolute; top: 0; bottom: 0; left: ($app-dot - $app-hair) * .5; border-left: $app-hair solid govuk-functional-colour(border); }
+.app-timeline > li { --app-y: #{$app-hair + govuk-spacing(3) + govuk-spacing(2) + govuk-spacing(1) * .5}; position: relative; margin: 0; padding: 0 0 govuk-spacing(4) govuk-spacing(6); }
+.app-timeline > li:last-child { padding-bottom: 0; }
+
+// The line's ends: the page's background over it above the first dot and
+// below the last, so it runs dot to dot with no seams between days.
+.app-timeline > li:first-child::after,
+.app-timeline > li:last-child::after { content: ""; position: absolute; left: 0; width: $app-dot; background: govuk-functional-colour(body-background); }
+.app-timeline > li:first-child::after { top: 0; height: var(--app-y); }
+.app-timeline > li:last-child::after { top: var(--app-y); bottom: 0; }
+
+.app-timeline > li::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  top: calc(var(--app-y) - #{$app-dot * .5});
+  left: 0;
+  box-sizing: border-box;
+  width: $app-dot;
+  height: $app-dot;
+  border: $govuk-border-width-form-element solid govuk-functional-colour(secondary-text);
+  border-radius: 50%;
+  background: govuk-colour("white");
+}
+
+.app-timeline > .app-timeline__empty::before { border-color: govuk-functional-colour(border); }
+
+// „Później”: past the window, a ringed dot (a dot in a ring).
+.app-timeline > .app-timeline__later::before { background: govuk-functional-colour(secondary-text); box-shadow: inset 0 0 0 $app-hair * 2 govuk-colour("white"); }
+
+// Today: a static dot filled in the brand colour (task 267).
+.app-timeline > .app-timeline__today::before { border-color: govuk-functional-colour(brand); background: govuk-functional-colour(brand); }
+
+// A run of empty days (task 268): one dot, and the line dashed alongside
+// its whole card (the page's background under the dashes), to the dot only
+// when it ends the line.
+.app-timeline__range > .app-timeline__card::after { content: ""; position: absolute; top: -$app-hair; bottom: -$app-hair; left: -(govuk-spacing(6) + $app-hair); width: $app-dot; background: repeating-linear-gradient(govuk-functional-colour(border) 0 govuk-spacing(1), transparent 0 govuk-spacing(2)) 50% 0 no-repeat, govuk-functional-colour(body-background); background-size: $app-hair 100%, auto; }
+.app-timeline__range:last-child > .app-timeline__card::after { bottom: auto; height: var(--app-y); }
+
+.app-timeline__card { --app-bg: #{govuk-functional-colour(surface-background)}; --app-line: #{govuk-functional-colour(surface-border)}; position: relative; padding: govuk-spacing(3); border: $app-hair solid var(--app-line); border-radius: govuk-spacing(1); background: var(--app-bg); }
+.app-timeline__card--empty { --app-bg: color-mix(in srgb, #{govuk-colour("black", $variant: "tint-95")} 35%, #{govuk-colour("white")}); --app-line: #{govuk-functional-colour(border)}; }
+.app-timeline__title, .app-timeline__card--empty > p { color: govuk-functional-colour(secondary-text); }
+.app-timeline__today .app-timeline__title { color: govuk-functional-colour(brand); }
+// After the date, its relative word: body-s, regular, grey (tasks 268-269).
+.app-timeline__title .app-timeline__when { color: govuk-functional-colour(secondary-text); }
+.app-timeline__card .govuk-summary-list__key { color: govuk-functional-colour(brand); }
+// Two sizes in a card (task 269): the date heading-s, all else body-s.
+.app-timeline__card :is(.govuk-summary-list, .govuk-list, .govuk-tag) { @include govuk-font-size($size: 16); }
+
+// Inside a card one rhythm: key and value a 5px step apart on mobile,
+// „Szczegóły” 10px under every value (a list's last
+// item no margin of its own), rows 10px apart on tablet, nothing under the
+// last row (GOV.UK's no-border row) but the card's padding.
+.app-timeline__card .govuk-summary-list__value { margin-bottom: govuk-spacing(2); }
+.app-timeline__card .govuk-summary-list__value li:last-child { margin-bottom: 0; }
+.app-timeline__card .govuk-summary-list__row:first-child > * { padding-top: 0; }
+.app-timeline__card .govuk-summary-list__row:last-child,
+.app-timeline__card .govuk-summary-list__row:last-child > * { margin-bottom: 0; padding-bottom: 0; }
+
+// The caret: a square turned 45°, its two outer sides the card's border,
+// its centre on the card's left edge, level with the dot.
+.app-timeline__card::before { content: ""; position: absolute; top: calc(var(--app-y) - #{$app-hair + $app-caret * .5}); left: -($app-caret * .5) - $app-hair; box-sizing: border-box; width: $app-caret; height: $app-caret; border-bottom: $app-hair solid var(--app-line); border-left: $app-hair solid var(--app-line); background: var(--app-bg); transform: rotate(45deg); }

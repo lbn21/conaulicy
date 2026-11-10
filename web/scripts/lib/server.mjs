@@ -25,6 +25,8 @@ export const ROUTES = [
   // The water subpage: noindex, and without a ZUK file in CI (no cut to show).
   { path: "/adres/0972447-00470/woda", name: "city-street-water" },
   { path: "/adres/0606010/woda", name: "village-water" },
+  // The weather subpage (task 263): noindex; CI's IMGW is mock:none.
+  { path: "/adres/0972447-00470/pogoda", name: "city-street-weather" },
   { path: "/ulice", name: "all-places" },
   { path: "/prywatnosc", name: "privacy" },
   { path: "/dostepnosc", name: "accessibility" },

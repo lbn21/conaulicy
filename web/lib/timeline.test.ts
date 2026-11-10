@@ -1,0 +1,229 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import {
+  dayLead,
+  dayRange,
+  dayWithYear,
+  relativeDay,
+  todayInWarsaw,
+  warsawToIso,
+} from "./dates.ts";
+import { span } from "./hub.ts";
+import { collapse, days, type Entry, later, onDay } from "./timeline.ts";
+import type { Item } from "./upcoming.ts";
+
+// The address page's timeline (lib/timeline.ts) and its dates' words
+// (lib/dates.ts), at fixed Warsaw days and instants. Intl's spaces around
+// a range's dash may be thin or no-break ones: compared as plain spaces.
+const at = (iso: string) => Date.parse(iso);
+const wall = (w: string, pick?: "earlier" | "later") =>
+  warsawToIso(w, pick) as string;
+const plain = (text: string) => text.replace(/\s/g, " ");
+
+const cut = (day: string, start: string, end: string): Item => ({
+  module: "woda",
+  span: span(day, wall(start), wall(end, "later")),
+  emergency: false,
+  second: "Cała wieś Wzorowo.",
+});
+
+const LEVEL = { tag: "govuk-tag govuk-tag--yellow", text: "Stopień 1 z 3" };
+const warning = (from: string, to: string): Item => ({
+  module: "pogoda",
+  span: span(from.slice(0, 10), wall(from), wall(to)),
+  event: "silny wiatr",
+  level: LEVEL,
+  second: "Cały powiat.",
+});
+
+const pickup = (day: string): Item => ({
+  module: "smieci",
+  span: span(day, null, null),
+  bins: "papier, szkło",
+  pickups: [],
+  second: null,
+});
+
+/** Each group as "from..to: n". */
+const shape = (list: string[], byDay: Entry[][]) =>
+  collapse(list, byDay).map(
+    ({ from, to, entries }) =>
+      `${from === to ? from : `${from}..${to}`}: ${entries.length}`,
+  );
+
+const E: Entry[] = [];
+const ONE: Entry[] = [{ item: pickup("2026-11-10"), continued: false }];
+
+test("days: n calendar days from today, across months, years and DST", () => {
+  assert.deepEqual(days("2026-11-28", 4), [
+    "2026-11-28",
+    "2026-11-29",
+    "2026-11-30",
+    "2026-12-01",
+  ]);
+  assert.deepEqual(days("2026-12-30", 3), [
+    "2026-12-30",
+    "2026-12-31",
+    "2027-01-01",
+  ]);
+  // The 25-hour day of 25 Oct is one day.
+  assert.deepEqual(days("2026-10-24", 3), [
+    "2026-10-24",
+    "2026-10-25",
+    "2026-10-26",
+  ]);
+});
+
+test("collapse: today its own; 2+ empty days after it one card; one empty day its own", () => {
+  const list = days("2026-11-10", 7);
+  // Nothing at all: today, then the other six as one run.
+  assert.deepEqual(
+    shape(
+      list,
+      list.map(() => E),
+    ),
+    ["2026-11-10: 0", "2026-11-11..2026-11-16: 0"],
+  );
+  // A single empty day between two busy ones stays its own.
+  assert.deepEqual(shape(list, [ONE, E, ONE, E, E, ONE, E]), [
+    "2026-11-10: 1",
+    "2026-11-11: 0",
+    "2026-11-12: 1",
+    "2026-11-13..2026-11-14: 0",
+    "2026-11-15: 1",
+    "2026-11-16: 0",
+  ]);
+  // An empty today is never merged into the run after it.
+  assert.deepEqual(shape(list, [E, E, E, ONE, ONE, ONE, ONE]), [
+    "2026-11-10: 0",
+    "2026-11-11..2026-11-12: 0",
+    "2026-11-13: 1",
+    "2026-11-14: 1",
+    "2026-11-15: 1",
+    "2026-11-16: 1",
+  ]);
+  assert.deepEqual(shape([], []), []);
+});
+
+test("onDay: registry order, then start; a multi-day item on each day, „continued” after its first", () => {
+  const night = cut("2026-11-10", "2026-11-10 22:00:00", "2026-11-11 04:00:00");
+  const wind = warning("2026-11-10 08:00:00", "2026-11-10 16:00:00");
+  const bins = pickup("2026-11-10");
+  const early = cut("2026-11-10", "2026-11-10 07:00:00", "2026-11-10 09:00:00");
+  const items = [wind, night, bins, early];
+  const now = at("2026-11-10T06:00:00+01:00");
+  assert.deepEqual(onDay(items, "2026-11-10", now), [
+    { item: bins, continued: false },
+    { item: early, continued: false },
+    { item: night, continued: false },
+    { item: wind, continued: false },
+  ]);
+  assert.deepEqual(onDay(items, "2026-11-11", now), [
+    { item: night, continued: true },
+  ]);
+  assert.deepEqual(onDay(items, "2026-11-12", now), []);
+});
+
+test("onDay: an item over at `now` is gone, from today too", () => {
+  const morning = cut(
+    "2026-11-10",
+    "2026-11-10 08:00:00",
+    "2026-11-10 12:00:00",
+  );
+  const bins = pickup("2026-11-10");
+  const list = (now: string) =>
+    onDay([morning, bins], "2026-11-10", at(now)).map((e) => e.item.module);
+  assert.deepEqual(list("2026-11-10T11:59:59+01:00"), ["smieci", "woda"]);
+  assert.deepEqual(list("2026-11-10T12:00:00+01:00"), ["smieci"]);
+  // A pickup without a time stays until the Warsaw midnight after its day.
+  assert.deepEqual(list("2026-11-10T23:59:59+01:00"), ["smieci"]);
+  assert.deepEqual(list("2026-11-11T00:00:00+01:00"), []);
+});
+
+test("onDay: Warsaw days across the DST change (25 Oct 2026, 25 hours)", () => {
+  // 23:30 on the 25-hour day is still that day.
+  const late = cut("2026-10-25", "2026-10-25 23:00:00", "2026-10-25 23:30:00");
+  const now = at("2026-10-25T00:00:00+02:00");
+  assert.equal(onDay([late], "2026-10-25", now).length, 1);
+  assert.equal(onDay([late], "2026-10-24", now).length, 0);
+  assert.equal(onDay([late], "2026-10-26", now).length, 0);
+});
+
+test("later: the first item per module after the window, in registry order", () => {
+  const items = [
+    warning("2026-11-20 08:00:00", "2026-11-20 16:00:00"),
+    cut("2026-11-18", "2026-11-18 08:00:00", "2026-11-18 12:00:00"),
+    cut("2026-11-17", "2026-11-17 08:00:00", "2026-11-17 12:00:00"),
+    pickup("2026-11-24"),
+    pickup("2026-11-30"),
+    // In the window: never „Później”.
+    pickup("2026-11-16"),
+  ];
+  assert.deepEqual(
+    later(items, "2026-11-16").map((item) => [item.module, item.span.day]),
+    [
+      ["smieci", "2026-11-24"],
+      ["woda", "2026-11-17"],
+      ["pogoda", "2026-11-20"],
+    ],
+  );
+  assert.deepEqual(later(items, "2026-11-30"), []);
+});
+
+test("range titles: Intl's formatRange, the month once, years only when they differ", () => {
+  assert.equal(plain(dayRange("2026-11-11", "2026-11-15")), "11–15 listopada");
+  assert.equal(
+    plain(dayRange("2026-11-29", "2026-12-02")),
+    "29 listopada – 2 grudnia",
+  );
+  assert.equal(
+    plain(dayRange("2026-12-29", "2027-01-02")),
+    "29 grudnia 2026 – 2 stycznia 2027",
+  );
+});
+
+test("„Później”: the day with its weekday and year", () => {
+  assert.equal(dayWithYear("2026-11-30"), "poniedziałek, 30 listopada 2026");
+  assert.equal(dayWithYear("2027-01-04"), "poniedziałek, 4 stycznia 2027");
+});
+
+test("relative words: Intl's, by Warsaw days", () => {
+  assert.deepEqual(
+    [
+      "2026-11-09",
+      "2026-11-10",
+      "2026-11-11",
+      "2026-11-12",
+      "2026-11-13",
+      "2026-11-16",
+    ].map((day) => relativeDay(day, "2026-11-10")),
+    ["wczoraj", "dzisiaj", "jutro", "pojutrze", "za 3 dni", "za 6 dni"],
+  );
+  // Across the DST change and the turn of the year.
+  assert.equal(relativeDay("2026-10-26", "2026-10-25"), "jutro");
+  assert.equal(relativeDay("2027-01-01", "2026-12-31"), "jutro");
+});
+
+test("section day lead: „Dziś”, „Jutro”, „Za N dni” for 2 to 7 days, else none", () => {
+  const lead = (day: string) => dayLead(day, "x", "2026-10-28");
+  assert.deepEqual(
+    [
+      "2026-10-27",
+      "2026-10-28",
+      "2026-10-29",
+      "2026-10-30",
+      "2026-11-04",
+      "2026-11-05",
+    ].map(lead),
+    ["X", "Dziś: x", "Jutro: x", "Za 2 dni: x", "Za 7 dni: x", "X"],
+  );
+  // Across midnight and the DST change, by Warsaw days.
+  assert.equal(
+    dayLead(
+      "2026-10-26",
+      "poniedziałek",
+      todayInWarsaw(new Date(at("2026-10-24T23:30:00Z"))),
+    ),
+    "Jutro: poniedziałek",
+  );
+});

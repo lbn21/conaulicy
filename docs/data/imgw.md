@@ -1,6 +1,6 @@
 # IMGW meteo warnings
 
-What the site reads from IMGW-PIB and how (task 97) and where it shows it: only on the address page (task 257; the banner on every other page, task 98, is gone). Code: `web/lib/imgw-warnings.ts` (feed), `web/lib/imgw-shown.ts` (which warnings are shown, the notice), `web/lib/weather-module.ts` (their words on the address page); fixtures: `web/lib/imgw-fixture.ts`; dev mock: `web/lib/imgw-mock.ts`. Hydro warnings are out of scope (no powiat code, `DATA-INVENTORY.md` §5).
+What the site reads from IMGW-PIB and how (task 97) and where it shows it: only on the address page and its `/pogoda` subpage (tasks 257, 263; the banner on every other page, task 98, is gone). Code: `web/lib/imgw-warnings.ts` (feed), `web/lib/imgw-shown.ts` (which warnings are shown, the notice), `web/lib/weather-module.ts` (their items and notice on the address page), `web/components/weather-page.tsx` (`/pogoda`); fixtures: `web/lib/imgw-fixture.ts`; dev mock: `web/lib/imgw-mock.ts`. Hydro warnings are out of scope (no powiat code, `DATA-INVENTORY.md` §5).
 
 ## Endpoint
 
@@ -57,21 +57,21 @@ The regulamin §5 requires, wherever the data is used, the source sentence, and 
 
 ## On the address page
 
-No public endpoint (task 98: `/api/warnings` was removed), and no banner (task 257, Jakub's decision): the warnings show only on the address page (`/adres/<id>`, `components/hub.tsx`), each exactly once. Its subpages (`/smieci`, `/woda`) and every other page show nothing of IMGW's.
+No public endpoint (task 98: `/api/warnings` was removed), and no banner (task 257, Jakub's decision): the warnings show only on the address page (`/adres/<id>`, `components/hub.tsx`) and its `/pogoda` subpage (task 263). `/smieci`, `/woda` and every other page show nothing of IMGW's.
 
 Warnings are powiat-wide, so every address shows the same ones (powiat `1809`, `POWIAT` in `lib/imgw-shown.ts`): those in force or to come (`shownWarnings`), highest level first, then by start.
 
-- **„Najbliższe dni”** lists each one, in the block's one order (by start): when it starts, its „Dziś” or „Jutro” the device's (`components/day-word.tsx`), „ostrzeżenie IMGW – silny wiatr”, a tag „Stopień N z 3” (IMGW's own solid level colours #ffbe00 / #ff5a00 / #d60000, from `lvlToColorOsmet` in shared.imgw.pl's warnings widget, `WARNING_LEVELS` in `web/lib/palette.ts`; black text on 1 and 2, white on 3; the text says the level too), until when, absolute; then „Cały powiat.”, with no link (task 260; the source and check time are in „Pogoda”). These are the page's only tags.
-- **„Pogoda”** never lists them again (no tag, no times): per warning, highest first, which one in words („Silny wiatr, stopień 2 z 3”), then IMGW's own description (`tresc`, verbatim) and „Prawdopodobieństwo: 75%.”; then the link „Szczegóły i mapa na meteo.imgw.pl”; then its meta line, „Źródło: IMGW-PIB. Sprawdziliśmy …” (the last good check). With no warning and a fresh copy, one line: „Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.” With no copy in the store yet: „Jeszcze tego nie sprawdziliśmy.”
+- **The address page's timeline** has a row per warning on each day it covers („Ostrzeżenie IMGW”: a tag „Stopień N z 3”, the event, from and until when, absolute; „trwa” on the days after its first), with „Szczegóły” to `/pogoda`. The tag uses IMGW's own solid level colours #ffbe00 / #ff5a00 / #d60000 (from `lvlToColorOsmet` in shared.imgw.pl's warnings widget, `WARNING_LEVELS` in `web/lib/palette.ts`; black text on 1 and 2, white on 3; the text says the level too). Never IMGW's own description there. Its source and last good check are in „Skąd to wiemy”, with IMGW's required wording.
+- **`/pogoda`**: the checked line, then per warning, highest first, a GOV.UK summary card (the event; Stopień with its tag, Kiedy, Gdzie: „Cały powiat lubaczowski”, Opis IMGW: `tresc` verbatim and „Prawdopodobieństwo: 75%.”); then the link „Szczegóły i mapa na meteo.imgw.pl”; then the source in an inset, with the required wording. With no warning and a fresh copy, one line: „Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.” Never indexed (the powiat's, the same at every address). With no copy in the store yet, the address page says „Nie udało się sprawdzić ostrzeżeń IMGW.”
 
 No client JS, no dismiss button, no `role="alert"`.
 
 **Honest states (task 219): never silence while the feed file exists.** One rule, by the age of the last good check (`checkAge`, `web/lib/live-status.ts`; the constants are the water's too):
 
-- over `STALE_MS` (60 min): „Pogoda” starts with a notice, with or without a warning (a `govuk-body` paragraph, its link to meteo.imgw.pl): with warnings „Nie udało się teraz pobrać ostrzeżeń IMGW. Pokazujemy ostatnie dane z 9:52. Aktualne znajdziesz na meteo.imgw.pl.”, the warnings still listed; without „Nie udało się teraz pobrać ostrzeżeń IMGW. Ostatnie dane mamy z 9:52. Aktualne znajdziesz na meteo.imgw.pl.”, the notice alone;
-- from `MAX_AGE_MS` (3 h): the old warnings are no longer shown („Najbliższe dni”, „Pogoda”), the notice alone: „Od 9:52 nie udało się nam pobrać ostrzeżeń IMGW, więc ich nie pokazujemy. Aktualne znajdziesz na meteo.imgw.pl.”;
+- over `STALE_MS` (60 min): a notice, with or without a warning, its link to meteo.imgw.pl (`weatherNotices`: in the address page's inset above the timeline; first on `/pogoda`): with warnings „Nie udało się teraz pobrać ostrzeżeń IMGW. Pokazujemy ostatnie dane z 9:52. Aktualne znajdziesz na meteo.imgw.pl.”, the warnings still listed; without „Nie udało się teraz pobrać ostrzeżeń IMGW. Ostatnie dane mamy z 9:52. Aktualne znajdziesz na meteo.imgw.pl.”, the notice alone;
+- from `MAX_AGE_MS` (3 h): the old warnings are no longer shown (the timeline, `/pogoda`), the notice alone: „Od 9:52 nie udało się nam pobrać ostrzeżeń IMGW, więc ich nie pokazujemy. Aktualne znajdziesz na meteo.imgw.pl.”;
 - the time is the day and time („z piątku 30 października, 9:52”) when the last data is not from today (Warsaw);
-- the store cannot be read now: the notice alone, „Nie udało się teraz sprawdzić ostrzeżeń IMGW. Aktualne znajdziesz na meteo.imgw.pl.”, and no „Ostatnio sprawdziliśmy” time in Pogoda.
+- the store cannot be read now: the notice alone, „Nie udało się teraz sprawdzić ostrzeżeń IMGW. Aktualne znajdziesz na meteo.imgw.pl.”, and no „Ostatnio sprawdziliśmy” time on `/pogoda`.
 
 Read per request, a page shows the notice as soon as the threshold has passed.
 

@@ -8,6 +8,8 @@ export const WARSAW = "Europe/Warsaw";
 let isoDay: Intl.DateTimeFormat | undefined;
 let polishDay: Intl.DateTimeFormat | undefined;
 
+let relativeDays: Intl.RelativeTimeFormat | undefined;
+
 function polishDayParts(iso: string) {
   polishDay ??= new Intl.DateTimeFormat(LOCALE, {
     timeZone: WARSAW,
@@ -16,6 +18,45 @@ function polishDayParts(iso: string) {
     month: "long",
   });
   return polishDay.formatToParts(warsawNoon(iso));
+}
+
+let shortRange: Intl.DateTimeFormat | undefined;
+
+/**
+ * Intl's run of days, no weekdays: "11–15 listopada", "29 listopada –
+ * 2 grudnia"; Intl adds the years when they differ ("29 grudnia 2026 –
+ * 2 stycznia 2027").
+ */
+export function dayRange(from: string, to: string): string {
+  shortRange ??= new Intl.DateTimeFormat(LOCALE, {
+    timeZone: WARSAW,
+    day: "numeric",
+    month: "long",
+  });
+  return shortRange.formatRange(warsawNoon(from), warsawNoon(to));
+}
+
+let yearDay: Intl.DateTimeFormat | undefined;
+
+/** A day with its year: "poniedziałek, 30 listopada 2026" („Później”). */
+export function dayWithYear(iso: string): string {
+  yearDay ??= new Intl.DateTimeFormat(LOCALE, {
+    timeZone: WARSAW,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  return yearDay.format(warsawNoon(iso));
+}
+
+/** Intl's word for `day` seen from `today`: "dzisiaj", "jutro", "za 3 dni". */
+export function relativeDay(day: string, today: string): string {
+  relativeDays ??= new Intl.RelativeTimeFormat(LOCALE, { numeric: "auto" });
+  return relativeDays.format(
+    (Date.parse(day) - Date.parse(today)) / 86_400_000,
+    "day",
+  );
 }
 
 export function todayInWarsaw(now: Date = new Date()): string {

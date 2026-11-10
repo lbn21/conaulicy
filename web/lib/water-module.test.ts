@@ -189,7 +189,7 @@ test("matching: a village part takes its own cuts and its whole village's", () =
     cutWhere(outages[0] as Cut, PILIPY_PART),
     "ulica Pilipy w Młodowie",
   );
-  // The section never repeats it: „Najbliższe dni” lists the cut.
+  // The notices never repeat it: the timeline lists the cut.
   assert.deepEqual(lines(waterAt(PILIPY_PART)), []);
   // In part: „w części ulicy Pilipy”, the street's words with its village.
   const pilipyPart = cut({
@@ -404,7 +404,7 @@ test("house number: a village's trace line; none for a cut of unknown houses", (
 
 const ZUKI_CUT = { localityId: "0972447", streetId: "0972447-26555" };
 
-test("block: every cut its own item, its span from the wall times", () => {
+test("timeline: every cut its own item, its span from the wall times", () => {
   assert.deepEqual(waterUpcoming(waterAt(ZUKI)), [
     {
       module: "woda",
@@ -416,13 +416,10 @@ test("block: every cut its own item, its span from the wall times", () => {
         from: "8:00",
         to: "16:00",
         about: false,
-        date: "wtorek, 27 października",
         until: "wtorku 27 października",
       },
-      shownFrom: null,
       emergency: false,
       second: "Cała ulica Żuki.",
-      secondUntil: null,
     },
   ]);
   // Lisie Jamy: 26 and 29 Oct, each its own line.
@@ -550,7 +547,7 @@ test("block's where: a street's range, „Obejmuje Twój dom” only inside it",
 });
 
 test("section: never the cuts again, the post as its source", () => {
-  // „Najbliższe dni” lists each cut; the section adds nothing for a plain
+  // The timeline lists each cut; the notices add nothing for a plain
   // one (task 257). A town street's ZUK cut: its post the only „Źródło”,
   // never MZGKiM's.
   assert.deepEqual(waterStatus(waterAt(ZUKI)), []);

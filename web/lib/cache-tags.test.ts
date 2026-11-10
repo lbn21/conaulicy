@@ -8,7 +8,7 @@ import { calling, SOURCES, source } from "./test-sources.ts";
 // shell cached for the longest time (cacheLife "max"); the shells built
 // from the database are tagged DATASET, which only an import purges
 // (app/api/revalidate). What changes between imports (IMGW, water,
-// „Najbliższe dni”) is never in a shell: each block reads its Blob file per
+// the timeline) is never in a shell: each block reads its Blob file per
 // request through the Blob's CDN, after io(), in its own hole. No cron
 // purges anything.
 
@@ -85,9 +85,10 @@ test("the shells: every `use cache` scope is cacheLife max and tags the dataset"
     "components/place-page.tsx: max ...PLACE_TAGS",
     "components/place-page.tsx: max ...PLACE_TAGS",
     "components/water-page.tsx: max ...PLACE_TAGS",
+    "components/weather-page.tsx: max ...PLACE_TAGS",
   ]);
   // Every scope is one of those.
-  assert.equal(calling(/"use cache"/).length, 5);
+  assert.equal(calling(/"use cache"/).length, 6);
   assert.match(
     source("lib/schedule.ts"),
     /export const PLACE_TAGS = DAY_CACHE\.tags;/,

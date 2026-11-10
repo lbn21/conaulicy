@@ -24,7 +24,7 @@
 // layout (lang, stylesheet), GOV.UK's "page not found" H1, its link home
 // („Przejdź na stronę główną”), robots meta noindex (one or more tags, every
 // one noindex, none index), and no description; an unknown module
-// (/adres/<id>/<slug>) and one without a subpage (/pogoda) too; asked
+// (/adres/<id>/<slug>) too; asked
 // without following redirects, and never under a renamed id (the 308s of
 // /api/place-redirects, scripts/routes/query.mjs). Both: /, an
 // address page and a calendar send the five security headers.
@@ -230,12 +230,13 @@ try {
     }
   }
 
-  // Never indexed, links followed once indexable: the number-error page and
-  // a place without data.
+  // Never indexed, links followed once indexable: the number-error page, a
+  // place without data and the weather subpage (the powiat's, task 263).
   const noindexWant = index ? "noindex, follow" : "noindex, nofollow";
   for (const path of [
     "/adres/0972447-90004?nr=",
     ROUTES.find((route) => route.name === "street-without-schedule").path,
+    ROUTES.find((route) => route.name === "city-street-weather").path,
   ]) {
     const response = await fetch(`${server.origin}${path}`);
     const metas = [...(await response.text()).matchAll(META)].map(
@@ -269,9 +270,6 @@ try {
     "/adres/0972447-00470/nie-ma-takiego-modulu",
     "/adres/0972447-00470/nie-ma-takiego-modulu?nr=12",
     "/adres/9999999/smieci",
-    // A module without a subpage (the weather).
-    "/adres/0972447-00470/pogoda",
-    "/adres/0972447-00470/pogoda?nr=12",
     // The old number paths are gone (task 254).
     "/adres/0972447-00470/nr/12",
     "/adres/0972447-00470/numer",

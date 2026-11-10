@@ -31,6 +31,7 @@ const EXPRESSIONS: Record<string, Record<string, string>> = {
   "components/contact-link.tsx": { CONTACT_HREF: "mailto:" },
   "components/site-footer.tsx": { CONTACT_HREF: "mailto:" },
   "components/subpage-parts.tsx": { href: "an ICS file (CalendarBlock)" },
+  "components/weather-page.tsx": { IMGW_PAGE: "another site" },
   "components/parts.tsx": {
     "part.href": "another site: an href starting with / is a PlaceLink",
   },
