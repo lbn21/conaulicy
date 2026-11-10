@@ -82,9 +82,10 @@ const RAW_PX = [
 // its shadow and pointer off (task 237), now the address pages' skeleton
 // cards and rounded bars (task 239), plus 33 lines and 400 B for the address
 // page's vertical timeline (task 264), plus 10 lines and 200 B for its
-// cards, grey empty days and today's beat (task 265; Jakub: up to 10 KB).
+// cards, grey empty days and today's beat (task 265; Jakub: up to 10 KB),
+// plus 200 B for its runs of empty days' two dots and dashes (task 267).
 const MAX_LINES = 150;
-const MAX_GZIP = 1600;
+const MAX_GZIP = 1800;
 
 const failures = [];
 

@@ -240,7 +240,7 @@ $app-header-colour: $app-header;
 // tint-50), its labels in the brand colour; an empty day or run all grey
 // (a barely-there grey: GOV.UK's black tint-95 a third over white, its
 // border, secondary text); dates in secondary text, today's in the brand
-// colour, its dot with a soft halo (task 265).
+// colour on its own kind's border, its dot filled (task 267).
 $app-dot: govuk-spacing(3);
 $app-hair: $govuk-border-width-form-element * .5;
 $app-caret: govuk-spacing(2);
@@ -276,24 +276,30 @@ $app-caret: govuk-spacing(2);
 // „Później”: past the window, a ringed dot (a dot in a ring).
 .app-timeline > .app-timeline__later::before { background: govuk-functional-colour(secondary-text); box-shadow: inset 0 0 0 $app-hair * 2 govuk-colour("white"); }
 
-// Today: filled in the brand colour, with a soft halo that beats three
-// times (4.8 s, under GOV.UK's 5 s) unless motion is reduced, then rests.
-.app-timeline > .app-timeline__today::before { border-color: govuk-functional-colour(brand); background: govuk-functional-colour(brand); box-shadow: 0 0 0 govuk-spacing(1) color-mix(in srgb, govuk-functional-colour(brand) 20%, transparent); }
-@media (prefers-reduced-motion: no-preference) { .app-timeline > .app-timeline__today::before { animation: app-beat 1.6s ease-out 3; } }
-@keyframes app-beat { from { box-shadow: 0 0 0 0 color-mix(in srgb, govuk-functional-colour(brand) 40%, transparent); } }
+// Today: a static dot filled in the brand colour (task 267).
+.app-timeline > .app-timeline__today::before { border-color: govuk-functional-colour(brand); background: govuk-functional-colour(brand); }
+
+// A run of empty days (task 267): a second dot at the card's foot, as far
+// from its bottom as the first is from its top, and a dashed line between
+// them over the solid one (the page's background under the dashes).
+.app-timeline__range > .app-timeline__card::after,
+.app-timeline__range > .app-timeline__card > p::before { content: ""; position: absolute; left: -(govuk-spacing(6) + $app-hair); width: $app-dot; }
+.app-timeline__range > .app-timeline__card::after { top: calc(var(--app-y) - #{$app-hair}); bottom: calc(var(--app-y) - #{$app-hair}); background: repeating-linear-gradient(govuk-functional-colour(border) 0 govuk-spacing(1), transparent 0 govuk-spacing(2)) 50% 0 no-repeat, govuk-functional-colour(body-background); background-size: $app-hair 100%, auto; }
+.app-timeline__range > .app-timeline__card > p::before { z-index: 1; bottom: calc(var(--app-y) - #{$app-hair + $app-dot * .5}); box-sizing: border-box; height: $app-dot; border: $govuk-border-width-form-element solid govuk-functional-colour(border); border-radius: 50%; background: govuk-colour("white"); }
+.app-timeline > .app-timeline__range:last-child::after { top: auto; height: var(--app-y); }
 
 .app-timeline__card { --app-bg: #{govuk-functional-colour(surface-background)}; --app-line: #{govuk-functional-colour(surface-border)}; position: relative; padding: govuk-spacing(3); border: $app-hair solid var(--app-line); border-radius: govuk-spacing(1); background: var(--app-bg); }
 .app-timeline__card--empty { --app-bg: color-mix(in srgb, #{govuk-colour("black", $variant: "tint-95")} 35%, #{govuk-colour("white")}); --app-line: #{govuk-functional-colour(border)}; }
 .app-timeline__title, .app-timeline__card--empty > p { color: govuk-functional-colour(secondary-text); }
 .app-timeline__today .app-timeline__title { color: govuk-functional-colour(brand); }
-.app-timeline__today > .app-timeline__card { --app-line: #{govuk-functional-colour(brand)}; }
-.app-timeline__today > .app-timeline__card--empty { --app-line: #{govuk-functional-colour(secondary-text)}; }
 .app-timeline__card .govuk-summary-list__key { color: govuk-functional-colour(brand); }
 
-// Inside a card one rhythm: key, value and „Szczegóły” a 5px step apart on
-// mobile (a row's end a 15px one), rows 10px apart on tablet, nothing under
-// the last row (GOV.UK's no-border row) but the card's padding.
-.app-timeline__card .govuk-summary-list__value { margin-bottom: govuk-spacing(1); }
+// Inside a card one rhythm: key and value a 5px step apart on mobile,
+// „Szczegóły” (16/20, task 267) 10px under every value (a list's last
+// item no margin of its own), rows 10px apart on tablet, nothing under the
+// last row (GOV.UK's no-border row) but the card's padding.
+.app-timeline__card .govuk-summary-list__value { margin-bottom: govuk-spacing(2); }
+.app-timeline__card .govuk-summary-list__value li:last-child { margin-bottom: 0; }
 .app-timeline__card .govuk-summary-list__row:first-child > * { padding-top: 0; }
 .app-timeline__card .govuk-summary-list__row:last-child,
 .app-timeline__card .govuk-summary-list__row:last-child > * { margin-bottom: 0; padding-bottom: 0; }

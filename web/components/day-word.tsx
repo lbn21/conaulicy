@@ -1,7 +1,7 @@
 "use client";
 
 import { useWarsawToday } from "@/components/warsaw-today";
-import { capitalised, dayLead, relativeWord } from "@/lib/dates";
+import { capitalised, dayLead, relativeDay, relativeWord } from "@/lib/dates";
 
 // „Dziś”, „Jutro” and „Za 5 dni”, rendered with the page, for the server's
 // Warsaw day, then kept to the device's (components/warsaw-today.tsx). The
@@ -11,8 +11,9 @@ import { capitalised, dayLead, relativeWord } from "@/lib/dates";
  * lead: a section's first line, „Dziś: ”, „Jutro: ” or „Za 5 dni: ” before
  * `text`, else `text` capitalised (lib/dates.ts dayLead). word: „dziś, ”
  * or „jutro, ” before the date that follows, else nothing. label: „Dziś” or
- * „Jutro” and `afterWord`, else `text`. title: „Dziś, ” or „Jutro, ” before
- * `text`, else `text` capitalised (a timeline card's, task 263).
+ * „Jutro” and `afterWord`, else `text`. title: Intl's relative day
+ * („Dzisiaj”, „Jutro”, „Za 6 dni”) and „ · ” before `text` (a timeline
+ * card's, task 267), else `text` capitalised.
  */
 type Form = "lead" | "word" | "label" | "title";
 
@@ -31,9 +32,11 @@ export function DayWord({ day, form, text = "", afterWord = "" }: Props) {
   const today = useWarsawToday();
   if (form === "lead") return dayLead(day, text, today);
   // No server day (outside WarsawToday) and not yet the device's: no word.
+  if (form === "title")
+    return today
+      ? `${capitalised(relativeDay(day, today))} · ${text}`
+      : capitalised(text);
   const word = today ? relativeWord(day, today) : null;
   if (form === "word") return word ? `${word}, ` : null;
-  if (form === "title")
-    return word ? `${capitalised(word)}, ${text}` : capitalised(text);
   return word ? `${capitalised(word)}${afterWord}` : text;
 }

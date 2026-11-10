@@ -8,14 +8,34 @@ export const WARSAW = "Europe/Warsaw";
 let isoDay: Intl.DateTimeFormat | undefined;
 let polishDay: Intl.DateTimeFormat | undefined;
 
-function polishDayParts(iso: string) {
+let relativeDays: Intl.RelativeTimeFormat | undefined;
+
+function polishDayFormat() {
   polishDay ??= new Intl.DateTimeFormat(LOCALE, {
     timeZone: WARSAW,
     weekday: "long",
     day: "numeric",
     month: "long",
   });
-  return polishDay.formatToParts(warsawNoon(iso));
+  return polishDay;
+}
+
+function polishDayParts(iso: string) {
+  return polishDayFormat().formatToParts(warsawNoon(iso));
+}
+
+/** Intl's run of days: "środa, 11 listopada – niedziela, 15 listopada". */
+export function dayRange(from: string, to: string): string {
+  return polishDayFormat().formatRange(warsawNoon(from), warsawNoon(to));
+}
+
+/** Intl's word for `day` seen from `today`: "dzisiaj", "jutro", "za 3 dni". */
+export function relativeDay(day: string, today: string): string {
+  relativeDays ??= new Intl.RelativeTimeFormat(LOCALE, { numeric: "auto" });
+  return relativeDays.format(
+    (Date.parse(day) - Date.parse(today)) / 86_400_000,
+    "day",
+  );
 }
 
 export function todayInWarsaw(now: Date = new Date()): string {

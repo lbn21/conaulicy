@@ -1,15 +1,17 @@
 import type { ReactNode } from "react";
 import { DayWord } from "@/components/day-word";
 import { FunctionRows } from "@/components/function-rows";
-import { absoluteDay, capitalised, dayFace } from "@/lib/dates";
+import { absoluteDay, dayRange } from "@/lib/dates";
 import type { PlaceView } from "@/lib/schedule";
 import type { DayGroup, Entry } from "@/lib/timeline";
 
 // The timeline's days (task 263, restyled in task 264): each an li of
 // components/timeline.tsx's ol (site.scss .app-timeline). A day with
-// items is a card, its date an h3 („Dziś, wtorek, 10 listopada”, DayWord);
-// an empty day or run of them („Środa 11 – sobota 14 listopada”) a muted
-// grey card, its date the same h3 over „Nic nie zaplanowano.” (task 266);
+// items is a card, its date an h3 („Dzisiaj · wtorek, 10 listopada”,
+// DayWord); an empty day or run of them („Jutro · środa, 11 listopada –
+// niedziela, 15 listopada”, Intl's formatRange) a muted grey card, its date
+// the same h3 over „Nic nie zaplanowano.” (task 266), a run with a dot at
+// each end and a dashed line between (task 267);
 // „Później” a card at the ringed end of the line (task 265).
 
 /** What an empty day or run says. */
@@ -44,16 +46,6 @@ export function TimelineCard({
   );
 }
 
-/** „Środa 11 – sobota 14 listopada”, the month once when it is the same. */
-function rangeTitle(from: string, to: string): string {
-  const a = dayFace(from);
-  const b = dayFace(to);
-  const first = a.month === b.month ? a.day : `${a.day} ${a.month}`;
-  return capitalised(
-    `${a.weekday} ${first} – ${b.weekday} ${b.day} ${b.month}`,
-  );
-}
-
 /** A day's li: a card, for empty days a muted one. */
 export function Day({
   group: { from, to, entries },
@@ -65,18 +57,22 @@ export function Day({
   const today = from === place.today;
   const title = (
     <time dateTime={from}>
-      {from === to ? (
-        <DayWord day={from} form="title" text={absoluteDay(from)} />
-      ) : (
-        rangeTitle(from, to)
-      )}
+      <DayWord
+        day={from}
+        form="title"
+        text={from === to ? absoluteDay(from) : dayRange(from, to)}
+      />
     </time>
   );
   const empty = entries.length === 0;
   return (
     <li
       className={
-        [empty && "app-timeline__empty", today && "app-timeline__today"]
+        [
+          empty && "app-timeline__empty",
+          from !== to && "app-timeline__range",
+          today && "app-timeline__today",
+        ]
           .filter(Boolean)
           .join(" ") || undefined
       }
