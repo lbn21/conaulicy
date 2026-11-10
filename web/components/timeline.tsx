@@ -4,8 +4,8 @@ import { collapse, days, later, onDay } from "@/lib/timeline";
 import type { Item } from "@/lib/upcoming";
 
 // „Najbliższe 7 dni” (task 263): h2, then a card per
-// day from the read's day (lib/timeline.ts; a run of 2+ empty days after
-// today as one), then „Później”. Never fetches: the hub's one read
+// day from the read's day (lib/timeline.ts; a run of 2+ empty days as
+// one, today included), then „Później”. Never fetches: the hub's one read
 // (components/hub.tsx hubData) gives every module's items.
 
 export function Timeline({
