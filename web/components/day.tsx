@@ -55,7 +55,6 @@ export function Day({
   group: DayGroup;
   place: PlaceView;
 }) {
-  const today = from === place.today;
   const title =
     from === to ? (
       <>
@@ -69,11 +68,7 @@ export function Day({
   return (
     <li
       className={
-        [
-          empty && "app-timeline__empty",
-          from !== to && "app-timeline__range",
-          today && "app-timeline__today",
-        ]
+        [empty && "app-timeline__empty", from !== to && "app-timeline__range"]
           .filter(Boolean)
           .join(" ") || undefined
       }

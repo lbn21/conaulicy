@@ -239,8 +239,8 @@ $app-header-colour: $app-header;
 // Colours: a day with items on the brand's surface (tint-95, its border
 // tint-50), its labels in the brand colour; an empty day or run all grey
 // (a barely-there grey: GOV.UK's black tint-95 a third over white, its
-// border, secondary text); dates in secondary text, today's in the brand
-// colour on its own kind's border, its dot filled (task 267).
+// border, secondary text); every date in secondary text. The first dot,
+// where the line starts (today), filled in the brand colour (task 272).
 $app-dot: govuk-spacing(3);
 $app-hair: $govuk-border-width-form-element * .5;
 $app-caret: govuk-spacing(2);
@@ -276,8 +276,8 @@ $app-caret: govuk-spacing(2);
 // „Później”: past the window, a ringed dot (a dot in a ring).
 .app-timeline > .app-timeline__later::before { background: govuk-functional-colour(secondary-text); box-shadow: inset 0 0 0 $app-hair * 2 govuk-colour("white"); }
 
-// Today: a static dot filled in the brand colour (task 267).
-.app-timeline > .app-timeline__today::before { border-color: govuk-functional-colour(brand); background: govuk-functional-colour(brand); }
+// The first dot, „you are here”, whatever its card (task 272).
+.app-timeline > li:first-child::before { border-color: govuk-functional-colour(brand); background: govuk-functional-colour(brand); }
 
 // A run of empty days (task 268): one dot, and the line dashed alongside
 // its whole card (the page's background under the dashes), to the dot only
@@ -288,7 +288,6 @@ $app-caret: govuk-spacing(2);
 .app-timeline__card { --app-bg: #{govuk-functional-colour(surface-background)}; --app-line: #{govuk-functional-colour(surface-border)}; position: relative; padding: govuk-spacing(3); border: $app-hair solid var(--app-line); border-radius: govuk-spacing(1); background: var(--app-bg); }
 .app-timeline__card--empty { --app-bg: color-mix(in srgb, #{govuk-colour("black", $variant: "tint-95")} 35%, #{govuk-colour("white")}); --app-line: #{govuk-functional-colour(border)}; }
 .app-timeline__title, .app-timeline__card--empty > p { color: govuk-functional-colour(secondary-text); }
-.app-timeline__today .app-timeline__title { color: govuk-functional-colour(brand); }
 // After the date, its relative word: body-s, regular, grey (tasks 268-269).
 .app-timeline__title .app-timeline__when { color: govuk-functional-colour(secondary-text); }
 .app-timeline__card .govuk-summary-list__key { color: govuk-functional-colour(brand); }

@@ -2,7 +2,7 @@
 // next N Warsaw days from the read's day, each with what happens on it at
 // this address, one entry per module's item (lib/upcoming.ts Item, from
 // each module's adapter, Module.events), in registry order; a run of 2+
-// empty days after today as one range; and „Później”, the next item per
+// empty days as one range, today included; and „Później”, the next item per
 // module after the window. Pure, so the unit tests read it.
 import { MODULE_IDS, type ModuleId } from "./address-routes.ts";
 import { addDays, warsawToIso } from "./dates.ts";
@@ -57,22 +57,15 @@ export function later(items: Item[], lastDay: string): Item[] {
 }
 
 /**
- * The days as cards: today always its own; after it, a run of 2 or more
- * empty days is one card (from – to); a single empty day stays its own.
+ * The days as cards: a run of 2 or more empty days is one card (from –
+ * to), today included (task 272); a single empty day stays its own.
  */
 export function collapse(list: string[], byDay: Entry[][]): DayGroup[] {
   const groups: DayGroup[] = [];
   list.forEach((day, i) => {
     const last = groups.at(-1);
     const empty = byDay[i].length === 0;
-    if (
-      i > 1 &&
-      empty &&
-      last &&
-      last.entries.length === 0 &&
-      last.from !== list[0]
-    )
-      last.to = day;
+    if (empty && last && last.entries.length === 0) last.to = day;
     else groups.push({ from: day, to: day, entries: byDay[i] });
   });
   return groups;
