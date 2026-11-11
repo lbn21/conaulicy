@@ -139,6 +139,8 @@ const PAGE_H = 841.89;
 const PAGE_W = 595.28;
 // The page's side margin (the route's MARGIN): every table inside it.
 const SIDE = 28;
+/** A mark's slot on page 1 (route.ts MARK): a glyph mark is narrower. */
+const MARK_SLOT = 11;
 // Page 1's fixed month grid (the route's MONTH_COLUMNS × MONTH_ROWS).
 const GRID = { columns: 4, rows: 3 };
 const round = (n) => Math.round(n * 100) / 100;
@@ -427,8 +429,15 @@ try {
         .slice(i === 0 ? 1 : 0)
         .reduce((out, w) => {
           const prev = out.at(-1);
-          if (prev && w.x0 - prev.x1 <= 8) prev.x1 = w.x1;
-          else out.push({ x0: w.x0, x1: w.x1 });
+          if (prev && w.x0 - prev.x1 <= 8) {
+            // A mark drawn as a glyph reads as a word before its label:
+            // the item starts at the label.
+            if (prev.mark) prev.start = w.x0;
+            prev.mark = false;
+            prev.x1 = w.x1;
+          } else {
+            out.push({ start: w.x0, x1: w.x1, mark: w.x1 - w.x0 < MARK_SLOT });
+          }
           return out;
         }, []),
     );
@@ -436,8 +445,8 @@ try {
     check(
       counts.length > 0 &&
         !(counts.includes(1) && counts.some((n) => n > 1)) &&
-        items.every((line) => Math.abs(line[0].x0 - items[0][0].x0) < 1),
-      `${c.name}: page 1 key in ${counts.length} lines of ${counts.join(" + ")} items (lines start in one place, none alone; at ${items.map((line, i) => `${round(line[0].x0)},${round(keyLines[i][0].y0)}`).join(" ")})`,
+        items.every((line) => Math.abs(line[0].start - items[0][0].start) < 1),
+      `${c.name}: page 1 key in ${counts.length} lines of ${counts.join(" + ")} items (lines start in one place, none alone; at ${items.map((line, i) => `${round(line[0].start)},${round(keyLines[i][0].y0)}`).join(" ")})`,
     );
     // A fixed grid inside the page's margins: at most 4 × 3 tables on page
     // 1, a whole window's twelve months all of them, nothing carried over.
