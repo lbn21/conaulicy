@@ -42,6 +42,10 @@ jobs:
       # The built site never asks IMGW: the address page reads the fixtures
       # (web/lib/imgw-mock.ts, docs/data/imgw.md).
       IMGW_WARNINGS_URL: mock:none
+      # Nor PGE: its derived outages (web/lib/pge-mock.ts, docs/data/pge.md),
+      # so every check below sees a power row on the town street's address
+      # page and its /prad, and the village's /prad empty.
+      PGE_API_URL: mock:ours
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

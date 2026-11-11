@@ -31,8 +31,8 @@ import { createHash } from "node:crypto";
 import { addDays, isoWithOffset, todayInWarsaw } from "./dates.ts";
 import type { District } from "./districts.ts";
 import { NO_STORE } from "./headers.ts";
-import type { ImgwRunSummary } from "./imgw-cron.ts";
-import { IMGW_KEY, nextChecks, parseChecks, waterKey } from "./live-status.ts";
+import type { LiveRunSummary } from "./live-cron.ts";
+import { nextChecks, parseChecks, waterKey } from "./live-status.ts";
 import { cronDenied } from "./secret.ts";
 import { gminaLubaczow } from "./sources/gmina-lubaczow/index.ts";
 import { type PostSource, SourceDown } from "./sources/source.ts";
@@ -527,41 +527,55 @@ async function recordChecks(
 }
 
 /**
+ * A live feed's step (lib/live-cron.ts): `key` is its key in the status
+ * file (lib/live-status.ts, IMGW_KEY, PGE_KEY) and in the response.
+ */
+export type LiveStep = { key: string; run: () => Promise<LiveRunSummary> };
+
+/**
  * The route: Vercel Cron's `Authorization: Bearer ${CRON_SECRET}`. `deps`
  * is the gmina's run, whose result is the response's (502 or 500 if it
  * failed); every source of `more` runs at the same time, each on its own
  * (its own file; a slow model call of one never uses up another's time
  * before the deadline): a failure is logged and listed under `sources`,
- * never the gmina's run's or the response's status. `imgw` (lib/imgw-cron.ts
- * runImgw) runs beside them, its result listed under `imgw`, and never
- * changes the water runs' result or the response's status either. Once
- * every run is done, each one's check goes to `checks` (status/checks.json)
- * in one write.
+ * never the gmina's run's or the response's status. Every live step
+ * (IMGW's warnings, PGE's outages) runs beside them, each on its own, its
+ * result listed under its key, and never changes the water runs' result,
+ * another step's or the response's status. Once every run is done, each
+ * one's check goes to `checks` (status/checks.json) in one write.
  */
 export async function handleZukCron(
   request: Request,
   cronSecret: string | undefined,
   deps: ZukCronDeps,
   more: ZukCronDeps[] = [],
-  imgw?: () => Promise<ImgwRunSummary>,
+  live: LiveStep[] = [],
   checks?: ChecksStore,
 ): Promise<Response> {
   const denied = cronDenied(request, cronSecret);
   if (denied) return denied;
   const attemptAt = deps.now().toISOString();
   const runs = [deps, ...more];
-  const [weather, outcomes] = await Promise.all([
-    imgw?.().catch((error): ImgwRunSummary => {
-      deps.log({ imgw: "error", error: (error as Error).message });
-      return { error: "failed" };
-    }),
+  const [steps, outcomes] = await Promise.all([
+    Promise.all(
+      live.map((step) =>
+        step.run().catch((error): LiveRunSummary => {
+          deps.log({ [step.key]: "error", error: (error as Error).message });
+          return { error: "failed" };
+        }),
+      ),
+    ),
     Promise.all(runs.map(runOne)),
   ]);
   const [main, ...results] = outcomes;
   const ok: Record<string, boolean> = {};
   for (const [i, run] of runs.entries())
     ok[waterKey((run.source ?? gminaLubaczow).id)] = !("error" in outcomes[i]);
-  if (weather) ok[IMGW_KEY] = !("error" in weather);
+  const stepResults: Record<string, LiveRunSummary> = {};
+  for (const [i, step] of live.entries()) {
+    stepResults[step.key] = steps[i];
+    ok[step.key] = !("error" in steps[i]);
+  }
   if (checks) await recordChecks(checks, ok, attemptAt, deps.log);
   const sources: Record<string, unknown> = {};
   for (const [i, run] of more.entries()) {
@@ -573,7 +587,7 @@ export async function handleZukCron(
   }
   const extra = {
     ...(more.length > 0 ? { sources } : {}),
-    ...(imgw ? { imgw: weather } : {}),
+    ...stepResults,
   };
   if (!("error" in main))
     return Response.json({ ...main, ...extra }, { headers: NO_STORE });

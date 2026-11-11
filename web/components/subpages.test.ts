@@ -592,13 +592,15 @@ test("/smieci: an event without its source is not on the page", () => {
 // address page (components/hub.test.ts), so /pogoda is a 404.
 test("/pogoda: no subpage, like any unknown slug", () => {
   assert.equal(findSubpage("pogoda"), null);
-  assert.equal(findSubpage("prad"), null);
+  assert.equal(findSubpage("gaz"), null);
   assert.equal(findSubpage("woda"), MODULES.woda);
+  assert.equal(findSubpage("prad"), MODULES.prad);
 });
 
 test("every subpage with no data now: its frame, then the hub's one line, nothing else", () => {
   for (const [module, line] of [
     [MODULES.woda, "Nie udało się sprawdzić przerw w dostawie wody."],
+    [MODULES.prad, "Nie udało się sprawdzić przerw w dostawie prądu."],
   ] as const) {
     const html = renderToStaticMarkup(
       createElement(Subpage, { module, place: ZUKI, data: null }),

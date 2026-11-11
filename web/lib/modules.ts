@@ -1,18 +1,29 @@
-// The address page's modules: waste, water and the weather today; power and
-// others later. Each one gives the address page
+// The address page's modules: waste, water, power and the weather. Each one gives the address page
 // (components/hub.tsx) its items for the timeline, its notices, its link
 // and its check time, in registry order, and has a subpage of its own,
 // /adres/<id>/<id of the module>, in one frame (components/module-page.tsx). The ids and their
 // order live in lib/address-routes.ts, so the unit tests and the URL rules
 // can read them without Next.js; this registry must list exactly those.
 import type { ReactNode } from "react";
+import { outageDetails } from "@/components/outage-page";
 import { indexedPlace, numberError, WasteBody } from "@/components/place-page";
+import { OutageRow } from "@/components/rows/outage";
 import { WasteRow } from "@/components/rows/smieci";
-import { WaterRow } from "@/components/rows/woda";
 import { WaterDetails } from "@/components/water-page";
 import { isModuleId, type ModuleId, SUBPAGE_IDS } from "@/lib/address-routes";
 import type { Checked, Group, Part } from "@/lib/hub";
 import { imgwCopy } from "@/lib/live-store";
+import { loadPower } from "@/lib/power-load";
+import {
+  POWER_SUBJECT,
+  type Power,
+  powerChecked,
+  powerDescription,
+  powerNotices,
+  powerPage,
+  powerSources,
+  powerUpcoming,
+} from "@/lib/power-module";
 import { getPlace, type PlaceView } from "@/lib/schedule";
 import { placeDescription } from "@/lib/schedule-notes";
 import type { Entry } from "@/lib/timeline";
@@ -156,11 +167,33 @@ const woda: Module<Water> = {
   rowLabel: "Woda",
   hiddenLabel: "o przerwie w dostawie wody",
   subject: "przerw w dostawie wody",
-  Row: WaterRow,
+  Row: OutageRow,
   sources: waterSources,
   checkedAt: waterChecked,
   description: waterDescription,
   Details: WaterDetails,
+};
+
+// PGE Dystrybucja's outages at the address (lib/power-module.ts), from the
+// cron's last good copy: the same row and subpage as the water's
+// (components/rows/outage.tsx, components/outage-page.tsx); no copy yet,
+// „Nie udało się sprawdzić”; old or unreadable, a notice.
+const prad: Module<Power> = {
+  id: "prad",
+  title: "prąd",
+  more: "Wszystkie przerwy w dostawie prądu",
+  pageTitle: "Przerwy w dostawie prądu",
+  load: loadPower,
+  upcoming: powerUpcoming,
+  notices: powerNotices,
+  rowLabel: "Prąd",
+  hiddenLabel: "o przerwie w dostawie prądu",
+  subject: POWER_SUBJECT,
+  Row: OutageRow,
+  sources: powerSources,
+  checkedAt: powerChecked,
+  description: powerDescription,
+  Details: outageDetails(powerPage),
 };
 
 // IMGW's warnings for the powiat (all our gminas lie in one), on the
@@ -190,10 +223,16 @@ const pogoda: Module<Weather> = {
 
 // A module's data type stays its own; the pages only pass it from load()
 // to its section and to Details.
-type ModuleData = { smieci: PlaceView; woda: Water; pogoda: Weather };
+type ModuleData = {
+  smieci: PlaceView;
+  woda: Water;
+  prad: Power;
+  pogoda: Weather;
+};
 export const MODULES: { [K in ModuleId]: Module<ModuleData[K]> } = {
   smieci: waste,
   woda,
+  prad,
   pogoda,
 };
 

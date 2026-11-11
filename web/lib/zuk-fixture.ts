@@ -6,6 +6,7 @@ import type { Locality } from "./data-model.ts";
 import { terytName } from "./places.ts";
 import type { ZukPost } from "./zuk.ts";
 import type { AiItem, AiResult } from "./zuk-ai.ts";
+import type { ZukCronDeps } from "./zuk-cron.ts";
 import { ZUK_PLACES } from "./zuk-places.generated.ts";
 import type { ZukPlaces } from "./zuk-resolve.ts";
 
@@ -2314,3 +2315,28 @@ export const TRUTH: Array<
   [14117, "2021-12-15", null, "13:00", "0606286", null, "whole"],
   [14117, "2021-12-15", null, "13:00", "0606116", null, "whole"],
 ];
+
+/**
+ * A water run that fails at once (its file unreadable, so it stops there):
+ * for the live feeds' cron tests, which run beside it.
+ */
+export const waterDown = (
+  now: () => Date,
+  log: ZukCronDeps["log"],
+): ZukCronDeps => ({
+  fetch: (async () => {
+    throw new Error("no network");
+  }) as unknown as typeof fetch,
+  readFile: async () => {
+    throw new Error("water file unreadable");
+  },
+  writeFile: async () => {
+    throw new Error("no water write");
+  },
+  places: async () => {
+    throw new Error("no places");
+  },
+  xaiKey: undefined,
+  now,
+  log,
+});

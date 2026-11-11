@@ -25,6 +25,10 @@ export const ROUTES = [
   // The water subpage: noindex, and without a ZUK file in CI (no cut to show).
   { path: "/adres/0972447-00470/woda", name: "city-street-water" },
   { path: "/adres/0606010/woda", name: "village-water" },
+  // The power subpage: PGE's derived outages in CI (PGE_API_URL=mock:ours),
+  // a failure on the town street, none in the village.
+  { path: "/adres/0972447-00470/prad", name: "city-street-power" },
+  { path: "/adres/0606010/prad", name: "village-power" },
   { path: "/ulice", name: "all-places" },
   { path: "/prywatnosc", name: "privacy" },
   { path: "/dostepnosc", name: "accessibility" },
@@ -39,6 +43,8 @@ export const ROUTES = [
   // No weather subpage any more: its warnings are cards on the
   // address page.
   { path: "/adres/0972447-00470/pogoda", name: "old-weather", status: 404 },
+  // No power calendar: only the water has one (woda.ics).
+  { path: "/adres/0972447-00470/prad.ics", name: "no-power-ics", status: 404 },
 ];
 
 // The checks' user agents. A phone's Chrome, as Lighthouse emulates it: a

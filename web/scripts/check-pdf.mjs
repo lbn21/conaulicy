@@ -84,6 +84,7 @@ const PAGE_TAGS = [
   "/adres/0972447-00470",
   "/adres/0972447-00470/smieci",
   "/adres/0972447-00470/woda",
+  "/adres/0972447-00470/prad",
 ];
 
 // The tags of the ISR entry `next start` wrote for a page, found by its

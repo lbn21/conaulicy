@@ -1,7 +1,10 @@
 import "server-only";
 import { get, put } from "@vercel/blob";
-import { type ImgwRead, imgwCopyOf, UNREADABLE } from "./imgw-shown.ts";
-import { upstream } from "./imgw-warnings.ts";
+import { type ImgwRead, imgwCopyOf } from "./imgw-shown.ts";
+import { upstream as imgwUpstream } from "./imgw-warnings.ts";
+import { liveCopyOf, PGE_KEY, UNREADABLE } from "./live-status.ts";
+import { parseOutagesFile, upstream as pgeUpstream } from "./pge-feed.ts";
+import type { PgeRead } from "./power-module.ts";
 
 // The private Blob store (BLOB_READ_WRITE_TOKEN): the crons' files, read
 // and written by the crons, and read by the pages' live blocks
@@ -13,6 +16,9 @@ import { upstream } from "./imgw-warnings.ts";
 
 /** IMGW's last good feed, only our powiats' items (lib/imgw-cron.ts). */
 export const FEED_PATH = "imgw/feed.json";
+
+/** PGE's last good list, only our area's outages (lib/pge-cron.ts). */
+export const PGE_PATH = "pge/outages.json";
 
 /** Every source's last check (lib/live-status.ts, lib/zuk-cron.ts). */
 export const CHECKS_PATH = "status/checks.json";
@@ -46,47 +52,67 @@ export async function writeBlobFile(
   });
 }
 
+/** A mock's two files for the pages (lib/imgw-mock.ts, lib/pge-mock.ts). */
+type MockFiles = (url: string, now: number) => Promise<LiveFiles>;
+type LiveFiles = { feed: string | null; checks: string | null };
+
 /**
- * IMGW's two files: the Blob's, or with IMGW_WARNINGS_URL=mock:… outside
- * production (lib/imgw-warnings.ts upstream) the mock's (lib/imgw-mock.ts
- * mockFiles), keyed by `store` so the two never share an entry. Throws if
- * either cannot be read.
+ * A live feed's last good copy for the pages, read per request through the
+ * Blob's CDN, never cached by Next; pages never ask the upstream. `url` is
+ * the upstream's: a "mock:…" one (outside production only, its upstream()
+ * refuses it there) reads the mock's files instead (no Blob needed). null:
+ * the cron has written none yet. The store unreadable, or its file not
+ * one: UNREADABLE, an expected error as a value, which the pages render as
+ * a notice (Next.js, "Handling expected errors"); every page renders as
+ * ever.
  */
-async function imgwFiles(
-  store: string,
-): Promise<{ feed: string | null; checks: string | null }> {
-  if (store.startsWith("mock:")) {
-    const { mockFiles } = await import("./imgw-mock.ts");
-    return mockFiles(store, Date.now());
+async function liveRead<C>(
+  name: string,
+  url: string,
+  path: string,
+  mock: () => Promise<MockFiles>,
+  copyOf: (feed: string | null, checks: string | null) => C | null,
+): Promise<C | null | typeof UNREADABLE> {
+  try {
+    if (url.startsWith("mock:")) {
+      const { feed, checks } = await (await mock())(url, Date.now());
+      return copyOf(feed, checks);
+    }
+    const [feed, checks] = await Promise.all([
+      readBlobFile(path, { cdn: true }),
+      readBlobFile(CHECKS_PATH, { cdn: true }),
+    ]);
+    return copyOf(feed, checks);
+  } catch (error) {
+    console.warn(`${name} store: unreadable (${(error as Error).message})`);
+    return UNREADABLE;
   }
-  const [feed, checks] = await Promise.all([
-    readBlobFile(FEED_PATH, { cdn: true }),
-    readBlobFile(CHECKS_PATH, { cdn: true }),
-  ]);
-  return { feed, checks };
 }
 
 /**
- * The last good copy of IMGW's feed and its last good check, or null when
- * the cron has written none yet: the weather module's (lib/modules.ts),
- * read per request through the
- * Blob's CDN, never cached by Next. Pages never ask IMGW. The
- * store unreadable, or its feed file not one: UNREADABLE, an expected
- * error as a value, which the pages render as a notice (Next.js, "Handling
- * expected errors"); every page renders as ever.
+ * IMGW's last good feed and its last good check: the weather module's
+ * (lib/modules.ts). `preview`: ?imgw= (lib/imgw-preview.ts), the mock,
+ * outside production only.
  */
 export async function imgwCopy(
   preview: string | null = null,
 ): Promise<ImgwRead> {
-  // ?imgw= (lib/imgw-preview.ts): the mock, outside production only.
-  const url = preview ?? (await upstream()).url;
-  try {
-    const { feed, checks } = await imgwFiles(
-      url.startsWith("mock:") ? url : "blob",
-    );
-    return imgwCopyOf(feed, checks);
-  } catch (error) {
-    console.warn(`IMGW store: unreadable (${(error as Error).message})`);
-    return UNREADABLE;
-  }
+  return liveRead(
+    "IMGW",
+    preview ?? (await imgwUpstream()).url,
+    FEED_PATH,
+    async () => (await import("./imgw-mock.ts")).mockFiles,
+    imgwCopyOf,
+  );
+}
+
+/** PGE's last good list and its last good check: the power module's. */
+export async function pgeCopy(): Promise<PgeRead> {
+  return liveRead(
+    "PGE",
+    (await pgeUpstream()).url,
+    PGE_PATH,
+    async () => (await import("./pge-mock.ts")).mockFiles,
+    (feed, checks) => liveCopyOf(parseOutagesFile(feed), checks, PGE_KEY),
+  );
 }

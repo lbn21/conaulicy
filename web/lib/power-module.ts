@@ -1,0 +1,287 @@
+// What the power module (lib/modules.ts) says about a place: PGE
+// Dystrybucja's outages (lib/pge-feed.ts, the cron's last good copy) at
+// this address, in the shapes every outages module shares: timeline items
+// (lib/upcoming.ts, components/rows/outage.tsx) and the subpage
+// (lib/outage-view.ts, components/outage-page.tsx). Pure, so the unit
+// tests read every state. docs/data/pge.md.
+//
+// Matching: the one rule (lib/place-match.ts), on each address's TERYT
+// locality and street; PGE's house numbers are shown as given, never
+// compared with the address's. Places are named from TERYT, never PGE's
+// words. A failure's end is PGE's estimate („ok.”); while PGE still lists
+// it, it lasts at least until a quarter of an hour after the last good
+// check. A revoked outage is never in the timeline; the subpage keeps it,
+// tagged, until its time is over. The copy's age decides the rest, as
+// IMGW's (lib/live-status.ts liveNotice).
+
+import type { PlaceView } from "@/lib/schedule";
+import { fromTo } from "../components/rows/when.ts";
+import { warsawDay } from "./date-labels.ts";
+import { capitalised, type Group, type Part, span } from "./hub.ts";
+import {
+  checkAge,
+  type LiveCopy,
+  liveNotice,
+  UNREADABLE,
+} from "./live-status.ts";
+import { LIST } from "./locale.ts";
+import type { OutagePage } from "./outage-view.ts";
+import type { PgeFeed, PgeOutage } from "./pge-feed.ts";
+import { matches, type PlaceRef } from "./place-match.ts";
+import { streetName } from "./places.ts";
+import type { Item } from "./upcoming.ts";
+import { ZUK_PLACES } from "./zuk-places.generated.ts";
+
+/** Who publishes the outages, as the pages credit them. */
+const PGE_NAME = "PGE Dystrybucja";
+
+/** PGE Dystrybucja's public page of current outages: the source link. */
+export const PGE_PAGE =
+  "https://pgedystrybucja.pl/wylaczenia/aktualne-przerwy-w-dostawie-energii";
+
+/** What the pages read from the store (lib/live-store.ts pgeCopy). */
+export type PgeRead = LiveCopy<PgeFeed> | null | typeof UNREADABLE;
+
+/** A failure still listed lasts at least this long past the last check. */
+const FAILURE_MARGIN_MS = 15 * 60_000;
+
+/** One of the outage's addresses here: our name, PGE's numbers as given. */
+type Where = { name: string; numbers: string | null };
+
+type PowerCut = Pick<PgeOutage, "uuid" | "kind" | "revoked" | "revokedNote"> & {
+  /** Its ranges not over yet, ISO, soonest first. */
+  ranges: PgeOutage["ranges"];
+  where: Where[];
+};
+
+export type Power = {
+  place: PlaceView;
+  /** The outages here not over yet, soonest first; revoked ones too. */
+  cuts: PowerCut[];
+  /** The copy is old or unreadable: what we say, before PGE's link. */
+  notice: string | null;
+  /** The copy is shown (not too old, not unreadable). */
+  shown: boolean;
+  /** The last good check (ms); null: the store could not be read now. */
+  checkedAt: number | null;
+};
+
+const LOCALITY = new Map(ZUK_PLACES.localities.map((l) => [l.id, l.name]));
+const STREET = new Map(ZUK_PLACES.streets.map((s) => [s.id, s]));
+
+/** An address's TERYT place: its locality, and its street or null. */
+const ref = (a: PgeOutage["addresses"][number]): PlaceRef => ({
+  localityId: a.simc,
+  streetId: a.ulic === null ? null : `${a.simc}-${a.ulic}`,
+});
+
+/**
+ * Its TERYT name for the page of `place`: a street („ul. Rynek”, its
+ * locality after it when it is another's), else the locality.
+ */
+function nameOf(address: PlaceRef, place: PlaceRef): string {
+  const locality = LOCALITY.get(address.localityId) ?? address.localityId;
+  const street = address.streetId && STREET.get(address.streetId);
+  if (!street) return locality;
+  const name = streetName(street.cecha, street.name);
+  return street.localityId === place.localityId ? name : `${name}, ${locality}`;
+}
+
+/** The outage at the address, its ranges not over by `now`; or null. */
+function cutAt(
+  item: PgeOutage,
+  place: PlaceRef,
+  checkedAt: number,
+  now: number,
+): PowerCut | null {
+  const here = item.addresses.filter((a) => matches(place, ref(a)));
+  if (here.length === 0) return null;
+  const last = item.ranges.length - 1;
+  const ranges = item.ranges
+    .map((r, i) =>
+      item.kind === "failure" && i === last
+        ? {
+            ...r,
+            end: new Date(
+              Math.max(Date.parse(r.end), checkedAt + FAILURE_MARGIN_MS),
+            ).toISOString(),
+          }
+        : r,
+    )
+    .filter((r) => Date.parse(r.end) > now);
+  if (ranges.length === 0) return null;
+  return {
+    uuid: item.uuid,
+    kind: item.kind,
+    revoked: item.revoked,
+    revokedNote: item.revokedNote,
+    ranges,
+    where: here.map((a) => ({
+      name: nameOf(ref(a), place),
+      numbers: a.numbers,
+    })),
+  };
+}
+
+/** The module's subject, after „Nie udało się sprawdzić”. */
+export const POWER_SUBJECT = "przerw w dostawie prądu";
+
+/**
+ * The module's data, or null when there is no copy yet: then the address
+ * page says it has not been checked. Too old: no outage shown, the notice
+ * alone; the store unreadable: the notice, no check time.
+ */
+export function power(
+  copy: PgeRead,
+  place: PlaceView,
+  now: number,
+): Power | null {
+  if (!copy) return null;
+  if (copy === UNREADABLE)
+    return {
+      place,
+      cuts: [],
+      notice: `Nie udało się teraz sprawdzić ${POWER_SUBJECT}.`,
+      shown: false,
+      checkedAt: null,
+    };
+  const shown = checkAge(copy.checkedAt, now) !== "too-old";
+  const cuts = shown
+    ? copy.feed.items.flatMap(
+        (item) => cutAt(item, place, copy.checkedAt, now) ?? [],
+      )
+    : [];
+  const live = cuts.filter((cut) => !cut.revoked).length;
+  return {
+    place,
+    cuts,
+    notice: liveNotice("danych PGE", copy.checkedAt, now, live),
+    shown,
+    checkedAt: copy.checkedAt,
+  };
+}
+
+/** A range's span (lib/hub.ts span); a failure's end is an estimate. */
+const rangeSpan = (cut: PowerCut, r: PowerCut["ranges"][number]) =>
+  span(warsawDay(Date.parse(r.start)), r.start, r.end, cut.kind === "failure");
+
+/** The places here, by our names: „ul. Rynek i ul. Jasna”. */
+const names = (cut: PowerCut) => LIST.format(cut.where.map((w) => w.name));
+
+/**
+ * The timeline's second sentence: where, and when PGE lists house numbers,
+ * that only some are cut (the subpage lists them).
+ */
+function second(cut: PowerCut): string {
+  const some = cut.where.some((w) => w.numbers !== null);
+  return `${capitalised(names(cut))}${some ? ", tylko pod niektórymi numerami – sprawdź w szczegółach" : ""}.`;
+}
+
+/** The timeline's items: each range of each outage not revoked. */
+export function powerUpcoming(data: Power): Item[] {
+  return data.cuts
+    .filter((cut) => !cut.revoked)
+    .flatMap((cut) =>
+      cut.ranges.map((r) => ({
+        module: "prad" as const,
+        span: rangeSpan(cut, r),
+        emergency: cut.kind === "failure",
+        second: second(cut),
+      })),
+    );
+}
+
+/** The notice, then where the current outages are: PGE's page. */
+function noticeParts(notice: string): Part[] {
+  return [
+    `${notice} Aktualne znajdziesz na `,
+    { href: PGE_PAGE, text: `stronie ${PGE_NAME}` },
+    ".",
+  ];
+}
+
+/** The hub's power lines that belong to no day: the notice, else none. */
+export function powerNotices(data: Power): Group[] {
+  return data.notice ? [[noticeParts(data.notice)]] : [];
+}
+
+/** No outage here, from a copy we show. */
+const NONE = `PGE nie zapowiada ${POWER_SUBJECT} pod tym adresem.`;
+
+const NO_NUMBERS = "PGE nie podaje numerów";
+
+/** „Numery domów według PGE”: as given; each place named when several. */
+function numbers(cut: PowerCut): string {
+  if (cut.where.length === 1) return cut.where[0].numbers ?? `${NO_NUMBERS}.`;
+  return cut.where
+    .map((w) => `${w.name}: ${w.numbers ?? NO_NUMBERS}`)
+    .join("; ");
+}
+
+/** The kind, revoked or not: a summary list row. */
+function kindRow(cut: PowerCut) {
+  const kind = cut.kind === "failure" ? "Awaria" : "Planowane wyłączenie";
+  return cut.revoked
+    ? {
+        key: "Rodzaj",
+        tag: "Odwołane",
+        value: [cut.revokedNote ? `${kind}. ${cut.revokedNote}` : kind],
+      }
+    : { key: "Rodzaj", value: [kind] };
+}
+
+/** The power's subpage as the outages' one shape (lib/outage-view.ts). */
+export function powerPage(data: Power): OutagePage {
+  const days = [
+    ...new Set(
+      data.cuts.flatMap((cut) => cut.ranges.map((r) => rangeSpan(cut, r).day)),
+    ),
+  ].sort();
+  return {
+    note: data.notice ? noticeParts(data.notice) : null,
+    calendar: null,
+    empty: data.shown && data.cuts.length === 0 ? [NONE] : null,
+    days: days.map((date) => ({
+      date,
+      blocks: data.cuts.flatMap((cut) => {
+        const spans = cut.ranges
+          .map((r) => rangeSpan(cut, r))
+          .filter((s) => s.day === date);
+        if (spans.length === 0) return [];
+        return [
+          {
+            key: `${cut.uuid}-${date}`,
+            rows: [
+              {
+                key: "Godziny",
+                value: [LIST.format(spans.map((s) => fromTo(s, false)))],
+              },
+              kindRow(cut),
+              { key: "Gdzie", value: [names(cut)] },
+              { key: "Numery domów według PGE", value: [numbers(cut)] },
+            ],
+          },
+        ];
+      }),
+    })),
+    trace: null,
+    others: [],
+    aiNote: null,
+    sources: powerSources(),
+    checkedAt: powerChecked(data),
+  };
+}
+
+/** „Źródło: PGE Dystrybucja”, its public page of outages. */
+export const powerSources = (): Part[][] => [
+  [{ href: PGE_PAGE, text: PGE_NAME }],
+];
+
+/** The last good check of PGE; none when unknown. */
+export function powerChecked(data: Power): Date | null {
+  return data.checkedAt === null ? null : new Date(data.checkedAt);
+}
+
+/** /prad's description: the place, and whose data it is. */
+export const powerDescription = (place: PlaceView) =>
+  `Zapowiedziane przerwy w dostawie prądu: ${place.label}. Daty i godziny według ${PGE_NAME}.`;

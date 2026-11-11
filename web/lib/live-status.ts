@@ -1,3 +1,5 @@
+import { clockTime, dayGenitive, warsawDay } from "./date-labels.ts";
+
 // When each source was last checked: status/checks.json in the private Blob
 // store (lib/live-store.ts), written by the ZUK cron once at the end of
 // every run (lib/zuk-cron.ts handleZukCron, the one writer). One shape for
@@ -15,6 +17,9 @@ export const MAX_AGE_MS = 3 * 3_600_000;
 
 /** IMGW's warnings feed (lib/imgw-cron.ts). */
 export const IMGW_KEY = "imgw";
+
+/** PGE Dystrybucja's power outages (lib/pge-cron.ts). */
+export const PGE_KEY = "pge";
 
 /** A water source's posts (lib/sources, its id). */
 export const waterKey = (id: string) => `water:${id}`;
@@ -111,4 +116,60 @@ export function checkAge(
   const age = now - checkedAt;
   if (age >= MAX_AGE_MS) return "too-old";
   return age > STALE_MS ? "stale" : "fresh";
+}
+
+/**
+ * What the pages read of a live feed (lib/live-store.ts): its last good
+ * copy, null when the cron has written none yet, or UNREADABLE when the
+ * store could not be read now: an expected error, returned as a value.
+ */
+export const UNREADABLE = "unreadable";
+
+/** A feed's last good copy and when it was last checked well (ms). */
+export type LiveCopy<F> = { feed: F; checkedAt: number };
+
+/**
+ * The copy of a feed file (`feed`, parsed; null: no file yet) and the
+ * status file's body: the last good check is the status file's `key`
+ * (every good run), never older than the feed file's own time (the feed
+ * is written only when it changed).
+ */
+export function liveCopyOf<F extends { fetchedAt: string }>(
+  feed: F | null,
+  checksBody: string | null,
+  key: string,
+): LiveCopy<F> | null {
+  if (!feed) return null;
+  const fetchedAt = Date.parse(feed.fetchedAt);
+  const checked = oldestCheck(parseChecks(checksBody), [key]);
+  return { feed, checkedAt: Math.max(checked ?? fetchedAt, fetchedAt) };
+}
+
+/** "9:52" today, else "piątku 30 października, 9:52": when the last data is from. */
+function since(time: number, now: number): string {
+  return warsawDay(time) === warsawDay(now)
+    ? clockTime(time)
+    : `${dayGenitive(time)}, ${clockTime(time)}`;
+}
+
+/**
+ * A live feed's notice by the age of its last good check (checkAge): none
+ * while fresh; stale, when the last data is from (`shown` of it still
+ * listed, or none); too old, only that it is not shown. `what` is the
+ * genitive after „pobrać”: „ostrzeżeń IMGW”.
+ */
+export function liveNotice(
+  what: string,
+  checkedAt: number,
+  now: number,
+  shown: number,
+): string | null {
+  const age = checkAge(checkedAt, now);
+  const time = since(checkedAt, now);
+  if (age === "fresh") return null;
+  if (age === "too-old")
+    return `Od ${time} nie udało się nam pobrać ${what}, więc ich nie pokazujemy.`;
+  return shown > 0
+    ? `Nie udało się teraz pobrać ${what}. Pokazujemy ostatnie dane z ${time}.`
+    : `Nie udało się teraz pobrać ${what}. Ostatnie dane mamy z ${time}.`;
 }

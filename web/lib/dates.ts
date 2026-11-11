@@ -164,6 +164,18 @@ export function warsawToIso(
   return isoWithOffset(asUtc - offset * 60_000);
 }
 
+/**
+ * Wall time ("2026-10-25 13:00:00") moved by `by` ms of wall clock, as wall
+ * time; anything else as it is. For the dev mocks (lib/imgw-mock.ts,
+ * lib/pge-mock.ts): whole hours or days keep the clock face.
+ */
+export function shiftWall(wall: unknown, by: number): unknown {
+  const iso = typeof wall === "string" && warsawToIso(wall);
+  if (!iso) return wall;
+  const moved = new Date(Date.parse(`${iso.slice(0, 19)}Z`) + by);
+  return moved.toISOString().slice(0, 19).replace("T", " ");
+}
+
 /** An instant as Warsaw ISO 8601 with its offset. */
 export function isoWithOffset(at: number): string {
   const offset = warsawOffset(at);
