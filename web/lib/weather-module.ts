@@ -1,10 +1,9 @@
 // What the weather module (lib/modules.ts) says on the address page: IMGW's
-// warnings for the powiat (lib/imgw-shown.ts), with a notice when the copy
-// is old. The timeline has each warning (when, its level); /pogoda
-// (components/weather-page.tsx) adds IMGW's own description of each, its
-// probability, and IMGW's page. Pure, so the unit tests read every state.
-import { warsawDay } from "./date-labels.ts";
-import { type Group, type Part, span } from "./hub.ts";
+// warnings for the powiat (lib/imgw-shown.ts), a card each above the
+// timeline (components/warning-cards.tsx, task 288), with a notice when
+// the copy is old. Pure, so the unit tests read every state.
+import { dayMonthTime, momentRange } from "./date-labels.ts";
+import type { Group } from "./hub.ts";
 import {
   CURRENT,
   IMGW_PAGE,
@@ -14,7 +13,6 @@ import {
   shownWarnings,
   UNREADABLE,
 } from "./imgw-shown.ts";
-import type { Item } from "./upcoming.ts";
 
 export type Weather = {
   /** null: fresh, and no warning in force or to come. */
@@ -22,9 +20,6 @@ export type Weather = {
   /** The last good check (ms); null: the store could not be read now. */
   checkedAt: number | null;
 };
-
-/** The source, short. */
-const SHORT = "IMGW-PIB";
 
 /** Where every warning applies: all our gminas lie in one powiat. */
 export const POWIAT = {
@@ -45,31 +40,18 @@ export function weather(copy: ImgwRead, now: number): Weather | null {
   };
 }
 
-// IMGW's three levels: the tag's colour, never the only signal (its text
-// says the level).
-export const TAG = {
-  1: "govuk-tag govuk-tag--yellow",
-  2: "govuk-tag govuk-tag--orange",
-  3: "govuk-tag govuk-tag--red",
-} as const;
-
-/** „Stopień 2 z 3”. */
-export const levelText = (warning: ShownWarning) =>
-  `Stopień ${warning.level} z 3`;
-
-/** The timeline's items: one per warning in force or to come, the powiat's. */
-export function weatherUpcoming(data: Weather): Item[] {
-  return (data.shown?.warnings ?? []).map((warning) => ({
-    module: "pogoda",
-    span: span(warsawDay(Date.parse(warning.from)), warning.from, warning.to),
-    event: warning.event.charAt(0).toLowerCase() + warning.event.slice(1),
-    level: { tag: TAG[warning.level], text: levelText(warning) },
-    second: `${POWIAT.name}.`,
-  }));
+/**
+ * When a warning applies (task 288), in its card: „Trwa do 11 listopada
+ * 19:00.” once it has begun, else „Od 11 listopada, 10:00 do 16:00.”
+ * (Intl's range, lib/date-labels.ts momentRange).
+ */
+export function warningWhen(warning: ShownWarning, now: number): string {
+  const from = Date.parse(warning.from);
+  const to = Date.parse(warning.to);
+  if (from <= now) return `Trwa do ${dayMonthTime(to)}.`;
+  const [start, end] = momentRange(from, to);
+  return `Od ${start} do ${end}.`;
 }
-
-/** /pogoda's line with no warning in force. */
-export const NO_WARNINGS = `Brak ostrzeżeń IMGW dla ${POWIAT.of}.`;
 
 /**
  * The hub's IMGW lines that belong to no day (task 263): the notice when
@@ -88,11 +70,6 @@ export function weatherNotices(data: Weather): Group[] {
         ],
       ]
     : [];
-}
-
-/** „Źródło”: IMGW's page. */
-export function weatherSources(): Part[][] {
-  return [[{ href: IMGW_PAGE, text: SHORT }]];
 }
 
 /** The last good check of IMGW; none when unknown. */

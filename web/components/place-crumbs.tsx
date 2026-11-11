@@ -1,4 +1,4 @@
-import { hubData } from "@/components/hub";
+import { hubData, imgwQuery } from "@/components/hub";
 import { LiveBlock } from "@/components/live-block";
 import { subpageData } from "@/components/module-page";
 import {
@@ -56,7 +56,7 @@ async function PlaceCrumbs({
   const { id, module = fixed } = await params;
   const { nr } = await numberQuery(searchParams);
   if (module === undefined) {
-    const [place] = await hubData(id, nr);
+    const [place] = await hubData(id, nr, await imgwQuery(searchParams));
     return place && <PlaceBreadcrumbs place={place} />;
   }
   const loaded = await subpageData(id, module, nr);

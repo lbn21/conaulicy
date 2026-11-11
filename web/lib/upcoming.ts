@@ -35,8 +35,6 @@ type Base = {
 export type Item = Base &
   (
     | { module: "woda"; emergency: boolean }
-    /** `event` lower-case, in running text: "silny wiatr". */
-    | { module: "pogoda"; event: string; level: Tag }
     /** "papier, szkło" or "wszystkie pojemniki". */
     | { module: "smieci"; bins: string; pickups: Bins["bins"] }
   );

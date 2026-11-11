@@ -86,3 +86,27 @@ export function clockTime(at: number): string {
     minute: "2-digit",
   }).format(at);
 }
+
+let moments: Intl.DateTimeFormat | undefined;
+
+/**
+ * Intl's range of two instants (Warsaw day, month and time), split at the
+ * dash it puts between them, so a sentence can say „od … do …”: ["11
+ * listopada, 10:00", "16:00"], ["11 listopada 22:00", "12 listopada 04:00"].
+ */
+export function momentRange(from: number, to: number): [string, string] {
+  moments ??= new Intl.DateTimeFormat(LOCALE, {
+    timeZone: WARSAW,
+    day: "numeric",
+    month: "long",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const parts = moments.formatRangeToParts(from, to);
+  const join = (some: Intl.DateTimeRangeFormatPart[]) =>
+    some.map((part) => part.value).join("");
+  const end = parts.findIndex((part) => part.source === "endRange");
+  // The same minute: Intl gives one moment, no range.
+  if (end < 0) return [join(parts), join(parts)];
+  return [join(parts.slice(0, end - 1)), join(parts.slice(end))];
+}

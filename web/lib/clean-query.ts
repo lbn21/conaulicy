@@ -6,6 +6,7 @@
 // links its icons with a cache-busting query.
 
 import { ADDRESS } from "./address-routes.ts";
+import { IMGW_PREVIEW, imgwPreviewAllowed } from "./imgw-preview.ts";
 import { STATIC_PAGES } from "./static-pages.ts";
 
 // The home page and the static pages: /, /ulice, …
@@ -15,7 +16,8 @@ const PAGES = new RegExp(
 
 const ROUTES: [RegExp, string[]][] = [
   [PAGES, []],
-  [ADDRESS, ["nr"]],
+  // ?imgw=: the IMGW mock, outside production only (lib/imgw-preview.ts).
+  [ADDRESS, imgwPreviewAllowed() ? ["nr", IMGW_PREVIEW] : ["nr"]],
   [/^\/adres\/[^/]+\/harmonogram\.pdf$/, ["nr"]],
   [/^\/adres\/[^/]+\/woda\.ics$/, ["nr"]],
   [/^\/ics\/[^/]+$/, []],

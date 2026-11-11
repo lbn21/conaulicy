@@ -12,20 +12,24 @@ import {
   StreetPage,
 } from "@/components/place-page";
 import { Timeline } from "@/components/timeline";
+import { WarningCards } from "@/components/warning-cards";
 import { WarsawToday } from "@/components/warsaw-today";
-import { MODULE_IDS } from "@/lib/address-routes";
+import { MODULE_IDS, SUBPAGE_IDS } from "@/lib/address-routes";
 import { freshnessLine, type Group, unchecked } from "@/lib/hub";
+import { IMGW_PREVIEW, imgwPreview } from "@/lib/imgw-preview";
 import { IMGW_ATTRIBUTION } from "@/lib/imgw-warnings";
 import { MODULES, type Module } from "@/lib/modules";
 import type { PlaceView } from "@/lib/schedule";
+import type { Weather } from "@/lib/weather-module";
 
 // The address page, /adres/[id] (and ?nr=): a date-first hub of modules
 // (lib/modules.ts, task 102; task 263), under breadcrumbs. Under „Zmień
 // adres”: the lines that belong to no day (each module's notices, in an
-// inset); „Najbliższe 7 dni”, a vertical timeline of every module's items
+// inset); a card per IMGW warning (components/warning-cards.tsx, task
+// 288); „Najbliższe 7 dni”, a vertical timeline of every module's items
 // by day (components/timeline.tsx, lib/timeline.ts), then „Później”;
 // „Wszystko o Twoim adresie”, a link to each module's subpage (/smieci,
-// /woda, /pogoda) that has a source; then one small-print note: when each
+// /woda) that has a source; then one small-print note: when each
 // module last checked its source, the AI caveat when it applies, and IMGW's
 // required wording (task 284; the sources are on the subpages). No
 // calendar or PDF here: they are on the waste subpage. A split street's
@@ -50,12 +54,19 @@ import type { PlaceView } from "@/lib/schedule";
  * (react.dev/reference/react/cache). In registry order; the first, waste's,
  * is the place itself.
  */
-export const hubData = cache(async (id: string, nr: string | null) => {
-  await io();
-  return (await Promise.all(
-    MODULE_IDS.map((slug) => MODULES[slug].load(id, nr)),
-  )) as [PlaceView | null, ...unknown[]];
-});
+export const hubData = cache(
+  async (id: string, nr: string | null, imgw: string | null = null) => {
+    await io();
+    return (await Promise.all(
+      MODULE_IDS.map((slug) => MODULES[slug].load(id, nr, imgw)),
+    )) as [PlaceView | null, ...unknown[]];
+  },
+);
+
+/** The page's ?imgw= as the mock's URL (lib/imgw-preview.ts), or null. */
+export async function imgwQuery(searchParams: AddressSearch) {
+  return imgwPreview((await searchParams)[IMGW_PREVIEW]);
+}
 
 /**
  * The address page's content (hubData), whole, behind the page's one
@@ -77,7 +88,7 @@ export async function HubMain({
   // An unknown place: its 404 before anything is read per request.
   if (!(await knownPlace(id))) return <>{unknown}</>;
   const { nr, missing } = await numberQuery(searchParams);
-  const data = await hubData(id, nr);
+  const data = await hubData(id, nr, await imgwQuery(searchParams));
   const place = data[0];
   if (!place) return <>{unknown}</>;
   return (
@@ -106,8 +117,11 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
     data[i] === null ? [] : [{ module, data: data[i] }],
   );
   const links = loaded.filter(
-    ({ module, data }) => module.sources(data).length > 0,
+    ({ module, data }) =>
+      SUBPAGE_IDS.includes(module.id) && module.sources(data).length > 0,
   );
+  const weather = data[MODULE_IDS.indexOf("pogoda")] as Weather | null;
+  const now = Date.now();
   return (
     <AddressPage place={place}>
       {notices.length > 0 && (
@@ -115,7 +129,8 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
           <Status groups={notices} />
         </div>
       )}
-      <Timeline items={items} place={place} now={Date.now()} />
+      <WarningCards warnings={weather?.shown?.warnings ?? []} now={now} />
+      <Timeline items={items} place={place} now={now} />
       {links.length > 0 && (
         <section aria-labelledby="wszystko">
           <h2 id="wszystko" className="govuk-heading-m">

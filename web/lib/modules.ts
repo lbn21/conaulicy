@@ -7,11 +7,9 @@
 // can read them without Next.js; this registry must list exactly those.
 import type { ReactNode } from "react";
 import { indexedPlace, numberError, WasteBody } from "@/components/place-page";
-import { WeatherRow } from "@/components/rows/pogoda";
 import { WasteRow } from "@/components/rows/smieci";
 import { WaterRow } from "@/components/rows/woda";
 import { WaterDetails } from "@/components/water-page";
-import { WeatherDetails } from "@/components/weather-page";
 import { isModuleId, type ModuleId, SUBPAGE_IDS } from "@/lib/address-routes";
 import type { Checked, Group, Part } from "@/lib/hub";
 import { imgwCopy } from "@/lib/live-store";
@@ -36,13 +34,10 @@ import {
   waterUpcoming,
 } from "@/lib/water-module";
 import {
-  POWIAT,
   type Weather,
   weather,
   weatherChecked,
   weatherNotices,
-  weatherSources,
-  weatherUpcoming,
 } from "@/lib/weather-module";
 
 // Its functions and components are method signatures, so a typed module
@@ -56,8 +51,14 @@ export type Module<D> = {
    * `place` is the place id, `nr` a house number. null: no such place
    * (waste: a 404), or nothing we could read now: the address page and
    * the subpage say it could not be checked (lib/hub.ts unchecked).
+   * `imgw`: the weather's preview mock (lib/imgw-preview.ts), outside
+   * production only; the others ignore it.
    */
-  load(place: string, nr: string | null): Promise<D | null>;
+  load(
+    place: string,
+    nr: string | null,
+    imgw?: string | null,
+  ): Promise<D | null>;
   /**
    * Its items for the timeline (lib/upcoming.ts, lib/timeline.ts),
    * structured: its Row words them.
@@ -163,28 +164,28 @@ const woda: Module<Water> = {
 };
 
 // IMGW's warnings for the powiat (all our gminas lie in one), on the
-// address page and its /pogoda subpage only (task 257, task 263): each in
-// the timeline, IMGW's own description on /pogoda; no copy yet, „Nie udało
-// się sprawdzić”; the store unreadable, a notice.
-const pogodaTitle = "Ostrzeżenia pogodowe IMGW";
+// address page only: a card each above the timeline (task 288,
+// components/warning-cards.tsx), never in the timeline, and no subpage
+// (SUBPAGE_IDS), so no rows, sources or body of its own; no copy yet,
+// „Nie udało się sprawdzić”; the store unreadable, a notice.
 const pogoda: Module<Weather> = {
   id: "pogoda",
   title: "pogoda",
-  more: pogodaTitle,
-  pageTitle: pogodaTitle,
-  async load() {
-    return weather(await imgwCopy(), Date.now());
+  more: "Ostrzeżenia pogodowe IMGW",
+  pageTitle: "Ostrzeżenia pogodowe IMGW",
+  async load(_place, _nr, imgw) {
+    return weather(await imgwCopy(imgw), Date.now());
   },
-  upcoming: weatherUpcoming,
+  upcoming: () => [],
   notices: weatherNotices,
   rowLabel: "Ostrzeżenie IMGW",
   hiddenLabel: "o ostrzeżeniu IMGW",
   subject: "ostrzeżeń IMGW",
-  Row: WeatherRow,
-  sources: weatherSources,
+  Row: () => null,
+  sources: () => [],
   checkedAt: weatherChecked,
-  description: (place) => `${pogodaTitle} dla ${POWIAT.of}: ${place.label}.`,
-  Details: WeatherDetails,
+  description: () => "",
+  Details: () => null,
 };
 
 // A module's data type stays its own; the pages only pass it from load()
