@@ -99,7 +99,8 @@ export const PLATE = HEADER;
 // IMGW's warning levels 1-3 (Jakub's decision, task 98): the solid colours
 // IMGW's own warnings map paints them (lvlToColorOsmet in
 // shared.imgw.pl/web-components/ostrzezenia-meteo-hydro/ostrzezenia-meteo-hydro.js),
-// for the banner's tags (app/site.scss), not GOV.UK's pale tag tints. Not
+// for the address page's warning cards' bands (app/site.scss, task 288), not
+// GOV.UK's pale tag tints. Not
 // brand colours, so check-palette lets them stand outside docs/brand.md.
 export const WARNING_LEVELS = {
   "warning-level-1": "#ffbe00",

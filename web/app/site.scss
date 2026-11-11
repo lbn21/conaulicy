@@ -273,7 +273,7 @@ $app-caret: govuk-spacing(2);
 .app-timeline__title .app-timeline__when { color: govuk-functional-colour(secondary-text); }
 .app-timeline__card .govuk-summary-list__key { color: govuk-functional-colour(brand); }
 // Two sizes in a card (task 269): the date heading-s, all else body-s.
-.app-timeline__card :is(.govuk-summary-list, .govuk-list, .govuk-tag) { @include govuk-font-size($size: 16); }
+.app-timeline__card :is(.govuk-summary-list, .govuk-list) { @include govuk-font-size($size: 16); }
 
 // Inside a card one rhythm: key and value a 5px step apart on mobile,
 // „Szczegóły” 10px under every value (a list's last

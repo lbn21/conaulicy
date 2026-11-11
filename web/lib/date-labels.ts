@@ -1,4 +1,5 @@
-// Server-only date labels for the street page, the PDF and the IMGW banner.
+// Server-only date labels for the street page, the PDF and the IMGW warning
+// cards.
 // Kept out of lib/dates.ts, which the client bundle imports. Relative
 // imports, so the unit tests can load it (scripts/lib/server-only.mjs).
 import "server-only";
