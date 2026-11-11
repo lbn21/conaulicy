@@ -399,8 +399,8 @@ try {
         ),
       `${c.name}: page 1 header cells' left padding ${[...new Set(headerPads.map(round))].join(", ")} pt (one for every header cell)`,
     );
-    // The key, between the tables and the footer line: its lines start in
-    // one place, and no item stands alone on a line beside fuller ones.
+    // The key, between the tables and the footer: its lines start in one
+    // place, and no item stands alone on a line beside fuller ones.
     // Items are words more than 2 U apart (a mark between them); the first
     // line's first word is the key's heading.
     const tablesEnd = Math.max(...tables.map((t) => t.y1));
@@ -412,7 +412,13 @@ try {
       if (line) line.push(w);
       else keyLines.push([w]);
     }
-    keyLines.pop(); // the footer line
+    // The key's heading and the footer start at the margin, the key's
+    // later lines after the heading: the key ends at the next line from
+    // the margin.
+    const footerAt = keyLines.findIndex(
+      (line, i) => i > 0 && Math.min(...line.map((w) => w.x0)) < SIDE + 1,
+    );
+    if (footerAt > 0) keyLines.splice(footerAt);
     const items = keyLines.map((line, i) =>
       line
         .sort((a, b) => a.x0 - b.x0)
