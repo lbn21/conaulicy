@@ -92,6 +92,9 @@ const px = (n: number) => n * 0.75;
 /** The type scale: GOV.UK's sizes in pt, and one under them for fine print. */
 const TYPE = {
   fine: 9,
+  // The month tables' text, headers and days alike, where 16px is just too
+  // wide for five columns.
+  table: px(15),
   small: px(16),
   body: px(19),
   heading: px(24),
@@ -110,6 +113,7 @@ const CAP_TOP = ASCENT - CAP;
 /** Each size's row on the scale, and the gap PDFKit adds for that pitch. */
 const ROW: Record<number, number> = {
   [TYPE.fine]: 3 * U,
+  [TYPE.table]: 4 * U,
   [TYPE.small]: 4 * U,
   [TYPE.body]: 5 * U,
   [TYPE.heading]: 6 * U,
@@ -1016,18 +1020,19 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // (with its marks) whose grid fits, its rows then as tall as fill the
   // space down to the key (in half points: the one size not on U, so the
   // tables use the whole page).
-  // Headers one step under the cells' text, as the leaflet's, and every
-  // table text TABLE_PAD in from its borders.
+  // As the leaflet's: nothing bold, headers the days' size, set apart only
+  // by the grey; every table text TABLE_PAD in from its borders.
   const tableSizes = [
-    { size: TYPE.heading, head: TYPE.body, mark: 14 },
-    { size: TYPE.body, head: TYPE.small, mark: 12 },
-    { size: TYPE.small, head: TYPE.fine, mark: MARK },
+    { size: TYPE.heading, mark: 14 },
+    { size: TYPE.body, mark: 12 },
+    { size: TYPE.small, mark: MARK },
+    { size: TYPE.table, mark: MARK },
   ];
-  const layouts = tableSizes.map(({ size, head, mark }) => {
+  const layouts = tableSizes.map(({ size, mark }) => {
     const dateW = onScale(
       Math.max(
-        widthOf("bold", head, "Dzień"),
-        ...inWindow.map((day) => widthOf("bold", size, dateText(day))),
+        widthOf("regular", size, "Dzień"),
+        ...inWindow.map((day) => widthOf("regular", size, dateText(day))),
       ) +
         2 * TABLE_PAD,
     );
@@ -1039,7 +1044,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       yearH: YEAR_H,
       rowGap: ROW_GAP,
       dateW,
-      minMarksW: onScale(widthOf("bold", head, "Odpady") + 2 * TABLE_PAD),
+      minMarksW: onScale(widthOf("regular", size, "Odpady") + 2 * TABLE_PAD),
       pad: TABLE_PAD,
       mark,
       markGap: MARK_GAP,
@@ -1049,11 +1054,10 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       minRow: ROW[size],
       rowStep: 0.5,
     });
-    return { size, head, mark, dateW, grid };
+    return { size, mark, dateW, grid };
   });
   const {
     size: cellSize,
-    head: tableHead,
     mark: cellMark,
     dateW,
     grid,
@@ -1080,7 +1084,15 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       }
     });
     tag(root, "H3", () =>
-      rowText("bold", tableHead, BLACK, monthName(key), x + TABLE_PAD, y, rowH),
+      rowText(
+        "regular",
+        cellSize,
+        BLACK,
+        monthName(key),
+        x + TABLE_PAD,
+        y,
+        rowH,
+      ),
     );
     const table = doc.struct("Table");
     root.add(table);
@@ -1088,14 +1100,14 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     table.add(headRow);
     headRow.add(
       doc.struct("TH", {}, () =>
-        rowText("bold", tableHead, BLACK, "Dzień", x + TABLE_PAD, head, rowH),
+        rowText("regular", cellSize, BLACK, "Dzień", x + TABLE_PAD, head, rowH),
       ),
     );
     headRow.add(
       doc.struct("TH", {}, () =>
         rowText(
-          "bold",
-          tableHead,
+          "regular",
+          cellSize,
           BLACK,
           "Odpady",
           x + dateW + TABLE_PAD,
@@ -1116,7 +1128,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       tr.add(
         doc.struct("TD", { actual: spoken(day) }, () =>
           rowText(
-            "bold",
+            "regular",
             cellSize,
             from ? ink(RED) : BLACK,
             dateText(day),
