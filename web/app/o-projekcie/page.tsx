@@ -16,8 +16,8 @@ export const metadata: Metadata = pageMetadata({
 const PRG_PAGE =
   "https://www.geoportal.gov.pl/pl/dane/panstwowy-rejestr-granic-prg/";
 
-// GUS's register of place and street names (TERYT), the import's source;
-// its „stan na” dates: docs/data/DATA-INVENTORY.md (TERYT).
+// GUS's register of place and street names (TERYT), the import's source
+// (docs/data/DATA-INVENTORY.md, TERYT).
 const TERYT_PAGE = "https://eteryt.stat.gov.pl/";
 
 export default function AboutPage() {
@@ -68,8 +68,7 @@ export default function AboutPage() {
           <a href={TERYT_PAGE} className="govuk-link">
             rejestru TERYT (GUS)
           </a>
-          , stan na 16 października 2026 (ulice) i 1 stycznia 2026
-          (miejscowości).
+          .
         </p>
         <p className="govuk-body">
           Wpisany numer domu porównujemy z{" "}
