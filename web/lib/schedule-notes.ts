@@ -30,13 +30,6 @@ export function putOutLine(time: string): string {
   return `Wystaw je do ${hour} ${Number.parseInt(hour, 10) < 12 ? "rano" : "w dniu odbioru"}.`;
 }
 
-/**
- * The address page's small print while the dates are not checked yet:
- * one short sentence (the subpage keeps the full unverifiedNote).
- */
-export const SHORT_UNVERIFIED_NOTE =
-  "Daty przepisał program – jeśli coś się nie zgadza, ważniejszy jest harmonogram.";
-
 /** In the footer and a calendar without its gmina: we are not an office. */
 export const DISCLAIMER =
   "Nie jesteśmy urzędem – ważniejszy jest komunikat urzędu.";

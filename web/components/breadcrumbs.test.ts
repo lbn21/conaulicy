@@ -8,7 +8,12 @@ import AboutPage from "../app/o-projekcie/page.tsx";
 import PrivacyPage from "../app/prywatnosc/page.tsx";
 import { SOURCES, source } from "../lib/test-sources.ts";
 import { testPlace } from "../lib/water-fixture.ts";
-import { Breadcrumbs, type Crumb, HOME_CRUMB } from "./breadcrumbs.tsx";
+import {
+  Breadcrumbs,
+  CRUMBS_CLASS,
+  type Crumb,
+  HOME_CRUMB,
+} from "./breadcrumbs.tsx";
 import { AddressPage, PlaceBreadcrumbs } from "./place-page.tsx";
 
 // GOV.UK's breadcrumbs (components/breadcrumbs.tsx): every item a link, the
@@ -18,7 +23,7 @@ import { AddressPage, PlaceBreadcrumbs } from "./place-page.tsx";
 const render = (items: readonly Crumb[]) =>
   renderToStaticMarkup(createElement(Breadcrumbs, { items }));
 const LABEL = /<nav [^>]*aria-label="([^"]+)"/.exec(render([HOME_CRUMB]))?.[1];
-const NAV = `<nav class="govuk-breadcrumbs govuk-breadcrumbs--collapse-on-mobile govuk-!-margin-top-7" aria-label="${LABEL}"><ol class="govuk-breadcrumbs__list">`;
+const NAV = `<nav class="${CRUMBS_CLASS}" aria-label="${LABEL}"><ol class="govuk-breadcrumbs__list">`;
 const item = (href: string, text: string) =>
   `<li class="govuk-breadcrumbs__list-item"><a class="govuk-breadcrumbs__link" href="${href}">${text}</a></li>`;
 const crumbs = (...items: string[]) => `${NAV}${items.join("")}</ol></nav>`;
@@ -129,4 +134,11 @@ test("the flat pages and the 404: no breadcrumbs, no <main> of their own", () =>
     assert.ok(elements(page).every((el) => el.type !== Breadcrumbs));
     assert.ok(elements(page).every((el) => el.type !== "main"));
   }
+});
+
+test("the trail: one spacing token above and below it", () => {
+  const top = /govuk-!-margin-top-(\d)/.exec(CRUMBS_CLASS)?.[1];
+  const bottom = /govuk-!-margin-bottom-(\d)/.exec(CRUMBS_CLASS)?.[1];
+  assert.ok(top);
+  assert.equal(bottom, top);
 });

@@ -13,7 +13,6 @@ import {
   NO_MORE_DATES,
   NO_MORE_DATES_NEXT,
   putOutLine,
-  SHORT_UNVERIFIED_NOTE,
 } from "./schedule-notes.ts";
 
 /**
@@ -57,11 +56,6 @@ function noDates(place: PlaceView, text: string): Part[] {
         ]
       : []),
   ];
-}
-
-/** The address page's small-print note while the dates are not checked yet. */
-export function wasteNote(place: PlaceView): string | null {
-  return place.verified ? null : SHORT_UNVERIFIED_NOTE;
 }
 
 /**

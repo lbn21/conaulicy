@@ -10,7 +10,6 @@ import { hasUpcoming } from "./schedule-notes.ts";
 import {
   sourcesOf,
   wasteChecked,
-  wasteNote,
   wastePath,
   wasteSchedule,
   wasteSources,
@@ -136,7 +135,7 @@ test("the timeline: every pickup from today on, its bins, in running text", () =
   assert.deepEqual(wasteUpcoming(place({ zoneId: null, days: [] })), []);
 });
 
-test("no put-out line without a time; a note in the meta line while unverified", () => {
+test("no put-out line without a time, unverified too", () => {
   const unverified = place({
     days: [{ date: "2026-10-27", pickups: [pickup("Szkło")] }],
     verified: false,
@@ -148,11 +147,6 @@ test("no put-out line without a time; a note in the meta line while unverified",
       [{ bins: [pickup("Szkło")] }],
     ],
   ]);
-  assert.equal(
-    wasteNote(unverified),
-    "Daty przepisał program – jeśli coś się nie zgadza, ważniejszy jest harmonogram.",
-  );
-  assert.equal(wasteNote(place()), null);
 });
 
 test("a split street without a number links the waste subpage's question", () => {

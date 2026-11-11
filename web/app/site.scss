@@ -224,10 +224,13 @@ $app-hair: $govuk-border-width-form-element * .5;
 $app-radius: govuk-spacing(2);
 $app-shadow: 0 $app-hair $app-hair * 3 color-mix(in srgb, #{govuk-colour("black")} 8%, transparent);
 $app-caret: govuk-spacing(2);
+// One gap between cards everywhere (the timeline's days, the hub's module
+// cards, the subpages' cards); sections keep GOV.UK's 30 below them.
+$app-gap: govuk-spacing(4);
 
 .app-timeline { position: relative; margin: 0 0 govuk-spacing(6); padding: 0; list-style: none; }
 .app-timeline::before { content: ""; position: absolute; top: 0; bottom: 0; left: ($app-dot - $app-hair) * .5; border-left: $app-hair solid govuk-functional-colour(border); }
-.app-timeline > li { --app-y: #{$app-hair + govuk-spacing(3) + govuk-spacing(2) + govuk-spacing(1) * .5}; position: relative; margin: 0; padding: 0 0 govuk-spacing(4) govuk-spacing(6); }
+.app-timeline > li { --app-y: #{$app-hair + govuk-spacing(3) + govuk-spacing(2) + govuk-spacing(1) * .5}; position: relative; margin: 0; padding: 0 0 $app-gap govuk-spacing(6); }
 .app-timeline > li:last-child { padding-bottom: 0; }
 
 // The line's ends: the page's background over it above the first dot and
@@ -277,17 +280,18 @@ $app-caret: govuk-spacing(2);
 // Two sizes in a card: the date heading-s, all else body-s.
 .app-timeline__card :is(.govuk-summary-list, .govuk-list) { @include govuk-font-size($size: 16); }
 
-// Inside a card one rhythm: key and value a 5px step apart on mobile,
-// „Szczegóły” 10px under every value (a list's last
+// Inside a card one rhythm: key, value and „Szczegóły” 10px apart on
+// mobile, the last row's too (a list's last
 // item no margin of its own), rows 10px apart on tablet, nothing under the
 // last row (GOV.UK's no-border row) but the card's padding.
 // The same in every card (.app-card): the subpages' outages and dates.
-:is(.app-timeline__card, .app-card) .govuk-summary-list__value { margin-bottom: govuk-spacing(2); }
+:is(.app-timeline__card, .app-card) :is(.govuk-summary-list__key, .govuk-summary-list__value) { margin-bottom: govuk-spacing(2); }
 :is(.app-timeline__card, .app-card) .govuk-summary-list__value li:last-child { margin-bottom: 0; }
 :is(.app-timeline__card, .app-card) .govuk-summary-list__row:first-child > * { padding-top: 0; }
 :is(.app-timeline__card, .app-card) .govuk-summary-list__row:last-child { border-bottom: 0; }
+:is(.app-timeline__card, .app-card) .govuk-summary-list__row:last-child > * { padding-bottom: 0; }
 :is(.app-timeline__card, .app-card) .govuk-summary-list__row:last-child,
-:is(.app-timeline__card, .app-card) .govuk-summary-list__row:last-child > * { margin-bottom: 0; padding-bottom: 0; }
+:is(.app-timeline__card, .app-card) .govuk-summary-list__row:last-child > :last-child { margin-bottom: 0; }
 
 // Every link in a card at least 24px tall to tap (WCAG 2.5.8): an
 // invisible box 25px tall centred on it. Nothing moves and GOV.UK's
@@ -357,11 +361,14 @@ $app-caret: govuk-spacing(2);
 
 // Item cards (shadcn/ui's Item): tile, body, chevron; the link's box the
 // whole card's. Plain: the tile and text alone (the home page's list).
-.app-items { display: grid; gap: govuk-spacing(3); margin: 0 0 govuk-spacing(6); padding: 0; list-style: none; }
+.app-items { display: grid; gap: $app-gap; margin: 0 0 govuk-spacing(6); padding: 0; list-style: none; }
 .app-item { position: relative; display: flex; gap: govuk-spacing(3); align-items: center; padding: govuk-spacing(3); border: $app-hair solid govuk-functional-colour(border); border-radius: $app-radius; background: govuk-colour("white"); box-shadow: $app-shadow; @include govuk-font($size: 19); }
 .app-item > .app-tile { width: govuk-spacing(7); height: govuk-spacing(7); margin: 0; }
 .app-item__body { display: flex; flex: 1; flex-wrap: wrap; gap: govuk-spacing(1) govuk-spacing(2); align-items: center; }
 .app-item__link::after { content: ""; position: absolute; inset: 0; }
+// Hover: the card's border in the text colour, the title underlined
+// (govuk-link--no-underline); focus: GOV.UK's own focus style on the title.
+.app-item:hover { border-color: govuk-functional-colour(text); }
 .app-item > .app-icon { color: govuk-functional-colour(secondary-text); }
 .app-items--plain > .app-item { padding: 0; border: 0; box-shadow: none; }
 
@@ -385,12 +392,12 @@ $app-caret: govuk-spacing(2);
 
 // A card (shadcn/ui's Card): white, a subtle border and shadow, rounded;
 // accent: a bar on the left in the module's colour (the next pickup).
-.app-card { margin: 0 0 govuk-spacing(4); padding: govuk-spacing(3); border: $app-hair solid govuk-functional-colour(border); border-radius: $app-radius; background: govuk-colour("white"); box-shadow: $app-shadow; }
+.app-card { margin: 0 0 $app-gap; padding: govuk-spacing(3); border: $app-hair solid govuk-functional-colour(border); border-radius: $app-radius; background: govuk-colour("white"); box-shadow: $app-shadow; }
 .app-card--accent { border-left: govuk-spacing(2) solid var(--app-mod, #{govuk-functional-colour(border)}); }
 
-// An empty state (shadcn/ui's Empty): muted text in a dashed frame.
-.app-empty { padding: govuk-spacing(4); border: $app-hair dashed govuk-functional-colour(border); border-radius: $app-radius; color: govuk-functional-colour(secondary-text); }
-.app-empty > :last-child { margin-bottom: 0; }
+// An empty state: plain text in the secondary colour, regular weight, no
+// frame, pill or colour (a pill or colour only when there is something).
+.app-empty { color: govuk-functional-colour(secondary-text); }
 
 // An icon leading a button or a link's words, a space's width from them.
 :is(.govuk-button, .govuk-link) > .app-icon:first-child { margin-right: govuk-spacing(1); }
