@@ -1,5 +1,5 @@
 // The PDF key's layout („Oznaczenia”, app/adres/[id]/harmonogram.pdf): one
-// fixed grid, the same on every address's PDF (Tech Lead, PR #269). Its
+// fixed grid, the same on every address's PDF (Tech Lead, t334). Its
 // heading on a line of its own, then KEY_ROWS rows of KEY_COLUMNS equal
 // cells, each as wide as the widest item any zone's key can hold; an
 // address fills the cells in order, row by row, and leaves the rest empty.
