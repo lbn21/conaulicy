@@ -6,7 +6,9 @@
 // only Atkinson Hyperlegible Next embedded, a one-page calendar, a one-page
 // guide from the gmina's own rules and the text version after them. Every
 // address's month tables are the same size, rows included, however many
-// months it has, every row one height (no date's marks wrap), at one place
+// months it has, in one fixed 4 × 3 grid inside the page's margins (a
+// whole year's twelve months on page 1), every row one height (no date's
+// marks wrap), at one place
 // on the page whatever the street's name (the longest on one line), and so
 // are the guide's tiles; no word on pages 1–2 spills
 // out of its table, tile or box (scripts/lib/pdf-layout.mjs). Checks are
@@ -133,6 +135,11 @@ async function pageTags(pagePath) {
 const MIN_BOX = { w: 50, h: 40 };
 const SPILL = 1;
 const PAGE_H = 841.89;
+const PAGE_W = 595.28;
+// The page's side margin (the route's MARGIN): every table inside it.
+const SIDE = 28;
+// Page 1's fixed month grid (the route's MONTH_COLUMNS × MONTH_ROWS).
+const GRID = { columns: 4, rows: 3 };
 const round = (n) => Math.round(n * 100) / 100;
 // Per case: page 1's table size and row height, page 2's largest tile.
 const layouts = [];
@@ -358,6 +365,18 @@ try {
         splits.size === 1 &&
         !splits.has(null),
       `${c.name}: page 1 tables ${[...sizes].join(", ")}, rows ${[...rows].join(", ")}, date columns ${[...splits].join(", ")} (one size, every row one height: no marks wrap)`,
+    );
+    // A fixed grid inside the page's margins: at most 4 × 3 tables on page
+    // 1, a whole window's twelve months all of them, nothing carried over.
+    const xs = new Set(tables.map((t) => round(t.x0)));
+    const ys = new Set(tables.map((t) => round(t.y0)));
+    check(
+      tables.every((t) => t.x0 >= SIDE - 0.1 && t.x1 <= PAGE_W - SIDE + 0.1) &&
+        xs.size <= GRID.columns &&
+        ys.size <= GRID.rows &&
+        (tables.length < GRID.columns * GRID.rows ||
+          (xs.size === GRID.columns && ys.size === GRID.rows)),
+      `${c.name}: page 1 grid ${xs.size} × ${ys.size} of ${tables.length} tables, x ${[...xs].join(", ")} (a fixed ${GRID.columns} × ${GRID.rows} inside the margins)`,
     );
     // The place's name (the document title's last part, before the
     // locality) on one line of page 1.
