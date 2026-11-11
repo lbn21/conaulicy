@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { checkedLine } from "./hub.ts";
+import { type Checked, sourceLine } from "./hub.ts";
+
+/** The check, as a subpage's source block says it; none: null. */
+const checkedText = (at: Checked) => sourceLine([], at)[0] ?? null;
+
 import type { PlaceView } from "./schedule.ts";
 import { hasUpcoming } from "./schedule-notes.ts";
 import {
@@ -14,8 +18,7 @@ import {
 } from "./waste-module.ts";
 import { wasteUpcoming } from "./waste-upcoming.ts";
 
-const wasteLine = (at: Parameters<typeof checkedLine>[0]) =>
-  checkedLine(at, "Wywozy sprawdziliśmy");
+const wasteLine = checkedText;
 
 const pickup = (label: string, putOutBy: string | null = null) => ({
   id: label,
@@ -218,7 +221,7 @@ test("checked line: events.checkedAt, a day; source_files.lastSeenAt, Warsaw day
   assert.equal(wasteChecked(place()), "2026-10-20");
   assert.equal(
     wasteLine(wasteChecked(place())),
-    "Wywozy sprawdziliśmy: 20 października",
+    "Sprawdziliśmy 20 października.",
   );
   // The source row says no more than its link and part: one checked line.
   for (const row of wasteSources(place()))
@@ -239,7 +242,7 @@ test("checked line: events.checkedAt, a day; source_files.lastSeenAt, Warsaw day
   ];
   const at = wasteChecked(place({ sources }));
   assert.ok(at instanceof Date);
-  assert.equal(wasteLine(at), "Wywozy sprawdziliśmy: 25 października 5:03");
+  assert.equal(wasteLine(at), "Sprawdziliśmy 25 października 5:03.");
 });
 
 test("checked line: the oldest of several sources, times and days alike; none without a date", () => {
@@ -255,7 +258,7 @@ test("checked line: the oldest of several sources, times and days alike; none wi
   ];
   assert.equal(
     wasteLine(wasteChecked(place({ sources }))),
-    "Wywozy sprawdziliśmy: 30 września",
+    "Sprawdziliśmy 30 września.",
   );
   assert.equal(wasteChecked(place({ sources: [sources[2]] })), null);
   assert.equal(wasteChecked(place({ sources: [] })), null);
@@ -276,7 +279,7 @@ test("checked line: the oldest of several sources, times and days alike; none wi
         }),
       ),
     ),
-    "Wywozy sprawdziliśmy: 24 października 6:01",
+    "Sprawdziliśmy 24 października 6:01.",
   );
   // A file seen today, another source without a row checked days ago.
   assert.equal(
@@ -287,7 +290,7 @@ test("checked line: the oldest of several sources, times and days alike; none wi
         }),
       ),
     ),
-    "Wywozy sprawdziliśmy: 20 października",
+    "Sprawdziliśmy 20 października.",
   );
   // A day counts as older than any time on that Warsaw day, and the day
   // is Warsaw's: 23:30 UTC on the 24th is already the 25th there.
@@ -307,7 +310,7 @@ test("checked line: the oldest of several sources, times and days alike; none wi
         }),
       ),
     ),
-    "Wywozy sprawdziliśmy: 24 października 23:30",
+    "Sprawdziliśmy 24 października 23:30.",
   );
 });
 

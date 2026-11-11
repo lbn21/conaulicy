@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { checkedLine } from "./hub.ts";
+import { type Checked, sourceLine } from "./hub.ts";
+
+/** The check, as a subpage's source block says it; none: null. */
+const checkedText = (at: Checked) => sourceLine([], at)[0] ?? null;
+
 import {
   copyCheckedAt as copy,
   NO_WARNINGS_2026_10_18,
@@ -135,8 +139,8 @@ test("checked line: the last good check, warning or not", () => {
       at("2026-10-25T13:52:10+01:00"),
     );
     assert.equal(
-      checkedLine(weatherChecked(data), "Ostrzeżenia pogodowe sprawdziliśmy"),
-      "Ostrzeżenia pogodowe sprawdziliśmy: 25 października 13:52",
+      checkedText(weatherChecked(data)),
+      "Sprawdziliśmy 25 października 13:52.",
     );
   }
 });
@@ -149,8 +153,5 @@ test("the store unreadable now: the notice alone, no item, no check time", () =>
     [[`Nie udało się teraz sprawdzić ostrzeżeń IMGW.${NOTICE_END}`, link, "."]],
   ]);
   assert.equal(weatherChecked(data), null);
-  assert.equal(
-    checkedLine(weatherChecked(data), "Ostrzeżenia pogodowe sprawdziliśmy"),
-    null,
-  );
+  assert.equal(checkedText(weatherChecked(data)), null);
 });
