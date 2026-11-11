@@ -5,8 +5,12 @@
 // year starts a new row under its heading. Sized once for the largest case
 // (every month of the window, each as full as the fullest month of any
 // address, `profiles`), so every address gets the same tables: fewer months
-// leave the space below empty, never larger tables. Pure, so the choice is tested
-// without a PDF (lib/pdf-grid.test.ts).
+// leave the space below empty, never larger tables. A date's marks never
+// wrap: the marks column holds the most any date has in the data, at the
+// same table width: first the date column narrows (it holds one or two
+// digits), then the marks close up, then they shrink a little; past that the
+// grid does not fit (the caller takes a smaller size).
+// Pure, so the choice is tested without a PDF (lib/pdf-grid.test.ts).
 
 type GridMonth = {
   /** "YYYY-MM". */
@@ -22,6 +26,11 @@ export type GridInput = {
    * rows hold the fullest of these too.
    */
   profiles?: number[][];
+  /**
+   * Marks to hold beyond the fullest date (+1: room for one more than the
+   * data has today); 0 by default.
+   */
+  headroom?: number;
   /** Width for the grid, and the space between tables. */
   width: number;
   gap: number;
@@ -30,14 +39,19 @@ export type GridInput = {
   /** A year heading with its space below; the space between table rows. */
   yearH: number;
   rowGap: number;
-  /** The date column: the widest date, or „Dzień”, with its padding. */
+  /** The date column: „Dzień” or the widest date, with its padding … */
   dateW: number;
+  /** … and the narrowest it may be, for wider marks: with less padding. */
+  minDateW: number;
   /** The narrowest the marks column may be: its header with its padding. */
   minMarksW: number;
   /** Inner padding of a cell, a mark's size and the space between marks. */
   pad: number;
   mark: number;
   markGap: number;
+  /** The least the marks may close up and shrink to, past a narrow date. */
+  minMarkGap: number;
+  minMark: number;
   maxColumns: number;
   minColumns: number;
   /** Body and header rows: as tall as fits, between these, in steps. */
@@ -49,7 +63,11 @@ export type GridInput = {
 export type Grid = {
   columns: number;
   tableW: number;
-  /** Marks a body row holds; a date with more takes more rows. */
+  /** The date column, and the marks' size and gap, in this table width. */
+  dateW: number;
+  mark: number;
+  markGap: number;
+  /** Marks a body row holds: at least the most any date has, if it fits. */
   perLine: number;
   /** Body rows in every table. */
   bodyRows: number;
@@ -102,23 +120,88 @@ export function gridHeight(
   );
 }
 
+/** The most marks any one date has, in these months and the profiles. */
+export const mostMarks = (input: Pick<GridInput, "months" | "profiles">) =>
+  Math.max(
+    0,
+    ...[...input.months.map((m) => m.marks), ...(input.profiles ?? [])].flat(),
+  );
+
+/**
+ * The date column and marks that hold `most` marks on one line in a table
+ * this wide: the preferred date column if the marks fit beside it; else the
+ * marks column exactly as wide as they need, the date column the rest, down
+ * to its narrowest; else the marks closer, then smaller, down to their
+ * least (in quarter points, the date column taking the rest). Null if even that leaves too little room.
+ */
+export function fitMarks(
+  tableW: number,
+  most: number,
+  input: Pick<
+    GridInput,
+    | "dateW"
+    | "minDateW"
+    | "minMarksW"
+    | "pad"
+    | "mark"
+    | "markGap"
+    | "minMarkGap"
+    | "minMark"
+  >,
+): { dateW: number; mark: number; markGap: number } | null {
+  const n = Math.max(1, most);
+  const need = (mark: number, gap: number) =>
+    Math.max(input.minMarksW, 2 * input.pad + n * mark + (n - 1) * gap);
+  const { mark, markGap } = input;
+  if (tableW - input.dateW >= need(mark, markGap)) {
+    return { dateW: input.dateW, mark, markGap };
+  }
+  if (tableW - need(mark, markGap) >= input.minDateW) {
+    return { dateW: tableW - need(mark, markGap), mark, markGap };
+  }
+  const room = tableW - input.minDateW - 2 * input.pad;
+  if (tableW - input.minDateW < input.minMarksW) return null;
+  // Quarter points: the least change that fits.
+  const quarter = (x: number) => Math.floor(x * 4) / 4;
+  if (n > 1) {
+    const gap = quarter((room - n * mark) / (n - 1));
+    if (gap >= input.minMarkGap) {
+      return { dateW: tableW - need(mark, gap), mark, markGap: gap };
+    }
+  }
+  const gap = n > 1 ? input.minMarkGap : markGap;
+  const small = quarter((room - (n - 1) * gap) / n);
+  // The rounding's rest to the date column: the marks' padding stays even.
+  return small >= input.minMark
+    ? { dateW: tableW - need(small, gap), mark: small, markGap: gap }
+    : null;
+}
+
 /**
  * The grid for these months: of the column counts whose marks column is
- * wide enough, the one that fits the height, then has no date across two
- * rows, then has the tallest rows, then the most columns. If none fits at
- * the smallest rows, the shortest grid, at those rows (the caller runs it
- * on to more pages).
+ * wide enough and holds every date's marks on one line, the one that fits
+ * the height, then has the tallest rows, then the most columns. If none
+ * fits, the shortest grid, at the smallest rows (`fits` false: the caller
+ * tries a smaller size).
  */
 export function chooseGrid(input: GridInput): Grid {
+  // The worst case of every address (profiles), never this one's own.
+  const most = mostMarks(input) + (input.headroom ?? 0);
   const options: Grid[] = [];
   for (let columns = input.maxColumns; columns >= input.minColumns; columns--) {
     const tableW = (input.width - input.gap * (columns - 1)) / columns;
-    const marksW = tableW - input.dateW;
-    if (marksW < input.minMarksW || marksW < input.mark + 2 * input.pad) {
+    const fitted = fitMarks(tableW, most, input);
+    const cell = fitted ?? {
+      dateW: input.dateW,
+      mark: input.mark,
+      markGap: input.markGap,
+    };
+    const marksW = tableW - cell.dateW;
+    if (marksW < input.minMarksW || marksW < cell.mark + 2 * input.pad) {
       continue;
     }
     const perLine = Math.floor(
-      (marksW - 2 * input.pad + input.markGap) / (input.mark + input.markGap),
+      (marksW - 2 * input.pad + cell.markGap) / (cell.mark + cell.markGap),
     );
     const bodyRows = Math.max(
       1,
@@ -139,18 +222,15 @@ export function chooseGrid(input: GridInput): Grid {
     options.push({
       columns,
       tableW,
+      ...cell,
       perLine,
       bodyRows,
       rowH: Math.max(input.minRow, rowH),
       rows,
-      fits: rowH >= input.minRow,
+      fits: rowH >= input.minRow && fitted !== null && perLine >= most,
     });
   }
   if (options.length === 0) throw new Error("chooseGrid: no column count fits");
-  const wraps = (grid: Grid) =>
-    [...input.months.map((m) => m.marks), ...(input.profiles ?? [])].some(
-      (marks) => marks.some((n) => n > grid.perLine),
-    );
   const fitting = options.filter((grid) => grid.fits);
   if (fitting.length === 0) {
     return options.reduce((best, grid) =>
@@ -161,7 +241,6 @@ export function chooseGrid(input: GridInput): Grid {
     );
   }
   return fitting.reduce((best, grid) => {
-    if (wraps(grid) !== wraps(best)) return wraps(grid) ? best : grid;
     if (grid.rowH !== best.rowH) return grid.rowH > best.rowH ? grid : best;
     return grid.columns > best.columns ? grid : best;
   });
