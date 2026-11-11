@@ -47,7 +47,7 @@ test("every table gets the fullest month's body rows", () => {
   assert.equal(grid.bodyRows, 4);
 });
 
-test("months fill rows in order; a row is headed when its year changes", () => {
+test("each month sits under its own year: a year starts a new row", () => {
   const grid = chooseGrid({
     ...base,
     months: [
@@ -58,13 +58,19 @@ test("months fill rows in order; a row is headed when its year changes", () => {
   });
   assert.equal(grid.columns, 5);
   assert.deepEqual(
-    grid.rows.map((row) => [row.year, row.keys.length]),
+    grid.rows.map((row) => [
+      row.year,
+      row.keys.every((key) => key.startsWith(row.year)),
+      row.keys.length,
+    ]),
     [
-      ["2026", 5],
-      ["2027", 5],
+      ["2026", true, 2],
+      ["2027", true, 5],
+      ["2027", true, 3],
     ],
   );
-  assert.deepEqual(headed(grid.rows), [true, true]);
+  // A heading above the first row of each year only.
+  assert.deepEqual(headed(grid.rows), [true, true, false]);
 });
 
 test("rows shrink in steps to fit, and the grid fits its height", () => {

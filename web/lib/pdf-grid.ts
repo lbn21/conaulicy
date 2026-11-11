@@ -1,8 +1,8 @@
 // Page 1's month grid, as a council bin leaflet's: identical, fully bordered
 // month tables (a title cell, a „Dzień | Odpady” header row, then the same
 // number of body rows in every month: as many as the fullest month needs,
-// empty ones left blank), in a strict grid of equal columns, with a year
-// heading above each row a new year starts. Pure, so the choice is tested
+// empty ones left blank), in a strict grid of equal columns; each calendar
+// year starts a new row under its heading. Pure, so the choice is tested
 // without a PDF (lib/pdf-grid.test.ts).
 
 type GridMonth = {
@@ -57,15 +57,17 @@ export const dateRows = (marks: number, perLine: number) =>
   Math.max(1, Math.ceil(marks / perLine));
 
 /**
- * The table rows: the months in order, `columns` to a row. A row is headed
- * by its first month's year when that changes; a month of a later year
- * inside a row carries its year in its title.
+ * The table rows: each calendar year's months, `columns` to a row, so a
+ * month always sits under its own year's heading.
  */
 function tableRows(months: GridMonth[], columns: number) {
   const rows: Array<{ year: string; keys: string[] }> = [];
-  for (let i = 0; i < months.length; i += columns) {
-    const keys = months.slice(i, i + columns).map((m) => m.key);
-    rows.push({ year: keys[0].slice(0, 4), keys });
+  for (const { key } of months) {
+    const year = key.slice(0, 4);
+    const last = rows.at(-1);
+    if (last && last.year === year && last.keys.length < columns) {
+      last.keys.push(key);
+    } else rows.push({ year, keys: [key] });
   }
   return rows;
 }
