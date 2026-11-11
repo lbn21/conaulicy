@@ -23,7 +23,8 @@ import {
   WORDMARK,
 } from "@/lib/logo";
 import { fileSlug } from "@/lib/normalize";
-import { type Block, flow, pack, type Spot } from "@/lib/pdf-flow";
+import { type Block, flow, type Spot } from "@/lib/pdf-flow";
+import { chooseGrid, dateRows, headed } from "@/lib/pdf-grid";
 import { drawIcon, FRACTION_ICONS, PDF_ICONS } from "@/lib/pdf-icon";
 import { scheduleName } from "@/lib/places";
 import {
@@ -41,7 +42,7 @@ import {
   unverifiedNote,
 } from "@/lib/schedule-notes";
 import { SITE_NAME } from "@/lib/share";
-import { type GuideSource, guideFor } from "@/lib/sorting-guide";
+import { guideFor } from "@/lib/sorting-guide";
 import { THEME_COLOR } from "@/lib/theme";
 import { FRACTIONS, TOKEN, tones } from "@/lib/waste-bin";
 import { WASTE_COLOURS as WASTE } from "@/lib/waste-colours";
@@ -60,25 +61,42 @@ const BOLD = readFileSync(
   path.join(FONT_DIR, "AtkinsonHyperlegibleNext-Bold.ttf"),
 );
 
-// A4 portrait in points, 10 mm margins, laid out as a council's bin leaflet
-// in the site's look: page 1 the whole published period on one page (the
-// cherry band with the "ul." plate and QR code, GOV.UK Warning text and the
-// notes with their icons, a grid of small month tables, four a row, each
-// date with its fractions' marks, the key); then „Co wrzucać”, a tile per
-// fraction from the gmina's own rules (lib/sorting-guide.ts) with Lucide's
-// icons, the hazardous-waste strip and the rules' sources; then a text-only
-// version, for black-and-white and colour-blind use.
+// A4 portrait in points, laid out as a council's bin leaflet in the site's
+// look, on one spacing scale (U, 4 pt) and one type scale (TYPE): page 1 is
+// the whole published period on one page (the cherry band with the "ul."
+// plate and the QR code, one GOV.UK Warning line, identical bordered month
+// tables in a strict grid (lib/pdf-grid.ts), the key, one footer line);
+// page 2, „Co wrzucać”, equal tiles from the gmina's own rules
+// (lib/sorting-guide.ts) with Lucide's icons, the PSZOK line beside the QR
+// code to the full rules, one footer line; then the text-only version, for
+// screen readers and black-and-white use, with every source in full.
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
-const MARGIN = 28;
+// The spacing scale: every gap, padding and size a multiple of U.
+const U = 4;
+const MARGIN = 7 * U;
+/** Between month tables and between tiles: one gutter for both grids. */
+const GUTTER = 2 * U;
+/** Between the page's blocks: band, note, grid, key, footer. */
+const SECTION = 4 * U;
+/** A table cell's inner padding. */
+const PAD = U;
+/** Every border and rule: one weight, one colour (RULE, below). */
+const LINE_W = 0.5;
 const CONTENT_W = PAGE_W - 2 * MARGIN;
 const MONTHS = 12;
-const COLUMNS = 4;
-const COLUMN_GAP = 12;
-const TABLE_W = (CONTENT_W - COLUMN_GAP * (COLUMNS - 1)) / COLUMNS;
 
 /** The site's type scale at its physical size: CSS px × 0.75 = pt. */
 const px = (n: number) => n * 0.75;
+
+/** The type scale: GOV.UK's sizes in pt, and one under them for fine print. */
+const TYPE = {
+  fine: 9,
+  small: px(16),
+  body: px(19),
+  heading: px(24),
+  title: px(36),
+} as const;
 
 // Atkinson Hyperlegible Next's vertical metrics, in em. PDFKit sets a line
 // from the top of its ascender (0.984), so the baseline is ASCENT below y and
@@ -89,12 +107,23 @@ const LINE = ASCENT + 0.316;
 const CAP = 0.668;
 const CAP_TOP = ASCENT - CAP;
 
+/** Each size's row on the scale, and the gap PDFKit adds for that pitch. */
+const ROW: Record<number, number> = {
+  [TYPE.fine]: 3 * U,
+  [TYPE.small]: 4 * U,
+  [TYPE.body]: 5 * U,
+  [TYPE.heading]: 6 * U,
+  [TYPE.title]: 9 * U,
+};
+const lineGap = (size: number) => ROW[size] - size * LINE;
+
 // GOV.UK Frontend's palette, as on the site (lib/govuk-colours.ts).
 const BLACK = GOVUK_FUNCTIONAL.text;
 const WHITE = GOVUK_COLOUR.white;
 const SECONDARY_TEXT = GOVUK_FUNCTIONAL["secondary-text"];
 const BORDER = GOVUK_FUNCTIONAL.border;
 const PANEL = GOVUK_COLOUR["black-tint-95"];
+const RULE = SECONDARY_TEXT;
 // govuk-colour("red"), also GOV.UK's error colour.
 const RED = GOVUK_COLOUR.red;
 // The bands take the site header's colour (lib/theme.ts).
@@ -188,9 +217,9 @@ function drawMark(
       break;
     case "triangle":
       doc.polygon(
-        [cx, cy - r * 1.05],
-        [cx + r * 1.05, cy + r * 0.85],
-        [cx - r * 1.05, cy + r * 0.85],
+        [cx, cy - r * 0.95],
+        [cx + r * 1.05, cy + r * 0.95],
+        [cx - r * 1.05, cy + r * 0.95],
       );
       fill();
       break;
@@ -359,6 +388,10 @@ function label(pickups: Pickup[]): string {
   return pickups.map((p) => p.label).join(", ");
 }
 
+function tonesOf(day: PickupDay): string[] {
+  return day.pickups.flatMap((p) => tones(p.subtype));
+}
+
 function moved(day: PickupDay): string | null {
   return day.pickups.find((p) => p.shiftedFrom)?.shiftedFrom ?? null;
 }
@@ -395,9 +428,8 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     const key = day.date.slice(0, 7);
     byMonth.set(key, [...(byMonth.get(key) ?? []), day]);
   }
-  // Only months with dates are printed.
+  // Only months with dates are printed, up to the last published one.
   const printed = months.filter((key) => byMonth.has(key));
-  // After the last date, as on the page and in the calendar.
   const laterText = laterNote(place.days);
   const usual = usualWeekday(inWindow);
   const odd = (day: PickupDay) =>
@@ -408,11 +440,6 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const putOut = putOutBy ? putOutNote(putOutBy) : null;
   const title = withHouseNumber(place.name, place.nr);
   const dayLine = usual ? `Twój dzień odbioru: ${usual}` : null;
-  // The unverified note ends with the same advice, so then it is said once,
-  // after the reason for it.
-  const warningText = place.verified
-    ? `Terminy mogą się zmienić. Jeśli coś się nie zgadza, ważniejszy jest ${scheduleName(place.gmina)}.`
-    : "Terminy mogą się zmienić.";
   // Each fraction's name as the data gives it; a fraction met only inside a
   // combined pickup takes the site's.
   const toneLabels = new Map<string, string>();
@@ -460,8 +487,8 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
 
   const root = doc.struct("Document");
   doc.addStructure(root);
-  // Content repeated on later pages (bands, key, footer) is tagged once and
-  // drawn as an artifact elsewhere.
+  // Content repeated on later pages is tagged once and drawn as an artifact
+  // elsewhere.
   const tag = (
     parent: PDFKit.PDFStructureElement | null,
     type: string,
@@ -471,11 +498,80 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     if (parent) parent.add(doc.struct(type, options, draw));
     else draw();
   };
-  /** The top for a line of text whose cap height is centred in a box. */
-  const capCentred = (size: number, top: number, height: number) =>
+  /** A line of text whose cap height is centred in a row box: its top. */
+  const capTop = (size: number, top: number, height: number) =>
     top + height / 2 + (size * CAP) / 2 - size * ASCENT;
+  /** Text in one row box, cap-centred, never wrapped. */
+  const rowText = (
+    font: string,
+    size: number,
+    colour: string,
+    text: string,
+    x: number,
+    top: number,
+    height: number,
+    options: PDFKit.Mixins.TextOptions = {},
+  ) => {
+    doc
+      .font(font)
+      .fontSize(size)
+      .fillColor(colour)
+      .text(text, x, capTop(size, top, height), {
+        lineBreak: false,
+        ...options,
+      });
+  };
+  /** Wrapped text, every line on the row pitch of its size. */
+  const block = (font: string, size: number, text: string, width: number) => {
+    doc.font(font).fontSize(size);
+    const lines = Math.round(
+      doc.heightOfString(text, { width, lineGap: lineGap(size) }) / ROW[size],
+    );
+    return Math.max(1, lines) * ROW[size];
+  };
+  const blockText = (
+    font: string,
+    size: number,
+    colour: string,
+    text: string,
+    x: number,
+    top: number,
+    width: number,
+  ) => {
+    doc
+      .font(font)
+      .fontSize(size)
+      .fillColor(colour)
+      .text(text, x, capTop(size, top, ROW[size]), {
+        width,
+        lineGap: lineGap(size),
+      });
+  };
+  /** A rule across the content width. */
+  const rule = (y: number) => {
+    doc
+      .moveTo(MARGIN, y)
+      .lineTo(PAGE_W - MARGIN, y)
+      .lineWidth(LINE_W)
+      .strokeColor(RULE)
+      .stroke();
+  };
+  const ink = (fill: string) => readableInk(fill, [BLACK, WHITE]);
+  /** The largest size of the scale, from `sizes`, at which text fits a line. */
+  const fitting = (
+    font: string,
+    text: string,
+    width: number,
+    sizes: number[],
+  ) =>
+    sizes.find((size) => {
+      doc.font(font).fontSize(size);
+      return doc.widthOfString(text) <= width;
+    }) ?? sizes[sizes.length - 1];
 
-  // ------------------------------------------------------------ footers
+  // ------------------------------------------------------------ text footer
+  // The text version's footer: every source with its link and check day,
+  // the disclaimer last; its ink ends MARGIN above the page's edge.
   // Sources at the foot of the page, each with its link and the day it was
   // checked, above an optional bold closing line; the last ink ends MARGIN
   // above the page's edge, a divider ruleGap above the first.
@@ -599,193 +695,147 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       artifact: () => artifact(doc, () => draw(null)),
     };
   };
-  const mainFooter = footer(
-    sourceLines(place.sources),
-    disclaimer(place.gmina),
-  );
-  const ruleY = mainFooter.ruleY;
 
-  /**
-   * The guide's sources, compact: the day they were checked once (or on
-   * each line if they differ), then one line per source, its name and link,
-   * smaller if it must (never under 7 pt), on one leading.
-   */
-  const sourcesFooter = (sources: GuideSource[]) => {
-    const days = [...new Set(sources.map((source) => source.checkedAt))];
-    const one = days.length === 1;
-    const head = one
-      ? `Zasady segregacji według gminy · stan na ${longDate(days[0])}:`
-      : "Zasady segregacji według gminy:";
-    const lines = sources.map((source) => ({
-      text: `${source.label}${one ? "" : ` (stan na ${longDate(source.checkedAt)})`}: ${source.url}`,
-      url: source.url,
-    }));
-    const sizeOf = (text: string) =>
-      fitSize(doc, "regular", text, CONTENT_W, small, 7);
-    const last = lines.at(-1);
-    const lastBelow = last
-      ? inkOf("regular", sizeOf(last.text), last.text).below
-      : inkOf("bold", small, head).below;
-    // Every line on the same leading; a smaller one keeps its baseline.
-    const lastBaseline = PAGE_H - MARGIN - lastBelow;
-    const top = lastBaseline - lines.length * footerLead - small * ASCENT;
-    const ruleY =
-      top +
-      small * ASCENT -
-      inkOf("bold", small, head).above -
-      ruleGap -
-      ruleW / 2;
+  // ------------------------------------------------------------ footer line
+  // One short line a page: the source, the day it was checked, and that we
+  // are not an office. The text version lists every source in full.
+  const oldest = (days: Array<string | null>) =>
+    days.filter((d): d is string => d !== null).sort()[0] ?? null;
+  const footerText = (source: string, checked: string | null) =>
+    [
+      `Źródło: ${source}`,
+      ...(checked ? [`stan na ${longDate(checked)}`] : []),
+      "Nie jesteśmy urzędem.",
+    ].join(" · ");
+  const footerLine = (text: string) => {
+    const size = fitting("regular", text, CONTENT_W, [TYPE.small, TYPE.fine]);
+    const h = block("regular", size, text, CONTENT_W);
+    const top = PAGE_H - MARGIN - h;
+    const ruleY = top - 2 * U;
     const draw = (parent: PDFKit.PDFStructureElement | null) => {
-      divider(parent, ruleY);
-      tag(parent, "P", () => {
-        doc
-          .font("bold")
-          .fontSize(small)
-          .fillColor(BLACK)
-          .text(head, MARGIN, top, { lineBreak: false });
-      });
-      lines.forEach((line, i) => {
-        const size = sizeOf(line.text);
-        const baselineY = top + small * ASCENT + (i + 1) * footerLead;
-        tag(parent, "P", () => {
-          doc
-            .font("regular")
-            .fontSize(size)
-            .fillColor(SECONDARY_TEXT)
-            .text(line.text, MARGIN, baselineY - size * ASCENT, {
-              lineBreak: false,
-              link: line.url,
-            });
-        });
-      });
+      if (parent) artifact(doc, () => rule(ruleY));
+      else rule(ruleY);
+      tag(parent, "P", () =>
+        blockText(
+          "regular",
+          size,
+          SECONDARY_TEXT,
+          text,
+          MARGIN,
+          top,
+          CONTENT_W,
+        ),
+      );
     };
-    return { ruleY, draw, artifact: () => artifact(doc, () => draw(null)) };
+    return { top: ruleY, draw };
   };
 
   // ------------------------------------------------------------ bands
-  // Both bands pad their content by MARGIN on all four sides, measured to the
-  // ink, and draw the plate at the same size.
-  const logoH = 24;
-  const logoGap = 12;
+  // The full band on page 1: the plate, where, the street and its day on the
+  // left; the QR code and its caption on the right. Rows on the scale, their
+  // text cap-centred; MARGIN of padding all round.
+  const LOGO_H = 6 * U;
+  const qrSize = 20 * U;
+  const qrBox = qrSize + 2 * U;
+  const qrX = PAGE_W - MARGIN - qrBox;
+  const bandTextW = qrX - 6 * U - MARGIN;
   const kicker = `${place.area} · Harmonogram odbioru odpadów`;
-  const qrSize = 76;
-  const qrX = PAGE_W - MARGIN - qrSize - 6;
-  const bandTextW = qrX - 6 - 24 - MARGIN;
-  const kickerTop = MARGIN + logoH + logoGap;
-  const titleTop = kickerTop + 20;
-  const titleSize = fitSize(doc, "bold", title, bandTextW, px(36), px(24));
-  doc.font("bold").fontSize(titleSize);
-  const titleH = doc.heightOfString(title, { width: bandTextW });
-  const qrBottom = MARGIN + qrSize + 12;
+  const titleSize = fitting("bold", title, bandTextW, [
+    TYPE.title,
+    TYPE.heading,
+  ]);
+  const bandLine = [dayLine, putOut].filter(Boolean).join(" · ");
+  const bandLineSize = fitting("bold", bandLine, bandTextW, [
+    TYPE.body,
+    TYPE.small,
+  ]);
+  const kickerTop = MARGIN + LOGO_H + 3 * U;
+  const titleTop = kickerTop + ROW[TYPE.body];
+  const titleH = block("bold", titleSize, title, bandTextW);
+  const bandLineTop = titleTop + titleH + U;
+  const leftBottom = bandLine
+    ? bandLineTop + block("bold", bandLineSize, bandLine, bandTextW)
+    : titleTop + titleH;
   const scan = "Zeskanuj: aktualne terminy";
-  // The usual day and the caption share one baseline: the lower of their
-  // own (the day 6 below the title, the caption's cap height 8 below the QR
-  // code). The band ends MARGIN below the lower ink.
-  const baseline = Math.max(
-    qrBottom + 8 + small * CAP,
-    dayLine ? titleTop + titleH + 6 + px(19) * ASCENT : 0,
-  );
-  const baseInk = Math.max(
-    inkOf("regular", small, scan).below,
-    dayLine ? inkOf("bold", px(19), dayLine).below : 0,
-  );
-  const titleInk =
-    titleTop +
-    titleH -
-    titleSize * (LINE - ASCENT) +
-    inkOf("bold", titleSize, title).below;
-  const bandH = Math.max(baseline + baseInk, dayLine ? 0 : titleInk) + MARGIN;
-  const bandBaseline = bandH - MARGIN - baseInk;
+  const scanTop = MARGIN + qrBox + U;
+  const rightBottom = scanTop + ROW[TYPE.small];
+  const bandH = Math.max(leftBottom, rightBottom) + MARGIN;
 
-  /** Page 1: the band, plate, place, usual day and the QR code. */
   const drawBand = () => {
     artifact(doc, () => {
       doc.rect(0, 0, PAGE_W, bandH).fillColor(HEADER).fill();
-      drawLogo(doc, MARGIN, MARGIN, logoH);
-      doc
-        .rect(qrX - 6, MARGIN, qrSize + 12, qrSize + 12)
-        .fillColor(WHITE)
-        .fill();
-      drawQr(doc, url, qrX, MARGIN + 6, qrSize);
+      drawLogo(doc, MARGIN, MARGIN, LOGO_H);
+      doc.rect(qrX, MARGIN, qrBox, qrBox).fillColor(WHITE).fill();
+      drawQr(doc, url, qrX + U, MARGIN + U, qrSize);
     });
-    tag(root, "P", () => {
-      doc
-        .font("regular")
-        .fontSize(fitSize(doc, "regular", kicker, bandTextW, px(19), 9))
-        .fillColor(WHITE)
-        .text(kicker, MARGIN, kickerTop, { lineBreak: false });
-    });
-    tag(root, "H1", () => {
-      doc
-        .font("bold")
-        .fontSize(titleSize)
-        .fillColor(WHITE)
-        .text(title, MARGIN, titleTop, { width: bandTextW });
-    });
-    if (dayLine) {
-      tag(root, "P", () => {
-        doc
-          .font("bold")
-          .fontSize(px(19))
-          .fillColor(WHITE)
-          .text(dayLine, MARGIN, bandBaseline - px(19) * ASCENT, {
-            lineBreak: false,
-          });
-      });
+    tag(root, "P", () =>
+      rowText(
+        "regular",
+        TYPE.body,
+        WHITE,
+        kicker,
+        MARGIN,
+        kickerTop,
+        ROW[TYPE.body],
+      ),
+    );
+    tag(root, "H1", () =>
+      blockText("bold", titleSize, WHITE, title, MARGIN, titleTop, bandTextW),
+    );
+    if (bandLine) {
+      tag(root, "P", () =>
+        blockText(
+          "bold",
+          bandLineSize,
+          WHITE,
+          bandLine,
+          MARGIN,
+          bandLineTop,
+          bandTextW,
+        ),
+      );
     }
-    // On the shared baseline, under the QR code.
-    const scanWidth = 170;
-    tag(root, "P", () => {
-      doc
-        .font("regular")
-        .fontSize(small)
-        .fillColor(WHITE)
-        .text(
-          scan,
-          PAGE_W - MARGIN - scanWidth,
-          bandBaseline - small * ASCENT,
-          {
-            width: scanWidth,
-            align: "right",
-            lineBreak: false,
-            link: url,
-          },
-        );
-    });
+    tag(root, "P", () =>
+      rowText(
+        "regular",
+        TYPE.small,
+        WHITE,
+        scan,
+        qrX - 30 * U,
+        scanTop,
+        ROW[TYPE.small],
+        {
+          width: 30 * U + qrBox,
+          align: "right",
+          link: url,
+        },
+      ),
+    );
     return bandH;
   };
 
-  /** Later pages: a compact band with the plate and the place. */
-  const compactH =
-    MARGIN +
-    logoH +
-    logoGap +
-    px(19) * ASCENT +
-    inkOf("bold", px(19), `${title} · wersja tekstowa`).below +
-    MARGIN;
+  /** Later pages: the plate and one line, with the same padding. */
+  const compactH = MARGIN + LOGO_H + 3 * U + ROW[TYPE.body] + MARGIN - U;
   const compactBand = (
     what: string,
     parent: PDFKit.PDFStructureElement | null,
   ) => {
     const text = `${title} · ${what}`;
+    const size = fitting("bold", text, CONTENT_W, [TYPE.body, TYPE.small]);
     const plate = () => {
       doc.rect(0, 0, PAGE_W, compactH).fillColor(HEADER).fill();
-      drawLogo(doc, MARGIN, MARGIN, logoH);
+      drawLogo(doc, MARGIN, MARGIN, LOGO_H);
     };
-    // On the bottom padding, also when a long name sets it smaller.
-    const size = fitSize(doc, "bold", text, CONTENT_W, px(19), 9);
-    const words = () => {
-      doc
-        .font("bold")
-        .fontSize(size)
-        .fillColor(WHITE)
-        .text(
-          text,
-          MARGIN,
-          compactH - MARGIN - inkOf("bold", size, text).below - size * ASCENT,
-          { lineBreak: false },
-        );
-    };
+    const words = () =>
+      rowText(
+        "bold",
+        size,
+        WHITE,
+        text,
+        MARGIN,
+        MARGIN + LOGO_H + 3 * U,
+        ROW[TYPE.body],
+      );
     // A repeated band is decoration as a whole.
     if (parent) {
       artifact(doc, plate);
@@ -799,414 +849,68 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     return compactH;
   };
 
-  // ------------------------------------------------------------ guide
-  // Page 2, „Co wrzucać”: a tile per fraction in two columns, as large as
-  // fits one page (from the site's 16px down to 8 pt), the hazardous-waste
-  // strip and the guide's sources below. Laid out first, so page 1 can say
-  // where it and the text version are.
-  const TILE_GAP = 10;
-  const tileW = (CONTENT_W - TILE_GAP) / 2;
-  const pad = 8;
-  const guideTop = compactH + 16;
-  const guideFooter = guide ? sourcesFooter(guide.sources) : null;
-  const ink = (fill: string) => readableInk(fill, [BLACK, WHITE]);
-  type Tile = NonNullable<typeof guide>["tiles"][number];
-  const tileName = (tile: Tile) => toneLabel(tile.subtype);
-  // Header: the icon, the name (and the bin), the calendar's mark on white.
-  const headIcon = (s: number) => s * 1.7;
-  const markBox = (s: number) => s * 1.6;
-  const nameSize = (s: number) => s * 1.2;
-  const nameW = (s: number) =>
-    tileW - 2 * pad - headIcon(s) - 6 - markBox(s) - 6;
-  const bulletIndent = (s: number) => s * 0.95;
-  const itemGap = 1;
-  const tipIcon = (s: number) => s * 1.1;
-  const headH = (tile: Tile, s: number) => {
-    doc.font("bold").fontSize(nameSize(s));
-    let h = doc.heightOfString(tileName(tile), { width: nameW(s) });
-    if (tile.container) {
-      doc.font("regular").fontSize(s);
-      h += doc.heightOfString(tile.container, { width: nameW(s) });
-    }
-    return Math.max(h, headIcon(s), markBox(s)) + 2 * pad;
-  };
-  const itemsH = (items: string[], s: number) => {
-    doc.font("regular").fontSize(s);
-    return items.reduce(
-      (sum, item) =>
-        sum +
-        doc.heightOfString(item, {
-          width: tileW - 2 * pad - bulletIndent(s),
-          lineGap: itemGap,
-        }),
-      0,
-    );
-  };
-  const tipW = (s: number) => tileW - 2 * pad - tipIcon(s) - 5;
-  const tipsH = (tips: string[], s: number) => {
-    doc.font("regular").fontSize(s);
-    return tips.reduce(
-      (sum, tip) =>
-        sum + doc.heightOfString(tip, { width: tipW(s), lineGap: itemGap }),
-      0,
-    );
-  };
-  const sectionGap = (s: number) => s * 0.6;
-  const bodyH = (tile: Tile, s: number) => {
-    const parts = [
-      s * LINE + 2 + itemsH(tile.yes, s),
-      ...(tile.no.length ? [s * LINE + 2 + itemsH(tile.no, s)] : []),
-      ...(tile.tips.length ? [tipsH(tile.tips, s)] : []),
-    ];
-    return (
-      2 * pad +
-      parts.reduce((a, b) => a + b, 0) +
-      sectionGap(s) * (parts.length - 1)
-    );
-  };
-  const tileH = (tile: Tile, s: number) => headH(tile, s) + bodyH(tile, s);
-  // The strip: a line saying where, the items, then the tips.
-  const hazardIcon = (s: number) => s * 1.9;
-  const hazardW = (s: number) => CONTENT_W - 2 * pad - hazardIcon(s) - 8;
-  const hazardLines = (s: number) => {
-    if (!guide) return [];
-    const { hazard } = guide;
-    const items = hazard.items.join(", ");
-    return [
-      { font: "bold", text: `Odpady niebezpieczne oddaj: ${hazard.place}` },
-      {
-        font: "regular",
-        text: `${items.charAt(0).toUpperCase()}${items.slice(1)}.`,
-      },
-      ...hazard.tips.map((text) => ({ font: "regular", text })),
-    ].map((line) => {
-      doc.font(line.font).fontSize(s);
-      return {
-        ...line,
-        h: doc.heightOfString(line.text, {
-          width: hazardW(s),
-          lineGap: itemGap,
-        }),
-      };
-    });
-  };
-  const hazardH = (s: number) =>
-    Math.max(
-      hazardIcon(s),
-      hazardLines(s).reduce((sum, line) => sum + line.h, 0),
-    ) +
-    2 * pad;
-  const guideBottom = (s: number) =>
-    (guideFooter?.ruleY ?? PAGE_H) - 12 - hazardH(s) - 12;
-  const guidePlan = (() => {
-    if (!guide) return null;
-    const layoutAt = (s: number) => {
-      const heights = guide.tiles.map((tile) => tileH(tile, s));
-      return {
-        s,
-        heights,
-        slots: pack(heights, 2, TILE_GAP, guideTop, guideTop, guideBottom(s)),
-      };
-    };
-    // The fewest pages, each at the largest size that fits them: one page
-    // down to 9 pt (a leaflet's small print), more pages from the site's
-    // 16px down to 10 pt, so a long guide stays easy to read.
-    const pagesOf = (plan: ReturnType<typeof layoutAt>) =>
-      Math.max(...plan.slots.map((slot) => slot.page)) + 1;
-    for (let pages = 1; pages <= guide.tiles.length; pages++) {
-      const min = pages === 1 ? 9 : 10;
-      for (let s = small; s >= min; s -= 0.25) {
-        const plan = layoutAt(s);
-        if (pagesOf(plan) <= pages) return plan;
-      }
-    }
-    return layoutAt(10);
-  })();
-  const guidePages = guidePlan
-    ? Math.max(...guidePlan.slots.map((slot) => slot.page)) + 1
-    : 0;
-
-  const drawTile = (tile: Tile, x: number, y: number, s: number, h: number) => {
-    const fill = WASTE[TOKEN[tile.subtype]];
-    const onFill = ink(fill);
-    const edge =
-      [
-        WASTE[`${TOKEN[tile.subtype]}-print`],
-        WASTE[`${TOKEN[tile.subtype]}-border`],
-      ].find((c) => c && c !== "transparent") ?? fill;
-    const head = headH(tile, s);
-    const section = doc.struct("Sect");
-    root.add(section);
+  // ------------------------------------------------------------ note
+  // GOV.UK Warning text on a grey band: one line, that dates may change and
+  // where to check them.
+  const WARN = 7 * U;
+  const noteText =
+    "Terminy mogą się zmienić – zeskanuj kod, by sprawdzić aktualne.";
+  const noteX = MARGIN + WARN + 3 * U;
+  const noteW = PAGE_W - MARGIN - noteX;
+  const noteRows = block("bold", TYPE.body, noteText, noteW);
+  const noteBody = Math.max(WARN, noteRows);
+  const noteH = 3 * U + noteBody + 3 * U;
+  const drawNote = (top: number) => {
+    const mid = top + noteH / 2;
     artifact(doc, () => {
-      doc.rect(x, y, tileW, head).fillColor(fill).fill();
+      doc.rect(0, top, PAGE_W, noteH).fillColor(PANEL).fill();
       doc
-        .rect(x + 0.5, y + 0.5, tileW - 1, h - 1)
-        .lineWidth(1)
-        .strokeColor(edge)
-        .stroke();
-      drawIcon(
-        doc,
-        FRACTION_ICONS[TOKEN[tile.subtype]],
-        x + pad,
-        y + (head - headIcon(s)) / 2,
-        headIcon(s),
-        onFill,
+        .circle(MARGIN + WARN / 2, mid, WARN / 2)
+        .fillColor(BLACK)
+        .fill();
+      // The "!" centred by its ink: it runs from the cap height to 0.012 em
+      // below the baseline.
+      const size = WARN * 0.72;
+      doc.font("bold").fontSize(size).fillColor(WHITE);
+      const tw = doc.widthOfString("!");
+      doc.text(
+        "!",
+        MARGIN + WARN / 2 - tw / 2,
+        mid - size * (CAP_TOP + 0.68 / 2),
+        {
+          lineBreak: false,
+        },
       );
-      const box = markBox(s);
-      const bx = x + tileW - pad - box;
-      const by = y + (head - box) / 2;
-      doc.rect(bx, by, box, box).fillColor(WHITE).fill();
-      drawMark(doc, tile.subtype, bx + box / 2, by + box / 2, s * 0.9);
     });
-    // Name and bin, centred together in the header.
-    const nx = x + pad + headIcon(s) + 6;
-    doc.font("bold").fontSize(nameSize(s));
-    const nh = doc.heightOfString(tileName(tile), { width: nameW(s) });
-    doc.font("regular").fontSize(s);
-    const ch = tile.container
-      ? doc.heightOfString(tile.container, { width: nameW(s) })
-      : 0;
-    const ny = y + (head - nh - ch) / 2;
-    tag(section, "H2", () => {
-      doc
-        .font("bold")
-        .fontSize(nameSize(s))
-        .fillColor(onFill)
-        .text(tileName(tile), nx, ny, { width: nameW(s) });
-    });
-    if (tile.container) {
-      const container = tile.container;
-      tag(section, "P", () => {
-        doc
-          .font("regular")
-          .fontSize(s)
-          .fillColor(onFill)
-          .text(container, nx, ny + nh, { width: nameW(s) });
-      });
-    }
-    let cy = y + head + pad;
-    const list = (
-      heading: string,
-      icon: typeof PDF_ICONS.yes,
-      colour: string,
-      items: string[],
-    ) => {
-      const top = cy;
-      const iconS = s * 1.05;
-      artifact(doc, () =>
-        drawIcon(
-          doc,
-          icon,
-          x + pad,
-          top + s * (ASCENT - CAP / 2) - iconS / 2,
-          iconS,
-          colour,
+    // GOV.UK's visually hidden "Warning" prefix, for screen readers.
+    tag(
+      root,
+      "P",
+      () =>
+        blockText(
+          "bold",
+          TYPE.body,
+          BLACK,
+          noteText,
+          noteX,
+          mid - noteRows / 2,
+          noteW,
         ),
-      );
-      tag(section, "H3", () => {
-        doc
-          .font("bold")
-          .fontSize(s)
-          .fillColor(BLACK)
-          .text(heading, x + pad + iconS + 4, top, { lineBreak: false });
-      });
-      cy += s * LINE + 2;
-      const l = doc.struct("L");
-      section.add(l);
-      for (const item of items) {
-        const itemTop = cy;
-        artifact(doc, () => {
-          doc
-            .circle(
-              x + pad + s * 0.35,
-              itemTop + s * (ASCENT - CAP / 2),
-              s * 0.13,
-            )
-            .fillColor(BLACK)
-            .fill();
-        });
-        tag(l, "LI", () => {
-          doc
-            .font("regular")
-            .fontSize(s)
-            .fillColor(BLACK)
-            .text(item, x + pad + bulletIndent(s), itemTop, {
-              width: tileW - 2 * pad - bulletIndent(s),
-              lineGap: itemGap,
-            });
-        });
-        doc.font("regular").fontSize(s);
-        cy += doc.heightOfString(item, {
-          width: tileW - 2 * pad - bulletIndent(s),
-          lineGap: itemGap,
-        });
-      }
-      l.end();
-    };
-    list("Wrzucaj", PDF_ICONS.yes, GOVUK_FUNCTIONAL.success, tile.yes);
-    if (tile.no.length) {
-      cy += sectionGap(s);
-      list("Nie wrzucaj", PDF_ICONS.no, GOVUK_FUNCTIONAL.error, tile.no);
-    }
-    if (tile.tips.length) {
-      cy += sectionGap(s);
-      for (const tip of tile.tips) {
-        const top = cy;
-        artifact(doc, () =>
-          drawIcon(
-            doc,
-            PDF_ICONS.tip,
-            x + pad,
-            top + s * (ASCENT - CAP / 2) - tipIcon(s) / 2,
-            tipIcon(s),
-            BLACK,
-          ),
-        );
-        tag(section, "P", () => {
-          doc
-            .font("regular")
-            .fontSize(s)
-            .fillColor(BLACK)
-            .text(tip, x + pad + tipIcon(s) + 5, top, {
-              width: tipW(s),
-              lineGap: itemGap,
-            });
-        });
-        doc.font("regular").fontSize(s);
-        cy += doc.heightOfString(tip, { width: tipW(s), lineGap: itemGap });
-      }
-    }
-    section.end();
-  };
-
-  const drawHazard = (s: number) => {
-    const h = hazardH(s);
-    const top = (guideFooter?.ruleY ?? PAGE_H) - 12 - h;
-    const onRed = ink(RED);
-    const section = doc.struct("Sect");
-    root.add(section);
-    artifact(doc, () => {
-      doc.rect(MARGIN, top, CONTENT_W, h).fillColor(RED).fill();
-      drawIcon(
-        doc,
-        PDF_ICONS.hazard,
-        MARGIN + pad,
-        top + (h - hazardIcon(s)) / 2,
-        hazardIcon(s),
-        onRed,
-      );
-    });
-    const lines = hazardLines(s);
-    const textH = lines.reduce((sum, line) => sum + line.h, 0);
-    let ly = top + (h - textH) / 2;
-    for (const [i, line] of lines.entries()) {
-      const lineTop = ly;
-      tag(section, i === 0 ? "H2" : "P", () => {
-        doc
-          .font(line.font)
-          .fontSize(s)
-          .fillColor(onRed)
-          .text(line.text, MARGIN + pad + hazardIcon(s) + 8, lineTop, {
-            width: hazardW(s),
-            lineGap: itemGap,
-          });
-      });
-      ly += line.h;
-    }
-    section.end();
-  };
-
-  const drawGuide = () => {
-    if (!guide || !guidePlan || !guideFooter) return;
-    const { s, heights, slots } = guidePlan;
-    // Page by page: first fit may put a later tile on an earlier page.
-    const order = guide.tiles
-      .map((_, i) => i)
-      .sort((a, b) => slots[a].page - slots[b].page);
-    let page = -1;
-    for (const i of order) {
-      const slot = slots[i];
-      while (page < slot.page) {
-        if (page >= 0) guideFooter.artifact();
-        doc.addPage();
-        page++;
-        if (page === 0) compactBand("co wrzucać do pojemników", root);
-        else compactBand("co wrzucać do pojemników, ciąg dalszy", null);
-      }
-      drawTile(
-        guide.tiles[i],
-        MARGIN + slot.column * (tileW + TILE_GAP),
-        slot.y,
-        s,
-        heights[i],
-      );
-    }
-    drawHazard(s);
-    guideFooter.draw(root);
+      { actual: `Ostrzeżenie: ${noteText}` },
+    );
+    return top + noteH;
   };
 
   // ------------------------------------------------------------ key
-  // Each calendar page explains only what it shows: its fractions, then its
-  // date markings. Labels at the footer's size, marks centred on their cap
-  // height, one ruleGap from the last row's ink to the note's.
-  const keyMark = 11;
-  const keySize = small;
-  const keyLine = 19;
-  const keyLabelGap = 4;
-  const keyItemGap = 12;
-  type KeyItem = {
-    label: string;
-    draw: (x: number, cy: number) => void;
-    swatch?: boolean;
-  };
-  // As wide as a mark, so every label is as far from its swatch.
-  const cell = (label: string, colour: string): KeyItem => ({
-    label,
-    swatch: true,
-    draw: (x, cy) => {
-      doc
-        .rect(x, cy - keyMark * 0.75, keyMark, keyMark * 1.5)
-        .fillColor(colour)
-        .fill();
-    },
-  });
-  // Where page 2 and the text version are; one line, smaller if it must.
-  const keyNoteText = (textPage: number) =>
-    [
-      ...(guide ? [`Co wrzucać: strona ${textPage - guidePages}`] : []),
-      `Wersja tekstowa (bez kolorów i znaków): strona ${textPage}`,
-    ].join(" · ");
-  const keyNoteSize = (text: string) =>
-    fitSize(doc, "bold", text, CONTENT_W, small, 8);
-  // The note's ink ends ruleGap above the divider (a page number has no
-  // descender, so any page gives the same ink).
-  const keyNoteTop = (text: string) =>
-    ruleY -
-    ruleW / 2 -
-    ruleGap -
-    inkOf("bold", keyNoteSize(text), text).below -
-    keyNoteSize(text) * ASCENT;
-  const keyNoteInk = (text: string) =>
-    keyNoteTop(text) +
-    keyNoteSize(text) * ASCENT -
-    inkOf("bold", keyNoteSize(text), text).above;
-  // Marks and swatches are centred on the labels' cap height.
-  const keyMid = keySize * (ASCENT - CAP / 2);
-  // How far an item's ink reaches below its row's top: its label's
-  // descenders, a swatch, or a mark (the outlined diamond reaches lowest,
-  // 0.6 of its size).
-  const keyInk = (item: KeyItem) =>
-    Math.max(
-      keySize * ASCENT + inkOf("regular", keySize, item.label).below,
-      keyMid + keyMark * (item.swatch ? 0.75 : 0.6),
-    );
+  // The key above the footer: the marks on the page, then a moved date's
+  // cell if the data has one. Rows of 5 U, marks the tables' size.
+  const MARK = 10;
+  const MARK_GAP = U;
+  const KEY_ROW = 5 * U;
   const keyHeading = "Oznaczenia";
-  doc.font("bold").fontSize(keySize);
-  const keyStart = MARGIN + doc.widthOfString(keyHeading) + keyItemGap;
-  // Any page number: the note's ink is the same for all.
-  const noteSample = keyNoteText(9);
-
-  /** The key for the months on one page, laid out above the note. */
+  doc.font("bold").fontSize(TYPE.small);
+  const keyStart = MARGIN + doc.widthOfString(keyHeading) + 3 * U;
+  type KeyItem = { label: string; draw: (x: number, cy: number) => void };
   const keyFor = (keys: string[]) => {
     const days = keys.flatMap((key) => byMonth.get(key) ?? []);
     const keyTones: string[] = [];
@@ -1220,437 +924,629 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       ...keyTones.map((tone) => ({
         label: toneLabel(tone),
         draw: (x: number, cy: number) =>
-          drawMark(doc, tone, x + keyMark / 2, cy, keyMark),
+          drawMark(doc, tone, x + MARK / 2, cy, MARK),
       })),
       // Only what the data marks: a date moved from its usual day.
       ...(days.some((day) => moved(day))
-        ? [cell("Termin przesunięty", RED)]
+        ? [
+            {
+              label: "Termin przesunięty",
+              draw: (x: number, cy: number) => {
+                doc
+                  .rect(x, cy - MARK / 2 - U / 2, MARK, MARK + U)
+                  .fillColor(RED)
+                  .fill();
+              },
+            },
+          ]
         : []),
     ];
     let kx = keyStart;
     let row = 0;
     const placed = items.map((item) => {
-      doc.font("regular").fontSize(keySize);
-      const w = keyMark + keyLabelGap + doc.widthOfString(item.label);
+      doc.font("regular").fontSize(TYPE.small);
+      const w = MARK + U + doc.widthOfString(item.label);
       if (kx > keyStart && kx + w > PAGE_W - MARGIN) {
         kx = keyStart;
         row++;
       }
       const at = { ...item, x: kx, row };
-      kx += w + keyItemGap;
+      kx += w + 3 * U;
       return at;
     });
-    const lastInk = Math.max(
-      ...placed.filter((item) => item.row === row).map(keyInk),
-    );
-    const top = keyNoteInk(noteSample) - ruleGap - lastInk - row * keyLine;
-    return { placed, rows: row + 1, top };
+    return { placed, h: (row + 1) * KEY_ROW };
   };
-  type Key = ReturnType<typeof keyFor>;
-
   const drawKey = (
     parent: PDFKit.PDFStructureElement | null,
-    textPage: number,
-    key: Key,
+    key: ReturnType<typeof keyFor>,
+    top: number,
   ) => {
-    const keyTop = key.top;
-    tag(parent, "H2", () => {
-      doc
-        .font("bold")
-        .fontSize(keySize)
-        .fillColor(BLACK)
-        .text(keyHeading, MARGIN, keyTop, { lineBreak: false });
-    });
+    tag(parent, "H2", () =>
+      rowText("bold", TYPE.small, BLACK, keyHeading, MARGIN, top, KEY_ROW),
+    );
     const list = parent ? doc.struct("L") : null;
     if (parent && list) parent.add(list);
     for (const item of key.placed) {
-      const top = keyTop + item.row * keyLine;
-      const mark = () => item.draw(item.x, top + keyMid);
+      const rowTop = top + item.row * KEY_ROW;
+      const mark = () => item.draw(item.x, rowTop + KEY_ROW / 2);
       if (parent) artifact(doc, mark);
       else mark();
-      tag(list, "LI", () => {
-        doc
-          .font("regular")
-          .fontSize(keySize)
-          .fillColor(BLACK)
-          .text(item.label, item.x + keyMark + keyLabelGap, top, {
-            lineBreak: false,
-          });
-      });
-    }
-    list?.end();
-    const note = keyNoteText(textPage);
-    tag(parent, "P", () => {
-      doc
-        .font("bold")
-        .fontSize(keyNoteSize(note))
-        .fillColor(BLACK)
-        .text(note, MARGIN, keyNoteTop(note), { lineBreak: false });
-    });
-  };
-
-  // ------------------------------------------------------------ panel
-  // GOV.UK Warning text on the grey band, then the other notes, each after
-  // its icon, as the leaflet's: that no one has checked the dates yet (as on
-  // the page), the put-out time and the line about the next year's dates.
-  type Note = { icon: typeof PDF_ICONS.later; text: string };
-  const warnD = px(35);
-  const noteX = MARGIN + warnD + px(15);
-  const noteW = CONTENT_W - warnD - px(15);
-  const notes: Note[] = [
-    ...(place.verified
-      ? []
-      : [{ icon: PDF_ICONS.unverified, text: unverifiedNote(place.gmina) }]),
-    ...(putOut ? [{ icon: PDF_ICONS.putOut, text: putOut }] : []),
-    ...(laterText ? [{ icon: PDF_ICONS.later, text: laterText }] : []),
-  ];
-  const noteH = (note: Note) => {
-    doc.font("regular").fontSize(px(19));
-    return doc.heightOfString(note.text, { width: noteW });
-  };
-  const warnH = () => {
-    doc.font("bold").fontSize(px(19));
-    return Math.max(warnD, doc.heightOfString(warningText, { width: noteW }));
-  };
-  // 12 above the circle and 12 below the last ink: the last note's
-  // descenders, or the warning's or the circle's without notes.
-  const panelH = (() => {
-    const below = (font: string, text: string) =>
-      px(19) * (LINE - ASCENT) - inkOf(font, px(19), text).below;
-    const last = notes.at(-1);
-    if (last) {
-      const end =
-        12 + warnH() + notes.reduce((sum, n) => sum + 8 + noteH(n), 0);
-      return end - below("regular", last.text) + 12;
-    }
-    doc.font("bold").fontSize(px(19));
-    const text = 15 + doc.heightOfString(warningText, { width: noteW });
-    return Math.max(12 + warnD, text - below("bold", warningText)) + 12;
-  })();
-
-  const drawPanel = (top: number) => {
-    artifact(doc, () => {
-      doc.rect(0, top, PAGE_W, panelH).fillColor(PANEL).fill();
-      doc
-        .circle(MARGIN + warnD / 2, top + 12 + warnD / 2, warnD / 2)
-        .fillColor(BLACK)
-        .fill();
-      doc
-        .font("bold")
-        .fontSize(warnD * 0.72)
-        .fillColor(WHITE);
-      // Centred by its ink: the "!" is symmetric in its advance, and runs
-      // from the cap height to 0.012 em below the baseline (0.68 em).
-      const tw = doc.widthOfString("!");
-      const bangTop = warnD / 2 - warnD * 0.72 * (CAP_TOP + 0.68 / 2);
-      doc.text("!", MARGIN + warnD / 2 - tw / 2, top + 12 + bangTop, {
-        lineBreak: false,
-      });
-    });
-    // GOV.UK's visually hidden "Warning" prefix, for screen readers.
-    tag(
-      root,
-      "P",
-      () => {
-        doc
-          .font("bold")
-          .fontSize(px(19))
-          .fillColor(BLACK)
-          .text(warningText, noteX, top + 15, { width: noteW });
-      },
-      { actual: `Ostrzeżenie: ${warningText}` },
-    );
-    let y = top + 12 + warnH();
-    for (const note of notes) {
-      const noteTop = y + 8;
-      // The icon in the warning's column, on the note's first line.
-      const size = px(19) * 1.15;
-      artifact(doc, () =>
-        drawIcon(
-          doc,
-          note.icon,
-          MARGIN + (warnD - size) / 2,
-          noteTop + px(19) * (ASCENT - CAP / 2) - size / 2,
-          size,
+      tag(list, "LI", () =>
+        rowText(
+          "regular",
+          TYPE.small,
           BLACK,
+          item.label,
+          item.x + MARK + U,
+          rowTop,
+          KEY_ROW,
         ),
       );
-      tag(root, "P", () => {
-        doc
-          .font("regular")
-          .fontSize(px(19))
-          .fillColor(BLACK)
-          .text(note.text, noteX, noteTop, { width: noteW });
-      });
-      y += 8 + noteH(note);
     }
-    return top + panelH;
+    list?.end();
   };
 
   // ------------------------------------------------------------ grid
-  // The leaflet's grid: four small month tables a row, each a grey bar with
-  // the month, a header row and a row per date with its marks. Rows shrink
-  // (20 down to 14 pt) until the whole period fits one page.
-  const captionText = px(19);
-  const cellText = px(16);
-  // Dates and "Dzień" start this far in: the red cell's even inner padding.
-  const inset = 3;
+  // Identical month tables, as the leaflet's: a title row, a „Dzień |
+  // Odpady” header row on grey, and the same number of body rows in every
+  // month (lib/pdf-grid.ts picks the columns and row height); every cell
+  // bordered, each border drawn once.
   const dateText = (day: PickupDay) => {
     const n = String(Number(day.date.slice(8)));
     return usual && !moved(day) && !odd(day)
       ? n
       : `${n} ${weekdayShort(day.date)}`;
   };
-  // As wide as the widest date with its red cell's padding, and a gap.
-  doc.font("bold").fontSize(cellText);
-  const dateW = Math.max(
-    24,
-    ...inWindow.map((day) => doc.widthOfString(dateText(day)) + 2 * inset + 5),
+  const widthOf = (font: string, size: number, text: string) => {
+    doc.font(font).fontSize(size);
+    return doc.widthOfString(text);
+  };
+  /** Up to the next step of the scale. */
+  const onScale = (n: number) => Math.ceil(n / U) * U;
+  const dateW = onScale(
+    Math.max(
+      widthOf("bold", TYPE.small, "Dzień"),
+      ...inWindow.map((day) => widthOf("bold", TYPE.small, dateText(day))),
+    ) +
+      2 * PAD,
   );
-  const rowGap = 12;
-  const yearH = px(24) * 1.5;
-  const MAX_ROW = 20;
-  const MIN_ROW = 14;
-  let rowH = MAX_ROW;
-  const capH = () => rowH + 4;
-  const mark = () => Math.min(11.5, rowH * 0.6);
-  const markGap = 4.5;
-  const perLine = () =>
-    Math.max(
-      1,
-      Math.floor((TABLE_W - dateW - 4 + markGap) / (mark() + markGap)),
-    );
-  const lines = (day: PickupDay) =>
-    Math.max(
-      1,
-      Math.ceil(
-        day.pickups.flatMap((p) => tones(p.subtype)).length / perLine(),
+  const minMarksW = onScale(widthOf("bold", TYPE.small, "Odpady") + 2 * PAD);
+  const YEAR_H = ROW[TYPE.heading] + U;
+  const ROW_GAP = 3 * U;
+  const footer1 = footerLine(
+    footerText(
+      scheduleName(place.gmina),
+      oldest(place.sources.map((s) => s.checkedAt)),
+    ),
+  );
+  const keyAll = keyFor(printed);
+  const keyTop = footer1.top - SECTION - keyAll.h;
+  const gridTop = bandH + noteH + SECTION;
+  const grid = chooseGrid({
+    months: printed.map((key) => ({
+      key,
+      marks: (byMonth.get(key) ?? []).map(
+        (day) => day.pickups.flatMap((p) => tones(p.subtype)).length,
       ),
-    );
-  // Tables in a row share the height of the row's tallest month.
-  const slots = (keys: string[]) =>
-    Math.max(
-      1,
-      ...keys.map((key) =>
-        (byMonth.get(key) ?? []).reduce((sum, day) => sum + lines(day), 0),
-      ),
-    );
-  const tableH = (keys: string[]) => capH() + rowH * (slots(keys) + 1);
+    })),
+    width: CONTENT_W,
+    gap: GUTTER,
+    height: keyTop - SECTION - gridTop,
+    yearH: YEAR_H,
+    rowGap: ROW_GAP,
+    dateW,
+    minMarksW,
+    pad: PAD,
+    mark: MARK,
+    markGap: MARK_GAP,
+    maxColumns: 6,
+    minColumns: 2,
+    maxRow: 6 * U,
+    minRow: 4 * U,
+    rowStep: U,
+  });
+  const rowH = grid.rowH;
+  const tableH = (grid.bodyRows + 2) * rowH;
 
-  const drawMonth = (
-    key: string,
-    rowYear: string,
-    x: number,
-    y: number,
-    rowSlots: number,
-  ) => {
+  const drawMonth = (key: string, rowYear: string, x: number, y: number) => {
     const days = byMonth.get(key) ?? [];
-    // A year that starts inside a row is named in its first month's bar.
-    const name =
-      key.slice(0, 4) === rowYear ? monthName(key) : monthTitle(`${key}-01`);
+    const w = grid.tableW;
+    const head = y + rowH;
+    const body = head + rowH;
+    // Fills first, then every line once.
     artifact(doc, () => {
-      doc.rect(x, y, TABLE_W, capH()).fillColor(PANEL).fill();
-    });
-    tag(root, "H3", () => {
       doc
-        .font("bold")
-        .fontSize(captionText)
-        .fillColor(BLACK)
-        .text(name, x + inset, capCentred(captionText, y, capH()), {
-          lineBreak: false,
-        });
+        .rect(x, y, w, 2 * rowH)
+        .fillColor(PANEL)
+        .fill();
+      let top = body;
+      for (const day of days) {
+        const h = dateRows(tonesOf(day).length, grid.perLine) * rowH;
+        if (moved(day)) doc.rect(x, top, dateW, h).fillColor(RED).fill();
+        top += h;
+      }
     });
-    const head = y + capH();
+    tag(root, "H3", () =>
+      rowText(
+        "bold",
+        TYPE.small,
+        BLACK,
+        key.startsWith(rowYear) ? monthName(key) : monthTitle(`${key}-01`),
+        x + PAD,
+        y,
+        rowH,
+      ),
+    );
     const table = doc.struct("Table");
     root.add(table);
     const headRow = doc.struct("TR");
     table.add(headRow);
-    const headY = capCentred(cellText, head, rowH);
     headRow.add(
-      doc.struct("TH", {}, () => {
-        doc
-          .font("bold")
-          .fontSize(cellText)
-          .fillColor(BLACK)
-          .text("Dzień", x + inset, headY, { lineBreak: false });
-      }),
+      doc.struct("TH", {}, () =>
+        rowText("bold", TYPE.small, BLACK, "Dzień", x, head, rowH, {
+          width: dateW,
+          align: "center",
+        }),
+      ),
     );
     headRow.add(
-      doc.struct("TH", {}, () => {
-        doc.text("Odpady", x + dateW + 4, headY, { lineBreak: false });
-      }),
+      doc.struct("TH", {}, () =>
+        rowText(
+          "bold",
+          TYPE.small,
+          BLACK,
+          "Odpady",
+          x + dateW + PAD,
+          head,
+          rowH,
+        ),
+      ),
     );
-    artifact(doc, () => {
-      doc
-        .moveTo(x, head + rowH)
-        .lineTo(x + TABLE_W, head + rowH)
-        .lineWidth(1)
-        .strokeColor(BLACK)
-        .stroke();
-    });
-    let rowTop = head + rowH;
+    // Body rows: a line under each, except inside a date that takes two.
+    const breaks: number[] = [];
+    let top = body;
     for (const day of days) {
-      const h = lines(day) * rowH;
-      // Highlighted only where the data says the date moved.
+      const lines = dateRows(tonesOf(day).length, grid.perLine);
       const from = moved(day);
-      const text = dateText(day);
-      const top = rowTop;
-      // The red hugs its text, so the marks keep their usual distance.
-      const textW = doc.font("bold").fontSize(cellText).widthOfString(text);
-      artifact(doc, () => {
-        if (from) {
-          doc
-            .rect(x, top + 2, textW + 2 * inset, rowH - 4)
-            .fillColor(RED)
-            .fill();
-        }
-        doc
-          .moveTo(x, top + h)
-          .lineTo(x + TABLE_W, top + h)
-          .lineWidth(0.75)
-          .strokeColor(BORDER)
-          .stroke();
-      });
+      const rowTop = top;
       const tr = doc.struct("TR");
       table.add(tr);
       tr.add(
-        doc.struct("TD", { actual: spoken(day) }, () => {
-          doc
-            .font("bold")
-            .fontSize(cellText)
-            .fillColor(from ? ink(RED) : BLACK)
-            .text(text, x + inset, capCentred(cellText, top, rowH), {
-              lineBreak: false,
-            });
-        }),
+        doc.struct("TD", { actual: spoken(day) }, () =>
+          rowText(
+            "bold",
+            TYPE.small,
+            from ? ink(RED) : BLACK,
+            dateText(day),
+            x,
+            rowTop,
+            rowH,
+            { width: dateW, align: "center" },
+          ),
+        ),
       );
-      const marks = day.pickups.flatMap((p) => tones(p.subtype));
       tr.add(
         doc.struct("TD", { actual: label(day.pickups) }, () => {
-          marks.forEach((tone, i) => {
-            const line = Math.floor(i / perLine());
-            const col = i % perLine();
+          tonesOf(day).forEach((tone, i) => {
+            const line = Math.floor(i / grid.perLine);
+            const col = i % grid.perLine;
             drawMark(
               doc,
               tone,
-              x + dateW + 4 + mark() / 2 + col * (mark() + markGap),
-              top + line * rowH + rowH / 2,
-              mark(),
+              x + dateW + PAD + MARK / 2 + col * (MARK + MARK_GAP),
+              rowTop + line * rowH + rowH / 2,
+              MARK,
             );
           });
         }),
       );
-      rowTop += h;
+      top += lines * rowH;
+      breaks.push(top);
     }
+    const bottom = body + grid.bodyRows * rowH;
+    for (let t = top + rowH; t < bottom; t += rowH) breaks.push(t);
     table.end();
-    return head + rowH * (rowSlots + 1);
+    artifact(doc, () => {
+      doc.lineWidth(LINE_W).strokeColor(RULE);
+      doc.rect(x, y, w, bottom - y).stroke();
+      for (const t of [head, body, ...breaks.filter((t) => t < bottom)]) {
+        doc
+          .moveTo(x, t)
+          .lineTo(x + w, t)
+          .stroke();
+      }
+      doc
+        .moveTo(x + dateW, head)
+        .lineTo(x + dateW, bottom)
+        .stroke();
+    });
+  };
+
+  // ------------------------------------------------------------ guide
+  // „Co wrzucać”, one page: equal tiles in a strict grid (a coloured header
+  // with the icon, name and bin; then „Tak” and „Nie” in areas of one
+  // height), the PSZOK line beside the QR code to the full rules, and one
+  // footer line. Columns and text size: the largest size of the scale that
+  // fits, then the fewest empty cells, then the widest tiles.
+  const TILE_PAD = 2 * U;
+  const ICON = 6 * U;
+  const ITEM_ICON = 3 * U;
+  const guideTop = compactH + SECTION;
+  const footer2 = guide
+    ? footerLine(
+        footerText(
+          `zasady segregacji, ${guide.publisher}`,
+          oldest(guide.sources.map((s) => s.checkedAt)),
+        ),
+      )
+    : null;
+  const stripH = 2 * TILE_PAD + 16 * U;
+  const stripTop = (footer2?.top ?? PAGE_H) - SECTION - stripH;
+  type Tile = NonNullable<typeof guide>["tiles"][number];
+  const tileName = (tile: Tile) => toneLabel(tile.subtype);
+  const guidePlan = (() => {
+    if (!guide) return null;
+    const n = guide.tiles.length;
+    const options = [];
+    for (const size of [TYPE.small, TYPE.fine]) {
+      for (let columns = 2; columns <= 4; columns++) {
+        const rows = Math.ceil(n / columns);
+        const w = (CONTENT_W - GUTTER * (columns - 1)) / columns;
+        const nameW = w - 2 * TILE_PAD - ICON - 2 * U;
+        // The header pads its text by U above and below, TILE_PAD at the
+        // sides: the icon (ICON) sets its least height.
+        const headH = onScale(
+          2 * U +
+            Math.max(
+              ICON,
+              ...guide.tiles.map(
+                (tile) =>
+                  block("bold", size, tileName(tile), nameW) +
+                  (tile.container
+                    ? block("regular", size, tile.container, nameW)
+                    : 0),
+              ),
+            ),
+        );
+        const itemW = w - 2 * TILE_PAD - ITEM_ICON - U;
+        const area = (pick: (tile: Tile) => string[]) =>
+          Math.max(
+            0,
+            ...guide.tiles.map((tile) =>
+              pick(tile).length
+                ? ROW[size] +
+                  pick(tile).reduce(
+                    (sum, item) => sum + block("regular", size, item, itemW),
+                    0,
+                  )
+                : 0,
+            ),
+          );
+        const yesH = area((tile) => tile.short.yes);
+        const noH = area((tile) => tile.short.no);
+        const need =
+          headH + TILE_PAD + yesH + (noH ? 2 * U + noH : 0) + TILE_PAD;
+        const h = (stripTop - SECTION - guideTop - GUTTER * (rows - 1)) / rows;
+        options.push({
+          size,
+          columns,
+          rows,
+          w,
+          h,
+          headH,
+          yesH,
+          nameW,
+          itemW,
+          fits: need <= h,
+          empty: columns * rows - n,
+          need,
+        });
+      }
+    }
+    const fits = options.filter((o) => o.fits);
+    const pool = fits.length ? fits : options;
+    return pool.reduce((best, o) => {
+      if (!fits.length) return o.need - o.h < best.need - best.h ? o : best;
+      if (o.size !== best.size) return o.size > best.size ? o : best;
+      if (o.empty !== best.empty) return o.empty < best.empty ? o : best;
+      return o.columns < best.columns ? o : best;
+    });
+  })();
+
+  const drawTile = (tile: Tile, x: number, y: number) => {
+    if (!guidePlan) return;
+    const { size, w, h, headH, yesH, nameW, itemW } = guidePlan;
+    const fill = WASTE[TOKEN[tile.subtype]];
+    const onFill = ink(fill);
+    const section = doc.struct("Sect");
+    root.add(section);
+    artifact(doc, () => {
+      doc.rect(x, y, w, headH).fillColor(fill).fill();
+      doc.rect(x, y, w, h).lineWidth(LINE_W).strokeColor(RULE).stroke();
+      drawIcon(
+        doc,
+        FRACTION_ICONS[TOKEN[tile.subtype]],
+        x + TILE_PAD,
+        y + (headH - ICON) / 2,
+        ICON,
+        onFill,
+      );
+    });
+    // Name and bin, together centred in the header.
+    const nameH = block("bold", size, tileName(tile), nameW);
+    const binH = tile.container
+      ? block("regular", size, tile.container, nameW)
+      : 0;
+    const nx = x + TILE_PAD + ICON + 2 * U;
+    const ny = y + (headH - nameH - binH) / 2;
+    tag(section, "H2", () =>
+      blockText("bold", size, onFill, tileName(tile), nx, ny, nameW),
+    );
+    if (tile.container) {
+      const container = tile.container;
+      tag(section, "P", () =>
+        blockText("regular", size, onFill, container, nx, ny + nameH, nameW),
+      );
+    }
+    const list = (
+      heading: string,
+      icon: typeof PDF_ICONS.yes,
+      colour: string,
+      items: string[],
+      top: number,
+    ) => {
+      if (!items.length) return;
+      artifact(doc, () =>
+        drawIcon(
+          doc,
+          icon,
+          x + TILE_PAD,
+          top + (ROW[size] - ITEM_ICON) / 2,
+          ITEM_ICON,
+          colour,
+        ),
+      );
+      tag(section, "H3", () =>
+        rowText(
+          "bold",
+          size,
+          BLACK,
+          heading,
+          x + TILE_PAD + ITEM_ICON + U,
+          top,
+          ROW[size],
+        ),
+      );
+      const l = doc.struct("L");
+      section.add(l);
+      let cy = top + ROW[size];
+      for (const item of items) {
+        const itemTop = cy;
+        artifact(doc, () => {
+          doc
+            .circle(
+              x + TILE_PAD + ITEM_ICON / 2,
+              itemTop + ROW[size] / 2,
+              size * 0.13,
+            )
+            .fillColor(BLACK)
+            .fill();
+        });
+        tag(l, "LI", () =>
+          blockText(
+            "regular",
+            size,
+            BLACK,
+            item,
+            x + TILE_PAD + ITEM_ICON + U,
+            itemTop,
+            itemW,
+          ),
+        );
+        cy += block("regular", size, item, itemW);
+      }
+      l.end();
+    };
+    const yesTop = y + headH + TILE_PAD;
+    list(
+      "Tak",
+      PDF_ICONS.yes,
+      GOVUK_FUNCTIONAL.success,
+      tile.short.yes,
+      yesTop,
+    );
+    list(
+      "Nie",
+      PDF_ICONS.no,
+      GOVUK_FUNCTIONAL.error,
+      tile.short.no,
+      yesTop + yesH + 2 * U,
+    );
+    section.end();
+  };
+
+  const drawStrip = () => {
+    if (!guide || !guidePlan) return;
+    const { columns, w: tileW } = guidePlan;
+    const full = guide.fullRules.url;
+    const host = new URL(full).host.replace(/^www\./, "");
+    const qr = 16 * U;
+    // The QR code and its caption under the fewest of the last columns
+    // that hold them (the caption at a size of the scale that fits), the
+    // PSZOK line under the rest: the strip keeps the tiles' edges.
+    const capFor = (span: number) => {
+      const width = span * tileW + (span - 1) * GUTTER;
+      const capW = width - 2 * TILE_PAD - qr - 2 * U;
+      const size = [TYPE.small, TYPE.fine].find(
+        (s) =>
+          widthOf("bold", s, "Pełne zasady:") <= capW &&
+          widthOf("regular", s, host) <= capW,
+      );
+      return size ? { span, width, size } : null;
+    };
+    const cap = Array.from({ length: columns - 1 }, (_, i) =>
+      capFor(i + 1),
+    ).find(Boolean) ?? { span: columns - 1, width: tileW, size: TYPE.fine };
+    const w = cap.width;
+    const qrX0 = PAGE_W - MARGIN - w;
+    const redW = qrX0 - GUTTER - MARGIN;
+    const onRed = ink(RED);
+    const pszok = `Odpady niebezpieczne (${guide.pszok.items.join(", ")}) oddaj: ${guide.pszok.place}.`;
+    const textX = MARGIN + TILE_PAD + ICON + 2 * U;
+    const textW = MARGIN + redW - TILE_PAD - textX;
+    const size =
+      [TYPE.body, TYPE.small, TYPE.fine].find(
+        (s) => block("bold", s, pszok, textW) <= stripH - 2 * TILE_PAD,
+      ) ?? TYPE.fine;
+    const textH = block("bold", size, pszok, textW);
+    const section = doc.struct("Sect");
+    root.add(section);
+    artifact(doc, () => {
+      doc.rect(MARGIN, stripTop, redW, stripH).fillColor(RED).fill();
+      drawIcon(
+        doc,
+        PDF_ICONS.hazard,
+        MARGIN + TILE_PAD,
+        stripTop + (stripH - ICON) / 2,
+        ICON,
+        onRed,
+      );
+      doc
+        .rect(qrX0, stripTop, w, stripH)
+        .lineWidth(LINE_W)
+        .strokeColor(RULE)
+        .stroke();
+      drawQr(doc, full, qrX0 + TILE_PAD, stripTop + TILE_PAD, qr);
+    });
+    tag(section, "P", () =>
+      blockText(
+        "bold",
+        size,
+        onRed,
+        pszok,
+        textX,
+        stripTop + (stripH - textH) / 2,
+        textW,
+      ),
+    );
+    const capX = qrX0 + TILE_PAD + qr + 2 * U;
+    const capH = 2 * ROW[cap.size];
+    const capY = stripTop + (stripH - capH) / 2;
+    tag(section, "P", () => {
+      rowText(
+        "bold",
+        cap.size,
+        BLACK,
+        "Pełne zasady:",
+        capX,
+        capY,
+        ROW[cap.size],
+      );
+      rowText(
+        "regular",
+        cap.size,
+        BLACK,
+        host,
+        capX,
+        capY + ROW[cap.size],
+        ROW[cap.size],
+        {
+          link: full,
+        },
+      );
+    });
+    section.end();
+  };
+
+  const drawGuide = () => {
+    if (!guide || !guidePlan || !footer2) return;
+    doc.addPage();
+    compactBand("co wrzucać do pojemników", root);
+    guide.tiles.forEach((tile, i) => {
+      const col = i % guidePlan.columns;
+      const row = Math.floor(i / guidePlan.columns);
+      drawTile(
+        tile,
+        MARGIN + col * (guidePlan.w + GUTTER),
+        guideTop + row * (guidePlan.h + GUTTER),
+      );
+    });
+    drawStrip();
+    footer2.draw(root);
   };
 
   // ------------------------------------------------------------ calendar
-  const rows: string[][] = [];
-  for (let i = 0; i < printed.length; i += COLUMNS) {
-    rows.push(printed.slice(i, i + COLUMNS));
-  }
-  const gridTop = bandH + panelH + 16;
-  // A year heading above the first row and wherever a new year starts.
-  const years = rows.filter(
-    (row, i) => i === 0 || row[0].slice(0, 4) !== rows[i - 1][0].slice(0, 4),
-  ).length;
-  const gridH = () =>
-    years * yearH +
-    rows.reduce((sum, row) => sum + tableH(row), 0) +
-    rowGap * Math.max(0, rows.length - 1);
-  const gridBottom = keyFor(printed).top - 12;
-  while (rowH > MIN_ROW && gridTop + gridH() > gridBottom) rowH -= 0.5;
-
-  // More than a page holds even at the smallest rows: later rows go on, on
-  // pages of their own, below the compact band.
-  const CONTINUED_TOP = compactH + 22;
-  const plan = (() => {
-    const breaks: number[] = [];
-    // Each page's months, for its key.
-    const pages: string[][] = [[]];
-    let y = gridTop;
-    let year = "";
-    rows.forEach((row, i) => {
-      const need = tableH(row) + (row[0].slice(0, 4) !== year ? yearH : 0);
-      const keyTop = keyFor([...(pages.at(-1) ?? []), ...row]).top;
-      if (y + need > keyTop - 12 && i > 0) {
-        breaks.push(i);
-        pages.push([]);
-        y = CONTINUED_TOP;
-        year = "";
-      }
-      pages.at(-1)?.push(...row);
-      if (row[0].slice(0, 4) !== year) {
-        year = row[0].slice(0, 4);
-        y += yearH;
-      }
-      y += tableH(row) + rowGap;
-    });
-    return { breaks, keys: pages.map(keyFor) };
-  })();
-  const pageBreaks = plan.breaks;
-  const textPage = pageBreaks.length + 1 + guidePages + 1;
-
-  let y = drawPanel(drawBand()) + 16;
+  // Rows that do not fit even at the smallest row height run on, on pages of
+  // their own under the compact band.
+  let y = drawNote(drawBand()) + SECTION;
+  let pageKeys: string[] = [];
   let year = "";
-  let page = 1;
   const yearsTagged = new Set<string>();
-  rows.forEach((row, i) => {
-    if (pageBreaks.includes(i)) {
-      if (page === 1) drawKey(root, textPage, plan.keys[0]);
-      else artifact(doc, () => drawKey(null, textPage, plan.keys[page - 1]));
-      mainFooter.artifact();
+  const endPage = (first: boolean) => {
+    const key = keyFor(pageKeys);
+    const top = footer1.top - SECTION - key.h;
+    if (first) drawKey(root, key, top);
+    else artifact(doc, () => drawKey(null, key, top));
+    if (first) footer1.draw(root);
+    else artifact(doc, () => footer1.draw(null));
+  };
+  let firstPage = true;
+  const heads = headed(grid.rows);
+  grid.rows.forEach((row, i) => {
+    const heading = heads[i] || year === "";
+    const need = tableH + (heading ? YEAR_H : 0);
+    if (y + need > keyTop - SECTION + 0.01 && pageKeys.length) {
+      endPage(firstPage);
+      firstPage = false;
       doc.addPage();
-      page++;
-      compactBand("ciąg dalszy", null);
-      y = CONTINUED_TOP;
+      y = compactBand("ciąg dalszy", null) + SECTION;
+      pageKeys = [];
       year = "";
     }
-    // The year above each page's first row and wherever a new year starts.
     // A year is tagged (H2) once; repeated, it is decoration.
-    const rowYear = row[0].slice(0, 4);
-    if (rowYear !== year) {
-      year = rowYear;
+    if (heads[i] || year === "") {
+      year = row.year;
       const top = y;
-      const heading = () => {
-        doc
-          .font("bold")
-          .fontSize(px(24))
-          .fillColor(BLACK)
-          .text(rowYear, MARGIN, top, { lineBreak: false });
-      };
-      if (yearsTagged.has(rowYear)) artifact(doc, heading);
+      const draw = () =>
+        rowText(
+          "bold",
+          TYPE.heading,
+          BLACK,
+          row.year,
+          MARGIN,
+          top,
+          ROW[TYPE.heading],
+        );
+      if (yearsTagged.has(row.year)) artifact(doc, draw);
       else {
-        yearsTagged.add(rowYear);
-        tag(root, "H2", heading);
+        yearsTagged.add(row.year);
+        tag(root, "H2", draw);
       }
-      y += yearH;
+      y += YEAR_H;
     }
-    const rowSlots = slots(row);
-    row.forEach((key, column) => {
-      drawMonth(
-        key,
-        rowYear,
-        MARGIN + column * (TABLE_W + COLUMN_GAP),
-        y,
-        rowSlots,
-      );
+    row.keys.forEach((key, column) => {
+      drawMonth(key, row.year, MARGIN + column * (grid.tableW + GUTTER), y);
     });
-    y += tableH(row) + rowGap;
+    pageKeys.push(...row.keys);
+    y += tableH + ROW_GAP;
   });
-  if (page === 1) drawKey(root, textPage, plan.keys[0]);
-  else artifact(doc, () => drawKey(null, textPage, plan.keys[page - 1]));
-  mainFooter.artifact();
+  endPage(firstPage);
 
   drawGuide();
 
   // ------------------------------------------------------------ text version
-  // No colours and no marks: the same dates as a list.
+  // No colours and no marks: the same dates as a list, then every source in
+  // full, with its link and the day it was checked, for screen readers.
+  const textFooter = footer(
+    [
+      ...sourceLines(place.sources),
+      ...(guide ? sourceLines(guide.sources) : []),
+    ],
+    disclaimer(place.gmina),
+  );
   doc.addPage();
-  y = compactBand("wersja tekstowa", root) + 18;
-  const textBottom = mainFooter.top - 14;
+  y = compactBand("wersja tekstowa", root) + SECTION;
+  const textBottom = textFooter.top - 3 * U;
   // One leading for the page's 19px text: paragraphs, list items and their
   // wrapped lines alike.
   const bodyGap = 2;
@@ -1658,6 +1554,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     ...(dayLine ? [`${dayLine}.`] : []),
     "Te same terminy co w kalendarzu, w formie listy.",
     ...(putOut ? [putOut] : []),
+    ...(place.verified ? [] : [unverifiedNote(place.gmina)]),
     "Terminy mogą się zmienić. Aktualne zawsze na stronie:",
   ];
   for (const line of intro) {
@@ -1741,12 +1638,12 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     const head = doc.heightOfString(entry.title, { width: CONTENT_W }) + 3;
     return { head, lines: entry.items.map(itemH), gap: 6 };
   });
-  const continuedTop = compactH + 18;
+  const continuedTop = compactH + SECTION;
   const placed = flow(blocks, y, continuedTop, textBottom);
   let textPageNow = 0;
   const toPage = (spot: Spot) => {
     while (textPageNow < spot.page) {
-      mainFooter.artifact();
+      textFooter.artifact();
       doc.addPage();
       compactBand("wersja tekstowa, ciąg dalszy", null);
       textPageNow++;
@@ -1809,7 +1706,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     list.end();
     section.end();
   });
-  mainFooter.draw(root);
+  textFooter.draw(root);
 
   root.end();
   doc.end();
