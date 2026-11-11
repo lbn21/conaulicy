@@ -97,12 +97,17 @@ export function Subpage({
       caption={placeCaption(place)}
       heading={module.pageTitle}
       error={error}
+      icon={module.id}
     >
-      {data === null ? (
-        <p className="govuk-body">{unchecked(module)}</p>
-      ) : (
-        <module.Details data={data} error={error} />
-      )}
+      {/* The module's colours for everything in its body (site.scss
+        .app-mod--*): its badges, chips and cards. */}
+      <div className={`app-mod app-mod--${module.id}`}>
+        {data === null ? (
+          <p className="app-empty govuk-body">{unchecked(module)}</p>
+        ) : (
+          <module.Details data={data} error={error} />
+        )}
+      </div>
     </AddressPage>
   );
 }

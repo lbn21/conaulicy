@@ -7,6 +7,7 @@ import {
   SearchErrorSummary,
 } from "@/components/address-search";
 import { Icon, type IconName, Tile } from "@/components/icon";
+import { PageHead } from "@/components/page-head";
 import { PlaceLink } from "@/components/place-link";
 import { SITE_URL } from "@/lib/config.generated";
 import { HOME_EXAMPLES } from "@/lib/examples";
@@ -72,20 +73,19 @@ export default async function Home() {
           dangerouslySetInnerHTML={{ __html: WEBSITE }}
         />
         <div className="govuk-grid-column-two-thirds">
-          <SearchErrorSummary />
-          <h1 className="govuk-heading-xl">{HOME_H1}</h1>
-          <p className="govuk-body-l">
-            Wpisz ulicę albo wieś i sprawdź terminy.
-          </p>
-
-          <div className="app-panel govuk-!-margin-bottom-8">
+          <PageHead
+            title={HOME_H1}
+            size="xl"
+            lead="Wpisz ulicę albo wieś i sprawdź terminy."
+            before={<SearchErrorSummary />}
+          >
             <AddressSearch indexUrl={indexUrl} />
-          </div>
+          </PageHead>
 
           <h2 className="govuk-heading-m">Co zobaczysz</h2>
           <ul className="app-items app-items--plain govuk-!-margin-bottom-8">
             {FEATURES.map(([icon, text]) => (
-              <li key={icon} className={`app-item app-mod app-mod--${icon}`}>
+              <li key={icon} className="app-item">
                 <Tile name={icon} />
                 <span className="app-item__body">{text}</span>
               </li>

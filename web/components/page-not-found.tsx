@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PageHead } from "@/components/page-head";
 
 /** Its H1 and title (GOV.UK: "Page not found"). */
 const NOT_FOUND_TITLE = "Nie znaleziono strony";
@@ -24,11 +25,10 @@ export function PageNotFound() {
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
-        <h1 className="govuk-heading-l">{NOT_FOUND_TITLE}</h1>
-        <p className="govuk-body">
-          Nie ma takiej strony. Może w adresie jest literówka albo link jest
-          nieaktualny.
-        </p>
+        <PageHead
+          title={NOT_FOUND_TITLE}
+          lead="Nie ma takiej strony. Może w adresie jest literówka albo link jest nieaktualny."
+        />
         <p className="govuk-body">
           <Link href="/" className="govuk-link">
             Przejdź na stronę główną

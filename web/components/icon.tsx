@@ -4,6 +4,7 @@ import {
   Clock,
   CloudSun,
   Droplet,
+  FileText,
   type IconNode,
   MapPin,
   Trash2,
@@ -32,6 +33,7 @@ const ICONS = {
   calendar: CalendarDays,
   chevron: ChevronRight,
   clock: Clock,
+  file: FileText,
   pin: MapPin,
 } satisfies Record<ModuleId, IconNode> & Record<string, IconNode>;
 
@@ -58,10 +60,13 @@ export function Icon({ name }: { name: IconName }) {
   );
 }
 
-/** A module's icon on its colour's tile (site.scss .app-tile, .app-mod--*). */
+/**
+ * An icon on its tile, in its module's colours (site.scss .app-tile,
+ * .app-mod--*); any other icon on the neutral grey.
+ */
 export function Tile({ name }: { name: IconName }) {
   return (
-    <span className="app-tile">
+    <span className={`app-tile app-mod app-mod--${name}`}>
       <Icon name={name} />
     </span>
   );
