@@ -6,7 +6,7 @@ import { test } from "node:test";
 import { contrastRatio, readableInk } from "./contrast.ts";
 import { GOVUK_COLOUR, GOVUK_FUNCTIONAL } from "./govuk-colours.ts";
 import { FRACTION_ICONS, ICON_ELEMENTS, PDF_ICONS } from "./pdf-icon.ts";
-import { GUIDES, guideFor } from "./sorting-guide.ts";
+import { GUIDES, guideFor, SHORT_MAX } from "./sorting-guide.ts";
 import { FRACTIONS, TOKEN } from "./waste-bin.ts";
 import { WASTE_COLOURS } from "./waste-colours.ts";
 
@@ -27,7 +27,7 @@ for (const [gmina, guide] of Object.entries(GUIDES)) {
       assert.match(source.checkedAt, /^\d{4}-\d{2}-\d{2}$/);
       assert.ok(source.label.length > 0);
     }
-    for (const entry of [...guide.fractions, guide.hazard]) {
+    for (const entry of [...guide.fractions, guide.pszok]) {
       assert.ok(entry.sources.length > 0, "no source");
       for (const id of entry.sources) assert.ok(ids.includes(id), id);
     }
@@ -45,10 +45,20 @@ for (const [gmina, guide] of Object.entries(GUIDES)) {
     assert.equal(new Set(seen).size, seen.length, "duplicate token");
     for (const fraction of guide.fractions) {
       assert.ok(tokens.has(fraction.token), fraction.token);
-      assert.ok(fraction.yes.length > 0, `${fraction.token}: no items`);
+      const { yes, no } = fraction.short;
+      assert.ok(yes.length > 0, `${fraction.token}: no items`);
+      // One cap for all: the tiles are the same size.
+      assert.ok(
+        yes.length <= SHORT_MAX && no.length <= SHORT_MAX,
+        fraction.token,
+      );
     }
-    assert.ok(guide.hazard.items.length > 0);
-    assert.ok(guide.hazard.place.length > 0);
+    assert.ok(
+      guide.pszok.items.length > 0 && guide.pszok.items.length <= SHORT_MAX,
+    );
+    assert.ok(guide.pszok.place.length > 0);
+    assert.ok(guide.publisher.length > 0);
+    assert.ok(guide.sources.some((source) => source.id === guide.fullRules));
   });
 }
 
@@ -86,10 +96,11 @@ test("a place gets one tile per covered bin colour, in its own order", () => {
     [...subtypes].sort((a, b) => order.indexOf(a) - order.indexOf(b)),
     subtypes,
   );
-  // Only the sources its tiles and hazard note cite.
+  // Only the sources its tiles, PSZOK line and full rules cite.
   const cited = new Set([
+    guide.fullRules.id,
     ...guide.tiles.flatMap((t) => t.sources),
-    ...guide.hazard.sources,
+    ...guide.pszok.sources,
   ]);
   assert.deepEqual(
     guide.sources.map((s) => s.id),
