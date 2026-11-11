@@ -14,6 +14,9 @@ import { upstream } from "./imgw-warnings.ts";
 /** IMGW's last good feed, only our powiats' items (lib/imgw-cron.ts). */
 export const FEED_PATH = "imgw/feed.json";
 
+/** PGE's last good list, only our area's outages (lib/pge-cron.ts). */
+export const PGE_PATH = "pge/outages.json";
+
 /** Every source's last check (lib/live-status.ts, lib/zuk-cron.ts). */
 export const CHECKS_PATH = "status/checks.json";
 

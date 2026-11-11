@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { IMGW_KEY, parseChecks, waterKey } from "./live-status.ts";
+import { IMGW_KEY, PGE_KEY, parseChecks, waterKey } from "./live-status.ts";
 import { WP_POSTS } from "./sources/gmina-lubaczow/fetch.ts";
 import { gminaLubaczow } from "./sources/gmina-lubaczow/index.ts";
 import type { ZukPost } from "./zuk.ts";
@@ -10,7 +10,12 @@ import {
   type AiResult,
   InvalidReply,
 } from "./zuk-ai.ts";
-import { handleZukCron, runZuk, type ZukCronDeps } from "./zuk-cron.ts";
+import {
+  handleZukCron,
+  type LiveStep,
+  runZuk,
+  type ZukCronDeps,
+} from "./zuk-cron.ts";
 import {
   AI_UNAVAILABLE,
   NOT_WATER,
@@ -135,7 +140,7 @@ const ids = (posts: Array<{ id: number }>) => posts.map((p) => p.id);
 const handle = (
   d: ZukCronDeps,
   more: ZukCronDeps[] = [],
-  imgw?: Parameters<typeof handleZukCron>[4],
+  imgw?: LiveStep["run"] | LiveStep[],
   checks?: Parameters<typeof handleZukCron>[5],
   auth = `Bearer ${SECRET}`,
 ) =>
@@ -146,7 +151,7 @@ const handle = (
     SECRET,
     d,
     more,
-    imgw,
+    typeof imgw === "function" ? [{ key: IMGW_KEY, run: imgw }] : imgw,
     checks,
   );
 const cron = (w: World, over: Partial<ZukCronDeps> = {}) =>
@@ -458,6 +463,51 @@ test("imgw: runs beside the water run, listed under imgw, never its result or st
   assert.deepEqual(await down.json(), {
     error: "source unavailable",
     imgw: { checked: true, changed: true },
+  });
+});
+
+test("live steps: each on its own, under its key; one failing never another's or the water's", async () => {
+  const w = world();
+  let status: string | null = null;
+  const checks = {
+    read: async () => status,
+    write: async (body: string) => {
+      status = body;
+    },
+  };
+  const steps: LiveStep[] = [
+    { key: IMGW_KEY, run: async () => ({ checked: true, changed: false }) },
+    {
+      key: PGE_KEY,
+      run: async () => {
+        throw new Error("pge broke");
+      },
+    },
+  ];
+  const response = await handle(deps(w), [], steps, checks);
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.deepEqual(body.imgw, { checked: true, changed: false });
+  assert.deepEqual(body.pge, { error: "failed" });
+  assert.equal(body.changed, true);
+  assert.deepEqual(
+    w.logs.find((line) => PGE_KEY in line),
+    {
+      pge: "error",
+      error: "pge broke",
+    },
+  );
+  const at = NOW.toISOString();
+  const sources = parseChecks(status)?.sources;
+  assert.deepEqual(sources?.[IMGW_KEY], {
+    checkedAt: at,
+    attemptAt: at,
+    ok: true,
+  });
+  assert.deepEqual(sources?.[PGE_KEY], {
+    checkedAt: null,
+    attemptAt: at,
+    ok: false,
   });
 });
 

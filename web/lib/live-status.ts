@@ -16,6 +16,9 @@ export const MAX_AGE_MS = 3 * 3_600_000;
 /** IMGW's warnings feed (lib/imgw-cron.ts). */
 export const IMGW_KEY = "imgw";
 
+/** PGE Dystrybucja's power outages (lib/pge-cron.ts). */
+export const PGE_KEY = "pge";
+
 /** A water source's posts (lib/sources, its id). */
 export const waterKey = (id: string) => `water:${id}`;
 

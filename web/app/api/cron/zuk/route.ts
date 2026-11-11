@@ -1,13 +1,17 @@
 import { unknownStreets } from "@/lib/districts";
 import { loadDistricts } from "@/lib/districts-db";
 import { runImgw } from "@/lib/imgw-cron";
-import { upstream } from "@/lib/imgw-warnings";
+import { upstream as imgwUpstream } from "@/lib/imgw-warnings";
+import { IMGW_KEY, PGE_KEY } from "@/lib/live-status";
 import {
   CHECKS_PATH,
   FEED_PATH,
+  PGE_PATH,
   readBlobFile,
   writeBlobFile,
 } from "@/lib/live-store";
+import { runPge } from "@/lib/pge-cron";
+import { upstream as pgeUpstream } from "@/lib/pge-feed";
 import { gminaLubaczow } from "@/lib/sources/gmina-lubaczow";
 import { mzgkim } from "@/lib/sources/mzgkim";
 import type { PostSource } from "@/lib/sources/source";
@@ -17,8 +21,9 @@ import { readZukFile, writeZukFile } from "@/lib/zuk-store";
 
 // The water cuts of every source into its private Blob file
 // (lib/zuk-cron.ts): the gmina's posts (ZUK) and MZGKiM's at the same
-// time, each failing on its own; beside them, IMGW's warnings into their
-// own private Blob file (lib/imgw-cron.ts); then every source's check into
+// time, each failing on its own; beside them, IMGW's warnings and PGE's
+// power outages, each into its own private Blob file (lib/imgw-cron.ts,
+// lib/pge-cron.ts: one PGE request a run, 4 an hour of PGE's 60); then every source's check into
 // the status file (lib/zuk-cron.ts handleZukCron). Nothing is purged: the
 // pages read these files per request through the Blob's CDN
 // (lib/live-store.ts). Vercel Cron
@@ -57,20 +62,34 @@ export function GET(request: Request) {
     deadline,
     log: (line) => console.log(JSON.stringify(line)),
   });
-  // IMGW's feed into imgw/feed.json when it changed.
+  const log = (line: Record<string, unknown>) =>
+    console.log(JSON.stringify(line));
+  // IMGW's feed into imgw/feed.json, PGE's outages into pge/outages.json,
+  // each when it changed.
   const imgw = async () =>
     runImgw({
-      ...(await upstream()),
+      ...(await imgwUpstream()),
       readFeed: () => readBlobFile(FEED_PATH),
       writeFeed: (body) => writeBlobFile(FEED_PATH, body),
-      log: (line) => console.log(JSON.stringify(line)),
+      log,
+    });
+  const pge = async () =>
+    runPge({
+      ...(await pgeUpstream()),
+      places: ZUK_PLACES,
+      readFile: () => readBlobFile(PGE_PATH),
+      writeFile: (body) => writeBlobFile(PGE_PATH, body),
+      log,
     });
   return handleZukCron(
     request,
     process.env.CRON_SECRET,
     run(gminaLubaczow),
     [run(mzgkim)],
-    imgw,
+    [
+      { key: IMGW_KEY, run: imgw },
+      { key: PGE_KEY, run: pge },
+    ],
     {
       read: () => readBlobFile(CHECKS_PATH),
       write: (body) => writeBlobFile(CHECKS_PATH, body),

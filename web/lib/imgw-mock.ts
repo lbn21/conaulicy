@@ -3,7 +3,7 @@
 // docs/data/imgw.md): the cron's fetch (mockFetch), and the pages' two
 // files in the store (mockFiles). lib/imgw-warnings.ts and lib/live-store.ts
 // load it only outside production, and it refuses to answer in production.
-import { isoWithOffset, warsawToIso } from "./dates.ts";
+import { isoWithOffset, shiftWall } from "./dates.ts";
 import {
   DERIVED_1809_ID,
   derived1809,
@@ -35,14 +35,6 @@ function startIn(start: string | null, hour: string): number {
 }
 
 type Item = Record<string, unknown>;
-
-// Wall time ("2026-10-25 13:00:00") moved by whole hours, as wall time.
-function shiftWall(wall: unknown, by: number): unknown {
-  const iso = typeof wall === "string" && warsawToIso(wall);
-  if (!iso) return wall;
-  const moved = new Date(Date.parse(`${iso.slice(0, 19)}Z`) + by);
-  return moved.toISOString().slice(0, 19).replace("T", " ");
-}
 
 // The derived 1809 warning, moved so it began an hour ago (or begins at
 // 10:00 with start=upcoming, or at night with start=night), at the
