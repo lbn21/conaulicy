@@ -6,7 +6,7 @@
 // Usage: node design/contrast.mjs
 
 import { GOVUK_COLOUR, GOVUK_FUNCTIONAL } from "../web/lib/govuk-colours.ts";
-import { HEADER, PLATE, ROLES } from "../web/lib/palette.ts";
+import { HEADER, MODULE_ROLES, PLATE, ROLES } from "../web/lib/palette.ts";
 import { WASTE_COLOURS } from "../web/lib/waste-colours.ts";
 
 // The bin colours, by their custom property's name (--waste-*).
@@ -61,6 +61,12 @@ const govuk = {
   "logo-plate-light": PLATE,
   // The plate on keyboard focus: currentColor, i.e. focus-text (app/site.scss).
   "logo-plate-focus": GOVUK_FUNCTIONAL["focus-text"],
+  // Each module's colours (MODULE_ROLES in web/lib/palette.ts): mod-woda-ink…
+  ...Object.fromEntries(
+    Object.entries(MODULE_ROLES).flatMap(([id, roles]) =>
+      Object.entries(roles).map(([role, hex]) => [`mod-${id}-${role}`, hex]),
+    ),
+  ),
 };
 for (const name of Object.keys(tokens)) {
   if (name in govuk) problems.push(`--${name} shadows GOV.UK's ${name} here`);
@@ -167,6 +173,13 @@ function requiredPairs() {
     ["border", "body-background", "info"],
     ["surface-border", "surface-background", "info"],
   ];
+  // Each module: its ink (labels, icons, badge text) on white and on its
+  // tint (tiles, badges); its main colour (the next pickup's bar) as UI.
+  for (const id of Object.keys(MODULE_ROLES)) {
+    pairs.push([`mod-${id}-ink`, "body-background", "text"]);
+    pairs.push([`mod-${id}-ink`, `mod-${id}-tint`, "text"]);
+    pairs.push([`mod-${id}-main`, "body-background", "ui"]);
+  }
   for (const w of WASTE) {
     if (OUTLINED.includes(w)) {
       pairs.push([`waste-${w}-border`, "body-background", "ui"]);
