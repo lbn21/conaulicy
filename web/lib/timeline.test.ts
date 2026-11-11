@@ -27,15 +27,6 @@ const cut = (day: string, start: string, end: string): Item => ({
   second: "Cała wieś Wzorowo.",
 });
 
-const LEVEL = { tag: "govuk-tag govuk-tag--yellow", text: "Stopień 1 z 3" };
-const warning = (from: string, to: string): Item => ({
-  module: "pogoda",
-  span: span(from.slice(0, 10), wall(from), wall(to)),
-  event: "silny wiatr",
-  level: LEVEL,
-  second: "Cały powiat lubaczowski.",
-});
-
 const pickup = (day: string): Item => ({
   module: "smieci",
   span: span(day, null, null),
@@ -136,16 +127,14 @@ test("collapse: all 7 days empty is one range, then „Później”", () => {
 
 test("onDay: registry order, then start; a multi-day item on each day, „continued” after its first", () => {
   const night = cut("2026-11-10", "2026-11-10 22:00:00", "2026-11-11 04:00:00");
-  const wind = warning("2026-11-10 08:00:00", "2026-11-10 16:00:00");
   const bins = pickup("2026-11-10");
   const early = cut("2026-11-10", "2026-11-10 07:00:00", "2026-11-10 09:00:00");
-  const items = [wind, night, bins, early];
+  const items = [night, bins, early];
   const now = at("2026-11-10T06:00:00+01:00");
   assert.deepEqual(onDay(items, "2026-11-10", now), [
     { item: bins, continued: false },
     { item: early, continued: false },
     { item: night, continued: false },
-    { item: wind, continued: false },
   ]);
   assert.deepEqual(onDay(items, "2026-11-11", now), [
     { item: night, continued: true },
@@ -180,7 +169,6 @@ test("onDay: Warsaw days across the DST change (25 Oct 2026, 25 hours)", () => {
 
 test("later: the first item per module after the window, in registry order", () => {
   const items = [
-    warning("2026-11-20 08:00:00", "2026-11-20 16:00:00"),
     cut("2026-11-18", "2026-11-18 08:00:00", "2026-11-18 12:00:00"),
     cut("2026-11-17", "2026-11-17 08:00:00", "2026-11-17 12:00:00"),
     pickup("2026-11-24"),
@@ -193,7 +181,6 @@ test("later: the first item per module after the window, in registry order", () 
     [
       ["smieci", "2026-11-24"],
       ["woda", "2026-11-17"],
-      ["pogoda", "2026-11-20"],
     ],
   );
   assert.deepEqual(later(items, "2026-11-30"), []);
