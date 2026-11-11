@@ -50,11 +50,14 @@ const texts = (html: string, tag: string) =>
     (m) => m[1].replace(/<[^>]+>/g, ""),
   );
 /** The section labelled by `id`. */
-/** The small print, the page's last paragraph. */
-const smallPrint = (html: string) =>
-  /<p class="govuk-hint govuk-!-font-size-16">([^<]*)<\/p><\/div><\/div>$/.exec(
+/** The small print, the page's last paragraph, as html. */
+const smallPrintHtml = (html: string) =>
+  /<p class="govuk-hint govuk-!-font-size-16">((?:(?!<\/p>).)*)<\/p><\/div><\/div>$/.exec(
     html,
   )?.[1] ?? "";
+/** The small print's text, tags stripped. */
+const smallPrint = (html: string) =>
+  smallPrintHtml(html).replace(/<[^>]+>/g, "");
 const section = (html: string, id: string) =>
   new RegExp(`<section aria-labelledby="${id}">.*?</section>`).exec(
     html,
@@ -246,7 +249,12 @@ test("„Wszystko o Twoim adresie” and the small print: a link per module with
     smallPrint(html),
     /^Sprawdziliśmy: woda [^,]+ i pogoda 25 października 13:20\. Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy\. Dane Instytutu Meteorologii i Gospodarki Wodnej – Państwowego Instytutu Badawczego zostały przetworzone\.$/,
   );
-  // The sources are on the subpages, none on the hub.
+  // The weather has no subpage: its source link is IMGW's name here.
+  assert.match(
+    smallPrintHtml(html),
+    / jest <a class="govuk-link" href="https:\/\/meteo\.imgw\.pl\/">Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy<\/a>\. Dane /,
+  );
+  // The other sources are on the subpages, none on the hub.
   assert.doesNotMatch(html, /Źródło:|Skąd to wiemy/);
   // IMGW's required wording, once.
   assert.equal(count(html, "Instytut Meteorologii i Gospodarki Wodnej"), 1);

@@ -17,7 +17,8 @@ import { WarsawToday } from "@/components/warsaw-today";
 import { MODULE_IDS, SUBPAGE_IDS } from "@/lib/address-routes";
 import { freshnessLine, type Group, unchecked } from "@/lib/hub";
 import { IMGW_PREVIEW, imgwPreview } from "@/lib/imgw-preview";
-import { IMGW_ATTRIBUTION } from "@/lib/imgw-warnings";
+import { IMGW_PAGE } from "@/lib/imgw-shown";
+import { IMGW_ATTRIBUTION, IMGW_NAME } from "@/lib/imgw-warnings";
 import { MODULES, type Module } from "@/lib/modules";
 import type { PlaceView } from "@/lib/schedule";
 import type { Weather } from "@/lib/weather-module";
@@ -152,7 +153,9 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
       )}
       {/* Small print at the end, above the footer (task 284): when each
         module last checked its source, the AI caveat when it applies, and
-        IMGW's required wording. The sources are on the subpages. */}
+        IMGW's required wording, its name linked: the weather has no
+        subpage, so its source link is here. The other sources are on the
+        subpages. */}
       <p className="govuk-hint govuk-!-font-size-16">
         {[
           freshnessLine(
@@ -162,10 +165,14 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
             })),
           ),
           ...loaded.map(({ module, data }) => module.note?.(data)),
-          ...IMGW_ATTRIBUTION,
+          IMGW_ATTRIBUTION.source[0],
         ]
           .filter(Boolean)
           .join(" ")}
+        <a className="govuk-link" href={IMGW_PAGE}>
+          {IMGW_NAME}
+        </a>
+        {`${IMGW_ATTRIBUTION.source[1]} ${IMGW_ATTRIBUTION.processed}`}
       </p>
     </AddressPage>
   );
