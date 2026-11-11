@@ -435,7 +435,7 @@ try {
       counts.length > 0 &&
         !(counts.includes(1) && counts.some((n) => n > 1)) &&
         items.every((line) => Math.abs(line[0].x0 - items[0][0].x0) < 1),
-      `${c.name}: page 1 key in ${counts.length} lines of ${counts.join(" + ")} items (lines start in one place, none alone)`,
+      `${c.name}: page 1 key in ${counts.length} lines of ${counts.join(" + ")} items (lines start in one place, none alone; at ${items.map((line, i) => `${round(line[0].x0)},${round(keyLines[i][0].y0)}`).join(" ")})`,
     );
     // A fixed grid inside the page's margins: at most 4 × 3 tables on page
     // 1, a whole window's twelve months all of them, nothing carried over.
