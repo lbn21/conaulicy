@@ -108,6 +108,37 @@ export const WARNING_LEVELS = {
   "warning-level-3": "#d60000",
 } as const;
 
+// A colour per module of the address page, after the utility colour codes
+// people know: water blue, power amber (not red, and darker than the
+// plastik bin's yellow, lib/waste-colours.ts), waste green, the weather
+// slate. Red is never a module's: it stays GOV.UK's, for what is urgent
+// (a failure, IMGW's level 3). Each a group in GOV.UK's steps (group()):
+// the primary for bars and rings (3:1 or more on white), shade-25 for its
+// text and icons (4.5:1 or more on white and on its tint), tint-80 for an
+// icon's tile, tint-95 for a wash (docs/brand.md, Module colours).
+export const MODULE_COLOURS = {
+  smieci: "#1e7d43",
+  woda: "#1767b0",
+  prad: "#c46a00",
+  pogoda: "#3f6a8a",
+} as const;
+
+/** The module colours' steps the site uses, by role. */
+export const MODULE_ROLES = Object.fromEntries(
+  Object.entries(MODULE_COLOURS).map(([id, primary]) => {
+    const steps = group(primary);
+    return [
+      id,
+      {
+        main: primary,
+        ink: steps["shade-25"],
+        tint: steps["tint-80"],
+        wash: steps["tint-95"],
+      },
+    ];
+  }),
+) as Record<string, Record<string, string>>;
+
 /** The colours above as Sass, for app/_palette.scss. */
 export function paletteScss(): string {
   const map = (entries: Record<string, string>) =>
@@ -121,6 +152,9 @@ export function paletteScss(): string {
     `$app-roles: ${map(ROLES)};`,
     `$app-header: ${HEADER};`,
     ...Object.entries(WARNING_LEVELS).map(([k, v]) => `$app-${k}: ${v};`),
+    `$app-modules: (\n${Object.entries(MODULE_ROLES)
+      .map(([id, roles]) => `  "${id}": ${map(roles).replaceAll("\n", " ")}`)
+      .join(",\n")}\n);`,
     "",
   ].join("\n");
 }
