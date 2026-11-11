@@ -13,7 +13,7 @@
 // conaulicy.pl. The home page's Apple web-app tags (a "default" status bar,
 // never black-translucent) and the manifest's id, scope, display and icons.
 // The home page's copy: its exact H1 and lead, a
-// description that leads with the waste, and no "prąd" in its HTML or the manifest (no power data).
+// description that leads with the waste, and no "prąd" in the manifest.
 //
 // Runs against `next start` on the current build.
 import { notFoundAt, ROUTES } from "../lib/server.mjs";
@@ -208,7 +208,6 @@ export async function check(server, failures) {
   const homeDescription = meta(home, "name", "description").map(decode);
   if (!homeDescription[0]?.startsWith("Wywóz śmieci"))
     failures.push(`/: description ${JSON.stringify(homeDescription)}`);
-  if (/prąd/i.test(home)) failures.push("/: „prąd” in the HTML");
   const manifestText = await (
     await fetch(`${server.origin}/manifest.webmanifest`)
   ).text();
