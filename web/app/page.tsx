@@ -41,7 +41,6 @@ const WEBSITE = JSON.stringify({
 const FEATURES: [IconName, string][] = [
   ["smieci", "dni wywozu śmieci – dla każdego rodzaju odpadów osobno"],
   ["woda", "zapowiedziane przez gminę przerwy w dostawie wody"],
-  ["prad", "planowane przerwy i awarie w dostawie prądu (PGE)"],
   ["pogoda", "ostrzeżenia IMGW przed złą pogodą w powiecie lubaczowskim"],
   [
     "calendar",
