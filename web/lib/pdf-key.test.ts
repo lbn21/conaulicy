@@ -52,12 +52,32 @@ describe("keyGrid", () => {
       const grid = keyGrid(widths, 463, GAP);
       const counts = rowCounts(grid);
       assert.ok(counts.every((c) => c > 0));
-      const last = counts.at(-1) ?? 0;
-      assert.ok(grid.rows === 1 || counts[0] === 1 || last >= 2, `n=${n}`);
+      const lone = counts.includes(1) && counts.some((c) => c > 1);
+      assert.ok(!lone, `n=${n}: ${counts.join(" + ")}`);
       grid.places.forEach((p, i) => {
         assert.ok(p.x + widths[i] <= 463 || p.x === 0, `n=${n} item ${i}`);
       });
+      // Never more lines than filling each line in turn would take.
+      let greedy = 1;
+      let x = 0;
+      for (const w of widths) {
+        if (x > 0 && x + w > 463) {
+          greedy++;
+          x = 0;
+        }
+        x += w + GAP;
+      }
+      assert.ok(grid.rows <= greedy || n <= 3, `n=${n}: ${grid.rows} lines`);
     }
+  });
+
+  it("falls back to balanced lines when columns are too wide", () => {
+    // Two wide items in one column would not fit; the lines at their own
+    // widths do, as even as can be.
+    const widths = [150, 20, 20, 150, 20, 20];
+    const grid = keyGrid(widths, 230, GAP);
+    assert.equal(grid.rows, 2);
+    assert.deepEqual(rowCounts(grid), [3, 3]);
   });
 
   it("lays out no items in one empty row", () => {

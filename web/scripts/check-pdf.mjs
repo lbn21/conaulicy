@@ -8,8 +8,8 @@
 // address's month tables are the same size, rows included, however many
 // months it has, in one fixed 4 × 3 grid inside the page's margins (a
 // whole year's twelve months on page 1), every row one height (no date's
-// marks wrap), every header cell's text one padding in, the key in one
-// line or two in one set of columns (none alone), at one place
+// marks wrap), every header cell's text one padding in, the key's lines
+// starting in one place with no item alone, at one place
 // on the page whatever the street's name (the longest on one line), and so
 // are the guide's tiles; no word on pages 1–2 spills
 // out of its table, tile or box (scripts/lib/pdf-layout.mjs). Checks are
@@ -399,10 +399,10 @@ try {
         ),
       `${c.name}: page 1 header cells' left padding ${[...new Set(headerPads.map(round))].join(", ")} pt (one for every header cell)`,
     );
-    // The key, between the tables and the footer line: one line, or two
-    // whose items stand in the first line's columns, never one item alone
-    // under a fuller line. Items are words more than 2 U apart (a mark
-    // between them); the first line's first word is the key's heading.
+    // The key, between the tables and the footer line: its lines start in
+    // one place, and no item stands alone on a line beside fuller ones.
+    // Items are words more than 2 U apart (a mark between them); the first
+    // line's first word is the key's heading.
     const tablesEnd = Math.max(...tables.map((t) => t.y1));
     const keyLines = [];
     for (const w of words1
@@ -424,15 +424,12 @@ try {
           return out;
         }, []),
     );
-    const [first = [], second] = items;
+    const counts = items.map((line) => line.length);
     check(
-      first.length > 0 &&
-        items.length <= 2 &&
-        (!second ||
-          (second.length >= Math.min(2, first.length) &&
-            second.length <= first.length &&
-            second.every((item, i) => Math.abs(item.x0 - first[i].x0) < 1))),
-      `${c.name}: page 1 key in ${items.length} lines of ${items.map((l) => l.length).join(" + ")} items (one line, or two in one set of columns, none alone)`,
+      counts.length > 0 &&
+        !(counts.includes(1) && counts.some((n) => n > 1)) &&
+        items.every((line) => Math.abs(line[0].x0 - items[0][0].x0) < 1),
+      `${c.name}: page 1 key in ${counts.length} lines of ${counts.join(" + ")} items (lines start in one place, none alone)`,
     );
     // A fixed grid inside the page's margins: at most 4 × 3 tables on page
     // 1, a whole window's twelve months all of them, nothing carried over.

@@ -866,7 +866,8 @@ function render(
           ]
         : []),
     ];
-    // One line, else two balanced rows in aligned columns (lib/pdf-key.ts).
+    // The fewest lines, in aligned columns where they fit, never one item
+    // alone (lib/pdf-key.ts).
     doc.font("regular").fontSize(TYPE.small);
     const grid = keyGrid(
       items.map((item) => MARK + U + doc.widthOfString(item.label)),
@@ -939,7 +940,13 @@ function render(
   // month in the data, under the band (one height for every address: a
   // one-line title, its day line) and above the tallest key of any zone. Every address gets the same
   // tables; fewer months leave the space below them empty.
+  // The worst case first: every fraction any zone marks, and a moved date
+  // if any has one, so a fuller key never pushes into the tables.
   const keyMax = [
+    keyOf(
+      [...new Set(maxima.keys.flatMap((key) => key.tones))],
+      maxima.keys.some((key) => key.moved),
+    ),
     keyFor(printed),
     ...maxima.keys.map((key) => keyOf(key.tones, key.moved)),
   ].reduce((tallest, key) => (key.h > tallest.h ? key : tallest));
@@ -970,8 +977,8 @@ function render(
   const plan = (headroom: number) =>
     tableSizes.map(({ size, mark }) => {
       // The date column holds „Dzień” over one or two digits: the same for
-      // every address, and as narrow as „Dzień” TABLE_PAD in and U after it
-      // when the marks need the room (lib/pdf-grid.ts fitMarks).
+      // every address, and as narrow as „Dzień” with U each side when the
+      // marks need the room; „Dzień” is still set TABLE_PAD in (lib/pdf-grid.ts fitMarks).
       const textW = Math.max(
         widthOf("regular", size, "Dzień"),
         widthOf("regular", size, "28"),
@@ -989,8 +996,8 @@ function render(
         yearH: YEAR_H,
         rowGap: ROW_GAP,
         dateW,
-        // „Dzień” TABLE_PAD in, as every header, with U to spare after it.
-        minDateW: Math.ceil(textW + TABLE_PAD + U),
+        // „Dzień” TABLE_PAD in, as every header, still inside the column.
+        minDateW: Math.ceil(textW + 2 * U),
         minMarksW: onScale(widthOf("regular", size, "Odpady") + 2 * TABLE_PAD),
         pad: TABLE_PAD,
         mark,
