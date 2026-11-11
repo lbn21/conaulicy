@@ -22,9 +22,6 @@ export type Span = {
   until: string;
 };
 
-/** IMGW's level, as its tag: the colour never the only signal. */
-export type Tag = { tag: string; text: string };
-
 type Base = {
   span: Span;
   /** The second sentence (where, or when to put the bins out); or null. */

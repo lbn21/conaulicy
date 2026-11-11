@@ -21,12 +21,6 @@ export type Weather = {
   checkedAt: number | null;
 };
 
-/** Where every warning applies: all our gminas lie in one powiat. */
-export const POWIAT = {
-  name: "Cały powiat lubaczowski",
-  of: "powiatu lubaczowskiego",
-};
-
 /**
  * The module's data, or null when there is no copy of the feed yet: then
  * the address page says it has not been checked yet. The store
