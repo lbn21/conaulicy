@@ -939,13 +939,7 @@ function render(
   // month in the data, under the band (one height for every address: a
   // one-line title, its day line) and above the tallest key of any zone. Every address gets the same
   // tables; fewer months leave the space below them empty.
-  // The worst case first: every fraction any zone marks, and a moved date
-  // if any has one, so a fuller key never pushes into the tables.
   const keyMax = [
-    keyOf(
-      [...new Set(maxima.keys.flatMap((key) => key.tones))],
-      maxima.keys.some((key) => key.moved),
-    ),
     keyFor(printed),
     ...maxima.keys.map((key) => keyOf(key.tones, key.moved)),
   ].reduce((tallest, key) => (key.h > tallest.h ? key : tallest));
