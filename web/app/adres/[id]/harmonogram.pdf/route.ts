@@ -24,7 +24,7 @@ import {
 } from "@/lib/logo";
 import { fileSlug } from "@/lib/normalize";
 import { type Block, flow, type Spot } from "@/lib/pdf-flow";
-import { chooseGrid, dateRows, headed, tableRows } from "@/lib/pdf-grid";
+import { chooseGrid, dateRows, tableRows } from "@/lib/pdf-grid";
 import { drawIcon, FRACTION_ICONS, PDF_ICONS } from "@/lib/pdf-icon";
 import { scheduleName } from "@/lib/places";
 import {
@@ -61,7 +61,7 @@ const BOLD = readFileSync(
 // look, on one spacing scale (U, 4 pt) and one type scale (TYPE): page 1 is
 // the whole published period on one page (the cherry band with the "ul."
 // plate and the QR code, one GOV.UK Warning line, identical bordered month
-// tables in a strict grid (lib/pdf-grid.ts), the key, one footer line);
+// tables in a fixed 4 × 3 grid (lib/pdf-grid.ts), the key, one footer line);
 // page 2, „Co wrzucać”, the same for every address: equal tiles for the
 // bins and a row for the waste handed in separately, from the gmina's own
 // rules (lib/sorting-guide.ts) with Lucide's icons, the PSZOK line beside the
@@ -72,8 +72,16 @@ const PAGE_H = 841.89;
 // The spacing scale: every gap, padding and size a multiple of U.
 const U = 4;
 const MARGIN = 7 * U;
-/** Between month tables and between tiles: one gutter for both grids. */
+/** Between the guide's tiles. */
 const GUTTER = 2 * U;
+/**
+ * Page 1's month grid: always 4 × 3 tables, the twelve months of the
+ * window (Jakub, t333), as wide as the page allows with a gutter that
+ * reads as one between tables.
+ */
+const MONTH_COLUMNS = 4;
+const MONTH_ROWS = 3;
+const MONTH_GUTTER = 3 * U;
 /** Between the page's blocks: band, note, grid, key, footer. */
 const SECTION = 4 * U;
 /** A table cell's inner padding: the headers breathe, as the leaflet's. */
@@ -89,8 +97,7 @@ const px = (n: number) => n * 0.75;
 /** The type scale: GOV.UK's sizes in pt, and one under them for fine print. */
 const TYPE = {
   fine: 9,
-  // The month tables' text, headers and days alike, where 16px is just too
-  // wide for five columns.
+  // The month tables' text, headers and days alike, if 16px does not fit.
   table: px(15),
   small: px(16),
   body: px(19),
@@ -158,6 +165,21 @@ const MARKS: Record<string, Mark | string> = {
   tekstylia: "T",
 };
 
+/**
+ * Each shape's box in its square slot, so all look one size (Jakub, t333):
+ * the round ones and the square slightly smaller (a square looks the
+ * biggest), the pointed ones the whole slot. One slot (MARK, below) sizes
+ * them all; a slot of 11 keeps the circle at 10 pt.
+ */
+const OPTICAL = {
+  circle: 10 / 11,
+  ring: 10 / 11,
+  square: 8.5 / 11,
+  triangle: 1,
+  diamond: 1,
+  star: 1,
+} as const;
+
 /** The key's order, as the site lists fractions; the key holds tones only. */
 const KEY_ORDER = FRACTIONS.map(({ subtype }) => subtype);
 
@@ -174,16 +196,19 @@ function drawMark(
   s: number,
 ) {
   const mark = MARKS[TOKEN[tone]] ?? "?";
-  const r = s / 2;
+  // A letter's square, like the square mark; a shape, its optical box.
+  const box =
+    s * (typeof mark === "string" ? OPTICAL.square : OPTICAL[mark.shape]);
+  const r = box / 2;
   doc.save().lineJoin("round");
   if (typeof mark === "string") {
     doc
-      .rect(cx - r, cy - r, s, s)
-      .lineWidth(s * 0.09)
+      .rect(cx - r, cy - r, box, box)
+      .lineWidth(box * 0.09)
       .strokeColor(BLACK)
       .stroke();
     // Centred by its ink, as the dates are: equal space on every side.
-    const size = s * 0.8;
+    const size = box * 0.8;
     const ink = inkOf("bold", size, mark);
     const top = cy + (ink.above - ink.below) / 2 - size * ASCENT;
     doc
@@ -196,9 +221,11 @@ function drawMark(
   }
   const fill = () => {
     if (mark.stroke)
-      doc.lineWidth(s * 0.09).fillAndStroke(mark.fill, mark.stroke);
+      doc.lineWidth(box * 0.09).fillAndStroke(mark.fill, mark.stroke);
     else doc.fillColor(mark.fill).fill();
   };
+  // Every shape's box centred on (cx, cy): the row's midline, the day
+  // number's cap-centre.
   switch (mark.shape) {
     case "circle":
       doc.circle(cx, cy, r);
@@ -206,38 +233,41 @@ function drawMark(
       break;
     case "ring":
       doc
-        .circle(cx, cy, r - s * 0.13)
-        .lineWidth(s * 0.26)
+        .circle(cx, cy, r - box * 0.13)
+        .lineWidth(box * 0.26)
         .strokeColor(mark.fill)
         .stroke();
       break;
     case "square":
-      doc.rect(cx - r * 0.9, cy - r * 0.9, r * 1.8, r * 1.8);
+      doc.rect(cx - r, cy - r, box, box);
       fill();
       break;
-    case "triangle":
-      doc.polygon(
-        [cx, cy - r * 0.95],
-        [cx + r * 1.05, cy + r * 0.95],
-        [cx - r * 1.05, cy + r * 0.95],
-      );
+    case "triangle": {
+      // Equilateral, as wide as the box; its box centred.
+      const h = (box * Math.sqrt(3)) / 2;
+      doc.polygon([cx, cy - h / 2], [cx + r, cy + h / 2], [cx - r, cy + h / 2]);
       fill();
       break;
+    }
     case "diamond":
       doc.polygon(
-        [cx, cy - r * 1.1],
-        [cx + r * 0.95, cy],
-        [cx, cy + r * 1.1],
-        [cx - r * 0.95, cy],
+        [cx, cy - r],
+        [cx + r * 0.85, cy],
+        [cx, cy + r],
+        [cx - r * 0.85, cy],
       );
       fill();
       break;
     case "star": {
+      // Five points on the box's circle; the lower points reach
+      // cos 36° of the radius, so the star is lowered by half the
+      // difference to centre its box.
       const points: Array<[number, number]> = [];
+      const drop = (r * (1 - Math.cos(Math.PI / 5))) / 2;
       for (let i = 0; i < 10; i++) {
-        const rr = i % 2 === 0 ? r * 1.1 : r * 0.48;
+        const rr = i % 2 === 0 ? r : r * 0.5;
         const a = -Math.PI / 2 + (i * Math.PI) / 5;
-        points.push([cx + rr * Math.cos(a), cy + 0.05 * s + rr * Math.sin(a)]);
+        points.push([cx + rr * Math.cos(a), cy + drop + rr * Math.sin(a)]);
       }
       doc.polygon(...points);
       fill();
@@ -787,7 +817,9 @@ function render(
   // ------------------------------------------------------------ key
   // The key above the footer: the marks on the page, then a moved date's
   // cell if the data has one. Rows of 5 U, marks the tables' size.
-  const MARK = 10;
+  // One slot for every mark, in the tables and the key (OPTICAL); a full
+  // step between slots.
+  const MARK = 11;
   const MARK_GAP = U;
   const KEY_ROW = 5 * U;
   const keyHeading = "Oznaczenia";
@@ -881,7 +913,7 @@ function render(
   // ------------------------------------------------------------ grid
   // Identical month tables, as the leaflet's: a title row, a „Dzień |
   // Odpady” header row on grey, and the same number of body rows in every
-  // month (lib/pdf-grid.ts picks the columns and row height); every cell
+  // month (lib/pdf-grid.ts: 4 × 3, the twelve months of the window; it fits the marks and the row height); every cell
   // bordered, each border drawn once.
   // The day number only, as the leaflet's.
   const dateText = (day: PickupDay) => String(Number(day.date.slice(8)));
@@ -891,8 +923,11 @@ function render(
   };
   /** Up to the next step of the scale. */
   const onScale = (n: number) => Math.ceil(n / U) * U;
-  const YEAR_H = ROW[TYPE.heading] + U;
-  const ROW_GAP = 3 * U;
+  // A strip above every grid row: the year heading's own row, its ink
+  // leaving air above the tables.
+  const YEAR_H = ROW[TYPE.heading];
+  // Between grid rows: the next row's year strip adds its own air.
+  const ROW_GAP = 2 * U;
   const footer1 = footerLine(
     footerText(
       scheduleName(place.gmina),
@@ -927,8 +962,8 @@ function render(
   // As the leaflet's: nothing bold, headers the days' size, set apart only
   // by the grey; every table text TABLE_PAD in from its borders.
   const tableSizes = [
-    { size: TYPE.heading, mark: 14 },
-    { size: TYPE.body, mark: 12 },
+    { size: TYPE.heading, mark: MARK + 4 },
+    { size: TYPE.body, mark: MARK + 2 },
     { size: TYPE.small, mark: MARK },
     { size: TYPE.table, mark: MARK },
   ];
@@ -946,8 +981,10 @@ function render(
         months: gridMonths,
         profiles: maxima.profiles,
         headroom,
+        // Room for five on a day, every address (Jakub, t333).
+        least: 5,
         width: CONTENT_W,
-        gap: GUTTER,
+        gap: MONTH_GUTTER,
         height: keyTop - SECTION - gridTop,
         yearH: YEAR_H,
         rowGap: ROW_GAP,
@@ -957,12 +994,12 @@ function render(
         pad: TABLE_PAD,
         mark,
         markGap: MARK_GAP,
-        // After the date column, the gaps close to a point, then the marks
-        // shrink by two at most.
-        minMarkGap: U / 4,
-        minMark: mark - 2,
-        maxColumns: 6,
-        minColumns: 2,
+        // Only the date column gives way: the marks keep their size and a
+        // full step between them.
+        minMarkGap: MARK_GAP,
+        minMark: mark,
+        columns: MONTH_COLUMNS,
+        gridRows: MONTH_ROWS,
         maxRow: 2 * ROW[size],
         minRow: ROW[size],
         rowStep: 0.5,
@@ -1576,16 +1613,14 @@ function render(
     else artifact(doc, () => footer1.draw(null));
   };
   let firstPage = true;
-  // This address's months, from the top left, in the grid's columns.
+  // This address's months, from the top left, in the grid's columns; each
+  // row under its strip of year headings, a year's above its first month.
   const placedRows = tableRows(
     printed.map((key) => ({ key })),
     grid.columns,
   );
-  const heads = headed(placedRows);
-  placedRows.forEach((row, i) => {
-    const heading = heads[i] || year === "";
-    const need = tableH + (heading ? YEAR_H : 0);
-    if (y + need > keyTop - SECTION + 0.01 && pageKeys.length) {
+  placedRows.forEach((row) => {
+    if (y + YEAR_H + tableH > keyTop - SECTION + 0.01 && pageKeys.length) {
       endPage(firstPage);
       firstPage = false;
       doc.addPage();
@@ -1593,29 +1628,34 @@ function render(
       pageKeys = [];
       year = "";
     }
-    // A year is tagged (H2) once; repeated, it is decoration.
-    if (heads[i] || year === "") {
-      year = row.year;
-      const top = y;
-      const draw = () =>
-        rowText(
-          "bold",
-          TYPE.heading,
-          BLACK,
-          row.year,
-          MARGIN,
-          top,
-          ROW[TYPE.heading],
-        );
-      if (yearsTagged.has(row.year)) artifact(doc, draw);
-      else {
-        yearsTagged.add(row.year);
-        tag(root, "H2", draw);
-      }
-      y += YEAR_H;
-    }
+    const yearTop = y;
+    y += YEAR_H;
     row.keys.forEach((key, column) => {
-      drawMonth(key, MARGIN + column * (grid.tableW + GUTTER), y);
+      const x = MARGIN + column * (grid.tableW + MONTH_GUTTER);
+      // A year is tagged (H2) once, before its first month; repeated at
+      // the top of a carried-over page, it is decoration.
+      const starts = row.years.find((entry) => entry.column === column);
+      const shown =
+        starts?.year ?? (column === 0 && year === "" ? key.slice(0, 4) : null);
+      if (shown) {
+        year = shown;
+        const draw = () =>
+          rowText(
+            "bold",
+            TYPE.heading,
+            BLACK,
+            shown,
+            x,
+            yearTop,
+            ROW[TYPE.heading],
+          );
+        if (yearsTagged.has(shown)) artifact(doc, draw);
+        else {
+          yearsTagged.add(shown);
+          tag(root, "H2", draw);
+        }
+      }
+      drawMonth(key, x, y);
     });
     pageKeys.push(...row.keys);
     y += tableH + ROW_GAP;
