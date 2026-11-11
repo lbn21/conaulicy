@@ -24,8 +24,8 @@ const STEPS = {
   "shade-50": [BLACK, 50],
 } as const;
 type GovukStep = "primary" | keyof typeof STEPS;
-// Ours, not GOV.UK's, with the same method: the link colour (Jakub's
-// decision, task 92): 3.14 : 1 against body text, where shade-10 was 1.65.
+// Ours, not GOV.UK's, with the same method: the link colour:
+// 3.14 : 1 against body text, where shade-10 was 1.65.
 const OUR_STEPS = {
   "tint-20": [WHITE, 20],
 } as const;
@@ -71,8 +71,8 @@ export const PALETTE = {
 const LINK_STEP: Step = "tint-20";
 
 // The roles GOV.UK derives from its brand blue, in our steps. Visited links
-// have no colour of their own: link-visited is the link colour (Jakub's
-// decision), as GOV.UK's links without a visited state.
+// have no colour of their own: link-visited is the link colour,
+// as GOV.UK's links without a visited state.
 export const ROLE_STEPS: Record<string, Step> = {
   brand: "primary",
   link: LINK_STEP,
@@ -86,7 +86,7 @@ export const ROLES = Object.fromEntries(
   Object.entries(ROLE_STEPS).map(([role, step]) => [role, PALETTE[step]]),
 );
 
-// The header bar: the darkest step (Jakub's decision, task 88), not the
+// The header bar: the darkest step, not the
 // Generic header's black, as GOV.UK's header takes its brand colour. The
 // browser's theme-color and the PDF's band are the same colour.
 export const HEADER = PALETTE["shade-50"];
@@ -96,10 +96,10 @@ export const HEADER = PALETTE["shade-50"];
 /** @alias */
 export const PLATE = HEADER;
 
-// IMGW's warning levels 1-3 (Jakub's decision, task 98): the solid colours
+// IMGW's warning levels 1-3: the solid colours
 // IMGW's own warnings map paints them (lvlToColorOsmet in
 // shared.imgw.pl/web-components/ostrzezenia-meteo-hydro/ostrzezenia-meteo-hydro.js),
-// for the address page's warning cards' bands (app/site.scss, task 288), not
+// for the address page's warning cards' bands (app/site.scss), not
 // GOV.UK's pale tag tints. Not
 // brand colours, so check-palette lets them stand outside docs/brand.md.
 export const WARNING_LEVELS = {

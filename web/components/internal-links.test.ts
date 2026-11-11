@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { test } from "node:test";
 
-// Every link inside the site is Next.js's <Link> (CLAUDE.md, task 259): a
+// Every link inside the site is Next.js's <Link> (CLAUDE.md): a
 // page of the site, or an id on the same page (FragmentLink). A plain <a>
 // only for another site, mailto: or a file the browser opens itself (ICS,
 // PDF, /fonts/OFL.txt), which is no page of the app. This reads every plain
@@ -71,7 +71,7 @@ function plainHrefs(code: string): string[] {
   return hrefs;
 }
 
-test("every plain <a> is another site, mailto: or a file (task 259)", () => {
+test("every plain <a> is another site, mailto: or a file", () => {
   const seen: string[] = [];
   for (const path of [
     ...sources(join(WEB, "app")),
@@ -106,7 +106,7 @@ test("every plain <a> is another site, mailto: or a file (task 259)", () => {
   }
 });
 
-test("the in-page links are FragmentLinks, to ids (task 259)", () => {
+test("the in-page links are FragmentLinks, to ids", () => {
   for (const file of ["app/layout.tsx", "components/error-summary.tsx"]) {
     const code = readFileSync(join(WEB, file), "utf8");
     assert.match(code, /<FragmentLink\b[^>]*\shref=/, file);

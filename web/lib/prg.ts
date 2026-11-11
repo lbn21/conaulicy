@@ -17,7 +17,7 @@ const NUMBERS = new Map(
 );
 
 /**
- * The one check of a house number (task 205), for every page and file that
+ * The one check of a house number, for every page and file that
  * takes one (lib/schedule.ts getPlace): the value, trimmed and upper case,
  * is one of the register's numbers at the place, or a flat ("7/22") whose
  * building ("7") is. null: the register has no point at the place, so

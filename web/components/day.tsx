@@ -5,22 +5,22 @@ import { absoluteDay, capitalised, dayRange } from "@/lib/dates";
 import type { PlaceView } from "@/lib/schedule";
 import type { DayGroup, Entry } from "@/lib/timeline";
 
-// The timeline's days (task 263, restyled in task 264): each an li of
+// The timeline's days: each an li of
 // components/timeline.tsx's ol (site.scss .app-timeline). A day with
 // items is a card, its date an h3 („Wtorek, 10 listopada · dzisiaj”, the
-// word DayWord's, task 268); an empty day or run of them („11–15
+// word DayWord's); an empty day or run of them („11–15
 // listopada”, Intl's formatRange, no word) a muted grey card, its date the
-// same h3 over „Nic nie zaplanowano.” (task 266; on every place, task 278),
-// a run's line dashed alongside its card (task 268);
-// „Później” a card at the ringed end of the line (task 265).
+// same h3 over „Nic nie zaplanowano.” (on every place),
+// a run's line dashed alongside its card;
+// „Później” a card at the ringed end of the line.
 
 /** What an empty day or run says. */
 const NOTHING = "Nic nie zaplanowano.";
 
 /**
- * A timeline card, every kind the same (task 266): the date as an h3,
+ * A timeline card, every kind the same: the date as an h3,
  * GOV.UK's heading-s (19/25, its dot's line), then the body, all of it
- * body-s (16/20, task 269).
+ * body-s (16/20).
  */
 function TimelineCard({
   title,

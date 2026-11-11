@@ -64,7 +64,7 @@ test("request: grok-4.7, reasoning medium, temperature 0, strict schema", async 
   assert.ok(calls[0].init.signal, "a timeout");
 });
 
-// The body readWithAi sent before callXai was factored out (task 191),
+// The body readWithAi sent before callXai was factored out,
 // byte for byte: the water request must not change.
 test("request: the water body is byte-identical (pinned)", async () => {
   const { calls, fetcher } = xai(200, JSON.stringify(reading(39865)));

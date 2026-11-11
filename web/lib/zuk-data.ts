@@ -68,13 +68,12 @@ import type { Reason } from "./zuk-resolve.ts";
 
 export const ZUK_FILE_VERSION = 5;
 /**
- * What reads a post: the prompt, schema and place gate. 3 is v3.1 (task
- * 114b), 4 the omission guard per dated line (task 152), 5 the town's
- * districts (the gazetteer, task 151), 6 the shared prompt and the gate of
- * certain checks only (task 182), 7 its rules' revision 2, 8 rules
- * revision 5, reasoning medium and the publish day (task 184c), 9
- * date_verbatim and houses, a literal day and house gate (task 186), 10
- * rules-rev8c, the note without the joining dash (task 189); raise it when
+ * What reads a post: the prompt, schema and place gate. 3 is v3.1, 4 the omission guard per dated line, 5 the town's
+ * districts (the gazetteer), 6 the shared prompt and the gate of
+ * certain checks only, 7 its rules' revision 2, 8 rules
+ * revision 5, reasoning medium and the publish day, 9
+ * date_verbatim and houses, a literal day and house gate, 10
+ * rules-rev8c, the note without the joining dash; raise it when
  * they change (the prompt is not part of the key), and every post is read
  * again.
  */

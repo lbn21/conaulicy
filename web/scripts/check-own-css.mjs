@@ -1,4 +1,4 @@
-// Keeps our own CSS almost zero (docs/govuk-audit.md): GOV.UK Frontend
+// Keeps our own CSS almost zero: GOV.UK Frontend
 // classes and components only, plus app/site.scss for what GOV.UK has no
 // equivalent for. Fails when:
 // - a stylesheet appears outside the allowed list;
@@ -52,38 +52,31 @@ const HOOK_ONLY = new Map([
 // must appear exactly as here, once.
 const RAW_PX = [
   // .govuk-header__logo: logo-styles($padding-top: 16px, $padding-bottom: 14px - 2px),
-  // changed to 18/11 to centre our plate exactly, bar 1px taller (tasks 78 and 82,
-  // a deviation)
+  // changed to 18/11 to centre our plate exactly, bar 1px taller (a deviation)
   "logo-styles($padding-top: 18px, $padding-bottom: 11px)",
   // .govuk-header__logotype: top: -3px, changed to -2px with the line 1px higher,
-  // so the focus bar is centred under the plate (task 82, a deviation)
+  // so the focus bar is centred under the plate (a deviation)
   "top: -2px;",
   // .govuk-header__logotype: margin-bottom: $logo-bottom-margin (2px)
   "margin-bottom: 2px;",
-  // Ours, not GOV.UK's (tasks 78 and 82): the focused logo's even 6px of yellow
+  // Ours, not GOV.UK's: the focused logo's even 6px of yellow
   // round the plate, measured against Atkinson's content area at 30px.
   "margin-left: -6px;",
   "padding: 1px 6px 0;",
   // govuk-focused-text (helpers/_focused.scss): box-shadow 0 -2px focus,
   // 0 4px focus-text, with the bar in the header's colour so it does not
-  // show (task 88, Jakub's decision)
+  // show
   "0 -2px govuk-functional-colour(focus),",
   "0 4px $app-header-colour;",
   // .govuk-generic-header__homepage-link:hover: 3px bar, made 4px as the focus
-  // bar, centred under the plate (task 82, Jakub's decision)
+  // bar, centred under the plate
   "margin-bottom: -4px;",
   "border-bottom-width: 4px;",
   // .govuk-warning-text__icon: line-height: 29px, made 28px so Atkinson's "!"
-  // sits 1px higher, nearer the circle's centre (task 83, a deviation)
+  // sits 1px higher, nearer the circle's centre (a deviation)
   "line-height: 28px;",
 ];
-// 80, plus 25 for the skeletons' pulse and the live blocks' reveal (Jakub's
-// decision, 31 Oct 2026), plus 2 for a button's shape in GOV.UK's button box,
-// its shadow and pointer off (task 237), now the address pages' skeleton
-// cards and rounded bars (task 239), plus 33 lines and 400 B for the address
-// page's vertical timeline (task 264), plus 10 lines and 200 B for its
-// cards, grey empty days and today's beat (task 265; Jakub: up to 10 KB),
-// plus 200 B for its runs of empty days' two dots and dashes (task 267).
+// The caps: CSS ≤ 150 lines; MAX_GZIP is the gzip limit in bytes.
 const MAX_LINES = 150;
 const MAX_GZIP = 1800;
 

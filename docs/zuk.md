@@ -52,8 +52,7 @@ Vercel Blob. No database writes.
    `checkedAt` in it aside, and the `rejected` list). About 96 small Blob
    writes a day. A run with rejected items logs them in one line,
    `{zuk: "rejected", source, gazetteer, entries}`.
-6. Nothing is purged (Jakub's decision, 31 Oct 2026; until then every
-   written run purged a `water` tag). The pages read the file per request,
+6. Nothing is purged. The pages read the file per request,
    through the Blob's CDN, so a written run's cuts and `checkedAt` show
    within 60 s. A run that wrote nothing (the source down, a file it could
    not read, the write failed) leaves the old file and its time.
@@ -79,7 +78,7 @@ all (a cancellation) reaches every cut of its localities. `past` (the
 model's `is_past`) is stored and changes nothing: cuts settle by their own
 days and hours, a failure still going on shown until its end.
 
-## MZGKiM, the town's second source (task 150)
+## MZGKiM, the town's second source
 
 MZGKiM (Miejski Zakład Gospodarki Komunalnej i Mieszkaniowej,
 mzgkim.lubaczow.pl) supplies most of the town's water and posts its own
@@ -115,14 +114,13 @@ in the town and its parts). A cut's „Źródło” is its own post only. A sour
 stale or without a file is named in the texts when the address has another
 that is not.
 
-## The town's districts: the gazetteer (task 151)
+## The town's districts: the gazetteer
 
 Residents and MZGKiM name estates TERYT lacks ("osiedle Mazury", "os.
 Jagiellonów"), or has only as a town part with no street (Mazury 0972453 has
 no address, its point 0.5–0.8 km south of the estate). The gazetteer gives
 each a name, the forms it is written in, and its streets
-(`lib/districts.ts`; the data, Jakub's approved list of 26 Oct 2026 from the
-research (Jakub's file, not in git), in `lib/districts-seed.ts`: high and
+(`lib/districts.ts`; the data, an approved list, in `lib/districts-seed.ts`: high and
 medium confidence in, low out; Załuże and Bałaje are villages, never a town
 district). It lives in the database (`district_aliases`,
 `district_alias_streets`, docs/database.md), which the cron reads
@@ -216,14 +214,14 @@ It prints the model's JSON and the gate's result (`scripts/lib/water-dry-run.ts`
 - A post leaves `active` and `seen` when it leaves the 14-day window. The
   model's tokens and cost are in the log only.
 - The file version is the shape; `reader` (`ZUK_READER`, now 10: rules
-  revision rev8c, the note without the joining dash, task 189) is what read
+  revision rev8c) is what read
   the post.
   Raise `ZUK_READER` and every post is read again, 4 a run. A file of an
   older version is no file: the pages show the source link and the cron
   reads the window afresh, 4 a run, and replaces it (never delete the
   Blob by hand).
 
-## The prompt (task 182)
+## The prompt
 
 One prompt for every source (`lib/water-prompt.ts`): a short header of the
 source's own, saying how it writes (`lib/sources/<id>/index.ts`; from the
@@ -252,7 +250,7 @@ wording stays in `where` (its street, else its locality, as written) and
 checked more than 60 minutes ago is `stale`, so a page shows the source link
 instead.
 
-**Caching (31 Oct 2026).** No Next.js cache in front of the file: the
+**Caching.** No Next.js cache in front of the file: the
 pages' live blocks (the hub's „Woda” and „Najbliższe dni”, `/woda`'s
 body, `web/components/live-block.tsx`) read it per request through the
 Blob's CDN (`useCache: true`, at most 60 s behind a write); the cron reads
@@ -315,7 +313,7 @@ and a range never reversed or open: ranges, or numbers if every one is a
 single house; any other, or a note with none, "unknown" (part of the
 place).
 
-On the pages (`web/lib/water-module.ts`, task 188): a village's own page
+On the pages (`web/lib/water-module.ts`): a village's own page
 also lists its streets' cuts, one per post, day and hours, „w części
 miejscowości” with the streets named; a village part gets every cut of its
 village that names no street (anything less than the whole village „w

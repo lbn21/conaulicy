@@ -19,7 +19,7 @@ import { pageMetadata } from "@/lib/share";
 // A module subpage's routes, one body for both: a live module's
 // (app/adres/[id]/[module]/) and the waste subpage's own
 // (app/adres/[id]/smieci/, `waste`), each with its ?nr= (searchParams).
-// The waste subpage has its own folder (task 237; a static segment wins
+// The waste subpage has its own folder (a static segment wins
 // over [module]:
 // nextjs.org/docs/app/api-reference/file-conventions/dynamic-routes).
 

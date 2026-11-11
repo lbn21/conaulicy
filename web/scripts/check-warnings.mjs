@@ -1,12 +1,12 @@
-// IMGW's warnings, shown only on the address page (tasks 257, 288), in
+// IMGW's warnings, shown only on the address page, in
 // every state, from the mock store (IMGW_WARNINGS_URL=mock:…,
 // lib/imgw-mock.ts mockFiles: the files a good cron run left, checkedAgo
 // minutes back), on the built site:
 // - mock:none (the build's own setting in CI): nothing of IMGW's in <main>
 //   on any route (no banner, no line, no card); the breadcrumbs only on
-//   the address pages, right before <main> (task 149);
+//   the address pages, right before <main>;
 // - per state, on the address page: a card per warning, highest first,
-//   directly above „Najbliższe 7 dni” (task 288): its band („Stopień N z
+//   directly above „Najbliższe 7 dni”: its band („Stopień N z
 //   3”, the meter filled up to N), the event (h2), when („Trwa do …” or
 //   „Od … do …”) and IMGW's own description in GOV.UK's details; nothing
 //   of it in the timeline, no tag anywhere; the notice, if any, in the
@@ -23,7 +23,7 @@
 // with that server's setting. With SCREENSHOT_DIR, saves
 // <width>-<state>.png of the address page (DPR 2). Run after `next build`.
 //
-// With --ci (CI, task 252): mock:none and the three warnings only; the
+// With --ci (CI): mock:none and the three warnings only; the
 // other states' copy and order are lib/imgw-shown.test.ts's and
 // lib/weather-module.test.ts's. Without it, every state: run it by hand
 // when the weather's display changes.
@@ -43,7 +43,7 @@ import {
 } from "./lib/server.mjs";
 
 const HUB = "/adres/0972447-00470";
-// No subpage for the weather any more (task 288): a 404.
+// No subpage for the weather any more: a 404.
 const WEATHER = `${HUB}/pogoda`;
 // A card's details (components/warning-cards.tsx).
 const DETAILS = "Co przekazuje IMGW";
@@ -146,9 +146,9 @@ function forget(page) {
 
 // GOV.UK's breadcrumbs only on an address page (none on a flat site, the
 // home page or a 404), before <main>, as GOV.UK places them: the skip link
-// skips them along with the header (task 149). Read without React's marks:
+// skips them along with the header. Read without React's marks:
 // the @breadcrumbs slot (app/layout.tsx) is a boundary of its own, and so
-// are an address page's breadcrumbs (task 231).
+// are an address page's breadcrumbs.
 function crumbsPlaced(route, html) {
   const address = route.path.startsWith("/adres/") && !route.status;
   const main = html.slice(html.indexOf("<main"), html.indexOf("</main>"));
@@ -370,7 +370,7 @@ try {
   try {
     for (const route of ROUTES) {
       // The breadcrumbs as the browser shows them: an address page reads its
-      // place behind <Suspense> (components/place-suspense.tsx, task 231),
+      // place behind <Suspense> (components/place-suspense.tsx),
       // so a house number not prerendered streams them after <main>,
       // in React's hidden <div>, to be moved in place.
       if (route.status) {

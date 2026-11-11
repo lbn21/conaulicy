@@ -309,7 +309,7 @@ function Results({ shown }: { shown: Shown }) {
  * button. As GOV.UK's default (no onConfirm, no autoselect), nothing is
  * highlighted until ArrowDown, which goes to the first suggestion. Choosing
  * a suggestion (a tap or click, or Enter with it highlighted) only fills the
- * field with its text and closes the list (Jakub's decision, 31 Oct 2026);
+ * field with its text and closes the list;
  * with none highlighted (list open or closed, none found, still loading)
  * Enter submits what was typed. The library alone would do nothing on Enter
  * with the list open and nothing highlighted, so submitOnEnter does that.

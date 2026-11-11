@@ -172,7 +172,7 @@ test("no dates: why, then the gmina's schedule, always a line", () => {
     place({ zoneId: null, days: [], schedulePage: page }),
   ).flat();
   assert.equal(none.length, 1);
-  // Only the waste schedule is missing, not the place (task 276).
+  // Only the waste schedule is missing, not the place.
   assert.equal(
     none[0][0],
     "Nie mamy jeszcze harmonogramu wywozu śmieci dla tej ulicy. Sprawdź odbiory w harmonogramie Urzędu Miejskiego.",

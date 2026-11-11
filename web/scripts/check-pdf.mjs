@@ -263,7 +263,7 @@ try {
       `${c.name}: not the ${town ? "town's" : "gmina's"} wording`,
     );
     // The page's and the calendar's line, in the calendar version and the
-    // text version (task 206).
+    // text version.
     const later = laterNote([{ date: "" }]);
     check(
       flat.split(later).length - 1 === 2,

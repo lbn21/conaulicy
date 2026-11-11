@@ -4,14 +4,14 @@ import { GovukFrontend } from "@/components/govuk-frontend";
 import { BlockSkeleton, LiveBlock } from "@/components/live-block";
 import { Skeleton } from "@/components/skeleton";
 
-// The address pages and their subpages: one skeleton, one reveal (Jakub's
-// decision, task 239). The page's content (its params, then every block's
+// The address pages and their subpages: one skeleton, one reveal.
+// The page's content (its params, then every block's
 // data at once: components/hub.tsx hubData, components/module-page.tsx
 // subpageData) sits behind one <Suspense> (react.dev/reference/react/Suspense),
 // so it all comes in together, after the slowest block. The skeleton is
 // generic, not the page's shape, so a new section needs no new one: the
 // h1's bar, „Zmień adres”'s, then one section card, about as tall as the
-// shortest page (/woda with no cuts; task 243, Jakub's decision). No
+// shortest page (/woda with no cuts). No
 // min-height: on a short page the footer stays put at the reveal, on a long
 // one it moves down, already below the first screen. The route's App
 // Shell, shared by every link to it, holds only this: no place, no date

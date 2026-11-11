@@ -1,5 +1,5 @@
 // The search index as production served it on 23 Oct 2026 (330 places),
-// plus the 6 villages with streets that are places since task 127
+// plus the 6 villages with streets that are places
 // (p331-p336), for the search battery in search.test.ts. Ids are made up; labels and
 // types are real: each street's CECHA from the ULIC file of 2026-10-16, each
 // village or part as localities.kind. A fixture, so code

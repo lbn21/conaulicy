@@ -2,7 +2,7 @@
 
 conaulicy.pl ships the following third-party code and assets to visitors' browsers or in its generated files. Each is used under the licence below. Other npm dependencies used to build or run the site keep their own licences in their packages.
 
-conaulicy.pl is not a UK government website. It uses GOV.UK Frontend's code under the MIT licence, but not the GOV.UK brand: no crown, no GOV.UK logotype, no GDS Transport typeface, no GOV.UK brand colours (see `docs/govuk-audit.md`).
+conaulicy.pl is not a UK government website. It uses GOV.UK Frontend's code under the MIT licence, but not the GOV.UK brand: no crown, no GOV.UK logotype, no GDS Transport typeface, no GOV.UK brand colours (see `docs/brand.md`).
 
 ## GOV.UK Frontend 6.5.1
 

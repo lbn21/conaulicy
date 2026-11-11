@@ -6,9 +6,9 @@
 // GUGiK, 2026-10-23, have no point with SIMC 0606300; all 24 Pilipy
 // addresses are 'Młodów, ul. Pilipy N' (ULIC 39507), centroid 90 m from the
 // part's point, farthest 236 m. Not a name rule: Mazury and Piaski
-// (Lubaczów) must NOT be linked (task 182 check).
+// (Lubaczów) must NOT be linked.
 //
-// TODO(Smolińce 0606257 -> 0606234-27260): add after a map/PRG check, Jakub to confirm.
+// TODO(Smolińce 0606257 -> 0606234-27260): add after a map/PRG check and review.
 
 /**
  * A linked street's village in the locative, written by hand (code never

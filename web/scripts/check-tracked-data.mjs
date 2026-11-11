@@ -11,7 +11,6 @@ import { finish } from "./lib/server.mjs";
 const ROOT = path.resolve(import.meta.dirname, "../..");
 const DOCS_DATA_ALLOWED = new Set([
   "docs/data/sources.md",
-  "docs/data/DATA-INVENTORY.md",
   "docs/data/imgw.md",
 ]);
 const DATA_EXTENSION = /\.(pdf|jpe?g|json|csv|xml|html?)$/i;

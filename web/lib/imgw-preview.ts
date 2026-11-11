@@ -1,4 +1,4 @@
-// Preview and development only (task 288): ?imgw= on an address page shows
+// Preview and development only: ?imgw= on an address page shows
 // IMGW warnings from the mock (lib/imgw-mock.ts), so a Preview can be
 // reviewed without setting IMGW_WARNINGS_URL. Never in production: there
 // the parameter is not even allowed (lib/clean-query.ts), and the mock

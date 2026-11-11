@@ -16,8 +16,7 @@
 // files come from .next/cache/brand-assets/<key>/ (kept between builds by
 // Vercel, and by CI's actions/cache on the same inputs), or are drawn and
 // cached there. The PNGs are drawn by next/og from lib/brand/*.svg, whose
-// plate is currentColor. Was docs/logo/source/ship_a.mjs (task 23), which
-// wrote committed copies.
+// plate is currentColor.
 import { createHash } from "node:crypto";
 import {
   copyFileSync,
@@ -61,7 +60,7 @@ const replaceOnce = (text: string, from: string | RegExp, to: string) => {
 };
 const painted = (svg: string) => svg.replaceAll("currentColor", PLATE_COLOUR);
 
-// The favicons (task 134): the plate fills the square, with a white rim on
+// The favicons: the plate fills the square, with a white rim on
 // its edge so it stands out on dark tab bars too. Each size has its own
 // pixel-fitted "ul.", placed in the SVG: the 32-px one is the logo's, its ink
 // box centred (5-26.37 x 8.73-23.24); the 16-px one is drawn on whole pixels.
@@ -76,11 +75,11 @@ const ulSvg = () =>
     `$1viewBox="${UL_INK}"`,
   );
 
-// The share card's text block, centred optically on the plate (task 88): the
+// The share card's text block, centred optically on the plate: the
 // plate's ink is y 145-485 (centre 315); the text is measured from the first
 // line's x-height minus half its ascenders to the last line's baseline plus
-// half its descenders, 201-495.3 (centre 348.1, with the name 6.5 % larger
-// in task 93), so it moves 33 px up (whole px).
+// half its descenders, 201-495.3 (centre 348.1, with the name 6.5 % larger),
+// so it moves 33 px up (whole px).
 const OG_TEXT_SHIFT = -33;
 // Its plate and rim are copies of lib/logo.ts's paths, checked here.
 function ogTemplate(): string {

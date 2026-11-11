@@ -1,4 +1,4 @@
-# Production database writes (task 77; docs/database.md): never
+# Production database writes (docs/database.md): never
 # from a laptop. Started by hand on main, approved by Jakub (environment
 # prod-db), and only after a Neon backup branch of the default (production)
 # branch exists. Fixed choices only, no free-text input.

@@ -255,7 +255,7 @@ try {
   // a second one: harmless, both say noindex. So one or more tags, every one
   // noindex, none index. Not followed: the first render of a redirect once
   // sent Location twice, and fetch followed the joined value to a 404 of its
-  // own, so a 308 passed as a 404 (task 221). A renamed id is a 308, never
+  // own, so a 308 passed as a 404. A renamed id is a 308, never
   // one of these: its rows (the CI fixture's) as the proxy reads them.
   const renamed = await fetchJson(`${server.origin}/api/place-redirects`);
   for (const path of [
@@ -270,7 +270,7 @@ try {
     "/adres/0972447-00470/nie-ma-takiego-modulu",
     "/adres/0972447-00470/nie-ma-takiego-modulu?nr=12",
     "/adres/9999999/smieci",
-    // The old number paths are gone (task 254).
+    // The old number paths are gone.
     "/adres/0972447-00470/nr/12",
     "/adres/0972447-00470/numer",
   ]) {

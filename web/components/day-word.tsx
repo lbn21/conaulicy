@@ -13,9 +13,9 @@ import { capitalised, dayLead, relativeDay, relativeWord } from "@/lib/dates";
  * or „jutro, ” before the date that follows, else nothing. label: „Dziś” or
  * „Jutro”, else `text`. title: „ · ” and Intl's relative
  * day („dzisiaj”, „jutro”, „za 6 dni”), after a timeline card's date, body-s,
- * regular and grey (site.scss .app-timeline__when, tasks 268-269), else nothing.
+ * regular and grey (site.scss .app-timeline__when), else nothing.
  * The title's word never wraps mid-phrase: „·” and its words joined by
- * no-break spaces, so the line breaks only before „·” (task 273).
+ * no-break spaces, so the line breaks only before „·”.
  */
 type Form = "lead" | "word" | "label" | "title";
 

@@ -1,4 +1,4 @@
-// Grok reads one schedule image (task 191): one chat/completions call
+// Grok reads one schedule image: one chat/completions call
 // through lib/zuk-ai.ts (callXai, shared with the water reader), exactly as
 // the dry run sent it: one user message, the prompt and then the image
 // inline (detail high); no system message, temperature or response_format.

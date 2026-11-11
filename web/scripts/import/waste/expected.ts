@@ -1,5 +1,5 @@
-// The 2026 waste data in the production database, per zone (task 191,
-// from the 21 Oct 2026 pre-import Neon backup): rows as databaseRows returns
+// The 2026 waste data in the production database, per zone (from
+// the 21 Oct 2026 pre-import Neon backup): rows as databaseRows returns
 // them, the event count, zone_members as [locality_id, street_id | null],
 // and the source file. What the reading of each file must reproduce; city
 // S3-S5 are here for the December rehearsal's comparison (no reply

@@ -1,5 +1,5 @@
-// A link's full prefetch to an address, on intent (components/place-link.tsx,
-// task 238). Imports only lib/module-ids.ts, so the link's chunk stays small.
+// A link's full prefetch to an address, on intent (components/place-link.tsx).
+// Imports only lib/module-ids.ts, so the link's chunk stays small.
 import { SUBPAGE_IDS } from "./module-ids.ts";
 
 /**

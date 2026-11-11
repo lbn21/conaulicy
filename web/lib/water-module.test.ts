@@ -178,7 +178,7 @@ test("matching: a village part takes its own cuts and its whole village's", () =
   assert.equal(village.note, null);
   assert.equal(matches(PILIPY_PART, part), true);
   assert.equal(matches(PILIPY_PART, village), true);
-  // task 188: every Pilipy address is „Młodów, ul. Pilipy N” (PRG), so the
+  // Every Pilipy address is „Młodów, ul. Pilipy N” (PRG), so the
   // part gets ul. Pilipy's cuts (lib/part-streets.ts), whole: certain.
   assert.equal(matches(PILIPY_PART, villageStreet), true);
   const { outages } = waterAt(PILIPY_PART);
@@ -215,7 +215,7 @@ test("matching: a village part takes its own cuts and its whole village's", () =
   assert.equal(waterAt({ ...PILIPY_PART, givenNr: "999" }).outages.length, 1);
 });
 
-// task 188: was „never takes its village's partial cuts”; a part now gets
+// A part gets
 // every cut of its village that names no street, „w części miejscowości”.
 test("matching: a village part takes its village's partial cuts, never its other streets", () => {
   const village = { localityId: "0606286", streetId: null };
@@ -319,7 +319,7 @@ test("house number: outside a street's range, the cut left out, said once", () =
   assert.deepEqual(five.outages, []);
   assert.deepEqual(waterUpcoming(five), []);
   assert.equal(five.hiddenForNr, true);
-  // task 188: the section says the cut leaves nr 5 out; /woda's trace too.
+  // The section says the cut leaves nr 5 out; /woda's trace too.
   assert.deepEqual(lines(five), [
     ["Pod nr 5: brak zapowiedzianych przerw."],
     [
@@ -551,7 +551,7 @@ test("block's where: a street's range, „Obejmuje Twój dom” only inside it",
 
 test("section: never the cuts again, the post as its source", () => {
   // The timeline lists each cut; the notices add nothing for a plain
-  // one (task 257). A town street's ZUK cut: its post the only „Źródło”,
+  // one. A town street's ZUK cut: its post the only „Źródło”,
   // never MZGKiM's.
   assert.deepEqual(waterStatus(waterAt(ZUKI)), []);
   assert.deepEqual(waterSources(waterAt(ZUKI)), [
@@ -717,7 +717,7 @@ test("town, an MZGKiM cut: shown as a ZUK cut, its own post the source", () => {
   );
   // Its area off our list is only linked, and not here: its cut is.
   assert.deepEqual(data.notices, []);
-  // "Osiedle Mazury" (the gazetteer, task 151): each of its streets, whole.
+  // "Osiedle Mazury" (the gazetteer): each of its streets, whole.
   const estate = townAt(LESZKA_BIALEGO, cut, OCT_3, OCT_3_CHECKED);
   assert.equal(whereOf(estate), "Cała ulica Księcia Leszka Białego.");
   // TERYT's part Mazury (no address) is no longer cut.
@@ -1096,7 +1096,7 @@ test("dev mock: MZGKiM's 5237 moved to now, its cut the day after tomorrow", () 
   assert.equal(mockFile("5238", now), undefined);
 });
 
-// Task 188: partial cuts on village, part and /nr pages.
+// Partial cuts on village, part and /nr pages.
 
 const LISIE_JAMY = village("0606234", "Lisie Jamy");
 const MLODOW = village("0606286", "Młodów");

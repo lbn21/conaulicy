@@ -36,7 +36,7 @@ export const ROUTES = [
     name: "unknown-module",
     status: 404,
   },
-  // No weather subpage any more (task 288): its warnings are cards on the
+  // No weather subpage any more: its warnings are cards on the
   // address page.
   { path: "/adres/0972447-00470/pogoda", name: "old-weather", status: 404 },
 ];

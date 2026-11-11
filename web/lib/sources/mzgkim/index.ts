@@ -1,6 +1,6 @@
 // MZGKiM's komunikaty: the town's water cuts among its other posts (the
 // PSZOK, opening hours, deratyzacja). The header says how the source
-// writes (the style analysis of task 182), never what to do: that is the
+// writes (from a style analysis), never what to do: that is the
 // shared rules'.
 
 import { waterPrompt } from "../../water-prompt.ts";

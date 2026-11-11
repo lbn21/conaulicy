@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { imgwPreview, imgwPreviewAllowed } from "./imgw-preview.ts";
 
-// ?imgw= (task 288): the IMGW mock on a Preview, never in production.
+// ?imgw=: the IMGW mock on a Preview, never in production.
 const PREVIEW = { VERCEL_ENV: "preview" };
 const PRODUCTION = { VERCEL_ENV: "production" };
 

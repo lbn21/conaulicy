@@ -217,7 +217,7 @@ test("a number not in the register: said beside a cut of only some houses", () =
     const data = at(some, now, invalid);
     const where = cutWhere(data.outages[0], data.place);
     assert.ok(where.endsWith(`. ${NOTE}`), where);
-    // On the address page, its own line: the cut is the list's (task 257).
+    // On the address page, its own line: the cut is the list's.
     assert.deepEqual(waterStatus(data), [[[`${NOTE}.`]]]);
     assert.ok(
       renderToStaticMarkup(createElement(WaterDetails, { data })).includes(

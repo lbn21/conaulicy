@@ -1,6 +1,6 @@
 # Database
 
-One Neon project (Vercel Marketplace, free plan, fra1) and, for now, **one shared database: the Neon branch `main`** (endpoint `ep-snowy-cherry-b9v656vm`). The separate `preview` branch from the original import plan (docs/import-plan.md, now in git history) was abandoned; Jakub deletes it.
+One Neon project (Vercel Marketplace, free plan, fra1) and, for now, **one shared database: the Neon branch `main`** (endpoint `ep-snowy-cherry-b9v656vm`).
 
 | Environment | Database | Env vars |
 |---|---|---|
@@ -19,7 +19,7 @@ So every environment reads and writes production data. Previews only read; anyth
 
 ## Writing to production
 
-Jakub's rule (23 Oct 2026): an agent may run `db:migrate`, `db:import --apply` or `db:redirect --apply` on production **only after asking Jakub in chat and getting his explicit approval, every time**. One approval covers one run; it never carries over to the next.
+An agent may run `db:migrate`, `db:import --apply` or `db:redirect --apply` on production **only after asking Jakub in chat and getting his explicit approval, every time**. One approval covers one run; it never carries over to the next.
 
 Each approved run:
 
@@ -38,7 +38,7 @@ Every village and village part is a place of its own, whether or not it has stre
 
 ## TERYT names and renamed streets
 
-Street names come from TERYT ULIC (`docs/data/DATA-INVENTORY.md` section 7): `streets.prefix` is CECHA, `streets.nazwa_1` and `streets.nazwa_2` are NAZWA_1 and NAZWA_2 (null until an import with `--teryt` fills them), and `streets.name` is NAZWA_2 + NAZWA_1, what the pages show. The site reads only `prefix` and `name`, so it works with or without the two columns.
+Street names come from TERYT ULIC (`docs/data/sources.md`): `streets.prefix` is CECHA, `streets.nazwa_1` and `streets.nazwa_2` are NAZWA_1 and NAZWA_2 (null until an import with `--teryt` fills them), and `streets.name` is NAZWA_2 + NAZWA_1, what the pages show. The site reads only `prefix` and `name`, so it works with or without the two columns.
 
 A renamed street gets a new SYM_UL, so a new page id. `place_redirects (old_id, new_id, reason, created_at)` keeps the old address: `/adres/<old_id>` and everything under it answer 308 to the same path on `new_id`, query kept; a missing table means no redirects. Rows are written **only** by the reviewed step, never by an import or a workflow: after the TERYT check's issue has been reviewed and the rename imported,
 
@@ -65,16 +65,10 @@ cd web
 npm run db:migrate      # reads web/.env.local (Neon main)
 ```
 
-The code may also ship first when it tolerates the old schema, as for `0002_teryt_names` (task 67): merge (the site never reads the new columns, and a missing `place_redirects` means no redirects); then, after a backup, `db:migrate` and a data reload with `npm run db:import -- --from <etl out> --teryt ../.cache/sources/teryt/<day> --apply --yes-production` (`npm run sources:pull` fetches the TERYT files), which fills `nazwa_1` and `nazwa_2`. Both follow "Writing to production" above: by an agent only with Jakub's approval for that run.
+The code may also ship first when it tolerates the old schema (for example, new columns the site never reads yet): merge, then, after a backup, `db:migrate` and any data reload (`npm run db:import -- --from <etl out> --teryt ../.cache/sources/teryt/<day> --apply --yes-production`; `npm run sources:pull` fetches the TERYT files). Both follow "Writing to production" above: by an agent only with Jakub's approval for that run.
 
-`0003_district_aliases` (task 151): on production through `prod-db.yml` task `migrate-districts` (Jakub approves the run), before the code that reads it is merged.
-
-Applied to production on 2026-10-23: `0002_teryt_names` at 10:06 UTC (11:06 UK time); the TERYT reload at 10:07 UTC filled `nazwa_1` for 276 streets and `nazwa_2` for 82; the dry run after it showed 0 changes. The 276 include 3 streets in no zone, which the search index leaves out (273 there).
+`0003_district_aliases` runs on production through `prod-db.yml` task `migrate-districts` (Jakub approves the run), before the code that reads it is merged.
 
 ## Testing data changes without touching production
 
-Use the local database: `npm run db:local` (`web/docker-compose.yml`, Postgres 18 on 127.0.0.1) runs the migrations and the CI fixture, with every database variable set to its fixed local URL, so `.env.local` cannot redirect it. Then `db:import` with `DATABASE_URL` and `DATABASE_URL_UNPOOLED` set to `postgres://ci:ci@127.0.0.1:5432/conaulicy`, exactly as CI does (`scripts/check-import.mjs`). No real or production data is ever copied locally (Jakub's decision, 24 Oct 2026).
-
-## If a separate preview database is wanted later
-
-Create a child branch of `main` in the Neon Console (Vercel → Storage → conaulicy → Open in Neon → Branches), give Preview its own sensitive `DATABASE_URL` / `DATABASE_URL_UNPOOLED`, and scope the integration to Production + Development. "Reset from parent" in the Neon Console then refreshes it from `main`.
+Use the local database: `npm run db:local` (`web/docker-compose.yml`, Postgres 18 on 127.0.0.1) runs the migrations and the CI fixture, with every database variable set to its fixed local URL, so `.env.local` cannot redirect it. Then `db:import` with `DATABASE_URL` and `DATABASE_URL_UNPOOLED` set to `postgres://ci:ci@127.0.0.1:5432/conaulicy`, exactly as CI does (`scripts/check-import.mjs`). No real or production data is ever copied locally.

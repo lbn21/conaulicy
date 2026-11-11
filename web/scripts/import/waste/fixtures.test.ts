@@ -1,4 +1,4 @@
-// Grok's real replies (fixtures.ts) through the waste import (task 191):
+// Grok's real replies (fixtures.ts) through the waste import:
 // each correct one reproduces the database's 2026 rows and events exactly,
 // with no finding, and still opens a blocking review PR; the S2 slips pass
 // every literal check, so only their review PR shows them, and nothing
@@ -478,9 +478,9 @@ test("a rejected review of another reading (another prompt, model or effort, or 
       NOW,
       `prompt:${sha256(schedulePrompt("gmina").text)} model:${ZUK_MODEL} effort:high`,
     ],
-    // Before task 199: no prompt, model or effort.
+    // The oldest marker: no prompt, model or effort.
     ["waste:gmina-s4", ` ${NOW}`, ""],
-    // Before task 203 (#192 to #202): prompt and model, no effort.
+    // An older marker: prompt and model, no effort.
     [
       "waste:gmina-s4",
       NOW,
@@ -542,7 +542,7 @@ test("a rejected review of another reading (another prompt, model or effort, or 
   }
 });
 
-test("reviews from before task 203 (no effort recorded): open and merged count as before, no xAI call", async () => {
+test("reviews with no effort recorded: open and merged count as before, no xAI call", async () => {
   process.env.REVIEWS_FILE = path.join(dir, "reviews.json");
   const zone = "waste:gmina-s5";
   const doc = EXPECTED_2026[zone].source_doc;

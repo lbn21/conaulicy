@@ -5,7 +5,7 @@ import { placePath } from "@/lib/places";
 import type { PlaceView } from "@/lib/schedule";
 import type { Entry } from "@/lib/timeline";
 
-// A timeline card's rows (task 263): GOV.UK's summary list, a row per
+// A timeline card's rows: GOV.UK's summary list, a row per
 // entry, its key the module's row label, its value the module's Row (or,
 // in „Później”, the date alone, with its year), its action „Szczegóły” to the module's
 // subpage, with a visually hidden suffix saying which (GOV.UK's „Change”
@@ -35,7 +35,7 @@ export function FunctionRows({
             // A fixed order (lib/timeline.ts), never reordered.
             // biome-ignore lint/suspicious/noArrayIndexKey: see above
             key={i}
-            // The last row ends the card: no border under it (task 265).
+            // The last row ends the card: no border under it.
             className={[
               "govuk-summary-list__row",
               i === entries.length - 1

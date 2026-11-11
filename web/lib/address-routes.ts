@@ -10,7 +10,7 @@ export { MODULE_IDS, type ModuleId, SUBPAGE_IDS };
 /**
  * The subpages app/adres/[id]/[module]/ serves: all but the waste one, which
  * has its own folder (app/adres/[id]/smieci/), so its loading fallback is
- * its own first screen (task 237).
+ * its own first screen.
  */
 export const MODULE_ROUTE_IDS = SUBPAGE_IDS.filter((id) => id !== "smieci");
 

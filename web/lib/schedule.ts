@@ -333,7 +333,7 @@ export const searchIndex = unstable_cache(
       noData,
     };
   },
-  // v2: every village is a place, holding its streets on /ulice (task 127).
+  // v2: every village is a place, holding its streets on /ulice.
   ["search-index-v2"],
   CACHE,
 );
@@ -509,11 +509,10 @@ const placeCached = unstable_cache(
       ...wasteSchedule(upcoming),
     };
   },
-  // v7: only events with a source (t256); v6: the zone's fractions (task
-  // 207); v5: villages with streets are places (task 127), older entries say
-  // null; v4: sources' seenAt (task 121); v3: task 118 added importedAt,
-  // task 120 dropped it again; v2 entries lack localityId and streetId
-  // (task 117).
+  // v7: only events with a source; v6: the zone's fractions; v5: villages
+  // with streets are places, older entries say null; v4: sources' seenAt;
+  // v3: importedAt added and dropped again; v2 entries lack localityId and
+  // streetId.
   ["place-v7"],
   DAY_CACHE,
 );
@@ -560,7 +559,7 @@ const zoneCached = unstable_cache(
       events: await zoneEvents(zone.id, today),
     };
   },
-  // v2: the zone's gmina (task 205).
+  // v2: the zone's gmina.
   ["zone-v2"],
   DAY_CACHE,
 );

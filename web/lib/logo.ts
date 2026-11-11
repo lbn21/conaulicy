@@ -1,6 +1,6 @@
 // The flat "ul." plate logo (docs/brand.md), outlined paths from
 // docs/logo/a-logo-mono.svg: plate, rim and "ul." are cut out of the plate;
-// the wordmark is centred on the plate optically (task 93; docs/logo/README.md),
+// the wordmark is centred on the plate optically,
 // the same in the logo files and the headers. Units: the plate is 34 high.
 import { PLATE as PLATE_PALETTE } from "./palette.ts";
 
@@ -18,7 +18,7 @@ export const RIM =
 export const RIM_WIDTH = 1.3;
 export const UL =
   "M13.73 23.73q-2.09 0-2.86-1.16-.78-1.16-.78-3.29V12.8h2.99v5.72q0 .78.09 1.42.09.65.45 1.04.37.38 1.21.38 1.07 0 1.56-.69.48-.68.48-2.21V12.8h3.02v10.67h-2.57l-.45-1.5q-.45.77-1.17 1.27-.72.49-1.97.49m11.58-.26q-1.25 0-1.98-.22-.73-.23-1.05-.86-.33-.64-.33-1.84V8.23h3.02v11.58q0 .74.28.96.28.23 1.09.23h.89v2.47Zm5.62.26q-.82 0-1.4-.58t-.58-1.4.58-1.4 1.4-.58 1.4.58.58 1.4-.58 1.4-1.4.58";
-// "ul." sits UL_SHIFT plate units lower than UL draws it (task 88, optical
+// "ul." sits UL_SHIFT plate units lower than UL draws it (optical
 // centring; + is down). Measured in plate units inside the rim (3.85-30.15,
 // centre 17): UL's ink box is 8.23-23.73 (centre 15.98), its x-height zone
 // 12.8-23.47 (centre 18.13) and its area centroid 18.02, so UL as drawn is
@@ -26,7 +26,7 @@ export const UL =
 // 30 px plate in the header and footer, where the shift is rounded to whole px
 // so "ul." keeps its pixel grid: A, the x-height zone centred (-1.00 px) and
 // B, the centroid centred (-0.90 px), are 1 px up; C, the ink box centred
-// (+0.90 px), is 1 px down. Shots: ~/t88-shots/optical/. Jakub picks.
+// (+0.90 px), is 1 px down.
 const UL_SHIFTS = { current: 0, A: -1, B: -1, C: 1 };
 const UL_VARIANT: keyof typeof UL_SHIFTS = "C";
 export const UL_SHIFT = (UL_SHIFTS[UL_VARIANT] * LOGO_HEIGHT) / 30;

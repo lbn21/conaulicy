@@ -1,4 +1,4 @@
-// The waste import's two prompts (task 191), exactly as the dry run sent
+// The waste import's two prompts, exactly as the dry run sent
 // them: an instruction part per layout, verbatim (Jakub's text: never edited
 // here; a change needs a new dry run), then one line per listed place from
 // the TERYT snapshot the water reader uses (lib/zuk-places.generated.ts),

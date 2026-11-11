@@ -7,7 +7,7 @@ import { allPlaces } from "@/lib/prerender";
 // harmonogram.pdf and woda.ics win over this one, so no module is called that
 // (lib/address-routes.ts FILE_NAMES).
 // The skeleton's static shell, the page read per request, as the address
-// page (../page.tsx). The waste subpage has its own folder (../smieci, task 237).
+// page (../page.tsx). The waste subpage has its own folder (../smieci).
 
 // Every known place's every such subpage (lib/prerender.ts).
 export async function generateStaticParams(): Promise<

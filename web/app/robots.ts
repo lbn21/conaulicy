@@ -3,8 +3,8 @@ import { SITE_URL } from "@/lib/config.generated";
 import { indexable } from "@/lib/indexing";
 
 // SEO and backlink crawlers: no use to residents, and each fetch of an
-// address page is a function invocation (task 287: SE Ranking's bot made
-// 22.6k on 6–7 Nov 2026 re-fetching /adres/*/woda). Jakub's decision.
+// address page is a function invocation (SE Ranking's bot made
+// 22.6k on 6–7 Nov 2026 re-fetching /adres/*/woda).
 export const BLOCKED_BOTS = [
   "SERankingBacklinksBot",
   "AhrefsBot",

@@ -11,5 +11,4 @@ dist/
 .cache/
 docs/data/*
 !docs/data/sources.md
-!docs/data/DATA-INVENTORY.md
 !docs/data/imgw.md

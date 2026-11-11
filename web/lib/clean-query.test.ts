@@ -34,7 +34,7 @@ test("the street page, its PDF, water calendar and module subpages keep only nr"
   for (const [url, expected] of cases) assert.equal(clean(url), expected, url);
 });
 
-test("an address page keeps ?imgw= outside production (task 288)", () => {
+test("an address page keeps ?imgw= outside production", () => {
   assert.equal(clean("/adres/X?imgw=2"), null);
   assert.equal(clean("/adres/X?nr=12&imgw=3,1&x=1"), "?nr=12&imgw=3%2C1");
   // The address pages' one rule (ADDRESS): a subpage keeps it too and
@@ -95,7 +95,7 @@ test("files, metadata and unknown paths are never touched", () => {
   assert.equal(clean("/sitemap.xml?x=1"), null);
   assert.equal(clean("/nie-ma-takiej-strony?x=1"), null);
   assert.equal(clean("/adres/X/cos-innego?x=1"), null);
-  // The old number paths are no route of ours (task 254): a plain 404.
+  // The old number paths are no route of ours: a plain 404.
   assert.equal(clean("/adres/X/nr/12?x=1"), null);
   assert.equal(clean("/adres/X/numer?x=1"), null);
 });

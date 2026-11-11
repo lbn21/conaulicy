@@ -1,4 +1,4 @@
-// In-page links and Back (task 259), in Chromium on the built site. On the
+// In-page links and Back, in Chromium on the built site. On the
 // first home example's address page: the skip link (a FragmentLink,
 // components/fragment-link.tsx) lands on <main>;
 // then the logo opens the home page, without the hash, and Back shows the

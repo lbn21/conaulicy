@@ -19,7 +19,7 @@ export const CRUMBS_CLASS =
  * it; GOV.UK's own margin-bottom (10 px) and main's padding make the gap to
  * what follows. Collapsed on mobile (GOV.UK's modifier: the first and last
  * crumb on one line, a long one wrapping after its chevron), so a chevron
- * never starts a line on its own (task 273).
+ * never starts a line on its own.
  */
 export function Breadcrumbs({ items }: { items: readonly Crumb[] }) {
   return (

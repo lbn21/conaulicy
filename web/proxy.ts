@@ -35,7 +35,7 @@ const GATED_HEADERS = {
 
 // Renamed places (old id → new id, /api/place-redirects). A redirect from
 // an address page or a module subpage (/adres/<id>/smieci) carries Location
-// twice, as each is a stored static result (Cache Components, task 220)
+// twice, as each is a stored static result (Cache Components)
 // and Next.js replays the render's headers onto the response, so every
 // address's 308 is answered here, with or without ?nr=. The PDF redirects
 // itself. The map stays in memory: a cold instance fetches it once (from the

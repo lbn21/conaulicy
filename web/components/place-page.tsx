@@ -138,8 +138,8 @@ export async function placeMetadata(
   // As app/not-found.tsx: Next.js's own noindex is the only robots tag.
   if (!place) return NOT_FOUND_METADATA;
   // GOV.UK: the title is the H1, and "Error: " first, so screen readers
-  // hear it first. The place adds its locality, the H1 does not (Jakub's
-  // decision, task 133: docs/layout.md).
+  // hear it first. The place adds its locality, the H1 does not
+  // (docs/layout.md).
   const name = withHouseNumber(titleLabel(place.label), shownNr(place));
   // With a house number, or an empty one, it describes the place itself.
   const whole = nr ? await getPlace(id, null) : place;
@@ -239,7 +239,7 @@ function HouseNumberQuestion({
 
 /**
  * Whether the place exists, cached as the address pages' metadata (the
- * place's tags). Asked before the page is read per request (task 239), so
+ * place's tags). Asked before the page is read per request, so
  * an unknown place's 404 is decided in the cached part of the render,
  * before the shell is sent, and the answer is a real 404, not a 200.
  */
