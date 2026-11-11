@@ -79,4 +79,5 @@ Guiding principle: modern, clean, minimal, simple.
 
 - Small, focused commits with short messages.
 - `biome check` and `next build` must pass before every commit.
+- Vercel skips the build when every file changed since the previous deployment is docs or tests (`docs/**`, `*.md`, `*.test.*`, `*.spec.*`, `__tests__/`): `ignoreCommand` in `web/vercel.json`, `web/scripts/vercel-ignore.sh`; anything else, or no base commit, builds.
 - Open normal PRs (drafts only when asked). Merge when the task authorises it, after green CI and self-review; wait for the production deploy.

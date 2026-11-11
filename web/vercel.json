@@ -1,5 +1,6 @@
 {
   "regions": ["fra1"],
+  "ignoreCommand": "bash scripts/vercel-ignore.sh",
   "git": {
     "deploymentEnabled": {
       "import-review/**": false

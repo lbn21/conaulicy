@@ -6,7 +6,7 @@
 // manual check before launch (docs/launch.md).
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import robots from "../app/robots.ts";
+import robots, { BLOCKED_BOTS } from "../app/robots.ts";
 import nextConfig from "../next.config.ts";
 import { SECURITY } from "./headers.ts";
 
@@ -69,12 +69,31 @@ test("conaulicy.vercel.app goes to conaulicy.pl, path and query kept, only that 
   }
 });
 
-test("robots.txt: open but /api/ with the sitemap when indexable, else closed", () => {
+test("robots.txt: open but /api/ and SEO bots with the sitemap when indexable, else closed", () => {
   as("production");
   assert.deepEqual(robots(), {
-    rules: { userAgent: "*", allow: "/", disallow: "/api/" },
+    rules: [
+      { userAgent: "*", allow: "/", disallow: "/api/" },
+      { userAgent: BLOCKED_BOTS, disallow: "/" },
+    ],
     sitemap: "https://conaulicy.pl/sitemap.xml",
   });
+  for (const bot of [
+    "SERankingBacklinksBot",
+    "AhrefsBot",
+    "SemrushBot",
+    "MJ12bot",
+    "DotBot",
+    "BLEXBot",
+    "DataForSeoBot",
+    "PetalBot",
+    "Barkrowler",
+  ]) {
+    assert.ok(BLOCKED_BOTS.includes(bot), bot);
+  }
+  for (const bot of ["Googlebot", "Bingbot"]) {
+    assert.ok(!BLOCKED_BOTS.includes(bot), bot);
+  }
   as("preview");
   assert.deepEqual(robots(), { rules: { userAgent: "*", disallow: "/" } });
 });
