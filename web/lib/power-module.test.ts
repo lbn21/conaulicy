@@ -175,22 +175,28 @@ test("the copy's age: stale, the notice with PGE's page; too old, the notice alo
 const subpage = (data: Power) =>
   renderToStaticMarkup(
     createElement(MODULES.prad.Details, { data, error: null }),
-  );
+  ).replace(/<svg\b.*?<\/svg>/g, "<svg/>");
 
-test("/prad: a day each, the ranges by Intl, the kind, our names, PGE's numbers verbatim", () => {
+test("/prad: a day each, a chip per window, the kind's badge, our names, PGE's numbers verbatim", () => {
   const html = subpage(at(HUTA));
   assert.match(
     html,
-    /<dt class="govuk-summary-list__key">Godziny<\/dt><dd class="govuk-summary-list__value">od 8:30 do 9:30 i od 14:30 do 15:30<\/dd>/,
+    /<dd class="govuk-summary-list__value"><ul class="app-chips"><li class="app-chip"><svg\/>[^<]*8:30[^<]*9:30[^<]*<\/li><li class="app-chip"><svg\/>[^<]*14:30[^<]*15:30[^<]*<\/li><\/ul><\/dd>/,
   );
+  // The kind a badge alone: planned in the module's tone.
   assert.match(
     html,
-    /<dt class="govuk-summary-list__key">Numery domów według PGE<\/dt><dd class="govuk-summary-list__value">\., 0, 1, 2, 3, 3\/1, 4, 4\/1, 5, 6, DZ 17\/18, DZ 17\/20<\/dd>/,
+    /<dd class="govuk-summary-list__value"><strong class="app-badge app-badge--mod">[^<]+<\/strong><\/dd>/,
   );
-  // The revoked one: tagged, its note.
+  // PGE's numbers verbatim.
   assert.match(
     html,
-    /<dd class="govuk-summary-list__value"><strong class="govuk-tag govuk-tag--grey">Odwołane<\/strong> Planowane wyłączenie\. Prace zostały przełożone\.<\/dd>/,
+    /<dd class="govuk-summary-list__value">\., 0, 1, 2, 3, 3\/1, 4, 4\/1, 5, 6, DZ 17\/18, DZ 17\/20<\/dd>/,
+  );
+  // The revoked one: a muted badge, then the kind and PGE's note.
+  assert.match(
+    html,
+    /<dd class="govuk-summary-list__value"><strong class="app-badge">[^<]+<\/strong> [^<]+Prace zostały przełożone\.<\/dd>/,
   );
   // Only this place's addresses; on a part, its village's too, each
   // named with its numbers.
@@ -199,17 +205,20 @@ test("/prad: a day each, the ranges by Intl, the kind, our names, PGE's numbers 
     subpage(at(MALCE)),
     /Basznia Górna: 100, 100119, [^;]+; Malce: 1</,
   );
-  // The source: PGE's public page, and the check.
+  // The source: PGE's public page, and the check's time.
   assert.match(
     html,
-    /Źródło: <a href="https:\/\/pgedystrybucja\.pl\/wylaczenia\/aktualne-przerwy-w-dostawie-energii" class="govuk-link">PGE Dystrybucja<\/a>\. Sprawdziliśmy 11 listopada 17:52\./,
+    /<div class="govuk-inset-text"><p class="govuk-hint[^"]*">[^<]*<a href="https:\/\/pgedystrybucja\.pl\/wylaczenia\/aktualne-przerwy-w-dostawie-energii" class="govuk-link">[^<]+<\/a>[^<]*11 listopada 17:52[^<]*<\/p>/,
   );
   // No calendar and no AI note: PGE's data is read, not guessed.
-  assert.doesNotMatch(html, /kalendarza|program/);
+  assert.doesNotMatch(html, /role="button"|govuk-warning-text/);
   const failure = subpage(at(ASNYKA));
-  assert.match(failure, /od 16:03 do ok\. 18:15/);
-  assert.match(failure, /<dd class="govuk-summary-list__value">Awaria<\/dd>/);
-  assert.match(failure, /Numery domów według PGE.*23, 52, 58A/);
-  // PGE gives no numbers: said so.
-  assert.match(subpage(at(TOWN)), /ul\. Jasna: PGE nie podaje numerów/);
+  assert.match(failure, /16:03[^<]*18:15/);
+  assert.match(
+    failure,
+    /<dd class="govuk-summary-list__value"><strong class="app-badge app-badge--alert"><svg\/>[^<]+<\/strong><\/dd>/,
+  );
+  assert.match(failure, />23, 52, 58A</);
+  // PGE gives no numbers: the street still named, with a line of its own.
+  assert.match(subpage(at(TOWN)), /ul\. Jasna: [^<;]+/);
 });

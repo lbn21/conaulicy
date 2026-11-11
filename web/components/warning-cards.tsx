@@ -1,3 +1,4 @@
+import { Icon, Tile } from "@/components/icon";
 import type { ShownWarning } from "@/lib/imgw-shown";
 import { warningWhen } from "@/lib/weather-module";
 
@@ -33,13 +34,15 @@ export function WarningCards({
             />
           ))}
         </span>
+        <Icon name="alert" />
         Stopień {warning.level} z 3
       </p>
-      <div className="app-warning__body">
+      <div className="app-warning__body app-mod app-mod--pogoda">
         <h2
           id={`ostrzezenie-${warning.id}`}
           className="govuk-heading-m govuk-!-margin-bottom-2"
         >
+          <Tile name="pogoda" />
           {warning.event}
         </h2>
         <p className="govuk-body">{warningWhen(warning, now)}</p>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactLink } from "@/components/contact-link";
+import { PageHead } from "@/components/page-head";
 import { PGE_PAGE } from "@/lib/power-module";
 import { pageMetadata } from "@/lib/share";
 import { ABOUT, ACCESSIBILITY, PRIVACY } from "@/lib/static-pages";
@@ -25,13 +26,10 @@ export default function AboutPage() {
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
-        <h1 className="govuk-heading-l">{ABOUT.text}</h1>
-        <p className="govuk-body-l">
-          conaulicy.pl to prosta strona dla Lubaczowa i okolicznych wsi:
-          wpisujesz ulicę albo wieś i od razu widzisz, kiedy przyjedzie
-          śmieciarka, czy zapowiedziano przerwę w dostawie wody lub prądu i czy
-          IMGW ostrzega przed złą pogodą.
-        </p>
+        <PageHead
+          title={ABOUT.text}
+          lead="conaulicy.pl to prosta strona dla Lubaczowa i okolicznych wsi: wpisujesz ulicę albo wieś i od razu widzisz, kiedy przyjedzie śmieciarka, czy zapowiedziano przerwę w dostawie wody lub prądu i czy IMGW ostrzega przed złą pogodą."
+        />
         <p className="govuk-body">
           Przerwy w dostawie wody bierzemy z komunikatów, które gmina ogłasza w
           swoich{" "}

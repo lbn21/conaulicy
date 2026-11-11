@@ -40,15 +40,12 @@ const SIZE: Record<Size, [number, number]> = {
   small: [14, 20],
 };
 
-/** A mark's classes: the small one 5px from its name. */
-const markClass = (size: Size) =>
-  size === "small" ? "app-bin govuk-!-margin-right-1" : "app-bin";
+/** A bin's list item: small ones side by side, a chip each. */
+const itemClass = (size: Size) => (size === "small" ? "app-chip" : undefined);
 
-/** A bin's list item: small ones side by side. */
-const itemClass = (size: Size) =>
-  size === "small"
-    ? "govuk-!-display-inline-block govuk-!-margin-right-3"
-    : undefined;
+/** The list: small ones a row of chips. */
+const listClass = (size: Size) =>
+  size === "small" ? "app-chips" : "govuk-list govuk-!-margin-bottom-0";
 
 function WasteMark({ tone, size }: { tone: string; size: Size }) {
   const token = TOKEN[tone];
@@ -62,7 +59,7 @@ function WasteMark({ tone, size }: { tone: string; size: Size }) {
       width={width}
       height={height}
       viewBox={`0 0 ${BIN_WIDTH} ${BIN_HEIGHT}`}
-      className={markClass(size)}
+      className="app-bin"
       stroke={outline}
       strokeWidth="1.2"
       strokeLinejoin="round"
@@ -98,7 +95,7 @@ export function Bins({
   size: Size;
 }) {
   return (
-    <ul className="govuk-list govuk-!-margin-bottom-0">
+    <ul className={listClass(size)}>
       {pickups.map((pickup) => (
         <li key={pickup.id} className={itemClass(size)}>
           <span aria-hidden="true">

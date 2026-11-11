@@ -69,6 +69,19 @@ The unit is **P**, a quarter of the plate height (34 units → P = 8.5; 7.5 px i
 - **Bin colours** are real-world colours for the bin markers only, never for the logo. Defined in `web/lib/waste-colours.ts` (the site's `--waste-*` custom properties are generated from it, as is the PDF's); rationale in `design/tokens.md`.
 - **PDF fraction marks:** the printable PDF marks each fraction with a shape in its bin colour, so it reads in black-and-white print and for colour-blind readers: zmieszane ● circle, popiół ○ ring, bio ■ square, papier ▲ triangle, tworzywa ◆ diamond (dark outline), szkło ★ star; rare fractions a letter in an outlined square (G wielkogabarytowe, E elektro, O opony, T tekstylia). The website keeps its bin icons.
 
+### Module colours
+
+A colour per module of the address page, after the utility colour codes people know: water blue, power amber, waste green, the weather slate. **Red is never a module's colour:** it stays GOV.UK's red, for what is urgent (a failure, IMGW's level 3). Power's amber is a deep orange-brown, its tile a pale peach, clearly apart from the plastik bin's bright yellow (#f2c200, `web/lib/waste-colours.ts`) where both appear. Each is one primary in `MODULE_COLOURS` (`web/lib/palette.ts`), its steps by GOV.UK's method (`group()`), the site using three (`MODULE_ROLES`): `main` (the primary: bars, accents; 3 : 1 or more on white), `ink` (shade-25: labels, icons, badge text; 4.5 : 1 or more on white and on its tint), `tint` (tint-80: icon tiles, badges). The Sass reads them as `$app-modules` (`web/app/_palette.scss`, generated) and `site.scss` turns them into custom properties on `.app-mod--<id>`; `design/contrast.mjs` checks every pair in CI.
+
+| Module | main | ink | tint | ink on white | ink on tint | main vs white |
+|---|---|---|---|---:|---:|---:|
+| śmieci (Trash2) | #1e7d43 | #175e32 | #d2e5d9 | 7.83 | 5.94 | 5.16 |
+| woda (Droplet) | #1767b0 | #114d84 | #d1e1ef | 8.68 | 6.50 | 5.83 |
+| prąd (Zap) | #c46a00 | #935000 | #f3e1cc | 6.20 | 4.86 | 3.88 |
+| pogoda (CloudSun) | #3f6a8a | #2f5068 | #d9e1e8 | 8.51 | 6.44 | 5.77 |
+
+Badges outside a module: muted, text on GOV.UK's black tint-95 (17.65 : 1); strong („Dzisiaj”, „Jutro”), white on text (19.59 : 1); alert („Awaria”), white on GOV.UK red (5.16 : 1). The page head's band is the brand's surface tint (`surface-background`), as the footer's.
+
 ### Changing the palette
 
 Edit **`web/lib/palette.ts`**, nothing else: `PRIMARY` (the base), `LINK_STEP` (the step links take), and the named roles, `HEADER` and `PLATE`. The tints and shades are computed from `PRIMARY` with GOV.UK's method. Then push: `npm run build` (on Vercel and in CI) runs `web/scripts/brand-assets.ts` first (npm's `prebuild`, as `npm run dev` does with `predev`), which writes the Sass palette (`web/app/_palette.scss`), the tab icons, the app icons and the share card. None of them is in git, so there is no file to update by hand, and theme-color, the manifest, the footer plate, the PDF and the contrast check read `palette.ts` directly. To see the change locally, run `cd web && node scripts/brand-assets.ts` (or restart `npm run dev`), then `node scripts/check-palette.mjs --fix` to repaint the two downloadable light logos (`docs/logo/a-logo-light.svg`, `a-mark-light.svg`) and the tables below. CI fails if any of them, or a brand hex anywhere else, does not match the palette.

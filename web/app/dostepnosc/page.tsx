@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ContactLink } from "@/components/contact-link";
+import { PageHead } from "@/components/page-head";
 import { pageMetadata } from "@/lib/share";
 import { ACCESSIBILITY } from "@/lib/static-pages";
 
@@ -14,12 +15,10 @@ export default function AccessibilityPage() {
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
-        <h1 className="govuk-heading-l">{ACCESSIBILITY.text}</h1>
-        <p className="govuk-body-l">
-          Chcemy, żeby z tej strony wygodnie korzystał każdy: osoby starsze,
-          słabiej widzące, korzystające z czytnika ekranu albo tylko z
-          klawiatury. Celujemy w poziom AA wytycznych WCAG 2.2.
-        </p>
+        <PageHead
+          title={ACCESSIBILITY.text}
+          lead="Chcemy, żeby z tej strony wygodnie korzystał każdy: osoby starsze, słabiej widzące, korzystające z czytnika ekranu albo tylko z klawiatury. Celujemy w poziom AA wytycznych WCAG 2.2."
+        />
 
         <div>
           <section>

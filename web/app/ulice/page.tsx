@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import Link from "next/link";
+import { PageHead } from "@/components/page-head";
 import { PlaceLink } from "@/components/place-link";
 import { DATASET } from "@/lib/headers";
 import { type ListedPlace, localityAnchor, placePath } from "@/lib/places";
@@ -43,18 +44,18 @@ export default async function AllPlacesPage() {
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
-        <h1 className="govuk-heading-l">{ALL_PLACES.text}</h1>
-        <p className="govuk-body-l">
-          Wybierz swoją ulicę albo wieś, żeby zobaczyć terminy wywozu śmieci,
-          przerwy w dostawie wody i ostrzeżenia IMGW.
-        </p>
-        <p className="govuk-body govuk-!-margin-bottom-8">
-          Wolisz wpisać adres?{" "}
-          <Link href="/" className="govuk-link">
-            Wyszukaj go na stronie głównej
-          </Link>
-          .
-        </p>
+        <PageHead
+          title={ALL_PLACES.text}
+          lead="Wybierz swoją ulicę albo wieś, żeby zobaczyć terminy wywozu śmieci, przerwy w dostawie wody i prądu oraz ostrzeżenia IMGW."
+        >
+          <p className="govuk-body">
+            Wolisz wpisać adres?{" "}
+            <Link href="/" className="govuk-link">
+              Wyszukaj go na stronie głównej
+            </Link>
+            .
+          </p>
+        </PageHead>
 
         {/* Ids from SIMC (localityAnchor) on the town's heading and every
               village's line, where the breadcrumbs link; the section keeps

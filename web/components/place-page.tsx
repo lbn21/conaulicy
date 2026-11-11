@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
 import { Breadcrumbs, type Crumb, HOME_CRUMB } from "@/components/breadcrumbs";
 import { ErrorSummary } from "@/components/error-summary";
+import { Icon, type IconName } from "@/components/icon";
+import { PageHead } from "@/components/page-head";
 import { NOT_FOUND_METADATA, PageNotFound } from "@/components/page-not-found";
 import { PickupSchedule } from "@/components/pickup-schedule";
 import {
@@ -94,7 +96,7 @@ function NoDates({
   place: PlaceView;
 }) {
   return (
-    <section aria-labelledby={id} className="govuk-inset-text">
+    <section aria-labelledby={id} className="app-empty">
       <h2 id={id} className="govuk-heading-m">
         {heading}
       </h2>
@@ -277,12 +279,15 @@ export function AddressPage({
   caption,
   heading,
   error = null,
+  icon,
   children,
 }: {
   place: PlaceView;
   caption?: string;
   heading?: string;
   error?: string | null;
+  /** A module's subpage: its icon beside the h1. */
+  icon?: IconName;
   children: ReactNode;
 }) {
   const name = withHouseNumber(place.name, shownNr(place));
@@ -290,18 +295,21 @@ export function AddressPage({
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
-        {error && <ErrorSummary error={error} href="#nr" />}
-        {caption && <span className="govuk-caption-l">{caption}</span>}
-        <h1 className="govuk-heading-l">{heading ?? name}</h1>
-        {note && <p className="govuk-body">{note}</p>}
-        {/* Like GOV.UK's "Change": back to the search on the home page. Spaced
-          like the section breaks below (--l), so the first h2 never sits
-          right under it. */}
-        <p className="govuk-body govuk-!-margin-bottom-6">
-          <Link href="/" className="govuk-link govuk-link--no-visited-state">
-            Zmień adres<span className="govuk-visually-hidden"> {name}</span>
-          </Link>
-        </p>
+        <PageHead
+          title={heading ?? name}
+          caption={caption}
+          icon={icon}
+          before={error && <ErrorSummary error={error} href="#nr" />}
+        >
+          {note && <p className="govuk-body">{note}</p>}
+          {/* Like GOV.UK's "Change": back to the search on the home page,
+            the band's last line. */}
+          <p className="govuk-body">
+            <Link href="/" className="govuk-link govuk-link--no-visited-state">
+              Zmień adres<span className="govuk-visually-hidden"> {name}</span>
+            </Link>
+          </p>
+        </PageHead>
         {children}
       </div>
     </div>
@@ -421,6 +429,7 @@ export function WasteBody({
               data-zone={place.zoneId}
               className="govuk-link"
             >
+              <Icon name="file" />
               Harmonogram do druku (PDF)
             </a>
           </p>

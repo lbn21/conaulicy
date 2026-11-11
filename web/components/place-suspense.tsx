@@ -19,7 +19,7 @@ import { Skeleton } from "@/components/skeleton";
 
 /** A section card: a heading's bar and two lines'. */
 const CARD = (
-  <div className="app-skeleton-card govuk-!-padding-4 govuk-!-margin-bottom-6">
+  <div className="app-card">
     <p className="govuk-heading-s">
       <Skeleton>Najbliższe dni</Skeleton>
     </p>
@@ -36,12 +36,15 @@ const SKELETON = (
   <div className="govuk-grid-row">
     <div className="govuk-grid-column-two-thirds">
       <BlockSkeleton>
-        <p className="govuk-heading-l">
-          <Skeleton>ul. Adama Mickiewicza</Skeleton>
-        </p>
-        <p className="govuk-body govuk-!-margin-bottom-6">
-          <Skeleton>Zmień adres</Skeleton>
-        </p>
+        {/* The page head's band (components/page-head.tsx), as the page. */}
+        <div className="app-band">
+          <p className="govuk-heading-l">
+            <Skeleton>ul. Adama Mickiewicza</Skeleton>
+          </p>
+          <p className="govuk-body">
+            <Skeleton>Zmień adres</Skeleton>
+          </p>
+        </div>
         {CARD}
       </BlockSkeleton>
     </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ContactLink } from "@/components/contact-link";
+import { PageHead } from "@/components/page-head";
 import { pageMetadata } from "@/lib/share";
 import { PRIVACY } from "@/lib/static-pages";
 
@@ -21,10 +22,10 @@ export default function PrivacyPage() {
   return (
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
-        <h1 className="govuk-heading-l">{PRIVACY.text}</h1>
-        <p className="govuk-body-l">
-          Krótko: nie wiemy, kim jesteś, i nie chcemy wiedzieć.
-        </p>
+        <PageHead
+          title={PRIVACY.text}
+          lead="Krótko: nie wiemy, kim jesteś, i nie chcemy wiedzieć."
+        />
 
         <div>
           <section>

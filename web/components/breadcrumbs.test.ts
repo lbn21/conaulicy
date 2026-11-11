@@ -13,21 +13,23 @@ import { AddressPage, PlaceBreadcrumbs } from "./place-page.tsx";
 
 // GOV.UK's breadcrumbs (components/breadcrumbs.tsx): every item a link, the
 // page itself left out, the same markup on every page that has them.
-const NAV =
-  '<nav class="govuk-breadcrumbs govuk-breadcrumbs--collapse-on-mobile govuk-!-margin-top-7" aria-label="Ścieżka nawigacyjna"><ol class="govuk-breadcrumbs__list">';
+// Structure, never words: the nav's label and the home crumb's are the
+// component's own (an aria-label with text; HOME_CRUMB).
+const render = (items: readonly Crumb[]) =>
+  renderToStaticMarkup(createElement(Breadcrumbs, { items }));
+const LABEL = /<nav [^>]*aria-label="([^"]+)"/.exec(render([HOME_CRUMB]))?.[1];
+const NAV = `<nav class="govuk-breadcrumbs govuk-breadcrumbs--collapse-on-mobile govuk-!-margin-top-7" aria-label="${LABEL}"><ol class="govuk-breadcrumbs__list">`;
 const item = (href: string, text: string) =>
   `<li class="govuk-breadcrumbs__list-item"><a class="govuk-breadcrumbs__link" href="${href}">${text}</a></li>`;
 const crumbs = (...items: string[]) => `${NAV}${items.join("")}</ol></nav>`;
 
-const render = (items: readonly Crumb[]) =>
-  renderToStaticMarkup(createElement(Breadcrumbs, { items }));
-
 test("breadcrumbs: every item a link, in order, nothing else", () => {
+  assert.ok(LABEL);
   assert.equal(
     render([HOME_CRUMB, { href: "/ulice#m-0972447", label: "Lubaczów" }]),
-    crumbs(item("/", "Strona główna"), item("/ulice#m-0972447", "Lubaczów")),
+    crumbs(item("/", HOME_CRUMB.label), item("/ulice#m-0972447", "Lubaczów")),
   );
-  assert.equal(render([HOME_CRUMB]), crumbs(item("/", "Strona główna")));
+  assert.equal(render([HOME_CRUMB]), crumbs(item("/", HOME_CRUMB.label)));
 });
 
 test("breadcrumbs: the current page is never an item", () => {
@@ -44,7 +46,7 @@ test("address pages: home, the place's list, the address on a subpage", () => {
     renderToStaticMarkup(
       createElement(PlaceBreadcrumbs, { place: testPlace(over), subpage }),
     );
-  const home = item("/", "Strona główna");
+  const home = item("/", HOME_CRUMB.label);
   const town = item("/ulice#m-0972447", "Lubaczów");
   assert.equal(place(false), crumbs(home, town));
   assert.equal(

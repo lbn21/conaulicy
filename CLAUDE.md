@@ -29,7 +29,7 @@ A free site for Lubaczów residents: type your street, see what is coming at you
   - loading states: each live block has a skeleton with a subtle pulse and reveals with a short fade (`<ViewTransition>`), none of it under `prefers-reduced-motion`. An address page and its subpages are one block (`web/components/place-suspense.tsx`). Empty states are plain text; skeletons show at once, no delay.
 - **Light theme only.**
 - Any other deviation needs Jakub's approval and a reason in the PR.
-- **Own CSS:** only `web/app/site.scss`, for what GOV.UK has no equivalent for. GOV.UK Sass functions and mixins only, no raw hex or px. CSS ≤ 1.6 KB gzip, ≤ 150 lines. `web/app/tokens.css` holds only the font's metric-matched fallback.
+- **Own CSS:** only `web/app/site.scss`, for what GOV.UK has no equivalent for. GOV.UK Sass functions and mixins only, no raw hex or px. CSS ≤ 2.7 KB gzip, ≤ 200 lines. `web/app/tokens.css` holds only the font's metric-matched fallback.
 - **Colours have one home each:** our brand and IMGW's warning levels (`WARNING_LEVELS`) in `web/lib/palette.ts`, GOV.UK's own in `web/lib/govuk-colours.ts`, the bin colours in `web/lib/waste-colours.ts`; `check-palette` fails on a raw hex anywhere else in the site's code. Brand, palette and contrast: [docs/brand.md](docs/brand.md).
 
 ## UI rules
@@ -78,6 +78,7 @@ A free site for Lubaczów residents: type your street, see what is coming at you
 ## Workflow
 
 - Small, focused commits with short messages.
+- Tests and checks pin structure and data, never page copy: no exact headings, leads, titles or sentences, and no banned words (Jakub, PR #262). Where a test needs a page's words, it reads them from their source (`MODULES`, a function, a constant).
 - `biome check`, type check and tests pass before every commit. No local `next build` or `next start`: the CI build on the PR is the build gate.
 - Vercel skips the build when every changed file is docs or tests (`web/scripts/vercel-ignore.sh`).
 - Opus opens draft PRs only and never merges. Tech Lead merges after Jakub's OK.

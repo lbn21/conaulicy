@@ -1,6 +1,6 @@
 import { outageDetails } from "@/components/outage-page";
 import { fromTo } from "@/components/rows/when";
-import type { OutagePage } from "@/lib/outage-view";
+import { hoursRow, type OutagePage } from "@/lib/outage-view";
 import { waterCalendarHref } from "@/lib/water-ics";
 import {
   cutSpan,
@@ -52,10 +52,7 @@ function waterPage(data: Water): OutagePage {
         .map((cut) => ({
           key: cut.uid,
           rows: [
-            {
-              key: "Godziny",
-              value: [fromTo(cutSpan(cut), false) || NO_HOURS],
-            },
+            hoursRow([fromTo(cutSpan(cut), false)], NO_HOURS),
             { key: "Gdzie", value: [cutWhere(cut, data.place)] },
           ],
         })),

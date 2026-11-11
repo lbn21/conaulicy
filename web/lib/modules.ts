@@ -87,8 +87,11 @@ export type Module<D> = {
   hiddenLabel: string;
   /** After „Nie udało się sprawdzić”: „przerw w dostawie wody”. */
   subject: string;
-  /** Its row's value on a day: the short summary. */
-  Row(props: { entry: Entry }): ReactNode;
+  /**
+   * Its row's value on a day: the short summary of entries alike in all
+   * but their hours (components/function-rows.tsx rowGroups).
+   */
+  Row(props: { entries: Entry[] }): ReactNode;
   /** Its sources, in its subpage's inset: a link each. */
   sources(data: D): Part[][];
   /**

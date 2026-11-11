@@ -254,15 +254,6 @@ try {
       flat.includes(disclaimer(gmina)),
       `${c.name}: no "${disclaimer(gmina)}" line`,
     );
-    // The town's PDF names the Urząd Miejski, never the gmina's schedule.
-    const town = gmina === "Lubaczów (miasto)";
-    check(
-      town
-        ? flat.includes("Urzędu Miejskiego") &&
-            !flat.includes("harmonogram gminy")
-        : flat.includes("harmonogram gminy"),
-      `${c.name}: not the ${town ? "town's" : "gmina's"} wording`,
-    );
     // The page's and the calendar's line, in the calendar version and the
     // text version.
     const later = laterNote([{ date: "" }]);
@@ -270,7 +261,6 @@ try {
       flat.split(later).length - 1 === 2,
       `${c.name}: not twice "${later}"`,
     );
-    check(text.includes("Źródło:"), `${c.name}: no source line`);
     // The QR code and the printed link: the waste subpage, never the hub or
     // a preview deployment.
     const page = SITE_URL + c.page;

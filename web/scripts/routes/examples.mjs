@@ -27,8 +27,9 @@ export async function check(server, failures) {
     if (response.status !== 200 || !name) {
       failures.push(`/adres/${id}: ${response.status}, not a place page`);
     } else if (
-      // A waste row in the timeline's ol, in the HTML (the read's day).
-      !/<ol class="app-timeline">(?:(?!<\/ol>)[\s\S])*<dt class="govuk-summary-list__key">Śmieci<\/dt>/.test(
+      // A waste row in the timeline's ol, in the HTML (the read's day): by
+      // its module's class, never its label's words.
+      !/<ol class="app-timeline">(?:(?!<\/ol>)[\s\S])*class="govuk-summary-list__row app-mod app-mod--smieci/.test(
         html,
       )
     ) {

@@ -1,7 +1,13 @@
 "use client";
 
 import { useWarsawToday } from "@/components/warsaw-today";
-import { capitalised, dayLead, relativeDay, relativeWord } from "@/lib/dates";
+import {
+  addDays,
+  capitalised,
+  dayLead,
+  relativeDay,
+  relativeWord,
+} from "@/lib/dates";
 
 // „Dziś”, „Jutro” and „Za 5 dni”, rendered with the page, for the server's
 // Warsaw day, then kept to the device's (components/warsaw-today.tsx). The
@@ -11,12 +17,11 @@ import { capitalised, dayLead, relativeDay, relativeWord } from "@/lib/dates";
  * lead: a section's first line, „Dziś: ”, „Jutro: ” or „Za 5 dni: ” before
  * `text`, else `text` capitalised (lib/dates.ts dayLead). word: „dziś, ”
  * or „jutro, ” before the date that follows, else nothing. label: „Dziś” or
- * „Jutro”, else `text`. title: „ · ” and Intl's relative
- * day („dzisiaj”, „jutro”, „za 6 dni”), after a timeline card's date, body-s,
- * regular and grey (its card title's colour, site.scss .app-timeline__title),
- * else nothing.
- * The title's word never wraps mid-phrase: „·” and its words joined by
- * no-break spaces, so the line breaks only before „·”.
+ * „Jutro”, else `text`. title: Intl's relative day („Dzisiaj”, „Jutro”,
+ * „Za 6 dni”) as a badge after a timeline card's date (site.scss
+ * .app-badge), strong for today and tomorrow (which its card takes up,
+ * .app-timeline__card), muted for later; a comma before it for screen
+ * readers only; else nothing.
  */
 type Form = "lead" | "word" | "label" | "title";
 
@@ -35,7 +40,18 @@ export function DayWord({ day, form, text = "" }: Props) {
   // No server day (outside WarsawToday) and not yet the device's: no word.
   if (form === "title")
     return today ? (
-      <span className="govuk-!-font-size-16 govuk-!-font-weight-regular">{` ·\u00a0${relativeDay(day, today).replaceAll(" ", "\u00a0")}`}</span>
+      <>
+        <span className="govuk-visually-hidden">, </span>{" "}
+        <span
+          className={
+            day <= addDays(today, 1)
+              ? "app-badge app-badge--strong"
+              : "app-badge"
+          }
+        >
+          {capitalised(relativeDay(day, today))}
+        </span>
+      </>
     ) : null;
   const word = today ? relativeWord(day, today) : null;
   if (form === "word") return word ? `${word}, ` : null;
