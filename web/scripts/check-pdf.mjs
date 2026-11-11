@@ -26,13 +26,15 @@ import {
   NO_MORE_DATES,
   unverifiedNote,
 } from "../lib/schedule-notes.ts";
+import { GUIDES } from "../lib/sorting-guide.ts";
 import { notSource, walk } from "./lib/files.mjs";
 import { finish, startServer } from "./lib/server.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const MAX_BYTES = 150_000;
 const MIN_PAGES = 2;
-const MAX_PAGES = 6;
+// The calendar (one page), „Co wrzucać” (one or two) and the text version.
+const MAX_PAGES = 8;
 // The proposal stamp, not the home page's „Przykładowe adresy”.
 const SAMPLE = /PRZYKŁADOWE DANE|podgląd układu/;
 // The town's streets (SIMC 0972447) are the Urząd Miejski's schedule, the
@@ -307,6 +309,35 @@ try {
         `${c.name}: page ${page} of the text version starts mid-month ("${first}")`,
       );
     }
+    // The calendar is one page: the gmina's own segregation sources (a link
+    // each, lib/sorting-guide.ts) first appear on page 2, and no other
+    // gmina's appear anywhere.
+    const pageText = (n) =>
+      run("pdftotext", ["-f", String(n), "-l", String(n), file, "-"]).replace(
+        /\s+/g,
+        "",
+      );
+    const own = GUIDES[gmina]?.sources.map((source) => source.url) ?? [];
+    const others = Object.entries(GUIDES)
+      .filter(([name]) => name !== gmina)
+      .flatMap(([, guide]) => guide.sources.map((source) => source.url));
+    const cites = (n, urls) => urls.some((u) => pageText(n).includes(u));
+    check(own.length > 0, `${c.name}: no segregation guide for ${gmina}`);
+    check(
+      !cites(1, own) && cites(2, own),
+      `${c.name}: the calendar is not one page followed by the guide`,
+    );
+    const guideUris = [...source.matchAll(/\/URI \((https:[^)]*)\)/g)]
+      .map((m) => m[1])
+      .filter((uri) => own.includes(uri) || others.includes(uri));
+    check(
+      guideUris.length > 0 && guideUris.every((uri) => own.includes(uri)),
+      `${c.name}: guide links ${guideUris.join(", ")}, expected ${gmina}'s sources only`,
+    );
+    check(
+      !others.some((u) => flat.replace(/\s+/g, "").includes(u)),
+      `${c.name}: cites another gmina's segregation source`,
+    );
     check(
       flat.includes(unverifiedNote(gmina)),
       `${c.name}: no "not double-checked" note`,
@@ -368,5 +399,5 @@ try {
 
 finish(
   failures,
-  `PDFs: tagged, no PDF/UA claim, QR code and links to the waste subpage, ${MIN_PAGES}–${MAX_PAGES} pages, ≤ ${MAX_BYTES / 1000} KB, Atkinson only, text version, no example data.`,
+  `PDFs: tagged, no PDF/UA claim, QR code and links to the waste subpage, a one-page calendar then the gmina's own segregation guide, ${MIN_PAGES}–${MAX_PAGES} pages, ≤ ${MAX_BYTES / 1000} KB, Atkinson only, text version, no example data.`,
 );
