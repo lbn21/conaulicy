@@ -26,7 +26,7 @@ import { fileSlug } from "@/lib/normalize";
 import { type Block, flow, type Spot } from "@/lib/pdf-flow";
 import { chooseGrid, dateRows, tableRows } from "@/lib/pdf-grid";
 import { drawIcon, FRACTION_ICONS, PDF_ICONS } from "@/lib/pdf-icon";
-import { keyCell, keyGrid } from "@/lib/pdf-key";
+import { KEY_LABELS, keyCell, keyGrid, keyOrder } from "@/lib/pdf-key";
 import { scheduleName } from "@/lib/places";
 import {
   getPlace,
@@ -85,6 +85,13 @@ const MONTH_ROWS = 3;
 const MONTH_GUTTER = 3 * U;
 /** Between the page's blocks: band, note, grid, key, footer. */
 const SECTION = 4 * U;
+/**
+ * Page 1's blocks under the band (note, calendar, key, footer): a step
+ * closer than SECTION, so twelve months and the key fit (Tech Lead, t334).
+ */
+const CAL_SECTION = SECTION - U;
+/** Under the footer line, page 1 and 2: a step inside the side margin. */
+const FOOT = MARGIN - U;
 /** A table cell's inner padding: the headers breathe, as the leaflet's. */
 const TABLE_PAD = 2 * U;
 /** Every border and rule: one weight, one colour (RULE, below). */
@@ -180,9 +187,6 @@ const OPTICAL = {
   diamond: 1,
   star: 1,
 } as const;
-
-/** The key's order, as the site lists fractions; the key holds tones only. */
-const KEY_ORDER = FRACTIONS.map(({ subtype }) => subtype);
 
 /** Each fraction's name, the site's: the key's and the guide's, every address. */
 const TONE_LABEL: Record<string, string> = Object.fromEntries(
@@ -600,7 +604,7 @@ function render(
   const footerLine = (text: string) => {
     const size = fitting("regular", text, CONTENT_W, [TYPE.small, TYPE.fine]);
     const h = block("regular", size, text, CONTENT_W);
-    const top = PAGE_H - MARGIN - h;
+    const top = PAGE_H - FOOT - h;
     const ruleY = top - 2 * U;
     const draw = (parent: PDFKit.PDFStructureElement | null) => {
       if (parent) artifact(doc, () => rule(ruleY));
@@ -801,12 +805,12 @@ function render(
 
   // ------------------------------------------------------------ key
   // Above the footer, the same for every address (lib/pdf-key.ts): the
-  // key's heading on a line of its own, then one fixed grid of equal cells
-  // (rows of 5 U, marks the tables' size), each as wide as the widest
-  // fraction any zone's key holds, sized for the fullest zone's key; an
-  // address fills its cells in KEY_ORDER and leaves the rest empty. On the
-  // heading's line, right-aligned in a fixed slot, a moved date's note,
-  // drawn only where the page has one.
+  // key's heading on a line of its own, then one fixed grid of 2 × 5 equal
+  // cells across the content width (rows of 5 U, marks the tables' size),
+  // room for every fraction a zone's twelve months hold; an address fills
+  // its cells in the key's order, with its short names, and leaves the
+  // rest empty. On the heading's line, right-aligned in a fixed slot, a
+  // moved date's note, drawn only where the page has one.
   // One slot for every mark, in the tables and the key (OPTICAL); a full
   // step between slots.
   const MARK = 11;
@@ -815,36 +819,35 @@ function render(
   const KEY_GAP = 3 * U;
   const keyHeading = "Oznaczenia";
   const movedLabel = "Termin przesunięty";
-  const sortTones = (unsorted: Iterable<string>) =>
-    [...new Set(unsorted)].sort(
-      (a, b) => KEY_ORDER.indexOf(a) - KEY_ORDER.indexOf(b),
-    );
+  const keyName = (tone: string) =>
+    KEY_LABELS.find((k) => k.subtype === tone)?.label ??
+    TONE_LABEL[tone] ??
+    tone;
   /** These months' fractions, in the key's order, and any moved date. */
   const keyFor = (keys: string[]) => {
     const days = keys.flatMap((key) => byMonth.get(key) ?? []);
     return {
-      tones: sortTones(
+      tones: keyOrder(
         days.flatMap((day) => day.pickups).flatMap((p) => tones(p.subtype)),
       ),
       moved: days.some((day) => moved(day)),
     };
   };
-  // The grid's worst case: every zone's key, and this address's, so its
-  // own always fits; the names the site's, the same for every address.
-  const zoneKeys = [keyFor(printed).tones, ...maxima.keys.map((k) => k.tones)];
-  doc.font("regular").fontSize(TYPE.small);
-  const keyCellW = (tone: string) =>
-    MARK + U + doc.widthOfString(TONE_LABEL[tone] ?? tone);
+  // Rows for the fullest key of any zone, and this address's: never fewer
+  // than KEY_ROWS.
   const keyLayout = keyGrid(
-    sortTones(zoneKeys.flat()).map(keyCellW),
-    Math.max(...zoneKeys.map((k) => new Set(k).size)),
     CONTENT_W,
     KEY_GAP,
+    Math.max(
+      keyFor(printed).tones.length,
+      ...maxima.keys.map((k) => new Set(k.tones).size),
+    ),
   );
-  if (!keyLayout.fits) {
-    console.warn(
-      `harmonogram.pdf: key cells ${keyLayout.cellW.toFixed(2)} pt × ${keyLayout.columns} do not fit ${CONTENT_W.toFixed(2)} pt`,
-    );
+  doc.font("regular").fontSize(TYPE.small);
+  for (const { label } of KEY_LABELS) {
+    if (MARK + U + doc.widthOfString(label) > keyLayout.cellW) {
+      console.warn(`harmonogram.pdf: key label wider than its cell: ${label}`);
+    }
   }
   /** The heading's row (and the moved date's note), then the grid's. */
   const KEY_H = (1 + keyLayout.rows) * KEY_ROW;
@@ -871,7 +874,7 @@ function render(
           "regular",
           TYPE.small,
           BLACK,
-          TONE_LABEL[tone] ?? tone,
+          keyName(tone),
           x + MARK + U,
           rowTop,
           KEY_ROW,
@@ -925,7 +928,7 @@ function render(
   // leaving air above the tables.
   const YEAR_H = ROW[TYPE.heading];
   // Between grid rows: the next row's year strip adds its own air.
-  const ROW_GAP = 2 * U;
+  const ROW_GAP = U;
   const footer1 = footerLine(
     footerText(
       scheduleName(place.gmina),
@@ -935,16 +938,17 @@ function render(
   // Sized once for the largest calendar any address prints (lib/schedule.ts
   // wasteMaxima): every month of the window, each as full as the fullest
   // month in the data, under the band (one height for every address: a
-  // one-line title, its day line) and above the key's fixed grid. Every address gets the same tables; fewer months
-  // leave the space below them empty.
+  // one-line title, its day line) and above the key's fixed grid. Every
+  // address gets the same tables; fewer months leave the space below
+  // them empty.
   // The footer line at its larger size, whichever this one takes.
   const footerTop = Math.min(
     footer1.top,
-    PAGE_H - MARGIN - ROW[TYPE.small] - 2 * U,
+    PAGE_H - FOOT - ROW[TYPE.small] - 2 * U,
   );
   // The key, at one place on every page.
-  const keyTop = footerTop - SECTION - KEY_H;
-  const gridTop = bandH + noteH + SECTION;
+  const keyTop = footerTop - CAL_SECTION - KEY_H;
+  const gridTop = bandH + noteH + CAL_SECTION;
   const gridMonths = months.map((key) => ({
     key,
     marks: (byMonth.get(key) ?? []).map((day) => tonesOf(day).length),
@@ -980,7 +984,7 @@ function render(
         least: 5,
         width: CONTENT_W,
         gap: MONTH_GUTTER,
-        height: keyTop - SECTION - gridTop,
+        height: keyTop - CAL_SECTION - gridTop,
         yearH: YEAR_H,
         rowGap: ROW_GAP,
         dateW,
@@ -1281,7 +1285,7 @@ function render(
       // The footer line at its larger size, whichever this one takes.
       const footerTop = Math.min(
         footer2.top,
-        PAGE_H - MARGIN - ROW[TYPE.small] - 2 * U,
+        PAGE_H - FOOT - ROW[TYPE.small] - 2 * U,
       );
       const stripTop = footerTop - SECTION - stripH;
       const sepTop = stripTop - SECTION - sepH;
@@ -1591,7 +1595,7 @@ function render(
   // ------------------------------------------------------------ calendar
   // Rows that do not fit even at the smallest row height run on, on pages of
   // their own under the compact band.
-  let y = drawNote(drawBand()) + SECTION;
+  let y = drawNote(drawBand()) + CAL_SECTION;
   let pageKeys: string[] = [];
   let year = "";
   const yearsTagged = new Set<string>();
@@ -1616,7 +1620,7 @@ function render(
     grid.columns,
   );
   placedRows.forEach((row) => {
-    if (y + YEAR_H + tableH > keyTop - SECTION + 0.01 && pageKeys.length) {
+    if (y + YEAR_H + tableH > keyTop - CAL_SECTION + 0.01 && pageKeys.length) {
       endPage(firstPage);
       firstPage = false;
       doc.addPage();

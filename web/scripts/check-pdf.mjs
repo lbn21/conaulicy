@@ -49,6 +49,7 @@ const gminaOf = (p) =>
 const CASES = [
   {
     name: "city street (Asnyka)",
+    months: 12,
     path: "/adres/0972447-00470/harmonogram.pdf",
     page: "/adres/0972447-00470/smieci",
   },
@@ -67,11 +68,13 @@ const CASES = [
   },
   {
     name: "village (Szczutków)",
+    months: 12,
     path: "/adres/0606375/harmonogram.pdf",
     page: "/adres/0606375/smieci",
   },
   {
     name: "split street, nr 7a",
+    months: 12,
     path: "/adres/0972447-90004/harmonogram.pdf?nr=7a",
     page: "/adres/0972447-90004/smieci?nr=7a",
   },
@@ -150,8 +153,11 @@ const round = (n) => Math.round(n * 100) / 100;
 const layouts = [];
 // Per case: page 1's key, its heading's line, its rows and columns.
 const keys = [];
-/** A key row (the route's KEY_ROW). */
+/** A key row and the gap between its cells (the route's KEY_ROW, KEY_GAP). */
 const KEY_ROW = 20;
+const KEY_GAP = 12;
+/** A key label's start in its cell: its mark's slot and a step. */
+const KEY_LABEL_IN = MARK_SLOT + 4;
 
 const failures = [];
 const check = (ok, message) => {
@@ -494,6 +500,13 @@ try {
           (xs.size === GRID.columns && ys.size === GRID.rows)),
       `${c.name}: page 1 grid ${xs.size} × ${ys.size} of ${tables.length} tables, x ${[...xs].join(", ")} (a fixed ${GRID.columns} × ${GRID.rows} inside the margins)`,
     );
+    // A whole window's twelve months: every one of them on page 1.
+    if (c.months) {
+      check(
+        tables.length === c.months,
+        `${c.name}: page 1 holds ${tables.length} of ${c.months} months`,
+      );
+    }
     // The place's name (the document title's last part, before the
     // locality) on one line of page 1.
     if (c.title) {
@@ -565,6 +578,25 @@ try {
   // fewer items in the first of its cells.
   const worst = keys.reduce((a, b) => (b.items > a.items ? b : a), keys[0]);
   const prefix = (xs, of) => xs.every((x, i) => Math.abs(x - of[i]) < 1);
+  // The fullest key: exactly KEY_ROWS rows and KEY_COLUMNS equal columns
+  // (one pitch between every two), the last cell within the margin.
+  const pitches = (worst?.x ?? []).slice(1).map((x, i) => x - worst.x[i]);
+  check(
+    worst?.rows.length === KEY_ROWS &&
+      worst.x.length === KEY_COLUMNS &&
+      pitches.every((d) => Math.abs(d - pitches[0]) < 0.5) &&
+      // A label starts a mark and a step into its cell: the cells run
+      // from the margin to the margin.
+      Math.abs(worst.x[0] - KEY_LABEL_IN - SIDE) < 1 &&
+      Math.abs(
+        worst.x[KEY_COLUMNS - 1] -
+          KEY_LABEL_IN +
+          pitches[0] -
+          KEY_GAP -
+          (PAGE_W - SIDE),
+      ) < 1,
+    `key: the fullest (${worst?.name}) in ${worst?.rows.length} rows of ${worst?.x.length} columns, ${pitches.map(round).join(", ")} pt apart (exactly ${KEY_ROWS} × ${KEY_COLUMNS}, equal, margin to margin)`,
+  );
   for (const k of keys) {
     check(
       k.aligned &&

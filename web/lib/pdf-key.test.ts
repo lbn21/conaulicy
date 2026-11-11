@@ -1,46 +1,65 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { KEY_COLUMNS, KEY_ROWS, keyCell, keyGrid } from "./pdf-key.ts";
+import {
+  KEY_COLUMNS,
+  KEY_LABELS,
+  KEY_ROWS,
+  keyCell,
+  keyGrid,
+  keyOrder,
+} from "./pdf-key.ts";
+import { FRACTIONS, tones } from "./waste-bin.ts";
 
 const GAP = 12;
 
 describe("keyGrid", () => {
-  it("is one grid for any address: equal cells, as wide as the widest item", () => {
-    const widths = [72, 48, 32, 49, 162, 44];
-    const grid = keyGrid(widths, 6, 540, GAP);
+  it("is equal cells across the room, the same for any address", () => {
+    const grid = keyGrid(540, GAP, 3);
     assert.equal(grid.columns, KEY_COLUMNS);
     assert.equal(grid.rows, KEY_ROWS);
-    assert.equal(grid.cellW, Math.max(...widths));
-    assert.deepEqual(grid.x, [0, 174, 348]);
-    assert.ok(grid.fits);
+    assert.equal(grid.cellW, (540 - (KEY_COLUMNS - 1) * GAP) / KEY_COLUMNS);
+    grid.x.forEach((x, c) => {
+      assert.equal(x, c * (grid.cellW + GAP));
+    });
+    assert.ok(
+      Math.abs(grid.x[KEY_COLUMNS - 1] + grid.cellW - 540) < 1e-9,
+      "the last cell ends at the room's edge",
+    );
   });
 
-  it("keeps its rows for an address with fewer items", () => {
-    const grid = keyGrid([72, 162], 1, 540, GAP);
-    assert.equal(grid.rows, KEY_ROWS);
-    assert.equal(grid.columns, KEY_COLUMNS);
+  it("holds every listed fraction in its rows", () => {
+    assert.ok(KEY_LABELS.length <= KEY_COLUMNS * KEY_ROWS);
+    assert.equal(keyGrid(540, GAP, KEY_LABELS.length).rows, KEY_ROWS);
   });
 
   it("fills the cells row by row, left to right", () => {
-    const grid = keyGrid([100], 6, 540, GAP);
-    const cells = Array.from({ length: 6 }, (_, i) => keyCell(grid, i));
-    assert.deepEqual(
-      cells.map((c) => c.row),
-      [0, 0, 0, 1, 1, 1],
-    );
-    assert.deepEqual(
-      cells.map((c) => c.x),
-      [0, 112, 224, 0, 112, 224],
-    );
+    const grid = keyGrid(540, GAP, 10);
+    const rows = Array.from({ length: 10 }, (_, i) => keyCell(grid, i).row);
+    assert.deepEqual(rows, [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]);
+    assert.equal(keyCell(grid, 5).x, grid.x[0]);
   });
 
   it("takes more rows, never narrower cells, for more items", () => {
-    const grid = keyGrid([100], 7, 540, GAP);
+    const grid = keyGrid(540, GAP, 11);
     assert.equal(grid.rows, 3);
-    assert.equal(grid.cellW, 100);
+    assert.equal(grid.cellW, keyGrid(540, GAP, 1).cellW);
+  });
+});
+
+describe("keyOrder", () => {
+  it("is the key's fixed order, whatever order the data gives", () => {
+    const listed = KEY_LABELS.map((k) => k.subtype);
+    assert.deepEqual(keyOrder([...listed].reverse()), listed);
   });
 
-  it("says when its columns do not fit", () => {
-    assert.equal(keyGrid([162], 6, 463, GAP).fits, false);
+  it("names every fraction the data's subtypes split into", () => {
+    // Every tone but plain „tworzywa”, which no schedule uses (the data's
+    // plastics are tworzywa_metale).
+    const listed = new Set(KEY_LABELS.map((k) => k.subtype));
+    for (const { subtype } of FRACTIONS) {
+      for (const tone of tones(subtype)) {
+        if (tone !== "tworzywa") assert.ok(listed.has(tone), tone);
+      }
+    }
   });
 });
