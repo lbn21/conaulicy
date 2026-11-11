@@ -56,3 +56,44 @@ export function flow(
     return { head, lines, continued };
   });
 }
+
+/** Where a tile goes: its page (0 = the first), column and top. */
+export type Slot = { page: number; column: number; y: number };
+
+/**
+ * Packs tiles of the given heights into `columns` columns, `gap` apart: each,
+ * in order, into the first page with room for it, in that page's column that
+ * ends highest (the leftmost on a tie), so a short tile fills a gap a tall
+ * one left. The first page starts at `start`, later ones at `top`, and
+ * nothing passes `bottom`, except a tile taller than a page, which gets a new
+ * page of its own.
+ */
+export function pack(
+  heights: number[],
+  columns: number,
+  gap: number,
+  start: number,
+  top: number,
+  bottom: number,
+): Slot[] {
+  const pages: number[][] = [];
+  const open = () => {
+    pages.push(Array<number>(columns).fill(pages.length ? top : start));
+    return pages.length - 1;
+  };
+  open();
+  return heights.map((h) => {
+    let page = pages.findIndex((ends) => Math.min(...ends) + h <= bottom);
+    if (page < 0) {
+      const last = pages.length - 1;
+      // An empty page takes it anyway: a tile taller than any page.
+      const empty = pages[last].every((end) => end === (last ? top : start));
+      page = empty ? last : open();
+    }
+    const ends = pages[page];
+    const column = ends.indexOf(Math.min(...ends));
+    const slot = { page, column, y: ends[column] };
+    ends[column] += h + gap;
+    return slot;
+  });
+}
