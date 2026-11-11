@@ -38,6 +38,7 @@ import { ALL_PLACES } from "@/lib/static-pages";
 import {
   checkSchedule,
   noScheduleHeading,
+  wasteChecked,
   wasteSources,
 } from "@/lib/waste-module";
 
@@ -265,8 +266,7 @@ export function PlaceNotFound() {
  * the address page's locality is in its breadcrumbs), the h1 (the place's
  * name by default), a house number the address register does not have
  * (numberWarning) or the street does not need (sharedNumberNote), „Zmień
- * adres”, then on a subpage when its module last checked its source
- * (lib/hub.ts checkedLine), small, secondary text; then `children`, in the
+ * adres”, then `children`, in the
  * layout's <main>. Its breadcrumbs are the layout's @breadcrumbs slot
  * (components/place-crumbs.tsx).
  */
@@ -275,14 +275,12 @@ export function AddressPage({
   caption,
   heading,
   error = null,
-  checked = null,
   children,
 }: {
   place: PlaceView;
   caption?: string;
   heading?: string;
   error?: string | null;
-  checked?: string | null;
   children: ReactNode;
 }) {
   const name = withHouseNumber(place.name, shownNr(place));
@@ -302,9 +300,6 @@ export function AddressPage({
             Zmień adres<span className="govuk-visually-hidden"> {name}</span>
           </Link>
         </p>
-        {checked && (
-          <p className="govuk-hint govuk-!-font-size-16">{checked}</p>
-        )}
         {children}
       </div>
     </div>
@@ -431,9 +426,9 @@ export function WasteBody({
           <PickupSchedule days={place.days} later={laterNote(place.days)} />
 
           {!place.verified && <AiReadNote text={unverifiedNote(place.gmina)} />}
-          <SourceInset sources={wasteSources(place)} />
         </>
       )}
+      <SourceInset sources={wasteSources(place)} at={wasteChecked(place)} />
     </>
   );
 }

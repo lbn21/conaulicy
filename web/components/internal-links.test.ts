@@ -22,6 +22,7 @@ const EXPRESSIONS: Record<string, Record<string, string>> = {
     GMINA_NEWS: "another site",
     MZGKIM_NEWS: "another site",
     PRG_PAGE: "another site",
+    TERYT_PAGE: "another site",
   },
   "app/prywatnosc/page.tsx": {
     VERCEL_PRIVACY: "another site",

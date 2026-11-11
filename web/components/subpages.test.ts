@@ -115,10 +115,14 @@ const SKELETON = [
   '<span class="govuk-caption-l">',
   '<h1 class="govuk-heading-l">',
   "Zmień adres",
-  " sprawdziliśmy: ",
   'role="button"',
 ];
-const AFTER = ['class="govuk-warning-text"', 'class="govuk-inset-text"'];
+/** The bottom: the AI-read note, then the one source block with the check. */
+const AFTER = [
+  'class="govuk-warning-text"',
+  'class="govuk-inset-text"',
+  "Sprawdziliśmy ",
+];
 
 const ascending = (positions: number[]) =>
   positions.every((at, i) => at >= 0 && (i === 0 || at > positions[i - 1]));
@@ -149,7 +153,7 @@ test("/woda: the AI note in a warning text, the source in an inset", () => {
   );
   assert.match(
     html,
-    /<div class="govuk-inset-text"><p class="govuk-body-s">Źródło: <a href="https:\/\/www\.gminalubaczow\.pl\/[^"]+" class="govuk-link">komunikat gminy z 23 października 2026<\/a><\/p><\/div>/,
+    /<div class="govuk-inset-text"><p class="govuk-hint govuk-!-font-size-16">Źródło: <a href="https:\/\/www\.gminalubaczow\.pl\/[^"]+" class="govuk-link">komunikat gminy z 23 października 2026<\/a>\. Sprawdziliśmy [^<]+\.<\/p><\/div>/,
   );
   // A town street: the cut's own post is its only source, never MZGKiM's.
   assert.doesNotMatch(html, /MZGKiM/);
@@ -165,12 +169,7 @@ test("/woda without a dated cut: no button, the rest in the same order", () => {
     assert.ok(ascending(order(html, SKELETON.slice(0, -1))), html);
   }
   const html = waterPage([emergency]);
-  assert.ok(
-    ascending(
-      order(html, ["Komunikaty o wodzie sprawdziliśmy", "<h2", ...AFTER]),
-    ),
-    html,
-  );
+  assert.ok(ascending(order(html, ["<h2", ...AFTER])), html);
 });
 
 test("/smieci and /woda: the same skeleton and calendar block", () => {
@@ -502,7 +501,7 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
   );
   assert.match(
     html,
-    /<div class="govuk-inset-text"><p class="govuk-body-s">Źródło: <a href="https:\/\/mzgkim\.lubaczow\.pl\/przerwa-w-dostawie-wody-100\/" class="govuk-link">komunikat MZGKiM z 2 października 2026<\/a><\/p><\/div>/,
+    /<div class="govuk-inset-text"><p class="govuk-hint govuk-!-font-size-16">Źródło: <a href="https:\/\/mzgkim\.lubaczow\.pl\/przerwa-w-dostawie-wody-100\/" class="govuk-link">komunikat MZGKiM z 2 października 2026<\/a>\. Sprawdziliśmy [^<]+\.<\/p><\/div>/,
   );
   // Its cut shown here: its area off our list is not linked again.
   assert.doesNotMatch(html, /Inne komunikaty/);
@@ -605,7 +604,7 @@ const weatherPage = (data: Weather) =>
   );
 const IMGW_NOW = Date.parse("2026-10-25T14:00:00+01:00");
 const SOURCE_INSET =
-  /<div class="govuk-inset-text"><p class="govuk-body-s">Źródło: <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">IMGW-PIB<\/a><\/p><p class="govuk-hint govuk-!-font-size-16">Źródłem pochodzenia danych jest Instytut Meteorologii [^<]+<\/p><\/div><\/div><\/div><\/main>$/;
+  /<div class="govuk-inset-text"><p class="govuk-hint govuk-!-font-size-16">Źródło: <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">IMGW-PIB<\/a>\.(?: Sprawdziliśmy [^<]+\.)?<\/p><p class="govuk-hint govuk-!-font-size-16">Źródłem pochodzenia danych jest Instytut Meteorologii [^<]+<\/p><\/div><\/div><\/div><\/main>$/;
 
 test("/pogoda: a subpage of every address, its h1 and the registry's", () => {
   const pogoda = findSubpage("pogoda");
@@ -623,9 +622,10 @@ test("/pogoda: a warning as a summary card, IMGW's words, the source", () => {
     html,
     /^<main><div class="govuk-grid-row"><div class="govuk-grid-column-two-thirds"><span class="govuk-caption-l">Lubaczów, ul\. Żuki<\/span><h1 class="govuk-heading-l">Ostrzeżenia pogodowe IMGW<\/h1><p class="govuk-body govuk-!-margin-bottom-6"><a [^>]*href="\/"[^>]*>Zmień adres/,
   );
+  assert.match(html, /Zmień adres.*?<\/p><div class="govuk-summary-card">/);
   assert.match(
     html,
-    /<p class="govuk-hint govuk-!-font-size-16">Ostrzeżenia pogodowe sprawdziliśmy: 25 października 13:52<\/p><div class="govuk-summary-card">/,
+    /IMGW-PIB<\/a>\. Sprawdziliśmy 25 października 13:52\.<\/p>/,
   );
   assert.match(
     html,
@@ -661,7 +661,7 @@ test("/pogoda, the copy old: the notice first, linked to IMGW, then the warnings
   const html = weatherPage(data);
   assert.match(
     html,
-    /<p class="govuk-hint govuk-!-font-size-16">Ostrzeżenia pogodowe sprawdziliśmy: 25 października 12:59<\/p><div class="govuk-inset-text"><p class="govuk-body">Nie udało się teraz pobrać ostrzeżeń IMGW\. Pokazujemy ostatnie dane z 12:59\. Aktualne znajdziesz na <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">meteo\.imgw\.pl<\/a>\.<\/p><\/div><div class="govuk-summary-card">/,
+    /Zmień adres.*?<\/p><div class="govuk-inset-text"><p class="govuk-body">Nie udało się teraz pobrać ostrzeżeń IMGW\. Pokazujemy ostatnie dane z 12:59\. Aktualne znajdziesz na <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">meteo\.imgw\.pl<\/a>\.<\/p><\/div><div class="govuk-summary-card">/,
   );
   assert.doesNotMatch(html, /Brak ostrzeżeń/);
 });
@@ -672,9 +672,12 @@ test("/pogoda, the store unreadable: the notice alone, no check time, no „Brak
   const html = weatherPage(data);
   assert.match(
     html,
-    /Zmień adres.*?<\/p><div class="govuk-inset-text"><p class="govuk-body">Nie udało się teraz sprawdzić ostrzeżeń IMGW\. Aktualne znajdziesz na <a [^>]*>meteo\.imgw\.pl<\/a>\.<\/p><\/div><div class="govuk-inset-text"><p class="govuk-body-s">Źródło:/,
+    /Zmień adres.*?<\/p><div class="govuk-inset-text"><p class="govuk-body">Nie udało się teraz sprawdzić ostrzeżeń IMGW\. Aktualne znajdziesz na <a [^>]*>meteo\.imgw\.pl<\/a>\.<\/p><\/div><div class="govuk-inset-text"><p class="govuk-hint govuk-!-font-size-16">Źródło:/,
   );
-  assert.doesNotMatch(html, /sprawdziliśmy|Brak ostrzeżeń|govuk-summary-card/);
+  assert.doesNotMatch(
+    html,
+    /[Ss]prawdziliśmy|Brak ostrzeżeń|govuk-summary-card/,
+  );
 });
 
 test("/pogoda: the subpages' skeleton, in the same order as /smieci and /woda", () => {
@@ -709,6 +712,9 @@ test("every subpage with no data now: its frame, then the hub's one line, nothin
       ),
       module.id,
     );
-    assert.doesNotMatch(html, /sprawdziliśmy|govuk-inset-text|role="button"/);
+    assert.doesNotMatch(
+      html,
+      /[Ss]prawdziliśmy|govuk-inset-text|role="button"/,
+    );
   }
 });

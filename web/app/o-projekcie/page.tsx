@@ -16,6 +16,10 @@ export const metadata: Metadata = pageMetadata({
 const PRG_PAGE =
   "https://www.geoportal.gov.pl/pl/dane/panstwowy-rejestr-granic-prg/";
 
+// GUS's register of place and street names (TERYT), the import's source
+// (docs/data/DATA-INVENTORY.md, TERYT).
+const TERYT_PAGE = "https://eteryt.stat.gov.pl/";
+
 export default function AboutPage() {
   return (
     <div className="govuk-grid-row">
@@ -55,8 +59,16 @@ export default function AboutPage() {
           Terminy wywozu i przerwy w dostawie wody odczytujemy automatycznie, z
           pomocą sztucznej inteligencji, z harmonogramów i komunikatów miasta
           Lubaczów i gminy Lubaczów. Potem je sprawdzamy, a dopóki tego nie
-          zrobimy, piszemy o tym przy adresie. Przy każdym adresie podajemy
-          źródło i datę, kiedy je sprawdziliśmy.
+          zrobimy, piszemy o tym przy adresie. Źródło i datę, kiedy je
+          sprawdziliśmy, podajemy na stronie każdego tematu: śmieci, wody i
+          pogody.
+        </p>
+        <p className="govuk-body">
+          Nazwy ulic i miejscowości bierzemy z{" "}
+          <a href={TERYT_PAGE} className="govuk-link">
+            rejestru TERYT (GUS)
+          </a>
+          .
         </p>
         <p className="govuk-body">
           Wpisany numer domu porównujemy z{" "}

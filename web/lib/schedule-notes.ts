@@ -31,7 +31,7 @@ export function putOutLine(time: string): string {
 }
 
 /**
- * The address page's waste meta line while the dates are not checked yet:
+ * The address page's small print while the dates are not checked yet:
  * one short sentence (the subpage keeps the full unverifiedNote).
  */
 export const SHORT_UNVERIFIED_NOTE =

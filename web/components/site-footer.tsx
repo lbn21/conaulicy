@@ -119,10 +119,7 @@ export function SiteFooter() {
                 >
                   CC BY 4.0
                 </a>
-                . Terminy wywozu pochodzą z harmonogramów miasta Lubaczów i
-                gminy Lubaczów, przerwy w dostawie wody z komunikatów gminy
-                Lubaczów i MZGKiM w Lubaczowie, a ostrzeżenia pogodowe z
-                IMGW-PIB.
+                .
               </span>
             </div>
             <div className="govuk-footer__meta-item">{`© ${COPYRIGHT_YEAR} ${SITE_NAME}`}</div>

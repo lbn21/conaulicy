@@ -758,7 +758,8 @@ function postLink(item: Pick<Disruption, "uid" | "source" | "publishedAt">) {
 /**
  * „Źródło”: each post a cut or notice here comes from (only its own post,
  * never another source's page); without one, each source's posts. When it
- * was checked: the module's checked line.
+ * was checked: after them, in the subpage's source block (lib/hub.ts
+ * sourceLine).
  */
 export function waterSources(data: Water): Part[][] {
   const posts = new Map<string, Part>();

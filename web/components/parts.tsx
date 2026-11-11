@@ -9,18 +9,6 @@ import type { Group, Part } from "@/lib/hub";
 // section's day lead („Dziś: ”, components/day-word.tsx), for
 // the address page's sections and the module subpages.
 
-/** Parts as plain text, for a key in a list. */
-export const textOf = (parts: Part[]) =>
-  parts
-    .map((part) =>
-      typeof part === "string"
-        ? part
-        : "bins" in part
-          ? part.bins.map((bin) => bin.label).join(", ")
-          : part.text,
-    )
-    .join("");
-
 /**
  * A line's parts as text, links, bins (a row of small ones), tags and day
  * leads. `lead`: a day lead gets its „Dziś: ” (DayWord); false

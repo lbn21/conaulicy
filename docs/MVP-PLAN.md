@@ -10,7 +10,7 @@ Last brought up to date: 7 Nov 2026 (t249), against `main` at `641efcd`. The fir
 - **For whom:** young and older residents alike: plain, warm Polish; readable at large text sizes; works on a phone first.
 - **Not a business:** no login, no ads, no profit goal, no cookies. Run privately by Jakub, not an official service ("in case of doubt the gmina's announcement prevails").
 - **Guiding principle:** modern, clean, minimal, simple. No over-engineering: if a feature is not needed now, it goes to the backlog (§8).
-- **Accuracy first:** a wrong date costs trust. Every item shown keeps a visible link to its source and the date it was last checked; no source, no display.
+- **Accuracy first:** a wrong date costs trust. Every item keeps a visible link to its source and the date it was last checked on its own topic page (the subpage); the address page shows the check times in one note at the bottom (task 284); no source, no display.
 
 ## 2. Features and status
 
@@ -19,7 +19,7 @@ Status: **built** = on `main`, which deploys to production with every merge.
 | Feature | Status | Notes |
 |---|---|---|
 | Address search: town streets, villages and village parts | built | In the browser over a small cached index; optional house number („Asnyka 12”), checked against the address register (PRG) as a hint only |
-| Address page (`/adres/<id>`) | built | Date-first (task 263): „Najbliższe 7 dni”, a vertical timeline with a card per day (pickups, water cuts, IMGW warnings; „Szczegóły” to each module's subpage; two or more empty days in a row as one card, saying „Nic nie zaplanowano.” on every place, task 278), then „Później” (the next item per module); above it, only what belongs to no day. Then „Wszystko o Twoim adresie” (a link per subpage) and „Skąd to wiemy” (each module's source and check time). „Zmień adres” goes back to the home page's search |
+| Address page (`/adres/<id>`) | built | Date-first (task 263): „Najbliższe 7 dni”, a vertical timeline with a card per day (pickups, water cuts, IMGW warnings; „Szczegóły” to each module's subpage; two or more empty days in a row as one card, saying „Nic nie zaplanowano.” on every place, task 278), then „Później” (the next item per module); above it, only what belongs to no day. Then „Wszystko o Twoim adresie” (a link per subpage) and one small-print note: each module's check time, the AI caveat when it applies, IMGW's required wording (task 284; the sources are on the subpages). „Zmień adres” goes back to the home page's search |
 | Waste pickups (`/adres/<id>/smieci`) | built | Upcoming pickups and the full year for the address's zone; on a split street, the zone is chosen by house number |
 | Waste calendar (ICS) | built | One subscription per zone (webcal, Google, Outlook, `.ics` file), updated in place when dates change |
 | Printable schedule (PDF) | built | A4, with a QR code and a printed link back to the waste page |

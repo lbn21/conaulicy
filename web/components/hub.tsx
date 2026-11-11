@@ -1,7 +1,7 @@
 import { io } from "next/cache";
 import { cache, type ReactNode } from "react";
 import { subpageHref } from "@/components/function-rows";
-import { Parts, Status } from "@/components/parts";
+import { Status } from "@/components/parts";
 import { PlaceLink } from "@/components/place-link";
 import {
   AddressPage,
@@ -14,7 +14,7 @@ import {
 import { Timeline } from "@/components/timeline";
 import { WarsawToday } from "@/components/warsaw-today";
 import { MODULE_IDS } from "@/lib/address-routes";
-import { type Group, metaLine, unchecked } from "@/lib/hub";
+import { freshnessLine, type Group, unchecked } from "@/lib/hub";
 import { IMGW_ATTRIBUTION } from "@/lib/imgw-warnings";
 import { MODULES, type Module } from "@/lib/modules";
 import type { PlaceView } from "@/lib/schedule";
@@ -25,8 +25,9 @@ import type { PlaceView } from "@/lib/schedule";
 // inset); „Najbliższe 7 dni”, a vertical timeline of every module's items
 // by day (components/timeline.tsx, lib/timeline.ts), then „Później”;
 // „Wszystko o Twoim adresie”, a link to each module's subpage (/smieci,
-// /woda, /pogoda) that has a source; „Skąd to wiemy”, each module's meta
-// line (its sources and when we checked) and IMGW's required wording. No
+// /woda, /pogoda) that has a source; then one small-print note: when each
+// module last checked its source, the AI caveat when it applies, and IMGW's
+// required wording (task 284; the sources are on the subpages). No
 // calendar or PDF here: they are on the waste subpage. A split street's
 // number errors keep the street page (StreetPage), GOV.UK's validation
 // pattern.
@@ -34,7 +35,7 @@ import type { PlaceView } from "@/lib/schedule";
 // The page is read per request, whole, behind one <Suspense> with one
 // skeleton (components/place-suspense.tsx; Jakub's decision, task 239):
 // every block's data at once (hubData), so it all comes in together, each
-// live module with its „Sprawdziliśmy” from the same read. Its static shell
+// module's check time from the same read. Its static shell
 // holds only the skeleton: no date and no waste type is ever prerendered.
 // Dates are absolute; „Dziś” and „Jutro” come with them, for the read's
 // Warsaw day (WarsawToday, place.today), then the device's
@@ -134,28 +135,23 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
           </ul>
         </section>
       )}
-      <section aria-labelledby="skad-to-wiemy">
-        <h2 id="skad-to-wiemy" className="govuk-heading-m">
-          Skąd to wiemy
-        </h2>
-        {loaded.map(({ module, data }) => {
-          const meta = metaLine(
-            module.sources(data),
-            module.note?.(data) ?? null,
-            module.checkedAt(data),
-          );
-          if (meta.length === 0) return null;
-          return (
-            <p key={module.id} className="govuk-body-s">
-              <strong>{module.title}.</strong> <Parts parts={meta} lead />
-            </p>
-          );
-        })}
-        {/* IMGW's required wording, as secondary text (task 205). */}
-        <p className="govuk-hint govuk-!-font-size-16">
-          {IMGW_ATTRIBUTION.join(" ")}
-        </p>
-      </section>
+      {/* Small print at the end, above the footer (task 284): when each
+        module last checked its source, the AI caveat when it applies, and
+        IMGW's required wording. The sources are on the subpages. */}
+      <p className="govuk-hint govuk-!-font-size-16">
+        {[
+          freshnessLine(
+            loaded.map(({ module, data }) => ({
+              name: module.title,
+              at: module.checkedAt(data),
+            })),
+          ),
+          ...loaded.map(({ module, data }) => module.note?.(data)),
+          ...IMGW_ATTRIBUTION,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      </p>
     </AddressPage>
   );
 }

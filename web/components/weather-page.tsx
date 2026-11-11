@@ -11,6 +11,7 @@ import {
   POWIAT,
   TAG,
   type Weather,
+  weatherChecked,
   weatherNotices,
   weatherSources,
 } from "@/lib/weather-module";
@@ -18,7 +19,7 @@ import {
 // The weather module's subpage, /adres/<id>/pogoda (task 263): IMGW's
 // warnings for the powiat, highest first, each with its level, when (absolute),
 // IMGW's own description and probability; then the source (IMGW's page)
-// and its required wording. The same for every address of the powiat, so
+// with the check time, and its required wording. The same for every address of the powiat, so
 // never a search result.
 
 /** „75%”: IMGW's probability, a percentage. */
@@ -80,7 +81,7 @@ export function WeatherDetails({ data }: { data: Weather }) {
           </div>
         </div>
       ))}
-      <SourceInset sources={weatherSources()}>
+      <SourceInset sources={weatherSources()} at={weatherChecked(data)}>
         <p className="govuk-hint govuk-!-font-size-16">
           {IMGW_ATTRIBUTION.join(" ")}
         </p>

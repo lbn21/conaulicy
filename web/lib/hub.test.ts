@@ -1,80 +1,66 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { checkedLine, metaLine } from "./hub.ts";
+import { freshnessLine, sourceLine } from "./hub.ts";
 
-test("checked line: a day alone, an instant with its Warsaw time, over midnight and DST", () => {
-  assert.equal(
-    checkedLine("2026-10-23", "Ostrzeżenia pogodowe sprawdziliśmy"),
-    "Ostrzeżenia pogodowe sprawdziliśmy: 23 października",
-  );
+/** The check alone, as a subpage's source block says it. */
+const checked = (at: Parameters<typeof sourceLine>[1]) =>
+  sourceLine([], at)[0] ?? null;
+
+test("check time: a day alone, an instant with its Warsaw time, over midnight and DST", () => {
+  assert.equal(checked("2026-10-23"), "Sprawdziliśmy 23 października.");
   // 22:30 UTC on 31 August is already 1 September in Warsaw.
   assert.equal(
-    checkedLine(
-      new Date("2026-08-31T22:30:00Z"),
-      "Ostrzeżenia pogodowe sprawdziliśmy",
-    ),
-    "Ostrzeżenia pogodowe sprawdziliśmy: 1 września 0:30",
+    checked(new Date("2026-08-31T22:30:00Z")),
+    "Sprawdziliśmy 1 września 0:30.",
   );
   assert.equal(
-    checkedLine(
-      new Date("2026-10-25T14:42:00Z"),
-      "Ostrzeżenia pogodowe sprawdziliśmy",
-    ),
-    "Ostrzeżenia pogodowe sprawdziliśmy: 25 października 15:42",
+    checked(new Date("2026-10-25T14:42:00Z")),
+    "Sprawdziliśmy 25 października 15:42.",
   );
-  assert.equal(checkedLine(null, "Ostrzeżenia pogodowe sprawdziliśmy"), null);
-  // Waste and water say what they checked.
+  assert.equal(checked(null), null);
+  assert.equal(checked("2026-10-23"), "Sprawdziliśmy 23 października.");
   assert.equal(
-    checkedLine("2026-10-23", "Wywozy sprawdziliśmy"),
-    "Wywozy sprawdziliśmy: 23 października",
+    checked(new Date("2026-10-25T14:42:00Z")),
+    "Sprawdziliśmy 25 października 15:42.",
   );
-  assert.equal(
-    checkedLine(
-      new Date("2026-10-25T14:42:00Z"),
-      "Komunikaty o wodzie sprawdziliśmy",
-    ),
-    "Komunikaty o wodzie sprawdziliśmy: 25 października 15:42",
-  );
-  const line = (iso: string) =>
-    checkedLine(new Date(iso), "Ostrzeżenia pogodowe sprawdziliśmy");
+  const line = (iso: string) => checked(new Date(iso));
   // Summer time until 3:00 on 25 Oct: midnight is 22:00 UTC the day before.
   assert.equal(
     line("2026-10-24T21:59:00Z"),
-    "Ostrzeżenia pogodowe sprawdziliśmy: 24 października 23:59",
+    "Sprawdziliśmy 24 października 23:59.",
   );
   assert.equal(
     line("2026-10-24T22:00:00Z"),
-    "Ostrzeżenia pogodowe sprawdziliśmy: 25 października 0:00",
+    "Sprawdziliśmy 25 października 0:00.",
   );
   // 2:30 happens twice: CEST (0:30 UTC), then CET (1:30 UTC).
   assert.equal(
     line("2026-10-25T00:30:00Z"),
-    "Ostrzeżenia pogodowe sprawdziliśmy: 25 października 2:30",
+    "Sprawdziliśmy 25 października 2:30.",
   );
   assert.equal(
     line("2026-10-25T01:30:00Z"),
-    "Ostrzeżenia pogodowe sprawdziliśmy: 25 października 2:30",
+    "Sprawdziliśmy 25 października 2:30.",
   );
   // From then on, CET: midnight is 23:00 UTC.
   assert.equal(
     line("2026-10-25T22:59:00Z"),
-    "Ostrzeżenia pogodowe sprawdziliśmy: 25 października 23:59",
+    "Sprawdziliśmy 25 października 23:59.",
   );
   assert.equal(
     line("2026-10-25T23:00:00Z"),
-    "Ostrzeżenia pogodowe sprawdziliśmy: 26 października 0:00",
+    "Sprawdziliśmy 26 października 0:00.",
   );
 });
 
-test("meta line: sources joined, a note, then when we checked, absolute", () => {
+test("source line: sources joined, then when we checked, absolute", () => {
   const link = (text: string) => ({
     href: `https://example.org/${text}`,
     text,
   });
   assert.deepEqual(
-    metaLine(
+    sourceLine(
       [[link("a"), ", sektor 1"], [link("b")]],
-      "Daty przepisał program.",
       new Date("2026-10-28T14:52:00Z"),
     ),
     [
@@ -82,31 +68,37 @@ test("meta line: sources joined, a note, then when we checked, absolute", () => 
       link("a"),
       ", sektor 1; ",
       link("b"),
-      ". Daty przepisał program. Sprawdziliśmy 28 października 15:52.",
+      ". Sprawdziliśmy 28 października 15:52.",
     ],
   );
-  // A day only; no note.
-  assert.deepEqual(metaLine([["IMGW-PIB"]], null, "2026-10-23"), [
+  assert.deepEqual(sourceLine([["IMGW-PIB"]], "2026-10-23"), [
     "Źródło: IMGW-PIB. Sprawdziliśmy 23 października.",
   ]);
-  // Never checked: the source alone.
-  assert.deepEqual(metaLine([[link("a")]], null, null), [
+  // Never checked: the source alone; neither: nothing.
+  assert.deepEqual(sourceLine([[link("a")]], null), [
     "Źródło: ",
     link("a"),
     ".",
   ]);
+  assert.deepEqual(sourceLine([], null), []);
 });
 
-test("meta line: no source, no „Źródło”; what is left, or nothing", () => {
-  assert.deepEqual(metaLine([], null, null), []);
-  assert.deepEqual(metaLine([], "Daty przepisał program.", null), [
-    "Daty przepisał program.",
-  ]);
-  assert.deepEqual(metaLine([], null, "2026-10-23"), [
-    "Sprawdziliśmy 23 października.",
-  ]);
-  assert.deepEqual(
-    metaLine([], "Daty przepisał program.", new Date("2026-10-28T14:52:00Z")),
-    ["Daty przepisał program. Sprawdziliśmy 28 października 15:52."],
+test("freshness line: each module with a known check, in order, as a Polish list", () => {
+  assert.equal(
+    freshnessLine([
+      { name: "śmieci", at: new Date("2026-11-10T21:40:00Z") },
+      { name: "woda", at: new Date("2026-11-11T06:00:00Z") },
+      { name: "pogoda", at: new Date("2026-11-11T06:07:00Z") },
+    ]),
+    "Sprawdziliśmy: śmieci 10 listopada 22:40, woda 11 listopada 7:00 i pogoda 11 listopada 7:07.",
   );
+  assert.equal(
+    freshnessLine([
+      { name: "śmieci", at: "2026-10-23" },
+      { name: "woda", at: null },
+      { name: "pogoda", at: new Date("2026-11-11T06:07:00Z") },
+    ]),
+    "Sprawdziliśmy: śmieci 23 października i pogoda 11 listopada 7:07.",
+  );
+  assert.equal(freshnessLine([{ name: "woda", at: null }]), null);
 });

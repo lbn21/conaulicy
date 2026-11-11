@@ -59,7 +59,7 @@ function noDates(place: PlaceView, text: string): Part[] {
   ];
 }
 
-/** The section's meta line's note while the dates are not checked yet. */
+/** The address page's small-print note while the dates are not checked yet. */
 export function wasteNote(place: PlaceView): string | null {
   return place.verified ? null : SHORT_UNVERIFIED_NOTE;
 }

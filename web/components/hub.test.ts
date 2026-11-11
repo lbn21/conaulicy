@@ -21,7 +21,7 @@ import { WarsawToday } from "./warsaw-today.tsx";
 // The address page (components/hub.tsx Hub) as HubMain renders it, for the
 // server's Warsaw day, at the water fixture's NOW (Sunday 25 Oct 2026, 13:30
 // in Warsaw): the notices, the timeline („Najbliższe 7 dni”, then
-// „Później”), „Wszystko o Twoim adresie” and „Skąd to wiemy”.
+// „Później”), „Wszystko o Twoim adresie” and the small print at the end.
 
 const page = (
   place: PlaceView,
@@ -49,6 +49,11 @@ const texts = (html: string, tag: string) =>
     (m) => m[1].replace(/<[^>]+>/g, ""),
   );
 /** The section labelled by `id`. */
+/** The small print, the page's last paragraph. */
+const smallPrint = (html: string) =>
+  /<p class="govuk-hint govuk-!-font-size-16">([^<]*)<\/p><\/div><\/div>$/.exec(
+    html,
+  )?.[1] ?? "";
 const section = (html: string, id: string) =>
   new RegExp(`<section aria-labelledby="${id}">.*?</section>`).exec(
     html,
@@ -165,7 +170,7 @@ test("timeline: each cut and warning once, its row, „Szczegóły” to its sub
   );
 });
 
-test("„Wszystko o Twoim adresie” and „Skąd to wiemy”: a link and a meta line per module with a source", () => {
+test("„Wszystko o Twoim adresie” and the small print: a link per module with a source, then the checks and IMGW's words", () => {
   const html = page(VILLAGE, CUTS, WARNINGS);
   assert.deepEqual(texts(section(html, "wszystko"), "li"), [
     "Wszystkie przerwy w wodzie",
@@ -175,12 +180,13 @@ test("„Wszystko o Twoim adresie” and „Skąd to wiemy”: a link and a meta
     section(html, "wszystko"),
     /href="\/adres\/0606257\/woda">.*href="\/adres\/0606257\/pogoda">/,
   );
-  const known = section(html, "skad-to-wiemy");
-  assert.deepEqual(texts(known, "strong"), ["Woda.", "Pogoda."]);
+  // No waste check here: waste is left out of the freshness line.
   assert.match(
-    known,
-    /<strong>Pogoda\.<\/strong> Źródło: <a [^>]*href="https:\/\/meteo\.imgw\.pl\/"[^>]*>IMGW-PIB<\/a>\. Sprawdziliśmy 25 października 13:20\.<\/p>/,
+    smallPrint(html),
+    /^Sprawdziliśmy: woda [^,]+ i pogoda 25 października 13:20\. Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy\. Dane Instytutu Meteorologii i Gospodarki Wodnej – Państwowego Instytutu Badawczego zostały przetworzone\.$/,
   );
+  // The sources are on the subpages, none on the hub.
+  assert.doesNotMatch(html, /Źródło:|Skąd to wiemy/);
   // IMGW's required wording, once.
   assert.equal(count(html, "Instytut Meteorologii i Gospodarki Wodnej"), 1);
 });
@@ -241,14 +247,19 @@ test("waste: its pickups by day, „Później” the next one per module with it
     /<dt class="govuk-summary-list__key">Śmieci<\/dt><dd class="govuk-summary-list__value">Wtorek, 3 listopada 2026<\/dd>/,
   );
   assert.doesNotMatch(later, /10 listopada/);
-  // The waste subpage's link and its meta line.
+  // The waste subpage's link and its check in the small print.
   assert.match(
     section(html, "wszystko"),
     /<a class="govuk-link" href="\/adres\/0000001-00001\/smieci">Wszystkie odbiory śmieci<\/a>/,
   );
   assert.match(
-    section(html, "skad-to-wiemy"),
-    /<strong>Śmieci\.<\/strong> Źródło: <a [^>]*href="https:\/\/example\.org\/harmonogram\.pdf"[^>]*>[^<]+<\/a>, sektor 1\. Sprawdziliśmy 20 października\.<\/p>/,
+    smallPrint(html),
+    /^Sprawdziliśmy: śmieci 20 października\. Źródłem /,
+  );
+  // Dates not checked yet: the AI caveat after the checks.
+  assert.match(
+    smallPrint(page({ ...STREET, verified: false })),
+    /^Sprawdziliśmy: śmieci 20 października\. Daty przepisał program – jeśli coś się nie zgadza, ważniejszy jest harmonogram\. Źródłem /,
   );
 });
 
