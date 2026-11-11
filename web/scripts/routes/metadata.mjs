@@ -53,8 +53,8 @@ const descriptions = new Map();
 
 export async function check(server, failures) {
   for (const { path, status = 200 } of ROUTES) {
-    // An unknown address: notFoundAt's rule (scripts/lib/server.mjs), then
-    // its cached 404 checked as any page.
+    // An unknown address: a 404 on its first answer (notFoundAt,
+    // scripts/lib/server.mjs), then checked as any page.
     if (status === 404 && path.startsWith("/adres/")) {
       const wrong = await notFoundAt(`${server.origin}${path}`);
       if (wrong) failures.push(`${path}: ${wrong}`);

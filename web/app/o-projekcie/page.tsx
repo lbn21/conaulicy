@@ -44,10 +44,10 @@ export default function AboutPage() {
           .
         </p>
         <p className="govuk-body">
-          Ostrzeżenia pogodowe IMGW dla powiatu lubaczowskiego pokazujemy przy
-          adresie: w „Najbliższych 7 dniach” i na stronie „Ostrzeżenia pogodowe
-          IMGW”, gdzie przeczytasz też, czego się spodziewać. Gdy ostrzeżeń nie
-          ma, napiszemy o tym na tej stronie.
+          Ostrzeżenia pogodowe IMGW dla powiatu lubaczowskiego pokazujemy na
+          stronie adresu, nad „Najbliższymi 7 dniami”, każde z opisem, czego się
+          spodziewać. Gdy ostrzeżeń nie ma, nic tam nie wyświetlamy. Źródło i
+          godzinę, kiedy je sprawdziliśmy, podajemy na dole strony adresu.
         </p>
         <p className="govuk-body">
           Strona jest darmowa i niekomercyjna. Nie ma na niej reklam ani kont.
@@ -60,8 +60,7 @@ export default function AboutPage() {
           pomocą sztucznej inteligencji, z harmonogramów i komunikatów miasta
           Lubaczów i gminy Lubaczów. Potem je sprawdzamy, a dopóki tego nie
           zrobimy, piszemy o tym przy adresie. Źródło i datę, kiedy je
-          sprawdziliśmy, podajemy na stronie każdego tematu: śmieci, wody i
-          pogody.
+          sprawdziliśmy, podajemy na stronie każdego tematu: śmieci i wody.
         </p>
         <p className="govuk-body">
           Nazwy ulic i miejscowości bierzemy z{" "}

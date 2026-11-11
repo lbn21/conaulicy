@@ -173,9 +173,11 @@ export function indexedPlace(place: PlaceView, missing: boolean): boolean {
  * Throws notFound() inside a Suspense boundary whose fallback is the 404
  * page. Thrown outside one, Next.js 16 sends an empty error shell (no
  * layout, no text) and draws the page only with JS; here the server HTML has
- * the full page, and Next.js still answers 404 (it sets the status when an
- * error ends a boundary). With JS, Next.js renders app/not-found.tsx, the
- * same content.
+ * the full page. With JS, Next.js renders app/not-found.tsx, the same
+ * content. Its status comes too late: the route's shell, a 200, is already
+ * sent, so proxy.ts answers an unknown address's 404 before any render
+ * (lib/address-routes.ts unknownAddress). This one is the fallback, when
+ * the proxy could not load the places.
  */
 function NotFound(): never {
   notFound();

@@ -23,7 +23,7 @@ const ROUTES: [RegExp, string[]][] = [
   [/^\/ics\/[^/]+$/, []],
   [/^\/api\/search$/, ["q"]],
   [/^\/api\/search-index\/[^/]+$/, []],
-  [/^\/api\/place-redirects$/, []],
+  [/^\/api\/places$/, []],
 ];
 
 /**
