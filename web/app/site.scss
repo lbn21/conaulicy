@@ -401,3 +401,14 @@ $app-gap: govuk-spacing(4);
 
 // An icon leading a button or a link's words, a space's width from them.
 :is(.govuk-button, .govuk-link) > .app-icon:first-child { margin-right: govuk-spacing(1); }
+
+// Running text breathes (a deviation, Jakub's OK, t332): GOV.UK's
+// 19/25 and 16/20 (about 1.3) become 1.5 for paragraphs, leads, lists,
+// hints and insets, none inside a summary list (a table); headings, badges
+// and chips keep GOV.UK's. Paragraphs, lists and the m and s headings 20px
+// apart from what follows on mobile, 25 from tablet (GOV.UK's 15/20; the
+// lead and larger headings keep theirs). Utility margins (!important) win.
+:is(.govuk-body, .govuk-body-l, .govuk-body-s, .govuk-hint, .govuk-inset-text, .govuk-list):not(.govuk-summary-list *) { line-height: 1.5; }
+$app-flow: ".govuk-body, .govuk-body-s, .govuk-list, .govuk-heading-m, .govuk-heading-s";
+:is(#{$app-flow}) { margin-bottom: govuk-spacing(4); }
+@include govuk-media-query($from: tablet) { :is(#{$app-flow}) { margin-bottom: govuk-spacing(5); } }
