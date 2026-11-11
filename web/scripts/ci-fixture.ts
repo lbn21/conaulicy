@@ -132,12 +132,14 @@ const ZONES: Array<{
   rule: Rule;
   /** Only the three months before this one: a schedule that has ended. */
   ended?: true;
+  /** Only this many months from this one: next year's not yet published. */
+  count?: number;
 }> = [
   {
     id: "waste:miasto-s1",
     name: "Lubaczów, sektor 1",
     members: [
-      ...["00470", "20291", "12740", "19253", "16264"].map((sym) => ({
+      ...["00470", "20291", "12740", "16264"].map((sym) => ({
         localityId: "0972447",
         streetId: `0972447-${sym}`,
       })),
@@ -225,6 +227,22 @@ const ZONES: Array<{
       bulkyMonths: [],
     },
     ended: true,
+  },
+  {
+    // A street with two months of dates (the year's end), so the PDF's
+    // calendar is checked with fewer months than the window.
+    id: "waste:miasto-s4",
+    name: "Lubaczów, sektor 4",
+    members: [{ localityId: "0972447", streetId: "0972447-19253" }],
+    rule: {
+      weekday: 1,
+      mixed: ["zmieszane", "bio"],
+      winter: ["popiol"],
+      recycling: CITY_RECYCLING,
+      recyclingDay: { weekday: 3, nth: 1 },
+      bulkyMonths: [3, 9],
+    },
+    count: 2,
   },
 ];
 
@@ -366,7 +384,7 @@ async function main() {
   const ended = months(today, 3, -3);
   const busyMonth = window[1];
   const eventRows = ZONES.flatMap((zone) =>
-    (zone.ended ? ended : window).flatMap((month) =>
+    (zone.ended ? ended : window.slice(0, zone.count)).flatMap((month) =>
       zonePickups(
         zone.rule,
         month,

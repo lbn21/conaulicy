@@ -1,5 +1,7 @@
 // What goes in each bin, per gmina: the printable PDF's „Co wrzucać” page,
-// one A4 page of equal tiles, as a council's bin leaflet. Every item is
+// one A4 page, the same for every address in the gmina: a tile per bin
+// (BIN_TOKENS), then the waste handed in separately (SEPARATE_TOKENS) with
+// where it goes, as a council's bin leaflet. Every item is
 // copied word for word from the gmina's own official material (never
 // reworded, never added, never borrowed from another gmina): a short,
 // curated selection, at most SHORT_MAX a list, the same cap for every
@@ -14,7 +16,7 @@
 // „no” items in the genitive („Nie należy wrzucać: …”), the gmina's booklet
 // in the nominative; the PDF heads them „Tak” and „Nie”, which fits both.
 
-import { TOKEN, tones } from "./waste-bin.ts";
+import { FRACTIONS, TOKEN } from "./waste-bin.ts";
 
 /** Items a short list may hold: the same for every fraction. */
 export const SHORT_MAX = 3;
@@ -27,16 +29,42 @@ export type GuideSource = {
   checkedAt: string;
 };
 
-export type GuideFraction = {
+type GuideFraction = {
   /** Bin colour token (lib/waste-bin.ts TOKEN, lib/waste-colours.ts). */
   token: string;
   /** The bin or bag, as the gmina's regulamin colours it; null if none. */
   container: string | null;
   /** Curated, verbatim from the source: what goes in, what does not. */
   short: { yes: string[]; no: string[] };
+  /**
+   * Waste handed in separately (SEPARATE_TOKENS): where, as the source says
+   * („zbiorka”: the collector's own collection days, which the calendar
+   * shows); null for a bin's fraction.
+   */
+  where: Where[] | null;
   /** GuideSource ids. */
   sources: string[];
 };
+
+/** Where separately handed-in waste goes. */
+type Where = "pszok" | "zbiorka";
+
+/** The bins and bags, in the page's order: one large tile each. */
+export const BIN_TOKENS = [
+  "zmieszane",
+  "popiol",
+  "bio",
+  "papier",
+  "plastik-metale",
+  "szklo",
+] as const;
+/** Waste handed in separately, in the page's order: one small item each. */
+export const SEPARATE_TOKENS = [
+  "gabaryty",
+  "elektro",
+  "opony",
+  "tekstylia",
+] as const;
 
 /** Hazardous waste: never in a bin, to the gmina's collection point. */
 export type GuidePszok = {
@@ -111,6 +139,7 @@ const TOWN: Guide = {
     {
       token: "zmieszane",
       container: "czarny pojemnik lub worek",
+      where: null,
       short: {
         yes: ["wszystko to, czego nie można odzyskać w procesie recyklingu"],
         no: [
@@ -124,12 +153,14 @@ const TOWN: Guide = {
     {
       token: "popiol",
       container: "popielaty worek",
+      where: null,
       short: { yes: ["popiół - jedynie w zabudowie jednorodzinnej"], no: [] },
       sources: [TOWN_RULES.id],
     },
     {
       token: "bio",
       container: "brązowy worek lub pojemnik",
+      where: null,
       short: {
         yes: [
           "odpadki warzywne i owocowe (w tym obierki itp.)",
@@ -143,6 +174,7 @@ const TOWN: Guide = {
     {
       token: "papier",
       container: "niebieski worek lub pojemnik",
+      where: null,
       short: {
         yes: [
           "gazety i czasopisma",
@@ -160,6 +192,7 @@ const TOWN: Guide = {
     {
       token: "plastik-metale",
       container: "żółty worek lub pojemnik",
+      where: null,
       short: {
         yes: [
           "odkręcone i zgniecione plastikowe butelki po napojach",
@@ -177,6 +210,7 @@ const TOWN: Guide = {
     {
       token: "szklo",
       container: "zielony worek lub pojemnik",
+      where: null,
       short: {
         yes: ["butelki i słoiki po napojach i żywności"],
         no: [
@@ -191,25 +225,33 @@ const TOWN: Guide = {
       token: "gabaryty",
       container: null,
       short: { yes: ["meble i inne odpady wielkogabarytowe"], no: [] },
+      // § 3 ust. 1 pkt 9: by the collector's schedule or at the PSZOK.
+      where: ["zbiorka", "pszok"],
       sources: [TOWN_RULES.id],
     },
     {
       token: "elektro",
       container: null,
       short: { yes: ["zużyty sprzęt elektryczny i elektroniczny"], no: [] },
+      // § 3 ust. 1 pkt 8: the PSZOK, a shop, or the collector's schedule.
+      where: ["pszok", "zbiorka"],
       sources: [TOWN_RULES.id],
     },
     {
       token: "opony",
       container: null,
       short: { yes: ["zużyte opony"], no: [] },
+      // § 3 ust. 1 pkt 10: by the collector's schedule or at the PSZOK.
+      where: ["zbiorka", "pszok"],
       sources: [TOWN_RULES.id],
     },
     {
       token: "tekstylia",
       container: null,
       short: { yes: ["odpady tekstyliów i odzieży"], no: [] },
-      sources: [TOWN_RULES.id],
+      // The PSZOK's regulamin, § 4 p); no collection day for them.
+      where: ["pszok"],
+      sources: [TOWN_RULES.id, TOWN_PSZOK.id],
     },
   ],
   pszok: {
@@ -231,6 +273,7 @@ const GMINA: Guide = {
     {
       token: "zmieszane",
       container: "czarny pojemnik lub worek",
+      where: null,
       short: {
         yes: ["pieluchy", "resztki mięsa i kości", "wystudzony popiół"],
         no: [],
@@ -240,6 +283,7 @@ const GMINA: Guide = {
     {
       token: "bio",
       container: "brązowy worek lub pojemnik",
+      where: null,
       short: {
         yes: [
           "skoszona trawa",
@@ -253,6 +297,7 @@ const GMINA: Guide = {
     {
       token: "papier",
       container: "niebieski worek lub pojemnik",
+      where: null,
       short: {
         yes: ["gazety", "koperty", "kartony i tektura"],
         no: [
@@ -266,6 +311,7 @@ const GMINA: Guide = {
     {
       token: "plastik-metale",
       container: "żółty worek lub pojemnik",
+      where: null,
       short: {
         yes: [
           "butelki plastikowe",
@@ -279,6 +325,7 @@ const GMINA: Guide = {
     {
       token: "szklo",
       container: "zielony worek lub pojemnik",
+      where: null,
       short: {
         yes: [
           "butelki szklane po napojach i żywności",
@@ -303,6 +350,21 @@ const GMINA: Guide = {
         ],
         no: [],
       },
+      // The booklet, p. 17: to the PSZOK; its „mobilne zbiórki odpadów
+      // wielkogabarytowych”.
+      where: ["zbiorka", "pszok"],
+      sources: [GMINA_BOOKLET.id],
+    },
+    {
+      token: "elektro",
+      container: null,
+      short: {
+        yes: ["sprzęt RTV i AGD", "drobny sprzęt AGD", "sprzęt komputerowy"],
+        no: [],
+      },
+      // The booklet, p. 17: to the PSZOK, „również podczas mobilnych
+      // zbiórek odpadów wielkogabarytowych”.
+      where: ["pszok", "zbiorka"],
       sources: [GMINA_BOOKLET.id],
     },
   ],
@@ -322,42 +384,53 @@ export const GUIDES: Record<string, Guide> = {
   "Lubaczów (gmina)": GMINA,
 };
 
+/** A guide entry with the subtype that names it (lib/waste-bin.ts FRACTIONS). */
+export type GuideItem = GuideFraction & { subtype: string };
+
+/** The subtype whose label names a token's tile: the first in FRACTIONS. */
+const NAMED_BY: Record<string, string> = {
+  "plastik-metale": "tworzywa_metale",
+};
+const subtypeOf = (token: string) =>
+  NAMED_BY[token] ??
+  FRACTIONS.map((f) => f.subtype).find((subtype) => TOKEN[subtype] === token) ??
+  token;
+
 /**
- * A place's „Co wrzucać” page: a tile for each of its fractions the gmina's
- * guide covers, in the given order (the site's), the PSZOK line, the source
- * with the full rules, and every source these cite. Null when the gmina has
- * no guide or none of its fractions has an entry.
+ * A gmina's „Co wrzucać” page, the same for every address in it: a tile
+ * per bin its guide covers (BIN_TOKENS order), the waste handed in
+ * separately (SEPARATE_TOKENS order), the PSZOK line, the source with the
+ * full rules, and every source these cite. Null when the gmina has no guide.
  */
-export function guideFor(
-  gmina: string,
-  subtypes: string[],
-): {
+export function guideFor(gmina: string): {
   publisher: string;
   fullRules: GuideSource;
-  tiles: Array<GuideFraction & { subtype: string }>;
+  bins: GuideItem[];
+  separate: GuideItem[];
   pszok: GuidePszok;
   sources: GuideSource[];
 } | null {
   const guide = GUIDES[gmina];
   if (!guide) return null;
-  const tiles: Array<GuideFraction & { subtype: string }> = [];
-  for (const subtype of subtypes.flatMap(tones)) {
-    const token = TOKEN[subtype];
-    if (tiles.some((tile) => tile.token === token)) continue;
-    const entry = guide.fractions.find((f) => f.token === token);
-    if (entry) tiles.push({ ...entry, subtype });
-  }
+  const pick = (tokens: readonly string[]) =>
+    tokens.flatMap((token) => {
+      const entry = guide.fractions.find((f) => f.token === token);
+      return entry ? [{ ...entry, subtype: subtypeOf(token) }] : [];
+    });
+  const bins = pick(BIN_TOKENS);
+  const separate = pick(SEPARATE_TOKENS);
   const fullRules = guide.sources.find((s) => s.id === guide.fullRules);
-  if (tiles.length === 0 || !fullRules) return null;
+  if (bins.length === 0 || !fullRules) return null;
   const used = new Set([
     guide.fullRules,
-    ...tiles.flatMap((tile) => tile.sources),
+    ...[...bins, ...separate].flatMap((item) => item.sources),
     ...guide.pszok.sources,
   ]);
   return {
     publisher: guide.publisher,
     fullRules,
-    tiles,
+    bins,
+    separate,
     pszok: guide.pszok,
     sources: guide.sources.filter((source) => used.has(source.id)),
   };

@@ -2,7 +2,10 @@
 // month tables (a title cell, a „Dzień | Odpady” header row, then the same
 // number of body rows in every month: as many as the fullest month needs,
 // empty ones left blank), in a strict grid of equal columns; each calendar
-// year starts a new row under its heading. Pure, so the choice is tested
+// year starts a new row under its heading. Sized once for the largest case
+// (every month of the window, each as full as the fullest month of any
+// address, `profiles`), so every address gets the same tables: fewer months
+// leave the space below empty, never larger tables. Pure, so the choice is tested
 // without a PDF (lib/pdf-grid.test.ts).
 
 type GridMonth = {
@@ -14,6 +17,11 @@ type GridMonth = {
 
 export type GridInput = {
   months: GridMonth[];
+  /**
+   * Other months' marks per date (every address's, from the data): the body
+   * rows hold the fullest of these too.
+   */
+  profiles?: number[][];
   /** Width for the grid, and the space between tables. */
   width: number;
   gap: number;
@@ -60,7 +68,10 @@ export const dateRows = (marks: number, perLine: number) =>
  * The table rows: each calendar year's months, `columns` to a row, so a
  * month always sits under its own year's heading.
  */
-function tableRows(months: GridMonth[], columns: number) {
+export function tableRows(
+  months: Array<Pick<GridMonth, "key">>,
+  columns: number,
+) {
   const rows: Array<{ year: string; keys: string[] }> = [];
   for (const { key } of months) {
     const year = key.slice(0, 4);
@@ -111,9 +122,10 @@ export function chooseGrid(input: GridInput): Grid {
     );
     const bodyRows = Math.max(
       1,
-      ...input.months.map((month) =>
-        month.marks.reduce((sum, n) => sum + dateRows(n, perLine), 0),
-      ),
+      ...[
+        ...input.months.map((month) => month.marks),
+        ...(input.profiles ?? []),
+      ].map((marks) => marks.reduce((sum, n) => sum + dateRows(n, perLine), 0)),
     );
     const rows = tableRows(input.months, columns);
     const unit = gridHeight(rows, bodyRows, 1, { yearH: 0, rowGap: 0 });
@@ -136,7 +148,9 @@ export function chooseGrid(input: GridInput): Grid {
   }
   if (options.length === 0) throw new Error("chooseGrid: no column count fits");
   const wraps = (grid: Grid) =>
-    input.months.some((month) => month.marks.some((n) => n > grid.perLine));
+    [...input.months.map((m) => m.marks), ...(input.profiles ?? [])].some(
+      (marks) => marks.some((n) => n > grid.perLine),
+    );
   const fitting = options.filter((grid) => grid.fits);
   if (fitting.length === 0) {
     return options.reduce((best, grid) =>

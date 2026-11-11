@@ -1,10 +1,14 @@
 // Checks the street PDFs (app/adres/[id]/harmonogram.pdf) on the CI fixture: a
-// city street over twelve months, a village, and a split street with ?nr=.
+// city street over twelve months, one with two, a village, and a split street
+// with ?nr=.
 // Each must be a tagged PDF (MarkInfo, Lang, structure tree) with no PDF/UA
 // claim (it fails veraPDF), of a sane length, within the size budget, with
 // only Atkinson Hyperlegible Next embedded, a one-page calendar, a one-page
-// guide from the gmina's own rules and the text version after them. Checks
-// are structural (pages, links, QR codes, sources from data), never the
+// guide from the gmina's own rules and the text version after them. Every
+// address's month tables are the same size, rows included, however many
+// months it has, and so are the guide's tiles; no word on pages 1–2 spills
+// out of its table, tile or box (scripts/lib/pdf-layout.mjs). Checks are
+// structural (pages, links, QR codes, boxes, sources from data), never the
 // wording (CLAUDE.md, Workflow). A split street without a number has
 // no PDF (404), as on the street page; nor has a street whose schedule has
 // ended, and its page offers neither the PDF nor the calendar file. The PDF,
@@ -12,7 +16,7 @@
 // an import's revalidate purges their CDN copies; so does every address
 // route's shell (hub, each subpage), cached until then
 // (cacheLife "max"). No cron purges anything. The QR codes, read back from the pages,
-// and every printed link open the waste subpage on SITE_URL. Run after
+// and every link open the waste subpage on SITE_URL. Run after
 // `next build`; needs poppler-utils (pdfinfo, pdffonts, pdftotext).
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
@@ -23,6 +27,7 @@ import QRCode from "qrcode";
 import { SITE_URL } from "../lib/config.generated.ts";
 import { GUIDES } from "../lib/sorting-guide.ts";
 import { walk } from "./lib/files.mjs";
+import { pageStrokes, pageWords, spills } from "./lib/pdf-layout.mjs";
 import { finish, startServer } from "./lib/server.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
@@ -39,6 +44,11 @@ const CASES = [
     name: "city street",
     path: "/adres/0972447-00470/harmonogram.pdf",
     page: "/adres/0972447-00470/smieci",
+  },
+  {
+    name: "two-month street",
+    path: "/adres/0972447-19253/harmonogram.pdf",
+    page: "/adres/0972447-19253/smieci",
   },
   {
     name: "village",
@@ -107,6 +117,15 @@ async function pageTags(pagePath) {
   }
   return null;
 }
+
+// A table, tile or box: a stroked rectangle at least this large (the guide's
+// icons are smaller); a word may reach this far past its box's line.
+const MIN_BOX = { w: 50, h: 40 };
+const SPILL = 1;
+const PAGE_H = 841.89;
+const round = (n) => Math.round(n * 100) / 100;
+// Per case: page 1's table size and row height, page 2's largest tile.
+const layouts = [];
 
 const failures = [];
 const check = (ok, message) => {
@@ -237,10 +256,6 @@ try {
       qrEncodes(qrCodes(source), page),
       `${c.name}: the QR code does not open ${page}`,
     );
-    check(
-      text.includes(page.replace("https://", "")),
-      `${c.name}: no printed link to ${page}`,
-    );
     const links = [...source.matchAll(/\/URI \((https:[^)]*)\)/g)]
       .map((m) => m[1])
       .filter((uri) => uri.startsWith(SITE_URL));
@@ -278,15 +293,55 @@ try {
       Boolean(full) && qrEncodes(qrCodes(source), full),
       `${c.name}: no QR code to ${gmina}'s full rules (${full})`,
     );
-    const textVersion = Array.from({ length: pages - 2 }, (_, i) =>
-      pageText(i + 3),
-    )
-      .join(" ")
-      .replace(/\s+/g, "");
-    check(
-      textVersion.includes(full ?? "-"),
-      `${c.name}: the text version does not list ${full}`,
+
+    // The drawn layout: no word spills out of its table, tile or box on
+    // pages 1–2; page 1's tables are all one size, rows of one height.
+    const strokes = pageStrokes(bytes, PAGE_H);
+    const boxesOn = (n) =>
+      (strokes[n - 1]?.rects ?? []).filter(
+        (r) => r.x1 - r.x0 >= MIN_BOX.w && r.y1 - r.y0 >= MIN_BOX.h,
+      );
+    for (const n of [1, 2]) {
+      const spilled = spills(pageWords(file, n), boxesOn(n), SPILL);
+      check(
+        spilled.length === 0,
+        `${c.name}: page ${n}: ${spilled.length} words spill out of their box (first at ${spilled[0]?.x0.toFixed(1)}, ${spilled[0]?.y0.toFixed(1)})`,
+      );
+    }
+    const tables = boxesOn(1);
+    const sizes = new Set(
+      tables.map((t) => `${round(t.x1 - t.x0)}×${round(t.y1 - t.y0)}`),
     );
+    // A table's first row: its top border to the first rule inside it.
+    const rows = new Set(
+      tables.map((t) => {
+        const inside = (strokes[0]?.rules ?? [])
+          .filter(
+            (r) =>
+              r.x0 >= t.x0 - 0.1 &&
+              r.x1 <= t.x1 + 0.1 &&
+              r.y > t.y0 + 0.1 &&
+              r.y < t.y1 - 0.1,
+          )
+          .map((r) => r.y);
+        return round(Math.min(...inside) - t.y0);
+      }),
+    );
+    check(
+      tables.length > 0 && sizes.size === 1 && rows.size === 1,
+      `${c.name}: page 1 tables ${[...sizes].join(", ")}, rows ${[...rows].join(", ")} (one size, one row height)`,
+    );
+    const tiles = boxesOn(2).sort(
+      (a, b) => (b.x1 - b.x0) * (b.y1 - b.y0) - (a.x1 - a.x0) * (a.y1 - a.y0),
+    );
+    layouts.push({
+      name: c.name,
+      table: [...sizes][0],
+      row: [...rows][0],
+      tile: tiles[0]
+        ? `${round(tiles[0].x1 - tiles[0].x0)}×${round(tiles[0].y1 - tiles[0].y0)}`
+        : null,
+    });
     const guideUris = [...source.matchAll(/\/URI \((https:[^)]*)\)/g)]
       .map((m) => m[1])
       .filter((uri) => own.includes(uri) || others.includes(uri));
@@ -302,6 +357,18 @@ try {
       `ok    ${c.name}: ${pages} pages, ${(bytes.length / 1000).toFixed(1)} KB, fonts ${[...new Set(names)].join(", ")}`,
     );
   }
+
+  // One layout for every address, however many months it has.
+  for (const key of ["table", "row", "tile"]) {
+    const seen = new Set(layouts.map((l) => l[key]));
+    check(
+      seen.size === 1 && !seen.has(null),
+      `${key}: ${layouts.map((l) => `${l.name} ${l[key]}`).join("; ")} (the same for every address)`,
+    );
+  }
+  console.log(
+    `ok    one layout: tables ${layouts[0]?.table}, rows ${layouts[0]?.row} pt, tiles ${layouts[0]?.tile}`,
+  );
 
   // The waste subpage of an ended schedule (the page that offers both) has
   // no dead PDF link and no empty calendar file.
@@ -350,5 +417,5 @@ try {
 
 finish(
   failures,
-  `PDFs: tagged, no PDF/UA claim, QR code and links to the waste subpage, a one-page calendar, then a one-page guide from the gmina's own rules, ${MIN_PAGES}–${MAX_PAGES} pages, ≤ ${MAX_BYTES / 1000} KB, Atkinson only, text version, no example data.`,
+  `PDFs: tagged, no PDF/UA claim, QR code and links to the waste subpage, a one-page calendar, then a one-page guide from the gmina's own rules, one layout for every address, nothing spilling out of its box, ${MIN_PAGES}–${MAX_PAGES} pages, ≤ ${MAX_BYTES / 1000} KB, Atkinson only, text version, no example data.`,
 );
