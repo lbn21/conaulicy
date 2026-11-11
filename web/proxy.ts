@@ -41,8 +41,9 @@ const GATED_HEADERS = {
 // onto the response, so every address's 308 is answered here, with or
 // without ?nr=. The PDF redirects itself. The map stays in memory: a cold
 // instance fetches it once (from the CDN), later refreshes run after the
-// response, so a normal request pays only a lookup. If it cannot be loaded,
-// an unknown id is left to the page's own notFound().
+// response, so a normal request pays only a lookup; an id it does not hold
+// reloads it first (unknownPlace). If it cannot be loaded, an unknown id is
+// left to the page's own notFound().
 const PLACES_TTL = 5 * 60_000;
 type Places = {
   ids: ReadonlySet<string> | null;
@@ -100,6 +101,23 @@ function movedAddress(request: NextRequest, known: Places | null): URL | null {
   return path ? new URL(path, request.url) : null;
 }
 
+// An id the list does not hold may be a place an import has just added:
+// the list again (its CDN copy is purged by the import), at most once a
+// second per instance, before the 404.
+const MISS_TTL = 1000;
+
+async function unknownPlace(
+  request: NextRequest,
+  known: Places | null,
+): Promise<boolean> {
+  const { pathname } = request.nextUrl;
+  if (unknownAddress(pathname, null)) return true;
+  if (!known || !unknownAddress(pathname, known.ids)) return false;
+  if (Date.now() - known.at <= MISS_TTL) return true;
+  await loadPlaces(request);
+  return unknownAddress(pathname, places?.ids ?? null);
+}
+
 /**
  * The site's 404 page with its 404 status: a path no route serves
  * (app/not-found.tsx).
@@ -128,7 +146,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const renamed = movedAddress(request, known);
   if (renamed) return NextResponse.redirect(renamed, 308);
   // Answered only past the gate: a 404 tells which places exist.
-  const unknown = unknownAddress(request.nextUrl.pathname, known?.ids ?? null);
+  const unknown = await unknownPlace(request, known);
 
   const expected = process.env.SITE_BASIC_AUTH;
   if (!expected) return unknown ? notFoundPage(request) : NextResponse.next();
