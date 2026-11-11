@@ -407,12 +407,11 @@ try {
         ),
       `${c.name}: page 1 header cells' left padding ${[...new Set(headerPads.map(round))].join(", ")} pt (one for every header cell)`,
     );
-    // The key, between the tables and the footer's rule: a moved date's
-    // note (only where the data has one), then the key's heading on a line
-    // of its own at the margin and its fixed grid, rows filled in turn,
-    // left to right (lib/pdf-key.ts). Lines are 5 U apart within a block,
-    // a section apart between blocks. Items are words more than 2 U apart
-    // (a mark between them).
+    // The key, between the tables and the footer's rule: its heading at
+    // the margin on a line of its own but for a moved date's note
+    // right-aligned (only where the data has one), then its fixed grid,
+    // rows filled in turn, left to right (lib/pdf-key.ts). Lines 5 U
+    // apart. Items are words more than 2 U apart (a mark between them).
     const tablesEnd = Math.max(...tables.map((t) => t.y1));
     const footerRule = Math.min(
       ...(strokes[0]?.rules ?? [])
@@ -456,16 +455,19 @@ try {
     const cellRows = keyBlock.slice(1).map(itemsOf);
     const counts = cellRows.map((r) => r.length);
     check(
-      heading.length === 1 &&
+      heading.length >= 1 &&
+        heading.length <= 2 &&
         Math.abs(heading[0].start - SIDE) < 1 &&
-        blocks.length <= 2 &&
+        (heading.length === 1 ||
+          Math.abs(heading[1].x1 - (PAGE_W - SIDE)) < 2) &&
+        blocks.length === 1 &&
         cellRows.length >= 1 &&
         cellRows.length <= KEY_ROWS &&
         counts.every(
           (n, i) =>
             n <= KEY_COLUMNS && (i === 0 || counts[i - 1] === KEY_COLUMNS),
         ),
-      `${c.name}: page 1 key: heading alone at the margin, then ${counts.join(" + ")} items in ${cellRows.length} rows (at most ${KEY_COLUMNS} × ${KEY_ROWS}, filled in turn)`,
+      `${c.name}: page 1 key: heading at the margin (${heading.length > 1 ? "a moved date's note right-aligned" : "alone"}), then ${counts.join(" + ")} items in ${cellRows.length} rows (at most ${KEY_COLUMNS} × ${KEY_ROWS}, filled in turn)`,
     );
     keys.push({
       name: c.name,

@@ -804,8 +804,8 @@ function render(
   // key's heading on a line of its own, then one fixed grid of equal cells
   // (rows of 5 U, marks the tables' size), each as wide as the widest
   // fraction any zone's key holds, sized for the fullest zone's key; an
-  // address fills its cells in KEY_ORDER and leaves the rest empty. Above
-  // it, a slot of one row kept on every page for a moved date's note,
+  // address fills its cells in KEY_ORDER and leaves the rest empty. On the
+  // heading's line, right-aligned in a fixed slot, a moved date's note,
   // drawn only where the page has one.
   // One slot for every mark, in the tables and the key (OPTICAL); a full
   // step between slots.
@@ -846,9 +846,8 @@ function render(
       `harmonogram.pdf: key cells ${keyLayout.cellW.toFixed(2)} pt × ${keyLayout.columns} do not fit ${CONTENT_W.toFixed(2)} pt`,
     );
   }
-  /** The heading's row, the grid's rows and the moved date's slot. */
+  /** The heading's row (and the moved date's note), then the grid's. */
   const KEY_H = (1 + keyLayout.rows) * KEY_ROW;
-  const MOVED_H = KEY_ROW;
   const drawKey = (
     parent: PDFKit.PDFStructureElement | null,
     key: ReturnType<typeof keyFor>,
@@ -882,14 +881,16 @@ function render(
     list?.end();
   };
   /** A moved date's note: its cell's red, then what it means. */
+  doc.font("regular").fontSize(TYPE.small);
+  const movedX = PAGE_W - MARGIN - (MARK + U + doc.widthOfString(movedLabel));
   const drawMoved = (
     parent: PDFKit.PDFStructureElement | null,
     top: number,
   ) => {
-    const cy = top + MOVED_H / 2;
+    const cy = top + KEY_ROW / 2;
     const swatch = () =>
       doc
-        .rect(MARGIN, cy - MARK / 2 - U / 2, MARK, MARK + U)
+        .rect(movedX, cy - MARK / 2 - U / 2, MARK, MARK + U)
         .fillColor(RED)
         .fill();
     if (parent) artifact(doc, swatch);
@@ -900,9 +901,9 @@ function render(
         TYPE.small,
         BLACK,
         movedLabel,
-        MARGIN + MARK + U,
+        movedX + MARK + U,
         top,
-        MOVED_H,
+        KEY_ROW,
       ),
     );
   };
@@ -934,17 +935,15 @@ function render(
   // Sized once for the largest calendar any address prints (lib/schedule.ts
   // wasteMaxima): every month of the window, each as full as the fullest
   // month in the data, under the band (one height for every address: a
-  // one-line title, its day line) and above the moved date's slot and the
-  // key's fixed grid. Every address gets the same tables; fewer months
+  // one-line title, its day line) and above the key's fixed grid. Every address gets the same tables; fewer months
   // leave the space below them empty.
   // The footer line at its larger size, whichever this one takes.
   const footerTop = Math.min(
     footer1.top,
     PAGE_H - MARGIN - ROW[TYPE.small] - 2 * U,
   );
-  // The key's grid and the moved date's slot above it, on every page.
+  // The key, at one place on every page.
   const keyTop = footerTop - SECTION - KEY_H;
-  const movedTop = keyTop - SECTION - MOVED_H;
   const gridTop = bandH + noteH + SECTION;
   const gridMonths = months.map((key) => ({
     key,
@@ -981,7 +980,7 @@ function render(
         least: 5,
         width: CONTENT_W,
         gap: MONTH_GUTTER,
-        height: movedTop - SECTION - gridTop,
+        height: keyTop - SECTION - gridTop,
         yearH: YEAR_H,
         rowGap: ROW_GAP,
         dateW,
@@ -1600,13 +1599,12 @@ function render(
     const key = keyFor(pageKeys);
     // At one place on every page and every PDF: the footer's larger size.
     const top = keyTop;
-    if (key.moved) {
-      const at = top - SECTION - MOVED_H;
-      if (first) drawMoved(root, at);
-      else artifact(doc, () => drawMoved(null, at));
-    }
     if (first) drawKey(root, key, top);
     else artifact(doc, () => drawKey(null, key, top));
+    if (key.moved) {
+      if (first) drawMoved(root, top);
+      else artifact(doc, () => drawMoved(null, top));
+    }
     if (first) footer1.draw(root);
     else artifact(doc, () => footer1.draw(null));
   };
@@ -1618,7 +1616,7 @@ function render(
     grid.columns,
   );
   placedRows.forEach((row) => {
-    if (y + YEAR_H + tableH > movedTop - SECTION + 0.01 && pageKeys.length) {
+    if (y + YEAR_H + tableH > keyTop - SECTION + 0.01 && pageKeys.length) {
       endPage(firstPage);
       firstPage = false;
       doc.addPage();
