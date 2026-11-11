@@ -69,21 +69,26 @@ function NextPickup({ day }: { day: PickupDay }) {
 /** Further pickups: GOV.UK summary list, the date as key, bins as value. */
 function DayList({ days }: { days: PickupDay[] }) {
   return (
-    <dl className="app-card govuk-summary-list">
-      {days.map((day) => (
-        <div key={day.date} className="govuk-summary-list__row">
-          <dt className="govuk-summary-list__key">
-            <time dateTime={day.date}>
-              <SpokenDay iso={day.date} />
-            </time>
-          </dt>
-          <dd className="govuk-summary-list__value">
-            <Bins pickups={day.pickups} size="medium" />
-            <PutOutBy day={day} />
-          </dd>
-        </div>
-      ))}
-    </dl>
+    // The list inside the card, not the card itself: from tablet GOV.UK's
+    // summary list is a table with collapsed borders, which drops a
+    // padding of its own.
+    <div className="app-card">
+      <dl className="govuk-summary-list govuk-!-margin-bottom-0">
+        {days.map((day) => (
+          <div key={day.date} className="govuk-summary-list__row">
+            <dt className="govuk-summary-list__key">
+              <time dateTime={day.date}>
+                <SpokenDay iso={day.date} />
+              </time>
+            </dt>
+            <dd className="govuk-summary-list__value">
+              <Bins pickups={day.pickups} size="medium" />
+              <PutOutBy day={day} />
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
 
