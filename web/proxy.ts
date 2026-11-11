@@ -118,12 +118,53 @@ async function unknownPlace(
   return unknownAddress(pathname, places?.ids ?? null);
 }
 
-/**
- * The site's 404 page with its 404 status: a path no route serves
- * (app/not-found.tsx).
- */
-function notFoundPage(request: NextRequest, headers?: HeadersInit) {
-  return NextResponse.rewrite(new URL("/404", request.url), { headers });
+// The site's 404 page (app/not-found.tsx), as its own /404 serves it. A
+// rewrite to /404 is not enough: Vercel serves the rewrite with the stored
+// /404 result's 200, so the proxy answers with the page itself and its
+// status (a Response from the proxy: "Producing a response", Next.js
+// proxy docs). Fetched once per instance (from the CDN); nothing in it
+// depends on the data, so it holds until the next deploy. If it cannot be
+// loaded, the rewrite still shows the page and the next 404 tries again.
+type NotFound = { html: string; headers: Record<string, string> };
+let notFound: Promise<NotFound | null> | null = null;
+
+function loadNotFound(request: NextRequest): Promise<NotFound | null> {
+  const authorization = request.headers.get("authorization");
+  notFound ??= fetch(new URL("/404", request.url), {
+    headers: authorization ? { authorization } : {},
+  })
+    .then(async (res) => {
+      if (res.status !== 404) return null;
+      const headers: Record<string, string> = {};
+      for (const name of ["content-type", "cache-control"]) {
+        const value = res.headers.get(name);
+        if (value) headers[name] = value;
+      }
+      return { html: await res.text(), headers };
+    })
+    .catch(() => null)
+    .then((page) => {
+      if (!page) notFound = null;
+      return page;
+    });
+  return notFound;
+}
+
+/** The site's 404 page with its 404 status. */
+async function notFoundPage(
+  request: NextRequest,
+  headers?: Record<string, string>,
+) {
+  const page = await loadNotFound(request);
+  if (!page)
+    return NextResponse.rewrite(new URL("/404", request.url), { headers });
+  const all = new Headers(page.headers);
+  for (const [name, value] of Object.entries(headers ?? {}))
+    all.set(name, value);
+  return new NextResponse(request.method === "HEAD" ? null : page.html, {
+    status: 404,
+    headers: all,
+  });
 }
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
