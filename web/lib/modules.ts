@@ -1,7 +1,7 @@
 // The address page's modules: waste, water and the weather today; power and
 // others later (task 102). Each one gives the address page
 // (components/hub.tsx) its items for the timeline, its notices, its link
-// and its meta line, in registry order, and has a subpage of its own,
+// and its check time, in registry order, and has a subpage of its own,
 // /adres/<id>/<id of the module>, in one frame (components/module-page.tsx). The ids and their
 // order live in lib/address-routes.ts, so the unit tests and the URL rules
 // can read them without Next.js; this registry must list exactly those.
@@ -50,7 +50,7 @@ import {
 // module's own data back to it (components/hub.tsx).
 export type Module<D> = {
   id: ModuleId;
-  /** Its name, before its meta line in „Skąd to wiemy”. */
+  /** Its name in the address page's freshness line: „śmieci”. */
   title: string;
   /**
    * `place` is the place id, `nr` a house number. null: no such place
@@ -77,21 +77,19 @@ export type Module<D> = {
   subject: string;
   /** Its row's value on a day: the short summary. */
   Row(props: { entry: Entry }): ReactNode;
-  /** Its sources, in its meta line and its subpage's inset: a link each. */
+  /** Its sources, in its subpage's inset: a link each. */
   sources(data: D): Part[][];
   /**
-   * A sentence in the meta line, after the sources (waste: the dates are
-   * not checked yet); left out or null: none.
+   * A sentence in the address page's small print (waste: the dates are not
+   * checked yet); left out or null: none.
    */
   note?(data: D): string | null;
   /**
-   * When we last checked its source: „Sprawdziliśmy …” at the end of its
-   * meta line (lib/hub.ts metaLine), and its subpage's checked line
-   * (checkedLine). null: nothing shown.
+   * When we last checked its source: in the address page's freshness line
+   * (lib/hub.ts freshnessLine) and its subpage's source inset
+   * (sourceLine). null: nothing shown.
    */
   checkedAt(data: D): Checked;
-  /** Before the time in its subpage's checked line: „Wywozy sprawdziliśmy”. */
-  checkedLabel: string;
   /**
    * Its link to the subpage in „Wszystko o Twoim adresie”, saying where
    * it goes („Wszystkie odbiory śmieci”), never a bare „Szczegóły”.
@@ -119,7 +117,7 @@ export type Module<D> = {
 // the address page, and the street page's body on its subpage.
 const waste: Module<PlaceView> = {
   id: "smieci",
-  title: "Śmieci",
+  title: "śmieci",
   more: "Wszystkie odbiory śmieci",
   pageTitle: "Odbiór śmieci",
   load: getPlace,
@@ -137,7 +135,6 @@ const waste: Module<PlaceView> = {
   sources: wasteSources,
   note: wasteNote,
   checkedAt: wasteChecked,
-  checkedLabel: "Wywozy sprawdziliśmy",
   description: (place) => placeDescription(place, "waste"),
   indexed: indexedPlace,
   error: numberError,
@@ -149,7 +146,7 @@ const waste: Module<PlaceView> = {
 // failed to load: that source's news link.
 const woda: Module<Water> = {
   id: "woda",
-  title: "Woda",
+  title: "woda",
   more: "Wszystkie przerwy w wodzie",
   pageTitle: "Przerwy w dostawie wody",
   load: loadWater,
@@ -161,7 +158,6 @@ const woda: Module<Water> = {
   Row: WaterRow,
   sources: waterSources,
   checkedAt: waterChecked,
-  checkedLabel: "Komunikaty o wodzie sprawdziliśmy",
   description: waterDescription,
   Details: WaterDetails,
 };
@@ -173,7 +169,7 @@ const woda: Module<Water> = {
 const pogodaTitle = "Ostrzeżenia pogodowe IMGW";
 const pogoda: Module<Weather> = {
   id: "pogoda",
-  title: "Pogoda",
+  title: "pogoda",
   more: pogodaTitle,
   pageTitle: pogodaTitle,
   async load() {
@@ -187,7 +183,6 @@ const pogoda: Module<Weather> = {
   Row: WeatherRow,
   sources: weatherSources,
   checkedAt: weatherChecked,
-  checkedLabel: "Ostrzeżenia pogodowe sprawdziliśmy",
   description: (place) => `${pogodaTitle} dla ${POWIAT.of}: ${place.label}.`,
   Details: WeatherDetails,
 };

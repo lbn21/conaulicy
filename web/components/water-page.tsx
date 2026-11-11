@@ -16,6 +16,7 @@ import {
   type Water,
   waterAiNote,
   waterCalendarHint,
+  waterChecked,
   waterEmpty,
   waterSources,
   waterTrace,
@@ -26,8 +27,8 @@ import {
 // „Dodaj przerwy do kalendarza” when any cut can go in a calendar
 // (lib/water-ics.ts), then every planned cut still to come at this
 // address, a day each, with its hours and what is cut, then posts we could
-// not match to addresses, as links only, then the AI-read note and the
-// posts as the source. Read per request with the whole page
+// not match to addresses, as links only, then the AI-read note, and the
+// posts (or, with none, the news pages) as the source with the check time. Read per request with the whole page
 // (components/module-page.tsx subpageData), so the cuts are those not over
 // now, from the cron's last file. Dates are absolute; a
 // day's „Dziś” or „Jutro” comes with them (components/day-word.tsx).
@@ -99,12 +100,8 @@ export function WaterDetails({ data }: { data: Water }) {
           ))}
         </section>
       )}
-      {!empty && (
-        <>
-          <AiReadNote text={waterAiNote(data)} />
-          <SourceInset sources={waterSources(data)} />
-        </>
-      )}
+      {!empty && <AiReadNote text={waterAiNote(data)} />}
+      <SourceInset sources={waterSources(data)} at={waterChecked(data)} />
     </>
   );
 }

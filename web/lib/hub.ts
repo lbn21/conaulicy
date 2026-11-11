@@ -1,6 +1,7 @@
 // The address page as a hub of modules (lib/modules.ts, components/hub.tsx):
-// what a module gives it, its items' spans (lib/upcoming.ts) and each
-// section's meta line. Pure, so the unit tests read it.
+// what a module gives it, its items' spans (lib/upcoming.ts), the
+// subpages' source line and the address page's freshness line. Pure, so
+// the unit tests read it.
 
 import {
   clockTime,
@@ -10,6 +11,7 @@ import {
   warsawDay,
 } from "./date-labels.ts";
 import { addDays, capitalised, warsawNoon, warsawToIso } from "./dates.ts";
+import { LIST } from "./locale.ts";
 import type { Span, Tag } from "./upcoming.ts";
 
 export { capitalised };
@@ -53,31 +55,16 @@ const checkedWhen = (at: Date | string) =>
     ? dayMonth(warsawNoon(at).getTime())
     : dayMonthTime(at.getTime());
 
-/**
- * When a module last checked its source, on its subpage, in Polish time,
- * absolute, after its `label` (Module.checkedLabel): "Wywozy sprawdziliśmy:
- * 25 października 14:20", or "… 23 października" for a day. null: nothing
- * to say.
- */
-export function checkedLine(at: Checked, label: string): string | null {
-  return at ? `${label}: ${checkedWhen(at)}` : null;
-}
-
 /** A module with no data now: „Nie udało się sprawdzić ‹its subject›.” */
 export const unchecked = (module: { subject: string }) =>
   `Nie udało się sprawdzić ${module.subject}.`;
 
 /**
- * The last line of a module's section on the address page: „Źródło: ‹its
- * sources, joined with ;›.”, then `note` (a full sentence), then
- * „Sprawdziliśmy 25 października 14:20.”, absolute. Each only when there
- * is one; nothing at all: no parts.
+ * A subpage's source line, in its inset at the bottom: „Źródło: ‹its
+ * sources, joined with ;›.”, then „Sprawdziliśmy 25 października 14:20.”,
+ * absolute. Each only when there is one; neither: no parts.
  */
-export function metaLine(
-  sources: Part[][],
-  note: string | null,
-  at: Checked,
-): Part[] {
+export function sourceLine(sources: Part[][], at: Checked): Part[] {
   const parts: Part[] = [];
   if (sources.length > 0)
     parts.push(
@@ -85,12 +72,26 @@ export function metaLine(
       ...sources.flatMap((source, i) => (i > 0 ? ["; ", ...source] : source)),
       ".",
     );
-  if (note) parts.push(" ", note);
   if (at) parts.push(` Sprawdziliśmy ${checkedWhen(at)}.`);
   const out = merged(parts);
-  // No source before it: the line starts with the note or the check.
+  // No source before it: the line starts with the check.
   if (typeof out[0] === "string") out[0] = out[0].trimStart();
   return out;
+}
+
+/**
+ * The address page's freshness line: „Sprawdziliśmy: śmieci 10 listopada
+ * 22:40, woda 11 listopada 07:00 i pogoda 11 listopada 07:07.”, each
+ * module with a known check, in registry order (Intl.ListFormat); none:
+ * null.
+ */
+export function freshnessLine(
+  checks: Array<{ name: string; at: Checked }>,
+): string | null {
+  const known = checks.flatMap(({ name, at }) =>
+    at ? [`${name} ${checkedWhen(at)}`] : [],
+  );
+  return known.length > 0 ? `Sprawdziliśmy: ${LIST.format(known)}.` : null;
 }
 
 /** Adjacent texts as one, so the markup has no empty comments between. */

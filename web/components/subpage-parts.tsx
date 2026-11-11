@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
-import { Parts, textOf } from "@/components/parts";
-import { merged, type Part } from "@/lib/hub";
+import { Parts } from "@/components/parts";
+import { type Checked, type Part, sourceLine } from "@/lib/hub";
 
 // The parts every address subpage shares (CLAUDE.md, "One layout for every
-// address subpage"), in its order: the calendar block under the checked
-// line, the AI-read note after the module's content, then the source in an
-// inset. One component each, so the subpages cannot drift.
+// address subpage"), in its order: the calendar block at the top, the
+// AI-read note after the module's content, then the source and check time
+// in an inset. One component each, so the subpages cannot drift.
 
 /** The details' summary: how to add the file, and a browser never knows if it worked. */
 export const CALENDAR_CHECK = "Jak dodać i sprawdzić, czy się udało?";
@@ -93,23 +93,29 @@ export function AiReadNote({ text }: { text: string }) {
 }
 
 /**
- * The sources (Module.sources), „Źródło: ” and a paragraph each, in
- * GOV.UK's inset text; `children` after them (IMGW's required wording).
+ * The subpage's one source block, at the bottom, in GOV.UK's inset text:
+ * „Źródło: ‹its sources›. Sprawdziliśmy ‹when›.” (lib/hub.ts sourceLine),
+ * small, secondary text as the address page's small print; `children`
+ * after it (IMGW's required wording). Nothing to say: nothing.
  */
 export function SourceInset({
   sources,
+  at,
   children,
 }: {
   sources: Part[][];
+  at: Checked;
   children?: ReactNode;
 }) {
+  const line = sourceLine(sources, at);
+  if (line.length === 0 && !children) return null;
   return (
     <div className="govuk-inset-text">
-      {sources.map((parts) => (
-        <p key={textOf(parts)} className="govuk-body-s">
-          <Parts parts={merged(["Źródło: ", ...parts])} lead={false} />
+      {line.length > 0 && (
+        <p className="govuk-hint govuk-!-font-size-16">
+          <Parts parts={line} lead={false} />
         </p>
-      ))}
+      )}
       {children}
     </div>
   );

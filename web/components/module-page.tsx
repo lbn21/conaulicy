@@ -8,7 +8,7 @@ import {
   placeCaption,
 } from "@/components/place-page";
 import { WarsawToday } from "@/components/warsaw-today";
-import { checkedLine, unchecked } from "@/lib/hub";
+import { unchecked } from "@/lib/hub";
 import { findSubpage, type Module } from "@/lib/modules";
 import { getPlace, type PlaceView } from "@/lib/schedule";
 
@@ -75,9 +75,8 @@ export async function ModuleMain({
 
 /**
  * Every module's subpage, one frame (components/place-page.tsx
- * AddressPage): the place as the caption, the module's h1, its error, when
- * it last checked its source (from the same read as its data); then its
- * body (Module.Details), or, with no data now, the address page's line
+ * AddressPage): the place as the caption, the module's h1, its error; then
+ * its body (Module.Details, its source and check time at the bottom), or, with no data now, the address page's line
  * that it could not be checked (lib/hub.ts unchecked).
  */
 export function Subpage({
@@ -98,11 +97,6 @@ export function Subpage({
       caption={placeCaption(place)}
       heading={module.pageTitle}
       error={error}
-      checked={
-        data === null
-          ? null
-          : checkedLine(module.checkedAt(data), module.checkedLabel)
-      }
     >
       {data === null ? (
         <p className="govuk-body">{unchecked(module)}</p>
