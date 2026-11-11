@@ -60,7 +60,7 @@ test("title: „ · ” and Intl's relative day, never wrapped mid-phrase, grey 
   );
   assert.match(
     word("2026-11-10T12:00:00Z", "2026-11-10", "title"),
-    /^<span class="govuk-!-font-size-16 govuk-!-font-weight-regular app-timeline__when">/,
+    /^<span class="govuk-!-font-size-16 govuk-!-font-weight-regular">/,
   );
   // Across the DST change, by Warsaw days.
   assert.equal(
