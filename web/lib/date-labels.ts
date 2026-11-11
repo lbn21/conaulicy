@@ -32,11 +32,6 @@ export function monthTitle(iso: string): string {
   return `${month.charAt(0).toUpperCase()}${month.slice(1)} ${iso.slice(0, 4)}`;
 }
 
-/** Short weekday without the dot. Example: "czw". */
-export function weekdayShort(iso: string): string {
-  return part(iso, "weekday", { weekday: "short" }).replace(".", "");
-}
-
 // "do niedzieli", "od poniedziałku": the weekday in the genitive, Sunday first.
 const WEEKDAY_GENITIVE = [
   "niedzieli",

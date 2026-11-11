@@ -5,7 +5,7 @@ import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 import { SITE_URL } from "@/lib/config.generated";
 import { readableInk } from "@/lib/contrast";
-import { longDate, monthTitle, weekdayShort } from "@/lib/date-labels";
+import { longDate, monthTitle } from "@/lib/date-labels";
 import { absoluteDay } from "@/lib/dates";
 import { datasetHeaders } from "@/lib/gate";
 import { GOVUK_COLOUR, GOVUK_FUNCTIONAL } from "@/lib/govuk-colours";
@@ -368,7 +368,7 @@ function weekdayName(iso: string): string {
 
 /**
  * The weekday of at least three in four pickups, or null when there is no
- * single usual day (then every date shows its weekday and none is marked).
+ * single usual day (then the band names none).
  */
 function usualWeekday(days: PickupDay[]): string | null {
   const counts = new Map<string, number>();
@@ -432,8 +432,6 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const printed = months.filter((key) => byMonth.has(key));
   const laterText = laterNote(place.days);
   const usual = usualWeekday(inWindow);
-  const odd = (day: PickupDay) =>
-    usual !== null && weekdayName(day.date) !== usual;
   const putOutBy = inWindow
     .flatMap((day) => day.pickups)
     .find((p) => p.putOutBy)?.putOutBy;
@@ -991,26 +989,14 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // Odpady” header row on grey, and the same number of body rows in every
   // month (lib/pdf-grid.ts picks the columns and row height); every cell
   // bordered, each border drawn once.
-  const dateText = (day: PickupDay) => {
-    const n = String(Number(day.date.slice(8)));
-    return usual && !moved(day) && !odd(day)
-      ? n
-      : `${n} ${weekdayShort(day.date)}`;
-  };
+  // The day number only, as the leaflet's.
+  const dateText = (day: PickupDay) => String(Number(day.date.slice(8)));
   const widthOf = (font: string, size: number, text: string) => {
     doc.font(font).fontSize(size);
     return doc.widthOfString(text);
   };
   /** Up to the next step of the scale. */
   const onScale = (n: number) => Math.ceil(n / U) * U;
-  const dateW = onScale(
-    Math.max(
-      widthOf("bold", TYPE.small, "Dzień"),
-      ...inWindow.map((day) => widthOf("bold", TYPE.small, dateText(day))),
-    ) +
-      2 * PAD,
-  );
-  const minMarksW = onScale(widthOf("bold", TYPE.small, "Odpady") + 2 * PAD);
   const YEAR_H = ROW[TYPE.heading] + U;
   const ROW_GAP = 3 * U;
   const footer1 = footerLine(
@@ -1022,29 +1008,53 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const keyAll = keyFor(printed);
   const keyTop = footer1.top - SECTION - keyAll.h;
   const gridTop = bandH + noteH + SECTION;
-  const grid = chooseGrid({
-    months: printed.map((key) => ({
-      key,
-      marks: (byMonth.get(key) ?? []).map(
-        (day) => day.pickups.flatMap((p) => tones(p.subtype)).length,
-      ),
-    })),
-    width: CONTENT_W,
-    gap: GUTTER,
-    height: keyTop - SECTION - gridTop,
-    yearH: YEAR_H,
-    rowGap: ROW_GAP,
-    dateW,
-    minMarksW,
-    pad: PAD,
-    mark: MARK,
-    markGap: MARK_GAP,
-    maxColumns: 6,
-    minColumns: 2,
-    maxRow: 6 * U,
-    minRow: 4 * U,
-    rowStep: U,
+  const gridMonths = printed.map((key) => ({
+    key,
+    marks: (byMonth.get(key) ?? []).map((day) => tonesOf(day).length),
+  }));
+  // The tables as large as the page allows: the largest text of the scale
+  // (with its marks) whose grid fits, its rows then as tall as fill the
+  // space down to the key (in half points: the one size not on U, so the
+  // tables use the whole page).
+  const tableSizes = [
+    { size: TYPE.heading, mark: 14 },
+    { size: TYPE.body, mark: 12 },
+    { size: TYPE.small, mark: MARK },
+  ];
+  const layouts = tableSizes.map(({ size, mark }) => {
+    const dateW = onScale(
+      Math.max(
+        widthOf("bold", size, "Dzień"),
+        ...inWindow.map((day) => widthOf("bold", size, dateText(day))),
+      ) +
+        2 * PAD,
+    );
+    const grid = chooseGrid({
+      months: gridMonths,
+      width: CONTENT_W,
+      gap: GUTTER,
+      height: keyTop - SECTION - gridTop,
+      yearH: YEAR_H,
+      rowGap: ROW_GAP,
+      dateW,
+      minMarksW: onScale(widthOf("bold", size, "Odpady") + 2 * PAD),
+      pad: PAD,
+      mark,
+      markGap: MARK_GAP,
+      maxColumns: 6,
+      minColumns: 2,
+      maxRow: 2 * ROW[size],
+      minRow: ROW[size],
+      rowStep: 0.5,
+    });
+    return { size, mark, dateW, grid };
   });
+  const {
+    size: cellSize,
+    mark: cellMark,
+    dateW,
+    grid,
+  } = layouts.find((layout) => layout.grid.fits) ?? layouts[layouts.length - 1];
   const rowH = grid.rowH;
   const tableH = (grid.bodyRows + 2) * rowH;
 
@@ -1069,7 +1079,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     tag(root, "H3", () =>
       rowText(
         "bold",
-        TYPE.small,
+        cellSize,
         BLACK,
         key.startsWith(rowYear) ? monthName(key) : monthTitle(`${key}-01`),
         x + PAD,
@@ -1083,23 +1093,12 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     table.add(headRow);
     headRow.add(
       doc.struct("TH", {}, () =>
-        rowText("bold", TYPE.small, BLACK, "Dzień", x, head, rowH, {
-          width: dateW,
-          align: "center",
-        }),
+        rowText("bold", cellSize, BLACK, "Dzień", x + PAD, head, rowH),
       ),
     );
     headRow.add(
       doc.struct("TH", {}, () =>
-        rowText(
-          "bold",
-          TYPE.small,
-          BLACK,
-          "Odpady",
-          x + dateW + PAD,
-          head,
-          rowH,
-        ),
+        rowText("bold", cellSize, BLACK, "Odpady", x + dateW + PAD, head, rowH),
       ),
     );
     // Body rows: a line under each, except inside a date that takes two.
@@ -1115,13 +1114,12 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         doc.struct("TD", { actual: spoken(day) }, () =>
           rowText(
             "bold",
-            TYPE.small,
+            cellSize,
             from ? ink(RED) : BLACK,
             dateText(day),
-            x,
+            x + PAD,
             rowTop,
             rowH,
-            { width: dateW, align: "center" },
           ),
         ),
       );
@@ -1133,9 +1131,9 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
             drawMark(
               doc,
               tone,
-              x + dateW + PAD + MARK / 2 + col * (MARK + MARK_GAP),
+              x + dateW + PAD + cellMark / 2 + col * (cellMark + MARK_GAP),
               rowTop + line * rowH + rowH / 2,
-              MARK,
+              cellMark,
             );
           });
         }),
