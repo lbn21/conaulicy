@@ -7,7 +7,7 @@ export const HOME_CRUMB: Crumb = { href: "/", label: "Strona główna" };
 
 /** The trail's classes, its skeleton's too (components/place-suspense.tsx). */
 export const CRUMBS_CLASS =
-  "govuk-breadcrumbs govuk-breadcrumbs--collapse-on-mobile govuk-!-margin-top-7";
+  "govuk-breadcrumbs govuk-breadcrumbs--collapse-on-mobile govuk-!-margin-top-7 govuk-!-margin-bottom-7";
 
 /**
  * GOV.UK's breadcrumbs, every item a link and the page itself left out.
@@ -15,9 +15,11 @@ export const CRUMBS_CLASS =
  * a flat site, the home page or an error page). Before the layout's one
  * <main>, from its @breadcrumbs slot (app/layout.tsx,
  * components/place-crumbs.tsx), as GOV.UK places them, so the skip link
- * skips them (docs/layout.md). Its margin-top stands in for main's padding above
- * it; GOV.UK's own margin-bottom (10 px) and main's padding make the gap to
- * what follows. Collapsed on mobile (GOV.UK's modifier: the first and last
+ * skips them (docs/layout.md). One token above and below (spacing 7: 25 px
+ * on mobile, 40 from tablet), so the trail sits centred between the header
+ * and the page head's band: its margin-top stands in for main's padding
+ * above it, and the band cancels main's padding below it (site.scss
+ * .app-band), so the gap below is the margin-bottom alone. Collapsed on mobile (GOV.UK's modifier: the first and last
  * crumb on one line, a long one wrapping after its chevron), so a chevron
  * never starts a line on its own.
  */
