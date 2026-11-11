@@ -6,7 +6,9 @@
 // only Atkinson Hyperlegible Next embedded, a one-page calendar, a one-page
 // guide from the gmina's own rules and the text version after them. Every
 // address's month tables are the same size, rows included, however many
-// months it has, and so are the guide's tiles; no word on pages 1–2 spills
+// months it has, every row one height (no date's marks wrap), at one place
+// on the page whatever the street's name (the longest on one line), and so
+// are the guide's tiles; no word on pages 1–2 spills
 // out of its table, tile or box (scripts/lib/pdf-layout.mjs). Checks are
 // structural (pages, links, QR codes, boxes, sources from data), never the
 // wording (CLAUDE.md, Workflow). A split street without a number has
@@ -49,6 +51,14 @@ const CASES = [
     name: "two-month street",
     path: "/adres/0972447-19253/harmonogram.pdf",
     page: "/adres/0972447-19253/smieci",
+  },
+  {
+    // Longer than any real place's name (scripts/ci-fixture.ts): on one
+    // line, the calendar where every address's is.
+    name: "longest street name",
+    path: "/adres/0972447-90011/harmonogram.pdf",
+    page: "/adres/0972447-90011/smieci",
+    title: true,
   },
   {
     name: "village",
@@ -312,25 +322,67 @@ try {
     const sizes = new Set(
       tables.map((t) => `${round(t.x1 - t.x0)}×${round(t.y1 - t.y0)}`),
     );
-    // A table's first row: its top border to the first rule inside it.
+    // Every row of every table, border to border: one height, so no
+    // date's marks wrap onto a second line (that date's row would be two).
     const rows = new Set(
+      tables.flatMap((t) => {
+        const ys = [
+          t.y0,
+          ...(strokes[0]?.rules ?? [])
+            .filter(
+              (r) =>
+                r.x0 >= t.x0 - 0.1 &&
+                r.x1 <= t.x1 + 0.1 &&
+                r.y > t.y0 + 0.1 &&
+                r.y < t.y1 - 0.1,
+            )
+            .map((r) => r.y),
+          t.y1,
+        ].sort((a, b) => a - b);
+        return ys.slice(1).map((y, i) => round(y - ys[i]));
+      }),
+    );
+    // The date column: a table's left border to the rule inside it.
+    const splits = new Set(
       tables.map((t) => {
-        const inside = (strokes[0]?.rules ?? [])
-          .filter(
-            (r) =>
-              r.x0 >= t.x0 - 0.1 &&
-              r.x1 <= t.x1 + 0.1 &&
-              r.y > t.y0 + 0.1 &&
-              r.y < t.y1 - 0.1,
-          )
-          .map((r) => r.y);
-        return round(Math.min(...inside) - t.y0);
+        const inside = (strokes[0]?.columns ?? []).find(
+          (r) => r.x > t.x0 + 0.1 && r.x < t.x1 - 0.1 && r.y1 > t.y0,
+        );
+        return inside ? round(inside.x - t.x0) : null;
       }),
     );
     check(
-      tables.length > 0 && sizes.size === 1 && rows.size === 1,
-      `${c.name}: page 1 tables ${[...sizes].join(", ")}, rows ${[...rows].join(", ")} (one size, one row height)`,
+      tables.length > 0 &&
+        sizes.size === 1 &&
+        rows.size === 1 &&
+        splits.size === 1 &&
+        !splits.has(null),
+      `${c.name}: page 1 tables ${[...sizes].join(", ")}, rows ${[...rows].join(", ")}, date columns ${[...splits].join(", ")} (one size, every row one height: no marks wrap)`,
     );
+    // The place's name (the document title's last part, before the
+    // locality) on one line of page 1.
+    if (c.title) {
+      const name = info
+        .match(/^Title:\s+(.*)$/m)?.[1]
+        .split(" – ")
+        .at(-1)
+        ?.split(", ")[0];
+      const lines = run("pdftotext", [
+        "-f",
+        "1",
+        "-l",
+        "1",
+        "-layout",
+        file,
+        "-",
+      ])
+        .split("\n")
+        .map((line) => line.trim());
+      check(
+        Boolean(name) && lines.some((line) => line.startsWith(name)),
+        `${c.name}: the street's name is not on one line of page 1`,
+      );
+    }
     const tiles = boxesOn(2).sort(
       (a, b) => (b.x1 - b.x0) * (b.y1 - b.y0) - (a.x1 - a.x0) * (a.y1 - a.y0),
     );
@@ -338,6 +390,8 @@ try {
       name: c.name,
       table: [...sizes][0],
       row: [...rows][0],
+      top: round(Math.min(...tables.map((t) => t.y0))),
+      date: [...splits][0],
       tile: tiles[0]
         ? `${round(tiles[0].x1 - tiles[0].x0)}×${round(tiles[0].y1 - tiles[0].y0)}`
         : null,
@@ -359,7 +413,7 @@ try {
   }
 
   // One layout for every address, however many months it has.
-  for (const key of ["table", "row", "tile"]) {
+  for (const key of ["table", "date", "row", "top", "tile"]) {
     const seen = new Set(layouts.map((l) => l[key]));
     check(
       seen.size === 1 && !seen.has(null),
@@ -367,7 +421,7 @@ try {
     );
   }
   console.log(
-    `ok    one layout: tables ${layouts[0]?.table}, rows ${layouts[0]?.row} pt, tiles ${layouts[0]?.tile}`,
+    `ok    one layout: tables ${layouts[0]?.table} from ${layouts[0]?.top} pt, date column ${layouts[0]?.date} pt, rows ${layouts[0]?.row} pt, tiles ${layouts[0]?.tile}`,
   );
 
   // The waste subpage of an ended schedule (the page that offers both) has

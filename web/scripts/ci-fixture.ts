@@ -92,6 +92,14 @@ const STREETS = [
   ["0606234", "90008", "Leśna", null],
   ["0606286", "24550", "Wodna", null],
   ["0606180", "90010", "Szkolna", null],
+  // Longer than any real place's name (the longest, 2026-11:
+  // „ul. Gen. Przemysława Nakoniecznikoffa”): check-pdf prints its PDF.
+  [
+    "0972447",
+    "90011",
+    "Nakoniecznikoffa-Jeziorańskiego",
+    "Generała Przemysława Ignacego",
+  ],
 ] as const;
 
 // The CI fixture is the only place a redirect is made without review: it
@@ -230,16 +238,20 @@ const ZONES: Array<{
   },
   {
     // A street with two months of dates (the year's end), so the PDF's
-    // calendar is checked with fewer months than the window.
+    // calendar is checked with fewer months than the window; recycling on
+    // its first Monday, with the mixed and the bio: five marks on one day,
+    // as the real data's fullest (2026-11; check-pdf: none wrap).
     id: "waste:miasto-s4",
     name: "Lubaczów, sektor 4",
-    members: [{ localityId: "0972447", streetId: "0972447-19253" }],
+    members: [
+      { localityId: "0972447", streetId: "0972447-19253" },
+      { localityId: "0972447", streetId: "0972447-90011" },
+    ],
     rule: {
       weekday: 1,
       mixed: ["zmieszane", "bio"],
-      winter: ["popiol"],
       recycling: CITY_RECYCLING,
-      recyclingDay: { weekday: 3, nth: 1 },
+      recyclingDay: { weekday: 1, nth: 1 },
       bulkyMonths: [3, 9],
     },
     count: 2,

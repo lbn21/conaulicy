@@ -554,6 +554,22 @@ function render(
       doc.font(font).fontSize(size);
       return doc.widthOfString(text) <= width;
     }) ?? sizes[sizes.length - 1];
+  /**
+   * The largest size of `sizes` at which text fits one line; past the
+   * smallest, that size scaled down until it does (in quarter points), so a
+   * name of any length stays on one line and never moves what is below it.
+   */
+  const oneLine = (
+    font: string,
+    text: string,
+    width: number,
+    sizes: number[],
+  ) => {
+    const size = fitting(font, text, width, sizes);
+    doc.font(font).fontSize(size);
+    const w = doc.widthOfString(text);
+    return w <= width ? size : Math.floor((size * width * 4) / w) / 4;
+  };
 
   // ------------------------------------------------------------ footer line
   // One short line a page: the source, the day it was checked, and that we
@@ -599,26 +615,34 @@ function render(
   const qrX = PAGE_W - MARGIN - qrBox;
   const bandTextW = qrX - 6 * U - MARGIN;
   const kicker = `${place.area} · Harmonogram odbioru odpadów`;
-  const titleSize = fitting("bold", title, bandTextW, [
+  // The street's name and its day line each on one line, in rows of a
+  // fixed height, so the longest name leaves the calendar where it is.
+  const titleSize = oneLine("bold", title, bandTextW, [
     TYPE.title,
     TYPE.heading,
+    TYPE.body,
+    TYPE.small,
   ]);
   const bandLine = [dayLine, putOut].filter(Boolean).join(" · ");
-  const bandLineSize = fitting("bold", bandLine, bandTextW, [
+  const bandLineSize = oneLine("bold", bandLine, bandTextW, [
     TYPE.body,
     TYPE.small,
   ]);
   const kickerTop = MARGIN + LOGO_H + 3 * U;
   const titleTop = kickerTop + ROW[TYPE.body];
-  const titleH = block("bold", titleSize, title, bandTextW);
+  const titleH = ROW[TYPE.title];
   const bandLineTop = titleTop + titleH + U;
   const leftBottom = bandLine
-    ? bandLineTop + block("bold", bandLineSize, bandLine, bandTextW)
+    ? bandLineTop + ROW[TYPE.body]
     : titleTop + titleH;
   const scan = "Zeskanuj: aktualne terminy";
   const scanTop = MARGIN + qrBox + U;
   const rightBottom = scanTop + ROW[TYPE.small];
-  const bandH = Math.max(leftBottom, rightBottom) + MARGIN;
+  // One height for every address, day line or not: the calendar below
+  // starts at one place on every PDF.
+  const bandH =
+    Math.max(leftBottom, titleTop + titleH + U + ROW[TYPE.body], rightBottom) +
+    MARGIN;
 
   const drawBand = () => {
     artifact(doc, () => {
@@ -639,18 +663,18 @@ function render(
       ),
     );
     tag(root, "H1", () =>
-      blockText("bold", titleSize, WHITE, title, MARGIN, titleTop, bandTextW),
+      rowText("bold", titleSize, WHITE, title, MARGIN, titleTop, titleH),
     );
     if (bandLine) {
       tag(root, "P", () =>
-        blockText(
+        rowText(
           "bold",
           bandLineSize,
           WHITE,
           bandLine,
           MARGIN,
           bandLineTop,
-          bandTextW,
+          ROW[TYPE.body],
         ),
       );
     }
@@ -680,7 +704,7 @@ function render(
     parent: PDFKit.PDFStructureElement | null,
   ) => {
     const text = `${title} · ${what}`;
-    const size = fitting("bold", text, CONTENT_W, [TYPE.body, TYPE.small]);
+    const size = oneLine("bold", text, CONTENT_W, [TYPE.body, TYPE.small]);
     const plate = () => {
       doc.rect(0, 0, PAGE_W, compactH).fillColor(HEADER).fill();
       drawLogo(doc, MARGIN, MARGIN, LOGO_H);
@@ -877,8 +901,8 @@ function render(
   );
   // Sized once for the largest calendar any address prints (lib/schedule.ts
   // wasteMaxima): every month of the window, each as full as the fullest
-  // month in the data, under the tallest band (a one-line title and its
-  // day line) and above the tallest key of any zone. Every address gets the same
+  // month in the data, under the band (one height for every address: a
+  // one-line title, its day line) and above the tallest key of any zone. Every address gets the same
   // tables; fewer months leave the space below them empty.
   const keyMax = [
     keyFor(printed),
@@ -890,18 +914,14 @@ function render(
     PAGE_H - MARGIN - ROW[TYPE.small] - 2 * U,
   );
   const keyTop = footerTop - SECTION - keyMax.h;
-  const bandMax = Math.max(
-    bandH,
-    Math.max(titleTop + ROW[TYPE.title] + U + ROW[TYPE.body], rightBottom) +
-      MARGIN,
-  );
-  const gridTop = bandMax + noteH + SECTION;
+  const gridTop = bandH + noteH + SECTION;
   const gridMonths = months.map((key) => ({
     key,
     marks: (byMonth.get(key) ?? []).map((day) => tonesOf(day).length),
   }));
-  // The tables as large as that page allows: the largest text of the scale
-  // (with its marks) whose grid fits, its rows then as tall as fill the
+  // The tables as large as that page allows: a text size of the scale
+  // (with its marks) whose grid fits with every date's marks on one line
+  // (below: the largest marks first), its rows then as tall as fill the
   // space down to the key (in half points: the one size not on U, so the
   // tables use the whole page).
   // As the leaflet's: nothing bold, headers the days' size, set apart only
@@ -912,42 +932,70 @@ function render(
     { size: TYPE.small, mark: MARK },
     { size: TYPE.table, mark: MARK },
   ];
-  const layouts = tableSizes.map(({ size, mark }) => {
-    const dateW = onScale(
-      Math.max(
+  const plan = (headroom: number) =>
+    tableSizes.map(({ size, mark }) => {
+      // The date column holds „Dzień” over one or two digits: the same for
+      // every address, and as narrow as „Dzień” with U each side when the
+      // marks need the room (lib/pdf-grid.ts fitMarks).
+      const textW = Math.max(
         widthOf("regular", size, "Dzień"),
-        ...inWindow.map((day) => widthOf("regular", size, dateText(day))),
-      ) +
-        2 * TABLE_PAD,
-    );
-    const grid = chooseGrid({
-      months: gridMonths,
-      profiles: maxima.profiles,
-      width: CONTENT_W,
-      gap: GUTTER,
-      height: keyTop - SECTION - gridTop,
-      yearH: YEAR_H,
-      rowGap: ROW_GAP,
-      dateW,
-      minMarksW: onScale(widthOf("regular", size, "Odpady") + 2 * TABLE_PAD),
-      pad: TABLE_PAD,
-      mark,
-      markGap: MARK_GAP,
-      maxColumns: 6,
-      minColumns: 2,
-      maxRow: 2 * ROW[size],
-      minRow: ROW[size],
-      rowStep: 0.5,
+        widthOf("regular", size, "28"),
+      );
+      const dateW = onScale(textW + 2 * TABLE_PAD);
+      const grid = chooseGrid({
+        months: gridMonths,
+        profiles: maxima.profiles,
+        headroom,
+        width: CONTENT_W,
+        gap: GUTTER,
+        height: keyTop - SECTION - gridTop,
+        yearH: YEAR_H,
+        rowGap: ROW_GAP,
+        dateW,
+        minDateW: Math.ceil(textW + 2 * U),
+        minMarksW: onScale(widthOf("regular", size, "Odpady") + 2 * TABLE_PAD),
+        pad: TABLE_PAD,
+        mark,
+        markGap: MARK_GAP,
+        // After the date column, the gaps close to a point, then the marks
+        // shrink by two at most.
+        minMarkGap: U / 4,
+        minMark: mark - 2,
+        maxColumns: 6,
+        minColumns: 2,
+        maxRow: 2 * ROW[size],
+        minRow: ROW[size],
+        rowStep: 0.5,
+      });
+      return { size, grid };
     });
-    return { size, mark, dateW, grid };
-  });
-  const {
-    size: cellSize,
-    mark: cellMark,
-    dateW,
-    grid,
-  } = layouts.find((layout) => layout.grid.fits) ?? layouts[layouts.length - 1];
-  const rowH = grid.rowH;
+  // Of the sizes that fit, the largest marks, then the widest gap between
+  // them, then the largest text: a narrower date column costs nothing, the
+  // marks give way last.
+  const best = (layouts: ReturnType<typeof plan>) =>
+    layouts
+      .filter((layout) => layout.grid.fits)
+      .sort(
+        (a, b) =>
+          b.grid.mark - a.grid.mark ||
+          b.grid.markGap - a.grid.markGap ||
+          b.size - a.size,
+      )[0];
+  // Room for one mark more than the fullest date of any address, if that
+  // fits without smaller marks; else exactly the fullest.
+  const exact = plan(0);
+  const roomy = best(plan(1));
+  const chosen =
+    roomy && roomy.grid.mark >= (best(exact)?.grid.mark ?? 0)
+      ? roomy
+      : (best(exact) ?? exact[exact.length - 1]);
+  const { size: cellSize, grid } = chosen;
+  const { rowH, dateW, mark: cellMark, markGap: cellGap } = grid;
+  // „Dzień” TABLE_PAD in, as every header; centred in a narrowed column.
+  const dayPad = Math.min(
+    TABLE_PAD,
+    (dateW - widthOf("regular", cellSize, "Dzień")) / 2,
+  );
   const tableH = (grid.bodyRows + 2) * rowH;
 
   const drawMonth = (key: string, x: number, y: number) => {
@@ -985,7 +1033,7 @@ function render(
     table.add(headRow);
     headRow.add(
       doc.struct("TH", {}, () =>
-        rowText("regular", cellSize, BLACK, "Dzień", x + TABLE_PAD, head, rowH),
+        rowText("regular", cellSize, BLACK, "Dzień", x + dayPad, head, rowH),
       ),
     );
     headRow.add(
@@ -1032,11 +1080,7 @@ function render(
             drawMark(
               doc,
               tone,
-              x +
-                dateW +
-                TABLE_PAD +
-                cellMark / 2 +
-                col * (cellMark + MARK_GAP),
+              x + dateW + TABLE_PAD + cellMark / 2 + col * (cellMark + cellGap),
               rowTop + line * rowH + rowH / 2,
               cellMark,
             );
