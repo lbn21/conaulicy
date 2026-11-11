@@ -26,6 +26,7 @@ import { fileSlug } from "@/lib/normalize";
 import { type Block, flow, type Spot } from "@/lib/pdf-flow";
 import { chooseGrid, dateRows, tableRows } from "@/lib/pdf-grid";
 import { drawIcon, FRACTION_ICONS, PDF_ICONS } from "@/lib/pdf-icon";
+import { keyGrid } from "@/lib/pdf-key";
 import { scheduleName } from "@/lib/places";
 import {
   getPlace,
@@ -865,20 +866,19 @@ function render(
           ]
         : []),
     ];
-    let kx = keyStart;
-    let row = 0;
-    const placed = items.map((item) => {
-      doc.font("regular").fontSize(TYPE.small);
-      const w = MARK + U + doc.widthOfString(item.label);
-      if (kx > keyStart && kx + w > PAGE_W - MARGIN) {
-        kx = keyStart;
-        row++;
-      }
-      const at = { ...item, x: kx, row };
-      kx += w + 3 * U;
-      return at;
-    });
-    return { placed, h: (row + 1) * KEY_ROW };
+    // One line, else two balanced rows in aligned columns (lib/pdf-key.ts).
+    doc.font("regular").fontSize(TYPE.small);
+    const grid = keyGrid(
+      items.map((item) => MARK + U + doc.widthOfString(item.label)),
+      PAGE_W - MARGIN - keyStart,
+      3 * U,
+    );
+    const placed = items.map((item, i) => ({
+      ...item,
+      x: keyStart + grid.places[i].x,
+      row: grid.places[i].row,
+    }));
+    return { placed, h: grid.rows * KEY_ROW };
   };
   const drawKey = (
     parent: PDFKit.PDFStructureElement | null,
@@ -939,7 +939,13 @@ function render(
   // month in the data, under the band (one height for every address: a
   // one-line title, its day line) and above the tallest key of any zone. Every address gets the same
   // tables; fewer months leave the space below them empty.
+  // The worst case first: every fraction any zone marks, and a moved date
+  // if any has one, so a fuller key never pushes into the tables.
   const keyMax = [
+    keyOf(
+      [...new Set(maxima.keys.flatMap((key) => key.tones))],
+      maxima.keys.some((key) => key.moved),
+    ),
     keyFor(printed),
     ...maxima.keys.map((key) => keyOf(key.tones, key.moved)),
   ].reduce((tallest, key) => (key.h > tallest.h ? key : tallest));
@@ -970,8 +976,8 @@ function render(
   const plan = (headroom: number) =>
     tableSizes.map(({ size, mark }) => {
       // The date column holds „Dzień” over one or two digits: the same for
-      // every address, and as narrow as „Dzień” with U each side when the
-      // marks need the room (lib/pdf-grid.ts fitMarks).
+      // every address, and as narrow as „Dzień” TABLE_PAD in and U after it
+      // when the marks need the room (lib/pdf-grid.ts fitMarks).
       const textW = Math.max(
         widthOf("regular", size, "Dzień"),
         widthOf("regular", size, "28"),
@@ -989,7 +995,8 @@ function render(
         yearH: YEAR_H,
         rowGap: ROW_GAP,
         dateW,
-        minDateW: Math.ceil(textW + 2 * U),
+        // „Dzień” TABLE_PAD in, as every header, with U to spare after it.
+        minDateW: Math.ceil(textW + TABLE_PAD + U),
         minMarksW: onScale(widthOf("regular", size, "Odpady") + 2 * TABLE_PAD),
         pad: TABLE_PAD,
         mark,
@@ -1028,11 +1035,6 @@ function render(
       : (best(exact) ?? exact[exact.length - 1]);
   const { size: cellSize, grid } = chosen;
   const { rowH, dateW, mark: cellMark, markGap: cellGap } = grid;
-  // „Dzień” TABLE_PAD in, as every header; centred in a narrowed column.
-  const dayPad = Math.min(
-    TABLE_PAD,
-    (dateW - widthOf("regular", cellSize, "Dzień")) / 2,
-  );
   const tableH = (grid.bodyRows + 2) * rowH;
 
   const drawMonth = (key: string, x: number, y: number) => {
@@ -1070,7 +1072,7 @@ function render(
     table.add(headRow);
     headRow.add(
       doc.struct("TH", {}, () =>
-        rowText("regular", cellSize, BLACK, "Dzień", x + dayPad, head, rowH),
+        rowText("regular", cellSize, BLACK, "Dzień", x + TABLE_PAD, head, rowH),
       ),
     );
     headRow.add(
