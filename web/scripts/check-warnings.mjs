@@ -236,8 +236,7 @@ async function hubChecks(origin, state) {
     tags !== rows.length && `${tags} tags on the page, want ${rows.length}`,
     /Prognozuje się|Prawdopodobieństwo/.test(hub) &&
       "IMGW's description on the address page",
-    headings.join() !==
-      "Najbliższe 7 dni,Wszystko o Twoim adresie" &&
+    headings.join() !== "Najbliższe 7 dni,Wszystko o Twoim adresie" &&
       `headings ${headings}`,
     described.join() !== state.levels.join() &&
       `/pogoda describes ${described}, want ${state.levels}`,
