@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Icon } from "@/components/icon";
 import { Parts } from "@/components/parts";
 import { type Checked, type Part, sourceLine } from "@/lib/hub";
 
@@ -58,6 +59,7 @@ export function CalendarBlock({
         data-source={source}
         data-place={place}
       >
+        <Icon name="calendar" />
         {label}
       </a>
       <p className="govuk-body">{hint}</p>

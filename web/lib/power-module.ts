@@ -25,7 +25,7 @@ import {
   UNREADABLE,
 } from "./live-status.ts";
 import { LIST } from "./locale.ts";
-import type { OutagePage } from "./outage-view.ts";
+import { hoursRow, type OutagePage } from "./outage-view.ts";
 import type { PgeFeed, PgeOutage } from "./pge-feed.ts";
 import { matches, type PlaceRef } from "./place-match.ts";
 import { streetName } from "./places.ts";
@@ -210,6 +210,9 @@ const NONE = `PGE nie zapowiada ${POWER_SUBJECT} pod tym adresem.`;
 
 const NO_NUMBERS = "PGE nie podaje numerów";
 
+/** A cut without hours (PGE gives them, so a guard only). */
+const NO_HOURS = "PGE nie podaje godzin.";
+
 /** „Numery domów według PGE”: as given; each place named when several. */
 function numbers(cut: PowerCut): string {
   if (cut.where.length === 1) return cut.where[0].numbers ?? `${NO_NUMBERS}.`;
@@ -218,16 +221,27 @@ function numbers(cut: PowerCut): string {
     .join("; ");
 }
 
-/** The kind, revoked or not: a summary list row. */
+/**
+ * The kind, a summary list row: its badge, a failure red; revoked, a
+ * muted „Odwołane” and the kind in words, with PGE's note.
+ */
 function kindRow(cut: PowerCut) {
-  const kind = cut.kind === "failure" ? "Awaria" : "Planowane wyłączenie";
+  const failure = cut.kind === "failure";
+  const kind = failure ? "Awaria" : "Planowane wyłączenie";
   return cut.revoked
     ? {
         key: "Rodzaj",
-        tag: "Odwołane",
+        badge: { text: "Odwołane", tone: "muted" as const },
         value: [cut.revokedNote ? `${kind}. ${cut.revokedNote}` : kind],
       }
-    : { key: "Rodzaj", value: [kind] };
+    : {
+        key: "Rodzaj",
+        badge: {
+          text: kind,
+          tone: failure ? ("alert" as const) : ("mod" as const),
+        },
+        value: [],
+      };
 }
 
 /** The power's subpage as the outages' one shape (lib/outage-view.ts). */
@@ -252,10 +266,10 @@ export function powerPage(data: Power): OutagePage {
           {
             key: `${cut.uuid}-${date}`,
             rows: [
-              {
-                key: "Godziny",
-                value: [LIST.format(spans.map((s) => fromTo(s, false)))],
-              },
+              hoursRow(
+                spans.map((s) => fromTo(s, false)),
+                NO_HOURS,
+              ),
               kindRow(cut),
               { key: "Gdzie", value: [names(cut)] },
               { key: "Numery domów według PGE", value: [numbers(cut)] },

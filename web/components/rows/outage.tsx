@@ -1,3 +1,4 @@
+import { Badge } from "@/components/badge";
 import { Icon } from "@/components/icon";
 import { fromTo } from "@/components/rows/when";
 import type { Entry } from "@/lib/timeline";
@@ -12,31 +13,23 @@ import { NO_HOURS } from "@/lib/water-module";
 /** What is cut, after „nie będzie” and „w dostawie”. */
 export const CUT = { woda: "wody", prad: "prądu" } as const;
 
-/** The badge: a failure in red, else planned, in the module's colour. */
-export function OutageBadge({ emergency }: { emergency: boolean }) {
-  return emergency ? (
-    <strong className="app-badge app-badge--alert">
-      <Icon name="alert" />
-      Awaria
-    </strong>
-  ) : (
-    <strong className="app-badge app-badge--mod">Planowana</strong>
-  );
-}
-
-/** Each window of hours a chip, in a list. */
-export function TimeChips({ entries }: { entries: Entry[] }) {
+/** Each window of hours a chip with its clock, in a list. */
+export function TimeChips({ windows }: { windows: string[] }) {
   return (
     <ul className="app-chips">
-      {entries.map(({ item, continued }) => (
-        <li key={item.span.start} className="app-chip">
+      {windows.map((window) => (
+        <li key={window} className="app-chip">
           <Icon name="clock" />
-          {fromTo(item.span, continued)}
+          {window}
         </li>
       ))}
     </ul>
   );
 }
+
+/** The entries' windows of hours (components/rows/when.ts). */
+export const windowsOf = (entries: Entry[]) =>
+  entries.map(({ item, continued }) => fromTo(item.span, continued));
 
 export function OutageRow({ entries }: { entries: Entry[] }) {
   const [{ item, continued }] = entries;
@@ -51,9 +44,12 @@ export function OutageRow({ entries }: { entries: Entry[] }) {
   return (
     <>
       <p className="govuk-body-s govuk-!-margin-bottom-0">
-        <OutageBadge emergency={item.emergency} /> {text}
+        <Badge tone={item.emergency ? "alert" : "mod"}>
+          {item.emergency ? "Awaria" : "Planowana"}
+        </Badge>{" "}
+        {text}
       </p>
-      {hours && <TimeChips entries={entries} />}
+      {hours && <TimeChips windows={windowsOf(entries)} />}
       {item.second && (
         <p className="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0 app-quiet">
           {item.second}

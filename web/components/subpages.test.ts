@@ -40,6 +40,13 @@ import { eventProperties } from "./web-analytics.tsx";
 // with the same calendar block, at the water fixture's CHECKED and NOW.
 const ZUKI = testPlace();
 
+/** Icons (components/icon.tsx) as <svg/>, each aria-hidden: their shapes are Lucide's. */
+function unicons(html: string) {
+  for (const [svg] of html.matchAll(/<svg\b[^>]*>/g))
+    assert.match(svg, /aria-hidden="true"/);
+  return html.replace(/<svg\b.*?<\/svg>/g, "<svg/>");
+}
+
 // The /woda page as it reaches the browser, read per request
 // (components/module-page.tsx Subpage): the frame, then the body, for the
 // server's Warsaw day (WarsawToday).
@@ -50,11 +57,17 @@ const waterPage = (
   { town = [] as StoredPost[], checked = CHECKED, now = NOW, day = "" } = {},
 ) => {
   const data = water(bothViews(posts, checked, now, town), place);
-  return renderToStaticMarkup(
-    createElement(
-      WarsawToday,
-      { day: day || todayInWarsaw() },
-      createElement(Subpage, { module: MODULES.woda, place: data.place, data }),
+  return unicons(
+    renderToStaticMarkup(
+      createElement(
+        WarsawToday,
+        { day: day || todayInWarsaw() },
+        createElement(Subpage, {
+          module: MODULES.woda,
+          place: data.place,
+          data,
+        }),
+      ),
     ),
   );
 };
@@ -87,13 +100,15 @@ const wastePage = (place: Partial<PlaceView> = {}, missing = false) => {
     ],
     ...place,
   });
-  return renderToStaticMarkup(
-    createElement(Subpage, {
-      module: MODULES.smieci,
-      place: data,
-      data,
-      missing,
-    }),
+  return unicons(
+    renderToStaticMarkup(
+      createElement(Subpage, {
+        module: MODULES.smieci,
+        place: data,
+        data,
+        missing,
+      }),
+    ),
   );
 };
 
@@ -103,7 +118,7 @@ const order = (html: string, markers: string[]) =>
 
 /** The button, the hint and the details under it, as one string. */
 const calendarBlock = (html: string) =>
-  /<a [^>]*role="button"[^>]*>[^<]*<\/a><p class="govuk-body">[^<]*<\/p><details class="govuk-details">[\s\S]*?<\/details>/.exec(
+  /<a [^>]*role="button"[^>]*><svg\/>[^<]*<\/a><p class="govuk-body">[^<]*<\/p><details class="govuk-details">[\s\S]*?<\/details>/.exec(
     html,
   )?.[0] ?? "";
 
@@ -231,7 +246,9 @@ test("/smieci and /woda keep GOV.UK's row borders (only the hub drops them)", ()
   // Two days: the list starts with the second.
   const days = [pickup("2026-10-27"), pickup("2026-11-10")];
   for (const html of [wastePage({ days }), waterPage()]) {
-    assert.match(html, /<dl class="govuk-summary-list">/);
+    // In a card (site.scss .app-card), whose last row drops its border by
+    // CSS; the markup never drops one.
+    assert.match(html, /<dl class="(?:app-card )?govuk-summary-list[^"]*">/);
     assert.doesNotMatch(html, /no-border/);
   }
 });
@@ -281,7 +298,7 @@ test("a number the register lacks: the one warning, the whole street", () => {
   assert.match(
     html,
     new RegExp(
-      `<h1 class="govuk-heading-l">Odbiór śmieci</h1><p class="govuk-body">${WARNING}</p>`,
+      `<h1 class="govuk-heading-l"><span class="app-tile app-mod app-mod--smieci"><svg/></span>Odbiór śmieci</h1><p class="govuk-body">${WARNING}</p>`,
     ),
   );
   assert.doesNotMatch(html, /rejestrze adresów|wspólny dla całej ulicy/);
@@ -490,7 +507,7 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
   );
   assert.match(
     html,
-    /<h2 id="dzien-2026-10-06" class="govuk-heading-m">Za 3 dni: wtorek, 6 października<\/h2><dl class="govuk-summary-list"><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Godziny<\/dt><dd class="govuk-summary-list__value">od 8:30 do 15:00<\/dd><\/div><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Gdzie<\/dt><dd class="govuk-summary-list__value">cała ulica Niemirowska<\/dd>/,
+    /<h2 id="dzien-2026-10-06" class="govuk-heading-m">Za 3 dni: wtorek, 6 października<\/h2><div class="app-card"><dl class="govuk-summary-list govuk-!-margin-bottom-0"><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Godziny<\/dt><dd class="govuk-summary-list__value"><ul class="app-chips"><li class="app-chip"><svg\/>od 8:30 do 15:00<\/li><\/ul><\/dd><\/div><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Gdzie<\/dt><dd class="govuk-summary-list__value">cała ulica Niemirowska<\/dd>/,
   );
   assert.match(
     html,
@@ -513,7 +530,7 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
   const quiet = page([]);
   assert.match(
     quiet,
-    /<p class="govuk-body">Brak zapowiedzianych przerw\. Gmina ogłasza je w <a href="https:\/\/www\.gminalubaczow\.pl\/aktualnosci\/" class="govuk-link">aktualności gminy Lubaczów<\/a>, a MZGKiM – w <a href="https:\/\/mzgkim\.lubaczow\.pl\/category\/komunikaty\/" class="govuk-link">komunikatach MZGKiM<\/a>\.<\/p>/,
+    /<p class="app-empty govuk-body">Brak zapowiedzianych przerw\. Gmina ogłasza je w <a href="https:\/\/www\.gminalubaczow\.pl\/aktualnosci\/" class="govuk-link">aktualności gminy Lubaczów<\/a>, a MZGKiM – w <a href="https:\/\/mzgkim\.lubaczow\.pl\/category\/komunikaty\/" class="govuk-link">komunikatach MZGKiM<\/a>\.<\/p>/,
   );
   assert.doesNotMatch(quiet, /jeszcze tu nie pokazujemy|nie sprawdzamy/);
 });
@@ -602,13 +619,15 @@ test("every subpage with no data now: its frame, then the hub's one line, nothin
     [MODULES.woda, "Nie udało się sprawdzić przerw w dostawie wody."],
     [MODULES.prad, "Nie udało się sprawdzić przerw w dostawie prądu."],
   ] as const) {
-    const html = renderToStaticMarkup(
-      createElement(Subpage, { module, place: ZUKI, data: null }),
+    const html = unicons(
+      renderToStaticMarkup(
+        createElement(Subpage, { module, place: ZUKI, data: null }),
+      ),
     );
     assert.match(
       html,
       new RegExp(
-        `<h1 class="govuk-heading-l">${module.pageTitle}</h1><p class="govuk-body govuk-!-margin-bottom-6"><a [^>]*>Zmień adres.*?</a></p><p class="govuk-body">${line.replace(/\./g, "\\.")}</p></div></div>$`,
+        `<h1 class="govuk-heading-l"><span class="app-tile app-mod app-mod--${module.id}"><svg/></span>${module.pageTitle}</h1><p class="govuk-body"><a [^>]*>Zmień adres.*?</a></p></div><div class="app-mod app-mod--${module.id}"><p class="app-empty govuk-body">${line.replace(/\./g, "\\.")}</p></div></div></div>$`,
       ),
       module.id,
     );

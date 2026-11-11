@@ -36,7 +36,7 @@ export function Timeline({
         Najbliższe {n} dni
       </h2>
       {byDay.every((entries) => entries.length === 0) && after.length === 0 ? (
-        <p className="govuk-body">{EMPTY}</p>
+        <p className="app-empty govuk-body">{EMPTY}</p>
       ) : (
         // A vertical timeline (site.scss .app-timeline): the
         // line, dots and carets are CSS only.

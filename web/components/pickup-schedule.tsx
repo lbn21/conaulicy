@@ -41,7 +41,7 @@ function PutOutBy({ day }: { day: PickupDay }) {
 function NextPickup({ day }: { day: PickupDay }) {
   const face = dayFace(day.date);
   return (
-    <div className="govuk-!-margin-bottom-6">
+    <div className="app-card app-card--accent">
       <h3 className="govuk-heading-s govuk-!-margin-bottom-3">
         <time dateTime={day.date}>
           <span className="govuk-visually-hidden">
@@ -69,7 +69,7 @@ function NextPickup({ day }: { day: PickupDay }) {
 /** Further pickups: GOV.UK summary list, the date as key, bins as value. */
 function DayList({ days }: { days: PickupDay[] }) {
   return (
-    <dl className="govuk-summary-list">
+    <dl className="app-card govuk-summary-list">
       {days.map((day) => (
         <div key={day.date} className="govuk-summary-list__row">
           <dt className="govuk-summary-list__key">

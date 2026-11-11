@@ -1,5 +1,6 @@
 import { io } from "next/cache";
 import { cache, type ReactNode } from "react";
+import { Badge } from "@/components/badge";
 import { subpageHref } from "@/components/function-rows";
 import { Icon, Tile } from "@/components/icon";
 import { NowBanner } from "@/components/now-banner";
@@ -129,11 +130,11 @@ function windowCounts(items: Item[], today: string, now: number) {
 /** A module card's count badge: how many in the window, or none. */
 function CountBadge({ count }: { count: number }) {
   return count > 0 ? (
-    <span className="app-badge app-badge--mod">
+    <Badge tone="mod">
       {count} w ciągu {WINDOW} dni
-    </span>
+    </Badge>
   ) : (
-    <span className="app-badge">Nic w ciągu {WINDOW} dni</span>
+    <Badge>Nic w ciągu {WINDOW} dni</Badge>
   );
 }
 

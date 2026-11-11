@@ -8,12 +8,28 @@ import type { Checked, Part } from "./hub.ts";
 type OutageRowView = {
   key: string;
   value: Part[];
-  /** A grey GOV.UK tag before the value: „Odwołane”. */
-  tag?: string;
+  /**
+   * A badge before the value (components/badge.tsx): „Awaria” (alert),
+   * „Planowane wyłączenie” (the module's), „Odwołane” (muted).
+   */
+  badge?: { text: string; tone: "alert" | "mod" | "muted" };
+  /** Windows of hours, a chip each, after the value. */
+  chips?: string[];
 };
 
 /** One outage on a day: its summary list. */
 type OutageBlock = { key: string; rows: OutageRowView[] };
+
+/**
+ * „Godziny”: each window a chip; with no window known, `none`, the line
+ * that the source gives none.
+ */
+export function hoursRow(windows: string[], none: string): OutageRowView {
+  const chips = windows.filter(Boolean);
+  return chips.length > 0
+    ? { key: "Godziny", value: [], chips }
+    : { key: "Godziny", value: [none] };
+}
 
 export type OutagePage = {
   /** An inset above everything: the data may be out of date. */

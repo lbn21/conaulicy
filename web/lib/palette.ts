@@ -116,14 +116,17 @@ export const WARNING_LEVELS = {
 // the primary for bars and rings (3:1 or more on white), shade-25 for its
 // text and icons (4.5:1 or more on white and on its tint), tint-80 for an
 // icon's tile and a module's badge.
-export const MODULE_COLOURS = {
+const MODULE_COLOURS = {
   smieci: "#1e7d43",
   woda: "#1767b0",
   prad: "#c46a00",
   pogoda: "#3f6a8a",
 } as const;
 
-/** The module colours' steps the site uses, by role. */
+/**
+ * The module colours' steps the site uses, by role.
+ * @public design/contrast.mjs checks them (outside knip's view).
+ */
 export const MODULE_ROLES = Object.fromEntries(
   Object.entries(MODULE_COLOURS).map(([id, primary]) => {
     const steps = group(primary);

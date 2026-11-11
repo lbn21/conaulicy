@@ -1,7 +1,7 @@
 import { subpageHref } from "@/components/function-rows";
 import { Icon, Tile } from "@/components/icon";
 import { PlaceLink } from "@/components/place-link";
-import { CUT, TimeChips } from "@/components/rows/outage";
+import { CUT, TimeChips, windowsOf } from "@/components/rows/outage";
 import { MODULES, type Module } from "@/lib/modules";
 import type { PlaceView } from "@/lib/schedule";
 import type { Item } from "@/lib/upcoming";
@@ -53,10 +53,12 @@ export function NowBanner({
                 Nie ma {CUT[item.module]}
               </p>
               <TimeChips
-                entries={[{ item, continued: item.span.day !== place.today }]}
+                windows={windowsOf([
+                  { item, continued: item.span.day !== place.today },
+                ])}
               />
               <PlaceLink
-                className="govuk-link govuk-!-font-size-16"
+                className="govuk-link govuk-!-font-size-16 govuk-!-display-inline-block govuk-!-margin-top-2"
                 href={subpageHref(module, place)}
               >
                 Szczegóły

@@ -191,7 +191,7 @@ test("timeline: each cut once, its row, „Szczegóły” to its subpage; no war
   // Its tile and label, a badge, what is cut, its hours as a chip, where.
   assert.match(
     html,
-    /<div class="govuk-summary-list__row app-mod app-mod--woda[^"]*"><dt class="govuk-summary-list__key"><span class="app-tile"><svg\/><\/span>Woda<\/dt><dd class="govuk-summary-list__value"><p class="govuk-body-s govuk-!-margin-bottom-0"><strong class="app-badge app-badge--mod">Planowana<\/strong> Nie będzie wody<\/p><ul class="app-chips"><li class="app-chip"><svg\/>od 8:00 do 16:00<\/li><\/ul><p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0 app-quiet">Cała wieś Lisie Jamy\.<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link" href="\/adres\/0606257\/woda">Szczegóły<span class="govuk-visually-hidden"> o przerwie w dostawie wody, poniedziałek, 26 października<\/span><\/a><\/dd>/,
+    /<div class="govuk-summary-list__row app-mod app-mod--woda[^"]*"><dt class="govuk-summary-list__key"><span class="app-tile app-mod app-mod--woda"><svg\/><\/span>Woda<\/dt><dd class="govuk-summary-list__value"><p class="govuk-body-s govuk-!-margin-bottom-0"><strong class="app-badge app-badge--mod">Planowana<\/strong> Nie będzie wody<\/p><ul class="app-chips"><li class="app-chip"><svg\/>od 8:00 do 16:00<\/li><\/ul><p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0 app-quiet">Cała wieś Lisie Jamy\.<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link" href="\/adres\/0606257\/woda">Szczegóły<span class="govuk-visually-hidden"> o przerwie w dostawie wody, poniedziałek, 26 października<\/span><\/a><\/dd>/,
   );
   // Warnings are cards above the timeline, never in it, and no tag at all.
   assert.doesNotMatch(timeline, /Ostrzeżenie IMGW|Silny wiatr|Stopień/);
@@ -212,7 +212,7 @@ test("a warning: its card above the timeline, the meter, when, IMGW's words", ()
   assert.ok(html.indexOf(card) < html.indexOf("najblizsze-dni"));
   assert.match(
     card,
-    /^<section class="app-warning app-warning--1" aria-labelledby="ostrzezenie-Sk20261024094213061"><p class="app-warning__level govuk-body-s govuk-!-font-weight-bold"><span class="app-warning__meter" aria-hidden="true"><span class="app-warning__on"><\/span><span><\/span><span><\/span><\/span>Stopień 1 z 3<\/p><div class="app-warning__body"><h2 id="ostrzezenie-Sk20261024094213061" class="govuk-heading-m govuk-!-margin-bottom-2">Silny wiatr<\/h2><p class="govuk-body">Trwa do 25 października 19:00\.<\/p><details class="govuk-details govuk-!-margin-bottom-0"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">Co przekazuje IMGW<\/span><\/summary><div class="govuk-details__text">Prognozuje się wystąpienie /,
+    /^<section class="app-warning app-warning--1" aria-labelledby="ostrzezenie-Sk20261024094213061"><p class="app-warning__level govuk-body-s govuk-!-font-weight-bold"><span class="app-warning__meter" aria-hidden="true"><span class="app-warning__on"><\/span><span><\/span><span><\/span><\/span><svg\/>Stopień 1 z 3<\/p><div class="app-warning__body app-mod app-mod--pogoda"><h2 id="ostrzezenie-Sk20261024094213061" class="govuk-heading-m govuk-!-margin-bottom-2"><span class="app-tile app-mod app-mod--pogoda"><svg\/><\/span>Silny wiatr<\/h2><p class="govuk-body">Trwa do 25 października 19:00\.<\/p><details class="govuk-details govuk-!-margin-bottom-0"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">Co przekazuje IMGW<\/span><\/summary><div class="govuk-details__text">Prognozuje się wystąpienie /,
   );
   // No source, issue or check time in the card: the small print has them.
   assert.doesNotMatch(card, /IMGW-PIB|Źródło|Sprawdziliśmy|opublikowa/i);
@@ -272,9 +272,10 @@ test("no warning: no card and nothing in its place", () => {
 test("„Wszystko o Twoim adresie” and the small print: a link per module with a source, then the checks and IMGW's words", () => {
   const html = page(VILLAGE, CUTS, WARNINGS);
   // The weather has no subpage: no link for it.
+  // A card per module: its link, and how many in the window (the badge).
   assert.deepEqual(texts(section(html, "wszystko"), "li"), [
-    "Wszystkie przerwy w wodzie",
-    "Wszystkie przerwy w dostawie prądu",
+    "Wszystkie przerwy w wodzie2 w ciągu 7 dni",
+    "Wszystkie przerwy w dostawie prąduNic w ciągu 7 dni",
   ]);
   // No waste check here: waste is left out of the freshness line.
   assert.match(
@@ -319,7 +320,7 @@ test("nothing in the window and nothing later: one line, no cards; the links and
   const html = page(testPlace({ ...STREET, days: [] }));
   assert.equal(
     section(html, "najblizsze-dni"),
-    '<section aria-labelledby="najblizsze-dni"><h2 id="najblizsze-dni" class="govuk-heading-m">Najbliższe 7 dni</h2><p class="govuk-body">Na razie nic nie zaplanowano pod tym adresem.</p></section>',
+    '<section aria-labelledby="najblizsze-dni"><h2 id="najblizsze-dni" class="govuk-heading-m">Najbliższe 7 dni</h2><p class="app-empty govuk-body">Na razie nic nie zaplanowano pod tym adresem.</p></section>',
   );
   assert.doesNotMatch(html, /app-timeline|Nic nie zaplanowano\.|Później/);
   assert.match(section(html, "wszystko"), />Wszystkie odbiory śmieci<\/a>/);
@@ -345,13 +346,13 @@ test("waste: its pickups by day; in the window, so no „Później” for it", (
   assert.deepEqual(texts(timeline, "h3"), [
     // An empty today and tomorrow: one run.
     "25–26 października",
-    "Wtorek, 27 października ·\u00a0pojutrze",
+    "Wtorek, 27 października,  Pojutrze",
     "28–31 października",
   ]);
   assert.doesNotMatch(html, /Później|app-timeline__later/);
   assert.match(
     timeline,
-    /<dt class="govuk-summary-list__key">Śmieci<\/dt><dd class="govuk-summary-list__value">.*?Papier.*?<p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0">Wystaw je do 6:00 rano\.<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link" href="\/adres\/0000001-00001\/smieci">Szczegóły<span class="govuk-visually-hidden"> o odbiorze śmieci, wtorek, 27 października<\/span>/,
+    /<dt class="govuk-summary-list__key"><span class="app-tile app-mod app-mod--smieci"><svg\/><\/span>Śmieci<\/dt><dd class="govuk-summary-list__value">.*?Papier.*?<p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0 app-quiet">Wystaw je do 6:00 rano\.<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link" href="\/adres\/0000001-00001\/smieci">Szczegóły<span class="govuk-visually-hidden"> o odbiorze śmieci, wtorek, 27 października<\/span>/,
   );
 });
 
@@ -364,13 +365,13 @@ test("waste only after the window: „Później”, its next pickup with its yea
   assert.ok(later);
   assert.match(
     later,
-    /<dt class="govuk-summary-list__key">Śmieci<\/dt><dd class="govuk-summary-list__value">Wtorek, 3 listopada 2026<\/dd>/,
+    /<dt class="govuk-summary-list__key"><span class="app-tile app-mod app-mod--smieci"><svg\/><\/span>Śmieci<\/dt><dd class="govuk-summary-list__value">Wtorek, 3 listopada 2026<\/dd>/,
   );
   assert.doesNotMatch(later, /10 listopada/);
   // The waste subpage's link and its check in the small print.
   assert.match(
     section(html, "wszystko"),
-    /<a class="govuk-link" href="\/adres\/0000001-00001\/smieci">Wszystkie odbiory śmieci<\/a>/,
+    /<a class="govuk-link app-item__link" href="\/adres\/0000001-00001\/smieci">Wszystkie odbiory śmieci<\/a>/,
   );
   assert.match(
     smallPrint(html),
@@ -417,13 +418,16 @@ test("power: its row as the water's, a range each, after the water; its notice w
     WARNINGS,
     power(copy(NOW.getTime(), items), VILLAGE, NOW.getTime()),
   );
-  const rows = texts(html, "dd").filter((t) => t.includes("nie będzie prądu"));
-  // Two ranges, two rows; the revoked one in none.
+  const rows = texts(html, "dd").filter((t) => t.includes("Nie będzie prądu"));
+  // Two ranges, one row with a chip each; the revoked one in none.
   assert.deepEqual(rows, [
-    "Od 8:00 do 9:00 nie będzie prądu.Smolińce, tylko pod niektórymi numerami – sprawdź w szczegółach.",
-    "Od 19:00 do 20:00 nie będzie prądu.Smolińce, tylko pod niektórymi numerami – sprawdź w szczegółach.",
+    "Planowana Nie będzie prąduod 8:00 do 9:00od 19:00 do 20:00Smolińce, tylko pod niektórymi numerami – sprawdź w szczegółach.",
   ]);
-  assert.match(html, /<dt class="govuk-summary-list__key">Prąd<\/dt>/);
+  assert.equal(count(html, '<li class="app-chip"><svg/>od '), 2 + 2);
+  assert.match(
+    html,
+    /<dt class="govuk-summary-list__key"><span class="app-tile app-mod app-mod--prad"><svg\/><\/span>Prąd<\/dt>/,
+  );
   // Over an hour old: the notice in the inset, PGE's page linked.
   const stale = page(
     VILLAGE,
