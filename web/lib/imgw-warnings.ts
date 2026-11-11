@@ -8,11 +8,19 @@ import { isoWithOffset, warsawToIso } from "./dates.ts";
 /** The official endpoint (danepubliczne.imgw.pl, IMGW-PIB's public API). */
 export const IMGW_URL = "https://danepubliczne.imgw.pl/api/data/warningsmeteo";
 
-/** IMGW-PIB's terms, §5: both sentences, wherever the data is shown. */
-export const IMGW_ATTRIBUTION = [
-  "Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy.",
-  "Dane Instytutu Meteorologii i Gospodarki Wodnej – Państwowego Instytutu Badawczego zostały przetworzone.",
-];
+/** IMGW-PIB's name in its terms' first sentence: the address page links it. */
+export const IMGW_NAME =
+  "Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy";
+
+/**
+ * IMGW-PIB's terms, §5: both sentences, wherever the data is shown; the
+ * first as the text before IMGW_NAME and after it.
+ */
+export const IMGW_ATTRIBUTION = {
+  source: ["Źródłem pochodzenia danych jest ", "."],
+  processed:
+    "Dane Instytutu Meteorologii i Gospodarki Wodnej – Państwowego Instytutu Badawczego zostały przetworzone.",
+} as const;
 
 const TIMEOUT_MS = 5000;
 

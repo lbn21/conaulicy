@@ -209,26 +209,6 @@ $app-header-colour: $app-header;
   }
 }
 
-// Deviation from GOV.UK's tag tints (Jakub's decision, task 98): the IMGW
-// warning-level tags on the address page („Najbliższe dni”, task 257) take
-// the solid colours of IMGW's own warnings map (WARNING_LEVELS in
-// lib/palette.ts), with text black or white for 4.5:1 or more. They are the
-// site's only tags; each keeps GOV.UK's colour modifier.
-.govuk-tag--yellow {
-  background-color: $app-warning-level-1;
-  color: govuk-functional-colour(text);
-}
-
-.govuk-tag--orange {
-  background-color: $app-warning-level-2;
-  color: govuk-functional-colour(text);
-}
-
-.govuk-tag--red {
-  background-color: $app-warning-level-3;
-  color: govuk-functional-colour(inverse-text);
-}
-
 // The address page's timeline (components/timeline.tsx, tasks 264-265), as
 // CodyHouse's vertical timeline, our own CSS: one unbroken line on the left
 // from the first dot to the last, a dot per day on it, a card per day with
@@ -293,7 +273,7 @@ $app-caret: govuk-spacing(2);
 .app-timeline__title .app-timeline__when { color: govuk-functional-colour(secondary-text); }
 .app-timeline__card .govuk-summary-list__key { color: govuk-functional-colour(brand); }
 // Two sizes in a card (task 269): the date heading-s, all else body-s.
-.app-timeline__card :is(.govuk-summary-list, .govuk-list, .govuk-tag) { @include govuk-font-size($size: 16); }
+.app-timeline__card :is(.govuk-summary-list, .govuk-list) { @include govuk-font-size($size: 16); }
 
 // Inside a card one rhythm: key and value a 5px step apart on mobile,
 // „Szczegóły” 10px under every value (a list's last
@@ -308,3 +288,18 @@ $app-caret: govuk-spacing(2);
 // The caret: a square turned 45°, its two outer sides the card's border,
 // its centre on the card's left edge, level with the dot.
 .app-timeline__card::before { content: ""; position: absolute; top: calc(var(--app-y) - #{$app-hair + $app-caret * .5}); left: -($app-caret * .5) - $app-hair; box-sizing: border-box; width: $app-caret; height: $app-caret; border-bottom: $app-hair solid var(--app-line); border-left: $app-hair solid var(--app-line); background: var(--app-bg); transform: rotate(45deg); }
+
+// IMGW's warnings (components/warning-cards.tsx, task 288): a card each
+// above the timeline, its border and radius as a timeline card's. Its top
+// band in the level's solid colour from IMGW's own map (WARNING_LEVELS in
+// lib/palette.ts; Jakub's decision, task 98), text black on yellow and
+// orange, white on red, 4.5:1 or more; the meter's steps in the text's
+// colour, filled up to the level, so it never rests on colour alone.
+.app-warning { --app-level: #{$app-warning-level-1}; --app-on: #{govuk-functional-colour(text)}; margin: 0 0 govuk-spacing(6); border: $govuk-border-width-form-element solid var(--app-level); border-radius: govuk-spacing(1); overflow: hidden; }
+.app-warning--2 { --app-level: #{$app-warning-level-2}; }
+.app-warning--3 { --app-level: #{$app-warning-level-3}; --app-on: #{govuk-functional-colour(inverse-text)}; }
+.app-warning__level { display: flex; gap: govuk-spacing(2); align-items: center; margin: 0; padding: govuk-spacing(2) govuk-spacing(3); background: var(--app-level); color: var(--app-on); }
+.app-warning__meter { display: flex; gap: govuk-spacing(1); }
+.app-warning__meter > span { box-sizing: border-box; width: govuk-spacing(5); height: govuk-spacing(2); border: $govuk-border-width-form-element solid currentColor; border-radius: $app-hair * 2; }
+.app-warning__meter > .app-warning__on { background: currentColor; }
+.app-warning__body { padding: govuk-spacing(3); }

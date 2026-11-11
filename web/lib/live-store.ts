@@ -75,8 +75,11 @@ async function imgwFiles(
  * error as a value, which the pages render as a notice (Next.js, "Handling
  * expected errors"); every page renders as ever.
  */
-export async function imgwCopy(): Promise<ImgwRead> {
-  const { url } = await upstream();
+export async function imgwCopy(
+  preview: string | null = null,
+): Promise<ImgwRead> {
+  // ?imgw= (lib/imgw-preview.ts): the mock, outside production only.
+  const url = preview ?? (await upstream()).url;
   try {
     const { feed, checks } = await imgwFiles(
       url.startsWith("mock:") ? url : "blob",

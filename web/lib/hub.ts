@@ -12,7 +12,7 @@ import {
 } from "./date-labels.ts";
 import { addDays, capitalised, warsawNoon, warsawToIso } from "./dates.ts";
 import { LIST } from "./locale.ts";
-import type { Span, Tag } from "./upcoming.ts";
+import type { Span } from "./upcoming.ts";
 
 export { capitalised };
 
@@ -31,8 +31,8 @@ export type Bins = {
  */
 type DayLead = { day: string; text: string };
 
-/** A row's or a line's content, in order: text, links, bins and tags. */
-export type Part = string | Link | Bins | Tag | DayLead;
+/** A row's or a line's content, in order: text, links and bins. */
+export type Part = string | Link | Bins | DayLead;
 
 /** One line of a module's section: a paragraph, or a row of bins. */
 type Line = Part[];

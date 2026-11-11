@@ -30,6 +30,7 @@ const EXPRESSIONS: Record<string, Record<string, string>> = {
     IMPROVMX_PRIVACY: "another site",
   },
   "components/contact-link.tsx": { CONTACT_HREF: "mailto:" },
+  "components/hub.tsx": { IMGW_PAGE: "another site" },
   "components/site-footer.tsx": { CONTACT_HREF: "mailto:" },
   "components/subpage-parts.tsx": { href: "an ICS file (CalendarBlock)" },
   "components/parts.tsx": {

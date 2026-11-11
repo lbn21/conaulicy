@@ -118,14 +118,17 @@ test("the address pages: one read per request, every block at once, shared with 
   // cache(), so the page and its breadcrumbs share one read.
   assert.match(
     source("components/hub.tsx"),
-    /export const hubData = cache\(async \(id: string, nr: string \| null\) => \{\n\s+await io\(\);\n\s+return \(await Promise\.all\(\n\s+MODULE_IDS\.map\(\(slug\) => MODULES\[slug\]\.load\(id, nr\)\),/,
+    /export const hubData = cache\(\n\s+async \(id: string, nr: string \| null, imgw: string \| null = null\) => \{\n\s+await io\(\);\n\s+return \(await Promise\.all\(\n\s+MODULE_IDS\.map\(\(slug\) => MODULES\[slug\]\.load\(id, nr, imgw\)\),/,
   );
   assert.match(
     source("components/module-page.tsx"),
     /export const subpageData = cache\(\n\s+async \(id: string, slug: string, nr: string \| null\) => \{\n\s+await io\(\);/,
   );
   const crumbs = source("components/place-crumbs.tsx");
-  assert.match(crumbs, /await hubData\(id, nr\)/);
+  assert.match(
+    crumbs,
+    /await hubData\(id, nr, await imgwQuery\(searchParams\)\)/,
+  );
   assert.match(crumbs, /await subpageData\(id, module, nr\)/);
   // ?nr= read after navigation(), so the shell and prefetch stay static.
   assert.match(

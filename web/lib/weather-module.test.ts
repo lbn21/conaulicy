@@ -12,60 +12,80 @@ import {
 import { shownWarnings, UNREADABLE } from "./imgw-shown.ts";
 import { parseFeed } from "./imgw-warnings.ts";
 import {
+  warningWhen,
   weather,
   weatherChecked,
   weatherNotices,
-  weatherSources,
-  weatherUpcoming,
 } from "./weather-module.ts";
 
 const at = (iso: string) => Date.parse(iso);
 const none = parseFeed(JSON.parse(NO_WARNINGS_2026_10_18), () => {});
 
-test("a warning: one item with its tag and times; no notice on the hub", () => {
+// Intl's spaces may be thin or no-break ones: compared as plain spaces.
+const plain = (text: string) => text.replace(/\s/g, " ");
+
+test("a warning: its card's data, IMGW's words; no notice on the hub", () => {
   const now = at("2026-10-25T14:00:00+01:00");
   const data = weather(copy("2026-10-25T13:52:10+01:00"), now);
   assert.ok(data);
-  const tag = { tag: "govuk-tag govuk-tag--yellow", text: "Stopień 1 z 3" };
-  assert.deepEqual(weatherUpcoming(data), [
-    {
-      module: "pogoda",
-      span: {
-        start: "2026-10-25T13:00:00+01:00",
-        end: "2026-10-25T19:00:00+01:00",
-        day: "2026-10-25",
-        endDay: "2026-10-25",
-        from: "13:00",
-        to: "19:00",
-        about: false,
-        until: "niedzieli 25 października",
-      },
-      event: "silny wiatr",
-      level: tag,
-      second: "Cały powiat lubaczowski.",
-    },
-  ]);
-  // IMGW's own description is /pogoda's (components/subpages.test.ts).
+  const [warning, ...rest] = data.shown?.warnings ?? [];
+  assert.deepEqual(rest, []);
+  assert.equal(warning.event, "Silny wiatr");
+  assert.equal(warning.level, 1);
+  assert.equal(warning.from, "2026-10-25T13:00:00+01:00");
+  assert.equal(warning.to, "2026-10-25T19:00:00+01:00");
+  assert.match(warning.text, /^Prognozuje się wystąpienie/);
   assert.deepEqual(weatherNotices(data), []);
-  assert.deepEqual(weatherSources(), [
-    [{ href: "https://meteo.imgw.pl/", text: "IMGW-PIB" }],
-  ]);
 });
 
-test("the same warnings on the hub and /pogoda, from the same copy", () => {
+test("its card's when: „Trwa do …” once begun, else Intl's range as „Od … do …”", () => {
+  const data = weather(
+    copy("2026-10-25T13:52:10+01:00"),
+    at("2026-10-25T12:00:00+01:00"),
+  );
+  const [warning] = data?.shown?.warnings ?? [];
+  const when = (now: string) => plain(warningWhen(warning, at(now)));
+  assert.equal(
+    when("2026-10-25T14:00:00+01:00"),
+    "Trwa do 25 października 19:00.",
+  );
+  assert.equal(
+    when("2026-10-25T13:00:00+01:00"),
+    "Trwa do 25 października 19:00.",
+  );
+  assert.equal(
+    when("2026-10-25T12:59:59+01:00"),
+    "Od 25 października, 13:00 do 19:00.",
+  );
+  // Across midnight: both days, as Intl's range gives them.
+  const night = {
+    ...warning,
+    from: "2026-11-11T22:00:00+01:00",
+    to: "2026-11-12T04:00:00+01:00",
+  };
+  assert.equal(
+    plain(warningWhen(night, at("2026-11-11T12:00:00+01:00"))),
+    "Od 11 listopada 22:00 do 12 listopada 04:00.",
+  );
+  assert.equal(
+    plain(warningWhen(night, at("2026-11-11T23:00:00+01:00"))),
+    "Trwa do 12 listopada 4:00.",
+  );
+});
+
+test("the cards' warnings: shownWarnings of the same copy", () => {
   const now = at("2026-10-25T14:00:00+01:00");
   const found = copy("2026-10-25T13:52:10+01:00");
   const data = weather(found, now);
   assert.deepEqual(data?.shown, shownWarnings(found, now));
 });
 
-test("no warning: no item, no notice, still a source", () => {
+test("no warning: no card, no notice", () => {
   const now = at("2026-10-25T14:00:00+01:00");
   const data = weather(copy("2026-10-25T13:52:10+01:00", none), now);
   assert.ok(data);
-  assert.deepEqual(weatherUpcoming(data), []);
+  assert.equal(data.shown, null);
   assert.deepEqual(weatherNotices(data), []);
-  assert.equal(weatherSources().length, 1);
 });
 
 test("no copy yet: the weather is left out; any copy, however old, is shown", () => {
@@ -81,7 +101,7 @@ test("no copy yet: the weather is left out; any copy, however old, is shown", ()
 const NOTICE_END = " Aktualne znajdziesz na ";
 const link = { href: "https://meteo.imgw.pl/", text: "meteo.imgw.pl" };
 
-test("stale: the notice, linked to IMGW, and the warnings still on the timeline", () => {
+test("stale: the notice, linked to IMGW, and the warnings still shown", () => {
   const now = at("2026-10-25T14:00:00+01:00");
   const data = weather(copy("2026-10-25T12:59:59+01:00"), now);
   assert.ok(data);
@@ -94,7 +114,7 @@ test("stale: the notice, linked to IMGW, and the warnings still on the timeline"
       ],
     ],
   ]);
-  assert.equal(weatherUpcoming(data).length, 1);
+  assert.equal(data.shown?.warnings.length, 1);
   assert.equal(
     weatherChecked(data)?.getTime(),
     at("2026-10-25T12:59:59+01:00"),
@@ -113,11 +133,11 @@ test("stale: the notice, linked to IMGW, and the warnings still on the timeline"
   ]);
 });
 
-test("too old: the notice alone, no warning on the timeline", () => {
+test("too old: the notice alone, no card", () => {
   const now = at("2026-10-25T14:00:00+01:00");
   const data = weather(copy("2026-10-25T11:00:00+01:00"), now);
   assert.ok(data);
-  assert.deepEqual(weatherUpcoming(data), []);
+  assert.deepEqual(data.shown?.warnings, []);
   assert.deepEqual(weatherNotices(data), [
     [
       [
@@ -145,10 +165,10 @@ test("checked line: the last good check, warning or not", () => {
   }
 });
 
-test("the store unreadable now: the notice alone, no item, no check time", () => {
+test("the store unreadable now: the notice alone, no card, no check time", () => {
   const data = weather(UNREADABLE, at("2026-10-25T14:00:00+01:00"));
   assert.ok(data);
-  assert.deepEqual(weatherUpcoming(data), []);
+  assert.deepEqual(data.shown?.warnings, []);
   assert.deepEqual(weatherNotices(data), [
     [[`Nie udało się teraz sprawdzić ostrzeżeń IMGW.${NOTICE_END}`, link, "."]],
   ]);

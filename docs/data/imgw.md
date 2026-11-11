@@ -1,6 +1,6 @@
 # IMGW meteo warnings
 
-What the site reads from IMGW-PIB and how (task 97) and where it shows it: only on the address page and its `/pogoda` subpage (tasks 257, 263; the banner on every other page, task 98, is gone). Code: `web/lib/imgw-warnings.ts` (feed), `web/lib/imgw-shown.ts` (which warnings are shown, the notice), `web/lib/weather-module.ts` (their items and notice on the address page), `web/components/weather-page.tsx` (`/pogoda`); fixtures: `web/lib/imgw-fixture.ts`; dev mock: `web/lib/imgw-mock.ts`. Hydro warnings are out of scope (no powiat code, `DATA-INVENTORY.md` §5).
+What the site reads from IMGW-PIB and how (task 97) and where it shows it: only on the address page, a card per warning above the timeline (tasks 257, 288; the banner on every other page, task 98, and the `/pogoda` subpage, task 263, are gone). Code: `web/lib/imgw-warnings.ts` (feed), `web/lib/imgw-shown.ts` (which warnings are shown, the notice), `web/lib/weather-module.ts` (the notice and a card's when), `web/components/warning-cards.tsx` (the cards); preview: `web/lib/imgw-preview.ts` (`?imgw=`); fixtures: `web/lib/imgw-fixture.ts`; dev mock: `web/lib/imgw-mock.ts`. Hydro warnings are out of scope (no powiat code, `DATA-INVENTORY.md` §5).
 
 ## Endpoint
 
@@ -49,7 +49,7 @@ IMGW issues warnings, changes (ZMIANA) and cancellations (ODWOŁANIE), but the J
 
 ## Terms: attribution
 
-The regulamin §5 requires, wherever the data is used, the source sentence, and for processed data also the processing sentence. We filter and convert times, so both. They live in `IMGW_ATTRIBUTION` (`lib/imgw-warnings.ts`), and the address page ends with both, verbatim, at the end of its small print (tasks 205, 284); `/pogoda` has both in its source block:
+The regulamin §5 requires, wherever the data is used, the source sentence, and for processed data also the processing sentence. We filter and convert times, so both. They live in `IMGW_ATTRIBUTION` (`lib/imgw-warnings.ts`), and the address page ends with both, verbatim, at the end of its small print (tasks 205, 284):
 
 > Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy.
 >
@@ -57,21 +57,20 @@ The regulamin §5 requires, wherever the data is used, the source sentence, and 
 
 ## On the address page
 
-No public endpoint (task 98: `/api/warnings` was removed), and no banner (task 257, Jakub's decision): the warnings show only on the address page (`/adres/<id>`, `components/hub.tsx`) and its `/pogoda` subpage (task 263). `/smieci`, `/woda` and every other page show nothing of IMGW's.
+No public endpoint (task 98: `/api/warnings` was removed), and no banner (task 257, Jakub's decision): the warnings show only on the address page (`/adres/<id>`, `components/hub.tsx`). There is no `/pogoda` (task 288: a 404, as any unknown module). `/smieci`, `/woda` and every other page show nothing of IMGW's.
 
 Warnings are powiat-wide, so every address shows the same ones (powiat `1809`, `POWIAT` in `lib/imgw-shown.ts`): those in force or to come (`shownWarnings`), highest level first, then by start.
 
-- **The address page's timeline** has a row per warning on each day it covers („Ostrzeżenie IMGW”: a tag „Stopień N z 3”, the event, from and until when, absolute; „trwa” on the days after its first), with „Szczegóły” to `/pogoda`. The tag uses IMGW's own solid level colours #ffbe00 / #ff5a00 / #d60000 (from `lvlToColorOsmet` in shared.imgw.pl's warnings widget, `WARNING_LEVELS` in `web/lib/palette.ts`; black text on 1 and 2, white on 3; the text says the level too). Never IMGW's own description there. Its last good check is in the address page's small print, with IMGW's required wording; its source is on `/pogoda` (task 284).
-- **`/pogoda`**: per warning, highest first, a GOV.UK summary card (the event; Stopień with its tag, Kiedy, Gdzie: „Cały powiat lubaczowski”, Opis IMGW: `tresc` verbatim and „Prawdopodobieństwo: 75%.”, `Intl.NumberFormat`); then the source and last good check in an inset („Źródło: IMGW-PIB. Sprawdziliśmy …”), IMGW's only link on the page, with the required wording. With no warning and a fresh copy, one line: „Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.” Never indexed (the powiat's, the same at every address). With no copy in the store yet, the address page and `/pogoda` say „Nie udało się sprawdzić ostrzeżeń IMGW.”
+- **A card per warning** above „Najbliższe 7 dni” (`components/warning-cards.tsx`, task 288), never in the timeline: its top band in IMGW's own solid level colour #ffbe00 / #ff5a00 / #d60000 (from `lvlToColorOsmet` in shared.imgw.pl's warnings widget, `WARNING_LEVELS` in `web/lib/palette.ts`; black text on 1 and 2, white on 3) with a three-step meter and „Stopień N z 3”, so the level never rests on colour alone; the event (h2); when, absolute: „Trwa do 25 października 19:00.” once it has begun, else Intl's range, „Od 25 października, 13:00 do 19:00.” (`warningWhen`, `lib/weather-module.ts`); then `tresc` verbatim in a closed GOV.UK details, „Co przekazuje IMGW”. No source, probability or check time in a card. Its last good check is in the address page's small print, with IMGW's required wording (task 284); IMGW's page is linked only in the notice (below). With no warning, no markup at all. With no copy in the store yet, the address page says „Nie udało się sprawdzić ostrzeżeń IMGW.”
 
 No client JS, no dismiss button, no `role="alert"`.
 
 **Honest states (task 219): never silence while the feed file exists.** One rule, by the age of the last good check (`checkAge`, `web/lib/live-status.ts`; the constants are the water's too):
 
-- over `STALE_MS` (60 min): a notice, with or without a warning, its link to meteo.imgw.pl (`weatherNotices`: in the address page's inset above the timeline; first on `/pogoda`): with warnings „Nie udało się teraz pobrać ostrzeżeń IMGW. Pokazujemy ostatnie dane z 9:52. Aktualne znajdziesz na meteo.imgw.pl.”, the warnings still listed; without „Nie udało się teraz pobrać ostrzeżeń IMGW. Ostatnie dane mamy z 9:52. Aktualne znajdziesz na meteo.imgw.pl.”, the notice alone;
-- from `MAX_AGE_MS` (3 h): the old warnings are no longer shown (the timeline, `/pogoda`), the notice alone: „Od 9:52 nie udało się nam pobrać ostrzeżeń IMGW, więc ich nie pokazujemy. Aktualne znajdziesz na meteo.imgw.pl.”;
+- over `STALE_MS` (60 min): a notice, with or without a warning, its link to meteo.imgw.pl (`weatherNotices`: in the address page's inset above the cards): with warnings „Nie udało się teraz pobrać ostrzeżeń IMGW. Pokazujemy ostatnie dane z 9:52. Aktualne znajdziesz na meteo.imgw.pl.”, the warnings still shown; without „Nie udało się teraz pobrać ostrzeżeń IMGW. Ostatnie dane mamy z 9:52. Aktualne znajdziesz na meteo.imgw.pl.”, the notice alone;
+- from `MAX_AGE_MS` (3 h): the old warnings are no longer shown (no card), the notice alone: „Od 9:52 nie udało się nam pobrać ostrzeżeń IMGW, więc ich nie pokazujemy. Aktualne znajdziesz na meteo.imgw.pl.”;
 - the time is the day and time („z piątku 30 października, 9:52”) when the last data is not from today (Warsaw);
-- the store cannot be read now: the notice alone, „Nie udało się teraz sprawdzić ostrzeżeń IMGW. Aktualne znajdziesz na meteo.imgw.pl.”, and no „Ostrzeżenia pogodowe sprawdziliśmy” time on `/pogoda`.
+- the store cannot be read now: the notice alone, „Nie udało się teraz sprawdzić ostrzeżeń IMGW. Aktualne znajdziesz na meteo.imgw.pl.”, and no IMGW check time in the small print.
 
 Read per request, a page shows the notice as soon as the threshold has passed.
 
@@ -106,6 +105,6 @@ Read per request, a page shows the notice as soon as the threshold has passed.
 
 For the pages, a failing mock (`fail`, `failAfter`) is a store that cannot be read.
 
-Locally: put `IMGW_WARNINGS_URL=mock:1809?level=2` in `web/.env.local` (and the `db:local` settings), restart `next dev`. On a preview: add the variable for that branch only (`vercel env add IMGW_WARNINGS_URL preview <branch> --scope gdzie-zamieszkac`), then redeploy; remove it afterwards. CI sets `mock:none`, so the built site never asks IMGW; `web/scripts/check-warnings.mjs` then checks every state on the built site's address page (each warning once, nothing of IMGW's on other pages), one server per state (`checkedAgo` for the stale and too-old states, `fail=500` for a store that cannot be read). Unit tests cannot reach the network at all (`web/scripts/lib/no-network.mjs`, loaded by `npm test`).
+Locally: put `IMGW_WARNINGS_URL=mock:1809?level=2` in `web/.env.local` (and the `db:local` settings), restart `next dev`. On a preview: add the variable for that branch only (`vercel env add IMGW_WARNINGS_URL preview <branch> --scope gdzie-zamieszkac`), then redeploy; remove it afterwards. CI sets `mock:none`, so the built site never asks IMGW; `web/scripts/check-warnings.mjs` then checks every state on the built site's address page (a card per warning, highest first, right above the timeline, nothing of it in the timeline, `/pogoda` a 404, nothing of IMGW's on other pages), one server per state (`checkedAgo` for the stale and too-old states, `fail=500` for a store that cannot be read). Unit tests cannot reach the network at all (`web/scripts/lib/no-network.mjs`, loaded by `npm test`).
 
-**Never in production.** When `VERCEL_ENV` is `production` (Vercel sets it on every production function), `upstream()` ignores a `mock:` value, logs it, and uses the official endpoint. The mock module is loaded only after that check, and itself refuses to answer in production. There is no mock route or URL to reach. Both are covered by unit tests (`upstream: … the mock is refused in production`, `the mock … never in production`).
+**Never in production.** When `VERCEL_ENV` is `production` (Vercel sets it on every production function), `upstream()` ignores a `mock:` value, logs it, and uses the official endpoint. The mock module is loaded only after that check, and itself refuses to answer in production. Outside production only, `?imgw=` on an address page reads the mock for that request, so a Preview can be reviewed without the variable (`web/lib/imgw-preview.ts`, task 288): `?imgw=2` one warning at level 2, begun an hour ago; `?imgw=3,1` two, at 3 and 1 (`also=`); `?imgw=1,upcoming` or `,night` a later start; up to three levels. In production the parameter is not even kept (`lib/clean-query.ts` redirects it away, as any unknown one) and `imgwPreview` ignores it. Both are covered by unit tests (`upstream: … the mock is refused in production`, `the mock … never in production`).

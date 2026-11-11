@@ -22,12 +22,6 @@ export function Parts({ parts, lead }: { parts: Part[]; lead: boolean }) {
     if ("bins" in part) {
       return <Bins key={key} pickups={part.bins} size="small" />;
     }
-    if ("tag" in part)
-      return (
-        <strong key={key} className={part.tag}>
-          {part.text}
-        </strong>
-      );
     if ("day" in part)
       return lead ? (
         <DayWord key={key} day={part.day} form="lead" text={part.text} />
