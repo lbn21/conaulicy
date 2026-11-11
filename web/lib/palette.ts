@@ -115,7 +115,7 @@ export const WARNING_LEVELS = {
 // (a failure, IMGW's level 3). Each a group in GOV.UK's steps (group()):
 // the primary for bars and rings (3:1 or more on white), shade-25 for its
 // text and icons (4.5:1 or more on white and on its tint), tint-80 for an
-// icon's tile, tint-95 for a wash (docs/brand.md, Module colours).
+// icon's tile and a module's badge.
 export const MODULE_COLOURS = {
   smieci: "#1e7d43",
   woda: "#1767b0",
@@ -133,7 +133,6 @@ export const MODULE_ROLES = Object.fromEntries(
         main: primary,
         ink: steps["shade-25"],
         tint: steps["tint-80"],
-        wash: steps["tint-95"],
       },
     ];
   }),
