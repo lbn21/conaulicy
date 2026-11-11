@@ -1,86 +1,46 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { keyGrid } from "./pdf-key.ts";
+import { KEY_COLUMNS, KEY_ROWS, keyCell, keyGrid } from "./pdf-key.ts";
 
 const GAP = 12;
-const rowCounts = (grid: ReturnType<typeof keyGrid>) =>
-  Array.from(
-    { length: grid.rows },
-    (_, r) => grid.places.filter((p) => p.row === r).length,
-  );
 
 describe("keyGrid", () => {
-  it("keeps the items on one line when they fit", () => {
-    const grid = keyGrid([40, 50, 30], 200, GAP);
-    assert.equal(grid.rows, 1);
+  it("is one grid for any address: equal cells, as wide as the widest item", () => {
+    const widths = [72, 48, 32, 49, 162, 44];
+    const grid = keyGrid(widths, 6, 540, GAP);
+    assert.equal(grid.columns, KEY_COLUMNS);
+    assert.equal(grid.rows, KEY_ROWS);
+    assert.equal(grid.cellW, Math.max(...widths));
+    assert.deepEqual(grid.x, [0, 174, 348]);
+    assert.ok(grid.fits);
+  });
+
+  it("keeps its rows for an address with fewer items", () => {
+    const grid = keyGrid([72, 162], 1, 540, GAP);
+    assert.equal(grid.rows, KEY_ROWS);
+    assert.equal(grid.columns, KEY_COLUMNS);
+  });
+
+  it("fills the cells row by row, left to right", () => {
+    const grid = keyGrid([100], 6, 540, GAP);
+    const cells = Array.from({ length: 6 }, (_, i) => keyCell(grid, i));
     assert.deepEqual(
-      grid.places.map((p) => p.x),
-      [0, 52, 114],
+      cells.map((c) => c.row),
+      [0, 0, 0, 1, 1, 1],
+    );
+    assert.deepEqual(
+      cells.map((c) => c.x),
+      [0, 112, 224, 0, 112, 224],
     );
   });
 
-  it("never leaves one item alone on a second line", () => {
-    // Greedy wrapping would put the last item alone on line two.
-    const widths = [60, 60, 60, 60, 60, 30];
-    const room = 5 * 60 + 4 * GAP;
-    const grid = keyGrid(widths, room, GAP);
-    assert.equal(grid.rows, 2);
-    assert.deepEqual(rowCounts(grid), [3, 3]);
+  it("takes more rows, never narrower cells, for more items", () => {
+    const grid = keyGrid([100], 7, 540, GAP);
+    assert.equal(grid.rows, 3);
+    assert.equal(grid.cellW, 100);
   });
 
-  it("aligns the second line's items with the first's columns", () => {
-    const widths = [40, 90, 30, 70, 20];
-    const grid = keyGrid(widths, 220, GAP);
-    assert.equal(grid.rows, 2);
-    const first = grid.places.filter((p) => p.row === 0).map((p) => p.x);
-    for (const p of grid.places.filter((p) => p.row === 1)) {
-      assert.ok(first.includes(p.x));
-    }
-    // Each column as wide as its widest item: nothing overlaps.
-    grid.places.forEach((p, i) => {
-      const next = grid.places[i + 1];
-      if (next?.row === p.row) assert.ok(p.x + widths[i] + GAP <= next.x);
-    });
-  });
-
-  it("fits within the room for every count of a worst-case set", () => {
-    const all = [57, 33, 17, 34, 101, 147, 29, 96, 140, 70, 89, 100].map(
-      (w) => w + 15,
-    );
-    for (let n = 1; n <= all.length; n++) {
-      const widths = all.slice(0, n);
-      const grid = keyGrid(widths, 463, GAP);
-      const counts = rowCounts(grid);
-      assert.ok(counts.every((c) => c > 0));
-      const lone = counts.includes(1) && counts.some((c) => c > 1);
-      assert.ok(!lone, `n=${n}: ${counts.join(" + ")}`);
-      grid.places.forEach((p, i) => {
-        assert.ok(p.x + widths[i] <= 463 || p.x === 0, `n=${n} item ${i}`);
-      });
-      // Never more lines than filling each line in turn would take.
-      let greedy = 1;
-      let x = 0;
-      for (const w of widths) {
-        if (x > 0 && x + w > 463) {
-          greedy++;
-          x = 0;
-        }
-        x += w + GAP;
-      }
-      assert.ok(grid.rows <= greedy || n <= 3, `n=${n}: ${grid.rows} lines`);
-    }
-  });
-
-  it("falls back to balanced lines when columns are too wide", () => {
-    // Two wide items in one column would not fit; the lines at their own
-    // widths do, as even as can be.
-    const widths = [150, 20, 20, 150, 20, 20];
-    const grid = keyGrid(widths, 230, GAP);
-    assert.equal(grid.rows, 2);
-    assert.deepEqual(rowCounts(grid), [3, 3]);
-  });
-
-  it("lays out no items in one empty row", () => {
-    assert.deepEqual(keyGrid([], 100, GAP), { rows: 1, places: [] });
+  it("says when its columns do not fit", () => {
+    assert.equal(keyGrid([162], 6, 463, GAP).fits, false);
   });
 });

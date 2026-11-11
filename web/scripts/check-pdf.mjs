@@ -8,8 +8,9 @@
 // address's month tables are the same size, rows included, however many
 // months it has, in one fixed 4 × 3 grid inside the page's margins (a
 // whole year's twelve months on page 1), every row one height (no date's
-// marks wrap), every header cell's text one padding in, the key's lines
-// starting in one place with no item alone, at one place
+// marks wrap), every header cell's text one padding in, the key one fixed
+// grid under its own heading (the same rows, columns and cell width on
+// every address's PDF, sized for the fullest), all at one place
 // on the page whatever the street's name (the longest on one line), and so
 // are the guide's tiles; no word on pages 1–2 spills
 // out of its table, tile or box (scripts/lib/pdf-layout.mjs). Checks are
@@ -30,6 +31,7 @@ import path from "node:path";
 import { inflateSync } from "node:zlib";
 import QRCode from "qrcode";
 import { SITE_URL } from "../lib/config.generated.ts";
+import { KEY_COLUMNS, KEY_ROWS } from "../lib/pdf-key.ts";
 import { GUIDES } from "../lib/sorting-guide.ts";
 import { walk } from "./lib/files.mjs";
 import { pageStrokes, pageWords, spills } from "./lib/pdf-layout.mjs";
@@ -46,12 +48,12 @@ const gminaOf = (p) =>
   p.startsWith("/adres/0972447") ? "Lubaczów (miasto)" : "Lubaczów (gmina)";
 const CASES = [
   {
-    name: "city street",
+    name: "city street (Asnyka)",
     path: "/adres/0972447-00470/harmonogram.pdf",
     page: "/adres/0972447-00470/smieci",
   },
   {
-    name: "two-month street",
+    name: "two-month street (Rynek)",
     path: "/adres/0972447-19253/harmonogram.pdf",
     page: "/adres/0972447-19253/smieci",
   },
@@ -64,7 +66,7 @@ const CASES = [
     title: true,
   },
   {
-    name: "village",
+    name: "village (Szczutków)",
     path: "/adres/0606375/harmonogram.pdf",
     page: "/adres/0606375/smieci",
   },
@@ -146,6 +148,10 @@ const GRID = { columns: 4, rows: 3 };
 const round = (n) => Math.round(n * 100) / 100;
 // Per case: page 1's table size and row height, page 2's largest tile.
 const layouts = [];
+// Per case: page 1's key, its heading's line, its rows and columns.
+const keys = [];
+/** A key row (the route's KEY_ROW). */
+const KEY_ROW = 20;
 
 const failures = [];
 const check = (ok, message) => {
@@ -401,32 +407,38 @@ try {
         ),
       `${c.name}: page 1 header cells' left padding ${[...new Set(headerPads.map(round))].join(", ")} pt (one for every header cell)`,
     );
-    // The key, between the tables and the footer: its lines start in one
-    // place, and no item stands alone on a line beside fuller ones.
-    // Items are words more than 2 U apart (a mark between them); the first
-    // line's first word is the key's heading.
+    // The key, between the tables and the footer's rule: a moved date's
+    // note (only where the data has one), then the key's heading on a line
+    // of its own at the margin and its fixed grid, rows filled in turn,
+    // left to right (lib/pdf-key.ts). Lines are 5 U apart within a block,
+    // a section apart between blocks. Items are words more than 2 U apart
+    // (a mark between them).
     const tablesEnd = Math.max(...tables.map((t) => t.y1));
+    const footerRule = Math.min(
+      ...(strokes[0]?.rules ?? [])
+        .filter((r) => r.y > tablesEnd && r.x1 - r.x0 > PAGE_W / 2)
+        .map((r) => r.y),
+    );
     const keyLines = [];
     for (const w of words1
-      .filter((w) => w.y0 > tablesEnd)
+      .filter((w) => w.y0 > tablesEnd && w.y1 < footerRule)
       .sort((a, b) => a.y0 - b.y0 || a.x0 - b.x0)) {
       // One line: tops within 2 U (pdftotext boxes lowercase-only words
-      // lower); the key's lines are 5 U apart.
+      // lower).
       const line = keyLines.find((l) => Math.abs(l[0].y0 - w.y0) < 8);
       if (line) line.push(w);
       else keyLines.push([w]);
     }
-    // The key's heading and the footer start at the margin, the key's
-    // later lines after the heading: the key ends at the next line from
-    // the margin.
-    const footerAt = keyLines.findIndex(
-      (line, i) => i > 0 && Math.min(...line.map((w) => w.x0)) < SIDE + 1,
-    );
-    if (footerAt > 0) keyLines.splice(footerAt);
-    const items = keyLines.map((line, i) =>
-      line
+    const blocks = [];
+    for (const line of keyLines) {
+      const last = blocks.at(-1);
+      if (last && line[0].y0 - last.at(-1)[0].y0 < KEY_ROW + 2) last.push(line);
+      else blocks.push([line]);
+    }
+    const keyBlock = blocks.at(-1) ?? [];
+    const itemsOf = (line) =>
+      [...line]
         .sort((a, b) => a.x0 - b.x0)
-        .slice(i === 0 ? 1 : 0)
         .reduce((out, w) => {
           const prev = out.at(-1);
           if (prev && w.x0 - prev.x1 <= 8) {
@@ -439,15 +451,35 @@ try {
             out.push({ start: w.x0, x1: w.x1, mark: w.x1 - w.x0 < MARK_SLOT });
           }
           return out;
-        }, []),
-    );
-    const counts = items.map((line) => line.length);
+        }, []);
+    const heading = keyBlock[0] ? itemsOf(keyBlock[0]) : [];
+    const cellRows = keyBlock.slice(1).map(itemsOf);
+    const counts = cellRows.map((r) => r.length);
     check(
-      counts.length > 0 &&
-        !(counts.includes(1) && counts.some((n) => n > 1)) &&
-        items.every((line) => Math.abs(line[0].start - items[0][0].start) < 1),
-      `${c.name}: page 1 key in ${counts.length} lines of ${counts.join(" + ")} items (lines start in one place, none alone; at ${items.map((line, i) => `${round(line[0].start)},${round(keyLines[i][0].y0)}`).join(" ")})`,
+      heading.length === 1 &&
+        Math.abs(heading[0].start - SIDE) < 1 &&
+        blocks.length <= 2 &&
+        cellRows.length >= 1 &&
+        cellRows.length <= KEY_ROWS &&
+        counts.every(
+          (n, i) =>
+            n <= KEY_COLUMNS && (i === 0 || counts[i - 1] === KEY_COLUMNS),
+        ),
+      `${c.name}: page 1 key: heading alone at the margin, then ${counts.join(" + ")} items in ${cellRows.length} rows (at most ${KEY_COLUMNS} × ${KEY_ROWS}, filled in turn)`,
     );
+    keys.push({
+      name: c.name,
+      items: counts.reduce((a, b) => a + b, 0),
+      top: round(keyBlock[0]?.[0].y0 ?? Number.NaN),
+      rows: keyBlock.slice(1).map((line) => round(line[0].y0)),
+      x: (cellRows[0] ?? []).map((item) => round(item.start)),
+      // Every later row's items in the first's columns.
+      aligned: cellRows.every((r) =>
+        r.every((item, i) => Math.abs(item.start - cellRows[0][i].start) < 1),
+      ),
+      tablesEnd: round(tablesEnd),
+      footerRule: round(footerRule),
+    });
     // A fixed grid inside the page's margins: at most 4 × 3 tables on page
     // 1, a whole window's twelve months all of them, nothing carried over.
     const xs = new Set(tables.map((t) => round(t.x0)));
@@ -523,6 +555,26 @@ try {
   }
   console.log(
     `ok    one layout: tables ${layouts[0]?.table} from ${layouts[0]?.top} pt, date column ${layouts[0]?.date} pt, rows ${layouts[0]?.row} pt, tiles ${layouts[0]?.tile}`,
+  );
+
+  // One key for every address, at one place (Rynek, Asnyka, Szczutków,
+  // and the fullest key of them all): its heading's line, its rows, and
+  // its columns' x (so one cell width) the fullest key's, an address with
+  // fewer items in the first of its cells.
+  const worst = keys.reduce((a, b) => (b.items > a.items ? b : a), keys[0]);
+  const prefix = (xs, of) => xs.every((x, i) => Math.abs(x - of[i]) < 1);
+  for (const k of keys) {
+    check(
+      k.aligned &&
+        k.top === worst.top &&
+        prefix(k.rows, worst.rows) &&
+        prefix(k.x, worst.x),
+      `${k.name}: key heading at ${k.top}, rows at ${k.rows.join(", ")}, columns at ${k.x.join(", ")}; ${worst.name} (the fullest, ${worst.items} items): ${worst.top}, ${worst.rows.join(", ")}, ${worst.x.join(", ")} (one grid for every address)`,
+    );
+  }
+  const pitch = worst ? round(worst.x[1] - worst.x[0]) : Number.NaN;
+  console.log(
+    `ok    one key: heading at ${worst?.top} pt, rows at ${worst?.rows.join(", ")} pt, columns at ${worst?.x.join(", ")} pt (a cell and its gap ${pitch} pt; fullest ${worst?.name}, ${worst?.items} items); tables end at ${keys.map((k) => `${k.name} ${k.tablesEnd}`).join("; ")}; footer rule ${worst?.footerRule} pt`,
   );
 
   // The waste subpage of an ended schedule (the page that offers both) has
