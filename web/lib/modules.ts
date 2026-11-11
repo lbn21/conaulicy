@@ -28,12 +28,7 @@ import { getPlace, type PlaceView } from "@/lib/schedule";
 import { placeDescription } from "@/lib/schedule-notes";
 import type { Entry } from "@/lib/timeline";
 import type { Item } from "@/lib/upcoming";
-import {
-  wasteChecked,
-  wasteNote,
-  wasteSources,
-  wasteStatus,
-} from "@/lib/waste-module";
+import { wasteChecked, wasteSources, wasteStatus } from "@/lib/waste-module";
 import { wasteUpcoming } from "@/lib/waste-upcoming";
 import { loadWater } from "@/lib/water-load";
 import {
@@ -95,11 +90,6 @@ export type Module<D> = {
   /** Its sources, in its subpage's inset: a link each. */
   sources(data: D): Part[][];
   /**
-   * A sentence in the address page's small print (waste: the dates are not
-   * checked yet); left out or null: none.
-   */
-  note?(data: D): string | null;
-  /**
    * When we last checked its source: in the address page's freshness line
    * (lib/hub.ts freshnessLine) and its subpage's source inset
    * (sourceLine). null: nothing shown.
@@ -148,7 +138,6 @@ const waste: Module<PlaceView> = {
   subject: "odbiorów śmieci",
   Row: WasteRow,
   sources: wasteSources,
-  note: wasteNote,
   checkedAt: wasteChecked,
   description: (place) => placeDescription(place, "waste"),
   indexed: indexedPlace,

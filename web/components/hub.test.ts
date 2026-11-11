@@ -284,18 +284,23 @@ test("no warning: no card and nothing in its place", () => {
 test("„Wszystko o Twoim adresie” and the small print: a link per module with a source, then the checks and IMGW's words", () => {
   const html = page(VILLAGE, CUTS, WARNINGS);
   // The weather has no subpage: no link for it.
-  // A card per module: its link, and how many in the window (the badge).
+  // A card per module: one link, in a plain h3 (its name the title), and
+  // how many in the window: a badge when there are some, else plain grey
+  // text, never a pill.
   const links = section(html, "wszystko");
   assert.deepEqual(texts(links, "a"), [MODULES.woda.more, MODULES.prad.more]);
-  // Its count badge: water's two cuts, power's none (muted).
+  assert.deepEqual(texts(links, "h3"), [MODULES.woda.more, MODULES.prad.more]);
+  for (const card of links.split("<li ").slice(1))
+    assert.equal(count(card, "<a "), 1);
   const badges = [
     ...links.matchAll(/<strong class="(app-badge[^"]*)">([^<]*)</g),
   ];
   assert.deepEqual(
     badges.map(([, tone]) => tone),
-    ["app-badge app-badge--mod", "app-badge"],
+    ["app-badge app-badge--mod"],
   );
   assert.match(badges[0][2], /^2\D/);
+  assert.equal(count(links, 'app-quiet">'), 1);
   // The checks, with their times; no waste check here, so waste is left
   // out; then IMGW's required wording, as given (IMGW_ATTRIBUTION).
   const small = smallPrint(html);
@@ -364,6 +369,8 @@ test("nothing in the window and nothing later: one line, no cards; the links and
   assert.ok(
     smallPrint(html).includes(`${MODULES.smieci.title} 20 października`),
   );
+  // IMGW not read: none of its wording.
+  assert.equal(count(html, IMGW_NAME), 0);
   // Not checked is never „nothing”: the notice says so, above the line.
   assert.ok(
     html.indexOf(unchecked(MODULES.woda)) < html.indexOf('class="app-empty'),
@@ -410,21 +417,17 @@ test("waste only after the window: „Później”, its next pickup with its yea
   // The waste subpage's link and its check in the small print.
   assert.ok(
     section(html, "wszystko").includes(
-      `<a class="govuk-link app-item__link" href="/adres/0000001-00001/smieci">${MODULES.smieci.more}</a>`,
+      `<a class="govuk-link govuk-link--text-colour govuk-link--no-underline app-item__link" href="/adres/0000001-00001/smieci">${MODULES.smieci.more}</a>`,
     ),
   );
   const checks = smallPrint(html);
   assert.ok(checks.includes(`${MODULES.smieci.title} 20 października`));
   assert.ok(checks.includes(`${MODULES.prad.title} 25 października 13:30`));
-  // Dates not checked yet: waste's note after the checks, before IMGW's.
-  const unverified = { ...STREET, verified: false };
-  const note = MODULES.smieci.note?.(unverified);
-  assert.ok(note);
-  assert.equal(MODULES.smieci.note?.(STREET), null);
-  const caveat = smallPrint(page(unverified));
-  assert.ok(
-    caveat.indexOf("13:30") < caveat.indexOf(note) &&
-      caveat.indexOf(note) < caveat.indexOf(IMGW_ATTRIBUTION.source[0]),
+  // Dates not checked yet: the small print stays the same (the caveat is
+  // on the waste subpage).
+  assert.equal(
+    smallPrint(page(testPlace({ ...STREET, verified: false }))),
+    checks,
   );
 });
 

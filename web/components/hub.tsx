@@ -36,8 +36,8 @@ import type { Weather } from "@/lib/weather-module";
 // by day (components/timeline.tsx, lib/timeline.ts), then „Później”;
 // „Wszystko o Twoim adresie”, a link to each module's subpage (/smieci,
 // /woda) that has a source; then one small-print note: when each
-// module last checked its source, the AI caveat when it applies, and IMGW's
-// required wording (the sources are on the subpages). No
+// module last checked its source, and IMGW's required wording when its
+// data was read (the sources and the AI caveat are on the subpages). No
 // calendar or PDF here: they are on the waste subpage. A split street's
 // number errors keep the street page (StreetPage), GOV.UK's validation
 // pattern.
@@ -127,14 +127,19 @@ function windowCounts(items: Item[], today: string, now: number) {
   return counts;
 }
 
-/** A module card's count badge: how many in the window, or none. */
+/**
+ * A module card's count: a badge when something is in the window; none,
+ * plain grey text (an empty state is never a pill).
+ */
 function CountBadge({ count }: { count: number }) {
   return count > 0 ? (
     <Badge tone="mod">
       {count} w ciągu {WINDOW} dni
     </Badge>
   ) : (
-    <Badge>Nic w ciągu {WINDOW} dni</Badge>
+    <span className="govuk-body-s govuk-!-margin-bottom-0 app-quiet">
+      Nic w ciągu {WINDOW} dni
+    </span>
   );
 }
 
@@ -157,8 +162,16 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
       SUBPAGE_IDS.includes(module.id) && module.sources(data).length > 0,
   );
   const weather = data[MODULE_IDS.indexOf("pogoda")] as Weather | null;
+  // IMGW's data was read: its required wording in the small print.
+  const imgw = weather?.checkedAt != null;
   const now = Date.now();
   const counts = windowCounts(items, place.today, now);
+  const fresh = freshnessLine(
+    loaded.map(({ module, data }) => ({
+      name: module.title,
+      at: module.checkedAt(data),
+    })),
+  );
   return (
     <AddressPage place={place}>
       <NowBanner items={items} place={place} now={now} />
@@ -175,8 +188,9 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
             Wszystko o Twoim adresie
           </h2>
           {/* A card per module (site.scss .app-items): its icon on its
-            colour's tile, the link (the whole card is its target), how many
-            of its items are in the window, a chevron. */}
+            colour's tile, its title, a plain heading whose one link
+            stretches over the whole card (the link's name the title), how
+            many of its items are in the window, a chevron. */}
           <ul className="app-items">
             {links.map(({ module }) => (
               <li
@@ -185,12 +199,14 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
               >
                 <Tile name={module.id} />
                 <span className="app-item__body">
-                  <PlaceLink
-                    className="govuk-link app-item__link"
-                    href={subpageHref(module, place)}
-                  >
-                    {module.more}
-                  </PlaceLink>
+                  <h3 className="govuk-heading-s govuk-!-margin-bottom-0">
+                    <PlaceLink
+                      className="govuk-link govuk-link--text-colour govuk-link--no-underline app-item__link"
+                      href={subpageHref(module, place)}
+                    >
+                      {module.more}
+                    </PlaceLink>
+                  </h3>
                   <CountBadge count={counts.get(module.id) ?? 0} />
                 </span>
                 <Icon name="chevron" />
@@ -199,29 +215,26 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
           </ul>
         </section>
       )}
-      {/* Small print at the end, above the footer: when each
-        module last checked its source, the AI caveat when it applies, and
-        IMGW's required wording, its name linked: the weather has no
-        subpage, so its source link is here. The other sources are on the
-        subpages. */}
-      <p className="govuk-hint govuk-!-font-size-16">
-        {[
-          freshnessLine(
-            loaded.map(({ module, data }) => ({
-              name: module.title,
-              at: module.checkedAt(data),
-            })),
-          ),
-          ...loaded.map(({ module, data }) => module.note?.(data)),
-          IMGW_ATTRIBUTION.source[0],
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        <a className="govuk-link" href={IMGW_PAGE}>
-          {IMGW_NAME}
-        </a>
-        {`${IMGW_ATTRIBUTION.source[1]} ${IMGW_ATTRIBUTION.processed}`}
-      </p>
+      {/* Small print at the end, above the footer, only what a resident
+        needs: when each module last checked its source, and, when IMGW's
+        data was read, its required wording, its name linked: the weather
+        has no subpage, so its source link is here. The other sources and
+        the AI caveat are on the subpages. */}
+      {(fresh || imgw) && (
+        <p className="govuk-hint govuk-!-font-size-16">
+          {[fresh, imgw && IMGW_ATTRIBUTION.source[0]]
+            .filter(Boolean)
+            .join(" ")}
+          {imgw && (
+            <>
+              <a className="govuk-link" href={IMGW_PAGE}>
+                {IMGW_NAME}
+              </a>
+              {`${IMGW_ATTRIBUTION.source[1]} ${IMGW_ATTRIBUTION.processed}`}
+            </>
+          )}
+        </p>
+      )}
     </AddressPage>
   );
 }
