@@ -11,7 +11,8 @@ import {
   REAL_2026_10_24,
 } from "./imgw-fixture.ts";
 import { feedFile, fetchFeed, ours } from "./imgw-warnings.ts";
-import { IMGW_KEY, nextChecks } from "./live-status.ts";
+import { mockFailure, mockLiveFiles } from "./live-mock.ts";
+import { IMGW_KEY } from "./live-status.ts";
 
 const HOUR = 3_600_000;
 
@@ -71,24 +72,6 @@ const BODIES: Record<string, (params: URLSearchParams, now: number) => string> =
     "1809": (params, now) => JSON.stringify(mock1809(params, now)),
   };
 
-// fail=500|html|timeout, from failAfter (ISO) if given: a broken upstream.
-function failure(params: URLSearchParams, signal?: AbortSignal | null) {
-  switch (params.get("fail") ?? "500") {
-    case "html":
-      return Promise.resolve(
-        new Response("<!DOCTYPE html><title>Błąd</title>", {
-          headers: { "Content-Type": "text/html" },
-        }),
-      );
-    case "timeout":
-      return new Promise<Response>((_, reject) =>
-        signal?.addEventListener("abort", () => reject(signal.reason)),
-      );
-    default:
-      return Promise.resolve(new Response("", { status: 500 }));
-  }
-}
-
 /** fetch for IMGW_WARNINGS_URL=mock:<none|real|1809>[?level=…&start=…&also=…&fail=…&failAfter=…&checkedAgo=…]. */
 export const mockFetch: typeof fetch = async (input, init) => {
   if (process.env.VERCEL_ENV === "production")
@@ -101,7 +84,7 @@ export const mockFetch: typeof fetch = async (input, init) => {
     (params.has("fail") || failAfter) &&
     (!failAfter || now >= Date.parse(failAfter))
   )
-    return failure(params, init?.signal);
+    return mockFailure(params.get("fail") ?? "500", init?.signal);
   const body = BODIES[url.pathname];
   if (!body) return new Response("", { status: 404 });
   return new Response(body(params, now), {
@@ -115,20 +98,15 @@ export const mockFetch: typeof fetch = async (input, init) => {
  * the mock's feed, our powiats' items, and that run's check. A mock that
  * fails (fail=…, failAfter=…) is a store that cannot be read: it throws.
  */
-export async function mockFiles(
+export function mockFiles(
   url: string,
   now: number,
 ): Promise<{ feed: string; checks: string }> {
-  const ago = Number(new URL(url).searchParams.get("checkedAgo") ?? 0);
-  const checkedAt = now - ago * 60_000;
-  const feed = await fetchFeed(url, {
-    fetch: mockFetch,
-    now: () => checkedAt,
+  return mockLiveFiles(url, now, IMGW_KEY, async (checkedAt) => {
+    const feed = await fetchFeed(url, {
+      fetch: mockFetch,
+      now: () => checkedAt,
+    });
+    return feedFile({ fetchedAt: feed.fetchedAt, items: ours(feed.items) });
   });
-  return {
-    feed: feedFile({ fetchedAt: feed.fetchedAt, items: ours(feed.items) }),
-    checks: JSON.stringify(
-      nextChecks(null, { [IMGW_KEY]: true }, isoWithOffset(checkedAt)),
-    ),
-  };
 }

@@ -4,7 +4,8 @@ import { PGE_KEY, parseChecks } from "./live-status.ts";
 import { type PgeCronDeps, runPge } from "./pge-cron.ts";
 import { outagesUrl, PGE_URL, parseOutagesFile } from "./pge-feed.ts";
 import { REAL_2026_11_11 } from "./pge-fixture.ts";
-import { handleZukCron, type ZukCronDeps } from "./zuk-cron.ts";
+import { handleZukCron } from "./zuk-cron.ts";
+import { waterDown } from "./zuk-fixture.ts";
 import { ZUK_PLACES } from "./zuk-places.generated.ts";
 
 const T0 = Date.parse("2026-11-11T16:52:00Z");
@@ -99,19 +100,10 @@ test("PGE failing: the file kept, the class logged, never thrown", async () => {
 
 test("the cron records PGE's check under its key; a failure keeps the last good one", async () => {
   const { state, deps } = setup();
-  const water: ZukCronDeps = {
-    fetch: (async () => {
-      throw new Error("no network");
-    }) as unknown as typeof fetch,
-    readFile: async () => {
-      throw new Error("water file unreadable");
-    },
-    writeFile: async () => assert.fail("no water write"),
-    places: async () => assert.fail("no places"),
-    xaiKey: undefined,
-    now: () => new Date(state.now),
-    log: () => {},
-  };
+  const water = waterDown(
+    () => new Date(state.now),
+    () => {},
+  );
   const checks = {
     read: async () => state.store.get(CHECKS) ?? null,
     write: async (body: string) => {

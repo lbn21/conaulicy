@@ -4,7 +4,8 @@
 // files in the store (mockFiles). lib/pge-feed.ts and lib/live-store.ts
 // load it only outside production, and it refuses to answer in production.
 import { isoWithOffset, shiftWall, todayInWarsaw } from "./dates.ts";
-import { nextChecks, PGE_KEY } from "./live-status.ts";
+import { mockFailure, mockLiveFiles } from "./live-mock.ts";
+import { PGE_KEY } from "./live-status.ts";
 import { fetchOutages, ours, outagesFile } from "./pge-feed.ts";
 import { derivedOurs, FAILURE_ID, REAL_2026_11_11 } from "./pge-fixture.ts";
 import { ZUK_PLACES } from "./zuk-places.generated.ts";
@@ -64,31 +65,13 @@ const BODIES: Record<string, (now: number) => string> = {
   ours: (now) => JSON.stringify(oursNow(now)),
 };
 
-/** fail=500|401|429|html|timeout: a broken upstream. */
-function failure(kind: string, signal?: AbortSignal | null) {
-  switch (kind) {
-    case "html":
-      return Promise.resolve(
-        new Response("<!DOCTYPE html><title>Błąd</title>", {
-          headers: { "Content-Type": "text/html" },
-        }),
-      );
-    case "timeout":
-      return new Promise<Response>((_, reject) =>
-        signal?.addEventListener("abort", () => reject(signal.reason)),
-      );
-    default:
-      return Promise.resolve(new Response("", { status: Number(kind) || 500 }));
-  }
-}
-
 /** fetch for PGE_API_URL=mock:<none|real|ours>[?fail=…&checkedAgo=…]: 401 without X-Auth-Token, as PGE. */
 export const mockFetch: typeof fetch = async (input, init) => {
   if (process.env.VERCEL_ENV === "production")
     throw new Error("PGE mock: off in production");
   const url = new URL(String(input));
   const fail = url.searchParams.get("fail");
-  if (fail) return failure(fail, init?.signal);
+  if (fail) return mockFailure(fail, init?.signal);
   if (!new Headers(init?.headers).get("X-Auth-Token"))
     return new Response("", { status: 401 });
   const body = BODIES[url.pathname];
@@ -104,26 +87,21 @@ export const mockFetch: typeof fetch = async (input, init) => {
  * the mock's list, our area's outages, and that run's check. A mock that
  * fails (fail=…) is a store that cannot be read: it throws.
  */
-export async function mockFiles(
+export function mockFiles(
   url: string,
   now: number,
-): Promise<{ outages: string; checks: string }> {
-  const ago = Number(new URL(url).searchParams.get("checkedAgo") ?? 0);
-  const checkedAt = now - ago * 60_000;
+): Promise<{ feed: string; checks: string }> {
   const log = () => {};
-  const feed = await fetchOutages(url, {
-    fetch: mockFetch,
-    token: "mock",
-    log,
-    now: () => checkedAt,
-  });
-  return {
-    outages: outagesFile({
+  return mockLiveFiles(url, now, PGE_KEY, async (checkedAt) => {
+    const feed = await fetchOutages(url, {
+      fetch: mockFetch,
+      token: "mock",
+      log,
+      now: () => checkedAt,
+    });
+    return outagesFile({
       fetchedAt: feed.fetchedAt,
       items: ours(feed.items, ZUK_PLACES, log),
-    }),
-    checks: JSON.stringify(
-      nextChecks(null, { [PGE_KEY]: true }, isoWithOffset(checkedAt)),
-    ),
-  };
+    });
+  });
 }

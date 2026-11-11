@@ -5,9 +5,10 @@
 // one set of texts for every address: only its list of sources differs.
 // Pure, so the unit tests read every state.
 //
-// Matching, from the data alone: a cut applies when its locality is the
-// address's locality and it names no street (the whole locality) or this
-// street. A village's own page also gets the cuts on some of its streets,
+// Matching, from the data alone (lib/place-match.ts, one rule with the
+// power module): a cut applies when its locality is the address's
+// locality and it names no street (the whole locality) or this street. A
+// village's own page also gets the cuts on some of its streets,
 // one per post, day and hours, the streets named (`Cut.streets`, „w części
 // miejscowości”); never a parent's streets. A village part (a TERYT part
 // with a parent) also gets every cut of its village that names no street:
@@ -39,7 +40,12 @@ import type { Disruption, Notice } from "./disruptions.ts";
 import { hasSource } from "./event-source.ts";
 import { capitalised, type Group, merged, type Part, span } from "./hub.ts";
 import { LIST } from "./locale.ts";
-import { PART_STREETS, VILLAGE_IN } from "./part-streets.ts";
+import { VILLAGE_IN } from "./part-streets.ts";
+import {
+  PARENT,
+  type PlaceRef,
+  matches as placeMatches,
+} from "./place-match.ts";
 import { placePath } from "./places.ts";
 import type { Item } from "./upcoming.ts";
 import {
@@ -95,28 +101,11 @@ export type Water = {
   unavailable: boolean;
 };
 
-type Address = Pick<PlaceView, "localityId" | "streetId">;
+type Address = PlaceRef;
 
-/** Each village part's village (the town's parts among them). */
-const PARENT = new Map<string, string>();
-for (const l of ZUK_PLACES.localities)
-  if (l.parentId) PARENT.set(l.id, l.parentId);
-
-/** Whether a cut applies to the address (see the top of this file). */
-export function matches(address: Address, cut: Disruption): boolean {
-  const { localityId, streetId } = cut.place;
-  if (localityId === address.localityId)
-    return (
-      streetId === null ||
-      address.streetId === null ||
-      streetId === address.streetId
-    );
-  if (streetId === null) return localityId === PARENT.get(address.localityId);
-  return (
-    address.streetId === null &&
-    (PART_STREETS.get(address.localityId)?.includes(streetId) ?? false)
-  );
-}
+/** Whether a cut applies to the address (lib/place-match.ts). */
+export const matches = (address: Address, cut: Disruption) =>
+  placeMatches(address, cut.place);
 
 /** A cut on the address's own locality: the only one a number can filter. */
 const own = (cut: Disruption, address: Address) =>

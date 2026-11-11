@@ -3,6 +3,8 @@ import { mock, test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { copyCheckedAt } from "../lib/imgw-fixture.ts";
+import type { PgeOutage } from "../lib/pge-feed.ts";
+import { type Power, power } from "../lib/power-module.ts";
 import type { PlaceView } from "../lib/schedule.ts";
 import {
   CHECKED,
@@ -24,10 +26,22 @@ import { WarsawToday } from "./warsaw-today.tsx";
 // timeline („Najbliższe 7 dni”, then „Później”), „Wszystko o Twoim
 // adresie” and the small print at the end.
 
+/** PGE checked at NOW, nothing at the place: no row, no line of its own. */
+const noOutages = (place: PlaceView) =>
+  power(
+    {
+      feed: { fetchedAt: NOW.toISOString(), items: [] },
+      checkedAt: NOW.getTime(),
+    },
+    place,
+    NOW.getTime(),
+  );
+
 const page = (
   place: PlaceView,
   cuts: Water | null = null,
   warnings: Weather | null = null,
+  outages: Power | null = noOutages(place),
 ) => {
   mock.timers.enable({ apis: ["Date"], now: NOW });
   try {
@@ -35,7 +49,10 @@ const page = (
       createElement(
         WarsawToday,
         { day: place.today },
-        createElement(Hub, { data: [place, cuts, warnings], place }),
+        createElement(Hub, {
+          data: [place, cuts, outages, warnings],
+          place,
+        }),
       ),
     );
   } finally {
@@ -243,11 +260,12 @@ test("„Wszystko o Twoim adresie” and the small print: a link per module with
   // The weather has no subpage: no link for it.
   assert.deepEqual(texts(section(html, "wszystko"), "li"), [
     "Wszystkie przerwy w wodzie",
+    "Wszystkie przerwy w dostawie prądu",
   ]);
   // No waste check here: waste is left out of the freshness line.
   assert.match(
     smallPrint(html),
-    /^Sprawdziliśmy: woda [^,]+ i pogoda 25 października 13:20\. Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy\. Dane Instytutu Meteorologii i Gospodarki Wodnej – Państwowego Instytutu Badawczego zostały przetworzone\.$/,
+    /^Sprawdziliśmy: woda [^,]+, prąd 25 października 13:30 i pogoda 25 października 13:20\. Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy\. Dane Instytutu Meteorologii i Gospodarki Wodnej – Państwowego Instytutu Badawczego zostały przetworzone\.$/,
   );
   // The weather has no subpage: its source link is IMGW's name here.
   assert.match(
@@ -270,12 +288,15 @@ test("no waste source: why, in the notices; no waste link, meta line or row", ()
 });
 
 test("a live module not checked says so; nothing is claimed for it", () => {
-  const html = page(VILLAGE);
+  const html = page(VILLAGE, null, null, null);
   assert.match(
     html,
-    /<div class="govuk-inset-text">.*<p class="govuk-body">Nie udało się sprawdzić przerw w dostawie wody\.<\/p><p class="govuk-body">Nie udało się sprawdzić ostrzeżeń IMGW\.<\/p><\/div>/,
+    /<div class="govuk-inset-text">.*<p class="govuk-body">Nie udało się sprawdzić przerw w dostawie wody\.<\/p><p class="govuk-body">Nie udało się sprawdzić przerw w dostawie prądu\.<\/p><p class="govuk-body">Nie udało się sprawdzić ostrzeżeń IMGW\.<\/p><\/div>/,
   );
-  assert.doesNotMatch(html, /Wszystkie przerwy w wodzie|Ostrzeżenia pogodowe/);
+  assert.doesNotMatch(
+    html,
+    /Wszystkie przerwy w wodzie|Wszystkie przerwy w dostawie prądu|Ostrzeżenia pogodowe/,
+  );
 });
 
 test("nothing in the window and nothing later: one line, no cards; the links and small print stay", () => {
@@ -339,12 +360,12 @@ test("waste only after the window: „Później”, its next pickup with its yea
   );
   assert.match(
     smallPrint(html),
-    /^Sprawdziliśmy: śmieci 20 października\. Źródłem /,
+    /^Sprawdziliśmy: śmieci 20 października i prąd 25 października 13:30\. Źródłem /,
   );
   // Dates not checked yet: the AI caveat after the checks.
   assert.match(
     smallPrint(page({ ...STREET, verified: false })),
-    /^Sprawdziliśmy: śmieci 20 października\. Daty przepisał program – jeśli coś się nie zgadza, ważniejszy jest harmonogram\. Źródłem /,
+    /^Sprawdziliśmy: śmieci 20 października i prąd 25 października 13:30\. Daty przepisał program – jeśli coś się nie zgadza, ważniejszy jest harmonogram\. Źródłem /,
   );
 });
 
@@ -354,5 +375,50 @@ test("a house number given: every subpage link keeps it", () => {
   assert.match(
     html,
     /href="\/adres\/0000001-00001\/smieci\?nr=12a">Wszystkie odbiory śmieci/,
+  );
+});
+
+test("power: its row as the water's, a range each, after the water; its notice with PGE's page", () => {
+  const outage = (over: Partial<PgeOutage>): PgeOutage => ({
+    uuid: "p1",
+    kind: "planned",
+    revoked: false,
+    revokedNote: null,
+    ranges: [
+      { start: "2026-10-26T08:00:00+01:00", end: "2026-10-26T09:00:00+01:00" },
+      { start: "2026-10-26T19:00:00+01:00", end: "2026-10-26T20:00:00+01:00" },
+    ],
+    addresses: [{ simc: VILLAGE.localityId, ulic: null, numbers: "1, 3/1" }],
+    updatedAt: null,
+    ...over,
+  });
+  const copy = (checkedAt: number, items: PgeOutage[]) => ({
+    feed: { fetchedAt: new Date(checkedAt).toISOString(), items },
+    checkedAt,
+  });
+  const items = [outage({}), outage({ uuid: "p2", revoked: true })];
+  const html = page(
+    VILLAGE,
+    CUTS,
+    WARNINGS,
+    power(copy(NOW.getTime(), items), VILLAGE, NOW.getTime()),
+  );
+  const rows = texts(html, "dd").filter((t) => t.includes("nie będzie prądu"));
+  // Two ranges, two rows; the revoked one in none.
+  assert.deepEqual(rows, [
+    "Od 8:00 do 9:00 nie będzie prądu.Smolińce, tylko pod niektórymi numerami – sprawdź w szczegółach.",
+    "Od 19:00 do 20:00 nie będzie prądu.Smolińce, tylko pod niektórymi numerami – sprawdź w szczegółach.",
+  ]);
+  assert.match(html, /<dt class="govuk-summary-list__key">Prąd<\/dt>/);
+  // Over an hour old: the notice in the inset, PGE's page linked.
+  const stale = page(
+    VILLAGE,
+    CUTS,
+    WARNINGS,
+    power(copy(NOW.getTime() - 70 * 60_000, items), VILLAGE, NOW.getTime()),
+  );
+  assert.match(
+    stale,
+    /Nie udało się teraz pobrać danych PGE\. Pokazujemy ostatnie dane z 12:20\. Aktualne znajdziesz na <a href="https:\/\/pgedystrybucja\.pl\/wylaczenia\/aktualne-przerwy-w-dostawie-energii" class="govuk-link">stronie PGE Dystrybucja<\/a>\./,
   );
 });

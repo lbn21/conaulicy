@@ -285,7 +285,7 @@ test("fetch: no token, nothing sent; each failure by its class, the token never 
     );
   }
   // No answer: the timeout.
-  const hanging = (async (url: string, init?: RequestInit) =>
+  const hanging = (async (_url: string, init?: RequestInit) =>
     new Promise<Response>((_, reject) =>
       init?.signal?.addEventListener("abort", () =>
         reject(init.signal?.reason),
@@ -361,7 +361,7 @@ test("the mock: none, real, ours (derived, moved to now), failures; never in pro
 test("the mock's files: ours only, the derived states, the check checkedAgo back", async () => {
   const now = Date.parse("2026-11-11T16:52:00Z");
   const files = await mockFiles("mock:ours?checkedAgo=70", now);
-  const feed = parseOutagesFile(files.outages);
+  const feed = parseOutagesFile(files.feed);
   const ids = feed?.items.map((item) => item.uuid) ?? [];
   assert.ok(ids.includes(REVOKED_ID));
   assert.ok(ids.includes(NO_RANGES_ID));

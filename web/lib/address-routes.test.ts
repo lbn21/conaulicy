@@ -14,20 +14,21 @@ import {
 import { placePath } from "./places.ts";
 
 // The exact list: unique, plain path segments, in the pages' order.
-test("waste first, then water, then weather; all but the weather have a subpage", () => {
-  assert.deepEqual(MODULE_IDS, ["smieci", "woda", "pogoda"]);
+test("waste first, then water, power, then weather; all but the weather have a subpage", () => {
+  assert.deepEqual(MODULE_IDS, ["smieci", "woda", "prad", "pogoda"]);
   // The weather's warnings are cards on the address page.
-  assert.deepEqual(SUBPAGE_IDS, ["smieci", "woda"]);
+  assert.deepEqual(SUBPAGE_IDS, ["smieci", "woda", "prad"]);
   for (const id of SUBPAGE_IDS) assert.ok(isModuleId(id), id);
   // Waste has its own folder; the others are app/adres/[id]/[module]/.
-  assert.deepEqual(MODULE_ROUTE_IDS, ["woda"]);
+  assert.deepEqual(MODULE_ROUTE_IDS, ["woda", "prad"]);
 });
 
 test("no module is called like another folder", () => {
   for (const id of MODULE_IDS) assert.ok(!FILE_NAMES.includes(id), id);
   assert.equal(isModuleId("harmonogram.pdf"), false);
   assert.equal(isModuleId("pogoda"), true);
-  assert.equal(isModuleId("prad"), false);
+  assert.equal(isModuleId("prad"), true);
+  assert.equal(isModuleId("gaz"), false);
 });
 
 test("the street page and a module subpage take ?nr=", () => {
@@ -39,7 +40,8 @@ test("the street page and a module subpage take ?nr=", () => {
   // No subpage: a 404, no ?nr=.
   assert.ok(!ADDRESS.test("/adres/0972447-00470/pogoda"));
   // No such module: no ?nr= (its URL is a 404).
-  assert.ok(!ADDRESS.test("/adres/0972447-00470/prad"));
+  assert.ok(ADDRESS.test("/adres/0972447-00470/prad"));
+  assert.ok(!ADDRESS.test("/adres/0972447-00470/gaz"));
   assert.ok(!ADDRESS.test("/adres/0972447-00470/numer"));
   assert.ok(!ADDRESS.test("/adres/0972447-00470/harmonogram.pdf"));
   assert.ok(!ADDRESS.test("/adres/0972447-00470/woda.ics"));
@@ -86,6 +88,7 @@ test("an unknown address is the proxy's 404, before any render", () => {
     `${street}/`,
     `${street}/smieci`,
     `${street}/woda/`,
+    `${street}/prad`,
     `${street}/harmonogram.pdf`,
     `${street}/woda.ics`,
     "/adres/0606004/smieci",
@@ -96,7 +99,9 @@ test("an unknown address is the proxy's 404, before any render", () => {
   // Anything else after an id, or an unknown id, whatever comes after.
   for (const path of [
     `${street}/pogoda`,
-    `${street}/prad`,
+    `${street}/gaz`,
+    // No power calendar (only water's woda.ics).
+    `${street}/prad.ics`,
     `${street}/numer`,
     "/adres/0606004/pogoda",
     "/adres/0972447-88888",

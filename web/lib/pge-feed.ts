@@ -24,7 +24,7 @@ const TIMEOUT_MS = 10_000;
 const FILE_VERSION = 1;
 
 /** One address of an outage: TERYT codes, PGE's house numbers verbatim. */
-export type PgeAddress = {
+type PgeAddress = {
   /** SIMC, 7 digits. */
   simc: string;
   /** ULIC, 5 digits; null when PGE names no street. */

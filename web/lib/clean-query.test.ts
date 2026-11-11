@@ -116,5 +116,5 @@ test("internal paths are never touched", () => {
 });
 
 test("an unknown module is not a route of ours", () => {
-  assert.equal(clean("/adres/X/prad?x=1"), null);
+  assert.equal(clean("/adres/X/gaz?x=1"), null);
 });

@@ -31,7 +31,7 @@ type Base = {
 /** One entry of the timeline: a module's cut, warning or pickup. */
 export type Item = Base &
   (
-    | { module: "woda"; emergency: boolean }
+    | { module: "woda" | "prad"; emergency: boolean }
     /** "papier, szkło" or "wszystkie pojemniki". */
     | { module: "smieci"; bins: string; pickups: Bins["bins"] }
   );

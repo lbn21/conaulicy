@@ -42,14 +42,21 @@ test("the crons' files: no Next cache in front of them; the pages read the Blob'
   assert.doesNotMatch(store, /unstable_cache|cacheTag/);
   assert.doesNotMatch(zuk, /unstable_cache|cacheTag/);
   assert.match(store, /useCache: cdn,/);
-  assert.match(store, /readBlobFile\(FEED_PATH, \{ cdn: true \}\)/);
+  // Every live feed's file and the status file, at once (liveRead).
+  assert.match(store, /readBlobFile\(path, \{ cdn: true \}\)/);
   assert.match(store, /readBlobFile\(CHECKS_PATH, \{ cdn: true \}\)/);
+  assert.match(store, /\n\s+FEED_PATH,\n/);
+  assert.match(store, /\n\s+PGE_PATH,\n/);
   assert.match(zuk, /readBlobFile\(source\.pathname, \{ cdn: true \}\)/);
   // The crons: the origin, so a run compares with the last write.
   assert.match(zuk, /return readBlobFile\(pathname\);/);
   assert.match(
     source("app/api/cron/zuk/route.ts"),
     /readFeed: \(\) => readBlobFile\(FEED_PATH\),/,
+  );
+  assert.match(
+    source("app/api/cron/zuk/route.ts"),
+    /readFile: \(\) => readBlobFile\(PGE_PATH\),/,
   );
   // Written with the minimum CDN lifetime, 60 s.
   assert.match(store, /cacheControlMaxAge: 60,/);
@@ -68,6 +75,19 @@ test("IMGW: asked only by the cron; its copy read only on the address pages", ()
   ]);
   // No IMGW banner on any other page.
   assert.deepEqual(calling(/\bimgw-banner\b|<ImgwLive/), []);
+});
+
+test("PGE: asked only by the cron; its copy read only by the power module", () => {
+  assert.deepEqual(calling(/\bfetchOutages\(/), [
+    "lib/pge-cron.ts",
+    "lib/pge-feed.ts",
+    "lib/pge-mock.ts",
+  ]);
+  // The power module's loader, for the address page and /prad.
+  assert.deepEqual(calling(/\bpgeCopy\(/), [
+    "lib/live-store.ts",
+    "lib/power-load.ts",
+  ]);
 });
 
 test("the shells: every `use cache` scope is cacheLife max and tags the dataset", () => {

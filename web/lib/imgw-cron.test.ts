@@ -4,7 +4,8 @@ import { type ImgwCronDeps, runImgw } from "./imgw-cron.ts";
 import { imgwCopyOf, POWIAT, shownWarnings } from "./imgw-shown.ts";
 import { IMGW_URL, parseFeedFile } from "./imgw-warnings.ts";
 import { IMGW_KEY, parseChecks } from "./live-status.ts";
-import { handleZukCron, type ZukCronDeps } from "./zuk-cron.ts";
+import { handleZukCron } from "./zuk-cron.ts";
+import { waterDown } from "./zuk-fixture.ts";
 
 const SECRET = "cron-secret";
 const T0 = new Date("2026-10-24T18:00:00Z");
@@ -156,19 +157,10 @@ test("the file not written: not a good check", async () => {
 // unreadable, so it stops there), IMGW beside it, the status file after.
 function cron(w: World, now: Date) {
   const clock = () => now.getTime();
-  const water: ZukCronDeps = {
-    fetch: (async () => {
-      throw new Error("no network");
-    }) as typeof fetch,
-    readFile: async () => {
-      throw new Error("water file unreadable");
-    },
-    writeFile: async () => assert.fail("no water write"),
-    places: async () => assert.fail("no places"),
-    xaiKey: undefined,
-    now: () => now,
-    log: (line) => w.logs.push(line),
-  };
+  const water = waterDown(
+    () => now,
+    (line) => w.logs.push(line),
+  );
   return handleZukCron(
     new Request("https://conaulicy.pl/api/cron/zuk", {
       headers: { authorization: `Bearer ${SECRET}` },
