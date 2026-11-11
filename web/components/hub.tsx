@@ -1,6 +1,8 @@
 import { io } from "next/cache";
 import { cache, type ReactNode } from "react";
 import { subpageHref } from "@/components/function-rows";
+import { Icon, Tile } from "@/components/icon";
+import { NowBanner } from "@/components/now-banner";
 import { Status } from "@/components/parts";
 import { PlaceLink } from "@/components/place-link";
 import {
@@ -21,6 +23,8 @@ import { IMGW_PAGE } from "@/lib/imgw-shown";
 import { IMGW_ATTRIBUTION, IMGW_NAME } from "@/lib/imgw-warnings";
 import { MODULES, type Module } from "@/lib/modules";
 import type { PlaceView } from "@/lib/schedule";
+import { days, onDay } from "@/lib/timeline";
+import type { Item } from "@/lib/upcoming";
 import type { Weather } from "@/lib/weather-module";
 
 // The address page, /adres/[id] (and ?nr=): a date-first hub of modules
@@ -103,6 +107,36 @@ export async function HubMain({
   );
 }
 
+/** The timeline's window, in days (components/timeline.tsx). */
+const WINDOW = 7;
+
+/**
+ * Each module's count of items in the timeline's window, by module id: an
+ * item over several days counted once.
+ */
+function windowCounts(items: Item[], today: string, now: number) {
+  const shown = new Set(
+    days(today, WINDOW).flatMap((day) =>
+      onDay(items, day, now).map(({ item }) => item),
+    ),
+  );
+  const counts = new Map<string, number>();
+  for (const item of shown)
+    counts.set(item.module, (counts.get(item.module) ?? 0) + 1);
+  return counts;
+}
+
+/** A module card's count badge: how many in the window, or none. */
+function CountBadge({ count }: { count: number }) {
+  return count > 0 ? (
+    <span className="app-badge app-badge--mod">
+      {count} w ciągu {WINDOW} dni
+    </span>
+  ) : (
+    <span className="app-badge">Nic w ciągu {WINDOW} dni</span>
+  );
+}
+
 /** The address page's blocks, as HubMain; `data` hubData's. */
 export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
   const modules = MODULE_IDS.map((slug): Module<unknown> => MODULES[slug]);
@@ -123,29 +157,42 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
   );
   const weather = data[MODULE_IDS.indexOf("pogoda")] as Weather | null;
   const now = Date.now();
+  const counts = windowCounts(items, place.today, now);
   return (
     <AddressPage place={place}>
+      <NowBanner items={items} place={place} now={now} />
       {notices.length > 0 && (
         <div className="govuk-inset-text">
           <Status groups={notices} />
         </div>
       )}
       <WarningCards warnings={weather?.shown?.warnings ?? []} now={now} />
-      <Timeline items={items} place={place} now={now} />
+      <Timeline items={items} place={place} now={now} n={WINDOW} />
       {links.length > 0 && (
         <section aria-labelledby="wszystko">
           <h2 id="wszystko" className="govuk-heading-m">
             Wszystko o Twoim adresie
           </h2>
-          <ul className="govuk-list">
+          {/* A card per module (site.scss .app-items): its icon on its
+            colour's tile, the link (the whole card is its target), how many
+            of its items are in the window, a chevron. */}
+          <ul className="app-items">
             {links.map(({ module }) => (
-              <li key={module.id}>
-                <PlaceLink
-                  className="govuk-link"
-                  href={subpageHref(module, place)}
-                >
-                  {module.more}
-                </PlaceLink>
+              <li
+                key={module.id}
+                className={`app-item app-mod app-mod--${module.id}`}
+              >
+                <Tile name={module.id} />
+                <span className="app-item__body">
+                  <PlaceLink
+                    className="govuk-link app-item__link"
+                    href={subpageHref(module, place)}
+                  >
+                    {module.more}
+                  </PlaceLink>
+                  <CountBadge count={counts.get(module.id) ?? 0} />
+                </span>
+                <Icon name="chevron" />
               </li>
             ))}
           </ul>

@@ -45,14 +45,17 @@ const page = (
 ) => {
   mock.timers.enable({ apis: ["Date"], now: NOW });
   try {
-    return renderToStaticMarkup(
-      createElement(
-        WarsawToday,
-        { day: place.today },
-        createElement(Hub, {
-          data: [place, cuts, outages, warnings],
-          place,
-        }),
+    // Icons (components/icon.tsx) as <svg/>: their shapes are Lucide's.
+    return unicons(
+      renderToStaticMarkup(
+        createElement(
+          WarsawToday,
+          { day: place.today },
+          createElement(Hub, {
+            data: [place, cuts, outages, warnings],
+            place,
+          }),
+        ),
       ),
     );
   } finally {
@@ -60,6 +63,12 @@ const page = (
   }
 };
 
+/** The icons drawn as <svg/>, every one aria-hidden. */
+function unicons(html: string) {
+  for (const [svg] of html.matchAll(/<svg\b[^>]*>/g))
+    assert.match(svg, /aria-hidden="true"/);
+  return html.replace(/<svg\b.*?<\/svg>/g, "<svg/>");
+}
 const count = (html: string, text: string) => html.split(text).length - 1;
 /** The text of each `<tag>` in the html, tags stripped. */
 const texts = (html: string, tag: string) =>
@@ -151,13 +160,17 @@ test("timeline: a card per day from today, 2+ empty days as one, Intl's titles",
   // 25-31 Oct: today, the cut on 26, 27-28 empty, the cut on 29, 30-31
   // empty; nothing after the window, so no „Później”.
   assert.deepEqual(texts(timeline, "h3"), [
-    "Niedziela, 25 października ·\u00a0dzisiaj",
-    "Poniedziałek, 26 października ·\u00a0jutro",
+    "Niedziela, 25 października,  Dzisiaj",
+    "Poniedziałek, 26 października,  Jutro",
     "27–28 października",
-    "Czwartek, 29 października ·\u00a0za\u00a04\u00a0dni",
+    "Czwartek, 29 października,  Za 4 dni",
     "30–31 października",
   ]);
-  assert.equal(count(timeline, "<li"), 5);
+  // The days' li (the chips are li too, of their own lists).
+  assert.equal(
+    timeline.match(/<li(?: class="app-timeline__[^"]*")?>/g)?.length,
+    5,
+  );
   // No class marks today: the first dot is CSS's (li:first-child).
   assert.doesNotMatch(timeline, /app-timeline__today/);
   assert.equal(
@@ -173,11 +186,12 @@ test("timeline: a card per day from today, 2+ empty days as one, Intl's titles",
 test("timeline: each cut once, its row, „Szczegóły” to its subpage; no warning", () => {
   const html = page(VILLAGE, CUTS, WARNINGS);
   const timeline = section(html, "najblizsze-dni");
-  assert.equal(count(html, "nie będzie wody"), 2);
+  assert.equal(count(html, "Nie będzie wody"), 2);
   assert.equal(count(html, "Cała wieś Lisie Jamy."), 2);
+  // Its tile and label, a badge, what is cut, its hours as a chip, where.
   assert.match(
     html,
-    /<dt class="govuk-summary-list__key">Woda<\/dt><dd class="govuk-summary-list__value"><p class="govuk-body-s govuk-!-margin-bottom-0">Od 8:00 do 16:00 nie będzie wody\.<\/p><p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0">Cała wieś Lisie Jamy\.<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link" href="\/adres\/0606257\/woda">Szczegóły<span class="govuk-visually-hidden"> o przerwie w dostawie wody, poniedziałek, 26 października<\/span><\/a><\/dd>/,
+    /<div class="govuk-summary-list__row app-mod app-mod--woda[^"]*"><dt class="govuk-summary-list__key"><span class="app-tile"><svg\/><\/span>Woda<\/dt><dd class="govuk-summary-list__value"><p class="govuk-body-s govuk-!-margin-bottom-0"><strong class="app-badge app-badge--mod">Planowana<\/strong> Nie będzie wody<\/p><ul class="app-chips"><li class="app-chip"><svg\/>od 8:00 do 16:00<\/li><\/ul><p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0 app-quiet">Cała wieś Lisie Jamy\.<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link" href="\/adres\/0606257\/woda">Szczegóły<span class="govuk-visually-hidden"> o przerwie w dostawie wody, poniedziałek, 26 października<\/span><\/a><\/dd>/,
   );
   // Warnings are cards above the timeline, never in it, and no tag at all.
   assert.doesNotMatch(timeline, /Ostrzeżenie IMGW|Silny wiatr|Stopień/);

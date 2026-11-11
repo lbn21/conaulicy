@@ -1,6 +1,7 @@
 // The only own CSS: what GOV.UK has no equivalent for.
 // GOV.UK Sass functions and mixins only; no raw colours or px.
 // Capped by scripts/check-own-css.mjs.
+@use "sass:map";
 @use "settings" as *;
 @use "govuk-frontend/dist/govuk/components/generic-header/mixin" as generic-header;
 
@@ -217,13 +218,14 @@ $app-header-colour: $app-header;
 // line, centred on every card's 19/25 date line (--app-y: the card's border,
 // its padding, half the line); the caret's centre on the same y. One padding
 // for every card, GOV.UK's margins inside it trimmed.
-// Colours: a day with items on the brand's surface (tint-95, its border
-// tint-50), its labels in the brand colour; an empty day or run all grey
-// (a barely-there grey: GOV.UK's black tint-95 a third over white, its
-// border, secondary text); every date in secondary text. The first dot,
-// where the line starts (today), filled in the brand colour.
+// Colours: a day with items a white card with a subtle border and shadow,
+// its rows in their modules' colours (.app-mod--*); today and tomorrow
+// ringed in the text colour; an empty day or run plain grey text, no card.
+// The first dot, where the line starts (today), filled in the text colour.
 $app-dot: govuk-spacing(3);
 $app-hair: $govuk-border-width-form-element * .5;
+$app-radius: govuk-spacing(2);
+$app-shadow: 0 $app-hair $app-hair * 3 color-mix(in srgb, #{govuk-colour("black")} 8%, transparent);
 $app-caret: govuk-spacing(2);
 
 .app-timeline { position: relative; margin: 0 0 govuk-spacing(6); padding: 0; list-style: none; }
@@ -258,7 +260,7 @@ $app-caret: govuk-spacing(2);
 .app-timeline > .app-timeline__later::before { background: govuk-functional-colour(secondary-text); box-shadow: inset 0 0 0 $app-hair * 2 govuk-colour("white"); }
 
 // The first dot, „you are here”, whatever its card.
-.app-timeline > li:first-child::before { border-color: govuk-functional-colour(brand); background: govuk-functional-colour(brand); }
+.app-timeline > li:first-child::before { border-color: govuk-functional-colour(text); background: govuk-functional-colour(text); }
 
 // A run of empty days: one dot, and the line dashed alongside
 // its whole card (the page's background under the dashes), to the dot only
@@ -266,10 +268,15 @@ $app-caret: govuk-spacing(2);
 .app-timeline__range > .app-timeline__card::after { content: ""; position: absolute; top: -$app-hair; bottom: -$app-hair; left: -(govuk-spacing(6) + $app-hair); width: $app-dot; background: repeating-linear-gradient(govuk-functional-colour(border) 0 govuk-spacing(1), transparent 0 govuk-spacing(2)) 50% 0 no-repeat, govuk-functional-colour(body-background); background-size: $app-hair 100%, auto; }
 .app-timeline__range:last-child > .app-timeline__card::after { bottom: auto; height: var(--app-y); }
 
-.app-timeline__card { --app-bg: #{govuk-functional-colour(surface-background)}; --app-line: #{govuk-functional-colour(surface-border)}; position: relative; padding: govuk-spacing(3); border: $app-hair solid var(--app-line); border-radius: govuk-spacing(1); background: var(--app-bg); }
-.app-timeline__card--empty { --app-bg: color-mix(in srgb, #{govuk-colour("black", $variant: "tint-95")} 35%, #{govuk-colour("white")}); --app-line: #{govuk-functional-colour(border)}; }
-.app-timeline__title, .app-timeline__card--empty > p { color: govuk-functional-colour(secondary-text); }
-.app-timeline__card .govuk-summary-list__key { color: govuk-functional-colour(brand); }
+.app-timeline__card { --app-bg: #{govuk-colour("white")}; --app-line: #{govuk-functional-colour(border)}; position: relative; padding: govuk-spacing(3); border: $app-hair solid var(--app-line); border-radius: $app-radius; background: var(--app-bg); box-shadow: $app-shadow; }
+// Quieter: an empty day or run is text on the page, no card.
+.app-timeline__card--empty { --app-bg: transparent; --app-line: transparent; box-shadow: none; }
+.app-timeline__card--empty :is(.app-timeline__title, p) { color: govuk-functional-colour(secondary-text); }
+// Louder: today and tomorrow (DayWord's strong badge) ringed in the text
+// colour, 2px with the border, and their dot filled.
+.app-timeline__card:has(.app-badge--strong) { --app-line: #{govuk-functional-colour(text)}; box-shadow: 0 0 0 $app-hair var(--app-line), $app-shadow; }
+.app-timeline > li:has(.app-badge--strong)::before { border-color: govuk-functional-colour(text); background: govuk-functional-colour(text); }
+.app-timeline__card .govuk-summary-list__key { color: var(--app-mod-ink); }
 // Two sizes in a card: the date heading-s, all else body-s.
 .app-timeline__card :is(.govuk-summary-list, .govuk-list) { @include govuk-font-size($size: 16); }
 
@@ -298,7 +305,7 @@ $app-caret: govuk-spacing(2);
 // lib/palette.ts), text black on yellow and
 // orange, white on red, 4.5:1 or more; the meter's steps in the text's
 // colour, filled up to the level, so it never rests on colour alone.
-.app-warning { --app-level: #{$app-warning-level-1}; --app-on: #{govuk-functional-colour(text)}; margin: 0 0 govuk-spacing(6); border: $govuk-border-width-form-element solid var(--app-level); border-radius: govuk-spacing(1); overflow: hidden; }
+.app-warning { --app-level: #{$app-warning-level-1}; --app-on: #{govuk-functional-colour(text)}; margin: 0 0 govuk-spacing(6); border: $govuk-border-width-form-element solid var(--app-level); border-radius: $app-radius; overflow: hidden; box-shadow: $app-shadow; }
 .app-warning--2 { --app-level: #{$app-warning-level-2}; }
 .app-warning--3 { --app-level: #{$app-warning-level-3}; --app-on: #{govuk-functional-colour(inverse-text)}; }
 .app-warning__level { display: flex; gap: govuk-spacing(2); align-items: center; margin: 0; padding: govuk-spacing(2) govuk-spacing(3); background: var(--app-level); color: var(--app-on); }
@@ -306,3 +313,68 @@ $app-caret: govuk-spacing(2);
 .app-warning__meter > span { box-sizing: border-box; width: govuk-spacing(5); height: govuk-spacing(2); border: $govuk-border-width-form-element solid currentColor; border-radius: $app-hair * 2; }
 .app-warning__meter > .app-warning__on { background: currentColor; }
 .app-warning__body { padding: govuk-spacing(3); }
+
+// The visual layer over GOV.UK (t300): a colour per module, Lucide icons,
+// badges, chips, item cards and the failure banner, after shadcn/ui's
+// cards, badges, items and alerts, in GOV.UK's spacing and type.
+//
+// A module's colours (MODULE_ROLES in lib/palette.ts) as custom
+// properties, on .app-mod--<id>; anything else (the calendar's line) the
+// neutral grey and text.
+.app-mod { --app-mod: #{govuk-functional-colour(border)}; --app-mod-ink: #{govuk-functional-colour(text)}; --app-mod-tint: #{govuk-colour("black", $variant: "tint-95")}; }
+@each $id, $c in $app-modules {
+  .app-mod--#{$id} { --app-mod: #{map.get($c, "main")}; --app-mod-ink: #{map.get($c, "ink")}; --app-mod-tint: #{map.get($c, "tint")}; }
+}
+
+// An icon is the text's line tall (components/icon.tsx); a tile is the
+// module's icon on its tint, 30px, rounded.
+.app-icon { flex: none; width: 1.25em; height: 1.25em; vertical-align: -.25em; }
+.app-tile { display: inline-flex; flex: none; align-items: center; justify-content: center; width: govuk-spacing(6); height: govuk-spacing(6); margin-right: govuk-spacing(2); border-radius: $app-radius; background: var(--app-mod-tint); color: var(--app-mod-ink); vertical-align: middle; }
+.app-tile > .app-icon { width: 60%; height: 60%; }
+
+// On mobile a row's value and action under its label, not its tile.
+@include govuk-media-query($until: tablet) {
+  .app-mod > .govuk-summary-list__value, .app-mod > .govuk-summary-list__actions { padding-left: govuk-spacing(6) + govuk-spacing(2); }
+}
+
+// Badges: a pill of 16px bold text, 24px tall; muted (grey), strong
+// (today, tomorrow: text colour), a module's (its tint and ink) and alert
+// (a failure: GOV.UK red).
+.app-badge { display: inline-flex; gap: govuk-spacing(1); align-items: center; padding: $app-hair * 2 govuk-spacing(2); border-radius: govuk-spacing(6); background: govuk-colour("black", $variant: "tint-95"); color: govuk-functional-colour(text); white-space: nowrap; vertical-align: text-bottom; @include govuk-font($size: 16, $weight: bold); }
+.app-badge--strong { background: govuk-functional-colour(text); color: govuk-colour("white"); }
+.app-badge--mod { background: var(--app-mod-tint); color: var(--app-mod-ink); }
+.app-badge--alert { background: govuk-colour("red"); color: govuk-colour("white"); }
+.app-badge > .app-icon { width: 1em; height: 1em; }
+
+// Chips: a list in a wrapping row, each a bordered pill (a window of hours
+// with its clock, a bin, an example address).
+.app-chips { display: flex; flex-wrap: wrap; gap: govuk-spacing(2); margin: 0; padding: 0; list-style: none; }
+* + .app-chips { margin-top: govuk-spacing(2); }
+.app-chip { display: inline-flex; gap: govuk-spacing(1) + $app-hair; align-items: center; padding: govuk-spacing(1) govuk-spacing(2); border: $app-hair solid govuk-functional-colour(border); border-radius: govuk-spacing(6); background: govuk-colour("white"); @include govuk-font($size: 16); }
+.app-chip > .app-icon { color: var(--app-mod-ink, #{govuk-functional-colour(secondary-text)}); }
+.app-chips--links > .app-chip { position: relative; padding: govuk-spacing(2) govuk-spacing(3); @include govuk-font-size($size: 19); }
+.app-chips--links a::after { content: ""; position: absolute; inset: 0; }
+.app-quiet { color: govuk-functional-colour(secondary-text); }
+
+// Item cards (shadcn/ui's Item): tile, body, chevron; the link's box the
+// whole card's. Plain: the tile and text alone (the home page's list).
+.app-items { display: grid; gap: govuk-spacing(3); margin: 0 0 govuk-spacing(6); padding: 0; list-style: none; }
+.app-item { position: relative; display: flex; gap: govuk-spacing(3); align-items: center; padding: govuk-spacing(3); border: $app-hair solid govuk-functional-colour(border); border-radius: $app-radius; background: govuk-colour("white"); box-shadow: $app-shadow; @include govuk-font($size: 19); }
+.app-item > .app-tile { width: govuk-spacing(7); height: govuk-spacing(7); margin: 0; }
+.app-item__body { display: flex; flex: 1; flex-wrap: wrap; gap: govuk-spacing(1) govuk-spacing(2); align-items: center; }
+.app-item__link::after { content: ""; position: absolute; inset: 0; }
+.app-item:has(.app-item__link:hover) { border-color: var(--app-mod); }
+.app-item > .app-icon { color: govuk-functional-colour(secondary-text); }
+.app-items--plain > .app-item { padding: 0; border: 0; background: none; box-shadow: none; }
+
+// The failure banner (components/now-banner.tsx), shadcn/ui's Alert in
+// GOV.UK red: a thick left bar, a red wash, the heading's icon red.
+.app-alert { margin: 0 0 govuk-spacing(6); padding: govuk-spacing(3) govuk-spacing(4); border: $app-hair solid govuk-colour("red"); border-left-width: govuk-spacing(2); border-radius: $app-radius; background: color-mix(in srgb, #{govuk-colour("red")} 6%, #{govuk-colour("white")}); }
+.app-alert__title { display: flex; gap: govuk-spacing(2); align-items: center; }
+.app-alert__title > .app-icon { color: govuk-colour("red"); }
+.app-alert__item + .app-alert__item { margin-top: govuk-spacing(4); }
+.app-alert__item > .govuk-link { display: inline-block; margin-top: govuk-spacing(2); }
+
+// The home page's search on a card.
+.app-panel { padding: govuk-spacing(4); border: $app-hair solid govuk-functional-colour(border); border-radius: $app-radius; box-shadow: $app-shadow; }
+.app-panel .govuk-button { margin-bottom: 0; }

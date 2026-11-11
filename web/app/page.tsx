@@ -6,6 +6,7 @@ import {
   SearchErrorProvider,
   SearchErrorSummary,
 } from "@/components/address-search";
+import { Icon, type IconName, Tile } from "@/components/icon";
 import { PlaceLink } from "@/components/place-link";
 import { SITE_URL } from "@/lib/config.generated";
 import { HOME_EXAMPLES } from "@/lib/examples";
@@ -33,6 +34,19 @@ const WEBSITE = JSON.stringify({
   url: `${SITE_URL}/`,
   inLanguage: LANG,
 }).replace(/</g, "\\u003c");
+
+// „Co zobaczysz”: a line per module, with its icon on its colour's tile
+// (site.scss .app-items, .app-mod--*), the calendar's on a neutral one.
+const FEATURES: [IconName, string][] = [
+  ["smieci", "dni wywozu śmieci – dla każdego rodzaju odpadów osobno"],
+  ["woda", "zapowiedziane przez gminę przerwy w dostawie wody"],
+  ["prad", "planowane przerwy i awarie w dostawie prądu (PGE)"],
+  ["pogoda", "ostrzeżenia IMGW przed złą pogodą w powiecie lubaczowskim"],
+  [
+    "calendar",
+    "terminy wywozu w kalendarzu w telefonie i harmonogram do wydruku (PDF)",
+  ],
+];
 
 // The page, static: cached until the next import or deploy (cacheLife
 // "max"), tagged with what it reads: the dataset (examples, index), which
@@ -64,28 +78,28 @@ export default async function Home() {
             Wpisz ulicę albo wieś i sprawdź terminy.
           </p>
 
-          <div className="govuk-!-margin-bottom-8">
+          <div className="app-panel govuk-!-margin-bottom-8">
             <AddressSearch indexUrl={indexUrl} />
           </div>
 
           <h2 className="govuk-heading-m">Co zobaczysz</h2>
-          <ul className="govuk-list govuk-list--bullet govuk-!-margin-bottom-8">
-            <li>dni wywozu śmieci – dla każdego rodzaju odpadów osobno</li>
-            <li>zapowiedziane przez gminę przerwy w dostawie wody</li>
-            <li>ostrzeżenia IMGW przed złą pogodą w powiecie lubaczowskim</li>
-            <li>
-              terminy wywozu w kalendarzu w telefonie i harmonogram do wydruku
-              (PDF)
-            </li>
+          <ul className="app-items app-items--plain govuk-!-margin-bottom-8">
+            {FEATURES.map(([icon, text]) => (
+              <li key={icon} className={`app-item app-mod app-mod--${icon}`}>
+                <Tile name={icon} />
+                <span className="app-item__body">{text}</span>
+              </li>
+            ))}
           </ul>
 
           <section aria-labelledby="sample-heading">
             <h2 id="sample-heading" className="govuk-heading-m">
               Przykładowe adresy
             </h2>
-            <ul className="govuk-list">
+            <ul className="app-chips app-chips--links govuk-!-margin-bottom-6">
               {places.map((place) => (
-                <li key={place.id}>
+                <li key={place.id} className="app-chip">
+                  <Icon name="pin" />
                   <PlaceLink href={placeHref(place)} className="govuk-link">
                     {place.label}
                   </PlaceLink>

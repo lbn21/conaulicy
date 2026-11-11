@@ -46,26 +46,25 @@ test("lead: dayLead's words (lib/timeline.test.ts) for the server's day", () => 
   );
 });
 
-test("title: „ · ” and Intl's relative day, never wrapped mid-phrase, grey body-s, after a card's date", () => {
+test("title: Intl's relative day as a badge after a card's date, strong for today and tomorrow", () => {
   const title = (day: string) =>
     word("2026-11-10T12:00:00Z", day, "title").replace(/<[^>]+>/g, "");
   assert.deepEqual(
     ["2026-11-10", "2026-11-11", "2026-11-12", "2026-11-14"].map(title),
-    [
-      " ·\u00a0dzisiaj",
-      " ·\u00a0jutro",
-      " ·\u00a0pojutrze",
-      " ·\u00a0za\u00a04\u00a0dni",
-    ],
+    // The comma and its space for screen readers, then the badge's space.
+    [",  Dzisiaj", ",  Jutro", ",  Pojutrze", ",  Za 4 dni"],
   );
-  assert.match(
-    word("2026-11-10T12:00:00Z", "2026-11-10", "title"),
-    /^<span class="govuk-!-font-size-16 govuk-!-font-weight-regular">/,
-  );
+  const badge = (day: string) =>
+    word("2026-11-10T12:00:00Z", day, "title").match(
+      /class="(app-badge[^"]*)"/,
+    )?.[1];
+  assert.equal(badge("2026-11-10"), "app-badge app-badge--strong");
+  assert.equal(badge("2026-11-11"), "app-badge app-badge--strong");
+  assert.equal(badge("2026-11-12"), "app-badge");
   // Across the DST change, by Warsaw days.
   assert.equal(
     word("2026-10-24T22:30:00Z", "2026-10-26", "title").replace(/<[^>]+>/g, ""),
-    " ·\u00a0jutro",
+    ",  Jutro",
   );
 });
 
