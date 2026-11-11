@@ -408,7 +408,9 @@ try {
     for (const w of words1
       .filter((w) => w.y0 > tablesEnd)
       .sort((a, b) => a.y0 - b.y0 || a.x0 - b.x0)) {
-      const line = keyLines.find((l) => Math.abs(l[0].y0 - w.y0) < 2);
+      // One line: tops within 2 U (pdftotext boxes lowercase-only words
+      // lower); the key's lines are 5 U apart.
+      const line = keyLines.find((l) => Math.abs(l[0].y0 - w.y0) < 8);
       if (line) line.push(w);
       else keyLines.push([w]);
     }
