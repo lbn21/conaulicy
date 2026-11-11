@@ -49,7 +49,7 @@ IMGW issues warnings, changes (ZMIANA) and cancellations (ODWOŁANIE), but the J
 
 ## Terms: attribution
 
-The regulamin §5 requires, wherever the data is used, the source sentence, and for processed data also the processing sentence. We filter and convert times, so both. They live in `IMGW_ATTRIBUTION` (`lib/imgw-warnings.ts`), and the address page ends with both, verbatim, as secondary text after its sections (task 205):
+The regulamin §5 requires, wherever the data is used, the source sentence, and for processed data also the processing sentence. We filter and convert times, so both. They live in `IMGW_ATTRIBUTION` (`lib/imgw-warnings.ts`), and the address page ends with both, verbatim, at the end of its small print (tasks 205, 284); `/pogoda` has both in its source block:
 
 > Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy.
 >
@@ -61,8 +61,8 @@ No public endpoint (task 98: `/api/warnings` was removed), and no banner (task 2
 
 Warnings are powiat-wide, so every address shows the same ones (powiat `1809`, `POWIAT` in `lib/imgw-shown.ts`): those in force or to come (`shownWarnings`), highest level first, then by start.
 
-- **The address page's timeline** has a row per warning on each day it covers („Ostrzeżenie IMGW”: a tag „Stopień N z 3”, the event, from and until when, absolute; „trwa” on the days after its first), with „Szczegóły” to `/pogoda`. The tag uses IMGW's own solid level colours #ffbe00 / #ff5a00 / #d60000 (from `lvlToColorOsmet` in shared.imgw.pl's warnings widget, `WARNING_LEVELS` in `web/lib/palette.ts`; black text on 1 and 2, white on 3; the text says the level too). Never IMGW's own description there. Its source and last good check are in „Skąd to wiemy”, with IMGW's required wording.
-- **`/pogoda`**: the checked line, then per warning, highest first, a GOV.UK summary card (the event; Stopień with its tag, Kiedy, Gdzie: „Cały powiat lubaczowski”, Opis IMGW: `tresc` verbatim and „Prawdopodobieństwo: 75%.”, `Intl.NumberFormat`); then the source in an inset, IMGW's only link on the page, with the required wording. With no warning and a fresh copy, one line: „Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.” Never indexed (the powiat's, the same at every address). With no copy in the store yet, the address page and `/pogoda` say „Nie udało się sprawdzić ostrzeżeń IMGW.”
+- **The address page's timeline** has a row per warning on each day it covers („Ostrzeżenie IMGW”: a tag „Stopień N z 3”, the event, from and until when, absolute; „trwa” on the days after its first), with „Szczegóły” to `/pogoda`. The tag uses IMGW's own solid level colours #ffbe00 / #ff5a00 / #d60000 (from `lvlToColorOsmet` in shared.imgw.pl's warnings widget, `WARNING_LEVELS` in `web/lib/palette.ts`; black text on 1 and 2, white on 3; the text says the level too). Never IMGW's own description there. Its last good check is in the address page's small print, with IMGW's required wording; its source is on `/pogoda` (task 284).
+- **`/pogoda`**: per warning, highest first, a GOV.UK summary card (the event; Stopień with its tag, Kiedy, Gdzie: „Cały powiat lubaczowski”, Opis IMGW: `tresc` verbatim and „Prawdopodobieństwo: 75%.”, `Intl.NumberFormat`); then the source and last good check in an inset („Źródło: IMGW-PIB. Sprawdziliśmy …”), IMGW's only link on the page, with the required wording. With no warning and a fresh copy, one line: „Brak ostrzeżeń IMGW dla powiatu lubaczowskiego.” Never indexed (the powiat's, the same at every address). With no copy in the store yet, the address page and `/pogoda` say „Nie udało się sprawdzić ostrzeżeń IMGW.”
 
 No client JS, no dismiss button, no `role="alert"`.
 
