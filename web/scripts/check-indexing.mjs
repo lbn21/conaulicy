@@ -231,13 +231,12 @@ try {
     }
   }
 
-  // Never indexed, links followed once indexable: the number-error page, a
-  // place without data and the weather subpage (the powiat's, task 263).
+  // Never indexed, links followed once indexable: the number-error page and
+  // a place without data.
   const noindexWant = index ? "noindex, follow" : "noindex, nofollow";
   for (const path of [
     "/adres/0972447-90004?nr=",
     ROUTES.find((route) => route.name === "street-without-schedule").path,
-    ROUTES.find((route) => route.name === "city-street-weather").path,
   ]) {
     const response = await fetch(`${server.origin}${path}`);
     const metas = [...(await response.text()).matchAll(META)].map(

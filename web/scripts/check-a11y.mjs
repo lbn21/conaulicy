@@ -11,13 +11,9 @@ import { mainAndIds, ROUTES, startServer } from "./lib/server.mjs";
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const WIDTHS = [360, 1280];
-const PAGES = [
-  "home",
-  "city-street",
-  "city-street-waste",
-  "city-street-weather",
-  "all-places",
-].map((name) => ROUTES.find((route) => route.name === name));
+const PAGES = ["home", "city-street", "city-street-waste", "all-places"].map(
+  (name) => ROUTES.find((route) => route.name === name),
+);
 
 const server = await startServer(3301);
 const browser = await chromium.launch();
