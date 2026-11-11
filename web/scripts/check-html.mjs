@@ -101,7 +101,10 @@ try {
       const streamedAt = html.indexOf('<div hidden id="S:');
       const before = streamedAt === -1 ? html : html.slice(0, streamedAt);
       const address = route.path.startsWith("/adres/");
-      if (!/<h1\b[^>]*>[^<]/.test(address ? html : before)) {
+      // Its text, tags stripped: a module's h1 starts with its icon's tile
+      // (aria-hidden, components/page-head.tsx), then the words.
+      const h1 = /<h1\b[^>]*>(.*?)<\/h1>/s.exec(address ? html : before);
+      if (!h1?.[1].replace(/<[^>]*>/g, "").trim()) {
         statuses.push(`${route.path}${suffix}: no h1 in the static HTML`);
       }
       if (
