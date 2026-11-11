@@ -276,13 +276,23 @@ test("a live module not checked says so; nothing is claimed for it", () => {
     /<div class="govuk-inset-text">.*<p class="govuk-body">Nie udało się sprawdzić przerw w dostawie wody\.<\/p><p class="govuk-body">Nie udało się sprawdzić ostrzeżeń IMGW\.<\/p><\/div>/,
   );
   assert.doesNotMatch(html, /Wszystkie przerwy w wodzie|Ostrzeżenia pogodowe/);
-  // With nothing at all: the whole window, today included, one run.
-  assert.deepEqual(texts(section(html, "najblizsze-dni"), "h3"), [
-    "25–31 października",
-  ]);
-  assert.match(
-    html,
-    /<ol class="app-timeline"><li class="app-timeline__empty app-timeline__range"><div class="app-timeline__card app-timeline__card--empty">/,
+});
+
+test("nothing in the window and nothing later: one line, no cards; the links and small print stay", () => {
+  // A street with its waste source but no dates left; water and weather
+  // not checked (their notices say so).
+  const html = page(testPlace({ ...STREET, days: [] }));
+  assert.equal(
+    section(html, "najblizsze-dni"),
+    '<section aria-labelledby="najblizsze-dni"><h2 id="najblizsze-dni" class="govuk-heading-m">Najbliższe 7 dni</h2><p class="govuk-body">Na razie nic nie zaplanowano pod tym adresem.</p></section>',
+  );
+  assert.doesNotMatch(html, /app-timeline|Nic nie zaplanowano\.|Później/);
+  assert.match(section(html, "wszystko"), />Wszystkie odbiory śmieci<\/a>/);
+  assert.match(smallPrint(html), /^Sprawdziliśmy: śmieci 20 października/);
+  // Not checked is never „nothing”: the notice says so, above the line.
+  assert.ok(
+    html.indexOf("Nie udało się sprawdzić przerw w dostawie wody") <
+      html.indexOf("Na razie nic nie zaplanowano"),
   );
 });
 
@@ -294,7 +304,7 @@ test("a split street without a number: „Podaj numer domu” above the timeline
   assert.ok(html.indexOf("Podaj numer domu") < html.indexOf("najblizsze-dni"));
 });
 
-test("waste: its pickups by day, „Później” the next one per module with its year", () => {
+test("waste: its pickups by day; in the window, so no „Później” for it", () => {
   const html = page(STREET);
   const timeline = section(html, "najblizsze-dni");
   assert.deepEqual(texts(timeline, "h3"), [
@@ -302,12 +312,18 @@ test("waste: its pickups by day, „Później” the next one per module with it
     "25–26 października",
     "Wtorek, 27 października ·\u00a0pojutrze",
     "28–31 października",
-    "Później",
   ]);
+  assert.doesNotMatch(html, /Później|app-timeline__later/);
   assert.match(
     timeline,
     /<dt class="govuk-summary-list__key">Śmieci<\/dt><dd class="govuk-summary-list__value">.*?Papier.*?<p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0">Wystaw je do 6:00 rano\.<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link" href="\/adres\/0000001-00001\/smieci">Szczegóły<span class="govuk-visually-hidden"> o odbiorze śmieci, wtorek, 27 października<\/span>/,
   );
+});
+
+test("waste only after the window: „Później”, its next pickup with its year", () => {
+  const html = page(testPlace({ ...STREET, days: STREET.days.slice(1) }));
+  const timeline = section(html, "najblizsze-dni");
+  assert.deepEqual(texts(timeline, "h3"), ["25–31 października", "Później"]);
   // „Później”: only the next pickup after the window, its date the value.
   const later = /<li class="app-timeline__later">.*?<\/li>/.exec(timeline)?.[0];
   assert.ok(later);
