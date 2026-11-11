@@ -306,12 +306,12 @@ function Results({ shown }: { shown: Shown }) {
  * is matched on the device ("Asnyka 5" carries the house number to ?nr=).
  * The list opens inline, under the field and above „Szukaj”, pushing what
  * follows down while it is open (GOV.UK's default), so it never covers the
- * button. As GOV.UK's default (no onConfirm, no autoselect), nothing is
- * highlighted until ArrowDown, which goes to the first suggestion. Choosing
- * a suggestion (a tap or click, or Enter with it highlighted) only fills the
- * field with its text and closes the list;
- * with none highlighted (list open or closed, none found, still loading)
- * Enter submits what was typed. The library alone would do nothing on Enter
+ * button. As GOV.UK's default (no autoselect), nothing is highlighted until
+ * ArrowDown, which goes to the first suggestion. Choosing a suggestion (a tap
+ * or click, or Enter with it highlighted: the library's onConfirm for both)
+ * fills the field with its text, closes the list and searches for it as
+ * „Szukaj” does (`go`), so it opens its place; with none highlighted (list
+ * open or closed, none found, still loading) Enter submits what was typed. The library alone would do nothing on Enter
  * with the list open and nothing highlighted, so submitOnEnter does that.
  * confirmOnBlur stays off: leaving the field keeps what was typed.
  *
@@ -370,7 +370,17 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const field = event.currentTarget.elements.namedItem("q");
-    const q = searchQuery(field instanceof HTMLInputElement ? field.value : "");
+    go(searchQuery(field instanceof HTMLInputElement ? field.value : ""));
+  }
+
+  // A chosen suggestion: its text, as „Szukaj” would send it once the field
+  // holds it, so its own place (lib/search-submit.ts).
+  function confirm(option: Option) {
+    if (option) go(searchQuery(optionText(option)));
+  }
+
+  // „Szukaj”, Enter, or a chosen suggestion: the query, already trimmed.
+  function go(q: string) {
     const ticket = ++press.current;
     if (!q) {
       setShown(null);
@@ -451,6 +461,7 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
                 error ? "govuk-input govuk-input--error" : "govuk-input"
               }
               menuAttributes={{ "aria-labelledby": LABEL_ID }}
+              onConfirm={confirm}
               confirmOnBlur={false}
               templates={{
                 inputValue: optionText,
