@@ -5,15 +5,15 @@
 // address page again, its URL and its content (a plain <a href="#…"> made a
 // history entry the App Router did not know, and Back showed the home page
 // under the address page's URL). A direct open of
-// /adres/<id>#skad-to-wiemy scrolls to „Skąd to wiemy”.
+// /adres/<id>#wszystko scrolls to „Wszystko o Twoim adresie”.
 import { HOME_EXAMPLES } from "../../lib/examples.ts";
 
 const VISIBLE_H1 = "main h1:visible";
 
 /**
  * Null if the page is scrolled to `hash`'s element: its top at the
- * viewport's, or the page at its end with the element in view („Skąd to
- * wiemy”, the last section, may not reach the top). Else what is wrong.
+ * viewport's, or the page at its end with the element in view („Wszystko
+ * o Twoim adresie”, the last section, may not reach the top). Else what is wrong.
  */
 async function scrolledTo(page, hash) {
   const { top, atEnd, height } = await page.locator(hash).evaluate((el) => ({
@@ -74,12 +74,12 @@ export async function check(server, failures) {
     }
 
     // A direct open with a hash: the browser scrolls to it.
-    await page.goto(`${address}#skad-to-wiemy`, { waitUntil: "networkidle" });
+    await page.goto(`${address}#wszystko`, { waitUntil: "networkidle" });
     await page.waitForFunction(() => !document.querySelector(".app-skeleton"));
-    const off = await scrolledTo(page, "#skad-to-wiemy");
-    if (off) failures.push(`${address}#skad-to-wiemy opened: ${off}`);
+    const off = await scrolledTo(page, "#wszystko");
+    if (off) failures.push(`${address}#wszystko opened: ${off}`);
   } finally {
     await browser.close();
   }
-  return `In-page links: ${landed.join(", ")} lands, Back after the logo shows the address page, #skad-to-wiemy opens there.`;
+  return `In-page links: ${landed.join(", ")} lands, Back after the logo shows the address page, #wszystko opens there.`;
 }
