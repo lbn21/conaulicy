@@ -6,7 +6,13 @@ import { test } from "node:test";
 import { contrastRatio, readableInk } from "./contrast.ts";
 import { GOVUK_COLOUR, GOVUK_FUNCTIONAL } from "./govuk-colours.ts";
 import { FRACTION_ICONS, ICON_ELEMENTS, PDF_ICONS } from "./pdf-icon.ts";
-import { GUIDES, guideFor, SHORT_MAX } from "./sorting-guide.ts";
+import {
+  BIN_TOKENS,
+  GUIDES,
+  guideFor,
+  SEPARATE_TOKENS,
+  SHORT_MAX,
+} from "./sorting-guide.ts";
 import { FRACTIONS, TOKEN } from "./waste-bin.ts";
 import { WASTE_COLOURS } from "./waste-colours.ts";
 
@@ -81,38 +87,49 @@ test("every tile can be drawn: an icon of known shapes, readable ink", () => {
   }
 });
 
-test("a place gets one tile per covered bin colour, in its own order", () => {
-  const order = FRACTIONS.map((f) => f.subtype);
-  const guide = guideFor("Lubaczów (miasto)", [
-    "zmieszane_i_bio",
-    "papier",
-    "tworzywa",
-    "tworzywa_metale",
-  ]);
-  assert.ok(guide);
-  const subtypes = guide.tiles.map((t) => t.subtype);
-  assert.deepEqual(subtypes, ["zmieszane", "bio", "papier", "tworzywa"]);
-  assert.deepEqual(
-    [...subtypes].sort((a, b) => order.indexOf(a) - order.indexOf(b)),
-    subtypes,
-  );
-  // Only the sources its tiles, PSZOK line and full rules cite.
-  const cited = new Set([
-    guide.fullRules.id,
-    ...guide.tiles.flatMap((t) => t.sources),
-    ...guide.pszok.sources,
-  ]);
-  assert.deepEqual(
-    guide.sources.map((s) => s.id),
-    [...cited].sort(
-      (a, b) =>
-        guide.sources.findIndex((s) => s.id === a) -
-        guide.sources.findIndex((s) => s.id === b),
-    ),
-  );
+test("a bin's fraction has no „where”, separate waste always has one", () => {
+  for (const guide of Object.values(GUIDES)) {
+    for (const fraction of guide.fractions) {
+      const bin = (BIN_TOKENS as readonly string[]).includes(fraction.token);
+      const separate = (SEPARATE_TOKENS as readonly string[]).includes(
+        fraction.token,
+      );
+      assert.ok(bin !== separate, `${fraction.token}: bin or separate`);
+      if (bin) assert.equal(fraction.where, null, fraction.token);
+      else assert.ok(fraction.where?.length, fraction.token);
+    }
+  }
 });
 
-test("no guide without a gmina's own source, nor without a covered fraction", () => {
-  assert.equal(guideFor("Gdzie indziej", ["papier"]), null);
-  assert.equal(guideFor("Lubaczów (gmina)", ["opony"]), null);
+test("a gmina's page: every entry, in the page's order, named by a known fraction", () => {
+  const subtypes = new Set(FRACTIONS.map((f) => f.subtype));
+  for (const [gmina, source] of Object.entries(GUIDES)) {
+    const guide = guideFor(gmina);
+    assert.ok(guide);
+    const tokens = [...guide.bins, ...guide.separate].map((t) => t.token);
+    assert.deepEqual(
+      tokens,
+      [...BIN_TOKENS, ...SEPARATE_TOKENS].filter((token) =>
+        source.fractions.some((f) => f.token === token),
+      ),
+    );
+    for (const item of [...guide.bins, ...guide.separate]) {
+      assert.ok(subtypes.has(item.subtype), item.subtype);
+      assert.equal(TOKEN[item.subtype], item.token);
+    }
+    // Only the sources its entries, PSZOK line and full rules cite.
+    const cited = new Set([
+      guide.fullRules.id,
+      ...[...guide.bins, ...guide.separate].flatMap((t) => t.sources),
+      ...guide.pszok.sources,
+    ]);
+    assert.deepEqual(
+      guide.sources.map((s) => s.id),
+      source.sources.map((s) => s.id).filter((id) => cited.has(id)),
+    );
+  }
+});
+
+test("no guide without a gmina's own source", () => {
+  assert.equal(guideFor("Gdzie indziej"), null);
 });

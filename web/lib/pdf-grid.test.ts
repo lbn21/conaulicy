@@ -6,6 +6,7 @@ import {
   type GridInput,
   gridHeight,
   headed,
+  tableRows,
 } from "./pdf-grid.ts";
 
 const base: Omit<GridInput, "months"> = {
@@ -94,4 +95,24 @@ test("a date with more marks than a row holds takes more rows", () => {
   assert.equal(dateRows(0, 3), 1);
   assert.equal(dateRows(3, 3), 1);
   assert.equal(dateRows(4, 3), 2);
+});
+
+test("other addresses' months size the tables: fewer months, the same grid", () => {
+  const fullest = [1, 1, 1, 1, 1, 1];
+  const window = year("2027", 12, []);
+  const full = chooseGrid({ ...base, months: window, profiles: [fullest] });
+  const two = chooseGrid({
+    ...base,
+    months: window.map((m, i) => (i < 2 ? { ...m, marks: [1] } : m)),
+    profiles: [fullest],
+  });
+  assert.equal(full.bodyRows, fullest.length);
+  assert.deepEqual(
+    [two.columns, two.tableW, two.rowH, two.bodyRows],
+    [full.columns, full.tableW, full.rowH, full.bodyRows],
+  );
+  // Placed from the top left, in the grid's columns.
+  assert.deepEqual(tableRows(window.slice(0, 2), full.columns), [
+    { year: "2027", keys: ["2027-01", "2027-02"] },
+  ]);
 });

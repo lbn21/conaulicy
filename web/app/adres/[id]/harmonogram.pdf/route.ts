@@ -24,7 +24,7 @@ import {
 } from "@/lib/logo";
 import { fileSlug } from "@/lib/normalize";
 import { type Block, flow, type Spot } from "@/lib/pdf-flow";
-import { chooseGrid, dateRows, headed } from "@/lib/pdf-grid";
+import { chooseGrid, dateRows, headed, tableRows } from "@/lib/pdf-grid";
 import { drawIcon, FRACTION_ICONS, PDF_ICONS } from "@/lib/pdf-icon";
 import { scheduleName } from "@/lib/places";
 import {
@@ -33,16 +33,12 @@ import {
   type Pickup,
   type PickupDay,
   type PlaceView,
+  type WasteMaxima,
+  wasteMaxima,
 } from "@/lib/schedule";
-import {
-  disclaimer,
-  hasUpcoming,
-  laterNote,
-  putOutNote,
-  unverifiedNote,
-} from "@/lib/schedule-notes";
+import { hasUpcoming, laterNote, putOutNote } from "@/lib/schedule-notes";
 import { SITE_NAME } from "@/lib/share";
-import { guideFor } from "@/lib/sorting-guide";
+import { GUIDES, type GuideItem, guideFor } from "@/lib/sorting-guide";
 import { THEME_COLOR } from "@/lib/theme";
 import { FRACTIONS, TOKEN, tones } from "@/lib/waste-bin";
 import { WASTE_COLOURS as WASTE } from "@/lib/waste-colours";
@@ -66,10 +62,11 @@ const BOLD = readFileSync(
 // the whole published period on one page (the cherry band with the "ul."
 // plate and the QR code, one GOV.UK Warning line, identical bordered month
 // tables in a strict grid (lib/pdf-grid.ts), the key, one footer line);
-// page 2, „Co wrzucać”, equal tiles from the gmina's own rules
-// (lib/sorting-guide.ts) with Lucide's icons, the PSZOK line beside the QR
-// code to the full rules, one footer line; then the text-only version, for
-// screen readers and black-and-white use, with every source in full.
+// page 2, „Co wrzucać”, the same for every address: equal tiles for the
+// bins and a row for the waste handed in separately, from the gmina's own
+// rules (lib/sorting-guide.ts) with Lucide's icons, the PSZOK line beside the
+// QR code to the full rules, one footer line; then the text-only version,
+// for screen readers and black-and-white use.
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
 // The spacing scale: every gap, padding and size a multiple of U.
@@ -125,7 +122,6 @@ const lineGap = (size: number) => ROW[size] - size * LINE;
 const BLACK = GOVUK_FUNCTIONAL.text;
 const WHITE = GOVUK_COLOUR.white;
 const SECONDARY_TEXT = GOVUK_FUNCTIONAL["secondary-text"];
-const BORDER = GOVUK_FUNCTIONAL.border;
 const PANEL = GOVUK_COLOUR["black-tint-95"];
 const RULE = SECONDARY_TEXT;
 // govuk-colour("red"), also GOV.UK's error colour.
@@ -296,22 +292,6 @@ function drawLogo(doc: PDFKit.PDFDocument, x: number, y: number, h: number) {
   doc.restore();
 }
 
-/** Largest size, down to min, at which text fits one line. */
-function fitSize(
-  doc: PDFKit.PDFDocument,
-  font: string,
-  text: string,
-  width: number,
-  max: number,
-  min: number,
-): number {
-  for (let size = max; size > min; size -= 0.25) {
-    doc.font(font).fontSize(size);
-    if (doc.widthOfString(text) <= width) return size;
-  }
-  return min;
-}
-
 /** A TTF file's one font, read with fontkit (PDFKit's own font reader). */
 function fontOf(file: Buffer): Font {
   const font = create(file);
@@ -422,7 +402,11 @@ function emptyRange(keys: string[]): string {
 
 // ---------------------------------------------------------------- render
 
-function render(place: PlaceView, url: string): Promise<Buffer> {
+function render(
+  place: PlaceView,
+  url: string,
+  maxima: WasteMaxima,
+): Promise<Buffer> {
   const months = windowMonths(place.today);
   const inWindow = place.days.filter((day) =>
     months.includes(day.date.slice(0, 7)),
@@ -460,7 +444,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     toneLabels.get(tone) ?? TONE_LABEL[tone] ?? tone;
   // Page 2: what goes in each of the place's bins, from its gmina's own
   // rules (lib/sorting-guide.ts); none without them.
-  const guide = guideFor(place.gmina, place.fractions);
+  const guide = guideFor(place.gmina);
 
   const doc = new PDFDocument({
     size: "A4",
@@ -571,136 +555,9 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       return doc.widthOfString(text) <= width;
     }) ?? sizes[sizes.length - 1];
 
-  // ------------------------------------------------------------ text footer
-  // The text version's footer: every source with its link and check day,
-  // the disclaimer last; its ink ends MARGIN above the page's edge.
-  // Sources at the foot of the page, each with its link and the day it was
-  // checked, above an optional bold closing line; the last ink ends MARGIN
-  // above the page's edge, a divider ruleGap above the first.
-  const small = px(16);
-  // A URL never breaks: its own line, smaller if it must.
-  const urlSize = (text: string) =>
-    fitSize(doc, "regular", text, CONTENT_W, small, 6);
-  // One leading for every footer line, wrapped ones and the URL too.
-  const footerGap = 2;
-  const footerLead = small * LINE + footerGap;
-  const ruleW = 0.75;
-  const ruleGap = 8;
-  /** The footer's divider: decoration in the tagged copy, as is. */
-  const divider = (parent: PDFKit.PDFStructureElement | null, at: number) => {
-    const rule = () => {
-      doc
-        .moveTo(MARGIN, at)
-        .lineTo(PAGE_W - MARGIN, at)
-        .lineWidth(ruleW)
-        .strokeColor(BORDER)
-        .stroke();
-    };
-    if (parent) artifact(doc, rule);
-    else rule();
-  };
-  type FooterLine = { text: string; url: string | null };
-  const sourceLines = (
-    sources: Array<{
-      label: string;
-      url: string | null;
-      checkedAt: string | null;
-    }>,
-  ): FooterLine[] =>
-    sources.map((source) => ({
-      text: `Źródło: ${source.label}${source.checkedAt ? ` · Stan na ${longDate(source.checkedAt)}` : ""}`,
-      url: source.url,
-    }));
-
-  const footer = (lines: FooterLine[], closing: string | null) => {
-    let height = 0;
-    for (const line of lines) {
-      doc.font("regular").fontSize(small);
-      height += doc.heightOfString(line.text, {
-        width: CONTENT_W,
-        lineGap: footerGap,
-      });
-      if (line.url) height += footerLead;
-    }
-    if (closing) {
-      doc.font("bold").fontSize(small);
-      height += doc.heightOfString(closing, {
-        width: CONTENT_W,
-        lineGap: footerGap,
-      });
-    }
-    const last = lines.at(-1);
-    const lastBelow = closing
-      ? inkOf("bold", small, closing).below
-      : last?.url
-        ? inkOf("regular", urlSize(last.url), last.url).below
-        : inkOf("regular", small, last?.text ?? "").below;
-    const top =
-      PAGE_H -
-      MARGIN -
-      lastBelow -
-      (height - footerGap - small * (LINE - ASCENT));
-    const firstInk = lines.length
-      ? top + small * ASCENT - inkOf("regular", small, lines[0].text).above
-      : top + small * ASCENT - inkOf("bold", small, closing ?? "").above;
-    const ruleY = firstInk - ruleGap - ruleW / 2;
-
-    const draw = (parent: PDFKit.PDFStructureElement | null) => {
-      divider(parent, ruleY);
-      let fy = top;
-      for (const line of lines) {
-        const lineTop = fy;
-        doc.font("regular").fontSize(small);
-        fy += doc.heightOfString(line.text, {
-          width: CONTENT_W,
-          lineGap: footerGap,
-        });
-        // A smaller URL keeps the line's baseline.
-        const link = line.url;
-        const size = link ? urlSize(link) : small;
-        const linkTop = fy + (small - size) * ASCENT;
-        tag(parent, "P", () => {
-          doc
-            .font("regular")
-            .fontSize(small)
-            .fillColor(SECONDARY_TEXT)
-            .text(line.text, MARGIN, lineTop, {
-              width: CONTENT_W,
-              lineGap: footerGap,
-            });
-          if (link) {
-            doc
-              .fontSize(size)
-              .text(link, MARGIN, linkTop, { link, lineBreak: false });
-          }
-        });
-        if (link) fy += footerLead;
-      }
-      if (closing) {
-        const closingTop = fy;
-        tag(parent, "P", () => {
-          doc
-            .font("bold")
-            .fontSize(small)
-            .fillColor(BLACK)
-            .text(closing, MARGIN, closingTop, {
-              width: CONTENT_W,
-              lineGap: footerGap,
-            });
-        });
-      }
-    };
-    return {
-      top,
-      ruleY,
-      draw,
-      artifact: () => artifact(doc, () => draw(null)),
-    };
-  };
-
   // ------------------------------------------------------------ footer line
   // One short line a page: the source, the day it was checked, and that we
-  // are not an office. The text version lists every source in full.
+  // are not an office. The sources in full stay on the site.
   const oldest = (days: Array<string | null>) =>
     days.filter((d): d is string => d !== null).sort()[0] ?? null;
   const footerText = (source: string, checked: string | null) =>
@@ -921,7 +778,16 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         if (!keyTones.includes(tone)) keyTones.push(tone);
       }
     }
-    keyTones.sort((a, b) => KEY_ORDER.indexOf(a) - KEY_ORDER.indexOf(b));
+    return keyOf(
+      keyTones,
+      days.some((day) => moved(day)),
+    );
+  };
+  /** The key's items, placed in rows: these marks, then a moved date's. */
+  const keyOf = (unsorted: string[], anyMoved: boolean) => {
+    const keyTones = [...unsorted].sort(
+      (a, b) => KEY_ORDER.indexOf(a) - KEY_ORDER.indexOf(b),
+    );
     const items: KeyItem[] = [
       ...keyTones.map((tone) => ({
         label: toneLabel(tone),
@@ -929,7 +795,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
           drawMark(doc, tone, x + MARK / 2, cy, MARK),
       })),
       // Only what the data marks: a date moved from its usual day.
-      ...(days.some((day) => moved(day))
+      ...(anyMoved
         ? [
             {
               label: "Termin przesunięty",
@@ -1009,14 +875,32 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       oldest(place.sources.map((s) => s.checkedAt)),
     ),
   );
-  const keyAll = keyFor(printed);
-  const keyTop = footer1.top - SECTION - keyAll.h;
-  const gridTop = bandH + noteH + SECTION;
-  const gridMonths = printed.map((key) => ({
+  // Sized once for the largest calendar any address prints (lib/schedule.ts
+  // wasteMaxima): every month of the window, each as full as the fullest
+  // month in the data, under the tallest band (a one-line title and its
+  // day line) and above the tallest key of any zone. Every address gets the same
+  // tables; fewer months leave the space below them empty.
+  const keyMax = [
+    keyFor(printed),
+    ...maxima.keys.map((key) => keyOf(key.tones, key.moved)),
+  ].reduce((tallest, key) => (key.h > tallest.h ? key : tallest));
+  // The footer line at its larger size, whichever this one takes.
+  const footerTop = Math.min(
+    footer1.top,
+    PAGE_H - MARGIN - ROW[TYPE.small] - 2 * U,
+  );
+  const keyTop = footerTop - SECTION - keyMax.h;
+  const bandMax = Math.max(
+    bandH,
+    Math.max(titleTop + ROW[TYPE.title] + U + ROW[TYPE.body], rightBottom) +
+      MARGIN,
+  );
+  const gridTop = bandMax + noteH + SECTION;
+  const gridMonths = months.map((key) => ({
     key,
     marks: (byMonth.get(key) ?? []).map((day) => tonesOf(day).length),
   }));
-  // The tables as large as the page allows: the largest text of the scale
+  // The tables as large as that page allows: the largest text of the scale
   // (with its marks) whose grid fits, its rows then as tall as fill the
   // space down to the key (in half points: the one size not on U, so the
   // tables use the whole page).
@@ -1038,6 +922,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     );
     const grid = chooseGrid({
       months: gridMonths,
+      profiles: maxima.profiles,
       width: CONTENT_W,
       gap: GUTTER,
       height: keyTop - SECTION - gridTop,
@@ -1181,14 +1066,22 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   };
 
   // ------------------------------------------------------------ guide
-  // „Co wrzucać”, one page: equal tiles in a strict grid (a coloured header
-  // with the icon, name and bin; then „Tak” and „Nie” in areas of one
-  // height), the PSZOK line beside the QR code to the full rules, and one
-  // footer line. Columns and text size: the largest size of the scale that
-  // fits, then the fewest empty cells, then the widest tiles.
+  // „Co wrzucać”, one page, the same for every address: six equal tiles
+  // for the bins in a 3 × 2 grid (a coloured header with the icon, name and
+  // bin; then „Tak” and „Nie”), the waste handed in separately (four equal
+  // items in a row: icon, name, where), the PSZOK line beside the QR code
+  // to the full rules, and one footer line. Sized once for every gmina's
+  // guide (GUIDES): the largest text of the scale at which the longest
+  // content of any of them fits, so nothing ever overflows; a gmina with
+  // fewer entries leaves its cells empty.
   const TILE_PAD = 2 * U;
   const ICON = 6 * U;
   const ITEM_ICON = 3 * U;
+  const BIN_COLUMNS = 3;
+  const BIN_ROWS = 2;
+  const SEPARATE_COLUMNS = 4;
+  const QR_GUIDE = 16 * U;
+  const separateHeading = "Oddajesz osobno";
   const guideTop = compactH + SECTION;
   const footer2 = guide
     ? footerLine(
@@ -1198,82 +1091,155 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         ),
       )
     : null;
-  const stripH = 2 * TILE_PAD + 16 * U;
-  const stripTop = (footer2?.top ?? PAGE_H) - SECTION - stripH;
-  type Tile = NonNullable<typeof guide>["tiles"][number];
-  const tileName = (tile: Tile) => toneLabel(tile.subtype);
+  type Item = GuideItem;
+  const itemName = (item: Item) => TONE_LABEL[item.subtype] ?? item.subtype;
+  // Where separately handed-in waste goes, as its source says; the
+  // collection only where this address's calendar has its dates.
+  const inCalendar = new Set(inWindow.flatMap(tonesOf));
+  const whereText = (item: Item, all = false) => {
+    // One order on every item: the PSZOK first, then the collection.
+    const order: string[] = ["pszok", "zbiorka"];
+    const wheres = [...(item.where ?? [])].sort(
+      (a, b) => order.indexOf(a) - order.indexOf(b),
+    );
+    const parts = wheres.flatMap((where) =>
+      where === "pszok"
+        ? ["PSZOK"]
+        : all || inCalendar.has(item.subtype)
+          ? ["zbiórka – terminy w kalendarzu"]
+          : [],
+    );
+    const text = parts.join(" lub ");
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  };
+  const pszokText = (g: NonNullable<typeof guide>) =>
+    `Odpady niebezpieczne (${g.pszok.items.join(", ")}) oddaj: ${g.pszok.place}.`;
+  const allGuides = Object.keys(GUIDES).flatMap((gmina) => {
+    const g = guideFor(gmina);
+    return g ? [g] : [];
+  });
+  const allBins = allGuides.flatMap((g) => g.bins);
+  const allSeparate = allGuides.flatMap((g) => g.separate);
+  /** Whether every word of text fits width on its own line. */
+  const wordsFit = (font: string, size: number, text: string, width: number) =>
+    text.split(/\s+/).every((word) => widthOf(font, size, word) <= width);
+  const binW = (CONTENT_W - GUTTER * (BIN_COLUMNS - 1)) / BIN_COLUMNS;
+  const sepW = (CONTENT_W - GUTTER * (SEPARATE_COLUMNS - 1)) / SEPARATE_COLUMNS;
+  // The QR code's box is the last tile column; the PSZOK line the rest.
+  const redW = CONTENT_W - binW - GUTTER;
   const guidePlan = (() => {
-    if (!guide) return null;
-    const n = guide.tiles.length;
-    const options = [];
-    for (const size of [TYPE.small, TYPE.fine]) {
-      for (let columns = 2; columns <= 4; columns++) {
-        const rows = Math.ceil(n / columns);
-        const w = (CONTENT_W - GUTTER * (columns - 1)) / columns;
-        const nameW = w - 2 * TILE_PAD - ICON - 2 * U;
-        // The header pads its text by U above and below, TILE_PAD at the
-        // sides: the icon (ICON) sets its least height.
-        const headH = onScale(
-          2 * U +
-            Math.max(
-              ICON,
-              ...guide.tiles.map(
-                (tile) =>
-                  block("bold", size, tileName(tile), nameW) +
-                  (tile.container
-                    ? block("regular", size, tile.container, nameW)
-                    : 0),
-              ),
-            ),
-        );
-        const itemW = w - 2 * TILE_PAD - ITEM_ICON - U;
-        const area = (pick: (tile: Tile) => string[]) =>
+    if (!guide || !footer2) return null;
+    const plans = [TYPE.body, TYPE.small, TYPE.fine].map((size) => {
+      const nameW = binW - 2 * TILE_PAD - ICON - 2 * U;
+      // The header pads its text by U above and below, TILE_PAD at the
+      // sides: the icon (ICON) sets its least height.
+      const headH = onScale(
+        2 * U +
           Math.max(
-            0,
-            ...guide.tiles.map((tile) =>
-              pick(tile).length
-                ? ROW[size] +
-                  pick(tile).reduce(
-                    (sum, item) => sum + block("regular", size, item, itemW),
-                    0,
-                  )
-                : 0,
+            ICON,
+            ...allBins.map(
+              (tile) =>
+                block("bold", size, itemName(tile), nameW) +
+                (tile.container
+                  ? block("regular", size, tile.container, nameW)
+                  : 0),
             ),
-          );
-        const yesH = area((tile) => tile.short.yes);
-        const noH = area((tile) => tile.short.no);
-        const need =
-          headH + TILE_PAD + yesH + (noH ? 2 * U + noH : 0) + TILE_PAD;
-        const h = (stripTop - SECTION - guideTop - GUTTER * (rows - 1)) / rows;
-        options.push({
-          size,
-          columns,
-          rows,
-          w,
-          h,
-          headH,
-          yesH,
-          nameW,
-          itemW,
-          fits: need <= h,
-          empty: columns * rows - n,
-          need,
-        });
-      }
-    }
-    const fits = options.filter((o) => o.fits);
-    const pool = fits.length ? fits : options;
-    return pool.reduce((best, o) => {
-      if (!fits.length) return o.need - o.h < best.need - best.h ? o : best;
-      if (o.size !== best.size) return o.size > best.size ? o : best;
-      if (o.empty !== best.empty) return o.empty < best.empty ? o : best;
-      return o.columns < best.columns ? o : best;
+          ),
+      );
+      const itemW = binW - 2 * TILE_PAD - ITEM_ICON - U;
+      const area = (pick: (tile: Item) => string[]) =>
+        Math.max(
+          0,
+          ...allBins.map((tile) =>
+            pick(tile).length
+              ? ROW[size] +
+                pick(tile).reduce(
+                  (sum, item) => sum + block("regular", size, item, itemW),
+                  0,
+                )
+              : 0,
+          ),
+        );
+      const yesH = area((tile) => tile.short.yes);
+      const noH = area((tile) => tile.short.no);
+      const binNeed =
+        headH + TILE_PAD + yesH + (noH ? 2 * U + noH : 0) + TILE_PAD;
+      const sepNameW = sepW - 2 * TILE_PAD - ICON - 2 * U;
+      const sepHeadH = onScale(
+        2 * U +
+          Math.max(
+            ICON,
+            ...allSeparate.map((item) =>
+              block("bold", size, itemName(item), sepNameW),
+            ),
+          ),
+      );
+      const whereW = sepW - 2 * TILE_PAD;
+      const sepBodyH =
+        2 * TILE_PAD +
+        Math.max(
+          ROW[size],
+          ...allSeparate.map((item) =>
+            block("regular", size, whereText(item, true), whereW),
+          ),
+        );
+      const sepH = ROW[size] + U + sepHeadH + sepBodyH;
+      const textW = redW - 2 * TILE_PAD - ICON - 2 * U;
+      const stripH = Math.max(
+        2 * TILE_PAD + QR_GUIDE,
+        2 * TILE_PAD +
+          Math.max(
+            ...allGuides.map((g) => block("bold", size, pszokText(g), textW)),
+          ),
+      );
+      const fitsWords =
+        allBins.every(
+          (tile) =>
+            wordsFit("bold", size, itemName(tile), nameW) &&
+            wordsFit("regular", size, tile.container ?? "", nameW) &&
+            [...tile.short.yes, ...tile.short.no].every((item) =>
+              wordsFit("regular", size, item, itemW),
+            ),
+        ) &&
+        allSeparate.every(
+          (item) =>
+            wordsFit("bold", size, itemName(item), sepNameW) &&
+            wordsFit("regular", size, whereText(item, true), whereW),
+        );
+      // The footer line at its larger size, whichever this one takes.
+      const footerTop = Math.min(
+        footer2.top,
+        PAGE_H - MARGIN - ROW[TYPE.small] - 2 * U,
+      );
+      const stripTop = footerTop - SECTION - stripH;
+      const sepTop = stripTop - SECTION - sepH;
+      const binH =
+        (sepTop - SECTION - guideTop - GUTTER * (BIN_ROWS - 1)) / BIN_ROWS;
+      return {
+        size,
+        headH,
+        yesH,
+        nameW,
+        itemW,
+        sepNameW,
+        sepHeadH,
+        sepBodyH,
+        whereW,
+        textW,
+        stripH,
+        stripTop,
+        sepTop,
+        binH,
+        fits: fitsWords && binNeed <= binH,
+      };
     });
+    return plans.find((plan) => plan.fits) ?? plans[plans.length - 1];
   })();
 
-  const drawTile = (tile: Tile, x: number, y: number) => {
+  const drawTile = (tile: Item, x: number, y: number) => {
     if (!guidePlan) return;
-    const { size, w, h, headH, yesH, nameW, itemW } = guidePlan;
+    const { size, binH: h, headH, yesH, nameW, itemW } = guidePlan;
+    const w = binW;
     const fill = WASTE[TOKEN[tile.subtype]];
     const onFill = ink(fill);
     const section = doc.struct("Sect");
@@ -1291,14 +1257,14 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       );
     });
     // Name and bin, together centred in the header.
-    const nameH = block("bold", size, tileName(tile), nameW);
-    const binH = tile.container
+    const nameH = block("bold", size, itemName(tile), nameW);
+    const containerH = tile.container
       ? block("regular", size, tile.container, nameW)
       : 0;
     const nx = x + TILE_PAD + ICON + 2 * U;
-    const ny = y + (headH - nameH - binH) / 2;
+    const ny = y + (headH - nameH - containerH) / 2;
     tag(section, "H2", () =>
-      blockText("bold", size, onFill, tileName(tile), nx, ny, nameW),
+      blockText("bold", size, onFill, itemName(tile), nx, ny, nameW),
     );
     if (tile.container) {
       const container = tile.container;
@@ -1383,40 +1349,90 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     section.end();
   };
 
+  // Waste handed in separately: a heading, then equal items in a row, each
+  // a coloured header (icon, name) over where it goes.
+  const drawSeparate = () => {
+    if (!guide || !guidePlan || guide.separate.length === 0) return;
+    const { size, sepTop, sepNameW, sepHeadH, sepBodyH, whereW } = guidePlan;
+    const section = doc.struct("Sect");
+    root.add(section);
+    tag(section, "H2", () =>
+      rowText("bold", size, BLACK, separateHeading, MARGIN, sepTop, ROW[size]),
+    );
+    const top = sepTop + ROW[size] + U;
+    const list = doc.struct("L");
+    section.add(list);
+    guide.separate.forEach((item, i) => {
+      const x = MARGIN + i * (sepW + GUTTER);
+      const fill = WASTE[TOKEN[item.subtype]];
+      const onFill = ink(fill);
+      artifact(doc, () => {
+        doc.rect(x, top, sepW, sepHeadH).fillColor(fill).fill();
+        doc
+          .rect(x, top, sepW, sepHeadH + sepBodyH)
+          .lineWidth(LINE_W)
+          .strokeColor(RULE)
+          .stroke();
+        drawIcon(
+          doc,
+          FRACTION_ICONS[TOKEN[item.subtype]],
+          x + TILE_PAD,
+          top + (sepHeadH - ICON) / 2,
+          ICON,
+          onFill,
+        );
+      });
+      const li = doc.struct("LI");
+      list.add(li);
+      const name = itemName(item);
+      const nameH = block("bold", size, name, sepNameW);
+      tag(li, "P", () =>
+        blockText(
+          "bold",
+          size,
+          onFill,
+          name,
+          x + TILE_PAD + ICON + 2 * U,
+          top + (sepHeadH - nameH) / 2,
+          sepNameW,
+        ),
+      );
+      const where = whereText(item);
+      tag(li, "P", () =>
+        blockText(
+          "regular",
+          size,
+          BLACK,
+          where,
+          x + TILE_PAD,
+          top + sepHeadH + TILE_PAD,
+          whereW,
+        ),
+      );
+      li.end();
+    });
+    list.end();
+    section.end();
+  };
+
   const drawStrip = () => {
     if (!guide || !guidePlan) return;
-    const { columns, w: tileW } = guidePlan;
+    const { size, stripH, stripTop, textW } = guidePlan;
     const full = guide.fullRules.url;
     const host = new URL(full).host.replace(/^www\./, "");
-    const qr = 16 * U;
-    // The QR code and its caption under the fewest of the last columns
-    // that hold them (the caption at a size of the scale that fits), the
-    // PSZOK line under the rest: the strip keeps the tiles' edges.
-    const capFor = (span: number) => {
-      const width = span * tileW + (span - 1) * GUTTER;
-      const capW = width - 2 * TILE_PAD - qr - 2 * U;
-      const size = [TYPE.small, TYPE.fine].find(
+    const qrX0 = PAGE_W - MARGIN - binW;
+    const onRed = ink(RED);
+    const pszok = pszokText(guide);
+    const textX = MARGIN + TILE_PAD + ICON + 2 * U;
+    const textH = block("bold", size, pszok, textW);
+    // The caption beside the QR code, at the page's size if it fits.
+    const capW = binW - 2 * TILE_PAD - QR_GUIDE - 2 * U;
+    const capSize =
+      [size, TYPE.fine].find(
         (s) =>
           widthOf("bold", s, "Pełne zasady:") <= capW &&
           widthOf("regular", s, host) <= capW,
-      );
-      return size ? { span, width, size } : null;
-    };
-    const cap = Array.from({ length: columns - 1 }, (_, i) =>
-      capFor(i + 1),
-    ).find(Boolean) ?? { span: columns - 1, width: tileW, size: TYPE.fine };
-    const w = cap.width;
-    const qrX0 = PAGE_W - MARGIN - w;
-    const redW = qrX0 - GUTTER - MARGIN;
-    const onRed = ink(RED);
-    const pszok = `Odpady niebezpieczne (${guide.pszok.items.join(", ")}) oddaj: ${guide.pszok.place}.`;
-    const textX = MARGIN + TILE_PAD + ICON + 2 * U;
-    const textW = MARGIN + redW - TILE_PAD - textX;
-    const size =
-      [TYPE.body, TYPE.small, TYPE.fine].find(
-        (s) => block("bold", s, pszok, textW) <= stripH - 2 * TILE_PAD,
       ) ?? TYPE.fine;
-    const textH = block("bold", size, pszok, textW);
     const section = doc.struct("Sect");
     root.add(section);
     artifact(doc, () => {
@@ -1430,11 +1446,17 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         onRed,
       );
       doc
-        .rect(qrX0, stripTop, w, stripH)
+        .rect(qrX0, stripTop, binW, stripH)
         .lineWidth(LINE_W)
         .strokeColor(RULE)
         .stroke();
-      drawQr(doc, full, qrX0 + TILE_PAD, stripTop + TILE_PAD, qr);
+      drawQr(
+        doc,
+        full,
+        qrX0 + TILE_PAD,
+        stripTop + (stripH - QR_GUIDE) / 2,
+        QR_GUIDE,
+      );
     });
     tag(section, "P", () =>
       blockText(
@@ -1447,27 +1469,27 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         textW,
       ),
     );
-    const capX = qrX0 + TILE_PAD + qr + 2 * U;
-    const capH = 2 * ROW[cap.size];
+    const capX = qrX0 + TILE_PAD + QR_GUIDE + 2 * U;
+    const capH = 2 * ROW[capSize];
     const capY = stripTop + (stripH - capH) / 2;
     tag(section, "P", () => {
       rowText(
         "bold",
-        cap.size,
+        capSize,
         BLACK,
         "Pełne zasady:",
         capX,
         capY,
-        ROW[cap.size],
+        ROW[capSize],
       );
       rowText(
         "regular",
-        cap.size,
+        capSize,
         BLACK,
         host,
         capX,
-        capY + ROW[cap.size],
-        ROW[cap.size],
+        capY + ROW[capSize],
+        ROW[capSize],
         {
           link: full,
         },
@@ -1480,15 +1502,16 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     if (!guide || !guidePlan || !footer2) return;
     doc.addPage();
     compactBand("co wrzucać do pojemników", root);
-    guide.tiles.forEach((tile, i) => {
-      const col = i % guidePlan.columns;
-      const row = Math.floor(i / guidePlan.columns);
+    guide.bins.forEach((tile, i) => {
+      const col = i % BIN_COLUMNS;
+      const row = Math.floor(i / BIN_COLUMNS);
       drawTile(
         tile,
-        MARGIN + col * (guidePlan.w + GUTTER),
-        guideTop + row * (guidePlan.h + GUTTER),
+        MARGIN + col * (binW + GUTTER),
+        guideTop + row * (guidePlan.binH + GUTTER),
       );
     });
+    drawSeparate();
     drawStrip();
     footer2.draw(root);
   };
@@ -1509,8 +1532,13 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     else artifact(doc, () => footer1.draw(null));
   };
   let firstPage = true;
-  const heads = headed(grid.rows);
-  grid.rows.forEach((row, i) => {
+  // This address's months, from the top left, in the grid's columns.
+  const placedRows = tableRows(
+    printed.map((key) => ({ key })),
+    grid.columns,
+  );
+  const heads = headed(placedRows);
+  placedRows.forEach((row, i) => {
     const heading = heads[i] || year === "";
     const need = tableH + (heading ? YEAR_H : 0);
     if (y + need > keyTop - SECTION + 0.01 && pageKeys.length) {
@@ -1553,50 +1581,28 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   drawGuide();
 
   // ------------------------------------------------------------ text version
-  // No colours and no marks: the same dates as a list, then every source in
-  // full, with its link and the day it was checked, for screen readers.
-  const textFooter = footer(
-    [
-      ...sourceLines(place.sources),
-      ...(guide ? sourceLines(guide.sources) : []),
-    ],
-    disclaimer(place.gmina),
-  );
+  // No colours and no marks: the address's day, then the same dates as a
+  // list, and the pages' one footer line (the sources stay on the site).
   doc.addPage();
   y = compactBand("wersja tekstowa", root) + SECTION;
-  const textBottom = textFooter.top - 3 * U;
+  const textBottom = footer1.top - 3 * U;
   // One leading for the page's 19px text: paragraphs, list items and their
   // wrapped lines alike.
   const bodyGap = 2;
-  const intro = [
-    ...(dayLine ? [`${dayLine}.`] : []),
-    "Te same terminy co w kalendarzu, w formie listy.",
-    ...(putOut ? [putOut] : []),
-    ...(place.verified ? [] : [unverifiedNote(place.gmina)]),
-    "Terminy mogą się zmienić. Aktualne zawsze na stronie:",
-  ];
-  for (const line of intro) {
+  if (dayLine) {
     const top = y;
     tag(root, "P", () => {
       doc
         .font("regular")
         .fontSize(px(19))
         .fillColor(BLACK)
-        .text(line, MARGIN, top, { width: CONTENT_W, lineGap: bodyGap });
+        .text(`${dayLine}.`, MARGIN, top, {
+          width: CONTENT_W,
+          lineGap: bodyGap,
+        });
     });
-    y = doc.y;
+    y = doc.y + 10;
   }
-  const link = url.replace("https://", "");
-  const linkTop = y;
-  const linkSize = fitSize(doc, "bold", link, CONTENT_W, px(19), 8);
-  tag(root, "P", () => {
-    doc
-      .font("bold")
-      .fontSize(linkSize)
-      .fillColor(BLACK)
-      .text(link, MARGIN, linkTop, { link: url, lineBreak: false });
-  });
-  y += linkSize * LINE + bodyGap + 10;
 
   // GOV.UK's scale, as on the site: month headings heading-m, the rest body.
   const listSize = px(19);
@@ -1632,7 +1638,8 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       items: days.map((day) => `${spoken(day)} – ${label(day.pickups)}`),
     });
   }
-  flushGap();
+  // Months after the last date, and the year after, in one short line.
+  gap = [];
   if (laterText) entries.push({ kind: "gap", range: "", text: laterText });
 
   // Measured first, so a month is never split across pages (lib/pdf-flow).
@@ -1661,7 +1668,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   let textPageNow = 0;
   const toPage = (spot: Spot) => {
     while (textPageNow < spot.page) {
-      textFooter.artifact();
+      artifact(doc, () => footer1.draw(null));
       doc.addPage();
       compactBand("wersja tekstowa, ciąg dalszy", null);
       textPageNow++;
@@ -1724,7 +1731,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     list.end();
     section.end();
   });
-  textFooter.draw(root);
+  footer1.draw(root);
 
   root.end();
   doc.end();
@@ -1763,7 +1770,11 @@ export async function GET(
     });
   }
 
-  const pdf = await render(place, `${SITE_URL}${wastePath(place)}`);
+  const pdf = await render(
+    place,
+    `${SITE_URL}${wastePath(place)}`,
+    await wasteMaxima(),
+  );
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
