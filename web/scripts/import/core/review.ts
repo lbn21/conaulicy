@@ -52,8 +52,8 @@ export type ReadWith = { prompt: string; model: string; effort: string };
 const marker = (key: string, digest: string, readWith?: ReadWith) =>
   `<!-- import-review: ${key} sha256:${digest}${readWith ? ` prompt:${readWith.prompt} model:${readWith.model} effort:${readWith.effort}` : ""} -->`;
 /**
- * The marker's fields as written; a part it does not have is null (before
- * task 199 no prompt or model, before task 203 no effort).
+ * The marker's fields as written; a part it does not have is null (older
+ * markers have no prompt or model, or no effort).
  */
 function markerOf(body: string) {
   const m =

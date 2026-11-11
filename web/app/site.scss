@@ -1,4 +1,4 @@
-// The only own CSS (docs/govuk-audit.md): what GOV.UK has no equivalent for.
+// The only own CSS: what GOV.UK has no equivalent for.
 // GOV.UK Sass functions and mixins only; no raw colours or px.
 // Capped by scripts/check-own-css.mjs.
 @use "settings" as *;
@@ -8,7 +8,7 @@
 // geometry (govuk-frontend components/header/_mixin.scss): the logo 30px tall
 // (site-header.tsx), lifted off the line as .govuk-header__logotype (its
 // vertical-align: top comes from the Generic header's homepage-link > *).
-// Deviation from GOV.UK's magic numbers (Jakub's decision): the GOV.UK
+// Deviation from GOV.UK's magic numbers: the GOV.UK
 // header's padding 16/12 (the Generic header's default is 15/15) sits its airy
 // crown high, 13px above and 18px below in the 61px bar, which a solid plate
 // does not carry. 18/11 centres the plate exactly, 16px
@@ -18,7 +18,7 @@
 // lift is 2px, not 3px: the content area ends 6px below the plate, which
 // centres GOV.UK's 4px focus bar, 6px above and 6px below, and the hover bar
 // (below). The px are allowed one by one in scripts/check-own-css.mjs.
-// Deviation from the Generic header's black bar (Jakub's decision, task 88):
+// Deviation from the Generic header's black bar:
 // the brand group's darkest step, as GOV.UK's header takes its brand
 // colour (HEADER in lib/palette.ts, as theme-color and the PDF's band).
 // Screen only, so GOV.UK's print rule still clears it.
@@ -30,7 +30,7 @@ $app-header-colour: $app-header;
   }
 }
 
-// The status bar of the home-screen app (task 136). Safari 26 ignores
+// The status bar of the home-screen app. Safari 26 ignores
 // theme-color and samples the page under the bar: a fixed element touching
 // the top edge and at least 90 % wide gives its colour (its background if
 // over 10px tall, else its pixels 4-6px in); without one, the page's (<html>,
@@ -75,7 +75,7 @@ $app-header-colour: $app-header;
   fill: var(--app-logo-plate, #{govuk-colour("white")});
 }
 
-// Deviation from GOV.UK's 3px hover bar (Jakub's decision, task 82): 4px, the
+// Deviation from GOV.UK's 3px hover bar: 4px, the
 // focus bar's place and thickness, so it is centred under the plate too; a
 // centred 3px bar needs half a pixel, which Chrome does not paint. Width only,
 // so GOV.UK's border: 0 on focus still removes it.
@@ -86,7 +86,7 @@ $app-header-colour: $app-header;
 }
 
 // GOV.UK's focus bar below the yellow box (focus-text black) takes the
-// header's colour, so it does not show (task 88): the yellow box with the
+// header's colour, so it does not show: the yellow box with the
 // black plate carries the focus on its own. The yellow shadow above stays.
 //
 // The focus box is the link's inline content area, set by the font (Atkinson
@@ -106,7 +106,7 @@ $app-header-colour: $app-header;
   padding: 1px 6px 0;
 }
 
-// Deviation from GOV.UK's warning-text icon (task 83): its line-height 29px
+// Deviation from GOV.UK's warning-text icon: its line-height 29px
 // centres GDS Transport's "!" in the 35px circle, but Atkinson's taller ascent
 // (984 of 1300 units) sits it 0.65px low: 8 above and 6.65 below. Chrome draws
 // text on whole CSS px, so the "!" moves 1px at a time; 28px lifts it 1px, to
@@ -119,7 +119,7 @@ $app-header-colour: $app-header;
 // The street search: alphagov accessible-autocomplete with its own CSS,
 // unchanged, plus two things. Its field, hint and rows set no font family (on
 // GOV.UK they inherit GOV.UK's) and the pre-v6 scale's 16px below 641px, so
-// they get GOV.UK's 19, as .govuk-input (task 275): 25px line, 5px padding
+// they get GOV.UK's 19, as .govuk-input: 25px line, 5px padding
 // and 4px border fit the library's 40px field. And it paints the highlighted suggestion in GOV.UK's brand blue,
 // which sites off GOV.UK must not use. Here it takes the brand role (ROLES
 // in lib/palette.ts) instead. Outside forced-colours mode only, so its
@@ -156,12 +156,12 @@ $app-header-colour: $app-header;
 // space as wide as its text, in place, on the bin markers' neutral grey,
 // rounded as they are, with a subtle pulse (opacity only, so it runs on the
 // compositor: web.dev/articles/animations-guide). More modern than GOV.UK,
-// which has no loading state (Jakub's decision, 31 Oct 2026). Seen as soon
-// as it renders, no delay and no fade in (task 237). The address pages'
+// which has no loading state. Seen as soon
+// as it renders, no delay and no fade in. The address pages'
 // skeleton (components/place-suspense.tsx) sets its bars in section cards:
 // a border in the same grey (GOV.UK's form-element width, its only one
 // that thin), the same corners, GOV.UK's padding
-// classes (task 239). The card's rule on one line, under the cap.
+// classes. The card's rule on one line, under the cap.
 .app-skeleton {
   background-color: govuk-colour("black", $variant: "tint-95");
   border-radius: govuk-spacing(1);
@@ -173,10 +173,10 @@ $app-header-colour: $app-header;
 @keyframes app-pulse { 50% { opacity: 0.55; } }
 
 // A live block's reveal (components/live-block.tsx: an address page's
-// whole content and its breadcrumbs, task 239), as Next.js's
+// whole content and its breadcrumbs), as Next.js's
 // "Suspense reveals" (nextjs.org/docs/app/guides/view-transitions), opacity
 // only: the skeleton fades out and the content fades in, 150 ms each, at
-// once, no slide (task 233). The page itself (root) does not crossfade, as the guide's
+// once, no slide. The page itself (root) does not crossfade, as the guide's
 // anchored header: on a reload while scrolled it made the whole page jump,
 // and a navigation swaps at once. Clicks during a reveal reach the page.
 // All of it off under prefers-reduced-motion
@@ -191,7 +191,7 @@ $app-header-colour: $app-header;
 
 @keyframes app-fade { from { opacity: 0; } }
 
-// No scroll anchor inside the main content (task 234). On a reload Chromium
+// No scroll anchor inside the main content. On a reload Chromium
 // restores the scroll from a saved anchor, a selector found on the final
 // page; at first layout the main content still holds the skeleton, so
 // the selector matches the wrong box and the page lands too high. Without one it restores the plain offset; the height is final at
@@ -209,19 +209,19 @@ $app-header-colour: $app-header;
   }
 }
 
-// The address page's timeline (components/timeline.tsx, tasks 264-265), as
+// The address page's timeline (components/timeline.tsx), as
 // CodyHouse's vertical timeline, our own CSS: one unbroken line on the left
 // from the first dot to the last, a dot per day on it, a card per day with
 // a caret at its dot. All of it decorative pseudo-elements; the markup stays
 // an ol of days. Mobile-first, the same at every width. Dots 15px on a 1px
 // line, centred on every card's 19/25 date line (--app-y: the card's border,
 // its padding, half the line); the caret's centre on the same y. One padding
-// for every card, GOV.UK's margins inside it trimmed (task 266).
+// for every card, GOV.UK's margins inside it trimmed.
 // Colours: a day with items on the brand's surface (tint-95, its border
 // tint-50), its labels in the brand colour; an empty day or run all grey
 // (a barely-there grey: GOV.UK's black tint-95 a third over white, its
 // border, secondary text); every date in secondary text. The first dot,
-// where the line starts (today), filled in the brand colour (task 272).
+// where the line starts (today), filled in the brand colour.
 $app-dot: govuk-spacing(3);
 $app-hair: $govuk-border-width-form-element * .5;
 $app-caret: govuk-spacing(2);
@@ -257,10 +257,10 @@ $app-caret: govuk-spacing(2);
 // „Później”: past the window, a ringed dot (a dot in a ring).
 .app-timeline > .app-timeline__later::before { background: govuk-functional-colour(secondary-text); box-shadow: inset 0 0 0 $app-hair * 2 govuk-colour("white"); }
 
-// The first dot, „you are here”, whatever its card (task 272).
+// The first dot, „you are here”, whatever its card.
 .app-timeline > li:first-child::before { border-color: govuk-functional-colour(brand); background: govuk-functional-colour(brand); }
 
-// A run of empty days (task 268): one dot, and the line dashed alongside
+// A run of empty days: one dot, and the line dashed alongside
 // its whole card (the page's background under the dashes), to the dot only
 // when it ends the line.
 .app-timeline__range > .app-timeline__card::after { content: ""; position: absolute; top: -$app-hair; bottom: -$app-hair; left: -(govuk-spacing(6) + $app-hair); width: $app-dot; background: repeating-linear-gradient(govuk-functional-colour(border) 0 govuk-spacing(1), transparent 0 govuk-spacing(2)) 50% 0 no-repeat, govuk-functional-colour(body-background); background-size: $app-hair 100%, auto; }
@@ -269,10 +269,10 @@ $app-caret: govuk-spacing(2);
 .app-timeline__card { --app-bg: #{govuk-functional-colour(surface-background)}; --app-line: #{govuk-functional-colour(surface-border)}; position: relative; padding: govuk-spacing(3); border: $app-hair solid var(--app-line); border-radius: govuk-spacing(1); background: var(--app-bg); }
 .app-timeline__card--empty { --app-bg: color-mix(in srgb, #{govuk-colour("black", $variant: "tint-95")} 35%, #{govuk-colour("white")}); --app-line: #{govuk-functional-colour(border)}; }
 .app-timeline__title, .app-timeline__card--empty > p { color: govuk-functional-colour(secondary-text); }
-// After the date, its relative word: body-s, regular, grey (tasks 268-269).
+// After the date, its relative word: body-s, regular, grey.
 .app-timeline__title .app-timeline__when { color: govuk-functional-colour(secondary-text); }
 .app-timeline__card .govuk-summary-list__key { color: govuk-functional-colour(brand); }
-// Two sizes in a card (task 269): the date heading-s, all else body-s.
+// Two sizes in a card: the date heading-s, all else body-s.
 .app-timeline__card :is(.govuk-summary-list, .govuk-list) { @include govuk-font-size($size: 16); }
 
 // Inside a card one rhythm: key and value a 5px step apart on mobile,
@@ -289,10 +289,10 @@ $app-caret: govuk-spacing(2);
 // its centre on the card's left edge, level with the dot.
 .app-timeline__card::before { content: ""; position: absolute; top: calc(var(--app-y) - #{$app-hair + $app-caret * .5}); left: -($app-caret * .5) - $app-hair; box-sizing: border-box; width: $app-caret; height: $app-caret; border-bottom: $app-hair solid var(--app-line); border-left: $app-hair solid var(--app-line); background: var(--app-bg); transform: rotate(45deg); }
 
-// IMGW's warnings (components/warning-cards.tsx, task 288): a card each
+// IMGW's warnings (components/warning-cards.tsx): a card each
 // above the timeline, its border and radius as a timeline card's. Its top
 // band in the level's solid colour from IMGW's own map (WARNING_LEVELS in
-// lib/palette.ts; Jakub's decision, task 98), text black on yellow and
+// lib/palette.ts), text black on yellow and
 // orange, white on red, 4.5:1 or more; the meter's steps in the text's
 // colour, filled up to the level, so it never rests on colour alone.
 .app-warning { --app-level: #{$app-warning-level-1}; --app-on: #{govuk-functional-colour(text)}; margin: 0 0 govuk-spacing(6); border: $govuk-border-width-form-element solid var(--app-level); border-radius: govuk-spacing(1); overflow: hidden; }

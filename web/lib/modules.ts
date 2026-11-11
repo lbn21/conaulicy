@@ -1,5 +1,5 @@
 // The address page's modules: waste, water and the weather today; power and
-// others later (task 102). Each one gives the address page
+// others later. Each one gives the address page
 // (components/hub.tsx) its items for the timeline, its notices, its link
 // and its check time, in registry order, and has a subpage of its own,
 // /adres/<id>/<id of the module>, in one frame (components/module-page.tsx). The ids and their
@@ -65,7 +65,7 @@ export type Module<D> = {
    */
   upcoming(data: D): Item[];
   /**
-   * The hub's lines that belong to no day (task 263), above the timeline:
+   * The hub's lines that belong to no day, above the timeline:
    * the split street's question, no schedule, a source we could not
    * check, posts we could not read. Usually none.
    */
@@ -164,8 +164,8 @@ const woda: Module<Water> = {
 };
 
 // IMGW's warnings for the powiat (all our gminas lie in one), on the
-// address page only: a card each above the timeline (task 288,
-// components/warning-cards.tsx), never in the timeline, and no subpage
+// address page only: a card each above the timeline
+// (components/warning-cards.tsx), never in the timeline, and no subpage
 // (SUBPAGE_IDS), so no rows, sources or body of its own; no copy yet,
 // „Nie udało się sprawdzić”; the store unreadable, a notice.
 const pogoda: Module<Weather> = {

@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 
-// The site needs JavaScript (Jakub's decision, task 273): no page may say
+// The site needs JavaScript: no page may say
 // it, or its search, works without it, and /dostepnosc says it needs it.
 
 const APP = join(import.meta.dirname, "..", "app");

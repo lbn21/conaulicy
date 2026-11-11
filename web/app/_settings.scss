@@ -2,7 +2,7 @@
 // documented way ("Using GOV.UK Frontend without GOV.UK branding",
 // frontend.design-system.service.gov.uk). Shared by govuk.scss and site.scss.
 // Only what GOV.UK forbids us to copy is ours: the brand-blue group, the
-// typeface and the logo (docs/govuk-audit.md).
+// typeface and the logo.
 @use "sass:meta";
 @use "assets";
 @use "palette" as *;

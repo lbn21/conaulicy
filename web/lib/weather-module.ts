@@ -1,6 +1,6 @@
 // What the weather module (lib/modules.ts) says on the address page: IMGW's
 // warnings for the powiat (lib/imgw-shown.ts), a card each above the
-// timeline (components/warning-cards.tsx, task 288), with a notice when
+// timeline (components/warning-cards.tsx), with a notice when
 // the copy is old. Pure, so the unit tests read every state.
 import { dayMonthTime, momentRange } from "./date-labels.ts";
 import type { Group } from "./hub.ts";
@@ -35,7 +35,7 @@ export function weather(copy: ImgwRead, now: number): Weather | null {
 }
 
 /**
- * When a warning applies (task 288), in its card: „Trwa do 11 listopada
+ * When a warning applies, in its card: „Trwa do 11 listopada
  * 19:00.” once it has begun, else „Od 11 listopada, 10:00 do 16:00.”
  * (Intl's range, lib/date-labels.ts momentRange).
  */
@@ -48,7 +48,7 @@ export function warningWhen(warning: ShownWarning, now: number): string {
 }
 
 /**
- * The hub's IMGW lines that belong to no day (task 263): the notice when
+ * The hub's IMGW lines that belong to no day: the notice when
  * the copy is old or unreadable, its link IMGW's page; else none.
  */
 export function weatherNotices(data: Weather): Group[] {

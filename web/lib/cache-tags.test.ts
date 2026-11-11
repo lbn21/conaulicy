@@ -66,7 +66,7 @@ test("IMGW: asked only by the cron; its copy read only on the address pages", ()
     "lib/live-store.ts",
     "lib/modules.ts",
   ]);
-  // No IMGW banner on any other page (task 257).
+  // No IMGW banner on any other page.
   assert.deepEqual(calling(/\bimgw-banner\b|<ImgwLive/), []);
 });
 
@@ -113,7 +113,7 @@ test("the live blocks: read after io(), never inside a cached scope", () => {
     assert.doesNotMatch(source(path), /use cache/, path);
 });
 
-test("the address pages: one read per request, every block at once, shared with the breadcrumbs (task 239)", () => {
+test("the address pages: one read per request, every block at once, shared with the breadcrumbs", () => {
   // Every module's data in one Promise.all, after io(), behind React's
   // cache(), so the page and its breadcrumbs share one read.
   assert.match(

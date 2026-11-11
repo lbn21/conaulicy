@@ -24,21 +24,21 @@ import type { PlaceView } from "@/lib/schedule";
 import type { Weather } from "@/lib/weather-module";
 
 // The address page, /adres/[id] (and ?nr=): a date-first hub of modules
-// (lib/modules.ts, task 102; task 263), under breadcrumbs. Under „Zmień
+// (lib/modules.ts), under breadcrumbs. Under „Zmień
 // adres”: the lines that belong to no day (each module's notices, in an
-// inset); a card per IMGW warning (components/warning-cards.tsx, task
-// 288); „Najbliższe 7 dni”, a vertical timeline of every module's items
+// inset); a card per IMGW warning (components/warning-cards.tsx);
+// „Najbliższe 7 dni”, a vertical timeline of every module's items
 // by day (components/timeline.tsx, lib/timeline.ts), then „Później”;
 // „Wszystko o Twoim adresie”, a link to each module's subpage (/smieci,
 // /woda) that has a source; then one small-print note: when each
 // module last checked its source, the AI caveat when it applies, and IMGW's
-// required wording (task 284; the sources are on the subpages). No
+// required wording (the sources are on the subpages). No
 // calendar or PDF here: they are on the waste subpage. A split street's
 // number errors keep the street page (StreetPage), GOV.UK's validation
 // pattern.
 //
 // The page is read per request, whole, behind one <Suspense> with one
-// skeleton (components/place-suspense.tsx; Jakub's decision, task 239):
+// skeleton (components/place-suspense.tsx):
 // every block's data at once (hubData), so it all comes in together, each
 // module's check time from the same read. Its static shell
 // holds only the skeleton: no date and no waste type is ever prerendered.
@@ -48,7 +48,7 @@ import type { Weather } from "@/lib/weather-module";
 
 /**
  * Everything the address page shows, read per request (after io(), so
- * nothing date-dependent is ever prerendered: task 239), every module's
+ * nothing date-dependent is ever prerendered), every module's
  * data at once (Promise.all), so the page waits for the slowest block, not
  * the sum. React's cache() makes it one read per request for the page and
  * its breadcrumbs (components/place-crumbs.tsx), so both come in together
@@ -103,7 +103,7 @@ export async function HubMain({
   );
 }
 
-/** The address page's blocks, as HubMain (task 263); `data` hubData's. */
+/** The address page's blocks, as HubMain; `data` hubData's. */
 export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
   const modules = MODULE_IDS.map((slug): Module<unknown> => MODULES[slug]);
   const items = modules.flatMap((module, i) =>
@@ -151,7 +151,7 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
           </ul>
         </section>
       )}
-      {/* Small print at the end, above the footer (task 284): when each
+      {/* Small print at the end, above the footer: when each
         module last checked its source, the AI caveat when it applies, and
         IMGW's required wording, its name linked: the weather has no
         subpage, so its source link is here. The other sources are on the

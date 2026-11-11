@@ -33,7 +33,7 @@ export default async function AllPlacesPage() {
   const { list } = await searchIndex();
   const town = list.townId ? localityAnchor(list.townId) : undefined;
   // Every place alike: one without a waste schedule still has its page,
-  // its water and IMGW's warnings (task 276).
+  // its water and IMGW's warnings.
   const Place = ({ place }: { place: ListedPlace }) => (
     <PlaceLink href={placePath(place.id)} className="govuk-link">
       {place.label}

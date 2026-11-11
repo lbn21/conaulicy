@@ -1,8 +1,8 @@
 import type { ShownWarning } from "@/lib/imgw-shown";
 import { warningWhen } from "@/lib/weather-module";
 
-// IMGW's warnings on the address page (task 288; t282's concept A with D's
-// meter): a card each, directly above „Najbliższe 7 dni”, highest level
+// IMGW's warnings on the address page, with a
+// meter: a card each, directly above „Najbliższe 7 dni”, highest level
 // first, then the earliest (lib/imgw-warnings.ts forPowiat). Its top band
 // in the level's colour (IMGW's map, lib/palette.ts WARNING_LEVELS; text
 // black on yellow and orange, white on red) holds a 3-segment meter and

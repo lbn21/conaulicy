@@ -76,7 +76,7 @@ test("collapse: 2+ empty days one card, today included; one empty day its own", 
     "2026-11-15: 1",
     "2026-11-16: 0",
   ]);
-  // A run including today folds into one card (task 272).
+  // A run including today folds into one card.
   assert.deepEqual(shape(list, [E, E, E, ONE, ONE, ONE, ONE]), [
     "2026-11-10..2026-11-12: 0",
     "2026-11-13: 1",

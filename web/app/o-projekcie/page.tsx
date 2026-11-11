@@ -17,7 +17,7 @@ const PRG_PAGE =
   "https://www.geoportal.gov.pl/pl/dane/panstwowy-rejestr-granic-prg/";
 
 // GUS's register of place and street names (TERYT), the import's source
-// (docs/data/DATA-INVENTORY.md, TERYT).
+// (docs/data/sources.md).
 const TERYT_PAGE = "https://eteryt.stat.gov.pl/";
 
 export default function AboutPage() {

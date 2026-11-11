@@ -7,7 +7,7 @@
 //
 // Also the search (components/address-search.tsx): the home page's raw
 // HTML holds a form with the library's field (a combobox named q, empty, no
-// error) and a submit button; /szukaj is gone (task 227), a plain 404. A
+// error) and a submit button; /szukaj is gone, a plain 404. A
 // suggestion's text, as a pick leaves it in the field, resolves to its own
 // place (lib/search-submit.ts, as „Szukaj” does): every label in
 // /api/search-index, and some with a house number.
@@ -49,7 +49,7 @@ const CASES = [
   ["POST", "/api/revalidate?x=1", 401],
   ["GET", "/manifest.webmanifest?x=1", 200],
   ["GET", "/robots.txt?x=1", 200],
-  // The search page is gone: no redirect (task 227).
+  // The search page is gone: no redirect.
   ["GET", "/szukaj?q=Rynek", 404],
   ["GET", RENAMED, 308, STREET],
   ["GET", `${RENAMED}?nr=12`, 308, `${STREET}?nr=12`],
@@ -72,7 +72,7 @@ const CASES = [
   ["GET", "/adres/0972447-88888/smieci", 404],
   ["GET", "/adres/0972447-88888/smieci?nr=12", 404],
   ["GET", `${STREET}/nie-ma-takiego-modulu`, 404],
-  // No weather subpage (task 288): a 404 like any unknown module, its
+  // No weather subpage: a 404 like any unknown module, its
   // parameters left alone.
   ["GET", `${STREET}/pogoda`, 404],
   ["GET", `${STREET}/pogoda?nr=12`, 404],
@@ -111,7 +111,7 @@ export async function check(server, failures) {
     if (icon) CASES.push(["GET", icon, 200]);
     else failures.push(`/: no <link> to /${name}?…`);
   }
-  // The Apple icon at the root, with no query (task 136): iOS fetches it
+  // The Apple icon at the root, with no query: iOS fetches it
   // there, without cookies, when the page is added to the Home Screen.
   const apple = hrefs("apple-touch-icon");
   if (apple.length !== 1 || apple[0] !== "/apple-touch-icon.png")

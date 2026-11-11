@@ -438,11 +438,11 @@ const REAL_TEXTS: Array<{
  * checked, in the v3.1 item shape: [date, start, end, locality,
  * locality_verbatim, street, street_verbatim, note, kind, date_verbatim,
  * houses]. Recorded before the v3.1 schema, so the verbatim fields and the
- * note were converted from the hand-filled place phrase (task 114b) and
+ * note were converted from the hand-filled place phrase and
  * checked against TRUTH (below); street names and 39699's
- * hamlet as the shared prompt asks for them (task 182, lib/water-prompt.ts).
+ * hamlet as the shared prompt asks for them (lib/water-prompt.ts).
  * date_verbatim and houses are written out, each as the post and the note
- * have it (task 190), never derived by a word rule. The other new fields:
+ * have it, never derived by a word rule. The other new fields:
  * reading() (AI_ITEM, CHANGES).
  */
 export const READINGS: Record<
@@ -2118,7 +2118,7 @@ export const READINGS: Record<
  * Real: post 39885 as the gmina edited it on 26 Oct 2026 at 14:41 (GET
  * …/wp-json/wp/v2/posts?include=39885 at 17:31 UTC, title and content
  * verbatim): a line added for 27.10, "Lisie Jamy, ul. Długa, Wąska, Leśna,
- * Zielona", while 26.10 and 29.10 keep the whole village (task 152).
+ * Zielona", while 26.10 and 29.10 keep the whole village.
  * Its red ("#" written \u0023) is the gmina's inline style, kept as served
  * (scripts/check-palette.mjs allows no raw colour in lib).
  */
@@ -2138,7 +2138,7 @@ export const POST_39885_EDITED: ZukPost = {
 
 /**
  * A reading of POST_39885_EDITED shaped as the real model's on Jakub's box
- * (task 152, where items 1 and 19 were dropped): the 15 items of
+ * (where items 1 and 19 were dropped): the 15 items of
  * reading(39885) with the four streets of Lisie Jamy on 27.10 as items
  * 2-5, so the 29.10 Lisie Jamy is item 19. Written by hand, never a real
  * call.
@@ -2173,7 +2173,7 @@ export function reading39885Edited(): AiResult {
 
 /**
  * What the 24 real posts say, checked by hand (the prompt A/B test of 25
- * Oct 2026, task 112): [post, date, start, end, locality id,
+ * Oct 2026): [post, date, start, end, locality id,
  * street id or null for the whole locality, houses]. Załuże–Podłęże is
  * part of Załuże, 39699's "(przysiółek Dąbrowa)" Basznia Górna's Dąbrowa.
  */

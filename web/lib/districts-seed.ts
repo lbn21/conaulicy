@@ -1,5 +1,5 @@
-// The gazetteer of Lubaczów (lib/districts.ts), as Jakub approved it on
-// 26 Oct 2026 (task 151) from his research (a file not in git): every name with
+// The gazetteer of Lubaczów (lib/districts.ts), as approved from
+// research (a file not in git): every name with
 // its streets of confidence high or medium, low ones left out; names with
 // no approved street are kept with none (linked as written). Załuże and
 // Bałaje are villages of their own, never a town district. Written to the

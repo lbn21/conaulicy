@@ -1,4 +1,4 @@
-// The prompt's regression cases (task 182): the real posts whose traps the
+// The prompt's regression cases: the real posts whose traps the
 // old word rules of the gate were written for, each with the reading the
 // prompt (lib/water-prompt.ts) must give, written by hand, never a real
 // call. The gate's own tests run them (lib/water-cases.test.ts); a dry run
@@ -35,7 +35,7 @@ export type WaterCase = {
   expected: () => AiResult;
 };
 
-/** Two gmina posts of 2025 (task 114b's golden set), title and text. */
+/** Two gmina posts of 2025 (the golden set), title and text. */
 const TYMCE = {
   31662: {
     date: "2025-04-28T09:20:16",

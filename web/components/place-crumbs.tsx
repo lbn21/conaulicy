@@ -18,7 +18,7 @@ type CrumbsParams = Promise<{ id: string; module?: string }>;
  * components/subpage-route.tsx). Its fallback is the page skeleton's first
  * line (components/place-suspense.tsx), and it reads the page's own data,
  * from the same request-scoped read (hubData, subpageData), so the trail
- * and the page come in together (task 239).
+ * and the page come in together.
  */
 export function CrumbsRoute({
   params,

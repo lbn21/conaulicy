@@ -20,7 +20,7 @@ import { WarsawToday } from "./warsaw-today.tsx";
 
 // The address page (components/hub.tsx Hub) as HubMain renders it, for the
 // server's Warsaw day, at the water fixture's NOW (Sunday 25 Oct 2026, 13:30
-// in Warsaw): the notices, a card per IMGW warning (task 288), the
+// in Warsaw): the notices, a card per IMGW warning, the
 // timeline („Najbliższe 7 dni”, then „Później”), „Wszystko o Twoim
 // adresie” and the small print at the end.
 
@@ -147,8 +147,8 @@ test("timeline: a card per day from today, 2+ empty days as one, Intl's titles",
     count(timeline, '<li class="app-timeline__empty app-timeline__range">'),
     2,
   );
-  // No waste schedule here, and an empty day still says just that (task
-  // 278); today has only the warning, which is a card, not a row (task 288).
+  // No waste schedule here, and an empty day still says just that;
+  // today has only the warning, which is a card, not a row.
   assert.equal(count(timeline, "Nic nie zaplanowano."), 3);
   assert.doesNotMatch(timeline, /Później/);
 });
@@ -240,7 +240,7 @@ test("no warning: no card and nothing in its place", () => {
 
 test("„Wszystko o Twoim adresie” and the small print: a link per module with a source, then the checks and IMGW's words", () => {
   const html = page(VILLAGE, CUTS, WARNINGS);
-  // The weather has no subpage (task 288): no link for it.
+  // The weather has no subpage: no link for it.
   assert.deepEqual(texts(section(html, "wszystko"), "li"), [
     "Wszystkie przerwy w wodzie",
   ]);
@@ -298,7 +298,7 @@ test("waste: its pickups by day, „Później” the next one per module with it
   const html = page(STREET);
   const timeline = section(html, "najblizsze-dni");
   assert.deepEqual(texts(timeline, "h3"), [
-    // An empty today and tomorrow: one run (task 272).
+    // An empty today and tomorrow: one run.
     "25–26 października",
     "Wtorek, 27 października ·\u00a0pojutrze",
     "28–31 października",

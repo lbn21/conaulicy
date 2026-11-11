@@ -62,7 +62,7 @@ test("cases: every place passes the gate, but the unlisted", () => {
     23860: [],
     31662: ["locality not listed", "locality not listed"],
     31782: ["locality not listed"],
-    // The Niemirowska estate has its 9 streets (task 185).
+    // The Niemirowska estate has its 9 streets.
     5237: [],
     5108: [],
     4799: [],

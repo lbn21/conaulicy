@@ -1,4 +1,4 @@
-// The prompts are Jakub's, sent exactly as in the dry run (task 191): a
+// The prompts are Jakub's, sent exactly as in the dry run: a
 // change to the instruction text or to the TERYT snapshot's places fails
 // here on purpose; a new prompt needs a new dry run.
 import assert from "node:assert/strict";

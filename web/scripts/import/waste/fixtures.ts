@@ -1,5 +1,5 @@
-// Grok 4.7 (medium, xAI API) replies to the final prompts, 27 Oct 2026
-// (task 191): each reply's message.content byte for byte (its sha256, the
+// Grok 4.7 (medium, xAI API) replies to the final prompts, 27 Oct 2026:
+// each reply's message.content byte for byte (its sha256, the
 // bundle file's, is pinned in fixtures.test.ts) and its usage. Fully correct
 // readings of city S1, S2 and gmina S1-S5; the two "slip" replies are valid,
 // self-consistent and WRONG (S2's bulky 16 Sep read under October): no

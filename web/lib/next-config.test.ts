@@ -1,5 +1,5 @@
 // What a production build tells search engines, without a second build in
-// CI (task 252): next.config.ts headers() and redirects() and app/robots.ts
+// CI: next.config.ts headers() and redirects() and app/robots.ts
 // read lib/indexing.ts at call time, as `next build` calls them, so each is
 // called here under both settings. scripts/check-indexing.mjs
 // --expect=noindex checks the CI build as served; --expect=index stays a

@@ -5,14 +5,14 @@
 // out: they describe their street, or are never indexed); og:url is the
 // canonical address, with the share image; the home page's WebSite JSON-LD
 // parses. Every page in ROUTES, those included: the title is GOV.UK's
-// "<H1> – conaulicy.pl", but a place's pages name its locality too (Jakub's
-// decision, task 133): the address page "<H1>, <locality> – conaulicy.pl",
+// "<H1> – conaulicy.pl", but a place's pages name its locality too:
+// the address page "<H1>, <locality> – conaulicy.pl",
 // every module's subpage "<H1> – <place>, <locality> – conaulicy.pl"
 // ("Błąd: " first with an error summary); a few of them
 // exactly (TITLES). The share title is the same, and the share name
 // conaulicy.pl. The home page's Apple web-app tags (a "default" status bar,
 // never black-translucent) and the manifest's id, scope, display and icons.
-// The home page's copy (task 137): its exact H1 and lead (task 140), a
+// The home page's copy: its exact H1 and lead, a
 // description that leads with the waste, and no "prąd" in its HTML or the manifest (no power data).
 //
 // Runs against `next start` on the current build.
@@ -175,7 +175,7 @@ export async function check(server, failures) {
     }
   }
 
-  // The home-screen app (task 136): Apple's title and a "default" status
+  // The home-screen app: Apple's title and a "default" status
   // bar, never black-translucent; the manifest's identity and icons.
   const home = await (await fetch(`${server.origin}/`)).text();
   for (const [name, want] of [

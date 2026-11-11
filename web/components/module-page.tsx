@@ -21,7 +21,7 @@ import { getPlace, type PlaceView } from "@/lib/schedule";
 
 /**
  * Everything a subpage shows, read per request (after io(), so nothing
- * date-dependent is ever prerendered: task 239), the place and the
+ * date-dependent is ever prerendered), the place and the
  * module's data at once. One read per request for the page and its
  * breadcrumbs (React's cache(), as components/hub.tsx hubData). Null for
  * an unknown module.

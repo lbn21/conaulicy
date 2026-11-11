@@ -52,12 +52,12 @@ const govuk = {
   ...ROLES,
   ...GOVUK_FUNCTIONAL,
   // The header bar: the brand group's shade-50, not the Generic header's
-  // black (HEADER in web/lib/palette.ts, task 88).
+  // black (HEADER in web/lib/palette.ts).
   "header-background": HEADER,
   // The header plate: GOV.UK white on the header's cherry (site.scss).
   "logo-plate": GOVUK_COLOUR.white,
   // The plate on light backgrounds (footer, icons, share card): the header's
-  // colour, PLATE in web/lib/palette.ts (task 88), with white "ul." cut out.
+  // colour, PLATE in web/lib/palette.ts, with white "ul." cut out.
   "logo-plate-light": PLATE,
   // The plate on keyboard focus: currentColor, i.e. focus-text (app/site.scss).
   "logo-plate-focus": GOVUK_FUNCTIONAL["focus-text"],
@@ -160,7 +160,7 @@ function requiredPairs() {
     ["inverse-text", "logo-plate-light", "ui"],
     ["logo-plate-light", "body-background", "ui"],
     ["logo-plate-light", "surface-background", "ui"],
-    // The focus box on the header: no black bar under it (task 88), so the
+    // The focus box on the header: no black bar under it, so the
     // yellow carries it against the cherry bar on its own.
     ["focus", "header-background", "ui"],
     ["focus", "body-background", "info"],

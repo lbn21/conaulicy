@@ -68,8 +68,8 @@ test("address pages: home, the place's list, the address on a subpage", () => {
 });
 
 // GOV.UK places breadcrumbs before <main>, so the skip link
-// (#main-content) skips them (task 149). One <main>, the root layout's
-// (task 227: a page kept hidden by Next.js's Activity would repeat a page's
+// (#main-content) skips them. One <main>, the root layout's
+// (a page kept hidden by Next.js's Activity would repeat a page's
 // own), with the @breadcrumbs slot right before it.
 
 test("the layout: the breadcrumbs slot, then the one <main>", () => {

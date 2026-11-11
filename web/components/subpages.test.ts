@@ -245,7 +245,7 @@ test("the calendar buttons' analytics: water by place, waste by zone", () => {
     buttonTag(waterPage()),
     '<a href="/adres/0972447-26555/woda.ics" role="button" draggable="false" class="govuk-button" data-module="govuk-button" data-event="water_calendar_add" data-place="0972447-26555">',
   );
-  // /smieci's as before task 125, byte for byte.
+  // /smieci's calendar block, byte for byte.
   assert.equal(
     buttonTag(wastePage()),
     '<a href="/ics/waste%3Amiasto-s2" role="button" draggable="false" class="govuk-button" data-module="govuk-button" data-event="calendar_add" data-zone="waste:miasto-s2" data-source="street">',
@@ -265,7 +265,7 @@ test("a click sends whichever of zone, source and place the link has", () => {
   });
 });
 
-// The house number against the address register (lib/prg.ts, task 205):
+// The house number against the address register (lib/prg.ts):
 // one it lacks is set aside (lib/schedule.ts getPlace), the view is the
 // whole place's, and one warning says so.
 const ASNYKA = { id: "0972447-00470", name: "ul. Adama Asnyka" };
@@ -358,7 +358,7 @@ test("a number outside a cut's range: one trace line, hub and /woda", () => {
       .notices(data(nr))
       .flat()
       .map((line) => line.join(""));
-  // task 188: with no cut shown, the hub's section says it, with the cut's
+  // With no cut shown, the hub's section says it, with the cut's
   // day, so no trace line after it.
   assert.deepEqual(hub("5"), [
     "Pod nr 5: brak zapowiedzianych przerw.",
@@ -382,7 +382,7 @@ test("a number outside a cut's range: one trace line, hub and /woda", () => {
 });
 
 // Smolińce, a part of Lisie Jamy: outside MZGKiM's area, so its pages are
-// as before task 148, byte for byte (digests of the HTML before it).
+// unchanged, byte for byte (digests of the HTML).
 const SMOLINCE = testPlace({
   id: "0606257",
   kind: "wies",
@@ -411,7 +411,7 @@ test("village: the hub's water in every state, /woda never MZGKiM", () => {
   const hub = {
     cut: [
       ["Cała wieś Lisie Jamy.", "Cała wieś Lisie Jamy."],
-      // The cuts are the timeline's alone: nothing more to say (task 257).
+      // The cuts are the timeline's alone: nothing more to say.
       [],
       "brak zapowiedzianych przerw",
       [
@@ -518,7 +518,7 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
   assert.doesNotMatch(quiet, /jeszcze tu nie pokazujemy|nie sprawdzamy/);
 });
 
-test("/smieci: after the last date, the next year's line (task 205)", () => {
+test("/smieci: after the last date, the next year's line", () => {
   assert.match(
     wastePage(),
     /<p class="govuk-body">Terminy na kolejny rok dodamy, gdy je ogłoszą\.<\/p><\/section>/,
@@ -588,7 +588,7 @@ test("/smieci: an event without its source is not on the page", () => {
   assert.ok(!html.includes("https://example.org/b.pdf"));
 });
 
-// The weather has no subpage (task 288): its warnings are cards on the
+// The weather has no subpage: its warnings are cards on the
 // address page (components/hub.test.ts), so /pogoda is a 404.
 test("/pogoda: no subpage, like any unknown slug", () => {
   assert.equal(findSubpage("pogoda"), null);

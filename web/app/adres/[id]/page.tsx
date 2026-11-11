@@ -11,7 +11,7 @@ import { allPlaces } from "@/lib/prerender";
 // The address page, the hub of modules (components/hub.tsx): its static
 // shell holds only the skeleton (components/place-suspense.tsx); the whole
 // page is read per request behind it, every block at once, and comes in
-// together (task 239). A house number is ?nr= (searchParams), read behind
+// together. A house number is ?nr= (searchParams), read behind
 // the skeleton too (components/place-page.tsx numberQuery). Its prefetch
 // stays static (the root layout's ensureStatic).
 

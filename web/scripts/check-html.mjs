@@ -89,8 +89,8 @@ try {
       const expected = route.status ?? 200;
       // An unknown address's first answer is the route's fallback shell,
       // its 200 sent before the page knows the place is unknown
-      // (ensureStatic 'prefetch', task 226; a bot's render likewise, task
-      // 220): Next.js then sends the 404 page with noindex
+      // (ensureStatic 'prefetch'; a bot's render likewise):
+      // Next.js then sends the 404 page with noindex
       // (nextjs.org/docs/app/guides/streaming#status-codes). Later answers
       // are the cached 404 (scripts/lib/server.mjs notFoundAt).
       const notFound =
@@ -107,7 +107,7 @@ try {
       // anything streamed after it (React's hidden <div id="S:…">), and
       // exactly one #main-content, the layout's <main> (the skip link's
       // target, docs/layout.md). An address page reads its place behind
-      // <Suspense> (components/place-suspense.tsx, task 231), so its h1 may
+      // <Suspense> (components/place-suspense.tsx), so its h1 may
       // come after the skeleton: anywhere in its HTML.
       const streamedAt = html.indexOf('<div hidden id="S:');
       const before = streamedAt === -1 ? html : html.slice(0, streamedAt);

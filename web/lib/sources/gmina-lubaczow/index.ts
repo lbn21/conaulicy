@@ -1,6 +1,6 @@
 // The gmina's site: ZUK's and the wójt's water notices among the
-// gmina's other posts. The header says how the source writes (the style
-// analysis of task 182), never what to do: that is the shared rules'.
+// gmina's other posts. The header says how the source writes (from a style
+// analysis), never what to do: that is the shared rules'.
 
 import { waterPrompt } from "../../water-prompt.ts";
 import { GMINA } from "../../water-sources.ts";

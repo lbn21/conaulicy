@@ -1,12 +1,11 @@
-// The routes smoke (task 252): five checks of the built site on one
+// The routes smoke: five checks of the built site on one
 // `next start` and the CI fixture, each in scripts/routes/:
 //   examples    the home page's examples have upcoming pickups;
 //   all-places  /ulice lists every place once, in Polish order;
 //   metadata    each page's title, description, share tags and manifest;
 //   query       unknown query parameters redirect to the clean URL, the
 //               search lands on its place, renamed ids redirect;
-//   in-page     in-page links land, Back after them shows the right page
-//               (task 259).
+//   in-page     in-page links land, Back after them shows the right page.
 // Every check by default; name some to run only those
 // (`node scripts/check-routes.mjs examples`). With CHECK_URL, a deployed
 // site instead of a local server (examples only: the others need the

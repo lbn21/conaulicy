@@ -1,4 +1,4 @@
-// The address page's timeline (components/timeline.tsx, task 263): the
+// The address page's timeline (components/timeline.tsx): the
 // next N Warsaw days from the read's day, each with what happens on it at
 // this address, one entry per module's item (lib/upcoming.ts Item, from
 // each module's adapter, Module.events), in registry order; a run of 2+
@@ -58,7 +58,7 @@ export function later(items: Item[], lastDay: string): Item[] {
 
 /**
  * The days as cards: a run of 2 or more empty days is one card (from –
- * to), today included (task 272); a single empty day stays its own.
+ * to), today included; a single empty day stays its own.
  */
 export function collapse(list: string[], byDay: Entry[][]): DayGroup[] {
   const groups: DayGroup[] = [];

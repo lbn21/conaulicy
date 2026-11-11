@@ -3,13 +3,13 @@
 // town's streets and their letter headings are in Polish order (by the
 // street's own name, not its prefix); a place without pickup data (the
 // fixture's street in no zone) is a link like any other, no „(brak
-// danych)” (task 276); every id is
+// danych)”; every id is
 // unique, and the town's heading and every village's line have their SIMC
 // ids; a village with streets is one link with its streets nested under it,
 // and the town is no place; and the route
 // loads no JS beyond what /dostepnosc, a page without client code, loads,
 // but one small chunk: PlaceLink's prefetch on intent
-// (components/place-link.tsx, task 238).
+// (components/place-link.tsx).
 //
 // With SCREENSHOT_DIR, also saves screenshots of /ulice at 390 px and 1280 px
 // there (needs Playwright's Chromium). Runs against `next start` on the

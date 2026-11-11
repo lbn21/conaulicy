@@ -12,6 +12,6 @@ export type ModuleId = (typeof MODULE_IDS)[number];
 
 /**
  * The modules with a subpage of their own, /adres/<id>/<module id>. The
- * weather has none (task 288): its warnings are cards on the address page.
+ * weather has none: its warnings are cards on the address page.
  */
 export const SUBPAGE_IDS: readonly ModuleId[] = ["smieci", "woda"];

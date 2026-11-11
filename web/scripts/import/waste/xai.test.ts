@@ -1,4 +1,4 @@
-// The waste client (task 191): the request exactly as the dry run sent it,
+// The waste client: the request exactly as the dry run sent it,
 // and every way it fails without the key in the message. xAI is always
 // mocked (an injected fetcher); no test reaches the network.
 import assert from "node:assert/strict";

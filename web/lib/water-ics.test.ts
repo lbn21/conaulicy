@@ -371,7 +371,7 @@ test("an MZGKiM cut: its own UID, its post as the source and the note", () => {
   folded(ics);
 });
 
-// Task 188: a village's grouped streets, a part's village, the note's dash.
+// A village's grouped streets, a part's village, the note's dash.
 
 const villagePlace = (
   id: string,

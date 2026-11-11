@@ -718,7 +718,7 @@ export function waterEmpty(data: Water): Part[] | null {
 }
 
 /**
- * The hub's water lines that belong to no day (task 263): the section's
+ * The hub's water lines that belong to no day: the section's
  * status without its plain „Brak zapowiedzianych przerw.” (the timeline
  * says so); a source we could not check stays.
  */

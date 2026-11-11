@@ -17,7 +17,7 @@ import {
 } from "./schedule-notes.ts";
 
 /**
- * A place we have no waste schedule for (task 276: only the schedule is
+ * A place we have no waste schedule for (only the schedule is
  * missing; the place and its other modules are there): the waste
  * subpage's heading, and the address page's notice.
  */
