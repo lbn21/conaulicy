@@ -2,8 +2,9 @@
 // next N Warsaw days from the read's day, each with what happens on it at
 // this address, one entry per module's item (lib/upcoming.ts Item, from
 // each module's adapter, Module.events), in registry order; a run of 2+
-// empty days as one range, today included; and „Później”, the next item per
-// module after the window. Pure, so the unit tests read it.
+// empty days as one range, today included; and „Później”, the next item
+// after the window of each module with nothing left in it. Pure, so the
+// unit tests read it.
 import { MODULE_IDS, type ModuleId } from "./address-routes.ts";
 import { addDays, warsawToIso } from "./dates.ts";
 import type { Item } from "./upcoming.ts";
@@ -46,14 +47,27 @@ export function onDay(items: Item[], day: string, now: number): Entry[] {
     .map((item) => ({ item, continued: Date.parse(item.span.start) < from }));
 }
 
-/** The first item per module starting after `lastDay`, in registry order. */
-export function later(items: Item[], lastDay: string): Item[] {
+/**
+ * „Później”: the first item starting after `lastDay` of each module with
+ * no entry in the window (`byDay`, onDay's per day), in registry order. A
+ * module already in the window, or with nothing after it, is left out.
+ */
+export function later(
+  items: Item[],
+  lastDay: string,
+  byDay: Entry[][],
+): Item[] {
   const after = midnight(addDays(lastDay, 1));
   const firsts = new Map<ModuleId, Item>();
+  for (const entries of byDay)
+    for (const { item } of entries) firsts.set(item.module, item);
+  const shown = new Set(firsts.keys());
   for (const item of items.toSorted(order))
     if (Date.parse(item.span.start) >= after && !firsts.has(item.module))
       firsts.set(item.module, item);
-  return MODULE_IDS.flatMap((id) => firsts.get(id) ?? []);
+  return MODULE_IDS.flatMap((id) =>
+    shown.has(id) ? [] : (firsts.get(id) ?? []),
+  );
 }
 
 /**

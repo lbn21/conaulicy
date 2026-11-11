@@ -105,9 +105,14 @@ test("collapse: a run ends the day before the next item, the window's last day i
     ),
     ["2026-11-10..2026-11-15: 0", "2026-11-16: 1"],
   );
+  // Waste is in the window: no „Później” for it.
   assert.deepEqual(
-    later(items, list[list.length - 1]).map((item) => item.span.start),
-    [items[1].span.start],
+    later(
+      items,
+      list[list.length - 1],
+      list.map((day) => onDay(items, day, now)),
+    ),
+    [],
   );
 });
 
@@ -122,7 +127,14 @@ test("collapse: all 7 days empty is one range, then „Później”", () => {
     ),
     ["2026-11-10..2026-11-16: 0"],
   );
-  assert.deepEqual(later(items, list[list.length - 1]), items);
+  assert.deepEqual(
+    later(
+      items,
+      list[list.length - 1],
+      list.map(() => []),
+    ),
+    items,
+  );
 });
 
 test("onDay: registry order, then start; a multi-day item on each day, „continued” after its first", () => {
@@ -167,23 +179,79 @@ test("onDay: Warsaw days across the DST change (25 Oct 2026, 25 hours)", () => {
   assert.equal(onDay([late], "2026-10-26", now).length, 0);
 });
 
-test("later: the first item per module after the window, in registry order", () => {
+/** later() for the 7 days from 10 Nov 2026, read on its evening. */
+const laterOf = (items: Item[]) => {
+  const now = Date.parse("2026-11-10T20:00:00Z");
+  const list = days("2026-11-10", 7);
+  return later(
+    items,
+    list[list.length - 1],
+    list.map((day) => onDay(items, day, now)),
+  ).map((item) => [item.module, item.span.day]);
+};
+
+test("later: the first item after the window per module, in registry order", () => {
   const items = [
     cut("2026-11-18", "2026-11-18 08:00:00", "2026-11-18 12:00:00"),
     cut("2026-11-17", "2026-11-17 08:00:00", "2026-11-17 12:00:00"),
-    pickup("2026-11-24"),
     pickup("2026-11-30"),
-    // In the window: never „Później”.
-    pickup("2026-11-16"),
+    pickup("2026-11-24"),
+  ];
+  assert.deepEqual(laterOf(items), [
+    ["smieci", "2026-11-24"],
+    ["woda", "2026-11-17"],
+  ]);
+  assert.deepEqual(
+    later(
+      items,
+      "2026-11-30",
+      days("2026-11-24", 7).map(() => []),
+    ),
+    [],
+  );
+});
+
+test("later: every module in the window, so none", () => {
+  assert.deepEqual(
+    laterOf([
+      pickup("2026-11-12"),
+      pickup("2026-11-24"),
+      cut("2026-11-16", "2026-11-16 08:00:00", "2026-11-16 12:00:00"),
+      cut("2026-11-20", "2026-11-20 08:00:00", "2026-11-20 12:00:00"),
+    ]),
+    [],
+  );
+});
+
+test("later: only the module missing from the window", () => {
+  assert.deepEqual(
+    laterOf([
+      pickup("2026-11-12"),
+      pickup("2026-11-24"),
+      cut("2026-11-20", "2026-11-20 08:00:00", "2026-11-20 12:00:00"),
+    ]),
+    [["woda", "2026-11-20"]],
+  );
+  // A cut begun before the window and still on is in it.
+  const now = at("2026-11-10T09:00:00+01:00");
+  const list = days("2026-11-10", 7);
+  const items = [
+    cut("2026-11-09", "2026-11-09 22:00:00", "2026-11-10 12:00:00"),
+    cut("2026-11-20", "2026-11-20 08:00:00", "2026-11-20 12:00:00"),
   ];
   assert.deepEqual(
-    later(items, "2026-11-16").map((item) => [item.module, item.span.day]),
-    [
-      ["smieci", "2026-11-24"],
-      ["woda", "2026-11-17"],
-    ],
+    later(
+      items,
+      list[list.length - 1],
+      list.map((day) => onDay(items, day, now)),
+    ),
+    [],
   );
-  assert.deepEqual(later(items, "2026-11-30"), []);
+});
+
+test("later: a module with nothing, in or after the window, is absent", () => {
+  assert.deepEqual(laterOf([pickup("2026-11-24")]), [["smieci", "2026-11-24"]]);
+  assert.deepEqual(laterOf([]), []);
 });
 
 test("range titles: Intl's formatRange, the month once, years only when they differ", () => {

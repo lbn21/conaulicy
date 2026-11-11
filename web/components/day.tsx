@@ -84,7 +84,7 @@ export function Day({
   );
 }
 
-/** „Później”: the next item per module after the window; none, no li. */
+/** „Później”: lib/timeline.ts later's items; none, no li. */
 export function LaterCard({
   entries,
   place,
