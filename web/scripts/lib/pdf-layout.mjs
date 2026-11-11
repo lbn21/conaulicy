@@ -78,13 +78,14 @@ const apply = (m, x, y) => [
 ];
 
 /**
- * A page's stroked rectangles and horizontal rules, in points from the top
+ * A page's stroked rectangles and horizontal and vertical rules, in points from the top
  * left of a page pageH tall. Text and marked content are skipped; fills
  * are not strokes.
  */
 function strokes(stream, pageH) {
   const rects = [];
   const rules = [];
+  const columns = [];
   let ctm = [1, 0, 0, 1, 0, 0];
   const stack = [];
   let path = [];
@@ -147,6 +148,12 @@ function strokes(stream, pageH) {
               x0: Math.min(part.from[0], part.to[0]),
               x1: Math.max(part.from[0], part.to[0]),
             });
+          } else if (Math.abs(part.from[0] - part.to[0]) < 0.01) {
+            columns.push({
+              x: part.from[0],
+              y0: Math.min(part.from[1], part.to[1]),
+              y1: Math.max(part.from[1], part.to[1]),
+            });
           }
         }
         path = [];
@@ -165,10 +172,10 @@ function strokes(stream, pageH) {
         break;
     }
   }
-  return { rects, rules };
+  return { rects, rules, columns };
 }
 
-/** Each page's stroked rectangles and horizontal rules. */
+/** Each page's stroked rectangles and horizontal and vertical rules. */
 export function pageStrokes(bytes, pageH) {
   return pageStreams(bytes).map((stream) => strokes(stream, pageH));
 }
