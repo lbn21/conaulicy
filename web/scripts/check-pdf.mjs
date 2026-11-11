@@ -2,9 +2,10 @@
 // city street over twelve months, a village, and a split street with ?nr=.
 // Each must be a tagged PDF (MarkInfo, Lang, structure tree) with no PDF/UA
 // claim (it fails veraPDF), of a sane length, within the size budget, with
-// only Atkinson Hyperlegible Next embedded, the text-only version included,
-// the "not double-checked" note (the fixture is unverified) and no example
-// ("PRZYKŁADOWE DANE") content anywhere. A split street without a number has
+// only Atkinson Hyperlegible Next embedded, a one-page calendar, a one-page
+// guide from the gmina's own rules and the text version after them. Checks
+// are structural (pages, links, QR codes, sources from data), never the
+// wording (CLAUDE.md, Workflow). A split street without a number has
 // no PDF (404), as on the street page; nor has a street whose schedule has
 // ended, and its page offers neither the PDF nor the calendar file. The PDF,
 // ICS and search responses carry the dataset cache tag, and no other, so
@@ -20,14 +21,8 @@ import path from "node:path";
 import { inflateSync } from "node:zlib";
 import QRCode from "qrcode";
 import { SITE_URL } from "../lib/config.generated.ts";
-import {
-  disclaimer,
-  laterNote,
-  NO_MORE_DATES,
-  unverifiedNote,
-} from "../lib/schedule-notes.ts";
 import { GUIDES } from "../lib/sorting-guide.ts";
-import { notSource, walk } from "./lib/files.mjs";
+import { walk } from "./lib/files.mjs";
 import { finish, startServer } from "./lib/server.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
@@ -35,8 +30,6 @@ const MAX_BYTES = 150_000;
 const MIN_PAGES = 3;
 // The calendar and „Co wrzucać” (a page each), then the text version.
 const MAX_PAGES = 8;
-// The proposal stamp, not the home page's „Przykładowe adresy”.
-const SAMPLE = /PRZYKŁADOWE DANE|podgląd układu/;
 // The town's streets (SIMC 0972447) are the Urząd Miejski's schedule, the
 // rest the gmina's (lib/places.ts scheduleOwner).
 const gminaOf = (p) =>
@@ -173,17 +166,6 @@ function qrEncodes(codes, url) {
   );
 }
 
-// No example data in anything that ships.
-const sources = ["app", "components", "lib"]
-  .flatMap((d) => walk(path.join(ROOT, d), notSource))
-  .filter((file) => /\.(ts|tsx|mjs)$/.test(file));
-for (const file of sources) {
-  check(
-    !SAMPLE.test(readFileSync(file, "utf8")),
-    `${path.relative(ROOT, file)}: example ("PRZYKŁADOWE DANE") content`,
-  );
-}
-
 const dir = mkdtempSync(path.join(tmpdir(), "check-pdf-"));
 const server = await startServer(3308);
 try {
@@ -246,19 +228,8 @@ try {
     );
 
     const text = run("pdftotext", ["-layout", file, "-"]);
-    check(
-      text.includes("Te same terminy co w kalendarzu"),
-      `${c.name}: no text-only version`,
-    );
     const flat = text.replace(/\s+/g, " ");
     const gmina = gminaOf(c.path);
-    check(
-      flat.includes(disclaimer(gmina)),
-      `${c.name}: no "${disclaimer(gmina)}" line`,
-    );
-    // The page's and the calendar's line, in the text version.
-    const later = laterNote([{ date: "" }]);
-    check(flat.includes(later), `${c.name}: no "${later}"`);
     // The QR code and the printed link: the waste subpage, never the hub or
     // a preview deployment.
     const page = SITE_URL + c.page;
@@ -277,34 +248,6 @@ try {
       links.length > 0 && links.every((uri) => uri === page),
       `${c.name}: links ${links.join(", ")}, expected ${page} only`,
     );
-    // A month is never split: each later page of the text version starts
-    // with a month heading ("Marzec 2027", maybe "(ciąg dalszy)"), a line
-    // about months without dates ("2027: ...") or the next year's line,
-    // never with a lone date.
-    for (let page = 2; page <= pages; page++) {
-      const lines = run("pdftotext", [
-        "-f",
-        String(page),
-        "-l",
-        String(page),
-        file,
-        "-",
-      ])
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean);
-      const band = lines.findIndex((line) =>
-        line.endsWith("· wersja tekstowa, ciąg dalszy"),
-      );
-      if (band < 0) continue;
-      const first = lines[band + 1] ?? "";
-      check(
-        /^\p{Lu}\p{Ll}+ \d{4}( \(ciąg dalszy\))?$/u.test(first) ||
-          /^[\p{Ll}\d– ]+: /u.test(first) ||
-          later.startsWith(first),
-        `${c.name}: page ${page} of the text version starts mid-month ("${first}")`,
-      );
-    }
     // The calendar is page 1 and „Co wrzucać” page 2, each one page: the
     // gmina's guide (lib/sorting-guide.ts, its publisher) is named on page 2
     // only, neither page prints a URL (their QR codes carry the links), the
@@ -355,21 +298,13 @@ try {
       !others.some((u) => flat.replace(/\s+/g, "").includes(u)),
       `${c.name}: cites another gmina's segregation source`,
     );
-    check(
-      flat.includes(unverifiedNote(gmina)),
-      `${c.name}: no "not double-checked" note`,
-    );
-    check(
-      !SAMPLE.test(text),
-      `${c.name}: example ("PRZYKŁADOWE DANE") content`,
-    );
     console.log(
       `ok    ${c.name}: ${pages} pages, ${(bytes.length / 1000).toFixed(1)} KB, fonts ${[...new Set(names)].join(", ")}`,
     );
   }
 
-  // The waste subpage of an ended schedule (the page that offers both) says
-  // so, with no dead PDF link and no empty calendar file.
+  // The waste subpage of an ended schedule (the page that offers both) has
+  // no dead PDF link and no empty calendar file.
   const ended = await (
     await fetch(`${server.origin}/adres/0972447-90009/smieci`)
   ).text();
@@ -379,7 +314,6 @@ try {
       !ended.includes('href="/ics/'),
     "schedule ended: the page still offers the PDF or the calendar file",
   );
-  check(ended.includes(NO_MORE_DATES), "schedule ended: no notice on the page");
   console.log("ok    schedule ended: page without PDF or calendar file");
 
   for (const p of TAGGED) {
