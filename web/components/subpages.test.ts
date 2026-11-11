@@ -3,8 +3,6 @@ import { mock, test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { todayInWarsaw } from "../lib/dates.ts";
-import { copyCheckedAt } from "../lib/imgw-fixture.ts";
-import { UNREADABLE } from "../lib/imgw-shown.ts";
 import { findSubpage, MODULES } from "../lib/modules.ts";
 import { CUT_100 } from "../lib/mzgkim-fixture.ts";
 import type { PlaceView } from "../lib/schedule.ts";
@@ -29,7 +27,6 @@ import {
   waterTrace,
   waterUpcoming,
 } from "../lib/water-module.ts";
-import { type Weather, weather } from "../lib/weather-module.ts";
 import { STALE_MS, type StoredPost, zukView } from "../lib/zuk-data.ts";
 import { Subpage } from "./module-page.tsx";
 import { AddressPage } from "./place-page.tsx";
@@ -591,116 +588,17 @@ test("/smieci: an event without its source is not on the page", () => {
   assert.ok(!html.includes("https://example.org/b.pdf"));
 });
 
-// /pogoda (components/weather-page.tsx, task 263): the subpage's frame,
-// then IMGW's warnings for the powiat, each a GOV.UK summary card, then
-// the source (IMGW's page), with IMGW's required wording.
-const weatherPage = (data: Weather) =>
-  renderToStaticMarkup(
-    createElement(
-      "main",
-      null,
-      createElement(Subpage, { module: MODULES.pogoda, place: ZUKI, data }),
-    ),
-  );
-const IMGW_NOW = Date.parse("2026-10-25T14:00:00+01:00");
-const SOURCE_INSET =
-  /<div class="govuk-inset-text"><p class="govuk-hint govuk-!-font-size-16">Źródło: <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">IMGW-PIB<\/a>\.(?: Sprawdziliśmy [^<]+\.)?<\/p><p class="govuk-hint govuk-!-font-size-16">Źródłem pochodzenia danych jest Instytut Meteorologii [^<]+<\/p><\/div><\/div><\/div><\/main>$/;
-
-test("/pogoda: a subpage of every address, its h1 and the registry's", () => {
-  const pogoda = findSubpage("pogoda");
-  assert.equal(pogoda, MODULES.pogoda);
-  assert.equal(pogoda?.pageTitle, "Ostrzeżenia pogodowe IMGW");
-  assert.equal(pogoda?.more, "Ostrzeżenia pogodowe IMGW");
+// The weather has no subpage (task 288): its warnings are cards on the
+// address page (components/hub.test.ts), so /pogoda is a 404.
+test("/pogoda: no subpage, like any unknown slug", () => {
+  assert.equal(findSubpage("pogoda"), null);
   assert.equal(findSubpage("prad"), null);
-});
-
-test("/pogoda: a warning as a summary card, IMGW's words, the source", () => {
-  const data = weather(copyCheckedAt("2026-10-25T13:52:10+01:00"), IMGW_NOW);
-  assert.ok(data);
-  const html = weatherPage(data);
-  assert.match(
-    html,
-    /^<main><div class="govuk-grid-row"><div class="govuk-grid-column-two-thirds"><span class="govuk-caption-l">Lubaczów, ul\. Żuki<\/span><h1 class="govuk-heading-l">Ostrzeżenia pogodowe IMGW<\/h1><p class="govuk-body govuk-!-margin-bottom-6"><a [^>]*href="\/"[^>]*>Zmień adres/,
-  );
-  assert.match(html, /Zmień adres.*?<\/p><div class="govuk-summary-card">/);
-  assert.match(
-    html,
-    /IMGW-PIB<\/a>\. Sprawdziliśmy 25 października 13:52\.<\/p>/,
-  );
-  assert.match(
-    html,
-    /<h2 class="govuk-summary-card__title">Silny wiatr<\/h2>.*<dt class="govuk-summary-list__key">Stopień<\/dt><dd class="govuk-summary-list__value"><strong class="govuk-tag govuk-tag--yellow">Stopień 1 z 3<\/strong><\/dd>.*<dt class="govuk-summary-list__key">Kiedy<\/dt><dd class="govuk-summary-list__value">od niedzieli 25 października, 13:00 do 19:00<\/dd>.*<dt class="govuk-summary-list__key">Gdzie<\/dt><dd class="govuk-summary-list__value">Cały powiat lubaczowski<\/dd>.*<dt class="govuk-summary-list__key">Opis IMGW<\/dt><dd class="govuk-summary-list__value">Prognozuje się [^<]+ Prawdopodobieństwo: 75%\.<\/dd>/,
-  );
-  assert.equal(html.split('class="govuk-summary-card"').length - 1, 1);
-  // Every tag has its colour modifier (CLAUDE.md: never the plain tag).
-  assert.doesNotMatch(html, /class="govuk-tag"/);
-  // One link to IMGW: the source's.
-  assert.equal(html.split('href="https://meteo.imgw.pl/"').length - 1, 1);
-  assert.match(html, SOURCE_INSET);
-  assert.doesNotMatch(html, /Brak ostrzeżeń|Nie udało się/);
-});
-
-test("/pogoda without a warning: one line saying so, still the source", () => {
-  const data = weather(
-    copyCheckedAt("2026-10-25T13:52:10+01:00", []),
-    IMGW_NOW,
-  );
-  assert.ok(data);
-  const html = weatherPage(data);
-  assert.match(
-    html,
-    /<\/p><p class="govuk-body">Brak ostrzeżeń IMGW dla powiatu lubaczowskiego\.<\/p><div class="govuk-inset-text">/,
-  );
-  assert.doesNotMatch(html, /govuk-summary-card/);
-  assert.match(html, SOURCE_INSET);
-});
-
-test("/pogoda, the copy old: the notice first, linked to IMGW, then the warnings", () => {
-  const data = weather(copyCheckedAt("2026-10-25T12:59:59+01:00"), IMGW_NOW);
-  assert.ok(data);
-  const html = weatherPage(data);
-  assert.match(
-    html,
-    /Zmień adres.*?<\/p><div class="govuk-inset-text"><p class="govuk-body">Nie udało się teraz pobrać ostrzeżeń IMGW\. Pokazujemy ostatnie dane z 12:59\. Aktualne znajdziesz na <a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">meteo\.imgw\.pl<\/a>\.<\/p><\/div><div class="govuk-summary-card">/,
-  );
-  assert.doesNotMatch(html, /Brak ostrzeżeń/);
-});
-
-test("/pogoda, the store unreadable: the notice alone, no check time, no „Brak”", () => {
-  const data = weather(UNREADABLE, IMGW_NOW);
-  assert.ok(data);
-  const html = weatherPage(data);
-  assert.match(
-    html,
-    /Zmień adres.*?<\/p><div class="govuk-inset-text"><p class="govuk-body">Nie udało się teraz sprawdzić ostrzeżeń IMGW\. Aktualne znajdziesz na <a [^>]*>meteo\.imgw\.pl<\/a>\.<\/p><\/div><div class="govuk-inset-text"><p class="govuk-hint govuk-!-font-size-16">Źródło:/,
-  );
-  assert.doesNotMatch(
-    html,
-    /[Ss]prawdziliśmy|Brak ostrzeżeń|govuk-summary-card/,
-  );
-});
-
-test("/pogoda: the subpages' skeleton, in the same order as /smieci and /woda", () => {
-  const data = weather(copyCheckedAt("2026-10-25T13:52:10+01:00"), IMGW_NOW);
-  assert.ok(data);
-  const html = weatherPage(data);
-  // No calendar file for the weather: the skeleton up to the checked line.
-  assert.ok(
-    ascending(
-      order(html, [
-        ...SKELETON.slice(0, -1),
-        "govuk-summary-card",
-        'class="govuk-inset-text"',
-      ]),
-    ),
-    html,
-  );
+  assert.equal(findSubpage("woda"), MODULES.woda);
 });
 
 test("every subpage with no data now: its frame, then the hub's one line, nothing else", () => {
   for (const [module, line] of [
     [MODULES.woda, "Nie udało się sprawdzić przerw w dostawie wody."],
-    [MODULES.pogoda, "Nie udało się sprawdzić ostrzeżeń IMGW."],
   ] as const) {
     const html = renderToStaticMarkup(
       createElement(Subpage, { module, place: ZUKI, data: null }),

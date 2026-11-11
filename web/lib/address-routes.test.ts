@@ -13,12 +13,13 @@ import {
 import { placePath } from "./places.ts";
 
 // The exact list: unique, plain path segments, in the pages' order.
-test("waste first, then water, then weather; each has a subpage", () => {
+test("waste first, then water, then weather; all but the weather have a subpage", () => {
   assert.deepEqual(MODULE_IDS, ["smieci", "woda", "pogoda"]);
-  assert.deepEqual(SUBPAGE_IDS, ["smieci", "woda", "pogoda"]);
+  // The weather's warnings are cards on the address page (task 288).
+  assert.deepEqual(SUBPAGE_IDS, ["smieci", "woda"]);
   for (const id of SUBPAGE_IDS) assert.ok(isModuleId(id), id);
   // Waste has its own folder; the others are app/adres/[id]/[module]/.
-  assert.deepEqual(MODULE_ROUTE_IDS, ["woda", "pogoda"]);
+  assert.deepEqual(MODULE_ROUTE_IDS, ["woda"]);
 });
 
 test("no module is called like another folder", () => {
@@ -34,7 +35,8 @@ test("the street page and a module subpage take ?nr=", () => {
   assert.ok(ADDRESS.test("/adres/0972447-00470/smieci"));
   assert.ok(ADDRESS.test("/adres/0972447-00470/smieci/"));
   assert.ok(ADDRESS.test("/adres/0972447-00470/woda"));
-  assert.ok(ADDRESS.test("/adres/0972447-00470/pogoda"));
+  // No subpage (task 288): a 404, no ?nr=.
+  assert.ok(!ADDRESS.test("/adres/0972447-00470/pogoda"));
   // No such module: no ?nr= (its URL is a 404).
   assert.ok(!ADDRESS.test("/adres/0972447-00470/prad"));
   assert.ok(!ADDRESS.test("/adres/0972447-00470/numer"));

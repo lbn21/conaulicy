@@ -20,8 +20,9 @@ import { WarsawToday } from "./warsaw-today.tsx";
 
 // The address page (components/hub.tsx Hub) as HubMain renders it, for the
 // server's Warsaw day, at the water fixture's NOW (Sunday 25 Oct 2026, 13:30
-// in Warsaw): the notices, the timeline („Najbliższe 7 dni”, then
-// „Później”), „Wszystko o Twoim adresie” and the small print at the end.
+// in Warsaw): the notices, a card per IMGW warning (task 288), the
+// timeline („Najbliższe 7 dni”, then „Później”), „Wszystko o Twoim
+// adresie” and the small print at the end.
 
 const page = (
   place: PlaceView,
@@ -143,26 +144,24 @@ test("timeline: a card per day from today, 2+ empty days as one, Intl's titles",
     count(timeline, '<li class="app-timeline__empty app-timeline__range">'),
     2,
   );
-  // No waste schedule here, and an empty day still says just that (task 278).
-  assert.equal(count(timeline, "Nic nie zaplanowano."), 2);
+  // No waste schedule here, and an empty day still says just that (task
+  // 278); today has only the warning, which is a card, not a row (task 288).
+  assert.equal(count(timeline, "Nic nie zaplanowano."), 3);
   assert.doesNotMatch(timeline, /Później/);
 });
 
-test("timeline: each cut and warning once, its row, „Szczegóły” to its subpage", () => {
+test("timeline: each cut once, its row, „Szczegóły” to its subpage; no warning", () => {
   const html = page(VILLAGE, CUTS, WARNINGS);
+  const timeline = section(html, "najblizsze-dni");
   assert.equal(count(html, "nie będzie wody"), 2);
   assert.equal(count(html, "Cała wieś Lisie Jamy."), 2);
-  assert.equal(count(html, 'class="govuk-tag '), 1);
-  assert.match(
-    html,
-    /<dt class="govuk-summary-list__key">Ostrzeżenie IMGW<\/dt><dd class="govuk-summary-list__value"><p class="govuk-body-s govuk-!-margin-bottom-0"><strong class="govuk-tag govuk-tag--yellow">Stopień 1 z 3<\/strong> Silny wiatr, od 13:00 do 19:00\.<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link" href="\/adres\/0606257\/pogoda">Szczegóły<span class="govuk-visually-hidden"> o ostrzeżeniu IMGW, niedziela, 25 października<\/span><\/a><\/dd>/,
-  );
   assert.match(
     html,
     /<dt class="govuk-summary-list__key">Woda<\/dt><dd class="govuk-summary-list__value"><p class="govuk-body-s govuk-!-margin-bottom-0">Od 8:00 do 16:00 nie będzie wody\.<\/p><p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0">Cała wieś Lisie Jamy\.<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link" href="\/adres\/0606257\/woda">Szczegóły<span class="govuk-visually-hidden"> o przerwie w dostawie wody, poniedziałek, 26 października<\/span><\/a><\/dd>/,
   );
-  // IMGW's own description is /pogoda's alone.
-  assert.doesNotMatch(html, /Prawdopodobieństwo|Prognozuje się/);
+  // Warnings are cards above the timeline, never in it, and no tag at all.
+  assert.doesNotMatch(timeline, /Ostrzeżenie IMGW|Silny wiatr|Stopień/);
+  assert.doesNotMatch(html, /govuk-tag|\/pogoda/);
   // Every card's last row has no border under it.
   assert.equal(
     count(html, "govuk-summary-list__row--no-border"),
@@ -170,16 +169,78 @@ test("timeline: each cut and warning once, its row, „Szczegóły” to its sub
   );
 });
 
+test("a warning: its card above the timeline, the meter, when, IMGW's words", () => {
+  const html = page(VILLAGE, CUTS, WARNINGS);
+  const card =
+    /<section class="app-warning[^"]*"[^>]*>.*?<\/section>/.exec(html)?.[0] ??
+    "";
+  assert.equal(count(html, 'class="app-warning '), 1);
+  assert.ok(html.indexOf(card) < html.indexOf("najblizsze-dni"));
+  assert.match(
+    card,
+    /^<section class="app-warning app-warning--1" aria-labelledby="ostrzezenie-Sk20261024094213061"><p class="app-warning__level govuk-body-s govuk-!-font-weight-bold"><span class="app-warning__meter" aria-hidden="true"><span class="app-warning__on"><\/span><span><\/span><span><\/span><\/span>Stopień 1 z 3<\/p><div class="app-warning__body"><h2 id="ostrzezenie-Sk20261024094213061" class="govuk-heading-m govuk-!-margin-bottom-2">Silny wiatr<\/h2><p class="govuk-body">Trwa do 25 października 19:00\.<\/p><details class="govuk-details govuk-!-margin-bottom-0"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">Co przekazuje IMGW<\/span><\/summary><div class="govuk-details__text">Prognozuje się wystąpienie /,
+  );
+  // No source, issue or check time in the card: the small print has them.
+  assert.doesNotMatch(card, /IMGW-PIB|Źródło|Sprawdziliśmy|opublikowa/i);
+});
+
+test("several warnings: highest level first, then the earliest; each its meter and when", () => {
+  const [ours] = copyCheckedAt("2026-10-25T13:20:00+01:00").feed.items.filter(
+    (item) => item.teryt.includes("1809"),
+  );
+  const later = "2026-10-25T16:00:00+01:00";
+  const items = [
+    { ...ours, id: "a", level: 1 as const },
+    { ...ours, id: "b", level: 3 as const, validFrom: later },
+    { ...ours, id: "c", level: 3 as const },
+    { ...ours, id: "d", level: 2 as const },
+  ];
+  const html = page(
+    VILLAGE,
+    CUTS,
+    weather(copyCheckedAt("2026-10-25T13:20:00+01:00", items), NOW.getTime()),
+  );
+  const cards = [
+    ...html.matchAll(
+      /<section class="app-warning app-warning--(\d)" aria-labelledby="ostrzezenie-(\w)">(.*?)<\/section>/g,
+    ),
+  ];
+  assert.deepEqual(
+    cards.map(([, level, id]) => `${id}${level}`),
+    ["c3", "b3", "d2", "a1"],
+  );
+  for (const [, level, , card] of cards) {
+    assert.equal(count(card, "app-warning__on"), Number(level));
+    assert.match(card, new RegExp(`Stopień ${level} z 3`));
+  }
+  // Begun: until when; to come: Intl's range.
+  const when = cards.map(([, , , card]) =>
+    /<p class="govuk-body">([^<]*)<\/p>/.exec(card)?.[1].replace(/\s/g, " "),
+  );
+  assert.deepEqual(when, [
+    "Trwa do 25 października 19:00.",
+    "Od 25 października, 16:00 do 19:00.",
+    "Trwa do 25 października 19:00.",
+    "Trwa do 25 października 19:00.",
+  ]);
+});
+
+test("no warning: no card and nothing in its place", () => {
+  const none = weather(
+    copyCheckedAt("2026-10-25T13:20:00+01:00", []),
+    NOW.getTime(),
+  );
+  const html = page(VILLAGE, CUTS, none);
+  assert.doesNotMatch(html, /app-warning/);
+  assert.match(html, /<\/div><section aria-labelledby="najblizsze-dni">/);
+});
+
 test("„Wszystko o Twoim adresie” and the small print: a link per module with a source, then the checks and IMGW's words", () => {
   const html = page(VILLAGE, CUTS, WARNINGS);
+  // The weather has no subpage (task 288): no link for it.
   assert.deepEqual(texts(section(html, "wszystko"), "li"), [
     "Wszystkie przerwy w wodzie",
-    "Ostrzeżenia pogodowe IMGW",
   ]);
-  assert.match(
-    section(html, "wszystko"),
-    /href="\/adres\/0606257\/woda">.*href="\/adres\/0606257\/pogoda">/,
-  );
   // No waste check here: waste is left out of the freshness line.
   assert.match(
     smallPrint(html),
@@ -195,7 +256,7 @@ test("no waste source: why, in the notices; no waste link, meta line or row", ()
   const html = page(VILLAGE, CUTS, WARNINGS);
   assert.match(
     html,
-    /<div class="govuk-inset-text"><p class="govuk-body">Nie mamy jeszcze harmonogramu wywozu śmieci dla tej wsi\. Sprawdź odbiory w harmonogramie [^<]+\.<\/p><\/div><section aria-labelledby="najblizsze-dni">/,
+    /<div class="govuk-inset-text"><p class="govuk-body">Nie mamy jeszcze harmonogramu wywozu śmieci dla tej wsi\. Sprawdź odbiory w harmonogramie [^<]+\.<\/p><\/div><section class="app-warning /,
   );
   assert.doesNotMatch(html, /Wszystkie odbiory śmieci|Śmieci|\/smieci/);
 });
