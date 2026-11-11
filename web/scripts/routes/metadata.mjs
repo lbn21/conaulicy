@@ -8,38 +8,17 @@
 // "<H1> – conaulicy.pl", but a place's pages name its locality too:
 // the address page "<H1>, <locality> – conaulicy.pl",
 // every module's subpage "<H1> – <place>, <locality> – conaulicy.pl"
-// ("Błąd: " first with an error summary); a few of them
-// exactly (TITLES). The share title is the same, and the share name
-// conaulicy.pl. The home page's Apple web-app tags (a "default" status bar,
-// never black-translucent) and the manifest's id, scope, display and icons.
-// The home page's copy: its exact H1 and lead, a
-// description that leads with the waste, and no "prąd" in the manifest.
+// ("Błąd: " first with an error summary). The share title is the same, and
+// the share name conaulicy.pl. The home page's Apple web-app tags (a
+// "default" status bar, never black-translucent) and the manifest's id,
+// scope, start_url, display and icons. Structure only: no page's words are
+// pinned here (its H1 and description need only exist).
 //
 // Runs against `next start` on the current build.
 import { notFoundAt, ROUTES } from "../lib/server.mjs";
 
 const SITE = "https://conaulicy.pl";
-const HOME_H1 = "Sprawdź swoją ulicę w Lubaczowie i gminie";
-const HOME_LEAD = "Wpisz ulicę albo wieś i sprawdź terminy.";
 const STATIC = ["/", "/ulice", "/dostepnosc", "/prywatnosc", "/o-projekcie"];
-// A town street, a village's street, a whole village, on each kind of page.
-const TITLES = {
-  "/adres/0972447-00470": "ul. Adama Asnyka, Lubaczów – conaulicy.pl",
-  "/adres/0606234-90008": "ul. Leśna, Lisie Jamy – conaulicy.pl",
-  "/adres/0606010": "Dąbrowa, gm. Lubaczów – conaulicy.pl",
-  "/adres/0972447-00470/smieci":
-    "Odbiór śmieci – ul. Adama Asnyka, Lubaczów – conaulicy.pl",
-  "/adres/0606010/smieci":
-    "Odbiór śmieci – Dąbrowa, gm. Lubaczów – conaulicy.pl",
-  "/adres/0972447-00470/woda":
-    "Przerwy w dostawie wody – ul. Adama Asnyka, Lubaczów – conaulicy.pl",
-  "/adres/0606010/woda":
-    "Przerwy w dostawie wody – Dąbrowa, gm. Lubaczów – conaulicy.pl",
-  "/adres/0972447-00470/prad":
-    "Przerwy w dostawie prądu – ul. Adama Asnyka, Lubaczów – conaulicy.pl",
-  "/adres/0606010/prad":
-    "Przerwy w dostawie prądu – Dąbrowa, gm. Lubaczów – conaulicy.pl",
-};
 
 const all = (html, pattern) => [...html.matchAll(pattern)].map(([, v]) => v);
 const decode = (text) =>
@@ -96,7 +75,7 @@ export async function check(server, failures) {
           title[0].endsWith(" – conaulicy.pl") &&
           title[0].length > prefix.length + " – conaulicy.pl".length
         : title[0] === `${error}${h1[0]} – conaulicy.pl`;
-    if (h1.length !== 1 || !ok || (TITLES[path] ?? title[0]) !== title[0]) {
+    if (h1.length !== 1 || !h1[0] || !ok) {
       failures.push(
         `${path}: title ${JSON.stringify(title)}, H1 ${JSON.stringify(h1)}`,
       );
@@ -194,25 +173,9 @@ export async function check(server, failures) {
   }
   if (home.includes("black-translucent"))
     failures.push("/: black-translucent in the HTML");
-  const homeH1 = all(home, /<h1[^>]*>([\s\S]*?)<\/h1>/g).map((text) =>
-    decode(text.replace(/<[^>]*>/g, "")).trim(),
-  );
-  if (homeH1[0] !== HOME_H1)
-    failures.push(`/: H1 ${JSON.stringify(homeH1)}, want ${HOME_H1}`);
-  const homeLead = all(
-    home,
-    /<p class="govuk-body-l"[^>]*>([\s\S]*?)<\/p>/g,
-  ).map((text) => decode(text.replace(/<[^>]*>/g, "")).trim());
-  if (homeLead[0] !== HOME_LEAD)
-    failures.push(`/: lead ${JSON.stringify(homeLead)}, want ${HOME_LEAD}`);
-  const homeDescription = meta(home, "name", "description").map(decode);
-  if (!homeDescription[0]?.startsWith("Wywóz śmieci"))
-    failures.push(`/: description ${JSON.stringify(homeDescription)}`);
-  const manifestText = await (
+  const manifest = await (
     await fetch(`${server.origin}/manifest.webmanifest`)
-  ).text();
-  if (/prąd/i.test(manifestText)) failures.push("manifest: „prąd”");
-  const manifest = JSON.parse(manifestText);
+  ).json();
   for (const [key, want] of [
     ["id", "/"],
     ["scope", "/"],

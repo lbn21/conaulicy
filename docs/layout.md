@@ -120,6 +120,10 @@ On purpose, so nobody "fixes" them:
 - `noindex` and not in the sitemap: `/woda` and `/prad` (their content lasts days and is mostly empty), a house number (`?nr=`, canonical to the hub), the number error (an empty `?nr=`), PDFs, ICS files, and places without a waste schedule.
 - `web/scripts/check-indexing.mjs` checks both lists, and with `--expect=index` (by hand, `docs/launch.md`) that every URL in the sitemap is indexable (200, no noindex, canonical itself).
 
+## Checks and tests: structure, not copy
+
+The route, HTML, PDF and IMGW checks (`web/scripts/**`) and the rendered-markup tests (`web/components/*.test.ts`) check structure and data, never the page's words: an h1 with text, a description, the title's pattern („‹h1› – conaulicy.pl”, a place's with its locality), the order of the page's parts by their markup, dates and times from the data. No check bans a word. A test that needs a page's words reads them from their source (`MODULES`, `unchecked`, `IMGW_ATTRIBUTION`…), so changing copy never breaks a test. The library tests (`web/lib/*.test.ts`) still check which message a state gives, as the behaviour under test.
+
 ## Site-wide: the same job, the same component
 
 Across the whole site the same job always uses the same component and style:

@@ -22,8 +22,8 @@
 // answers 200 with no noindex (meta or X-Robots-Tag), canonicalises to
 // itself, and has a title of its own. 404s (an unknown path, unknown
 // addresses) are whole pages in the raw HTML, no JS needed: status 404, the
-// layout (lang, stylesheet), GOV.UK's "page not found" H1, its link home
-// („Przejdź na stronę główną”), robots meta noindex (one or more tags, every
+// layout (lang, stylesheet), an H1 with text and the title "<H1> –
+// conaulicy.pl", a link home, robots meta noindex (one or more tags, every
 // one noindex, none index), and no description; an unknown module
 // (/adres/<id>/<slug>) too; asked
 // without following redirects, and never under a renamed id (the 308s of
@@ -290,13 +290,15 @@ try {
     });
     const html = await response.text();
     const metas = [...html.matchAll(META)].map(([, content]) => content);
+    // Structure, not words: an h1 with text, the title "<H1> –
+    // conaulicy.pl", a link home and the contact link.
+    const h1 = /<h1\b[^>]*>([^<]+)<\/h1>/.exec(html)?.[1].trim();
     const missing = [
       '<html lang="pl"',
       '<link rel="stylesheet"',
-      '<h1 class="govuk-heading-l">Nie znaleziono strony</h1>',
-      "<title>Nie znaleziono strony – conaulicy.pl</title>",
+      h1 ? `<title>${h1} – conaulicy.pl</title>` : "<h1> with text",
       'href="mailto:kontakt@conaulicy.pl"',
-      '<a class="govuk-link" href="/">Przejdź na stronę główną</a>',
+      '<a class="govuk-link" href="/">',
     ].filter((part) => !html.includes(part));
     if (
       response.status !== 404 ||

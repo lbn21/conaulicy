@@ -78,6 +78,7 @@ A free site for Lubaczów residents: type your street, see what is coming at you
 ## Workflow
 
 - Small, focused commits with short messages.
+- Tests and checks pin structure and data, never page copy: no exact headings, leads, titles or sentences, and no banned words (Jakub, PR #262). Where a test needs a page's words, it reads them from their source (`MODULES`, a function, a constant).
 - `biome check`, type check and tests pass before every commit. No local `next build` or `next start`: the CI build on the PR is the build gate.
 - Vercel skips the build when every changed file is docs or tests (`web/scripts/vercel-ignore.sh`).
 - Opus opens draft PRs only and never merges. Tech Lead merges after Jakub's OK.

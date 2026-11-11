@@ -120,30 +120,30 @@ try {
   await expectRun("re-run", [], 0, /events\s+\+0\s+−0\s+~0/);
 
   // Pages read the import (after the revalidate above).
-  // The waste subpages: the calendar and the source line are there.
+  // The waste subpages: the calendar and the source line are there, by
+  // their markup, never their words.
   const part = await page(`/adres/${FIXTURE_IDS.villagePart}/smieci`);
   check(
     part.status === 200 &&
       part.text.includes("Dąbrowa (Basznia Górna, gm. Lubaczów)") &&
-      part.text.includes("Dodaj do kalendarza") &&
-      part.text.includes("Jak dodać i sprawdzić, czy się udało?"),
+      /<a href="\/ics\/[^"]+" role="button"/.test(part.text) &&
+      part.text.includes('<details class="govuk-details">'),
     "village part: no label with its village, no zone from its village, or no calendar help",
   );
   const village = await page(`/adres/${FIXTURE_IDS.village}/smieci`);
   check(
     village.status === 200 &&
-      village.text.includes("Harmonogram") &&
-      village.text.includes("Sprawdziliśmy "),
+      /<div class="govuk-inset-text"><p class="govuk-hint[^"]*">[^<]+/.test(
+        village.text,
+      ),
     "village: no source line",
   );
   const unzoned = await page(`/adres/${FIXTURE_IDS.unzonedStreet}`);
+  // Its notice in the inset, with a link out to the gmina's schedule.
   check(
-    unzoned.text.includes(
-      "Nie mamy jeszcze harmonogramu wywozu śmieci dla tej ulicy",
-    ) &&
-      unzoned.text.includes(
-        "Otwórz harmonogram Urzędu Miejskiego w Lubaczowie",
-      ),
+    /<div class="govuk-inset-text">(?:(?!<\/div>)[\s\S])*<a [^>]*href="https:\/\//.test(
+      unzoned.text,
+    ),
     "street without a zone: no link to the town's schedule",
   );
   const rondo = await page(`/adres/${FIXTURE_IDS.rondo}`);

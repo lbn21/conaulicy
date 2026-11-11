@@ -45,8 +45,8 @@ import {
 const HUB = "/adres/0972447-00470";
 // No subpage for the weather any more: a 404.
 const WEATHER = `${HUB}/pogoda`;
-// A card's details (components/warning-cards.tsx).
-const DETAILS = "Co przekazuje IMGW";
+// A card's details' summary (components/warning-cards.tsx), by its markup.
+const DETAILS = ".app-warning .govuk-details__summary";
 const WIDTHS = [375, 1280];
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const SHOTS = process.env.SCREENSHOT_DIR;
@@ -108,22 +108,6 @@ const THREE = "three-l1-l2-l3";
 // A 404, as ever while the store cannot be read (app/not-found.tsx).
 const NOT_FOUND = "/nie-ma-takiej-strony";
 
-const DAY =
-  "(?:niedzieli|poniedziałku|wtorku|środy|czwartku|piątku|soboty) \\d{1,2} \\p{L}+";
-const TIME = "\\d{1,2}:\\d{2}";
-// The last data's time: its day too when not today.
-const SINCE = `(?:${DAY}, )?${TIME}`;
-const NOTICE = {
-  stale: `Nie udało się teraz pobrać ostrzeżeń IMGW\\. Pokazujemy ostatnie dane z ${SINCE}\\.`,
-  "stale-none": `Nie udało się teraz pobrać ostrzeżeń IMGW\\. Ostatnie dane mamy z ${SINCE}\\.`,
-  "too-old": `Od ${SINCE} nie udało się nam pobrać ostrzeżeń IMGW, więc ich nie pokazujemy\\.`,
-  unreadable: "Nie udało się teraz sprawdzić ostrzeżeń IMGW\\.",
-};
-// A card's when (lib/weather-module.ts warningWhen); Intl's spaces may be
-// thin or no-break ones.
-const MOMENT = "\\d{1,2}\\s\\p{L}+,?\\s\\d{1,2}:\\d{2}";
-const WHEN = `(?:Trwa do ${MOMENT}|Od ${MOMENT} do (?:\\d{1,2}\\s\\p{L}+\\s)?\\d{1,2}:\\d{2})\\.`;
-
 const failures = [];
 let port = 3320;
 
@@ -176,16 +160,16 @@ async function hubChecks(origin, state) {
     }),
   );
   const weatherGone = await notFoundAt(origin + WEATHER);
-  const headings = [
-    ...hub.matchAll(/<h2 id="[a-z-]+" class="govuk-heading-m">([^<]*)</g),
-  ].map(([, title]) => title);
   const timelineAt = hub.indexOf('<section aria-labelledby="najblizsze-dni">');
   const timeline = hub.slice(timelineAt, hub.indexOf("</section>", timelineAt));
   // An icon (components/icon.tsx): decorative, aria-hidden, Lucide's shapes.
   const ICON =
     '<svg aria-hidden="true" focusable="false" class="app-icon"[^>]*>(?:(?!</svg>).)*</svg>';
+  // Structure only, never its words: the level's band holds the meter and
+  // the level's digit in text (never colour alone), then a heading, when,
+  // and IMGW's words in a details, each with text.
   const card = new RegExp(
-    `<section class="app-warning app-warning--([1-3])" aria-labelledby="ostrzezenie-([^"]+)"><p class="app-warning__level govuk-body-s govuk-!-font-weight-bold"><span class="app-warning__meter" aria-hidden="true">((?:<span(?: class="app-warning__on")?></span>){3})</span>${ICON}Stopień \\1 z 3</p><div class="app-warning__body app-mod app-mod--pogoda"><h2 id="ostrzezenie-\\2" class="govuk-heading-m govuk-!-margin-bottom-2"><span class="app-tile app-mod app-mod--pogoda">${ICON}</span>Silny wiatr</h2><p class="govuk-body">${WHEN}</p><details class="govuk-details govuk-!-margin-bottom-0"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">${DETAILS}</span></summary><div class="govuk-details__text">Prognozuje się [^<]+</div></details></div></section>`,
+    `<section class="app-warning app-warning--([1-3])" aria-labelledby="ostrzezenie-([^"]+)"><p class="app-warning__level[^"]*"><span class="app-warning__meter" aria-hidden="true">((?:<span(?: class="app-warning__on")?></span>){3})</span>${ICON}[^<]*\\1[^<]*</p><div class="app-warning__body[^"]*"><h2 id="ostrzezenie-\\2" class="govuk-heading-m[^"]*">(?:<span class="app-tile[^"]*">${ICON}</span>)?[^<]+</h2><p class="govuk-body">[^<]+</p><details class="govuk-details[^"]*"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">[^<]+</span></summary><div class="govuk-details__text">[^<]+</div></details></div></section>`,
     "gu",
   );
   const cards = [...hub.matchAll(card)];
@@ -194,11 +178,9 @@ async function hubChecks(origin, state) {
   const lastCard = cards.at(-1);
   const cardsEnd = lastCard ? lastCard.index + lastCard[0].length : -1;
   const imgwLinks = hub.split('<a href="https://meteo.imgw.pl/"').length - 1;
-  const notice = (tag) =>
-    new RegExp(
-      `${tag}${NOTICE[state.notice]} Aktualne znajdziesz na <a href="https://meteo\\.imgw\\.pl/" class="govuk-link">meteo\\.imgw\\.pl</a>\\.`,
-      "u",
-    );
+  // The notice: a line in the inset linking IMGW's live page.
+  const notice =
+    /<div class="govuk-inset-text">(?:(?!<\/div>)[\s\S])*<a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">/;
   const problems = [
     levels.join() !== state.levels.join() &&
       `cards ${levels}, want ${state.levels}`,
@@ -209,24 +191,16 @@ async function hubChecks(origin, state) {
     lastCard &&
       cardsEnd !== timelineAt &&
       "the cards not right above the timeline",
-    /Ostrzeżenie IMGW|Silny wiatr|Stopień/.test(timeline) &&
-      "a warning in the timeline",
+    /app-warning/.test(timeline) && "a warning in the timeline",
     /govuk-tag/.test(hub) && "a tag on the address page",
-    /IMGW-PIB|Prawdopodobieństwo/.test(hub) &&
-      "a source or probability on the address page",
-    headings.join() !== "Najbliższe 7 dni,Wszystko o Twoim adresie" &&
-      `headings ${headings}`,
+    !/<h2 id="najblizsze-dni"[^>]*>[^<]/.test(hub) && "no timeline heading",
     imgwLinks !== (state.notice ? 1 : 0) &&
       `${imgwLinks} links to IMGW on the address page`,
     weatherGone && `${WEATHER}: ${weatherGone}`,
     hub.includes(`href="${WEATHER}`) && `a link to ${WEATHER}`,
     // The notice: in the inset above the cards; none when fresh.
-    (state.notice
-      ? !notice(
-          '<div class="govuk-inset-text">(?:(?!</div>)[\\s\\S])*<p class="govuk-body">',
-        ).test(hub)
-      : /[Nn]ie udało się[^<]*ostrzeżeń IMGW/.test(hub)) && "the notice",
-    /app-warning|Ostrzeżenie IMGW/.test(waste) && "a warning on /smieci",
+    notice.test(hub) !== Boolean(state.notice) && "the notice",
+    /app-warning/.test(waste) && "a warning on /smieci",
   ].filter(Boolean);
   if (problems.length > 0) failures.push(`${label}: ${problems.join("; ")}`);
   else console.log(`ok    ${label}: ${state.levels.length} cards`);
@@ -254,15 +228,15 @@ async function open(browser, origin, width, scale = 2, page = HUB) {
 const openHub = (browser, origin, width, scale = 2) =>
   open(browser, origin, width, scale, HUB);
 
-// Tab (keyboard only) to the first link whose text starts with `text`:
+// Tab (keyboard only) to the first element matching `text` (a selector):
 // GOV.UK's focus style on it.
 async function focusCheck(page, text, where) {
   let focused = null;
   for (let i = 0; i < 80 && !focused; i++) {
     await page.keyboard.press("Tab");
-    focused = await page.evaluate((start) => {
+    focused = await page.evaluate((selector) => {
       const el = document.activeElement;
-      if (!el?.textContent?.startsWith(start)) return null;
+      if (!el?.matches(selector)) return null;
       const s = getComputedStyle(el);
       return {
         background: s.backgroundColor === "rgb(255, 221, 0)",
@@ -387,11 +361,7 @@ try {
         shown.indexOf("<main"),
         shown.indexOf("</main>"),
       );
-      if (
-        /govuk-notification-banner|app-warning|Ostrzeżenia IMGW|ostrzeżenie IMGW/.test(
-          main,
-        )
-      )
+      if (/govuk-notification-banner|app-warning/.test(main))
         failures.push(`${route.path}: a banner, a line or a warning of IMGW's`);
     }
     await hubChecks(plain.origin, { name: "none", levels: [] });

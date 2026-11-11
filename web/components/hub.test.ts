@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { unchecked } from "../lib/hub.ts";
 import { copyCheckedAt } from "../lib/imgw-fixture.ts";
+import { IMGW_PAGE } from "../lib/imgw-shown.ts";
+import { IMGW_ATTRIBUTION, IMGW_NAME } from "../lib/imgw-warnings.ts";
+import { MODULES } from "../lib/modules.ts";
 import type { PgeOutage } from "../lib/pge-feed.ts";
 import { type Power, power } from "../lib/power-module.ts";
 import type { PlaceView } from "../lib/schedule.ts";
@@ -24,7 +28,9 @@ import { WarsawToday } from "./warsaw-today.tsx";
 // server's Warsaw day, at the water fixture's NOW (Sunday 25 Oct 2026, 13:30
 // in Warsaw): the notices, a card per IMGW warning, the
 // timeline („Najbliższe 7 dni”, then „Później”), „Wszystko o Twoim
-// adresie” and the small print at the end.
+// adresie” and the small print at the end. Structure and data only: the
+// page's own words are never pinned here; where a test needs them, it reads
+// them from their source (MODULES, unchecked, IMGW_ATTRIBUTION).
 
 /** PGE checked at NOW, nothing at the place: no row, no line of its own. */
 const noOutages = (place: PlaceView) =>
@@ -155,7 +161,7 @@ test("timeline: a card per day from today, 2+ empty days as one, Intl's titles",
   const timeline = section(html, "najblizsze-dni");
   assert.match(
     timeline,
-    /^<section aria-labelledby="najblizsze-dni"><h2 id="najblizsze-dni" class="govuk-heading-m">Najbliższe 7 dni<\/h2><ol class="app-timeline">/,
+    /^<section aria-labelledby="najblizsze-dni"><h2 id="najblizsze-dni" class="govuk-heading-m">[^<]+<\/h2><ol class="app-timeline">/,
   );
   // 25-31 Oct: today, the cut on 26, 27-28 empty, the cut on 29, 30-31
   // empty; nothing after the window, so no „Później”.
@@ -177,24 +183,27 @@ test("timeline: a card per day from today, 2+ empty days as one, Intl's titles",
     count(timeline, '<li class="app-timeline__empty app-timeline__range">'),
     2,
   );
-  // No waste schedule here, and an empty day still says just that;
-  // today has only the warning, which is a card, not a row.
-  assert.equal(count(timeline, "Nic nie zaplanowano."), 3);
-  assert.doesNotMatch(timeline, /Później/);
+  // No waste schedule here, and an empty day still says just that (a line
+  // of its own); today has only the warning, which is a card, not a row.
+  assert.equal(count(timeline, "app-timeline__card--empty"), 3);
+  assert.doesNotMatch(timeline, /app-timeline__later/);
 });
 
 test("timeline: each cut once, its row, „Szczegóły” to its subpage; no warning", () => {
   const html = page(VILLAGE, CUTS, WARNINGS);
   const timeline = section(html, "najblizsze-dni");
-  assert.equal(count(html, "Nie będzie wody"), 2);
-  assert.equal(count(html, "Cała wieś Lisie Jamy."), 2);
-  // Its tile and label, a badge, what is cut, its hours as a chip, where.
+  assert.equal(
+    count(timeline, "govuk-summary-list__row app-mod app-mod--woda"),
+    2,
+  );
+  // Its tile and label, a badge, what is cut, its hours as a chip, where;
+  // the action to its subpage with a hidden suffix naming its day.
   assert.match(
     html,
-    /<div class="govuk-summary-list__row app-mod app-mod--woda[^"]*"><dt class="govuk-summary-list__key"><span class="app-tile app-mod app-mod--woda"><svg\/><\/span>Woda<\/dt><dd class="govuk-summary-list__value"><p class="govuk-body-s govuk-!-margin-bottom-0"><strong class="app-badge app-badge--mod">Planowana<\/strong> Nie będzie wody<\/p><ul class="app-chips"><li class="app-chip"><svg\/>od 8:00 do 16:00<\/li><\/ul><p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0 app-quiet">Cała wieś Lisie Jamy\.<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link" href="\/adres\/0606257\/woda">Szczegóły<span class="govuk-visually-hidden"> o przerwie w dostawie wody, poniedziałek, 26 października<\/span><\/a><\/dd>/,
+    /<div class="govuk-summary-list__row app-mod app-mod--woda[^"]*"><dt class="govuk-summary-list__key"><span class="app-tile app-mod app-mod--woda"><svg\/><\/span>[^<]+<\/dt><dd class="govuk-summary-list__value"><p class="govuk-body-s govuk-!-margin-bottom-0"><strong class="app-badge app-badge--mod">[^<]+<\/strong>[^<]+<\/p><ul class="app-chips"><li class="app-chip"><svg\/>[^<]*8:00[^<]*16:00[^<]*<\/li><\/ul><p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0 app-quiet">[^<]*Lisie Jamy[^<]*<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link" href="\/adres\/0606257\/woda">[^<]+<span class="govuk-visually-hidden">[^<]*26 października<\/span><\/a><\/dd>/,
   );
   // Warnings are cards above the timeline, never in it, and no tag at all.
-  assert.doesNotMatch(timeline, /Ostrzeżenie IMGW|Silny wiatr|Stopień/);
+  assert.doesNotMatch(timeline, /app-warning/);
   assert.doesNotMatch(html, /govuk-tag|\/pogoda/);
   // Every card's last row has no border under it.
   assert.equal(
@@ -212,10 +221,10 @@ test("a warning: its card above the timeline, the meter, when, IMGW's words", ()
   assert.ok(html.indexOf(card) < html.indexOf("najblizsze-dni"));
   assert.match(
     card,
-    /^<section class="app-warning app-warning--1" aria-labelledby="ostrzezenie-Sk20261024094213061"><p class="app-warning__level govuk-body-s govuk-!-font-weight-bold"><span class="app-warning__meter" aria-hidden="true"><span class="app-warning__on"><\/span><span><\/span><span><\/span><\/span><svg\/>Stopień 1 z 3<\/p><div class="app-warning__body app-mod app-mod--pogoda"><h2 id="ostrzezenie-Sk20261024094213061" class="govuk-heading-m govuk-!-margin-bottom-2"><span class="app-tile app-mod app-mod--pogoda"><svg\/><\/span>Silny wiatr<\/h2><p class="govuk-body">Trwa do 25 października 19:00\.<\/p><details class="govuk-details govuk-!-margin-bottom-0"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">Co przekazuje IMGW<\/span><\/summary><div class="govuk-details__text">Prognozuje się wystąpienie /,
+    /^<section class="app-warning app-warning--1" aria-labelledby="ostrzezenie-Sk20261024094213061"><p class="app-warning__level govuk-body-s govuk-!-font-weight-bold"><span class="app-warning__meter" aria-hidden="true"><span class="app-warning__on"><\/span><span><\/span><span><\/span><\/span><svg\/>[^<]*1[^<]*<\/p><div class="app-warning__body app-mod app-mod--pogoda"><h2 id="ostrzezenie-Sk20261024094213061" class="govuk-heading-m govuk-!-margin-bottom-2"><span class="app-tile app-mod app-mod--pogoda"><svg\/><\/span>Silny wiatr<\/h2><p class="govuk-body">[^<]*25 października 19:00[^<]*<\/p><details class="govuk-details govuk-!-margin-bottom-0"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">[^<]+<\/span><\/summary><div class="govuk-details__text">Prognozuje się wystąpienie /,
   );
-  // No source, issue or check time in the card: the small print has them.
-  assert.doesNotMatch(card, /IMGW-PIB|Źródło|Sprawdziliśmy|opublikowa/i);
+  // No source link in the card: the small print has IMGW's.
+  assert.doesNotMatch(card, /<a /);
 });
 
 test("several warnings: highest level first, then the earliest; each its meter and when", () => {
@@ -245,18 +254,21 @@ test("several warnings: highest level first, then the earliest; each its meter a
   );
   for (const [, level, , card] of cards) {
     assert.equal(count(card, "app-warning__on"), Number(level));
-    assert.match(card, new RegExp(`Stopień ${level} z 3`));
+    // The level in words too, never colour alone: its digit in the band.
+    assert.match(
+      card,
+      new RegExp(`<p class="app-warning__level[^>]*>(?:(?!</p>).)*${level}`),
+    );
   }
-  // Begun: until when; to come: Intl's range.
+  // Begun: only its end; to come: its start too (Intl's range).
   const when = cards.map(([, , , card]) =>
     /<p class="govuk-body">([^<]*)<\/p>/.exec(card)?.[1].replace(/\s/g, " "),
   );
-  assert.deepEqual(when, [
-    "Trwa do 25 października 19:00.",
-    "Od 25 października, 16:00 do 19:00.",
-    "Trwa do 25 października 19:00.",
-    "Trwa do 25 października 19:00.",
-  ]);
+  assert.deepEqual(
+    when.map((text) => text?.match(/\d{1,2}:\d{2}/g)),
+    [["19:00"], ["16:00", "19:00"], ["19:00"], ["19:00"]],
+  );
+  assert.ok(when.every((text) => text?.includes("25 października")));
 });
 
 test("no warning: no card and nothing in its place", () => {
@@ -273,62 +285,88 @@ test("„Wszystko o Twoim adresie” and the small print: a link per module with
   const html = page(VILLAGE, CUTS, WARNINGS);
   // The weather has no subpage: no link for it.
   // A card per module: its link, and how many in the window (the badge).
-  assert.deepEqual(texts(section(html, "wszystko"), "li"), [
-    "Wszystkie przerwy w wodzie2 w ciągu 7 dni",
-    "Wszystkie przerwy w dostawie prąduNic w ciągu 7 dni",
-  ]);
-  // No waste check here: waste is left out of the freshness line.
-  assert.match(
-    smallPrint(html),
-    /^Sprawdziliśmy: woda [^,]+, prąd 25 października 13:30 i pogoda 25 października 13:20\. Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy\. Dane Instytutu Meteorologii i Gospodarki Wodnej – Państwowego Instytutu Badawczego zostały przetworzone\.$/,
+  const links = section(html, "wszystko");
+  assert.deepEqual(texts(links, "a"), [MODULES.woda.more, MODULES.prad.more]);
+  // Its count badge: water's two cuts, power's none (muted).
+  const badges = [
+    ...links.matchAll(/<strong class="(app-badge[^"]*)">([^<]*)</g),
+  ];
+  assert.deepEqual(
+    badges.map(([, tone]) => tone),
+    ["app-badge app-badge--mod", "app-badge"],
   );
+  assert.match(badges[0][2], /^2\D/);
+  // The checks, with their times; no waste check here, so waste is left
+  // out; then IMGW's required wording, as given (IMGW_ATTRIBUTION).
+  const small = smallPrint(html);
+  for (const part of [
+    MODULES.woda.title,
+    `${MODULES.prad.title} 25 października 13:30`,
+    `${MODULES.pogoda.title} 25 października 13:20`,
+  ])
+    assert.ok(small.includes(part), part);
+  assert.ok(!small.includes(MODULES.smieci.title));
+  assert.ok(small.endsWith(IMGW_ATTRIBUTION.processed));
   // The weather has no subpage: its source link is IMGW's name here.
-  assert.match(
-    smallPrintHtml(html),
-    / jest <a class="govuk-link" href="https:\/\/meteo\.imgw\.pl\/">Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy<\/a>\. Dane /,
+  assert.ok(
+    smallPrintHtml(html).includes(
+      `<a class="govuk-link" href="${IMGW_PAGE}">${IMGW_NAME}</a>`,
+    ),
   );
-  // The other sources are on the subpages, none on the hub.
-  assert.doesNotMatch(html, /Źródło:|Skąd to wiemy/);
+  // The other sources are on the subpages: no source block on the hub.
+  assert.doesNotMatch(
+    html,
+    /<div class="govuk-inset-text"><p class="govuk-hint/,
+  );
   // IMGW's required wording, once.
-  assert.equal(count(html, "Instytut Meteorologii i Gospodarki Wodnej"), 1);
+  assert.equal(count(html, IMGW_NAME), 1);
 });
 
 test("no waste source: why, in the notices; no waste link, meta line or row", () => {
   const html = page(VILLAGE, CUTS, WARNINGS);
   assert.match(
     html,
-    /<div class="govuk-inset-text"><p class="govuk-body">Nie mamy jeszcze harmonogramu wywozu śmieci dla tej wsi\. Sprawdź odbiory w harmonogramie [^<]+\.<\/p><\/div><section class="app-warning /,
+    /<div class="govuk-inset-text"><p class="govuk-body">[^<]+<\/p><\/div><section class="app-warning /,
   );
-  assert.doesNotMatch(html, /Wszystkie odbiory śmieci|Śmieci|\/smieci/);
+  assert.doesNotMatch(html, /app-mod--smieci|\/smieci/);
 });
 
 test("a live module not checked says so; nothing is claimed for it", () => {
   const html = page(VILLAGE, null, null, null);
   assert.match(
     html,
-    /<div class="govuk-inset-text">.*<p class="govuk-body">Nie udało się sprawdzić przerw w dostawie wody\.<\/p><p class="govuk-body">Nie udało się sprawdzić przerw w dostawie prądu\.<\/p><p class="govuk-body">Nie udało się sprawdzić ostrzeżeń IMGW\.<\/p><\/div>/,
+    new RegExp(
+      `<div class="govuk-inset-text">.*${[
+        MODULES.woda,
+        MODULES.prad,
+        MODULES.pogoda,
+      ]
+        .map(
+          (module) =>
+            `<p class="govuk-body">${unchecked(module).replace(/\./g, "\\.")}</p>`,
+        )
+        .join("")}</div>`,
+    ),
   );
-  assert.doesNotMatch(
-    html,
-    /Wszystkie przerwy w wodzie|Wszystkie przerwy w dostawie prądu|Ostrzeżenia pogodowe/,
-  );
+  assert.doesNotMatch(html, /\/woda"|\/prad"|\/pogoda"/);
 });
 
 test("nothing in the window and nothing later: one line, no cards; the links and small print stay", () => {
   // A street with its waste source but no dates left; water and weather
   // not checked (their notices say so).
   const html = page(testPlace({ ...STREET, days: [] }));
-  assert.equal(
+  assert.match(
     section(html, "najblizsze-dni"),
-    '<section aria-labelledby="najblizsze-dni"><h2 id="najblizsze-dni" class="govuk-heading-m">Najbliższe 7 dni</h2><p class="app-empty govuk-body">Na razie nic nie zaplanowano pod tym adresem.</p></section>',
+    /^<section aria-labelledby="najblizsze-dni"><h2 id="najblizsze-dni" class="govuk-heading-m">[^<]+<\/h2><p class="app-empty govuk-body">[^<]+<\/p><\/section>$/,
   );
-  assert.doesNotMatch(html, /app-timeline|Nic nie zaplanowano\.|Później/);
-  assert.match(section(html, "wszystko"), />Wszystkie odbiory śmieci<\/a>/);
-  assert.match(smallPrint(html), /^Sprawdziliśmy: śmieci 20 października/);
+  assert.doesNotMatch(html, /app-timeline/);
+  assert.ok(section(html, "wszystko").includes(`>${MODULES.smieci.more}</a>`));
+  assert.ok(
+    smallPrint(html).includes(`${MODULES.smieci.title} 20 października`),
+  );
   // Not checked is never „nothing”: the notice says so, above the line.
   assert.ok(
-    html.indexOf("Nie udało się sprawdzić przerw w dostawie wody") <
-      html.indexOf("Na razie nic nie zaplanowano"),
+    html.indexOf(unchecked(MODULES.woda)) < html.indexOf('class="app-empty'),
   );
 });
 
@@ -349,48 +387,52 @@ test("waste: its pickups by day; in the window, so no „Później” for it", (
     "Wtorek, 27 października,  Pojutrze",
     "28–31 października",
   ]);
-  assert.doesNotMatch(html, /Później|app-timeline__later/);
+  assert.doesNotMatch(html, /app-timeline__later/);
   assert.match(
     timeline,
-    /<dt class="govuk-summary-list__key"><span class="app-tile app-mod app-mod--smieci"><svg\/><\/span>Śmieci<\/dt><dd class="govuk-summary-list__value">.*?Papier.*?<p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0 app-quiet">Wystaw je do 6:00 rano\.<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link" href="\/adres\/0000001-00001\/smieci">Szczegóły<span class="govuk-visually-hidden"> o odbiorze śmieci, wtorek, 27 października<\/span>/,
+    /<dt class="govuk-summary-list__key"><span class="app-tile app-mod app-mod--smieci"><svg\/><\/span>[^<]+<\/dt><dd class="govuk-summary-list__value">.*?Papier.*?<p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0 app-quiet">[^<]*6:00[^<]*<\/p><\/dd><dd class="govuk-summary-list__actions"><a class="govuk-link" href="\/adres\/0000001-00001\/smieci">[^<]+<span class="govuk-visually-hidden">[^<]*27 października<\/span>/,
   );
 });
 
 test("waste only after the window: „Później”, its next pickup with its year", () => {
   const html = page(testPlace({ ...STREET, days: STREET.days.slice(1) }));
   const timeline = section(html, "najblizsze-dni");
-  assert.deepEqual(texts(timeline, "h3"), ["25–31 października", "Później"]);
+  assert.deepEqual(texts(timeline, "h3")[0], "25–31 października");
+  assert.equal(count(timeline, "<h3 "), 2);
   // „Później”: only the next pickup after the window, its date the value.
   const later = /<li class="app-timeline__later">.*?<\/li>/.exec(timeline)?.[0];
   assert.ok(later);
   assert.match(
     later,
-    /<dt class="govuk-summary-list__key"><span class="app-tile app-mod app-mod--smieci"><svg\/><\/span>Śmieci<\/dt><dd class="govuk-summary-list__value">Wtorek, 3 listopada 2026<\/dd>/,
+    /<dt class="govuk-summary-list__key"><span class="app-tile app-mod app-mod--smieci"><svg\/><\/span>[^<]+<\/dt><dd class="govuk-summary-list__value">Wtorek, 3 listopada 2026<\/dd>/,
   );
   assert.doesNotMatch(later, /10 listopada/);
   // The waste subpage's link and its check in the small print.
-  assert.match(
-    section(html, "wszystko"),
-    /<a class="govuk-link app-item__link" href="\/adres\/0000001-00001\/smieci">Wszystkie odbiory śmieci<\/a>/,
+  assert.ok(
+    section(html, "wszystko").includes(
+      `<a class="govuk-link app-item__link" href="/adres/0000001-00001/smieci">${MODULES.smieci.more}</a>`,
+    ),
   );
-  assert.match(
-    smallPrint(html),
-    /^Sprawdziliśmy: śmieci 20 października i prąd 25 października 13:30\. Źródłem /,
-  );
-  // Dates not checked yet: the AI caveat after the checks.
-  assert.match(
-    smallPrint(page({ ...STREET, verified: false })),
-    /^Sprawdziliśmy: śmieci 20 października i prąd 25 października 13:30\. Daty przepisał program – jeśli coś się nie zgadza, ważniejszy jest harmonogram\. Źródłem /,
+  const checks = smallPrint(html);
+  assert.ok(checks.includes(`${MODULES.smieci.title} 20 października`));
+  assert.ok(checks.includes(`${MODULES.prad.title} 25 października 13:30`));
+  // Dates not checked yet: waste's note after the checks, before IMGW's.
+  const unverified = { ...STREET, verified: false };
+  const note = MODULES.smieci.note?.(unverified);
+  assert.ok(note);
+  assert.equal(MODULES.smieci.note?.(STREET), null);
+  const caveat = smallPrint(page(unverified));
+  assert.ok(
+    caveat.indexOf("13:30") < caveat.indexOf(note) &&
+      caveat.indexOf(note) < caveat.indexOf(IMGW_ATTRIBUTION.source[0]),
   );
 });
 
 test("a house number given: every subpage link keeps it", () => {
   const html = page(testPlace({ ...STREET, givenNr: "12a" }));
-  assert.match(html, /href="\/adres\/0000001-00001\/smieci\?nr=12a">Szczegóły/);
-  assert.match(
-    html,
-    /href="\/adres\/0000001-00001\/smieci\?nr=12a">Wszystkie odbiory śmieci/,
-  );
+  // The row's action and the module's card, both with the number.
+  assert.equal(count(html, 'href="/adres/0000001-00001/smieci?nr=12a"'), 2);
+  assert.doesNotMatch(html, /href="\/adres\/0000001-00001\/smieci"/);
 });
 
 test("power: its row as the water's, a range each, after the water; its notice with PGE's page", () => {
@@ -418,16 +460,24 @@ test("power: its row as the water's, a range each, after the water; its notice w
     WARNINGS,
     power(copy(NOW.getTime(), items), VILLAGE, NOW.getTime()),
   );
-  const rows = texts(html, "dd").filter((t) => t.includes("Nie będzie prądu"));
   // Two ranges, one row with a chip each; the revoked one in none.
-  assert.deepEqual(rows, [
-    "Planowana Nie będzie prąduod 8:00 do 9:00od 19:00 do 20:00Smolińce, tylko pod niektórymi numerami – sprawdź w szczegółach.",
-  ]);
-  assert.equal(count(html, '<li class="app-chip"><svg/>od '), 2 + 2);
-  assert.match(
-    html,
-    /<dt class="govuk-summary-list__key"><span class="app-tile app-mod app-mod--prad"><svg\/><\/span>Prąd<\/dt>/,
+  const rows = [
+    ...html.matchAll(
+      /<div class="govuk-summary-list__row app-mod app-mod--prad[^"]*">(.*?)<\/div>/g,
+    ),
+  ].map(([, row]) => row);
+  assert.equal(rows.length, 1);
+  assert.deepEqual(
+    [...rows[0].matchAll(/<li class="app-chip"><svg\/>([^<]*)<\/li>/g)].map(
+      ([, window]) => window.match(/\d{1,2}:\d{2}/g),
+    ),
+    [
+      ["8:00", "9:00"],
+      ["19:00", "20:00"],
+    ],
   );
+  // After the water's rows, on the same day.
+  assert.ok(html.indexOf("app-mod--woda") < html.indexOf("app-mod--prad"));
   // Over an hour old: the notice in the inset, PGE's page linked.
   const stale = page(
     VILLAGE,
@@ -437,6 +487,6 @@ test("power: its row as the water's, a range each, after the water; its notice w
   );
   assert.match(
     stale,
-    /Nie udało się teraz pobrać danych PGE\. Pokazujemy ostatnie dane z 12:20\. Aktualne znajdziesz na <a href="https:\/\/pgedystrybucja\.pl\/wylaczenia\/aktualne-przerwy-w-dostawie-energii" class="govuk-link">stronie PGE Dystrybucja<\/a>\./,
+    /<div class="govuk-inset-text">(?:(?!<\/div>).)*12:20(?:(?!<\/div>).)*<a href="https:\/\/pgedystrybucja\.pl\/wylaczenia\/aktualne-przerwy-w-dostawie-energii" class="govuk-link">/,
   );
 });

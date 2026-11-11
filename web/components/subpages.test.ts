@@ -3,9 +3,12 @@ import { mock, test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { todayInWarsaw } from "../lib/dates.ts";
+import { unchecked } from "../lib/hub.ts";
 import { findSubpage, MODULES } from "../lib/modules.ts";
 import { CUT_100 } from "../lib/mzgkim-fixture.ts";
+import { numberWarning } from "../lib/prg.ts";
 import type { PlaceView } from "../lib/schedule.ts";
+import { laterNote } from "../lib/schedule-notes.ts";
 import { wasteSchedule } from "../lib/waste-module.ts";
 import {
   bothViews,
@@ -29,14 +32,15 @@ import {
 } from "../lib/water-module.ts";
 import { STALE_MS, type StoredPost, zukView } from "../lib/zuk-data.ts";
 import { Subpage } from "./module-page.tsx";
-import { AddressPage } from "./place-page.tsx";
+import { AddressPage, numberError } from "./place-page.tsx";
 import { CALENDAR_CHECK, CALENDAR_STEPS } from "./subpage-parts.tsx";
 import { WarsawToday } from "./warsaw-today.tsx";
 import { WaterDetails } from "./water-page.tsx";
 import { eventProperties } from "./web-analytics.tsx";
 
-// The address subpages' one layout (docs/layout.md), rendered as the pages
-// render them (the tsx loader, npm test): /woda and /smieci in the same order,
+// The address subpages' one layout (docs/layout.md), by structure and data,
+// never their words (a test that needs them reads them from their source),
+// rendered as the pages render them (the tsx loader, npm test): /woda and /smieci in the same order,
 // with the same calendar block, at the water fixture's CHECKED and NOW.
 const ZUKI = testPlace();
 
@@ -126,14 +130,15 @@ const calendarBlock = (html: string) =>
 const SKELETON = [
   '<span class="govuk-caption-l">',
   '<h1 class="govuk-heading-l">',
-  "Zmień adres",
+  // „Zmień adres”, GOV.UK's Change link.
+  'govuk-link--no-visited-state" href="/"',
   'role="button"',
 ];
 /** The bottom: the AI-read note, then the one source block with the check. */
 const AFTER = [
   'class="govuk-warning-text"',
   'class="govuk-inset-text"',
-  "Sprawdziliśmy ",
+  '<p class="govuk-hint govuk-!-font-size-16">',
 ];
 
 const ascending = (positions: number[]) =>
@@ -145,14 +150,11 @@ test("/woda: a primary button and its hint before the cuts", () => {
   assert.match(block, /class="govuk-button"/);
   assert.doesNotMatch(block, /govuk-button--/);
   assert.match(block, /href="\/adres\/0972447-26555\/woda\.ics"/);
-  assert.match(block, />Dodaj przerwy do kalendarza</);
-  assert.match(
-    block,
-    /<p class="govuk-body">Plik z przerwami\. Jeśli gmina zmieni godziny, pobierz go jeszcze raz\.<\/p>/,
-  );
-  assert.doesNotMatch(block, /poprawi wpis|PDF/);
+  // Its icon, then its words; its hint under it.
+  assert.match(block, /<svg\/>[^<]+<\/a><p class="govuk-body">[^<]+<\/p>/);
+  assert.doesNotMatch(block, /harmonogram\.pdf/);
   assert.ok(
-    ascending(order(html, [...SKELETON, "<h2", "Godziny", ...AFTER])),
+    ascending(order(html, [...SKELETON, "<h2", 'class="app-card"', ...AFTER])),
     html,
   );
 });
@@ -161,23 +163,24 @@ test("/woda: the AI note in a warning text, the source in an inset", () => {
   const html = waterPage();
   assert.match(
     html,
-    /<div class="govuk-warning-text">[\s\S]*przepisał automatycznie program/,
+    /<div class="govuk-warning-text">[\s\S]*<strong class="govuk-warning-text__text"><span class="govuk-visually-hidden">[^<]+<\/span>[^<]+<\/strong>/,
   );
+  // The source: the cut's post, linked, then when we checked.
   assert.match(
     html,
-    /<div class="govuk-inset-text"><p class="govuk-hint govuk-!-font-size-16">Źródło: <a href="https:\/\/www\.gminalubaczow\.pl\/[^"]+" class="govuk-link">komunikat gminy z 23 października 2026<\/a>\. Sprawdziliśmy [^<]+\.<\/p><\/div>/,
+    /<div class="govuk-inset-text"><p class="govuk-hint govuk-!-font-size-16">[^<]*<a href="https:\/\/www\.gminalubaczow\.pl\/[^"]+" class="govuk-link">[^<]*23 października 2026<\/a>[^<]+<\/p><\/div>/,
   );
   // A town street: the cut's own post is its only source, never MZGKiM's.
-  assert.doesNotMatch(html, /MZGKiM/);
-  // The source is no longer a row of the cut.
-  assert.doesNotMatch(html, /summary-list__key">Źródło/);
+  assert.doesNotMatch(html, /mzgkim\.lubaczow\.pl/);
+  // The source is no row of the cut.
+  assert.doesNotMatch(html, /govuk-summary-list__value"><a /);
 });
 
 test("/woda without a dated cut: no button, the rest in the same order", () => {
   const emergency = storedPost(POST_39885, CHECKED);
   emergency.items = emergency.items.map((cut) => ({ ...cut, end: null }));
   for (const html of [waterPage([emergency]), waterPage([])]) {
-    assert.doesNotMatch(html, /role="button"|woda\.ics|do kalendarza/);
+    assert.doesNotMatch(html, /role="button"|woda\.ics/);
     assert.ok(ascending(order(html, SKELETON.slice(0, -1))), html);
   }
   const html = waterPage([emergency]);
@@ -187,7 +190,7 @@ test("/woda without a dated cut: no button, the rest in the same order", () => {
 test("/smieci and /woda: the same skeleton and calendar block", () => {
   const waste = wastePage();
   assert.ok(
-    ascending(order(waste, [...SKELETON, "Najbliższe odbiory", ...AFTER])),
+    ascending(order(waste, [...SKELETON, 'id="pickups-heading"', ...AFTER])),
     waste,
   );
   const shape = (html: string) =>
@@ -200,13 +203,10 @@ test("/smieci and /woda: the same skeleton and calendar block", () => {
 test("the calendar's help is CalendarBlock's: the same words on both pages", () => {
   const waste = calendarBlock(wastePage());
   const water = calendarBlock(waterPage());
-  // Each page's own: the paragraph, its hint only.
-  assert.ok(waste.includes('<p class="govuk-body">Plik z datami wywozu.</p>'));
-  assert.ok(
-    water.includes(
-      '<p class="govuk-body">Plik z przerwami. Jeśli gmina zmieni godziny, pobierz go jeszcze raz.</p>',
-    ),
-  );
+  // Each page's own: the paragraph, its hint only, different on each.
+  const hint = (block: string) =>
+    /<\/a><p class="govuk-body">([^<]+)<\/p>/.exec(block)?.[1];
+  assert.ok(hint(waste) && hint(water) && hint(waste) !== hint(water));
   // The rest is CalendarBlock's: the same summary and bullets, in order.
   const help = (block: string) => block.slice(block.indexOf("<details"));
   const bullets = CALENDAR_STEPS.map((step) => `<li>${step}</li>`).join("");
@@ -222,12 +222,9 @@ test("the calendar's help is CalendarBlock's: the same words on both pages", () 
   }
   assert.equal(help(waste), help(water));
   // The PDF stays the page's own link, under the block.
-  assert.doesNotMatch(waste, /PDF/);
+  assert.doesNotMatch(waste, /harmonogram\.pdf/);
   // The details are closed until opened.
   assert.doesNotMatch(waste + water, /<details[^>]* open/);
-  // A browser never knows whether the file was added.
-  for (const html of [wastePage(), waterPage()])
-    assert.doesNotMatch(html, /Dodano|dodano/);
 });
 
 test("/smieci and /woda keep GOV.UK's row borders (only the hub drops them)", () => {
@@ -286,24 +283,27 @@ test("a click sends whichever of zone, source and place the link has", () => {
 // one it lacks is set aside (lib/schedule.ts getPlace), the view is the
 // whole place's, and one warning says so.
 const ASNYKA = { id: "0972447-00470", name: "ul. Adama Asnyka" };
-const WARNING =
-  "Nie znaleźliśmy nr „9999” pod tym adresem – pokazujemy całą ulicę.";
+const WARNING = numberWarning(testPlace({ ...ASNYKA, invalidNr: "9999" }));
+/** The h1, then „Zmień adres” straight after it: no note between. */
+const NO_NOTE =
+  /<\/h1><p class="govuk-body"><a class="govuk-link govuk-link--no-visited-state"/;
 
 test("a number the register lacks: the one warning, the whole street", () => {
-  assert.doesNotMatch(
-    wastePage({ ...ASNYKA, givenNr: "5", knownNr: true }),
-    /Nie znaleźliśmy/,
-  );
+  assert.ok(WARNING);
+  // A number the register has: no warning (another note may follow).
+  const known = { ...ASNYKA, givenNr: "5", knownNr: true };
+  assert.equal(numberWarning(testPlace(known)), null);
+  assert.ok(!wastePage(known).includes(WARNING));
   const html = wastePage({ ...ASNYKA, invalidNr: "9999" });
-  assert.match(
-    html,
-    new RegExp(
-      `<h1 class="govuk-heading-l"><span class="app-tile app-mod app-mod--smieci"><svg/></span>Odbiór śmieci</h1><p class="govuk-body">${WARNING}</p>`,
-    ),
-  );
-  assert.doesNotMatch(html, /rejestrze adresów|wspólny dla całej ulicy/);
+  // The one note, right under the h1, then „Zmień adres”.
   assert.ok(
-    ascending(order(html, [...SKELETON, "Najbliższe odbiory", ...AFTER])),
+    html.includes(
+      `</h1><p class="govuk-body">${WARNING}</p><p class="govuk-body"><a class="govuk-link govuk-link--no-visited-state"`,
+    ),
+    html,
+  );
+  assert.ok(
+    ascending(order(html, [...SKELETON, 'id="pickups-heading"', ...AFTER])),
     html,
   );
   // /woda: the same warning, the cuts as ever.
@@ -312,28 +312,35 @@ test("a number the register lacks: the one warning, the whole street", () => {
     testPlace({ ...ASNYKA, invalidNr: "9999" }),
   );
   assert.ok(water.includes(WARNING), water);
-  assert.ok(ascending(order(water, [...SKELETON, "<h2", "Godziny"])), water);
+  assert.ok(
+    ascending(order(water, [...SKELETON, "<h2", 'class="app-card"'])),
+    water,
+  );
 });
 
 test("a split street: only the schedule's own error, never both", () => {
-  const html = wastePage({
+  const split = {
     ...ASNYKA,
     zoneId: null,
     askNumber: true,
     unknownNr: "9999",
     givenNr: "9999",
-  });
-  assert.match(html, /Numeru 9999 nie ma w harmonogramie tej ulicy/);
-  assert.doesNotMatch(html, /Nie znaleźliśmy/);
+  };
+  const html = wastePage(split);
+  const error = numberError(testPlace(split), false);
+  assert.ok(error && html.includes(error));
+  assert.match(html, NO_NOTE);
   // A number the register lacks there: the question's own error.
-  const lacked = wastePage({
+  const lackedPlace = {
     ...ASNYKA,
     zoneId: null,
     askNumber: true,
     invalidNr: "abc",
-  });
-  assert.match(lacked, /Wpisz numer domu, na przykład 12, 12a albo 7\/22/);
-  assert.doesNotMatch(lacked, /Nie znaleźliśmy/);
+  };
+  const lacked = wastePage(lackedPlace);
+  const lackedError = numberError(testPlace(lackedPlace), false);
+  assert.ok(lackedError && lacked.includes(lackedError));
+  assert.match(lacked, NO_NOTE);
 });
 
 test("the h1 shows a number only when the register has it (item 6)", () => {
@@ -357,8 +364,6 @@ test("the h1 shows a number only when the register has it (item 6)", () => {
 });
 
 // Real post 39872's cut, ul. Jana III Sobieskiego „od nr 23 do nr 47”.
-const SOB_TRACE =
-  '<p class="govuk-body">Gmina zapowiedziała też przerwę na tej ulicy, ale według komunikatu nie obejmuje nr 5.</p>';
 
 test("a number outside a cut's range: one trace line, hub and /woda", () => {
   const [first] = storedPost(POST_39885, CHECKED).items;
@@ -375,26 +380,24 @@ test("a number outside a cut's range: one trace line, hub and /woda", () => {
       .notices(data(nr))
       .flat()
       .map((line) => line.join(""));
-  // With no cut shown, the hub's section says it, with the cut's
-  // day, so no trace line after it.
-  assert.deepEqual(hub("5"), [
-    "Pod nr 5: brak zapowiedzianych przerw.",
-    "Gmina zapowiedziała przerwę na tej ulicy – poniedziałek, 26 października, 8:00–16:00 – ale według komunikatu nie obejmuje nr 5.",
-  ]);
-  // /woda: right after the empty text, before the AI note and source.
+  // With no cut shown, the hub's section says it, with the cut's day and
+  // hours and the number, so no trace line after it.
+  const lines = hub("5");
+  assert.equal(lines.length, 2);
+  assert.match(lines[0], /\b5\b/);
+  for (const part of ["26 października", "8:00", "16:00", " 5"])
+    assert.ok(lines[1].includes(part), part);
+  // /woda: one trace line right after the empty text, before the AI note
+  // and source.
+  const trace = waterTrace(data("5"));
+  assert.ok(trace);
   const five = waterPage(posts, sobieskiego("5"));
-  assert.match(
-    five,
-    new RegExp(
-      `Gmina ogłasza je w <a [^>]*>aktualności gminy Lubaczów</a>\\.</p>${SOB_TRACE}`,
-    ),
-  );
-  assert.equal(five.split("Gmina zapowiedziała też").length, 2);
+  assert.ok(five.includes(`</a>.</p><p class="govuk-body">${trace}</p>`), five);
+  assert.equal(five.split(trace).length, 2);
   for (const nr of ["30", null]) {
-    assert.ok(!hub(nr).some((line) => line.includes("Gmina zapowiedziała")));
-    const html = waterPage(posts, sobieskiego(nr));
-    assert.doesNotMatch(html, /Gmina zapowiedziała też/);
-    assert.match(html, /od nr 23 do nr 47/);
+    assert.equal(hub(nr).length, 0);
+    assert.equal(waterTrace(data(nr)), null);
+    assert.match(waterPage(posts, sobieskiego(nr)), /23[^<]*47/);
   }
 });
 
@@ -503,42 +506,44 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
   assert.ok(ascending(order(html, [...SKELETON, ...AFTER])));
   assert.match(
     html,
-    /<p class="govuk-body">Plik z przerwami\. Jeśli MZGKiM zmieni godziny, pobierz go jeszcze raz\.<\/p>/,
+    /<svg\/>[^<]+<\/a><p class="govuk-body">[^<]*MZGKiM[^<]*<\/p>/,
   );
   assert.match(
     html,
-    /<h2 id="dzien-2026-10-06" class="govuk-heading-m">Za 3 dni: wtorek, 6 października<\/h2><div class="app-card"><dl class="govuk-summary-list govuk-!-margin-bottom-0"><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Godziny<\/dt><dd class="govuk-summary-list__value"><ul class="app-chips"><li class="app-chip"><svg\/>od 8:30 do 15:00<\/li><\/ul><\/dd><\/div><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">Gdzie<\/dt><dd class="govuk-summary-list__value">cała ulica Niemirowska<\/dd>/,
+    /<h2 id="dzien-2026-10-06" class="govuk-heading-m">[^<]*6 października<\/h2><div class="app-card"><dl class="govuk-summary-list govuk-!-margin-bottom-0"><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">[^<]+<\/dt><dd class="govuk-summary-list__value"><ul class="app-chips"><li class="app-chip"><svg\/>[^<]*8:30[^<]*15:00[^<]*<\/li><\/ul><\/dd><\/div><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">[^<]+<\/dt><dd class="govuk-summary-list__value">[^<]*Niemirowska<\/dd>/,
+  );
+  // The AI note names MZGKiM, whose post it is.
+  assert.match(
+    html,
+    /<strong class="govuk-warning-text__text">(?:(?!<\/strong>).)*MZGKiM/,
   );
   assert.match(
     html,
-    /Te daty przepisał automatycznie program\. Jeśli coś się nie zgadza, ważniejszy jest komunikat MZGKiM\./,
-  );
-  assert.match(
-    html,
-    /<div class="govuk-inset-text"><p class="govuk-hint govuk-!-font-size-16">Źródło: <a href="https:\/\/mzgkim\.lubaczow\.pl\/przerwa-w-dostawie-wody-100\/" class="govuk-link">komunikat MZGKiM z 2 października 2026<\/a>\. Sprawdziliśmy [^<]+\.<\/p><\/div>/,
+    /<div class="govuk-inset-text"><p class="govuk-hint govuk-!-font-size-16">[^<]*<a href="https:\/\/mzgkim\.lubaczow\.pl\/przerwa-w-dostawie-wody-100\/" class="govuk-link">[^<]*2 października 2026<\/a>[^<]+<\/p><\/div>/,
   );
   // Its cut shown here: its area off our list is not linked again.
-  assert.doesNotMatch(html, /Inne komunikaty/);
+  assert.doesNotMatch(html, /id="inne-komunikaty"/);
   // Another town street: no cut, and nothing under „Inne komunikaty”
   // (the estate is its 9 streets now, every area of the post matched).
   const asnyka = page(
     [mzgkimPost(CUT_100, checked)],
     testPlace({ id: "0972447-00470", streetId: "0972447-00470" }),
   );
-  assert.doesNotMatch(asnyka, /Inne komunikaty/);
+  assert.doesNotMatch(asnyka, /id="inne-komunikaty"/);
   // Fresh, no cut: one sentence, both sources' posts, no MZGKiM caveat.
   const quiet = page([]);
   assert.match(
     quiet,
-    /<p class="app-empty govuk-body">Brak zapowiedzianych przerw\. Gmina ogłasza je w <a href="https:\/\/www\.gminalubaczow\.pl\/aktualnosci\/" class="govuk-link">aktualności gminy Lubaczów<\/a>, a MZGKiM – w <a href="https:\/\/mzgkim\.lubaczow\.pl\/category\/komunikaty\/" class="govuk-link">komunikatach MZGKiM<\/a>\.<\/p>/,
+    /<p class="app-empty govuk-body">[^<]*<a href="https:\/\/www\.gminalubaczow\.pl\/aktualnosci\/" class="govuk-link">[^<]+<\/a>[^<]*<a href="https:\/\/mzgkim\.lubaczow\.pl\/category\/komunikaty\/" class="govuk-link">[^<]+<\/a>[^<]*<\/p>/,
   );
-  assert.doesNotMatch(quiet, /jeszcze tu nie pokazujemy|nie sprawdzamy/);
+  assert.doesNotMatch(quiet, /govuk-warning-text/);
 });
 
 test("/smieci: after the last date, the next year's line", () => {
-  assert.match(
-    wastePage(),
-    /<p class="govuk-body">Terminy na kolejny rok dodamy, gdy je ogłoszą\.<\/p><\/section>/,
+  const later = laterNote([{ date: "2026-10-27" }]);
+  assert.ok(later);
+  assert.ok(
+    wastePage().includes(`<p class="govuk-body">${later}</p></section>`),
   );
 });
 
@@ -616,8 +621,8 @@ test("/pogoda: no subpage, like any unknown slug", () => {
 
 test("every subpage with no data now: its frame, then the hub's one line, nothing else", () => {
   for (const [module, line] of [
-    [MODULES.woda, "Nie udało się sprawdzić przerw w dostawie wody."],
-    [MODULES.prad, "Nie udało się sprawdzić przerw w dostawie prądu."],
+    [MODULES.woda, unchecked(MODULES.woda)],
+    [MODULES.prad, unchecked(MODULES.prad)],
   ] as const) {
     const html = unicons(
       renderToStaticMarkup(
@@ -631,9 +636,6 @@ test("every subpage with no data now: its frame, then the hub's one line, nothin
       ),
       module.id,
     );
-    assert.doesNotMatch(
-      html,
-      /[Ss]prawdziliśmy|govuk-inset-text|role="button"/,
-    );
+    assert.doesNotMatch(html, /govuk-inset-text|role="button"/);
   }
 });
