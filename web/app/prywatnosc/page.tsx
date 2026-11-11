@@ -42,8 +42,9 @@ export default function PrivacyPage() {
               pobiera listę ulic, żeby szybciej podpowiadać adresy.
             </p>
             <p className="govuk-body">
-              Ostrzeżenia pogodowe pobiera z IMGW nasz serwer. Twoja
-              przeglądarka nie łączy się z IMGW.
+              Ostrzeżenia pogodowe pobiera z IMGW, a przerwy w dostawie prądu z
+              PGE nasz serwer. Twoja przeglądarka nie łączy się ani z IMGW, ani
+              z PGE.
             </p>
           </section>
 

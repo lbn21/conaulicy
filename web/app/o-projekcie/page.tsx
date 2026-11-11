@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactLink } from "@/components/contact-link";
+import { PGE_PAGE } from "@/lib/power-module";
 import { pageMetadata } from "@/lib/share";
 import { ABOUT, ACCESSIBILITY, PRIVACY } from "@/lib/static-pages";
 import { GMINA_NEWS, MZGKIM_NEWS } from "@/lib/water-module";
@@ -9,7 +10,7 @@ export const metadata: Metadata = pageMetadata({
   path: ABOUT.path,
   title: ABOUT.text,
   description:
-    "Darmowa strona dla Lubaczowa i gminy: wywóz śmieci, przerwy w dostawie wody i ostrzeżenia IMGW. Skąd bierzemy dane i jak je sprawdzamy.",
+    "Darmowa strona dla Lubaczowa i gminy: wywóz śmieci, przerwy w dostawie wody i prądu oraz ostrzeżenia IMGW. Skąd bierzemy dane i jak je sprawdzamy.",
 });
 
 // The address register the house-number note checks against (lib/prg.ts).
@@ -28,8 +29,8 @@ export default function AboutPage() {
         <p className="govuk-body-l">
           conaulicy.pl to prosta strona dla Lubaczowa i okolicznych wsi:
           wpisujesz ulicę albo wieś i od razu widzisz, kiedy przyjedzie
-          śmieciarka, czy gmina zapowiedziała przerwę w dostawie wody i czy IMGW
-          ostrzega przed złą pogodą.
+          śmieciarka, czy zapowiedziano przerwę w dostawie wody lub prądu i czy
+          IMGW ostrzega przed złą pogodą.
         </p>
         <p className="govuk-body">
           Przerwy w dostawie wody bierzemy z komunikatów, które gmina ogłasza w
@@ -42,6 +43,13 @@ export default function AboutPage() {
             komunikatów MZGKiM
           </a>
           .
+        </p>
+        <p className="govuk-body">
+          Przerwy w dostawie prądu, planowane wyłączenia i awarie, bierzemy od{" "}
+          <a href={PGE_PAGE} className="govuk-link">
+            PGE Dystrybucja
+          </a>
+          . Pokazujemy je tak, jak podaje je PGE, razem z numerami domów.
         </p>
         <p className="govuk-body">
           Ostrzeżenia pogodowe IMGW dla powiatu lubaczowskiego pokazujemy na
@@ -60,7 +68,8 @@ export default function AboutPage() {
           pomocą sztucznej inteligencji, z harmonogramów i komunikatów miasta
           Lubaczów i gminy Lubaczów. Potem je sprawdzamy, a dopóki tego nie
           zrobimy, piszemy o tym przy adresie. Źródło i datę, kiedy je
-          sprawdziliśmy, podajemy na stronie każdego tematu: śmieci i wody.
+          sprawdziliśmy, podajemy na stronie każdego tematu: śmieci, wody i
+          prądu.
         </p>
         <p className="govuk-body">
           Nazwy ulic i miejscowości bierzemy z{" "}

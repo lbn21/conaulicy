@@ -89,6 +89,8 @@ const CASES = [
   ["GET", `/adres/x${FRESH}`, 404],
   ["GET", "/adres/0972447-88888/harmonogram.pdf", 404],
   ["GET", "/adres/0972447-88888/woda.ics", 404],
+  ["GET", `/adres/0606${FRESH.slice(-3)}9/prad`, 404],
+  ["GET", `${STREET}/prad.ics`, 404],
 ];
 
 // [query, the one place „Szukaj” opens (its page, with the house number)]. Every label in the index, and some with a number, are

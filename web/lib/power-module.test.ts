@@ -46,11 +46,11 @@ const BASZNIA = village("0605950", "Basznia Górna");
 const MALCE = village("0605973", "Malce", "czesc_wsi");
 const HUTA = village("0606100", "Huta Kryształowa");
 const TOWN = village("0972447", "Lubaczów", "miasto");
-const RYNEK = testPlace({
-  id: "0972447-19253",
-  name: "ul. Rynek",
-  label: "ul. Rynek, Lubaczów",
-  streetId: "0972447-19253",
+const ASNYKA = testPlace({
+  id: "0972447-00470",
+  name: "ul. Adama Asnyka",
+  label: "ul. Adama Asnyka, Lubaczów",
+  streetId: "0972447-00470",
 });
 const ZUKI = testPlace();
 
@@ -72,13 +72,13 @@ test("the rule: a locality's own outages, its parts' village's street-less ones,
   // Huta Kryształowa: its three; the revoked one kept for the subpage.
   assert.deepEqual(uuids(at(HUTA)), ["f76971d9", "77d6b8f2", "4497d8b9"]);
   // A street: only its street's; the town's page: every street's, named.
-  assert.deepEqual(uuids(at(RYNEK)), [FAILURE_ID.slice(0, 8)]);
-  assert.deepEqual(at(RYNEK).cuts[0].where, [
-    { name: "ul. Rynek", numbers: "23, 52, 58A" },
+  assert.deepEqual(uuids(at(ASNYKA)), [FAILURE_ID.slice(0, 8)]);
+  assert.deepEqual(at(ASNYKA).cuts[0].where, [
+    { name: "ul. Adama Asnyka", numbers: "23, 52, 58A" },
   ]);
   assert.deepEqual(
     at(TOWN).cuts[0].where.map((w) => w.name),
-    ["ul. Rynek", "ul. Jasna"],
+    ["ul. Adama Asnyka", "ul. Jasna"],
   );
   // Another street of the town: none.
   assert.deepEqual(uuids(at(ZUKI)), []);
@@ -112,7 +112,7 @@ test("the timeline: a row per range, revoked never; a failure's end an estimate"
   );
   assert.equal(whole?.second, "Basznia Górna.");
   // The failure: on now, „ok.” its end.
-  const [failure] = powerUpcoming(at(RYNEK));
+  const [failure] = powerUpcoming(at(ASNYKA));
   assert.equal("emergency" in failure && failure.emergency, true);
   assert.equal(failure.span.about, true);
   assert.equal(failure.span.to, "18:15");
@@ -120,7 +120,7 @@ test("the timeline: a row per range, revoked never; a failure's end an estimate"
 
 test("a failure past PGE's estimate, still listed: on until a quarter after the last check", () => {
   const late = NOW + 60 * MIN;
-  const [failure] = powerUpcoming(at(RYNEK, { now: late }));
+  const [failure] = powerUpcoming(at(ASNYKA, { now: late }));
   assert.equal(failure.span.to, "19:07");
   assert.equal(failure.span.about, true);
   // A planned range over: gone; the day's later one stays.
@@ -206,7 +206,7 @@ test("/prad: a day each, the ranges by Intl, the kind, our names, PGE's numbers 
   );
   // No calendar and no AI note: PGE's data is read, not guessed.
   assert.doesNotMatch(html, /kalendarza|program/);
-  const failure = subpage(at(RYNEK));
+  const failure = subpage(at(ASNYKA));
   assert.match(failure, /od 16:03 do ok\. 18:15/);
   assert.match(failure, /<dd class="govuk-summary-list__value">Awaria<\/dd>/);
   assert.match(failure, /Numery domów według PGE.*23, 52, 58A/);

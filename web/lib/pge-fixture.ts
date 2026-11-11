@@ -38,7 +38,8 @@ const teryt = (citySym: string, streetSymUl: string | null) => ({
  * DERIVED, NOT REAL: REAL_2026_11_11 with three changes PGE never
  * published, for the states the real day lacked: REVOKED_ID revoked (its
  * note made up), NO_RANGES_ID without `dateRanges`, and FAILURE_2026_11_11
- * moved to two Lubaczów streets (Rynek 23, 52, 58A; Jasna, no numbers).
+ * moved to two Lubaczów streets (Adama Asnyka 23, 52, 58A; Jasna, no
+ * numbers): Asnyka is the CI fixture's town street (scripts/ci-fixture.ts).
  */
 export function derivedOurs(): Raw[] {
   const items: Raw[] = JSON.parse(REAL_2026_11_11);
@@ -61,7 +62,7 @@ export function derivedOurs(): Raw[] {
       ...failure,
       regionIdentifier: "49",
       addresses: [
-        { numbers: "23, 52, 58A", teryt: teryt("0972447", "19253") },
+        { numbers: "23, 52, 58A", teryt: teryt("0972447", "00470") },
         { numbers: null, teryt: teryt("0972447", "07335") },
       ],
     },

@@ -21,6 +21,7 @@ const EXPRESSIONS: Record<string, Record<string, string>> = {
   "app/o-projekcie/page.tsx": {
     GMINA_NEWS: "another site",
     MZGKIM_NEWS: "another site",
+    PGE_PAGE: "another site",
     PRG_PAGE: "another site",
     TERYT_PAGE: "another site",
   },
