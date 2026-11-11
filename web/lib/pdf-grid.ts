@@ -1,15 +1,18 @@
 // Page 1's month grid, as a council bin leaflet's: identical, fully bordered
 // month tables (a title cell, a „Dzień | Odpady” header row, then the same
 // number of body rows in every month: as many as the fullest month needs,
-// empty ones left blank), in a strict grid of equal columns; each calendar
-// year starts a new row under its heading. Sized once for the largest case
+// empty ones left blank), in one fixed grid of `columns` × `gridRows`
+// (4 × 3: the twelve months of the window), each grid row under a strip
+// for its year headings: a year's heading above its first month, wherever
+// in the row that falls, so a year never needs a row of its own and every
+// address's grid has the same geometry. Sized once for the largest case
 // (every month of the window, each as full as the fullest month of any
-// address, `profiles`), so every address gets the same tables: fewer months
-// leave the space below empty, never larger tables. A date's marks never
-// wrap: the marks column holds the most any date has in the data, at the
-// same table width: first the date column narrows (it holds one or two
-// digits), then the marks close up, then they shrink a little; past that the
-// grid does not fit (the caller takes a smaller size).
+// address, `profiles`): fewer months leave the space below empty, never
+// larger tables. A date's marks never wrap: the marks column holds the most
+// any date has in the data, at the same table width: the date column
+// narrows (it holds one or two digits), then the marks may close up and
+// shrink to the caller's least (the PDF allows neither); past that the grid
+// does not fit (the caller takes a smaller size).
 // Pure, so the choice is tested without a PDF (lib/pdf-grid.test.ts).
 
 type GridMonth = {
@@ -31,12 +34,14 @@ export type GridInput = {
    * data has today); 0 by default.
    */
   headroom?: number;
+  /** Marks a date always has room for, whatever the data (5 in the PDF). */
+  least?: number;
   /** Width for the grid, and the space between tables. */
   width: number;
   gap: number;
   /** Height from the grid's top to the key. */
   height: number;
-  /** A year heading with its space below; the space between table rows. */
+  /** A row's year strip (a heading with its space below); the space between table rows. */
   yearH: number;
   rowGap: number;
   /** The date column: „Dzień” or the widest date, with its padding … */
@@ -52,8 +57,9 @@ export type GridInput = {
   /** The least the marks may close up and shrink to, past a narrow date. */
   minMarkGap: number;
   minMark: number;
-  maxColumns: number;
-  minColumns: number;
+  /** The fixed grid: tables across, and rows of them. */
+  columns: number;
+  gridRows: number;
   /** Body and header rows: as tall as fits, between these, in steps. */
   maxRow: number;
   minRow: number;
@@ -72,8 +78,8 @@ export type Grid = {
   /** Body rows in every table. */
   bodyRows: number;
   rowH: number;
-  /** Table rows, in order: each year's months, `columns` at a time. */
-  rows: Array<{ year: string; keys: string[] }>;
+  /** Table rows of these months, in order, `columns` at a time. */
+  rows: GridRow[];
   /** Whether it all fits the height at rowH. */
   fits: boolean;
 };
@@ -82,41 +88,44 @@ export type Grid = {
 export const dateRows = (marks: number, perLine: number) =>
   Math.max(1, Math.ceil(marks / perLine));
 
+/** A grid row: its months, and the year headings in its strip. */
+export type GridRow = {
+  keys: string[];
+  /** A heading per year starting in this row (the first row's first month too), by column. */
+  years: Array<{ column: number; year: string }>;
+};
+
 /**
- * The table rows: each calendar year's months, `columns` to a row, so a
- * month always sits under its own year's heading.
+ * The table rows: the months in order, `columns` to a row, whatever their
+ * year; a year's heading in the row's strip above its first month (the
+ * first month of all, and every January).
  */
 export function tableRows(
   months: Array<Pick<GridMonth, "key">>,
   columns: number,
-) {
-  const rows: Array<{ year: string; keys: string[] }> = [];
-  for (const { key } of months) {
-    const year = key.slice(0, 4);
-    const last = rows.at(-1);
-    if (last && last.year === year && last.keys.length < columns) {
-      last.keys.push(key);
-    } else rows.push({ year, keys: [key] });
-  }
+): GridRow[] {
+  const rows: GridRow[] = [];
+  months.forEach(({ key }, i) => {
+    const column = i % columns;
+    if (column === 0) rows.push({ keys: [], years: [] });
+    const row = rows[rows.length - 1];
+    row.keys.push(key);
+    if (i === 0 || key.endsWith("-01"))
+      row.years.push({ column, year: key.slice(0, 4) });
+  });
   return rows;
 }
 
-/** Rows that start under a year heading: the first, and each new year's. */
-export const headed = (rows: Grid["rows"]) =>
-  rows.map((row, i) => i === 0 || row.year !== rows[i - 1].year);
-
-/** Height of a grid of these rows at a row height. */
+/** Height of `gridRows` rows of tables, each under its year strip, at a row height. */
 export function gridHeight(
-  rows: Grid["rows"],
+  gridRows: number,
   bodyRows: number,
   rowH: number,
   input: Pick<GridInput, "yearH" | "rowGap">,
 ): number {
-  const years = headed(rows).filter(Boolean).length;
   return (
-    years * input.yearH +
-    rows.length * (bodyRows + 2) * rowH +
-    (rows.length - 1) * input.rowGap
+    gridRows * (input.yearH + (bodyRows + 2) * rowH) +
+    (gridRows - 1) * input.rowGap
   );
 }
 
@@ -178,70 +187,55 @@ export function fitMarks(
 }
 
 /**
- * The grid for these months: of the column counts whose marks column is
- * wide enough and holds every date's marks on one line, the one that fits
- * the height, then has the tallest rows, then the most columns. If none
- * fits, the shortest grid, at the smallest rows (`fits` false: the caller
+ * The grid for these months, `columns` × `gridRows` tables: the marks
+ * fitted to the table width (fitMarks), as many body rows as the fullest
+ * month, the rows as tall as the height allows, on the step scale, up to
+ * maxRow. `fits` false when the marks or the rows do not fit (the caller
  * tries a smaller size).
  */
 export function chooseGrid(input: GridInput): Grid {
   // The worst case of every address (profiles), never this one's own.
-  const most = mostMarks(input) + (input.headroom ?? 0);
-  const options: Grid[] = [];
-  for (let columns = input.maxColumns; columns >= input.minColumns; columns--) {
-    const tableW = (input.width - input.gap * (columns - 1)) / columns;
-    const fitted = fitMarks(tableW, most, input);
-    const cell = fitted ?? {
-      dateW: input.dateW,
-      mark: input.mark,
-      markGap: input.markGap,
-    };
-    const marksW = tableW - cell.dateW;
-    if (marksW < input.minMarksW || marksW < cell.mark + 2 * input.pad) {
-      continue;
-    }
-    const perLine = Math.floor(
+  const most = Math.max(
+    input.least ?? 0,
+    mostMarks(input) + (input.headroom ?? 0),
+  );
+  const { columns, gridRows } = input;
+  const tableW = (input.width - input.gap * (columns - 1)) / columns;
+  const fitted = fitMarks(tableW, most, input);
+  const cell = fitted ?? {
+    dateW: input.dateW,
+    mark: input.mark,
+    markGap: input.markGap,
+  };
+  const marksW = tableW - cell.dateW;
+  const perLine = Math.max(
+    1,
+    Math.floor(
       (marksW - 2 * input.pad + cell.markGap) / (cell.mark + cell.markGap),
-    );
-    const bodyRows = Math.max(
-      1,
-      ...[
-        ...input.months.map((month) => month.marks),
-        ...(input.profiles ?? []),
-      ].map((marks) => marks.reduce((sum, n) => sum + dateRows(n, perLine), 0)),
-    );
-    const rows = tableRows(input.months, columns);
-    const unit = gridHeight(rows, bodyRows, 1, { yearH: 0, rowGap: 0 });
-    const fixed = gridHeight(rows, bodyRows, 0, input);
-    const raw = (input.height - fixed) / unit;
-    // On the spacing scale, so near-equal options tie and the wider wins.
-    const rowH = Math.min(
-      input.maxRow,
-      Math.floor(raw / input.rowStep) * input.rowStep,
-    );
-    options.push({
-      columns,
-      tableW,
-      ...cell,
-      perLine,
-      bodyRows,
-      rowH: Math.max(input.minRow, rowH),
-      rows,
-      fits: rowH >= input.minRow && fitted !== null && perLine >= most,
-    });
-  }
-  if (options.length === 0) throw new Error("chooseGrid: no column count fits");
-  const fitting = options.filter((grid) => grid.fits);
-  if (fitting.length === 0) {
-    return options.reduce((best, grid) =>
-      gridHeight(grid.rows, grid.bodyRows, input.minRow, input) <
-      gridHeight(best.rows, best.bodyRows, input.minRow, input)
-        ? grid
-        : best,
-    );
-  }
-  return fitting.reduce((best, grid) => {
-    if (grid.rowH !== best.rowH) return grid.rowH > best.rowH ? grid : best;
-    return grid.columns > best.columns ? grid : best;
-  });
+    ),
+  );
+  const bodyRows = Math.max(
+    1,
+    ...[
+      ...input.months.map((month) => month.marks),
+      ...(input.profiles ?? []),
+    ].map((marks) => marks.reduce((sum, n) => sum + dateRows(n, perLine), 0)),
+  );
+  const unit = gridHeight(gridRows, bodyRows, 1, { yearH: 0, rowGap: 0 });
+  const fixed = gridHeight(gridRows, bodyRows, 0, input);
+  const raw = (input.height - fixed) / unit;
+  const rowH = Math.min(
+    input.maxRow,
+    Math.floor(raw / input.rowStep) * input.rowStep,
+  );
+  return {
+    columns,
+    tableW,
+    ...cell,
+    perLine,
+    bodyRows,
+    rowH: Math.max(input.minRow, rowH),
+    rows: tableRows(input.months, columns),
+    fits: rowH >= input.minRow && fitted !== null && perLine >= most,
+  };
 }

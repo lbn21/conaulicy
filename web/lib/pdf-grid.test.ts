@@ -6,17 +6,16 @@ import {
   fitMarks,
   type GridInput,
   gridHeight,
-  headed,
   mostMarks,
   tableRows,
 } from "./pdf-grid.ts";
 
 const base: Omit<GridInput, "months"> = {
   width: 540,
-  gap: 8,
+  gap: 12,
   height: 480,
-  yearH: 28,
-  rowGap: 12,
+  yearH: 24,
+  rowGap: 8,
   dateW: 44,
   minDateW: 28,
   minMarksW: 56,
@@ -25,24 +24,25 @@ const base: Omit<GridInput, "months"> = {
   markGap: 4,
   minMarkGap: 2,
   minMark: 9,
-  maxColumns: 6,
-  minColumns: 2,
+  columns: 4,
+  gridRows: 3,
   maxRow: 20,
   minRow: 16,
   rowStep: 4,
 };
 const month = (key: string, marks: number[]) => ({ key, marks });
-const year = (y: string, n: number, marks: number[]) =>
+const year = (y: string, n: number, marks: number[], from = 1) =>
   Array.from({ length: n }, (_, i) =>
-    month(`${y}-${String(i + 1).padStart(2, "0")}`, marks),
+    month(`${y}-${String(i + from).padStart(2, "0")}`, marks),
   );
 
-test("the most columns whose marks column is wide enough, if the rows fit", () => {
+test("a fixed grid: the columns' width from the page, the given rows", () => {
   const grid = chooseGrid({ ...base, months: year("2027", 12, [3, 3]) });
-  // Six columns leave (540 − 40) / 6 − 44 ≈ 39 for marks: under 56.
-  assert.equal(grid.columns, 5);
+  assert.equal(grid.columns, 4);
+  assert.equal(grid.tableW, (540 - 3 * 12) / 4);
+  assert.equal(grid.rows.length, 3);
+  assert.ok(grid.rows.every((row) => row.keys.length === 4));
   assert.equal(grid.fits, true);
-  assert.equal(grid.rowH, 20);
 });
 
 test("every table gets the fullest month's body rows", () => {
@@ -53,41 +53,42 @@ test("every table gets the fullest month's body rows", () => {
   assert.equal(grid.bodyRows, 4);
 });
 
-test("each month sits under its own year: a year starts a new row", () => {
-  const grid = chooseGrid({
-    ...base,
-    months: [
-      month("2026-11", [1]),
-      month("2026-12", [1]),
-      ...year("2027", 8, [1]),
-    ],
-  });
-  assert.equal(grid.columns, 5);
+test("a year never breaks a row: its heading sits above its first month", () => {
+  // November to October: 2026's two months and 2027's ten, three rows.
+  const months = [...year("2026", 2, [1], 11), ...year("2027", 10, [1])];
+  const rows = tableRows(months, 4);
   assert.deepEqual(
-    grid.rows.map((row) => [
-      row.year,
-      row.keys.every((key) => key.startsWith(row.year)),
-      row.keys.length,
-    ]),
+    rows.map((row) => row.keys.length),
+    [4, 4, 4],
+  );
+  assert.deepEqual(
+    rows.map((row) => row.years),
     [
-      ["2026", true, 2],
-      ["2027", true, 5],
-      ["2027", true, 3],
+      [
+        { column: 0, year: "2026" },
+        { column: 2, year: "2027" },
+      ],
+      [],
+      [],
     ],
   );
-  // A heading above the first row of each year only.
-  assert.deepEqual(headed(grid.rows), [true, true, false]);
+});
+
+test("the height: a year strip above every row, whatever the years", () => {
+  // Three strips of 24, three tables of (2 + 4) × 16, two gaps of 8.
+  assert.equal(gridHeight(3, 4, 16, base), 3 * 24 + 3 * 6 * 16 + 2 * 8);
 });
 
 test("rows shrink in steps to fit, and the grid fits its height", () => {
   const months = year("2027", 12, [2, 2, 2, 2, 2, 2]);
-  const grid = chooseGrid({ ...base, months, height: 470 });
-  assert.equal(grid.rowH % base.rowStep, 0);
+  // 3 × 24 + 2 × 8 fixed, 3 × 8 rows: (520 − 88) / 24 = 18, down to 16.
+  const grid = chooseGrid({ ...base, months, height: 520 });
+  assert.equal(grid.rowH, 16);
   assert.ok(grid.fits);
-  assert.ok(gridHeight(grid.rows, grid.bodyRows, grid.rowH, base) <= 470);
+  assert.ok(gridHeight(3, grid.bodyRows, grid.rowH, base) <= 520);
 });
 
-test("no column count fits: the shortest grid, at the smallest rows", () => {
+test("too many rows for the height: it does not fit, at the smallest rows", () => {
   const grid = chooseGrid({
     ...base,
     months: year("2027", 12, Array(20).fill(1)),
@@ -118,43 +119,36 @@ test("other addresses' months size the tables: fewer months, the same grid", () 
   );
   // Placed from the top left, in the grid's columns.
   assert.deepEqual(tableRows(window.slice(0, 2), full.columns), [
-    { year: "2027", keys: ["2027-01", "2027-02"] },
+    { keys: ["2027-01", "2027-02"], years: [{ column: 0, year: "2027" }] },
   ]);
 });
 
-test("a date's marks never wrap: the date column narrows first, the table keeps its width", () => {
-  // Five columns: 101.6 wide, 57.6 for marks beside a 44 date column, room
-  // for three; a date of four, from another address, needs 2 × 4 + 4 × 10
-  // + 3 × 4 = 60, so the date column takes the other 41.6.
+test("a date's marks never wrap: the date column narrows, the table keeps its width", () => {
+  // 126 wide: 82 for marks beside a 44 date column holds six; a date of
+  // seven needs 2 × 4 + 7 × 10 + 6 × 4 = 102, so the date column takes 24,
+  // under its least (28): the marks close up instead.
   const months = year("2027", 12, [1, 1]);
-  const grid = chooseGrid({ ...base, months, profiles: [[2, 4, 1]] });
-  assert.equal(mostMarks({ months, profiles: [[2, 4, 1]] }), 4);
+  const grid = chooseGrid({ ...base, months, profiles: [[2, 7, 1]] });
+  assert.equal(mostMarks({ months, profiles: [[2, 7, 1]] }), 7);
   assert.ok(grid.fits);
-  assert.equal(grid.columns, 5);
-  assert.equal(grid.tableW, (540 - 4 * 8) / 5);
-  assert.deepEqual(
-    [grid.dateW, grid.mark, grid.markGap, grid.perLine],
-    [grid.tableW - 60, 10, 4, 4],
-  );
-  assert.equal(grid.bodyRows, 3);
+  assert.equal(grid.tableW, 126);
+  assert.ok(grid.perLine >= 7);
+  assert.ok(grid.dateW >= base.minDateW);
 });
 
-test("past the narrowest date column, the marks close up, then shrink a little", () => {
+test("past the narrowest date column, the marks close up, then shrink, to the caller's least", () => {
   // 101.6 − 28 − 2 × 4 = 65.6 for the marks: five close up to
-  // (65.6 − 50) / 4 = 3.9, in quarter points; the date column takes the
-  // rest, so the marks keep their padding.
+  // (65.6 − 50) / 4 = 3.9, in quarter points.
   assert.deepEqual(fitMarks(101.6, 5, base), {
     dateW: 101.6 - (8 + 50 + 15),
     mark: 10,
     markGap: 3.75,
   });
-  // Six at the least gap: (65.6 − 5 × 2) / 6 = 9.27; seven would be under 9.
-  assert.deepEqual(fitMarks(101.6, 6, base), {
-    dateW: 101.6 - (8 + 55.5 + 10),
-    mark: 9.25,
-    markGap: 2,
-  });
-  assert.equal(fitMarks(101.6, 7, base), null);
+  // The PDF's least is its own size and gap: then they do not fit.
+  assert.equal(
+    fitMarks(101.6, 5, { ...base, minMarkGap: 4, minMark: 10 }),
+    null,
+  );
   // Room beside the preferred date column: nothing changes.
   assert.deepEqual(fitMarks(101.6, 3, base), {
     dateW: 44,
@@ -163,13 +157,27 @@ test("past the narrowest date column, the marks close up, then shrink a little",
   });
 });
 
-test("no column count holds a date's marks on one line: the grid does not fit", () => {
-  const grid = chooseGrid({ ...base, months: year("2027", 2, [30]) });
-  assert.equal(grid.fits, false);
+test("room for the least marks a date may have, whatever the data", () => {
+  const months = year("2027", 12, [2]);
+  const grid = chooseGrid({
+    ...base,
+    months,
+    least: 5,
+    minMarkGap: 4,
+    minMark: 10,
+  });
+  assert.ok(grid.fits);
+  assert.ok(grid.perLine >= 5);
+  // Five need 2 × 4 + 5 × 10 + 4 × 4 = 74: beside the 44 date column (82).
+  assert.equal(grid.dateW, base.dateW);
+  // Seven need 102: the date column narrows to 24, under its least.
+  assert.equal(
+    chooseGrid({ ...base, months, least: 7, minMarkGap: 4, minMark: 10 }).fits,
+    false,
+  );
 });
 
 test("the worst case of every address sizes the tables: a sparse address gets the same", () => {
-  // Every address's months (profiles) hold a date of five marks.
   const profiles = [
     [5, 1],
     [2, 2, 2],
@@ -199,11 +207,11 @@ test("the worst case of every address sizes the tables: a sparse address gets th
 });
 
 test("headroom: room for one mark more than the data's fullest date", () => {
-  const months = year("2027", 12, [3]);
+  const months = year("2027", 12, [6]);
   const exact = chooseGrid({ ...base, months });
   const roomy = chooseGrid({ ...base, months, headroom: 1 });
-  assert.equal(exact.dateW, base.dateW);
-  // Four marks need 2 × 4 + 4 × 10 + 3 × 4 = 60 of the table's 101.6.
-  assert.equal(roomy.dateW, roomy.tableW - 60);
-  assert.ok(roomy.perLine >= 4);
+  // Six need 2 × 4 + 6 × 10 + 5 × 4 = 88: the date column narrows to 38.
+  assert.equal(exact.dateW, 126 - 88);
+  // Seven need 102, past the least date column: they close up.
+  assert.ok(roomy.perLine >= 7);
 });
