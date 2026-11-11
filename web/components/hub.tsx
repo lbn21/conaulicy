@@ -198,7 +198,7 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
                 className={`app-item app-mod app-mod--${module.id}`}
               >
                 <Tile name={module.id} />
-                <span className="app-item__body">
+                <div className="app-item__body">
                   <h3 className="govuk-heading-s govuk-!-margin-bottom-0">
                     <PlaceLink
                       className="govuk-link govuk-link--text-colour govuk-link--no-underline app-item__link"
@@ -208,7 +208,7 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
                     </PlaceLink>
                   </h3>
                   <CountBadge count={counts.get(module.id) ?? 0} />
-                </span>
+                </div>
                 <Icon name="chevron" />
               </li>
             ))}
