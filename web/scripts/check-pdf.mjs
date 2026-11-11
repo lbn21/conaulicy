@@ -8,7 +8,8 @@
 // address's month tables are the same size, rows included, however many
 // months it has, in one fixed 4 × 3 grid inside the page's margins (a
 // whole year's twelve months on page 1), every row one height (no date's
-// marks wrap), at one place
+// marks wrap), every header cell's text one padding in, the key in one
+// line or two in one set of columns (none alone), at one place
 // on the page whatever the street's name (the longest on one line), and so
 // are the guide's tiles; no word on pages 1–2 spills
 // out of its table, tile or box (scripts/lib/pdf-layout.mjs). Checks are
@@ -365,6 +366,73 @@ try {
         splits.size === 1 &&
         !splits.has(null),
       `${c.name}: page 1 tables ${[...sizes].join(", ")}, rows ${[...rows].join(", ")}, date columns ${[...splits].join(", ")} (one size, every row one height: no marks wrap)`,
+    );
+    // Every header's text the same distance in from its cell's left edge:
+    // the date header from the table's border, the marks' from the rule
+    // (±1 pt for the glyphs' own side bearings).
+    const words1 = pageWords(file, 1);
+    const rowH = [...rows][0] ?? 0;
+    const headerPads = tables.flatMap((t) => {
+      const split = (strokes[0]?.columns ?? []).find(
+        (r) => r.x > t.x0 + 0.1 && r.x < t.x1 - 0.1 && r.y1 > t.y0,
+      );
+      const head = words1
+        .filter((w) => {
+          const cy = (w.y0 + w.y1) / 2;
+          return (
+            cy > t.y0 + rowH &&
+            cy < t.y0 + 2 * rowH &&
+            w.x0 > t.x0 &&
+            w.x1 < t.x1
+          );
+        })
+        .sort((a, b) => a.x0 - b.x0);
+      const after = head.find((w) => split && w.x0 > split.x);
+      return split && head[0] && after
+        ? [head[0].x0 - t.x0, after.x0 - split.x]
+        : [Number.NaN];
+    });
+    check(
+      headerPads.length > 0 &&
+        headerPads.every(
+          (pad) => Math.abs(pad - headerPads[0]) <= 1 && pad > 1,
+        ),
+      `${c.name}: page 1 header cells' left padding ${[...new Set(headerPads.map(round))].join(", ")} pt (one for every header cell)`,
+    );
+    // The key, between the tables and the footer line: one line, or two
+    // whose items stand in the first line's columns, never one item alone
+    // under a fuller line. Items are words more than 2 U apart (a mark
+    // between them); the first line's first word is the key's heading.
+    const tablesEnd = Math.max(...tables.map((t) => t.y1));
+    const keyLines = [];
+    for (const w of words1
+      .filter((w) => w.y0 > tablesEnd)
+      .sort((a, b) => a.y0 - b.y0 || a.x0 - b.x0)) {
+      const line = keyLines.find((l) => Math.abs(l[0].y0 - w.y0) < 2);
+      if (line) line.push(w);
+      else keyLines.push([w]);
+    }
+    keyLines.pop(); // the footer line
+    const items = keyLines.map((line, i) =>
+      line
+        .sort((a, b) => a.x0 - b.x0)
+        .slice(i === 0 ? 1 : 0)
+        .reduce((out, w) => {
+          const prev = out.at(-1);
+          if (prev && w.x0 - prev.x1 <= 8) prev.x1 = w.x1;
+          else out.push({ x0: w.x0, x1: w.x1 });
+          return out;
+        }, []),
+    );
+    const [first = [], second] = items;
+    check(
+      first.length > 0 &&
+        items.length <= 2 &&
+        (!second ||
+          (second.length >= Math.min(2, first.length) &&
+            second.length <= first.length &&
+            second.every((item, i) => Math.abs(item.x0 - first[i].x0) < 1))),
+      `${c.name}: page 1 key in ${items.length} lines of ${items.map((l) => l.length).join(" + ")} items (one line, or two in one set of columns, none alone)`,
     );
     // A fixed grid inside the page's margins: at most 4 × 3 tables on page
     // 1, a whole window's twelve months all of them, nothing carried over.
