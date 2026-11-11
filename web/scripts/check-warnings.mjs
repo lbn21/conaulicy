@@ -181,8 +181,11 @@ async function hubChecks(origin, state) {
   ].map(([, title]) => title);
   const timelineAt = hub.indexOf('<section aria-labelledby="najblizsze-dni">');
   const timeline = hub.slice(timelineAt, hub.indexOf("</section>", timelineAt));
+  // An icon (components/icon.tsx): decorative, aria-hidden, Lucide's shapes.
+  const ICON =
+    '<svg aria-hidden="true" focusable="false" class="app-icon"[^>]*>(?:(?!</svg>).)*</svg>';
   const card = new RegExp(
-    `<section class="app-warning app-warning--([1-3])" aria-labelledby="ostrzezenie-([^"]+)"><p class="app-warning__level govuk-body-s govuk-!-font-weight-bold"><span class="app-warning__meter" aria-hidden="true">((?:<span(?: class="app-warning__on")?></span>){3})</span>Stopień \\1 z 3</p><div class="app-warning__body"><h2 id="ostrzezenie-\\2" class="govuk-heading-m govuk-!-margin-bottom-2">Silny wiatr</h2><p class="govuk-body">${WHEN}</p><details class="govuk-details govuk-!-margin-bottom-0"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">${DETAILS}</span></summary><div class="govuk-details__text">Prognozuje się [^<]+</div></details></div></section>`,
+    `<section class="app-warning app-warning--([1-3])" aria-labelledby="ostrzezenie-([^"]+)"><p class="app-warning__level govuk-body-s govuk-!-font-weight-bold"><span class="app-warning__meter" aria-hidden="true">((?:<span(?: class="app-warning__on")?></span>){3})</span>${ICON}Stopień \\1 z 3</p><div class="app-warning__body app-mod app-mod--pogoda"><h2 id="ostrzezenie-\\2" class="govuk-heading-m govuk-!-margin-bottom-2"><span class="app-tile app-mod app-mod--pogoda">${ICON}</span>Silny wiatr</h2><p class="govuk-body">${WHEN}</p><details class="govuk-details govuk-!-margin-bottom-0"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">${DETAILS}</span></summary><div class="govuk-details__text">Prognozuje się [^<]+</div></details></div></section>`,
     "gu",
   );
   const cards = [...hub.matchAll(card)];
