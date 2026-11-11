@@ -376,6 +376,22 @@ export const movedPlaces = unstable_cache(
   CACHE,
 );
 
+/**
+ * Every place's id, as findPlace finds them: listed or not (a roundabout's
+ * too), for proxy.ts's 404 of an unknown address (/api/places).
+ */
+export const placeIds = unstable_cache(
+  async (): Promise<string[]> => {
+    const [streetRows, villageRows] = await Promise.all([
+      streetPlaces(undefined, 100_000),
+      villagePlaces(undefined, 100_000),
+    ]);
+    return [...streetRows, ...villageRows].map(({ id }) => id);
+  },
+  ["place-ids"],
+  CACHE,
+);
+
 /** The id a renamed place moved to, or null. */
 async function placeRedirect(id: string): Promise<string | null> {
   return (await movedPlaces())[id] ?? null;

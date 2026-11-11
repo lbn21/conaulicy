@@ -6,7 +6,7 @@ import { sameSecret } from "@/lib/secret";
 // request per page or query reads the new data once. On Vercel the same tag
 // also deletes the CDN copies of the responses that send it as
 // Vercel-Cache-Tag (the PDF, the ICS feed, /api/search and
-// /api/place-redirects).
+// /api/places).
 //
 //   curl -X POST -H "Authorization: Bearer $REVALIDATE_SECRET" \
 //     https://conaulicy.pl/api/revalidate

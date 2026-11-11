@@ -13,7 +13,8 @@ import { capitalised, dayLead, relativeDay, relativeWord } from "@/lib/dates";
  * or „jutro, ” before the date that follows, else nothing. label: „Dziś” or
  * „Jutro”, else `text`. title: „ · ” and Intl's relative
  * day („dzisiaj”, „jutro”, „za 6 dni”), after a timeline card's date, body-s,
- * regular and grey (site.scss .app-timeline__when), else nothing.
+ * regular and grey (its card title's colour, site.scss .app-timeline__title),
+ * else nothing.
  * The title's word never wraps mid-phrase: „·” and its words joined by
  * no-break spaces, so the line breaks only before „·”.
  */
@@ -34,7 +35,7 @@ export function DayWord({ day, form, text = "" }: Props) {
   // No server day (outside WarsawToday) and not yet the device's: no word.
   if (form === "title")
     return today ? (
-      <span className="govuk-!-font-size-16 govuk-!-font-weight-regular app-timeline__when">{` ·\u00a0${relativeDay(day, today).replaceAll(" ", "\u00a0")}`}</span>
+      <span className="govuk-!-font-size-16 govuk-!-font-weight-regular">{` ·\u00a0${relativeDay(day, today).replaceAll(" ", "\u00a0")}`}</span>
     ) : null;
   const word = today ? relativeWord(day, today) : null;
   if (form === "word") return word ? `${word}, ` : null;

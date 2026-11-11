@@ -27,7 +27,7 @@
 // one noindex, none index), and no description; an unknown module
 // (/adres/<id>/<slug>) too; asked
 // without following redirects, and never under a renamed id (the 308s of
-// /api/place-redirects, scripts/routes/query.mjs). Both: /, an
+// /api/places, scripts/routes/query.mjs). Both: /, an
 // address page and a calendar send the five security headers.
 //
 // Runs against `next start` on the current build and the CI fixture.
@@ -257,7 +257,7 @@ try {
   // sent Location twice, and fetch followed the joined value to a 404 of its
   // own, so a 308 passed as a 404. A renamed id is a 308, never
   // one of these: its rows (the CI fixture's) as the proxy reads them.
-  const renamed = await fetchJson(`${server.origin}/api/place-redirects`);
+  const { moved: renamed } = await fetchJson(`${server.origin}/api/places`);
   for (const path of [
     "/nie-ma-takiej-strony",
     "/adres/9999999",
@@ -279,9 +279,8 @@ try {
       failures.push(`${path}: ${id} is renamed (a 308), not a 404 to check`);
       continue;
     }
-    // An unknown address: its first answer may be the route's fallback
-    // shell's 200 (notFoundAt, scripts/lib/server.mjs); the page below is
-    // its cached 404.
+    // An unknown address: a 404 on its first answer (notFoundAt,
+    // scripts/lib/server.mjs), then the whole page below.
     if (path.startsWith("/adres/")) {
       const wrong = await notFoundAt(`${server.origin}${path}`);
       if (wrong) failures.push(`${path}: ${wrong}`);

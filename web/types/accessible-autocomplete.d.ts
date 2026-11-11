@@ -11,6 +11,8 @@ declare module "accessible-autocomplete/react" {
     name?: string;
     inputClasses?: string;
     menuAttributes?: Record<string, string>;
+    /** A suggestion chosen (clicked, tapped, or Enter on it). */
+    onConfirm?: (confirmed: T | undefined) => void;
     confirmOnBlur?: boolean;
     templates?: {
       inputValue?: (result: T | undefined) => string;

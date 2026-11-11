@@ -14,8 +14,10 @@
 //
 // A renamed street's old id (place_redirects; the CI fixture's made-up
 // 0972447-99999) answers 308 on every address under it, query kept, with
-// exactly one Location (the ?nr= ones from proxy.ts); an unknown id stays a
-// 404, with or without a number.
+// exactly one Location (the ?nr= ones from proxy.ts); an unknown id, or
+// anything after an id that is no subpage or file, is a 404 on its very
+// first answer (proxy.ts: never the route's 200 shell), with or without a
+// number; fresh paths each run, so no earlier answer is cached.
 //
 // Runs against `next start` on the current build and the CI fixture.
 import { withHouseNumber } from "../../lib/house.ts";
@@ -26,6 +28,8 @@ import { fetchJson, notFoundAt, searchIndexOf } from "../lib/server.mjs";
 const STREET = "/adres/0972447-00470";
 const SPLIT = "/adres/0972447-90004";
 const RENAMED = "/adres/0972447-99999";
+// Digits, so a made-up id looks like a real one (TERYT's).
+const FRESH = String(Date.now());
 
 // [method, path, status, clean path + query for a redirect, user agent].
 const CASES = [
@@ -42,8 +46,8 @@ const CASES = [
   ["GET", `${STREET}/harmonogram.pdf?x=1`, 308, `${STREET}/harmonogram.pdf`],
   ["GET", "/api/search?q=asn", 200],
   ["GET", "/api/search?q=asn&x=1", 308, "/api/search?q=asn"],
-  ["GET", "/api/place-redirects", 200],
-  ["GET", "/api/place-redirects?x=1", 308, "/api/place-redirects"],
+  ["GET", "/api/places", 200],
+  ["GET", "/api/places?x=1", 308, "/api/places"],
   ["GET", "/?fbclid=1", 308, "/"],
   ["HEAD", "/ulice?utm_source=fb", 308, "/ulice"],
   ["POST", "/api/revalidate?x=1", 401],
@@ -77,7 +81,14 @@ const CASES = [
   ["GET", `${STREET}/pogoda`, 404],
   ["GET", `${STREET}/pogoda?nr=12`, 404],
   ["GET", `${STREET}/pogoda?x=1`, 404],
-  ["GET", "/api/place-redirects", 200],
+  // Never asked before (fresh each run), and an unknown id's files.
+  ["GET", `${STREET}/x${FRESH}`, 404],
+  ["GET", `${STREET}/x${FRESH}?nr=12`, 404],
+  ["GET", `/adres/0972447-8${FRESH.slice(-4)}`, 404],
+  ["GET", `/adres/0606${FRESH.slice(-3)}9/woda`, 404],
+  ["GET", `/adres/x${FRESH}`, 404],
+  ["GET", "/adres/0972447-88888/harmonogram.pdf", 404],
+  ["GET", "/adres/0972447-88888/woda.ics", 404],
 ];
 
 // [query, the one place „Szukaj” opens (its page, with the house number)]. Every label in the index, and some with a number, are
@@ -190,9 +201,13 @@ export async function check(server, failures) {
       if (!type.includes("json")) failures.push(`${path}: ${type}`);
     }
   }
-  const moved = await fetchJson(`${server.origin}/api/place-redirects`);
-  if (moved["0972447-99999"] !== "0972447-00470") {
-    failures.push(`/api/place-redirects: ${JSON.stringify(moved)}`);
+  const map = await fetchJson(`${server.origin}/api/places`);
+  if (
+    map.moved?.["0972447-99999"] !== "0972447-00470" ||
+    !map.ids?.includes("0972447-00470") ||
+    map.ids.includes("0972447-99999")
+  ) {
+    failures.push(`/api/places: ${JSON.stringify(map).slice(0, 300)}`);
   }
   return `Query parameters: ${CASES.length} cases; unknown ones redirect to the clean URL, allowed ones and assets served.`;
 }

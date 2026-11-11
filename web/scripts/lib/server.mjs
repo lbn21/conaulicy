@@ -181,35 +181,23 @@ export async function closeRenderedPages() {
 }
 
 /**
- * An unknown address (or module): a 404. The address routes serve a known
- * place's prerendered shell; an id never prerendered first gets the route's
- * fallback shell, its status sent before the page knows the place is
- * unknown (ensureStatic 'prefetch':
- * nextjs.org/docs/app/api-reference/file-conventions/route-segment-config/ensureStatic),
- * so that one first answer may be a 200, but only with the 404 page and
- * noindex; every later one is the cached 404. Returns what failed, or null.
+ * An unknown address (or module): a 404 on its very first answer, the 404
+ * page (noindex). The address routes stream their prerendered shell, a 200,
+ * before the page knows the place, so proxy.ts answers these itself, before
+ * any render (lib/address-routes.ts unknownAddress). Returns what failed, or
+ * null.
  */
 export async function notFoundAt(url) {
-  const first = await fetch(url);
-  const html = await first.text();
+  const response = await fetch(url, { redirect: "manual" });
+  const html = await response.text();
+  if (response.status !== 404)
+    return `${response.status} on the first answer, want 404`;
   if (
-    first.status !== 404 &&
-    !(
-      first.status === 200 &&
-      html.includes('<meta name="robots" content="noindex"/>') &&
-      html.includes("Nie ma takiej strony")
-    )
+    !html.includes('<meta name="robots" content="noindex"/>') ||
+    !html.includes("Nie znaleziono strony")
   )
-    return `${first.status}, want 404 (or a first 200 with the 404 page and noindex)`;
-  // The 404 is generated in the background after the first answer.
-  let status = first.status;
-  for (let i = 0; i < 20 && status !== 404; i++) {
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    const again = await fetch(url);
-    await again.arrayBuffer();
-    status = again.status;
-  }
-  return status === 404 ? null : `${status} after the first answer, want 404`;
+    return "404 without the 404 page and noindex";
+  return null;
 }
 
 /**

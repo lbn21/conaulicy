@@ -3,7 +3,7 @@ import {
   type NextRequest,
   NextResponse,
 } from "next/server";
-import { ADDRESS } from "@/lib/address-routes";
+import { ADDRESS, type PlacesMap, unknownAddress } from "@/lib/address-routes";
 import { cleanQuery } from "@/lib/clean-query";
 import { PRIVATE_NO_STORE, TEXT_PLAIN } from "@/lib/headers";
 import { NOINDEX_NOFOLLOW } from "@/lib/indexing";
@@ -33,27 +33,42 @@ const GATED_HEADERS = {
   "Cache-Control": PRIVATE_NO_STORE,
 };
 
-// Renamed places (old id → new id, /api/place-redirects). A redirect from
-// an address page or a module subpage (/adres/<id>/smieci) carries Location
-// twice, as each is a stored static result (Cache Components)
-// and Next.js replays the render's headers onto the response, so every
-// address's 308 is answered here, with or without ?nr=. The PDF redirects
-// itself. The map stays in memory: a cold instance fetches it once (from the
-// CDN), later refreshes run after the response, so a normal request pays
-// only a lookup.
-const MOVED_TTL = 5 * 60_000;
-let moved: { map: Record<string, string>; at: number } | null = null;
+// The places (/api/places): every id, so an unknown address answers 404
+// before any render (lib/address-routes.ts unknownAddress), and the renamed
+// ones (old id → new id). A redirect from an address page or a module
+// subpage (/adres/<id>/smieci) carries Location twice, as each is a stored
+// static result (Cache Components) and Next.js replays the render's headers
+// onto the response, so every address's 308 is answered here, with or
+// without ?nr=. The PDF redirects itself. The map stays in memory: a cold
+// instance fetches it once (from the CDN), later refreshes run after the
+// response, so a normal request pays only a lookup; an id it does not hold
+// reloads it first (unknownPlace). If it cannot be loaded, an unknown id is
+// left to the page's own notFound().
+const PLACES_TTL = 5 * 60_000;
+type Places = {
+  ids: ReadonlySet<string> | null;
+  moved: Record<string, string>;
+  at: number;
+};
+let places: Places | null = null;
 let loading: Promise<void> | null = null;
 
-function loadMoved(request: NextRequest): Promise<void> {
+function loadPlaces(request: NextRequest): Promise<void> {
   const authorization = request.headers.get("authorization");
-  loading ??= fetch(new URL("/api/place-redirects", request.url), {
+  loading ??= fetch(new URL("/api/places", request.url), {
     headers: authorization ? { authorization } : {},
   })
-    .then((res) => (res.ok ? res.json() : {}))
-    .catch(() => ({}))
-    .then((map: Record<string, string>) => {
-      moved = { map, at: Date.now() };
+    .then((res) => (res.ok ? res.json() : null))
+    .catch(() => null)
+    .then((map: PlacesMap | null) => {
+      places = {
+        // A renamed place's old id is known too: it redirects.
+        ids: Array.isArray(map?.ids)
+          ? new Set([...map.ids, ...Object.keys(map.moved ?? {})])
+          : null,
+        moved: map?.moved ?? {},
+        at: Date.now(),
+      };
     })
     .finally(() => {
       loading = null;
@@ -61,24 +76,54 @@ function loadMoved(request: NextRequest): Promise<void> {
   return loading;
 }
 
-async function movedAddress(
+async function placesFor(
   request: NextRequest,
   event: NextFetchEvent,
-): Promise<URL | null> {
+): Promise<Places | null> {
+  if (!request.nextUrl.pathname.startsWith("/adres/")) return null;
+  if (!places) await loadPlaces(request);
+  else if (Date.now() - places.at > PLACES_TTL)
+    event.waitUntil(loadPlaces(request));
+  return places;
+}
+
+function movedAddress(request: NextRequest, known: Places | null): URL | null {
   const { pathname } = request.nextUrl;
-  if (!ADDRESS.test(pathname)) return null;
-  if (!moved) await loadMoved(request);
-  else if (Date.now() - moved.at > MOVED_TTL)
-    event.waitUntil(loadMoved(request));
+  if (!known || !ADDRESS.test(pathname)) return null;
   let id: string;
   try {
     id = decodeURIComponent(pathname.split("/")[2]);
   } catch {
     return null;
   }
-  const to = moved?.map[id];
+  const to = known.moved[id];
   const path = to && movedPath(`${pathname}${request.nextUrl.search}`, id, to);
   return path ? new URL(path, request.url) : null;
+}
+
+// An id the list does not hold may be a place an import has just added:
+// the list again (its CDN copy is purged by the import), at most once a
+// second per instance, before the 404.
+const MISS_TTL = 1000;
+
+async function unknownPlace(
+  request: NextRequest,
+  known: Places | null,
+): Promise<boolean> {
+  const { pathname } = request.nextUrl;
+  if (unknownAddress(pathname, null)) return true;
+  if (!known || !unknownAddress(pathname, known.ids)) return false;
+  if (Date.now() - known.at <= MISS_TTL) return true;
+  await loadPlaces(request);
+  return unknownAddress(pathname, places?.ids ?? null);
+}
+
+/**
+ * The site's 404 page with its 404 status: a path no route serves
+ * (app/not-found.tsx).
+ */
+function notFoundPage(request: NextRequest, headers?: HeadersInit) {
+  return NextResponse.rewrite(new URL("/404", request.url), { headers });
 }
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
@@ -97,11 +142,14 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   }
 
   // Before the gate, as above: the redirect reveals only the new address.
-  const renamed = await movedAddress(request, event);
+  const known = await placesFor(request, event);
+  const renamed = movedAddress(request, known);
   if (renamed) return NextResponse.redirect(renamed, 308);
+  // Answered only past the gate: a 404 tells which places exist.
+  const unknown = await unknownPlace(request, known);
 
   const expected = process.env.SITE_BASIC_AUTH;
-  if (!expected) return NextResponse.next();
+  if (!expected) return unknown ? notFoundPage(request) : NextResponse.next();
 
   // Open to everyone, so crawlers read the Disallow instead of a 401.
   if (request.nextUrl.pathname === "/robots.txt") {
@@ -124,6 +172,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     });
   }
 
+  if (unknown) return notFoundPage(request, GATED_HEADERS);
   return NextResponse.next({ headers: GATED_HEADERS });
 }
 

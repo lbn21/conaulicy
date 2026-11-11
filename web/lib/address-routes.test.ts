@@ -9,6 +9,7 @@ import {
   MODULE_IDS,
   MODULE_ROUTE_IDS,
   SUBPAGE_IDS,
+  unknownAddress,
 } from "./address-routes.ts";
 import { placePath } from "./places.ts";
 
@@ -74,4 +75,41 @@ test("full prefetch only for a canonical address page, never a redirect source",
     "/ulice#wsie-heading",
   ];
   for (const path of others) assert.equal(addressPrefetch(path), "auto", path);
+});
+
+test("an unknown address is the proxy's 404, before any render", () => {
+  const places = new Set(["0972447-00470", "0606004", "0972447-99999"]);
+  const street = "/adres/0972447-00470";
+  // Known: the page, its subpages and files.
+  for (const path of [
+    street,
+    `${street}/`,
+    `${street}/smieci`,
+    `${street}/woda/`,
+    `${street}/harmonogram.pdf`,
+    `${street}/woda.ics`,
+    "/adres/0606004/smieci",
+    // A renamed place's old id: the proxy's 308, not a 404.
+    "/adres/0972447-99999/smieci",
+  ])
+    assert.equal(unknownAddress(path, places), false, path);
+  // Anything else after an id, or an unknown id, whatever comes after.
+  for (const path of [
+    `${street}/pogoda`,
+    `${street}/prad`,
+    `${street}/numer`,
+    "/adres/0606004/pogoda",
+    "/adres/0972447-88888",
+    "/adres/0972447-88888/smieci",
+    "/adres/0972447-88888/harmonogram.pdf",
+    "/adres/nie-ma",
+    "/adres/%E0%A4%A",
+  ])
+    assert.equal(unknownAddress(path, places), true, path);
+  // Places not loaded: only the path itself decides.
+  assert.equal(unknownAddress(`${street}/pogoda`, null), true);
+  assert.equal(unknownAddress("/adres/0972447-88888", null), false);
+  // Not an address (deeper paths match no route: Next.js's own 404).
+  for (const path of ["/", "/adres", "/ulice", `${street}/nr/12`])
+    assert.equal(unknownAddress(path, places), false, path);
 });

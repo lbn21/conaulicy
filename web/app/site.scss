@@ -269,8 +269,6 @@ $app-caret: govuk-spacing(2);
 .app-timeline__card { --app-bg: #{govuk-functional-colour(surface-background)}; --app-line: #{govuk-functional-colour(surface-border)}; position: relative; padding: govuk-spacing(3); border: $app-hair solid var(--app-line); border-radius: govuk-spacing(1); background: var(--app-bg); }
 .app-timeline__card--empty { --app-bg: color-mix(in srgb, #{govuk-colour("black", $variant: "tint-95")} 35%, #{govuk-colour("white")}); --app-line: #{govuk-functional-colour(border)}; }
 .app-timeline__title, .app-timeline__card--empty > p { color: govuk-functional-colour(secondary-text); }
-// After the date, its relative word: body-s, regular, grey.
-.app-timeline__title .app-timeline__when { color: govuk-functional-colour(secondary-text); }
 .app-timeline__card .govuk-summary-list__key { color: govuk-functional-colour(brand); }
 // Two sizes in a card: the date heading-s, all else body-s.
 .app-timeline__card :is(.govuk-summary-list, .govuk-list) { @include govuk-font-size($size: 16); }
@@ -284,6 +282,11 @@ $app-caret: govuk-spacing(2);
 .app-timeline__card .govuk-summary-list__row:first-child > * { padding-top: 0; }
 .app-timeline__card .govuk-summary-list__row:last-child,
 .app-timeline__card .govuk-summary-list__row:last-child > * { margin-bottom: 0; padding-bottom: 0; }
+
+// Every link in a card at least 24px tall to tap (WCAG 2.5.8): an
+// invisible box 25px tall centred on it. Nothing moves and GOV.UK's
+// focus style stays as it is. On one line, under the cap.
+.app-timeline__card a { position: relative; &::after { content: ""; position: absolute; inset: calc(50% - #{govuk-spacing(5) * .5}) 0; } }
 
 // The caret: a square turned 45°, its two outer sides the card's border,
 // its centre on the card's left edge, level with the dot.
