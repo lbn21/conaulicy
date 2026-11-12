@@ -6,8 +6,8 @@ import {
   SearchErrorProvider,
   SearchErrorSummary,
 } from "@/components/address-search";
-import { Icon, type IconName, Tile } from "@/components/icon";
-import { PageHead } from "@/components/page-head";
+import { Icon } from "@/components/icon";
+import { NowPanel } from "@/components/now-panel";
 import { PlaceLink } from "@/components/place-link";
 import { SITE_URL } from "@/lib/config.generated";
 import { HOME_EXAMPLES } from "@/lib/examples";
@@ -15,7 +15,7 @@ import { DATASET } from "@/lib/headers";
 import { LANG } from "@/lib/locale";
 import { examplePlaces, searchIndexUrl } from "@/lib/schedule";
 import { placeHref } from "@/lib/search";
-import { HOME_H1, HOME_TITLE, pageMetadata, SITE_NAME } from "@/lib/share";
+import { HOME_TITLE, pageMetadata, SITE_NAME } from "@/lib/share";
 import { ALL_PLACES } from "@/lib/static-pages";
 
 export const metadata: Metadata = pageMetadata({
@@ -36,84 +36,102 @@ const WEBSITE = JSON.stringify({
   inLanguage: LANG,
 }).replace(/</g, "\\u003c");
 
-// „Co zobaczysz”: a line per module, with its icon on its colour's tile
-// (site.scss .app-items, .app-mod--*), the calendar's on a neutral one.
-const FEATURES: [IconName, string][] = [
-  ["smieci", "dni wywozu śmieci – dla każdego rodzaju odpadów osobno"],
-  ["woda", "zapowiedziane przez gminę przerwy w dostawie wody"],
-  ["prad", "planowane przerwy i awarie w dostawie prądu (PGE)"],
-  ["pogoda", "ostrzeżenia IMGW przed złą pogodą w powiecie lubaczowskim"],
-  [
-    "calendar",
-    "terminy wywozu w kalendarzu w telefonie i harmonogram do wydruku (PDF)",
-  ],
+// The hero's three reassurances, each with the accent's check icon.
+const TRUST = [
+  "Za darmo, bez logowania",
+  "Bez reklam",
+  "Dane z gminy, IMGW i PGE",
 ];
 
-// The page, static: cached until the next import or deploy (cacheLife
-// "max"), tagged with what it reads: the dataset (examples, index), which
-// the import purges.
-export default async function Home() {
+/** The search field, static: its index URL changes with an import. */
+async function HomeSearch() {
+  "use cache";
+  cacheLife("max");
+  cacheTag(DATASET);
+  return <AddressSearch indexUrl={await searchIndexUrl()} />;
+}
+
+/** The sample addresses, static: cached until the next import or deploy. */
+async function HomeExamples() {
   "use cache";
   cacheLife("max");
   cacheTag(DATASET);
   // A few examples only: the full address list never ships to the client.
-  const [places, indexUrl] = await Promise.all([
-    examplePlaces(HOME_EXAMPLES),
-    searchIndexUrl(),
-  ]);
+  const places = await examplePlaces(HOME_EXAMPLES);
+  return (
+    <section aria-labelledby="sample-heading">
+      <h2 id="sample-heading" className="govuk-heading-m">
+        Przykładowe adresy
+      </h2>
+      <ul className="app-chips app-chips--links govuk-!-margin-bottom-6">
+        {places.map((place) => (
+          <li key={place.id} className="app-chip">
+            <Icon name="pin" />
+            <PlaceLink href={placeHref(place)} className="govuk-link">
+              {place.label}
+            </PlaceLink>
+          </li>
+        ))}
+      </ul>
+      <p className="govuk-body">
+        <Link href={ALL_PLACES.path} className="govuk-link">
+          Zobacz wszystkie ulice i wsie
+        </Link>
+      </p>
+    </section>
+  );
+}
 
-  // A lookup page, as GOV.UK's "Find your local council": the task in the
-  // heading, one line of what to do, the field, then what you get.
+// The home page (t390, mockup D): a full-width hero in the brand's
+// gradient (HomeHero, site.scss .app-hero), the task in the heading, one
+// line, the search on a white card, three reassurances; beside it (under
+// it on a phone) „Teraz w gminie”, read per request behind its skeleton
+// (components/now-panel.tsx). Then the sample addresses. Everything but
+// the panel is static, cached until the next import or deploy.
+export default function Home() {
   return (
     <SearchErrorProvider>
-      <div className="govuk-grid-row">
-        <script
-          type="application/ld+json"
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: our own constant JSON, rendered on the server; React would escape it as text
-          dangerouslySetInnerHTML={{ __html: WEBSITE }}
-        />
-        <div className="govuk-grid-column-two-thirds">
-          <PageHead
-            title={HOME_H1}
-            size="xl"
-            lead="Wpisz ulicę albo wieś i sprawdź terminy."
-            before={<SearchErrorSummary />}
-          >
-            <AddressSearch indexUrl={indexUrl} />
-          </PageHead>
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: our own constant JSON, rendered on the server; React would escape it as text
+        dangerouslySetInnerHTML={{ __html: WEBSITE }}
+      />
+      <HomeHero />
+      <div className="govuk-width-container">
+        <HomeExamples />
+      </div>
+    </SearchErrorProvider>
+  );
+}
 
-          <h2 className="govuk-heading-m">Co zobaczysz</h2>
-          <ul className="app-items app-items--plain govuk-!-margin-bottom-8">
-            {FEATURES.map(([icon, text]) => (
-              <li key={icon} className="app-item">
-                <Tile name={icon} />
-                <span className="app-item__body">{text}</span>
+/** The hero: its own width container inside the full-width band. */
+function HomeHero() {
+  return (
+    <div className="app-hero">
+      <div className="govuk-width-container app-hero__grid">
+        <div>
+          <h1 className="govuk-heading-xl govuk-!-font-size-80 app-hero__title">
+            Co na Twojej <span className="app-hero__accent">ulicy?</span>
+          </h1>
+          <p className="govuk-body-l">
+            Śmieci, woda, prąd i ostrzeżenia pogodowe dla Lubaczowa i gminy –
+            pod Twoim adresem.
+          </p>
+          <div className="app-hero__search">
+            <SearchErrorSummary />
+            <HomeSearch />
+          </div>
+          <ul className="govuk-body-s app-hero__trust">
+            {TRUST.map((text) => (
+              <li key={text}>
+                <Icon name="check" />
+                {text}
               </li>
             ))}
           </ul>
-
-          <section aria-labelledby="sample-heading">
-            <h2 id="sample-heading" className="govuk-heading-m">
-              Przykładowe adresy
-            </h2>
-            <ul className="app-chips app-chips--links govuk-!-margin-bottom-6">
-              {places.map((place) => (
-                <li key={place.id} className="app-chip">
-                  <Icon name="pin" />
-                  <PlaceLink href={placeHref(place)} className="govuk-link">
-                    {place.label}
-                  </PlaceLink>
-                </li>
-              ))}
-            </ul>
-            <p className="govuk-body">
-              <Link href={ALL_PLACES.path} className="govuk-link">
-                Zobacz wszystkie ulice i wsie
-              </Link>
-            </p>
-          </section>
         </div>
+        <NowPanel />
       </div>
-    </SearchErrorProvider>
+    </div>
   );
 }

@@ -19,7 +19,7 @@ function pageTitle(h1: string): string {
 }
 
 /** The home page's H1. */
-export const HOME_H1 = "Sprawdź swoją ulicę w Lubaczowie i gminie";
+const HOME_H1 = "Sprawdź swoją ulicę w Lubaczowie i gminie";
 
 /** The home page's title (GOV.UK: its H1, then the service). */
 export const HOME_TITLE = pageTitle(HOME_H1);

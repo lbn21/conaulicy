@@ -1,6 +1,7 @@
 import {
   CalendarDays,
   ChevronRight,
+  CircleCheck,
   Clock,
   CloudSun,
   Droplet,
@@ -31,6 +32,7 @@ const ICONS = {
   pogoda: CloudSun,
   alert: TriangleAlert,
   calendar: CalendarDays,
+  check: CircleCheck,
   chevron: ChevronRight,
   clock: Clock,
   file: FileText,

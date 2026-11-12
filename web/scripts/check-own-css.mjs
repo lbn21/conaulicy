@@ -2,7 +2,7 @@
 // classes and components only, plus app/site.scss for what GOV.UK has no
 // equivalent for. Fails when:
 // - a stylesheet appears outside the allowed list;
-// - site.scss passes MAX_GZIP compiled (the hard cap) or 200 lines of code
+// - site.scss passes MAX_GZIP compiled (the hard cap) or MAX_LINES of code
 //   (blank and comment-only lines are not counted), or uses a raw colour;
 // - an own stylesheet has a hack (scripts/lib/css-lint.mjs, R1-R8, R10: a
 //   font's or breakpoint's numbers, nudges, negative margins, raw lengths,
@@ -60,7 +60,7 @@ const OWN = [
   "app/_assets.scss",
   "app/tokens.css",
 ];
-// The caps: CSS ≤ 200 lines; MAX_GZIP is the gzip limit in bytes. Raised
+// The caps: CSS ≤ MAX_LINES lines; MAX_GZIP is the gzip limit in bytes. Raised
 // from 2770 to 2806 in t368 (t366's audit): the timeline's dot on .5lh
 // (C8, 200 % text), GOV.UK's hover bar kept as a border under the logo's
 // own box (H3/H4, so forced colours still show it), the bins sized in em
@@ -72,10 +72,14 @@ const OWN = [
 // ceiling 2830): the page head's one spacing scale (the street line 10 px
 // above the h1, .app-band > .govuk-caption-l); today's dot by its own
 // class saved bytes on the selector it replaces.
+// t390 raised them to 230 lines and 3600 B (Jakub's ceiling for it: about
+// 4,500 B, hard max 10 KB): the home page's hero (its gradient, the search
+// card, the reassurances) and „Teraz w gminie” (a head and wrapping
+// tiles); the home page's plain item list they replace is gone.
 // MAX_ALLOWED: how many css-allow hacks may stay: none since t366's C1
 // made the h1 a flex row (t369, t372). Raising either is a reviewed diff.
-const MAX_LINES = 200;
-const MAX_GZIP = 2812;
+const MAX_LINES = 230;
+const MAX_GZIP = 3600;
 const MAX_ALLOWED = 0;
 
 const failures = [];
