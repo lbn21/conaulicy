@@ -1,4 +1,4 @@
-// The routes smoke: seven checks of the built site on one
+// The routes smoke: eight checks of the built site on one
 // `next start` and the CI fixture, each in scripts/routes/:
 //   examples    the home page's examples have upcoming pickups;
 //   all-places  /ulice lists every place once, in Polish order;
@@ -7,6 +7,8 @@
 //               search lands on its place, renamed ids redirect;
 //   in-page     in-page links land, Back after them shows the right page;
 //   search      a chosen suggestion (click, tap, Enter) opens its place;
+//   swap        the skeleton's band and the page's in the same place,
+//               on every subpage, /woda with its fixture cut's actions;
 //   zoom        at 200 % text, the h1's tile on its first line.
 // Every check by default; name some to run only those
 // (`node scripts/check-routes.mjs examples`). With CHECK_URL, a deployed
@@ -19,6 +21,7 @@ import { check as inPage } from "./routes/in-page.mjs";
 import { check as metadata } from "./routes/metadata.mjs";
 import { check as query } from "./routes/query.mjs";
 import { check as search } from "./routes/search.mjs";
+import { check as swap } from "./routes/swap.mjs";
 import { check as zoom } from "./routes/zoom.mjs";
 
 const CHECKS = {
@@ -28,6 +31,7 @@ const CHECKS = {
   query,
   "in-page": inPage,
   search,
+  swap,
   zoom,
 };
 

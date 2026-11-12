@@ -46,6 +46,12 @@ jobs:
       # so every check below sees a power row on the town street's address
       # page and its /prad, and the village's /prad empty.
       PGE_API_URL: mock:ours
+      # Nor the water sources' Blob: MZGKiM's fixture cut, the day after
+      # tomorrow on the town street (web/lib/water-fixture.ts mockFile), so
+      # /woda's actions and calendar are built and checked; the gmina's
+      # none (web/lib/zuk-store.ts).
+      MZGKIM_MOCK: "5237"
+      ZUK_MOCK: none
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
