@@ -408,10 +408,6 @@ function usualWeekday(days: PickupDay[]): string | null {
   return top && top[1] / days.length >= 0.75 ? top[0] : null;
 }
 
-function monthName(key: string): string {
-  return monthTitle(`${key}-01`).replace(/ \d{4}$/, "");
-}
-
 function label(pickups: Pickup[]): string {
   return pickups.map((p) => p.label).join(", ");
 }
@@ -666,19 +662,48 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   };
 
   // ------------------------------------------------------------ bands
-  // The band on page 1: the plate and where, the street, its day; the QR
-  // code and its caption on the right. Rows on the scale, their text
-  // cap-centred; MARGIN of padding all round, a step and a half under the
-  // plate and a step above the day line, as the first redesign's band
-  // (t355: the room the real data's bounds give back goes here first). One
-  // height for every address, day line or not: the calendar below starts
-  // at one place on every PDF.
+  const widthOf = (font: string, size: number, text: string) => {
+    doc.font(font).fontSize(size);
+    return doc.widthOfString(text);
+  };
+  // The band, one on both pages (Jakub, t359), balanced by its ink
+  // (t357): two blocks of one height, centred on the band's midline, with
+  // equal padding above and below. Right: the QR code's white box, two
+  // steps, then its caption in two lines, each centred under the box.
+  // Left: the plate (where, cap-centred beside it), the street's name, its
+  // day line, with one gap between the plate and the name's cap height and
+  // between the name's baseline and the day line's cap height, so the left
+  // block is exactly as tall as the right. The rows are measured at the
+  // scale's sizes (the title's, the body's); a name or day line set smaller
+  // to fit keeps its cap centre, so the geometry is one for every address,
+  // day line or not. Its height (35 U) is the most page 2 leaves: the
+  // guide's tiles, at its least type size, fit the rest of the page with
+  // the longest content of any gmina's guide (t359).
   const LOGO_H = 6 * U;
-  const BAND_PAD = MARGIN;
   const qrSize = 16 * U;
   const qrBox = qrSize + 2 * U;
-  const qrX = PAGE_W - MARGIN - qrBox;
+  // Two lines: one would be wider than the box by so much that, centred
+  // under it, it would push the box in and the plate's line down a size.
+  const scan = ["Zeskanuj:", "aktualne terminy"];
+  const scanW = Math.max(...scan.map((l) => widthOf("regular", TYPE.small, l)));
+  const scanGap = 2 * U;
+  const qrCentre = PAGE_W - MARGIN - Math.max(qrBox, scanW) / 2;
+  const qrX = qrCentre - qrBox / 2;
+  const cap = (size: number) => size * CAP;
+  /** Both blocks' height, from the box's top to the caption's last baseline. */
+  const blockH =
+    qrBox + scanGap + cap(TYPE.small) + (scan.length - 1) * ROW[TYPE.small];
+  const bandGap = (blockH - LOGO_H - cap(TYPE.title) - cap(TYPE.body)) / 2;
+  const bandH = 35 * U;
+  const blockTop = (bandH - blockH) / 2;
+  const titleMid = blockTop + LOGO_H + bandGap + cap(TYPE.title) / 2;
+  const bandLineMid =
+    blockTop + LOGO_H + 2 * bandGap + cap(TYPE.title) + cap(TYPE.body) / 2;
+  const scanMid = blockTop + qrBox + scanGap + cap(TYPE.small) / 2;
+  // The plate's line and the name end a gap and a half before the QR's
+  // box, beside them; the day line before the caption, beside it.
   const bandTextW = qrX - 6 * U - MARGIN;
+  const bandLineW = qrCentre - Math.max(qrBox, scanW) / 2 - 6 * U - MARGIN;
   const logoW = (LOGO_WIDTH * LOGO_H) / LOGO_HEIGHT;
   const kickerX = MARGIN + logoW + 3 * U;
   const kicker = `${place.area} · Harmonogram odbioru odpadów`;
@@ -686,8 +711,8 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     TYPE.body,
     TYPE.small,
   ]);
-  // The street's name and its day line each on one line, in rows of a
-  // fixed height, so the longest name leaves the calendar where it is.
+  // The street's name and its day line each on one line, so the longest
+  // name leaves the calendar where it is.
   const titleSize = oneLine("bold", title, bandTextW, [
     TYPE.title,
     TYPE.heading,
@@ -695,84 +720,45 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     TYPE.small,
   ]);
   const bandLine = [dayLine, putOut].filter(Boolean).join(" · ");
-  const bandLineSize = oneLine("bold", bandLine, bandTextW, [
+  const bandLineSize = oneLine("bold", bandLine, bandLineW, [
     TYPE.body,
     TYPE.small,
   ]);
-  const titleTop = BAND_PAD + LOGO_H + 3 * U;
-  const titleH = ROW[TYPE.title];
-  const bandLineTop = titleTop + titleH + U;
-  const scan = "Zeskanuj: aktualne terminy";
-  const scanTop = BAND_PAD + qrBox + U;
-  const bandH = bandLineTop + ROW[TYPE.body] + BAND_PAD;
 
-  const drawBand = () => {
+  const drawBand = (parent: PDFKit.PDFStructureElement) => {
     artifact(doc, () => {
       doc.rect(0, 0, PAGE_W, bandH).fillColor(HEADER).fill();
-      drawLogo(doc, MARGIN, BAND_PAD, LOGO_H);
-      doc.rect(qrX, BAND_PAD, qrBox, qrBox).fillColor(WHITE).fill();
-      drawQr(doc, url, qrX + U, BAND_PAD + U, qrSize);
+      drawLogo(doc, MARGIN, blockTop, LOGO_H);
+      doc.rect(qrX, blockTop, qrBox, qrBox).fillColor(WHITE).fill();
+      drawQr(doc, url, qrX + U, blockTop + U, qrSize);
     });
-    tag(root, "P", () =>
-      rowText("regular", kickerSize, WHITE, kicker, kickerX, BAND_PAD, LOGO_H),
+    tag(parent, "P", () =>
+      rowText("regular", kickerSize, WHITE, kicker, kickerX, blockTop, LOGO_H),
     );
-    tag(root, "H1", () =>
-      rowText("bold", titleSize, WHITE, title, MARGIN, titleTop, titleH),
+    // Rows of no height: the text's cap centred on the line.
+    tag(parent, "H1", () =>
+      rowText("bold", titleSize, WHITE, title, MARGIN, titleMid, 0),
     );
     if (bandLine) {
-      tag(root, "P", () =>
-        rowText(
-          "bold",
-          bandLineSize,
-          WHITE,
-          bandLine,
-          MARGIN,
-          bandLineTop,
-          ROW[TYPE.body],
-        ),
+      tag(parent, "P", () =>
+        rowText("bold", bandLineSize, WHITE, bandLine, MARGIN, bandLineMid, 0),
       );
     }
-    tag(root, "P", () =>
-      rowText(
-        "regular",
-        TYPE.small,
-        WHITE,
-        scan,
-        qrX - 30 * U,
-        scanTop,
-        ROW[TYPE.small],
-        {
-          width: 30 * U + qrBox,
-          align: "right",
-          link: url,
-        },
-      ),
+    tag(parent, "P", () =>
+      scan.forEach((line, i) => {
+        rowText(
+          "regular",
+          TYPE.small,
+          WHITE,
+          line,
+          qrCentre - widthOf("regular", TYPE.small, line) / 2,
+          scanMid + i * ROW[TYPE.small],
+          0,
+          { link: url },
+        );
+      }),
     );
     return bandH;
-  };
-
-  /** Page 2: the plate and one line, with the same padding. */
-  const compactH = MARGIN + LOGO_H + 3 * U + ROW[TYPE.body] + MARGIN - U;
-  const compactBand = (what: string, parent: PDFKit.PDFStructureElement) => {
-    const text = `${title} · ${what}`;
-    const size = oneLine("bold", text, CONTENT_W, [TYPE.body, TYPE.small]);
-    const plate = () => {
-      doc.rect(0, 0, PAGE_W, compactH).fillColor(HEADER).fill();
-      drawLogo(doc, MARGIN, MARGIN, LOGO_H);
-    };
-    const words = () =>
-      rowText(
-        "bold",
-        size,
-        WHITE,
-        text,
-        MARGIN,
-        MARGIN + LOGO_H + 3 * U,
-        ROW[TYPE.body],
-      );
-    artifact(doc, plate);
-    tag(parent, "H1", words);
-    return compactH;
   };
 
   // ------------------------------------------------------------ key
@@ -887,18 +873,13 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // bordered, each border drawn once.
   // The day number only, as the leaflet's.
   const dateText = (day: PickupDay) => String(Number(day.date.slice(8)));
-  const widthOf = (font: string, size: number, text: string) => {
-    doc.font(font).fontSize(size);
-    return doc.widthOfString(text);
-  };
   /** Up to the next step of the scale. */
   const onScale = (n: number) => Math.ceil(n / U) * U;
-  // A strip above every grid row: the year heading's own row, its ink
-  // leaving air above the tables.
-  const YEAR_H = ROW[TYPE.heading];
-  // Between grid rows: the next row's year strip is the air (24 pt, as
-  // the gaps around the grid; t355).
-  const ROW_GAP = 0;
+  // Between the band and the grid, and between grid rows: one gap; the
+  // key below the grid takes the rest, its heading row's own air above its
+  // ink making the same gap (t358).
+  const GRID_GAP = 9 * U;
+  const ROW_GAP = GRID_GAP;
   // Page 1's footer: the source line and the unverified note's row, on
   // every PDF (the note in one row at the fine size, either gmina's).
   const footer1 = footerBlock(2);
@@ -909,9 +890,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // The key, at one place on every PDF: a step above the footer's rule
   // (its last row's own air above it).
   const keyTop = footer1.top - 2 * U - KEY_H;
-  // A step more than SECTION under the band: with the year strip's own air,
-  // the grid sits as far below the band as the key sits below the grid.
-  const gridTop = bandH + SECTION + U;
+  const gridTop = bandH + GRID_GAP;
   const gridMonths = months.map((key) => ({ key, marks: [] }));
   // As the leaflet's: nothing bold, headers the days' size, set apart only
   // by the grey; every table text TABLE_PAD in from its borders. The date
@@ -930,7 +909,6 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     width: CONTENT_W,
     gap: MONTH_GUTTER,
     height: keyTop - SECTION - gridTop,
-    yearH: YEAR_H,
     rowGap: ROW_GAP,
     dateW: onScale(textW + 2 * TABLE_PAD),
     minDateW: Math.ceil(textW + 2 * U),
@@ -972,12 +950,12 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         top += h;
       }
     });
-    tag(root, "H3", () =>
+    tag(root, "H2", () =>
       rowText(
         "regular",
         cellSize,
         BLACK,
-        monthName(key),
+        monthTitle(`${key}-01`),
         x + TABLE_PAD,
         y,
         rowH,
@@ -1082,7 +1060,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const SEPARATE_COLUMNS = 4;
   const QR_GUIDE = 16 * U;
   const separateHeading = "Oddajesz osobno";
-  const guideTop = compactH + SECTION;
+  const guideTop = bandH + SECTION;
   // Rows for the longest source list of any gmina's guide: one height
   // on every PDF.
   const footer2 = guide
@@ -1500,7 +1478,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const drawGuide = () => {
     if (!guide || !guidePlan || !footer2) return;
     doc.addPage();
-    compactBand("co wrzucać do pojemników", root);
+    drawBand(root);
     guide.bins.forEach((tile, i) => {
       const col = i % BIN_COLUMNS;
       const row = Math.floor(i / BIN_COLUMNS);
@@ -1517,41 +1495,19 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
 
   // ------------------------------------------------------------ calendar
   // Every month of the window on page 1 (the grid is sized for the most any
-  // month can hold), each row under its strip of year headings, a year's
-  // above its first month; then the key and the footer line.
-  drawBand();
+  // month can hold), each titled with its month and year (Jakub, t358);
+  // then the key and the footer line.
+  drawBand(root);
   let y = gridTop;
-  let year = "";
-  const placedRows = tableRows(
+  for (const row of tableRows(
     printed.map((key) => ({ key })),
     grid.columns,
-  );
-  placedRows.forEach((row) => {
-    const yearTop = y;
-    y += YEAR_H;
+  )) {
     row.keys.forEach((key, column) => {
-      const x = MARGIN + column * (grid.tableW + MONTH_GUTTER);
-      const starts = row.years.find((entry) => entry.column === column);
-      const shown =
-        starts?.year ?? (column === 0 && year === "" ? key.slice(0, 4) : null);
-      if (shown) {
-        year = shown;
-        tag(root, "H2", () =>
-          rowText(
-            "bold",
-            TYPE.heading,
-            BLACK,
-            shown,
-            x,
-            yearTop,
-            ROW[TYPE.heading],
-          ),
-        );
-      }
-      drawMonth(key, x, y);
+      drawMonth(key, MARGIN + column * (grid.tableW + MONTH_GUTTER), y);
     });
     y += tableH + ROW_GAP;
-  });
+  }
   const key = keyFor(printed);
   drawKey(root, key, keyTop);
   if (key.moved) drawMoved(root, keyTop);
