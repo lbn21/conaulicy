@@ -12,7 +12,8 @@
 // reserved for the longest: page 1's unverified note shown or not, page 2
 // every source of the gmina's guide, each linked), the key one grid under
 // its own heading (the same rows and
-// columns on every address's PDF: equal, margin to margin), all at one
+// columns on every address's PDF: equal, margin to margin; one entry per
+// mark, no two of one colour token), all at one
 // place on the page whatever the street's name (the longest on one line),
 // and so are the guide's tiles; no word on pages 1–2 spills
 // out of its table, tile or box (scripts/lib/pdf-layout.mjs). Checks are
@@ -38,6 +39,7 @@ import { todayInWarsaw } from "../lib/dates.ts";
 import { fileSlug } from "../lib/normalize.ts";
 import { PDF_MONTHS } from "../lib/pdf-key.ts";
 import { GUIDES } from "../lib/sorting-guide.ts";
+import { FRACTIONS, TOKEN } from "../lib/waste-bin.ts";
 import { walk } from "./lib/files.mjs";
 import { localDatabaseUrl } from "./lib/local-db.ts";
 import { pageStrokes, pageWords, spills } from "./lib/pdf-layout.mjs";
@@ -209,6 +211,10 @@ const KEY_ROW = 20;
 const KEY_GAP = 12;
 /** A key label's start in its cell: its mark's slot and a step. */
 const KEY_LABEL_IN = MARK_SLOT + 4;
+/** Every fraction's name (FRACTIONS) → its colour token: its key mark. */
+const TOKEN_OF_LABEL = new Map(
+  FRACTIONS.map(({ subtype, label }) => [label, TOKEN[subtype]]),
+);
 
 const run = (cmd, args) => execFileSync(cmd, args, { encoding: "utf8" });
 // The raw file plus every stream that inflates, so compressed metadata counts.
@@ -504,11 +510,19 @@ try {
           if (prev && w.x0 - prev.x1 <= 8) {
             // A mark drawn as a glyph reads as a word before its label:
             // the item starts at the label.
-            if (prev.mark) prev.start = w.x0;
+            if (prev.mark) {
+              prev.start = w.x0;
+              prev.text = w.text;
+            } else prev.text += ` ${w.text}`;
             prev.mark = false;
             prev.x1 = w.x1;
           } else {
-            out.push({ start: w.x0, x1: w.x1, mark: w.x1 - w.x0 < MARK_SLOT });
+            out.push({
+              start: w.x0,
+              x1: w.x1,
+              mark: w.x1 - w.x0 < MARK_SLOT,
+              text: w.text,
+            });
           }
           return out;
         }, []);
@@ -527,6 +541,18 @@ try {
           (n, i) => n <= counts[0] && (i === 0 || counts[i - 1] === counts[0]),
         ),
       `${c.name}: page 1 key: heading at the margin (${heading.length > 1 ? "a moved date's note right-aligned" : "alone"}), then ${counts.join(" + ")} items in ${cellRows.length} rows (filled in turn)`,
+    );
+    // One entry per mark: each entry a fraction's name (FRACTIONS), and no
+    // two of one colour token (a mark is its token's: route.ts MARKS),
+    // fractions sharing a token named once (lib/pdf-key.ts KEY_TOKENS).
+    const entries = cellRows.flat().map((item) => item.text);
+    const entryTokens = entries.map((text) => TOKEN_OF_LABEL.get(text));
+    const sharing = entries.filter(
+      (_, i) => entryTokens.indexOf(entryTokens[i]) !== i,
+    );
+    check(
+      entryTokens.every(Boolean) && sharing.length === 0,
+      `${c.name}: page 1 key: ${entries.length} entries, ${new Set(entryTokens).size} marks${entryTokens.every(Boolean) ? "" : ` (unknown: ${entries.filter((_, i) => !entryTokens[i]).join(", ")})`}${sharing.length ? ` (a mark twice: ${sharing.join(", ")})` : ""} (one entry per mark)`,
     );
     keys.push({
       name: c.name,

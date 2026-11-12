@@ -180,7 +180,12 @@ export function pageStrokes(bytes, pageH) {
   return pageStreams(bytes).map((stream) => strokes(stream, pageH));
 }
 
-/** A page's words' boxes (pdftotext -bbox), in points from the top left. */
+const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
+
+/**
+ * A page's words' boxes (pdftotext -bbox), in points from the top left,
+ * with their text.
+ */
 export function pageWords(file, n) {
   const html = execFileSync(
     "pdftotext",
@@ -189,11 +194,12 @@ export function pageWords(file, n) {
   );
   return [
     ...html.matchAll(
-      /<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">/g,
+      /<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">([^<]*)<\/word>/g,
     ),
   ].map((m) => {
     const [x0, y0, x1, y1] = m.slice(1, 5).map(Number);
-    return { x0, y0, x1, y1 };
+    const text = m[5].replace(/&(\w+);/g, (e, n) => ENTITIES[n] ?? e);
+    return { x0, y0, x1, y1, text };
   });
 }
 

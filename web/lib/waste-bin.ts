@@ -33,6 +33,30 @@ export const TOKEN: Record<string, string> = {
   tekstylia: "tekstylia",
 };
 
+/**
+ * A token's own name where its fractions differ: the subtype whose label
+ * names it (the guide's tile, the PDF key's entry). Elsewhere the token's
+ * one subtype names it.
+ */
+const NAMED_BY: Record<string, string> = {
+  "plastik-metale": "tworzywa_metale",
+};
+
+/** The subtype whose label names a colour token: NAMED_BY, else the first. */
+export function tokenSubtype(token: string): string {
+  return (
+    NAMED_BY[token] ??
+    FRACTIONS.map((f) => f.subtype).find((s) => TOKEN[s] === token) ??
+    token
+  );
+}
+
+/** A colour token's name: its subtype's label (tokenSubtype). */
+export function tokenLabel(token: string): string {
+  const subtype = tokenSubtype(token);
+  return FRACTIONS.find((f) => f.subtype === subtype)?.label ?? token;
+}
+
 // Fills that fade into a background in some theme; their outline token carries
 // the 3:1 non-text contrast (see design/tokens.md).
 export const OUTLINED = new Set([

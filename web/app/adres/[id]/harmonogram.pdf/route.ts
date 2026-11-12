@@ -34,10 +34,10 @@ import {
 } from "@/lib/pdf-grid";
 import { drawIcon, FRACTION_ICONS, PDF_ICONS } from "@/lib/pdf-icon";
 import {
-  KEY_TONES,
+  KEY_TOKENS,
   keyCell,
   keyGrid,
-  keyOrder,
+  keyTokens,
   PDF_MONTHS,
 } from "@/lib/pdf-key";
 import { scheduleName } from "@/lib/places";
@@ -52,7 +52,13 @@ import { hasUpcoming, putOutNote, unverifiedNote } from "@/lib/schedule-notes";
 import { SITE_NAME } from "@/lib/share";
 import { GUIDES, type GuideItem, guideFor } from "@/lib/sorting-guide";
 import { THEME_COLOR } from "@/lib/theme";
-import { FRACTIONS, TOKEN, tones } from "@/lib/waste-bin";
+import {
+  FRACTIONS,
+  TOKEN,
+  tokenLabel,
+  tokenSubtype,
+  tones,
+} from "@/lib/waste-bin";
 import { WASTE_COLOURS as WASTE } from "@/lib/waste-colours";
 import { wastePath } from "@/lib/waste-module";
 
@@ -776,7 +782,9 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // data alone: as many columns as the widest name of any zone's key
   // allows, as many rows as the fullest key of any zone in any six months
   // needs. An address fills its cells in the key's order, with the site's
-  // names, and leaves the rest empty. On the heading's line, right-aligned
+  // names, and leaves the rest empty. One entry per bin colour token
+  // (KEY_TOKENS): fractions sharing a token share its mark and its entry,
+  // named by the token (tokenLabel). On the heading's line, right-aligned
   // in a fixed slot, a moved date's note, drawn only where the page has one.
   // One slot for every mark, in the tables and the key (OPTICAL); a full
   // step between slots.
@@ -786,25 +794,27 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const KEY_GAP = 3 * U;
   const keyHeading = "Oznaczenia";
   const movedLabel = "Termin przesunięty";
-  const keyName = (tone: string) => TONE_LABEL[tone] ?? tone;
-  /** These months' fractions, in the key's order, and any moved date. */
+  const keyName = tokenLabel;
+  /** These months' tokens, in the key's order, and any moved date. */
   const keyFor = (keys: string[]) => {
     const days = keys.flatMap((key) => byMonth.get(key) ?? []);
     return {
-      tones: keyOrder(
-        days.flatMap((day) => day.pickups).flatMap((p) => tones(p.subtype)),
+      tokens: keyTokens(
+        days.flatMap((day) => day.pickups).map((p) => p.subtype),
       ),
       moved: days.some((day) => moved(day)),
     };
   };
-  // Every fraction the site knows (lib/pdf-key.ts KEY_TONES), never the
+  // Every token the site knows (lib/pdf-key.ts KEY_TOKENS), never the
   // data's: one grid on every PDF, whatever is loaded.
   doc.font("regular").fontSize(TYPE.small);
   const keyLayout = keyGrid(
     CONTENT_W,
     KEY_GAP,
-    Math.max(...KEY_TONES.map((t) => MARK + U + doc.widthOfString(keyName(t)))),
-    KEY_TONES.length,
+    Math.max(
+      ...KEY_TOKENS.map((t) => MARK + U + doc.widthOfString(keyName(t))),
+    ),
+    KEY_TOKENS.length,
   );
   /** The heading's row (and the moved date's note), then the grid's. */
   const KEY_H = (1 + keyLayout.rows) * KEY_ROW;
@@ -818,19 +828,25 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     );
     const list = doc.struct("L");
     parent.add(list);
-    key.tones.forEach((tone, i) => {
+    key.tokens.forEach((token, i) => {
       const cell = keyCell(keyLayout, i);
       const x = MARGIN + cell.x;
       const rowTop = top + (1 + cell.row) * KEY_ROW;
       const mark = () =>
-        drawMark(doc, tone, x + MARK / 2, rowTop + KEY_ROW / 2, MARK);
+        drawMark(
+          doc,
+          tokenSubtype(token),
+          x + MARK / 2,
+          rowTop + KEY_ROW / 2,
+          MARK,
+        );
       artifact(doc, mark);
       tag(list, "LI", () =>
         rowText(
           "regular",
           TYPE.small,
           BLACK,
-          keyName(tone),
+          keyName(token),
           x + MARK + U,
           rowTop,
           KEY_ROW,
