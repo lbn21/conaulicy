@@ -31,7 +31,7 @@ import {
 import { normalize } from "../lib/normalize.ts";
 import { DAY_MARKS, MONTH_DAYS } from "../lib/pdf-grid.ts";
 import { localitySearchLabel, streetLabel, terytName } from "../lib/places.ts";
-import { FRACTIONS, tones } from "../lib/waste-bin.ts";
+import { FRACTIONS, TOKEN, tones } from "../lib/waste-bin.ts";
 import { polishHolidays } from "./import/waste/lib.ts";
 import { GMINA_SCHEDULE_PAGES } from "./lib/gmina-pages.ts";
 import { unsourced } from "./lib/import-data.ts";
@@ -134,11 +134,12 @@ const CITY_RECYCLING = ["papier", "tworzywa", "szklo"];
 
 /**
  * The PDF's worst case, made from its bounds, never from a real schedule:
- * every fraction the site knows (ALL_TONES, from FRACTIONS, with the
- * site's names; those sharing a colour token share one key entry,
+ * every fraction the site knows (BY_TOKEN, from FRACTIONS and TOKEN, with
+ * the site's names; those sharing a colour token share one key entry,
  * lib/pdf-key.ts KEY_TOKENS), MONTH_DAYS dates in every month, DAY_MARKS
- * fractions on each (in turn, so every one appears), and one date a month
- * moved (lib/pdf-grid.ts). check-pdf prints its PDF as every other.
+ * marks on each, every one a different colour token, as in real data (in
+ * turn, so every token and each of its fractions appears), and one date a
+ * month moved (lib/pdf-grid.ts). check-pdf prints its PDF as every other.
  */
 const WORST = {
   id: "waste:miasto-worst",
@@ -146,18 +147,31 @@ const WORST = {
   streetId: "0972447-90012",
 };
 
-/** Every fraction the site knows, once each, in FRACTIONS order. */
-const ALL_TONES = [
-  ...new Set(FRACTIONS.flatMap(({ subtype }) => tones(subtype))),
+/**
+ * Every fraction the site knows, once each, by colour token: tokens in
+ * FRACTIONS order, each with its fractions.
+ */
+const BY_TOKEN = [
+  ...Map.groupBy(
+    new Set(FRACTIONS.flatMap(({ subtype }) => tones(subtype))),
+    (tone) => TOKEN[tone] ?? tone,
+  ).values(),
 ];
+if (BY_TOKEN.length < DAY_MARKS)
+  throw new Error("CI fixture: fewer colour tokens than DAY_MARKS");
 
 function worstPickups(month: string) {
   const names = new Map(FRACTIONS.map((f) => [f.subtype, f.label]));
   return Array.from({ length: MONTH_DAYS }, (_, d) => {
     // Every third day from the 1st: within any month, two digits too.
     const date = `${month}-${String(1 + 3 * d).padStart(2, "0")}`;
+    // DAY_MARKS tokens in turn (consecutive, so all different), each its
+    // fractions in turn, one per pass through the tokens.
     return Array.from({ length: DAY_MARKS }, (_, k) => {
-      const subtype = ALL_TONES[(d * DAY_MARKS + k) % ALL_TONES.length];
+      const slot = d * DAY_MARKS + k;
+      const fractions = BY_TOKEN[slot % BY_TOKEN.length];
+      const subtype =
+        fractions[Math.floor(slot / BY_TOKEN.length) % fractions.length];
       return {
         subtype,
         label: names.get(subtype) ?? subtype,
