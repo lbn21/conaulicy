@@ -114,7 +114,7 @@ export function SourceInset({
   return (
     <div className="govuk-inset-text">
       {line.length > 0 && (
-        <p className="govuk-hint govuk-!-font-size-16">
+        <p className="govuk-body-s app-quiet">
           <Parts parts={line} lead={false} />
         </p>
       )}

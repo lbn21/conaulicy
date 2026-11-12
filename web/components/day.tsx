@@ -12,7 +12,8 @@ import type { DayGroup, Entry } from "@/lib/timeline";
 // listopada”, Intl's formatRange, no word) a muted grey card, its date the
 // same h3 over „Nic nie zaplanowano.” (on every place),
 // a run's line dashed alongside its card;
-// „Później” a card at the ringed end of the line.
+// „Później” a card at the ringed end of the line. Each li starts with its
+// dot, an empty aria-hidden span (site.scss lays it out on the grid).
 
 /** What an empty day or run says. */
 const NOTHING = "Nic nie zaplanowano.";
@@ -73,6 +74,7 @@ export function Day({
           .join(" ") || undefined
       }
     >
+      <span className="app-timeline__dot" aria-hidden="true" />
       <TimelineCard title={title} empty={empty}>
         {empty ? (
           <p className="govuk-body-s govuk-!-margin-bottom-0">{NOTHING}</p>
@@ -95,6 +97,7 @@ export function LaterCard({
   if (entries.length === 0) return null;
   return (
     <li className="app-timeline__later">
+      <span className="app-timeline__dot" aria-hidden="true" />
       <TimelineCard title="Później">
         <FunctionRows entries={entries} place={place} dateOnly />
       </TimelineCard>

@@ -208,7 +208,7 @@ test("/prad: a day each, a chip per window, the kind's badge, our names, PGE's n
   // The source: PGE's public page, and the check's time.
   assert.match(
     html,
-    /<div class="govuk-inset-text"><p class="govuk-hint[^"]*">[^<]*<a href="https:\/\/pgedystrybucja\.pl\/wylaczenia\/aktualne-przerwy-w-dostawie-energii" class="govuk-link">[^<]+<\/a>[^<]*11 listopada 17:52[^<]*<\/p>/,
+    /<div class="govuk-inset-text"><p class="govuk-body-s app-quiet">[^<]*<a href="https:\/\/pgedystrybucja\.pl\/wylaczenia\/aktualne-przerwy-w-dostawie-energii" class="govuk-link">[^<]+<\/a>[^<]*11 listopada 17:52[^<]*<\/p>/,
   );
   // No calendar and no AI note: PGE's data is read, not guessed.
   assert.doesNotMatch(html, /role="button"|govuk-warning-text/);

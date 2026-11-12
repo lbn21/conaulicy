@@ -133,7 +133,7 @@ try {
   const village = await page(`/adres/${FIXTURE_IDS.village}/smieci`);
   check(
     village.status === 200 &&
-      /<div class="govuk-inset-text"><p class="govuk-hint[^"]*">[^<]+/.test(
+      /<div class="govuk-inset-text"><p class="govuk-body-s app-quiet">[^<]+/.test(
         village.text,
       ),
     "village: no source line",
