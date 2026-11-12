@@ -666,7 +666,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     return doc.widthOfString(text);
   };
   // The band, one on both pages (Jakub, t359), stacked as the first
-  // redesign's (#263, 59034e6; Jakub, t360): the plate, then where, then the
+  // redesign's (PR 263, 59034e6; Jakub, t360): the plate, then where, then the
   // street's name, then its day line, one under another at the left margin,
   // each on its row of the scale as there (the plate, three steps, the
   // body's row, the title's row, a step, the body's row); on the right the
