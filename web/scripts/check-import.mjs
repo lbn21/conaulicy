@@ -131,12 +131,13 @@ try {
     "village part: no label with its village, no zone from its village, or no calendar help",
   );
   // Its source note (components/subpage-parts.tsx SourceNote, t373): the
-  // inset, the source line with its link out, then the check on its own
-  // line, its day unbroken (a no-break space before the month).
+  // inset, the source line with a link per source (here the check
+  // server's own files, so http), then the check on its own line, its day
+  // unbroken (a no-break space before the month).
   const village = await page(`/adres/${FIXTURE_IDS.village}/smieci`);
   check(
     village.status === 200 &&
-      /<div class="govuk-inset-text"><p class="govuk-body-s app-quiet[^"]*">[^<]+<a href="https:\/\/[^"]+" class="govuk-link">[^<]+<\/a>[^<]*<\/p><p class="govuk-body-s app-quiet">[^<]*\d{1,2} \p{L}+[^<]*<\/p><\/div>/u.test(
+      /<div class="govuk-inset-text"><p class="govuk-body-s app-quiet[^"]*">(?:[^<]+<a href="https?:\/\/[^"]+" class="govuk-link">[^<]+<\/a>)+[^<]*<\/p><p class="govuk-body-s app-quiet">[^<]*\d{1,2}\u00a0\p{L}+[^<]*<\/p><\/div>/u.test(
         village.text,
       ),
     "village: no source line (its link out, then its check)",
