@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
 import { Breadcrumbs, type Crumb, HOME_CRUMB } from "@/components/breadcrumbs";
 import { ErrorSummary } from "@/components/error-summary";
-import { Icon, type IconName } from "@/components/icon";
+import type { IconName } from "@/components/icon";
 import { PageHead } from "@/components/page-head";
 import { NOT_FOUND_METADATA, PageNotFound } from "@/components/page-not-found";
 import { PickupSchedule } from "@/components/pickup-schedule";
@@ -414,29 +414,23 @@ export function WasteBody({
         />
       ) : (
         <>
-          <CalendarBlock
-            href={`/ics/${encodeURIComponent(place.zoneId)}`}
-            label="Dodaj do kalendarza"
-            hint="Plik z datami wywozu."
-            event="calendar_add"
-            zone={place.zoneId}
-            source="street"
-          />
-          <p className="govuk-body">
-            <a
-              href={`${placePath(place.id)}/harmonogram.pdf${place.nr ? `?nr=${place.nr}` : ""}`}
-              data-event="pdf_open"
-              data-zone={place.zoneId}
-              className="govuk-link"
-            >
-              <Icon name="file" />
-              Harmonogram do druku (PDF)
-            </a>
-          </p>
-
           <PickupSchedule days={place.days} later={laterNote(place.days)} />
 
           {!place.verified && <AiReadNote text={unverifiedNote(place.gmina)} />}
+
+          <CalendarBlock
+            href={`/ics/${encodeURIComponent(place.zoneId)}`}
+            label="Dodaj do kalendarza"
+            event="calendar_add"
+            zone={place.zoneId}
+            source="street"
+            file={{
+              href: `${placePath(place.id)}/harmonogram.pdf${place.nr ? `?nr=${place.nr}` : ""}`,
+              label: "Harmonogram do druku (PDF)",
+              event: "pdf_open",
+              zone: place.zoneId,
+            }}
+          />
         </>
       )}
       <SourceInset sources={wasteSources(place)} at={wasteChecked(place)} />

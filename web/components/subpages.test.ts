@@ -33,7 +33,11 @@ import {
 import { STALE_MS, type StoredPost, zukView } from "../lib/zuk-data.ts";
 import { Subpage } from "./module-page.tsx";
 import { AddressPage, numberError } from "./place-page.tsx";
-import { CALENDAR_CHECK, CALENDAR_STEPS } from "./subpage-parts.tsx";
+import {
+  ACTIONS_HEADING,
+  CALENDAR_CHECK,
+  CALENDAR_STEPS,
+} from "./subpage-parts.tsx";
 import { WarsawToday } from "./warsaw-today.tsx";
 import { WaterDetails } from "./water-page.tsx";
 import { eventProperties } from "./web-analytics.tsx";
@@ -120,11 +124,12 @@ const wastePage = (place: Partial<PlaceView> = {}, missing = false) => {
 const order = (html: string, markers: string[]) =>
   markers.map((marker) => html.indexOf(marker));
 
-/** The button, the hint and the details under it, as one string. */
+/** The actions: their h2, the button group, the details under it. */
 const calendarBlock = (html: string) =>
-  /<a [^>]*role="button"[^>]*><svg\/>[^<]*<\/a><p class="govuk-body">[^<]*<\/p><details class="govuk-details">[\s\S]*?<\/details>/.exec(
-    html,
-  )?.[0] ?? "";
+  /<section aria-labelledby="zapisz">[\s\S]*?<\/section>/.exec(html)?.[0] ?? "";
+
+/** The actions' start, for the order checks. */
+const ACTIONS = '<section aria-labelledby="zapisz">';
 
 /** The subpages' skeleton (docs/layout.md), in order. */
 const SKELETON = [
@@ -132,27 +137,38 @@ const SKELETON = [
   '<h1 class="govuk-heading-l">',
   // „Zmień adres”, GOV.UK's Change link.
   'govuk-link--no-visited-state" href="/"',
-  'role="button"',
 ];
-/** The bottom: the AI-read note, then the one source block with the check. */
-const AFTER = [
-  'class="govuk-warning-text"',
+/** The source block with the check, the page's last. */
+const SOURCE = [
   'class="govuk-inset-text"',
   '<p class="govuk-hint govuk-!-font-size-16">',
 ];
+/** After the content: the AI-read note, the actions, then the source. */
+const AFTER = ['class="govuk-warning-text"', ACTIONS, ...SOURCE];
+/** The same without a calendar file: no actions. */
+const AFTER_NO_ACTIONS = ['class="govuk-warning-text"', ...SOURCE];
 
 const ascending = (positions: number[]) =>
   positions.every((at, i) => at >= 0 && (i === 0 || at > positions[i - 1]));
 
-test("/woda: a primary button and its hint before the cuts", () => {
+test("/woda: the actions after the cuts and the AI note, a secondary button, no hint", () => {
   const html = waterPage();
   const block = calendarBlock(html);
-  assert.match(block, /class="govuk-button"/);
-  assert.doesNotMatch(block, /govuk-button--/);
+  assert.ok(
+    block.startsWith(
+      `<section aria-labelledby="zapisz"><h2 id="zapisz" class="govuk-heading-m">${ACTIONS_HEADING}</h2><div class="govuk-button-group"><a `,
+    ),
+    block,
+  );
+  assert.match(block, /class="govuk-button govuk-button--secondary"/);
+  assert.doesNotMatch(block, /class="govuk-button"/);
   assert.match(block, /href="\/adres\/0972447-26555\/woda\.ics"/);
-  // Its icon, then its words; its hint under it.
-  assert.match(block, /<svg\/>[^<]+<\/a><p class="govuk-body">[^<]+<\/p>/);
-  assert.doesNotMatch(block, /harmonogram\.pdf/);
+  // Its icon, then its words; the group, then the details: no hint.
+  assert.match(
+    block,
+    /<svg\/>[^<]+<\/a><\/div><details class="govuk-details">/,
+  );
+  assert.doesNotMatch(block, /harmonogram\.pdf|<p /);
   assert.ok(
     ascending(order(html, [...SKELETON, "<h2", 'class="app-card"', ...AFTER])),
     html,
@@ -180,21 +196,26 @@ test("/woda without a dated cut: no button, the rest in the same order", () => {
   const emergency = storedPost(POST_39885, CHECKED);
   emergency.items = emergency.items.map((cut) => ({ ...cut, end: null }));
   for (const html of [waterPage([emergency]), waterPage([])]) {
-    assert.doesNotMatch(html, /role="button"|woda\.ics/);
-    assert.ok(ascending(order(html, SKELETON.slice(0, -1))), html);
+    assert.doesNotMatch(
+      html,
+      /role="button"|woda\.ics|aria-labelledby="zapisz"/,
+    );
+    assert.ok(ascending(order(html, SKELETON)), html);
   }
   const html = waterPage([emergency]);
-  assert.ok(ascending(order(html, ["<h2", ...AFTER])), html);
+  assert.ok(ascending(order(html, ["<h2", ...AFTER_NO_ACTIONS])), html);
 });
 
-test("/smieci and /woda: the same skeleton and calendar block", () => {
+test("/smieci and /woda: the same skeleton and actions", () => {
   const waste = wastePage();
   assert.ok(
     ascending(order(waste, [...SKELETON, 'id="pickups-heading"', ...AFTER])),
     waste,
   );
+  // The same block once /smieci's PDF, its first button, is left out.
   const shape = (html: string) =>
     calendarBlock(html)
+      .replace(/<a [^>]*data-event="pdf_open"[^>]*>[\s\S]*?<\/a>/, "")
       .replace(/ (href|data-(?!module)[a-z]+)="[^"]*"/g, "")
       .replace(/>[^<]*</g, "><");
   assert.equal(shape(waste), shape(waterPage()));
@@ -203,10 +224,8 @@ test("/smieci and /woda: the same skeleton and calendar block", () => {
 test("the calendar's help is CalendarBlock's: the same words on both pages", () => {
   const waste = calendarBlock(wastePage());
   const water = calendarBlock(waterPage());
-  // Each page's own: the paragraph, its hint only, different on each.
-  const hint = (block: string) =>
-    /<\/a><p class="govuk-body">([^<]+)<\/p>/.exec(block)?.[1];
-  assert.ok(hint(waste) && hint(water) && hint(waste) !== hint(water));
+  // No hint on either: the buttons and the details say it.
+  assert.doesNotMatch(waste + water, /<\/a><p /);
   // The rest is CalendarBlock's: the same summary and bullets, in order.
   const help = (block: string) => block.slice(block.indexOf("<details"));
   const bullets = CALENDAR_STEPS.map((step) => `<li>${step}</li>`).join("");
@@ -221,8 +240,13 @@ test("the calendar's help is CalendarBlock's: the same words on both pages", () 
     );
   }
   assert.equal(help(waste), help(water));
-  // The PDF stays the page's own link, under the block.
-  assert.doesNotMatch(waste, /harmonogram\.pdf/);
+  // /smieci's PDF: the group's first button, a plain link to the file,
+  // before the calendar's; /woda has none.
+  assert.match(
+    waste,
+    /<div class="govuk-button-group"><a href="[^"]*\/harmonogram\.pdf" role="button" draggable="false" class="govuk-button govuk-button--secondary" data-module="govuk-button" data-event="pdf_open" data-zone="[^"]+"><svg\/>[^<]+<\/a><a href="\/ics\//,
+  );
+  assert.doesNotMatch(water, /harmonogram\.pdf/);
   // The details are closed until opened.
   assert.doesNotMatch(waste + water, /<details[^>]* open/);
 });
@@ -250,19 +274,21 @@ test("/smieci and /woda keep GOV.UK's row borders (only the hub drops them)", ()
   }
 });
 
-/** The button's opening tag. */
+/** The calendar button's opening tag. */
 const buttonTag = (html: string) =>
-  /<a [^>]*role="button"[^>]*>/.exec(html)?.[0] ?? "";
+  /<a [^>]*role="button"[^>]*data-event="(?:water_)?calendar_add"[^>]*>/.exec(
+    html,
+  )?.[0] ?? "";
 
 test("the calendar buttons' analytics: water by place, waste by zone", () => {
   assert.equal(
     buttonTag(waterPage()),
-    '<a href="/adres/0972447-26555/woda.ics" role="button" draggable="false" class="govuk-button" data-module="govuk-button" data-event="water_calendar_add" data-place="0972447-26555">',
+    '<a href="/adres/0972447-26555/woda.ics" role="button" draggable="false" class="govuk-button govuk-button--secondary" data-module="govuk-button" data-event="water_calendar_add" data-place="0972447-26555">',
   );
   // /smieci's calendar block, byte for byte.
   assert.equal(
     buttonTag(wastePage()),
-    '<a href="/ics/waste%3Amiasto-s2" role="button" draggable="false" class="govuk-button" data-module="govuk-button" data-event="calendar_add" data-zone="waste:miasto-s2" data-source="street">',
+    '<a href="/ics/waste%3Amiasto-s2" role="button" draggable="false" class="govuk-button govuk-button--secondary" data-module="govuk-button" data-event="calendar_add" data-zone="waste:miasto-s2" data-source="street">',
   );
 });
 
@@ -313,7 +339,7 @@ test("a number the register lacks: the one warning, the whole street", () => {
   );
   assert.ok(water.includes(WARNING), water);
   assert.ok(
-    ascending(order(water, [...SKELETON, "<h2", 'class="app-card"'])),
+    ascending(order(water, [...SKELETON, "<h2", 'class="app-card"', ACTIONS])),
     water,
   );
 });
@@ -504,10 +530,6 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
     waterPage([], place, { town, checked, now, day: todayInWarsaw(now) });
   const html = page([mzgkimPost(CUT_100, checked)]);
   assert.ok(ascending(order(html, [...SKELETON, ...AFTER])));
-  assert.match(
-    html,
-    /<svg\/>[^<]+<\/a><p class="govuk-body">[^<]*MZGKiM[^<]*<\/p>/,
-  );
   assert.match(
     html,
     /<h2 id="dzien-2026-10-06" class="govuk-heading-m">[^<]*6 października<\/h2><div class="app-card"><dl class="govuk-summary-list govuk-!-margin-bottom-0"><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">[^<]+<\/dt><dd class="govuk-summary-list__value"><ul class="app-chips"><li class="app-chip"><svg\/>[^<]*8:30[^<]*15:00[^<]*<\/li><\/ul><\/dd><\/div><div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">[^<]+<\/dt><dd class="govuk-summary-list__value">[^<]*Niemirowska<\/dd>/,

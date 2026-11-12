@@ -37,7 +37,6 @@ export type OutagePage = {
   calendar: {
     href: string;
     label: string;
-    hint: string;
     /** The analytics event (components/web-analytics.tsx). */
     event: "water_calendar_add";
     place: string;

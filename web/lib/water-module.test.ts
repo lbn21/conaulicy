@@ -45,7 +45,6 @@ import {
   type Water,
   water,
   waterAiNote,
-  waterCalendarHint,
   waterChecked,
   waterEmpty,
   waterNone,
@@ -711,10 +710,6 @@ test("town, an MZGKiM cut: shown as a ZUK cut, its own post the source", () => {
     waterAiNote(data),
     "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest komunikat MZGKiM.",
   );
-  assert.equal(
-    waterCalendarHint(data),
-    "Plik z przerwami. Jeśli MZGKiM zmieni godziny, pobierz go jeszcze raz.",
-  );
   // Its area off our list is only linked, and not here: its cut is.
   assert.deepEqual(data.notices, []);
   // "Osiedle Mazury" (the gazetteer): each of its streets, whole.
@@ -848,10 +843,6 @@ test("town, both sources' cuts: both posts, both in the AI note", () => {
   assert.equal(
     waterAiNote(both),
     "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejsze są komunikaty gminy i MZGKiM.",
-  );
-  assert.equal(
-    waterCalendarHint(both),
-    "Plik z przerwami. Jeśli gmina lub MZGKiM zmieni godziny, pobierz go jeszcze raz.",
   );
   assert.equal(waterSources(both).length, 2);
 });

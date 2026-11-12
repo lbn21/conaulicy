@@ -59,15 +59,6 @@ function OutageDetails({ page }: { page: OutagePage }) {
           <Parts parts={page.note} lead={false} />
         </div>
       )}
-      {page.calendar && (
-        <CalendarBlock
-          href={page.calendar.href}
-          label={page.calendar.label}
-          hint={page.calendar.hint}
-          event={page.calendar.event}
-          place={page.calendar.place}
-        />
-      )}
       {page.empty ? (
         <p className="app-empty govuk-body">
           <Parts parts={page.empty} lead={false} />
@@ -120,6 +111,14 @@ function OutageDetails({ page }: { page: OutagePage }) {
         </section>
       )}
       {page.aiNote && <AiReadNote text={page.aiNote} />}
+      {page.calendar && (
+        <CalendarBlock
+          href={page.calendar.href}
+          label={page.calendar.label}
+          event={page.calendar.event}
+          place={page.calendar.place}
+        />
+      )}
       <SourceInset sources={page.sources} at={page.checkedAt} />
     </>
   );
