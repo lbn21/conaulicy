@@ -84,7 +84,7 @@ const texts = (html: string, tag: string) =>
 /** The section labelled by `id`. */
 /** The small print, the page's last paragraph, as html. */
 const smallPrintHtml = (html: string) =>
-  /<p class="govuk-hint govuk-!-font-size-16">((?:(?!<\/p>).)*)<\/p><\/div><\/div>$/.exec(
+  /<p class="govuk-body-s app-quiet">((?:(?!<\/p>).)*)<\/p><\/div><\/div>$/.exec(
     html,
   )?.[1] ?? "";
 /** The small print's text, tags stripped. */
@@ -161,7 +161,7 @@ test("timeline: a card per day from today, 2+ empty days as one, Intl's titles",
   const timeline = section(html, "najblizsze-dni");
   assert.match(
     timeline,
-    /^<section aria-labelledby="najblizsze-dni"><h2 id="najblizsze-dni" class="govuk-heading-m">[^<]+<\/h2><ol class="app-timeline">/,
+    /^<section aria-labelledby="najblizsze-dni"><h2 id="najblizsze-dni" class="govuk-heading-m">[^<]+<\/h2><ol class="app-timeline govuk-!-font-size-19">/,
   );
   // 25-31 Oct: today, the cut on 26, 27-28 empty, the cut on 29, 30-31
   // empty; nothing after the window, so no „Później”.

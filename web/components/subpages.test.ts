@@ -142,7 +142,7 @@ const SKELETON = [
 /** The source block with the check, the page's last. */
 const SOURCE = [
   'class="govuk-inset-text"',
-  '<p class="govuk-hint govuk-!-font-size-16">',
+  '<p class="govuk-body-s app-quiet">',
 ];
 /** After the content: the AI-read note, the actions, then the source. */
 const AFTER = ['class="govuk-warning-text"', ACTIONS, ...SOURCE];
@@ -187,7 +187,7 @@ test("/woda: the AI note in a warning text, the source in an inset", () => {
   // The source: the cut's post, linked, then when we checked.
   assert.match(
     html,
-    /<div class="govuk-inset-text"><p class="govuk-hint govuk-!-font-size-16">[^<]*<a href="https:\/\/www\.gminalubaczow\.pl\/[^"]+" class="govuk-link">[^<]*23 października 2026<\/a>[^<]+<\/p><\/div>/,
+    /<div class="govuk-inset-text"><p class="govuk-body-s app-quiet">[^<]*<a href="https:\/\/www\.gminalubaczow\.pl\/[^"]+" class="govuk-link">[^<]*23 października 2026<\/a>[^<]+<\/p><\/div>/,
   );
   // A town street: the cut's own post is its only source, never MZGKiM's.
   assert.doesNotMatch(html, /mzgkim\.lubaczow\.pl/);
@@ -273,7 +273,7 @@ test("the calendar's help is CalendarBlock's: the same words on both pages", () 
   assert.doesNotMatch(waste + cuts, /<details[^>]* open/);
 });
 
-test("/smieci and /woda keep GOV.UK's row borders (only the hub drops them)", () => {
+test("/smieci: the dates a heading and a list each, /woda keeps GOV.UK's rows", () => {
   const pickup = (date: string) => ({
     date,
     pickups: [
@@ -286,14 +286,39 @@ test("/smieci and /woda keep GOV.UK's row borders (only the hub drops them)", ()
       },
     ],
   });
-  // Two days: the list starts with the second.
-  const days = [pickup("2026-10-27"), pickup("2026-11-10")];
-  for (const html of [wastePage({ days }), waterPage()]) {
-    // In a card (site.scss .app-card), whose last row drops its border by
-    // CSS; the markup never drops one.
-    assert.match(html, /<dl class="(?:app-card )?govuk-summary-list[^"]*">/);
-    assert.doesNotMatch(html, /no-border/);
-  }
+  // Five days: the next pickup, two in the card, two under „Pokaż więcej”.
+  const days = [
+    "2026-10-27",
+    "2026-11-10",
+    "2026-11-24",
+    "2026-12-08",
+    "2026-12-22",
+  ].map(pickup);
+  const waste = wastePage({ days });
+  // No summary list (a key column too narrow for a Polish date): per date
+  // an h3 with its time, then its bins, GOV.UK's section break between.
+  assert.doesNotMatch(waste, /govuk-summary-list/);
+  const date =
+    '<h3 class="govuk-heading-s govuk-!-margin-bottom-2"><time dateTime="[^"]+">[^<]*(?:<[^>]*>[^<]*)*?</time></h3><ul class="govuk-list govuk-!-margin-bottom-0 app-bins">';
+  const rule =
+    '<hr class="govuk-section-break govuk-section-break--m govuk-section-break--visible"/>';
+  assert.match(
+    waste,
+    new RegExp(`<div class="app-card">${date}.*?${rule}${date}`),
+  );
+  // „Pokaż więcej”: the dates bare in the details, no card inside it.
+  const more =
+    // The details right after the dates' card (the calendar's follows a <p>).
+    /<\/div><details class="govuk-details">.*?<div class="govuk-details__text">(.*?)<\/div><\/details>/.exec(
+      waste,
+    )?.[1] ?? "";
+  assert.match(more, new RegExp(`^${date}.*?${rule}${date}`));
+  assert.doesNotMatch(more, /app-card/);
+  // /woda: in a card (site.scss .app-card), whose last row drops its
+  // border by CSS; the markup never drops one.
+  const water = waterPage();
+  assert.match(water, /<dl class="govuk-summary-list[^"]*">/);
+  assert.doesNotMatch(water, /no-border/);
 });
 
 /** The calendar button's opening tag. */
@@ -563,7 +588,7 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
   );
   assert.match(
     html,
-    /<div class="govuk-inset-text"><p class="govuk-hint govuk-!-font-size-16">[^<]*<a href="https:\/\/mzgkim\.lubaczow\.pl\/przerwa-w-dostawie-wody-100\/" class="govuk-link">[^<]*2 października 2026<\/a>[^<]+<\/p><\/div>/,
+    /<div class="govuk-inset-text"><p class="govuk-body-s app-quiet">[^<]*<a href="https:\/\/mzgkim\.lubaczow\.pl\/przerwa-w-dostawie-wody-100\/" class="govuk-link">[^<]*2 października 2026<\/a>[^<]+<\/p><\/div>/,
   );
   // Its cut shown here: its area off our list is not linked again.
   assert.doesNotMatch(html, /id="inne-komunikaty"/);

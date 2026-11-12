@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import { DayWord } from "@/components/day-word";
 import { useWarsawToday } from "@/components/warsaw-today";
 import { Bins } from "@/components/waste-bins";
@@ -66,30 +67,35 @@ function NextPickup({ day }: { day: PickupDay }) {
   );
 }
 
-/** Further pickups: GOV.UK summary list, the date as key, bins as value. */
-function DayList({ days }: { days: PickupDay[] }) {
-  return (
-    // The list inside the card, not the card itself: from tablet GOV.UK's
-    // summary list is a table with collapsed borders, which drops a
-    // padding of its own.
-    <div className="app-card">
-      <dl className="govuk-summary-list govuk-!-margin-bottom-0">
-        {days.map((day) => (
-          <div key={day.date} className="govuk-summary-list__row">
-            <dt className="govuk-summary-list__key">
-              <time dateTime={day.date}>
-                <SpokenDay iso={day.date} />
-              </time>
-            </dt>
-            <dd className="govuk-summary-list__value">
-              <Bins pickups={day.pickups} size="medium" />
-              <PutOutBy day={day} />
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </div>
-  );
+/**
+ * Further pickups: per date a heading, then its bins, dates divided by
+ * GOV.UK's visible section break. A heading and a list at every width: a
+ * Polish date with its weekday never wraps in a narrow key column. In a
+ * card, or bare inside „Pokaż więcej” (the details' own indent is its
+ * frame).
+ */
+function DayList({
+  days,
+  framed = true,
+}: {
+  days: PickupDay[];
+  framed?: boolean;
+}) {
+  const list = days.map((day, i) => (
+    <Fragment key={day.date}>
+      {i > 0 && (
+        <hr className="govuk-section-break govuk-section-break--m govuk-section-break--visible" />
+      )}
+      <h3 className="govuk-heading-s govuk-!-margin-bottom-2">
+        <time dateTime={day.date}>
+          <SpokenDay iso={day.date} />
+        </time>
+      </h3>
+      <Bins pickups={day.pickups} size="medium" />
+      <PutOutBy day={day} />
+    </Fragment>
+  ));
+  return framed ? <div className="app-card">{list}</div> : list;
 }
 
 export function PickupSchedule({
@@ -129,7 +135,7 @@ export function PickupSchedule({
             </span>
           </summary>
           <div className="govuk-details__text">
-            <DayList days={rest} />
+            <DayList days={rest} framed={false} />
           </div>
         </details>
       )}

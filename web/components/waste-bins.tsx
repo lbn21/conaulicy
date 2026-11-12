@@ -27,39 +27,34 @@ function rectOf(r: {
 }
 
 /**
- * A mark's size: large for the next pickup, medium in the pickup list,
- * small in a row of names (the address page): then half the medium one,
- * 5px from its name (GOV.UK's spacing 1) and each bin 15px from the next
- * (spacing 3), side by side.
+ * A mark's size (site.scss .app-bin, in em, so it grows with the text):
+ * large for the next pickup, medium in the pickup list, small in a row of
+ * names (the address page), a chip each, side by side.
  */
 type Size = "large" | "medium" | "small";
 
-const SIZE: Record<Size, [number, number]> = {
-  large: [34, 48],
-  medium: [28, 40],
-  small: [14, 20],
-};
+const markClass = (size: Size) =>
+  size === "large" ? "app-bin" : `app-bin app-bin--${size}`;
 
 /** A bin's list item: small ones side by side, a chip each. */
 const itemClass = (size: Size) => (size === "small" ? "app-chip" : undefined);
 
-/** The list: small ones a row of chips. */
+/** The list: small ones a row of chips, else a flex row each (.app-bins). */
 const listClass = (size: Size) =>
-  size === "small" ? "app-chips" : "govuk-list govuk-!-margin-bottom-0";
+  size === "small"
+    ? "app-chips"
+    : "govuk-list govuk-!-margin-bottom-0 app-bins";
 
 function WasteMark({ tone, size }: { tone: string; size: Size }) {
   const token = TOKEN[tone];
   const fill = token ? `var(--waste-${token})` : "var(--app-bin-other)";
   const outline =
     token && OUTLINED.has(token) ? `var(--waste-${token}-border)` : "none";
-  const [width, height] = SIZE[size];
   return (
     <svg
       aria-hidden="true"
-      width={width}
-      height={height}
       viewBox={`0 0 ${BIN_WIDTH} ${BIN_HEIGHT}`}
-      className="app-bin"
+      className={markClass(size)}
       stroke={outline}
       strokeWidth="1.2"
       strokeLinejoin="round"
@@ -86,7 +81,7 @@ function WasteMark({ tone, size }: { tone: string; size: Size }) {
   );
 }
 
-/** A day's bins: each one's mark, then its name. */
+/** A day's bins: each one's mark, then its name, flex items of its row. */
 export function Bins({
   pickups,
   size,
@@ -98,11 +93,9 @@ export function Bins({
     <ul className={listClass(size)}>
       {pickups.map((pickup) => (
         <li key={pickup.id} className={itemClass(size)}>
-          <span aria-hidden="true">
-            {tones(pickup.subtype).map((tone) => (
-              <WasteMark key={tone} tone={tone} size={size} />
-            ))}
-          </span>
+          {tones(pickup.subtype).map((tone) => (
+            <WasteMark key={tone} tone={tone} size={size} />
+          ))}
           {pickup.label}
         </li>
       ))}

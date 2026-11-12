@@ -2,9 +2,13 @@
 // classes and components only, plus app/site.scss for what GOV.UK has no
 // equivalent for. Fails when:
 // - a stylesheet appears outside the allowed list;
-// - site.scss passes 2.77 KB gzip compiled (the hard cap) or 200 lines of code
-//   (blank and comment-only lines are not counted), or uses a raw colour or px
-//   (except the exact declarations in RAW_PX, GOV.UK's own magic numbers);
+// - site.scss passes MAX_GZIP compiled (the hard cap) or 200 lines of code
+//   (blank and comment-only lines are not counted), or uses a raw colour;
+// - an own stylesheet has a hack (scripts/lib/css-lint.mjs, R1-R8, R10: a
+//   font's or breakpoint's numbers, nudges, negative margins, raw lengths,
+//   !important) not allowed by a `// css-allow <rule>: <reason>` comment above
+//   it, or more of those than MAX_ALLOWED; every allowed one is printed;
+// - a page has an inline style (R9);
 // - a page uses govuk-button--inverse (its hover and shadow are GOV.UK brand
 //   blue, see check-govuk-assets.mjs);
 // - a govuk-tag has no colour modifier (the default tag is GOV.UK brand blue);
@@ -18,6 +22,7 @@ import path from "node:path";
 import { gzipSync } from "node:zlib";
 import { compile } from "sass";
 import { writeBrandAssets } from "./brand-assets.ts";
+import { lintCss, lintMarkup, RULES } from "./lib/css-lint.mjs";
 import { notSource, walk } from "./lib/files.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
@@ -46,39 +51,29 @@ const HOOK_ONLY = new Map([
     "template.njk's JS support hook on body, no rule in our components",
   ],
 ]);
-// The only raw px in site.scss: the GOV.UK header's logo geometry and the
-// warning-text icon's, copied from govuk-frontend's components/header and
-// components/warning-text _mixin.scss, which write them as magic px. Each
-// must appear exactly as here, once.
-const RAW_PX = [
-  // .govuk-header__logo: logo-styles($padding-top: 16px, $padding-bottom: 14px - 2px),
-  // changed to 18/11 to centre our plate exactly, bar 1px taller (a deviation)
-  "logo-styles($padding-top: 18px, $padding-bottom: 11px)",
-  // .govuk-header__logotype: top: -3px, changed to -2px with the line 1px higher,
-  // so the focus bar is centred under the plate (a deviation)
-  "top: -2px;",
-  // .govuk-header__logotype: margin-bottom: $logo-bottom-margin (2px)
-  "margin-bottom: 2px;",
-  // Ours, not GOV.UK's: the focused logo's even 6px of yellow
-  // round the plate, measured against Atkinson's content area at 30px.
-  "margin-left: -6px;",
-  "padding: 1px 6px 0;",
-  // govuk-focused-text (helpers/_focused.scss): box-shadow 0 -2px focus,
-  // 0 4px focus-text, with the bar in the header's colour so it does not
-  // show
-  "0 -2px govuk-functional-colour(focus),",
-  "0 4px $app-header-colour;",
-  // .govuk-generic-header__homepage-link:hover: 3px bar, made 4px as the focus
-  // bar, centred under the plate
-  "margin-bottom: -4px;",
-  "border-bottom-width: 4px;",
-  // .govuk-warning-text__icon: line-height: 29px, made 28px so Atkinson's "!"
-  // sits 1px higher, nearer the circle's centre (a deviation)
-  "line-height: 28px;",
+// Our own stylesheets in git, linted for hacks (the generated ones hold
+// only colours).
+const OWN = [
+  "app/site.scss",
+  "app/_settings.scss",
+  "app/govuk.scss",
+  "app/_assets.scss",
+  "app/tokens.css",
 ];
-// The caps: CSS ≤ 200 lines; MAX_GZIP is the gzip limit in bytes.
+// The caps: CSS ≤ 200 lines; MAX_GZIP is the gzip limit in bytes. Raised
+// from 2770 to 2806 in t368 (t366's audit): the timeline's dot on .5lh
+// (C8, 200 % text), GOV.UK's hover bar kept as a border under the logo's
+// own box (H3/H4, so forced colours still show it), the bins sized in em
+// on flex rows (H10/H11), the button's icon on a flex row (H2) and the
+// warning's "!" centred by grid (H6); the hacks they replace are gone.
+// t370 kept it at 2806: the header's hover bar, the timeline (a grid, no
+// positioned pseudo-elements) and the icon in a link (a flex row) replace
+// what they did in the same bytes.
+// MAX_ALLOWED: how many css-allow hacks may stay: none since t366's C1
+// made the h1 a flex row (t369, t372). Raising either is a reviewed diff.
 const MAX_LINES = 200;
-const MAX_GZIP = 2770;
+const MAX_GZIP = 2806;
+const MAX_ALLOWED = 0;
 
 const failures = [];
 
@@ -110,22 +105,27 @@ const lines = site
   .filter((line) => line.trim() && !line.trim().startsWith("//")).length;
 if (lines > MAX_LINES)
   failures.push(`app/site.scss: ${lines} lines (max ${MAX_LINES})`);
-let code = site.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
-for (const declaration of RAW_PX) {
-  const count = code.split(declaration).length - 1;
-  if (count !== 1)
-    failures.push(
-      `app/site.scss: RAW_PX "${declaration}" appears ${count} times (expected once)`,
-    );
-  code = code.replace(declaration, "");
-}
-for (const match of code.matchAll(
-  /#[0-9a-f]{3,8}\b|\b\d*\.?\d+px\b|\brgba?\(|\bhsla?\(/gi,
-)) {
+const code = site.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+for (const match of code.matchAll(/#[0-9a-f]{3,8}\b|\brgba?\(|\bhsla?\(/gi)) {
   failures.push(
     `app/site.scss: raw value ${match[0]} (use GOV.UK Sass functions)`,
   );
 }
+// Hacks (R1-R8, R10) in our own stylesheets, and the allowed ones.
+const allowed = [];
+for (const file of OWN) {
+  const lint = lintCss(readFileSync(path.join(ROOT, file), "utf8"), file);
+  allowed.push(...lint.allowed);
+  for (const f of lint.failures)
+    failures.push(
+      `${f.file}:${f.line}: ${f.rule} (${RULES[f.rule]}): ${f.text}`,
+    );
+}
+if (allowed.length > MAX_ALLOWED)
+  failures.push(
+    `${allowed.length} css-allow hacks (max ${MAX_ALLOWED}): lay it out with flex, grid and tokens`,
+  );
+
 // The Sass @uses the palette generated from lib/palette.ts (as next build).
 await writeBrandAssets();
 const css = compile(path.join(ROOT, "app/site.scss"), {
@@ -185,6 +185,9 @@ for (const file of files.filter((f) => /\.tsx$/.test(f))) {
       tailwind += 1;
     }
   }
+  if (!/\.test\.tsx$/.test(file))
+    for (const f of lintMarkup(source, file))
+      failures.push(`${f.file}:${f.line}: R9 (${RULES.R9}): ${f.text}`);
   if (source.includes("govuk-button--inverse")) {
     failures.push(`${file}: govuk-button--inverse (GOV.UK brand blue)`);
   }
@@ -210,8 +213,12 @@ for (const dep of Object.keys(deps).filter((d) => /tailwind|postcss/.test(d))) {
 }
 
 console.log(
-  `Own CSS: app/site.scss ${lines} lines of code, ${gzip} B gzip compiled; ${tailwind} Tailwind classes; ${styled.size} classes styled, ${unstyled.length} used without a rule.`,
+  `Own CSS: app/site.scss ${lines} lines of code, ${gzip} B gzip compiled; ${tailwind} Tailwind classes; ${styled.size} classes styled, ${unstyled.length} used without a rule; ${allowed.length} allowed hacks (max ${MAX_ALLOWED}):`,
 );
+for (const a of allowed)
+  console.log(
+    `  ${a.file}:${a.line} ${a.rules.join(", ")} ${a.text} — ${a.reason}`,
+  );
 if (failures.length > 0) {
   console.error(failures.map((f) => `FAIL  ${f}`).join("\n"));
   process.exit(1);

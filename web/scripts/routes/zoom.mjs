@@ -1,19 +1,22 @@
-// What a lint cannot see (t366 section 6): something placed by a font's
-// numbers holds at 100 % and drifts when the text grows. At 200 % text
-// size (the root's font size doubled, as a browser's text-only zoom;
+// What a lint cannot see (t366 section 6): tokens arranged to stand in for
+// a line's height hold at 100 % and break when the text grows. At 200 %
+// text size (the root's font size doubled, as a browser's text-only zoom;
 // GOV.UK's type is in rem), at 390 and 1280 px, on the CI fixture's town
-// street: the h1's icon tile's centre within 1 px of the h1's first
-// line's cap centre (t366's C1, t369). The timeline's dots join this
-// check with t368 (C8): whichever of the two lands second takes t368's
-// file with TILE_EXPECTED_TO_FAIL false.
+// street:
+//   - every timeline dot's centre within 1 px of its date line's centre
+//     (the address page);
+//   - the h1's icon tile's centre within 1 px of the h1's first line's cap
+//     centre (a subpage), at 100 % as well: the h1 is a flex row, its tile
+//     one line tall (t366's C1, t369).
 // The cap centre: the first character's baseline (its text box's top plus
 // the font's ascent, from canvas metrics) less half the cap height of „H”.
 
 const WIDTHS = [390, 1280];
 const TOLERANCE = 1;
 const PLACE = "/adres/0972447-00470";
+const TILE_EXPECTED_TO_FAIL = false;
 
-async function open(browser, url, width) {
+async function open(browser, url, width, scale = "200%") {
   const page = await (
     await browser.newContext({
       viewport: { width, height: 900 },
@@ -24,10 +27,28 @@ async function open(browser, url, width) {
   await page.waitForFunction(() => !document.querySelector(".app-skeleton"));
   await page.evaluate(async () => {
     await document.fonts.ready;
-    document.documentElement.style.fontSize = "200%";
   });
+  await page.evaluate((s) => {
+    document.documentElement.style.fontSize = s;
+  }, scale);
   return page;
 }
+
+/** Each dot's centre less its date line's centre, in px. */
+const dots = (page) =>
+  page.$$eval(".app-timeline > li", (items) =>
+    items.map((li) => {
+      const dot = li
+        .querySelector(".app-timeline__dot")
+        .getBoundingClientRect();
+      const title = li.querySelector(".app-timeline__title");
+      const centre = dot.top + dot.height / 2;
+      const line =
+        title.getBoundingClientRect().top +
+        Number.parseFloat(getComputedStyle(title).lineHeight) / 2;
+      return centre - line;
+    }),
+  );
 
 /** The h1's tile's centre less its first line's cap centre, in px. */
 const tile = (page) =>
@@ -57,16 +78,42 @@ export async function check(server, failures) {
   const seen = [];
   try {
     for (const width of WIDTHS) {
-      const sub = await open(browser, `${server.origin}${PLACE}/smieci`, width);
-      const d = await tile(sub);
-      if (Math.abs(d) > TOLERANCE)
-        failures.push(
-          `${PLACE}/smieci at ${width}, 200 %: the h1's tile is ${d.toFixed(2)} px off its cap centre`,
+      const hub = await open(browser, `${server.origin}${PLACE}`, width);
+      const offsets = await dots(hub);
+      if (offsets.length === 0)
+        failures.push(`${PLACE} at ${width}: no timeline dot`);
+      offsets.forEach((d, i) => {
+        if (Math.abs(d) > TOLERANCE)
+          failures.push(
+            `${PLACE} at ${width}, 200 %: dot ${i + 1} is ${d.toFixed(2)} px off its date line's centre`,
+          );
+      });
+      seen.push(
+        `${width}: ${offsets.length} dots, worst ${Math.max(...offsets.map(Math.abs)).toFixed(2)} px`,
+      );
+
+      for (const scale of ["100%", "200%"]) {
+        const sub = await open(
+          browser,
+          `${server.origin}${PLACE}/smieci`,
+          width,
+          scale,
         );
-      seen.push(`${width}: h1 tile ${d.toFixed(2)} px`);
+        const d = await tile(sub);
+        const off = Math.abs(d) > TOLERANCE;
+        if (off && !TILE_EXPECTED_TO_FAIL)
+          failures.push(
+            `${PLACE}/smieci at ${width}, ${scale}: the h1's tile is ${d.toFixed(2)} px off its cap centre`,
+          );
+        if (!off && TILE_EXPECTED_TO_FAIL)
+          failures.push(
+            `${PLACE}/smieci at ${width}, ${scale}: the h1's tile is centred (${d.toFixed(2)} px): set TILE_EXPECTED_TO_FAIL false`,
+          );
+        seen.push(`${width}, ${scale}: h1 tile ${d.toFixed(2)} px`);
+      }
     }
   } finally {
     await browser.close();
   }
-  return `200 % text: ${seen.join("; ")}.`;
+  return `zoom: ${seen.join("; ")}.`;
 }

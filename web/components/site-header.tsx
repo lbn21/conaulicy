@@ -26,7 +26,6 @@ export function SiteHeader() {
                 width={WIDTH}
                 height={HEIGHT}
                 viewBox={`0 0 ${LOGO_WIDTH} ${LOGO_HEIGHT}`}
-                className="app-logo"
               >
                 <PlateMask id="logo-plate" />
                 <path

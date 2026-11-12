@@ -9,7 +9,8 @@
 //   search      a chosen suggestion (click, tap, Enter) opens its place;
 //   swap        the skeleton's band and the page's in the same place,
 //               on every subpage, /woda with its fixture cut's actions;
-//   zoom        at 200 % text, the h1's tile on its first line.
+//   zoom        at 200 % text, the timeline's dots on their date lines;
+//               at 100 and 200 %, the h1's tile on its first line.
 // Every check by default; name some to run only those
 // (`node scripts/check-routes.mjs examples`). With CHECK_URL, a deployed
 // site instead of a local server (examples only: the others need the

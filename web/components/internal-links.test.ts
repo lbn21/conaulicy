@@ -117,6 +117,6 @@ test("the in-page links are FragmentLinks, to ids", () => {
   // The skip link's target is the layout's one <main>.
   assert.match(
     readFileSync(join(WEB, "app/layout.tsx"), "utf8"),
-    /<main className="govuk-main-wrapper" id="main-content">/,
+    /<main\s+className="govuk-main-wrapper govuk-!-padding-top-0"\s+id="main-content"\s*>/,
   );
 });

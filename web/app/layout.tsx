@@ -97,7 +97,10 @@ export default function RootLayout({
             @breadcrumbs slot (parallel routes; docs/layout.md). */}
         <div className="govuk-width-container">
           {breadcrumbs}
-          <main className="govuk-main-wrapper" id="main-content">
+          <main
+            className="govuk-main-wrapper govuk-!-padding-top-0"
+            id="main-content"
+          >
             {children}
           </main>
         </div>

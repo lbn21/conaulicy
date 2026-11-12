@@ -229,7 +229,7 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
         has no subpage, so its source link is here. The other sources and
         the AI caveat are on the subpages. */}
       {(fresh || imgw) && (
-        <p className="govuk-hint govuk-!-font-size-16">
+        <p className="govuk-body-s app-quiet">
           {[fresh, imgw && IMGW_ATTRIBUTION.source[0]]
             .filter(Boolean)
             .join(" ")}
