@@ -5,7 +5,8 @@
 // (=== only) and a person reviews every new schedule. No network, no
 // database: the core does those, tested end to end by
 // scripts/check-import-run.mjs; this file by lib.test.ts.
-import { FRACTIONS } from "../../../lib/waste-bin.ts";
+import { DAY_MARKS, MONTH_DAYS } from "../../../lib/pdf-grid.ts";
+import { FRACTIONS, tones } from "../../../lib/waste-bin.ts";
 import { type Etl, eventId } from "../../lib/import-data.ts";
 import type { Layout } from "./prompts.ts";
 
@@ -191,14 +192,48 @@ export type ValidationInput = {
 };
 
 /**
+ * The PDF's bounds (lib/pdf-grid.ts), always checked: a month with more
+ * than MONTH_DAYS dates, or a date with more than DAY_MARKS marks (one per
+ * fraction, as the PDF draws them), would not fit the one geometry every
+ * address's PDF has. A bigger schedule stops here, never clipped silently:
+ * the bounds grow first (and check-pdf with them).
+ */
+export function pdfBoundProblems(
+  zoneId: string,
+  events: Etl["events"],
+): string[] {
+  const marks = new Map<string, number>();
+  for (const e of events)
+    marks.set(e.start, (marks.get(e.start) ?? 0) + tones(e.subtype).length);
+  const dates = new Map<string, number>();
+  for (const day of marks.keys())
+    dates.set(day.slice(0, 7), (dates.get(day.slice(0, 7)) ?? 0) + 1);
+  return [
+    ...[...dates]
+      .filter(([, n]) => n > MONTH_DAYS)
+      .map(
+        ([month, n]) =>
+          `${zoneId}: ${month} has ${n} dates, the PDF holds ${MONTH_DAYS} (lib/pdf-grid.ts MONTH_DAYS)`,
+      ),
+    ...[...marks]
+      .filter(([, n]) => n > DAY_MARKS)
+      .map(
+        ([day, n]) =>
+          `${zoneId}: ${day} has ${n} fractions, the PDF holds ${DAY_MARKS} (lib/pdf-grid.ts DAY_MARKS)`,
+      ),
+  ].sort();
+}
+
+/**
  * Problems that stop an automatic apply: dates outside the schedule year,
  * dates off the sector's usual weekday (unless a public holiday explains the
- * move, or it is an approved anomaly), and counts far from last year's.
+ * move, or it is an approved anomaly), counts far from last year's, and
+ * more dates in a month or on a date than the PDF holds (pdfBoundProblems).
  */
 export function validateSchedule(input: ValidationInput): string[] {
   const { zoneId, year, events, checks, rules } = input;
-  const problems: string[] = [];
   if (events.length === 0) return [`${zoneId}: no dates`];
+  const problems: string[] = pdfBoundProblems(zoneId, events);
   if (checks.has("year"))
     for (const e of events) {
       if (!e.start.startsWith(`${year}-`))
