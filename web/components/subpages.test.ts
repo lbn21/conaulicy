@@ -187,7 +187,7 @@ test("/woda: the AI note in a warning text, the source in an inset", () => {
   // The source: the cut's post, linked, then when we checked.
   assert.match(
     html,
-    /<div class="govuk-inset-text"><p class="govuk-body-s app-quiet">[^<]*<a href="https:\/\/www\.gminalubaczow\.pl\/[^"]+" class="govuk-link">[^<]*23 października 2026<\/a>[^<]+<\/p><\/div>/,
+    /<div class="govuk-inset-text"><p class="govuk-body-s app-quiet govuk-!-margin-bottom-2">[^<]*<a href="https:\/\/www\.gminalubaczow\.pl\/[^"]+" class="govuk-link">[^<]*23 października 2026<\/a>[^<]+<\/p><p class="govuk-body-s app-quiet">Sprawdziliśmy [^<]+<\/p><\/div>/,
   );
   // A town street: the cut's own post is its only source, never MZGKiM's.
   assert.doesNotMatch(html, /mzgkim\.lubaczow\.pl/);
@@ -588,7 +588,7 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
   );
   assert.match(
     html,
-    /<div class="govuk-inset-text"><p class="govuk-body-s app-quiet">[^<]*<a href="https:\/\/mzgkim\.lubaczow\.pl\/przerwa-w-dostawie-wody-100\/" class="govuk-link">[^<]*2 października 2026<\/a>[^<]+<\/p><\/div>/,
+    /<div class="govuk-inset-text"><p class="govuk-body-s app-quiet govuk-!-margin-bottom-2">[^<]*<a href="https:\/\/mzgkim\.lubaczow\.pl\/przerwa-w-dostawie-wody-100\/" class="govuk-link">[^<]*2 października 2026<\/a>[^<]+<\/p><p class="govuk-body-s app-quiet">Sprawdziliśmy [^<]+<\/p><\/div>/,
   );
   // Its cut shown here: its area off our list is not linked again.
   assert.doesNotMatch(html, /id="inne-komunikaty"/);

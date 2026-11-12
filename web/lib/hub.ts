@@ -49,49 +49,73 @@ export type Group = Line[];
  */
 export type Checked = Date | string | null;
 
+/** Spaces as no-break spaces: a check's day and time never break (t373). */
+const unbroken = (text: string) => text.replaceAll(" ", "\u00a0");
+
 /** "25 października 14:20", or "23 października" for a day; Polish time. */
 const checkedWhen = (at: Date | string) =>
+  unbroken(
+    typeof at === "string"
+      ? dayMonth(warsawNoon(at).getTime())
+      : dayMonthTime(at.getTime()),
+  );
+
+/** A check's day ("25 października") and its time ("14:20"; a day: none). */
+const checkedParts = (at: Date | string) =>
   typeof at === "string"
-    ? dayMonth(warsawNoon(at).getTime())
-    : dayMonthTime(at.getTime());
+    ? { day: unbroken(dayMonth(warsawNoon(at).getTime())), time: null }
+    : { day: unbroken(dayMonth(at.getTime())), time: clockTime(at.getTime()) };
 
 /** A module with no data now: „Nie udało się sprawdzić ‹its subject›.” */
 export const unchecked = (module: { subject: string }) =>
   `Nie udało się sprawdzić ${module.subject}.`;
 
 /**
- * A subpage's source line, in its inset at the bottom: „Źródło: ‹its
- * sources, joined with ;›.”, then „Sprawdziliśmy 25 października 14:20.”,
- * absolute. Each only when there is one; neither: no parts.
+ * A subpage's source line, the first of its source note's
+ * (components/subpage-parts.tsx SourceNote): „Źródło: ‹its sources, joined
+ * with ;›.”; none: no parts.
  */
-export function sourceLine(sources: Part[][], at: Checked): Part[] {
-  const parts: Part[] = [];
-  if (sources.length > 0)
-    parts.push(
-      "Źródło: ",
-      ...sources.flatMap((source, i) => (i > 0 ? ["; ", ...source] : source)),
-      ".",
-    );
-  if (at) parts.push(` Sprawdziliśmy ${checkedWhen(at)}.`);
-  const out = merged(parts);
-  // No source before it: the line starts with the check.
-  if (typeof out[0] === "string") out[0] = out[0].trimStart();
-  return out;
+export function sourceLine(sources: Part[][]): Part[] {
+  if (sources.length === 0) return [];
+  return merged([
+    "Źródło: ",
+    ...sources.flatMap((source, i) => (i > 0 ? ["; ", ...source] : source)),
+    ".",
+  ]);
 }
 
 /**
- * The address page's freshness line: „Sprawdziliśmy: śmieci 10 listopada
- * 22:40, woda 11 listopada 07:00 i pogoda 11 listopada 07:07.”, each
- * module with a known check, in registry order (Intl.ListFormat); none:
- * null.
+ * A subpage's check line, its source note's own line: „Sprawdziliśmy 25
+ * października 14:20.”, absolute, the day and time unbroken; never
+ * checked: null.
+ */
+export const checkedLine = (at: Checked): string | null =>
+  at ? `Sprawdziliśmy ${checkedWhen(at)}.` : null;
+
+/**
+ * The address page's freshness line, each day once (t373): „Sprawdziliśmy
+ * 10 listopada: śmieci; 11 listopada: woda 7:00, prąd 7:05 i pogoda
+ * 7:07.”, every module with a known check and its own time, the days in
+ * the order their first module comes (registry order; Intl.ListFormat
+ * within a day); none: null.
  */
 export function freshnessLine(
   checks: Array<{ name: string; at: Checked }>,
 ): string | null {
-  const known = checks.flatMap(({ name, at }) =>
-    at ? [`${name} ${checkedWhen(at)}`] : [],
+  const days = new Map<string, string[]>();
+  for (const { name, at } of checks) {
+    if (!at) continue;
+    const { day, time } = checkedParts(at);
+    days.set(day, [
+      ...(days.get(day) ?? []),
+      time ? `${name}\u00a0${time}` : name,
+    ]);
+  }
+  if (days.size === 0) return null;
+  const parts = [...days].map(
+    ([day, names]) => `${day}: ${LIST.format(names)}`,
   );
-  return known.length > 0 ? `Sprawdziliśmy: ${LIST.format(known)}.` : null;
+  return `Sprawdziliśmy ${parts.join("; ")}.`;
 }
 
 /** Adjacent texts as one, so the markup has no empty comments between. */

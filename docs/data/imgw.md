@@ -49,7 +49,7 @@ IMGW issues warnings, changes (ZMIANA) and cancellations (ODWOŁANIE), but the J
 
 ## Terms: attribution
 
-The regulamin §5 requires, wherever the data is used, the source sentence, and for processed data also the processing sentence. We filter and convert times, so both. They live in `IMGW_ATTRIBUTION` (`lib/imgw-warnings.ts`), and the address page ends with both, verbatim, at the end of its small print:
+The regulamin §5 requires, wherever the data is used, the source sentence, and for processed data also the processing sentence. We filter and convert times, so both. They live in `IMGW_ATTRIBUTION` (`lib/imgw-warnings.ts`), and the address page's source note (`SourceNote`, t373) starts with both, verbatim, the check times on their own line under them. §5 ust. 3 and 4 of the regulamin (danepubliczne.imgw.pl, „Regulamin udostępniania danych”) prescribe the wording; nothing allows a shorter form, an abbreviation or a link in place of the name:
 
 > Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy.
 >

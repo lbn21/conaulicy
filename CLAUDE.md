@@ -27,10 +27,11 @@ A free site for Lubaczów residents: type your street, see what is coming at you
   - the footer is 16px (`govuk-!-font-size-16` on `.govuk-footer`, no own CSS), as the breadcrumbs: 19 for content, 16 for metadata and chrome, bold only for headings and keys, GOV.UK's v6 scale only (`docs/layout.md`).
   - accessible-autocomplete's field, hint and suggestions are 19px at every width, as `.govuk-input` (`site.scss`).
   - running text breathes: line-height 1.5 for paragraphs, leads, lists, hints and insets (not headings, summary lists, badges or chips), and paragraphs, lists and m/s headings 20/25 px from what follows (`site.scss`; Jakub as tech lead, t332).
+  - the page head's one spacing scale: a subpage's street line (`govuk-caption-l`) 10 px above its h1, not GOV.UK's 5/0 (`site.scss` `.app-band`; Jakub, t373).
   - loading states: each live block has a skeleton with a subtle pulse and reveals with a short fade (`<ViewTransition>`), none of it under `prefers-reduced-motion`. An address page and its subpages are one block (`web/components/place-suspense.tsx`). Empty states are plain text; skeletons show at once, no delay.
 - **Light theme only.**
 - Any other deviation needs Jakub's approval and a reason in the PR.
-- **Own CSS:** only `web/app/site.scss`, for what GOV.UK has no equivalent for. GOV.UK Sass functions and mixins only, no raw hex or px. CSS ≤ 2.806 KB gzip, ≤ 200 lines.
+- **Own CSS:** only `web/app/site.scss`, for what GOV.UK has no equivalent for. GOV.UK Sass functions and mixins only, no raw hex or px. CSS ≤ 2.812 KB gzip, ≤ 200 lines.
 - **No CSS hacks:** align with flex, grid and GOV.UK tokens, never offsets, negative margins, tuned line-heights or raw lengths; `check-own-css` (R1-R10, `web/scripts/lib/css-lint.mjs`) fails on any without a `// css-allow <rule>: <reason>` above it, capped by `MAX_ALLOWED` (0: none left); the routes check measures alignment at 100 and 200 % text (`docs/layout.md`). `web/app/tokens.css` holds only the font's metric-matched fallback.
 - **Colours have one home each:** our brand and IMGW's warning levels (`WARNING_LEVELS`) in `web/lib/palette.ts`, GOV.UK's own in `web/lib/govuk-colours.ts`, the bin colours in `web/lib/waste-colours.ts`; `check-palette` fails on a raw hex anywhere else in the site's code. Brand, palette and contrast: [docs/brand.md](docs/brand.md).
 

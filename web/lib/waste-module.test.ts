@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { type Checked, sourceLine } from "./hub.ts";
+import { type Checked, checkedLine } from "./hub.ts";
 
 /** The check, as a subpage's source block says it; none: null. */
-const checkedText = (at: Checked) => sourceLine([], at)[0] ?? null;
+const checkedText = (at: Checked) =>
+  checkedLine(at)?.replaceAll("\u00a0", " ") ?? null;
 
 import type { PlaceView } from "./schedule.ts";
 import { hasUpcoming } from "./schedule-notes.ts";

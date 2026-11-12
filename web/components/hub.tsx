@@ -14,6 +14,7 @@ import {
   numberQuery,
   StreetPage,
 } from "@/components/place-page";
+import { SourceNote } from "@/components/subpage-parts";
 import { Timeline } from "@/components/timeline";
 import { WarningCards } from "@/components/warning-cards";
 import { WarsawToday } from "@/components/warsaw-today";
@@ -223,26 +224,25 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
           </ul>
         </section>
       )}
-      {/* Small print at the end, above the footer, only what a resident
-        needs: when each module last checked its source, and, when IMGW's
+      {/* The source note at the end (SourceNote, as every subpage's),
+        above the footer, only what a resident needs: when each module last checked its source, and, when IMGW's
         data was read, its required wording, its name linked: the weather
         has no subpage, so its source link is here. The other sources and
         the AI caveat are on the subpages. */}
-      {(fresh || imgw) && (
-        <p className="govuk-body-s app-quiet">
-          {[fresh, imgw && IMGW_ATTRIBUTION.source[0]]
-            .filter(Boolean)
-            .join(" ")}
-          {imgw && (
+      <SourceNote
+        source={
+          imgw && (
             <>
+              {IMGW_ATTRIBUTION.source[0]}
               <a className="govuk-link" href={IMGW_PAGE}>
                 {IMGW_NAME}
               </a>
               {`${IMGW_ATTRIBUTION.source[1]} ${IMGW_ATTRIBUTION.processed}`}
             </>
-          )}
-        </p>
-      )}
+          )
+        }
+        checked={fresh}
+      />
     </AddressPage>
   );
 }

@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { freshnessLine, sourceLine } from "./hub.ts";
+import { checkedLine, freshnessLine, sourceLine } from "./hub.ts";
 
-/** The check alone, as a subpage's source block says it. */
-const checked = (at: Parameters<typeof sourceLine>[1]) =>
-  sourceLine([], at)[0] ?? null;
+/** The check line, its no-break spaces as spaces (asserted below). */
+const checked = (at: Parameters<typeof checkedLine>[0]) =>
+  checkedLine(at)?.replaceAll("\u00a0", " ") ?? null;
 
 test("check time: a day alone, an instant with its Warsaw time, over midnight and DST", () => {
   assert.equal(checked("2026-10-23"), "Sprawdziliśmy 23 października.");
@@ -53,34 +53,25 @@ test("check time: a day alone, an instant with its Warsaw time, over midnight an
   );
 });
 
-test("source line: sources joined, then when we checked, absolute", () => {
+test("source line: sources joined; the check its own line, unbroken", () => {
   const link = (text: string) => ({
     href: `https://example.org/${text}`,
     text,
   });
-  assert.deepEqual(
-    sourceLine(
-      [[link("a"), ", sektor 1"], [link("b")]],
-      new Date("2026-10-28T14:52:00Z"),
-    ),
-    [
-      "Źródło: ",
-      link("a"),
-      ", sektor 1; ",
-      link("b"),
-      ". Sprawdziliśmy 28 października 15:52.",
-    ],
-  );
-  assert.deepEqual(sourceLine([["IMGW-PIB"]], "2026-10-23"), [
-    "Źródło: IMGW-PIB. Sprawdziliśmy 23 października.",
-  ]);
-  // Never checked: the source alone; neither: nothing.
-  assert.deepEqual(sourceLine([[link("a")]], null), [
+  assert.deepEqual(sourceLine([[link("a"), ", sektor 1"], [link("b")]]), [
     "Źródło: ",
     link("a"),
+    ", sektor 1; ",
+    link("b"),
     ".",
   ]);
-  assert.deepEqual(sourceLine([], null), []);
+  assert.deepEqual(sourceLine([["IMGW-PIB"]]), ["Źródło: IMGW-PIB."]);
+  // The check is its own line, its day and time never broken (t373).
+  assert.equal(
+    checkedLine(new Date("2026-10-28T14:52:00Z")),
+    "Sprawdziliśmy 28\u00a0października\u00a015:52.",
+  );
+  assert.deepEqual(sourceLine([]), []);
 });
 
 test("freshness line: each module with a known check, in order, as a Polish list", () => {
@@ -90,7 +81,7 @@ test("freshness line: each module with a known check, in order, as a Polish list
       { name: "woda", at: new Date("2026-11-11T06:00:00Z") },
       { name: "pogoda", at: new Date("2026-11-11T06:07:00Z") },
     ]),
-    "Sprawdziliśmy: śmieci 10 listopada 22:40, woda 11 listopada 7:00 i pogoda 11 listopada 7:07.",
+    "Sprawdziliśmy 10\u00a0listopada: śmieci\u00a022:40; 11\u00a0listopada: woda\u00a07:00 i pogoda\u00a07:07.",
   );
   assert.equal(
     freshnessLine([
@@ -98,7 +89,7 @@ test("freshness line: each module with a known check, in order, as a Polish list
       { name: "woda", at: null },
       { name: "pogoda", at: new Date("2026-11-11T06:07:00Z") },
     ]),
-    "Sprawdziliśmy: śmieci 23 października i pogoda 11 listopada 7:07.",
+    "Sprawdziliśmy 23\u00a0października: śmieci; 11\u00a0listopada: pogoda\u00a07:07.",
   );
   assert.equal(freshnessLine([{ name: "woda", at: null }]), null);
 });
