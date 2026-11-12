@@ -91,7 +91,7 @@ export function SubpageRoute({
   ...variant
 }: Variant & { params: SubpageParams; searchParams: AddressSearch }) {
   return (
-    <PlaceSuspense>
+    <PlaceSuspense caption>
       <SubpageContent
         params={params}
         searchParams={searchParams}

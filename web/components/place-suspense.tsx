@@ -32,12 +32,22 @@ const CARD = (
   </div>
 );
 
-const SKELETON = (
+/**
+ * The skeleton; a subpage's band has its caption (the place, above its
+ * h1), the address page's has none, so the band is as tall as the page's
+ * and nothing under it moves at the reveal.
+ */
+const skeleton = (caption: boolean) => (
   <div className="govuk-grid-row">
     <div className="govuk-grid-column-two-thirds">
       <BlockSkeleton>
         {/* The page head's band (components/page-head.tsx), as the page. */}
         <div className="app-band">
+          {caption && (
+            <span className="govuk-caption-l">
+              <Skeleton>Lubaczów, ul. Rynek</Skeleton>
+            </span>
+          )}
           <p className="govuk-heading-l">
             <Skeleton>ul. Adama Mickiewicza</Skeleton>
           </p>
@@ -72,9 +82,16 @@ export const CRUMBS_SKELETON = (
  * itself (its buttons, the error summary's focus), once it is there;
  * those the layout already started are skipped.
  */
-export function PlaceSuspense({ children }: { children: ReactNode }) {
+export function PlaceSuspense({
+  children,
+  caption = false,
+}: {
+  children: ReactNode;
+  /** A subpage: its band starts with a caption. */
+  caption?: boolean;
+}) {
   return (
-    <LiveBlock skeleton={SKELETON}>
+    <LiveBlock skeleton={skeleton(caption)}>
       {children}
       <GovukFrontend />
     </LiveBlock>
