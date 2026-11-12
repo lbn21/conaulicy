@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { relativeDay } from "../lib/dates.ts";
 import { unchecked } from "../lib/hub.ts";
 import { copyCheckedAt } from "../lib/imgw-fixture.ts";
 import { IMGW_PAGE } from "../lib/imgw-shown.ts";
@@ -75,6 +76,8 @@ function unicons(html: string) {
     assert.match(svg, /aria-hidden="true"/);
   return html.replace(/<svg\b.*?<\/svg>/g, "<svg/>");
 }
+/** „, dzisiaj”: an empty row holding today, after its date (Intl's word). */
+const TODAY_WORD = `, ${relativeDay("2026-10-25", "2026-10-25")}`;
 const count = (html: string, text: string) => html.split(text).length - 1;
 /** The text of each `<tag>` in the html, tags stripped. */
 const texts = (html: string, tag: string) =>
@@ -189,8 +192,9 @@ test("timeline: a card per day from today, 2+ empty days as one, Intl's titles",
   // 25-31 Oct: today, the cut on 26, 27-28 empty, the cut on 29, 30-31
   // empty; nothing after the window, so no „Później”.
   assert.deepEqual(texts(timeline, "h3"), [
-    // Today empty (its warning is a card above): a plain row, no badge.
-    "Niedziela, 25 października",
+    // Today empty (its warning is a card above): a plain row, no badge,
+    // today's word for screen readers only (Intl's, TODAY_WORD).
+    `Niedziela, 25 października${TODAY_WORD}`,
     "Poniedziałek, 26 października,  Jutro",
     "27–28 października",
     "Czwartek, 29 października,  Za 4 dni",
@@ -422,7 +426,7 @@ test("waste: its pickups by day; in the window, so no „Później” for it", (
   const timeline = section(html, "najblizsze-dni");
   assert.deepEqual(texts(timeline, "h3"), [
     // An empty today and tomorrow: one run.
-    "25–26 października",
+    `25–26 października${TODAY_WORD}`,
     "Wtorek, 27 października,  Pojutrze",
     "28–31 października",
   ]);
@@ -461,6 +465,8 @@ const wasteOn = (...dates: string[]) =>
   });
 
 const TODAY = "app-timeline__today";
+/** What an empty row holding today says to screen readers only. */
+const HIDDEN_TODAY = `<span class="govuk-visually-hidden">${TODAY_WORD}</span>`;
 const EMPTY = "app-timeline__empty";
 const STRONG = "app-badge app-badge--strong";
 
@@ -468,8 +474,10 @@ const STRONG = "app-badge app-badge--strong";
 // and tomorrow included, a plain row without a badge; today's row marked in
 // the markup (its dot filled, site.scss), and no other, whatever its badge.
 test("timeline: an empty today alone is a plain row, marked today; tomorrow's card is not", () => {
-  const [today, tomorrow, ...rest] = rows(wasteOn("2026-10-26"));
+  const html = wasteOn("2026-10-26");
+  const [today, tomorrow, ...rest] = rows(html);
   assert.deepEqual(today.classes, [TODAY, EMPTY]);
+  assert.equal(count(html, HIDDEN_TODAY), 1);
   assert.equal(today.badge, null);
   assert.match(today.date, /25/);
   assert.deepEqual(tomorrow.classes, []);
@@ -478,8 +486,12 @@ test("timeline: an empty today alone is a plain row, marked today; tomorrow's ca
 });
 
 test("timeline: an empty today and tomorrow before a day with something: one run, marked today", () => {
-  const [run, day] = rows(wasteOn("2026-10-27"));
+  const html = wasteOn("2026-10-27");
+  const [run, day] = rows(html);
   assert.deepEqual(run.classes, [TODAY, EMPTY, "app-timeline__range"]);
+  // The range keeps its date on screen, „dzisiaj” for screen readers only,
+  // once: the later empty run (28–31) says nothing of today.
+  assert.equal(count(html, HIDDEN_TODAY), 1);
   assert.equal(run.badge, null);
   assert.deepEqual(day.classes, []);
   assert.notEqual(day.badge, null);
@@ -488,6 +500,7 @@ test("timeline: an empty today and tomorrow before a day with something: one run
 test("timeline: all 7 days empty: one run from today, then „Później”", () => {
   const html = wasteOn("2026-11-10");
   const list = rows(html);
+  assert.equal(count(html, HIDDEN_TODAY), 1);
   assert.deepEqual(
     list.map((row) => row.classes),
     [[TODAY, EMPTY, "app-timeline__range"], ["app-timeline__later"]],
@@ -499,6 +512,8 @@ test("timeline: something today: today's card, its strong badge, marked today", 
   const html = wasteOn("2026-10-25", "2026-10-26");
   const [today, ...rest] = rows(html);
   assert.deepEqual(today.classes, [TODAY]);
+  // A card's badge says it: no hidden word.
+  assert.equal(count(html, HIDDEN_TODAY), 0);
   assert.equal(today.badge, STRONG);
   // Tomorrow keeps its strong badge, not today's mark.
   assert.deepEqual(rest[0].classes, []);
@@ -509,7 +524,7 @@ test("timeline: something today: today's card, its strong badge, marked today", 
 test("waste only after the window: „Później”, its next pickup with its year", () => {
   const html = page(testPlace({ ...STREET, days: STREET.days.slice(1) }));
   const timeline = section(html, "najblizsze-dni");
-  assert.deepEqual(texts(timeline, "h3")[0], "25–31 października");
+  assert.deepEqual(texts(timeline, "h3")[0], `25–31 października${TODAY_WORD}`);
   assert.equal(count(timeline, "<h3 "), 2);
   // „Później”: only the next pickup after the window, its date the value.
   const later = /<li class="app-timeline__later">.*?<\/li>/.exec(timeline)?.[0];

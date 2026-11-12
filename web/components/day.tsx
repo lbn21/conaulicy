@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { DayWord } from "@/components/day-word";
 import { FunctionRows } from "@/components/function-rows";
-import { absoluteDay, capitalised, dayRange } from "@/lib/dates";
+import { absoluteDay, capitalised, dayRange, relativeDay } from "@/lib/dates";
 import type { PlaceView } from "@/lib/schedule";
 import type { DayGroup, Entry } from "@/lib/timeline";
 
@@ -15,7 +15,8 @@ import type { DayGroup, Entry } from "@/lib/timeline";
 // card at the ringed end of the line. Each li starts with its dot, an
 // empty aria-hidden span (site.scss lays it out on the grid); the li
 // holding the read's day (place.today) is marked app-timeline__today, its
-// dot filled, whatever the row is.
+// dot filled, whatever the row is; an empty one says „dzisiaj” (Intl's
+// word) to screen readers only, after its date.
 
 /** What an empty day or run says. */
 const NOTHING = "Nic nie zaplanowano.";
@@ -59,16 +60,24 @@ export function Day({
   place: PlaceView;
 }) {
   const empty = entries.length === 0;
-  const title =
-    from === to ? (
-      <>
-        <time dateTime={from}>{capitalised(absoluteDay(from))}</time>
-        {!empty && <DayWord day={from} form="title" />}
-      </>
-    ) : (
-      <time dateTime={from}>{dayRange(from, to)}</time>
-    );
   const today = from <= place.today && place.today <= to;
+  const title = (
+    <>
+      {from === to ? (
+        <time dateTime={from}>{capitalised(absoluteDay(from))}</time>
+      ) : (
+        <time dateTime={from}>{dayRange(from, to)}</time>
+      )}
+      {!empty && <DayWord day={from} form="title" />}
+      {/* An empty row holding today has no badge: its date alone on
+        screen, today's word (Intl's) for screen readers only (t373, c). */}
+      {empty && today && (
+        <span className="govuk-visually-hidden">
+          , {relativeDay(place.today, place.today)}
+        </span>
+      )}
+    </>
+  );
   return (
     <li
       className={
