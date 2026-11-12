@@ -13,6 +13,17 @@ test("each hack trips its rule", () => {
     "R7",
   ]);
   assert.deepEqual(rules(".a { position: absolute; left: $x; }"), ["R2"]);
+  // A pseudo-element is no exception (t370).
+  assert.deepEqual(
+    rules(".a::after { position: absolute; top: calc(50% - #{$x}); }"),
+    ["R2"],
+  );
+  assert.deepEqual(
+    rules(
+      ".a { position: relative; &::after { position: absolute; inset: calc(100% + #{$x}) 0 auto; } }",
+    ),
+    ["R2"],
+  );
   assert.deepEqual(rules(".a { margin: -(govuk-spacing(4)) 0; }"), ["R3"]);
   assert.deepEqual(rules(".a { margin-left: -$app-hair; }"), ["R3"]);
   assert.deepEqual(rules(".a { transform: translateY(1px); }"), ["R4", "R7"]);
@@ -32,8 +43,8 @@ test("tokens, keywords, flex and decoration pass", () => {
     .a { --y: calc(#{$app-hair + govuk-spacing(3)} + .5lh); height: 1lh; }
     .app-icon { width: 1.25em; height: 1.25em; }
     .app-bin--small { height: 1.25em; }
-    .a::before { content: ""; position: absolute; top: calc(50% - #{$x}); left: -(govuk-spacing(6)); }
-    .a { position: relative; &::after { position: absolute; inset: 0 $x; } }
+    .a { position: relative; &::after { position: absolute; inset: 0; } }
+    .a::before { content: ""; position: fixed; inset: 0 0 auto; }
     .a { transform: rotate(45deg); animation: x 1.6s; inset: 0 0 auto; }
     @keyframes x { 50% { opacity: .55; } }
     // a comment with 3px and !important in it

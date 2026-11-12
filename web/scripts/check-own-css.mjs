@@ -66,12 +66,15 @@ const OWN = [
 // own box (H3/H4, so forced colours still show it), the bins sized in em
 // on flex rows (H10/H11), the button's icon on a flex row (H2) and the
 // warning's "!" centred by grid (H6); the hacks they replace are gone.
-// MAX_ALLOWED: how many css-allow hacks may stay (t368: the h1's tile until
-// t366's C1, and the icon in a wrapping link). Raising either is a reviewed
+// t370 kept it at 2806: the header's hover bar, the timeline (a grid, no
+// positioned pseudo-elements) and the icon in a link (a flex row) replace
+// what they did in the same bytes.
+// MAX_ALLOWED: how many css-allow hacks may stay (t370: the h1's tile until
+// t366's C1; 0 after it). Raising either is a reviewed
 // diff.
 const MAX_LINES = 200;
 const MAX_GZIP = 2806;
-const MAX_ALLOWED = 2;
+const MAX_ALLOWED = 1;
 
 const failures = [];
 

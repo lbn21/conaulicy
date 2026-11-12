@@ -38,12 +38,11 @@ async function open(browser, url, width) {
 const dots = (page) =>
   page.$$eval(".app-timeline > li", (items) =>
     items.map((li) => {
-      const dot = getComputedStyle(li, "::before");
+      const dot = li
+        .querySelector(".app-timeline__dot")
+        .getBoundingClientRect();
       const title = li.querySelector(".app-timeline__title");
-      const centre =
-        li.getBoundingClientRect().top +
-        Number.parseFloat(dot.top) +
-        Number.parseFloat(dot.height) / 2;
+      const centre = dot.top + dot.height / 2;
       const line =
         title.getBoundingClientRect().top +
         Number.parseFloat(getComputedStyle(title).lineHeight) / 2;

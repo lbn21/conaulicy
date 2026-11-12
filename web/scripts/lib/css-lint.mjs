@@ -13,7 +13,7 @@
 
 export const RULES = {
   R1: "vertical-align with a length, or a line-box keyword (top, bottom): a font's numbers",
-  R2: "an offset (top, right, bottom, left, inset) on an element positioned relative, or absolute/fixed outside a pseudo-element",
+  R2: "an offset (top, right, bottom, left, inset) other than 0 or auto on a positioned element or pseudo-element",
   R3: "a negative margin",
   R4: "a translate",
   R5: "a line-height other than 1 or 1.5 (GOV.UK's mixins set theirs)",
@@ -47,6 +47,7 @@ function topLevel(text) {
 
 const isPseudo = (selector) =>
   topLevel(selector).every((s) => /::[\w-]+(\([^)]*\))?$/.test(s));
+const POSITIONED = /^(relative|absolute|fixed|sticky)$/;
 
 /** A child selector resolved against its parent (& or descendant). */
 function resolve(parent, selector) {
@@ -177,12 +178,7 @@ function broken(decl, block) {
   if (/^(top|right|bottom|left|inset(-[a-z-]+)?)$/.test(prop)) {
     const position = block.decls.find((d) => d.prop === "position")?.value;
     const nonZero = value.split(/\s+/).some((t) => t !== "0" && t !== "auto");
-    if (
-      nonZero &&
-      (position === "relative" ||
-        (/^(absolute|fixed|sticky)$/.test(position ?? "") && !pseudo))
-    )
-      hits.add("R2");
+    if (nonZero && POSITIONED.test(position ?? "")) hits.add("R2");
   }
   if (
     /^margin(-[a-z-]+)?$/.test(prop) &&
