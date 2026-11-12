@@ -670,10 +670,12 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // street's name, then its day line, one under another at the left margin,
   // each on its row of the scale as there (the plate, three steps, the
   // body's row, the title's row, a step, the body's row); on the right the
-  // QR code's white box, a step, then its caption on one line, centred
-  // under the box. Each block is centred by its ink on the band's midline
-  // (the plate's top to the day line's baseline; the box's top to the
-  // caption's baseline): equal padding above and below each. The rows are
+  // QR code's white box, a step, then its caption on one line, its ink
+  // centred under the box: one unit, its ink flush with the right margin as
+  // the left block is with the left (Jakub, t362). The left block is
+  // centred by its ink on the band's midline (the plate's top to the day
+  // line's baseline), the right unit by all of its ink (the box's top to
+  // the caption's descenders): equal padding above and below each. The rows are
   // reserved at the scale's sizes, so a name set smaller to fit, or no day
   // line, leaves the geometry one for every address. Its height (37 U) is
   // the most page 2 leaves under the same gap as page 1's (GRID_GAP): the
@@ -683,8 +685,8 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const qrSize = 20 * U;
   const qrBox = qrSize + 2 * U;
   const scan = "Zeskanuj: aktualne terminy";
-  const scanW = widthOf("regular", TYPE.small, scan);
-  const qrColumn = Math.max(qrBox, scanW);
+  const scanInk = inkOf("regular", TYPE.small, scan);
+  const qrColumn = Math.max(qrBox, scanInk.right - scanInk.left);
   const qrCentre = PAGE_W - MARGIN - qrColumn / 2;
   const qrX = qrCentre - qrBox / 2;
   /** A row's cap baseline below the row's top: its cap centred in it. */
@@ -696,7 +698,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const leftInk = lineRow + baseline(TYPE.body);
   // The right block's caption row, from its top.
   const scanRow = qrBox + U;
-  const rightInk = scanRow + baseline(TYPE.small);
+  const rightInk = scanRow + baseline(TYPE.small) + scanInk.below;
   const bandH = 37 * U;
   const leftTop = (bandH - leftInk) / 2;
   const rightTop = (bandH - rightInk) / 2;
@@ -768,7 +770,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         TYPE.small,
         WHITE,
         scan,
-        qrCentre - scanW / 2,
+        qrCentre - (scanInk.left + scanInk.right) / 2,
         rightTop + scanRow,
         ROW[TYPE.small],
         { link: url },
