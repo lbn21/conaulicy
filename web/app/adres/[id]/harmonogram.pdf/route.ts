@@ -26,7 +26,7 @@ import { fileSlug } from "@/lib/normalize";
 import { type Block, flow, type Spot } from "@/lib/pdf-flow";
 import { chooseGrid, dateRows, tableRows } from "@/lib/pdf-grid";
 import { drawIcon, FRACTION_ICONS, PDF_ICONS } from "@/lib/pdf-icon";
-import { KEY_LABELS, keyCell, keyGrid, keyOrder } from "@/lib/pdf-key";
+import { keyCell, keyGrid, keyOrder, PDF_MONTHS } from "@/lib/pdf-key";
 import { scheduleName } from "@/lib/places";
 import {
   getPlace,
@@ -60,14 +60,15 @@ const BOLD = readFileSync(
 
 // A4 portrait in points, laid out as a council's bin leaflet in the site's
 // look, on one spacing scale (U, 4 pt) and one type scale (TYPE): page 1 is
-// the whole published period on one page (the cherry band with the "ul."
-// plate and the QR code, one GOV.UK Warning line, identical bordered month
-// tables in a fixed 4 × 3 grid (lib/pdf-grid.ts), the key, one footer line);
+// the next six months (the cherry band with the "ul." plate and the QR
+// code, one GOV.UK Warning line, identical bordered month tables in a fixed
+// 3 × 2 grid (lib/pdf-grid.ts), the key, one footer line);
 // page 2, „Co wrzucać”, the same for every address: equal tiles for the
 // bins and a row for the waste handed in separately, from the gmina's own
 // rules (lib/sorting-guide.ts) with Lucide's icons, the PSZOK line beside the
 // QR code to the full rules, one footer line; then the text-only version,
-// for screen readers and black-and-white use.
+// for screen readers and black-and-white use, on page 3. Three pages, every
+// address.
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
 // The spacing scale: every gap, padding and size a multiple of U.
@@ -76,28 +77,20 @@ const MARGIN = 7 * U;
 /** Between the guide's tiles. */
 const GUTTER = 2 * U;
 /**
- * Page 1's month grid: always 4 × 3 tables, the twelve months of the
- * window (Jakub, t333), as wide as the page allows with a gutter that
- * reads as one between tables.
+ * Page 1's month grid: always 3 × 2 tables, the six months of the window
+ * (Jakub, t334), as wide as the page allows with a gutter that reads as
+ * one between tables.
  */
-const MONTH_COLUMNS = 4;
-const MONTH_ROWS = 3;
+const MONTH_COLUMNS = 3;
+const MONTH_ROWS = 2;
 const MONTH_GUTTER = 3 * U;
 /** Between the page's blocks: band, note, grid, key, footer. */
 const SECTION = 4 * U;
-/**
- * Page 1's blocks under the band (note, calendar, key, footer): a step
- * closer than SECTION, so twelve months and the key fit (Tech Lead, t334).
- */
-const CAL_SECTION = SECTION - U;
-/** Under the footer line, page 1 and 2: a step inside the side margin. */
-const FOOT = MARGIN - U;
 /** A table cell's inner padding: the headers breathe, as the leaflet's. */
 const TABLE_PAD = 2 * U;
 /** Every border and rule: one weight, one colour (RULE, below). */
 const LINE_W = 0.5;
 const CONTENT_W = PAGE_W - 2 * MARGIN;
-const MONTHS = 12;
 
 /** The site's type scale at its physical size: CSS px × 0.75 = pt. */
 const px = (n: number) => n * 0.75;
@@ -370,11 +363,11 @@ function inkOf(
   };
 }
 
-/** The current month and the 11 after it, as "YYYY-MM". */
+/** The current month and the ones after it, PDF_MONTHS in all, as "YYYY-MM". */
 function windowMonths(today: string): string[] {
   const year = Number(today.slice(0, 4));
   const month = Number(today.slice(5, 7)) - 1;
-  return Array.from({ length: MONTHS }, (_, i) => {
+  return Array.from({ length: PDF_MONTHS }, (_, i) => {
     const y = year + Math.floor((month + i) / 12);
     const m = ((month + i) % 12) + 1;
     return `${y}-${String(m).padStart(2, "0")}`;
@@ -604,7 +597,7 @@ function render(
   const footerLine = (text: string) => {
     const size = fitting("regular", text, CONTENT_W, [TYPE.small, TYPE.fine]);
     const h = block("regular", size, text, CONTENT_W);
-    const top = PAGE_H - FOOT - h;
+    const top = PAGE_H - MARGIN - h;
     const ruleY = top - 2 * U;
     const draw = (parent: PDFKit.PDFStructureElement | null) => {
       if (parent) artifact(doc, () => rule(ruleY));
@@ -805,12 +798,13 @@ function render(
 
   // ------------------------------------------------------------ key
   // Above the footer, the same for every address (lib/pdf-key.ts): the
-  // key's heading on a line of its own, then one fixed grid of 2 × 5 equal
-  // cells across the content width (rows of 5 U, marks the tables' size),
-  // room for every fraction a zone's twelve months hold; an address fills
-  // its cells in the key's order, with its short names, and leaves the
-  // rest empty. On the heading's line, right-aligned in a fixed slot, a
-  // moved date's note, drawn only where the page has one.
+  // key's heading on a line of its own, then one grid of equal cells across
+  // the content width (rows of 5 U, marks the tables' size), sized from the
+  // data alone: as many columns as the widest name of any zone's key
+  // allows, as many rows as the fullest key of any zone in any six months
+  // needs. An address fills its cells in the key's order, with the site's
+  // names, and leaves the rest empty. On the heading's line, right-aligned
+  // in a fixed slot, a moved date's note, drawn only where the page has one.
   // One slot for every mark, in the tables and the key (OPTICAL); a full
   // step between slots.
   const MARK = 11;
@@ -819,10 +813,7 @@ function render(
   const KEY_GAP = 3 * U;
   const keyHeading = "Oznaczenia";
   const movedLabel = "Termin przesunięty";
-  const keyName = (tone: string) =>
-    KEY_LABELS.find((k) => k.subtype === tone)?.label ??
-    TONE_LABEL[tone] ??
-    tone;
+  const keyName = (tone: string) => TONE_LABEL[tone] ?? tone;
   /** These months' fractions, in the key's order, and any moved date. */
   const keyFor = (keys: string[]) => {
     const days = keys.flatMap((key) => byMonth.get(key) ?? []);
@@ -833,22 +824,19 @@ function render(
       moved: days.some((day) => moved(day)),
     };
   };
-  // Rows for the fullest key of any zone, and this address's: never fewer
-  // than KEY_ROWS.
+  // Every zone's key, in every window of six months: never this address's.
+  doc.font("regular").fontSize(TYPE.small);
   const keyLayout = keyGrid(
     CONTENT_W,
     KEY_GAP,
     Math.max(
-      keyFor(printed).tones.length,
-      ...maxima.keys.map((k) => new Set(k.tones).size),
+      0,
+      ...maxima.keys
+        .flat()
+        .map((t) => MARK + U + doc.widthOfString(keyName(t))),
     ),
+    Math.max(0, ...maxima.keys.map((k) => k.length)),
   );
-  doc.font("regular").fontSize(TYPE.small);
-  for (const { label } of KEY_LABELS) {
-    if (MARK + U + doc.widthOfString(label) > keyLayout.cellW) {
-      console.warn(`harmonogram.pdf: key label wider than its cell: ${label}`);
-    }
-  }
   /** The heading's row (and the moved date's note), then the grid's. */
   const KEY_H = (1 + keyLayout.rows) * KEY_ROW;
   const drawKey = (
@@ -914,7 +902,8 @@ function render(
   // ------------------------------------------------------------ grid
   // Identical month tables, as the leaflet's: a title row, a „Dzień |
   // Odpady” header row on grey, and the same number of body rows in every
-  // month (lib/pdf-grid.ts: 4 × 3, the twelve months of the window; it fits the marks and the row height); every cell
+  // month (lib/pdf-grid.ts: 3 × 2, the six months of the window; it fits
+  // the marks and the row height); every cell
   // bordered, each border drawn once.
   // The day number only, as the leaflet's.
   const dateText = (day: PickupDay) => String(Number(day.date.slice(8)));
@@ -928,7 +917,7 @@ function render(
   // leaving air above the tables.
   const YEAR_H = ROW[TYPE.heading];
   // Between grid rows: the next row's year strip adds its own air.
-  const ROW_GAP = U;
+  const ROW_GAP = 2 * U;
   const footer1 = footerLine(
     footerText(
       scheduleName(place.gmina),
@@ -944,14 +933,15 @@ function render(
   // The footer line at its larger size, whichever this one takes.
   const footerTop = Math.min(
     footer1.top,
-    PAGE_H - FOOT - ROW[TYPE.small] - 2 * U,
+    PAGE_H - MARGIN - ROW[TYPE.small] - 2 * U,
   );
   // The key, at one place on every page.
-  const keyTop = footerTop - CAL_SECTION - KEY_H;
-  const gridTop = bandH + noteH + CAL_SECTION;
+  const keyTop = footerTop - SECTION - KEY_H;
+  const gridTop = bandH + noteH + SECTION;
   const gridMonths = months.map((key) => ({
     key,
-    marks: (byMonth.get(key) ?? []).map((day) => tonesOf(day).length),
+    // Sized from every zone's months (profiles), never this address's.
+    marks: [],
   }));
   // The tables as large as that page allows: a text size of the scale
   // (with its marks) whose grid fits with every date's marks on one line
@@ -984,7 +974,7 @@ function render(
         least: 5,
         width: CONTENT_W,
         gap: MONTH_GUTTER,
-        height: keyTop - CAL_SECTION - gridTop,
+        height: keyTop - SECTION - gridTop,
         yearH: YEAR_H,
         rowGap: ROW_GAP,
         dateW,
@@ -1285,7 +1275,7 @@ function render(
       // The footer line at its larger size, whichever this one takes.
       const footerTop = Math.min(
         footer2.top,
-        PAGE_H - FOOT - ROW[TYPE.small] - 2 * U,
+        PAGE_H - MARGIN - ROW[TYPE.small] - 2 * U,
       );
       const stripTop = footerTop - SECTION - stripH;
       const sepTop = stripTop - SECTION - sepH;
@@ -1595,7 +1585,7 @@ function render(
   // ------------------------------------------------------------ calendar
   // Rows that do not fit even at the smallest row height run on, on pages of
   // their own under the compact band.
-  let y = drawNote(drawBand()) + CAL_SECTION;
+  let y = drawNote(drawBand()) + SECTION;
   let pageKeys: string[] = [];
   let year = "";
   const yearsTagged = new Set<string>();
@@ -1620,7 +1610,7 @@ function render(
     grid.columns,
   );
   placedRows.forEach((row) => {
-    if (y + YEAR_H + tableH > keyTop - CAL_SECTION + 0.01 && pageKeys.length) {
+    if (y + YEAR_H + tableH > keyTop - SECTION + 0.01 && pageKeys.length) {
       endPage(firstPage);
       firstPage = false;
       doc.addPage();

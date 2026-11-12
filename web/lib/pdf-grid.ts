@@ -2,7 +2,7 @@
 // month tables (a title cell, a „Dzień | Odpady” header row, then the same
 // number of body rows in every month: as many as the fullest month needs,
 // empty ones left blank), in one fixed grid of `columns` × `gridRows`
-// (4 × 3: the twelve months of the window), each grid row under a strip
+// (3 × 2: the six months of the window), each grid row under a strip
 // for its year headings: a year's heading above its first month, wherever
 // in the row that falls, so a year never needs a row of its own and every
 // address's grid has the same geometry. Sized once for the largest case
