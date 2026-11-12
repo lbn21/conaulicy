@@ -115,6 +115,7 @@ function OutageDetails({ page }: { page: OutagePage }) {
         <CalendarBlock
           href={page.calendar.href}
           label={page.calendar.label}
+          refresh={page.calendar.refresh}
           event={page.calendar.event}
           place={page.calendar.place}
         />

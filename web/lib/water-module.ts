@@ -660,6 +660,18 @@ export function waterAiNote(data: Water): string {
   return aiNote((used[0] ?? GMINA).of);
 }
 
+/**
+ * The calendar help's first line (components/subpage-parts.tsx
+ * CalendarBlock): whose change of hours to fetch the file again for.
+ */
+export function waterCalendarRefresh(data: Water): string {
+  const used = cutSources(data);
+  const who = (used.length > 0 ? used : [GMINA])
+    .map((s) => s.inline)
+    .join(" lub ");
+  return `Jeśli ${who} zmieni godziny, pobierz plik jeszcze raz.`;
+}
+
 /** No cut announced: one phrase for the subpage and the address page. */
 const NO_CUTS = "Brak zapowiedzianych przerw";
 

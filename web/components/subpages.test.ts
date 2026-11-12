@@ -9,7 +9,7 @@ import { CUT_100 } from "../lib/mzgkim-fixture.ts";
 import { numberWarning } from "../lib/prg.ts";
 import type { PlaceView } from "../lib/schedule.ts";
 import { laterNote } from "../lib/schedule-notes.ts";
-import { wasteSchedule } from "../lib/waste-module.ts";
+import { wasteCalendarRefresh, wasteSchedule } from "../lib/waste-module.ts";
 import {
   bothViews,
   CHECKED,
@@ -24,6 +24,7 @@ import {
 } from "../lib/water-fixture.ts";
 import {
   water,
+  waterCalendarRefresh,
   waterNone,
   waterSources,
   waterStatus,
@@ -168,7 +169,9 @@ test("/woda: the actions after the cuts and the AI note, a secondary button, no 
     block,
     /<svg\/>[^<]+<\/a><\/div><details class="govuk-details">/,
   );
-  assert.doesNotMatch(block, /harmonogram\.pdf|<p /);
+  // No hint by the buttons; the help's one paragraph is its first line.
+  assert.doesNotMatch(block, /harmonogram\.pdf|<\/a><p /);
+  assert.equal(block.match(/<p /g)?.length, 1);
   assert.ok(
     ascending(order(html, [...SKELETON, "<h2", 'class="app-card"', ...AFTER])),
     html,
@@ -223,14 +226,33 @@ test("/smieci and /woda: the same skeleton and actions", () => {
 
 test("the calendar's help is CalendarBlock's: the same words on both pages", () => {
   const waste = calendarBlock(wastePage());
-  const water = calendarBlock(waterPage());
+  const cuts = calendarBlock(waterPage());
   // No hint on either: the buttons and the details say it.
-  assert.doesNotMatch(waste + water, /<\/a><p /);
-  // The rest is CalendarBlock's: the same summary and bullets, in order.
-  const help = (block: string) => block.slice(block.indexOf("<details"));
+  assert.doesNotMatch(waste + cuts, /<\/a><p /);
+  // The help's first line: when to fetch the file again, from the page's
+  // source (t370); the rest is CalendarBlock's: the same summary and
+  // bullets, in order.
+  const first = (block: string) =>
+    /<div class="govuk-details__text"><p class="govuk-body">([^<]+)<\/p><ul /.exec(
+      block,
+    )?.[1];
+  assert.equal(first(waste), wasteCalendarRefresh(ZUKI));
+  assert.equal(
+    first(cuts),
+    waterCalendarRefresh(
+      water(
+        bothViews([storedPost(POST_39885, CHECKED)], CHECKED, NOW, []),
+        ZUKI,
+      ),
+    ),
+  );
+  const help = (block: string) =>
+    block
+      .slice(block.indexOf("<details"))
+      .replace(/<p class="govuk-body">[^<]+<\/p>/, "");
   const bullets = CALENDAR_STEPS.map((step) => `<li>${step}</li>`).join("");
   assert.equal(CALENDAR_STEPS.length, 5);
-  for (const block of [waste, water]) {
+  for (const block of [waste, cuts]) {
     assert.ok(block.includes(`>${CALENDAR_CHECK}<`), block);
     assert.ok(
       block.includes(
@@ -239,16 +261,16 @@ test("the calendar's help is CalendarBlock's: the same words on both pages", () 
       block,
     );
   }
-  assert.equal(help(waste), help(water));
+  assert.equal(help(waste), help(cuts));
   // /smieci's PDF: the group's first button, a plain link to the file,
   // before the calendar's; /woda has none.
   assert.match(
     waste,
     /<div class="govuk-button-group"><a href="[^"]*\/harmonogram\.pdf" role="button" draggable="false" class="govuk-button govuk-button--secondary" data-module="govuk-button" data-event="pdf_open" data-zone="[^"]+"><svg\/>[^<]+<\/a><a href="\/ics\//,
   );
-  assert.doesNotMatch(water, /harmonogram\.pdf/);
+  assert.doesNotMatch(cuts, /harmonogram\.pdf/);
   // The details are closed until opened.
-  assert.doesNotMatch(waste + water, /<details[^>]* open/);
+  assert.doesNotMatch(waste + cuts, /<details[^>]* open/);
 });
 
 test("/smieci and /woda keep GOV.UK's row borders (only the hub drops them)", () => {

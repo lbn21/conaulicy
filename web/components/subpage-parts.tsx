@@ -40,13 +40,15 @@ type FileAction = {
  * file first (the PDF, its icon), then „Dodaj … do kalendarza” (the
  * calendar's icon). No primary: the page's answer is its dates, not an
  * action. Under the group, in GOV.UK's details, how to add the calendar
- * file and what to do if nothing happened. Only for a calendar file with
+ * file and what to do if nothing happened, after one line on when to
+ * fetch it again (`refresh`, from the page's source). Only for a calendar file with
  * at least one event. `event` and its properties, whichever are given,
  * are what components/web-analytics.tsx sends on a click.
  */
 export function CalendarBlock({
   href,
   label,
+  refresh,
   event,
   zone,
   source,
@@ -55,6 +57,7 @@ export function CalendarBlock({
 }: {
   href: string;
   label: string;
+  refresh: string;
   event: "calendar_add" | "water_calendar_add";
   zone?: string;
   source?: string;
@@ -103,6 +106,7 @@ export function CalendarBlock({
           <span className="govuk-details__summary-text">{CALENDAR_CHECK}</span>
         </summary>
         <div className="govuk-details__text">
+          <p className="govuk-body">{refresh}</p>
           <ul className="govuk-list govuk-list--bullet">
             {CALENDAR_STEPS.map((step) => (
               <li key={step}>{step}</li>

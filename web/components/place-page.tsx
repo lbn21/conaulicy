@@ -40,6 +40,7 @@ import { ALL_PLACES } from "@/lib/static-pages";
 import {
   checkSchedule,
   noScheduleHeading,
+  wasteCalendarRefresh,
   wasteChecked,
   wasteSources,
 } from "@/lib/waste-module";
@@ -421,6 +422,7 @@ export function WasteBody({
           <CalendarBlock
             href={`/ics/${encodeURIComponent(place.zoneId)}`}
             label="Dodaj do kalendarza"
+            refresh={wasteCalendarRefresh(place)}
             event="calendar_add"
             zone={place.zoneId}
             source="street"
