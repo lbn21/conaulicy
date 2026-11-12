@@ -670,9 +670,10 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // street's name, then its day line, one under another at the left margin,
   // each on its row of the scale as there (the plate, three steps, the
   // body's row, the title's row, a step, the body's row); on the right the
-  // QR code's white box, a step, then its caption on one line, its ink
-  // centred under the box: one unit, its ink flush with the right margin as
-  // the left block is with the left (Jakub, t362). The left block is
+  // QR code's white box, a step, then its caption on one line, right-aligned
+  // under the box: one unit, the box's right edge and the caption ink's
+  // right edge both on the right margin, as the left block is flush with
+  // the left (Jakub, t362, t363). The left block is
   // centred by its ink on the band's midline (the plate's top to the day
   // line's baseline), the right unit by all of its ink (the box's top to
   // the caption's descenders): equal padding above and below each. The rows are
@@ -686,9 +687,9 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const qrBox = qrSize + 2 * U;
   const scan = "Zeskanuj: aktualne terminy";
   const scanInk = inkOf("regular", TYPE.small, scan);
-  const qrColumn = Math.max(qrBox, scanInk.right - scanInk.left);
-  const qrCentre = PAGE_W - MARGIN - qrColumn / 2;
-  const qrX = qrCentre - qrBox / 2;
+  // Both flush right: the box's right edge and the caption ink's.
+  const qrX = PAGE_W - MARGIN - qrBox;
+  const scanX = PAGE_W - MARGIN - scanInk.right;
   /** A row's cap baseline below the row's top: its cap centred in it. */
   const baseline = (size: number) => ROW[size] / 2 + (size * CAP) / 2;
   // The left block's rows, from its top.
@@ -705,7 +706,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // Where and the name end a gap and a half before the QR's box, beside
   // them; the day line before the caption, beside it.
   const bandTextW = qrX - 6 * U - MARGIN;
-  const bandLineW = qrCentre - qrColumn / 2 - 6 * U - MARGIN;
+  const bandLineW = Math.min(qrX, scanX + scanInk.left) - 6 * U - MARGIN;
   const kicker = `${place.area} · Harmonogram odbioru odpadów`;
   const kickerSize = oneLine("regular", kicker, bandTextW, [TYPE.body]);
   // The street's name and its day line each on one line, so the longest
@@ -770,7 +771,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         TYPE.small,
         WHITE,
         scan,
-        qrCentre - (scanInk.left + scanInk.right) / 2,
+        scanX,
         rightTop + scanRow,
         ROW[TYPE.small],
         { link: url },

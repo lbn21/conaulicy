@@ -8,7 +8,8 @@
 // tables are the same size, rows included, in one fixed 3 × 2 grid inside
 // the page's margins (every month of the six with dates on page 1), every
 // row one height (no date's marks wrap), every header cell's text one
-// padding in, each page's footer rule at one place (its fine print in rows
+// padding in, the band's QR box and caption ink ending on the right margin
+// (both pages, from a 288 dpi render; needs pdftoppm), each page's footer rule at one place (its fine print in rows
 // reserved for the longest: page 1's unverified note shown or not, page 2
 // every source of the gmina's guide, each linked), the key one grid under
 // its own heading (the same rows and
@@ -281,6 +282,56 @@ function qrEncodes(codes, url) {
   );
 }
 
+// The right edges, in points, of the white ink in the band's right half on
+// page n: one per run of rows with ink (the QR box, then its caption),
+// read from a 288 dpi greyscale render, each edge to a sub-pixel by its
+// last pixel's coverage between the band's colour and white.
+const BAND_DPI = 288;
+function bandRightEdges(file, n) {
+  const scale = BAND_DPI / 72;
+  const out = path.join(dir, `band-${n}`);
+  run("pdftoppm", [
+    ...["-f", String(n), "-l", String(n), "-r", String(BAND_DPI)],
+    ...["-gray", "-singlefile", "-H", String(Math.round(160 * scale))],
+    file,
+    out,
+  ]);
+  const pgm = readFileSync(`${out}.pgm`);
+  const head = pgm
+    .toString("latin1", 0, 64)
+    .match(/^P5\s+(\d+)\s+(\d+)\s+255\s/);
+  const [w, h] = [Number(head[1]), Number(head[2])];
+  const at = (x, y) => pgm[head[0].length + y * w + x];
+  // The band's colour: its top right corner, clear of the page's last,
+  // part-covered column.
+  const right = w - 3;
+  const bg = at(right, 1);
+  const half = Math.floor(w / 2);
+  const rows = [];
+  for (let y = 0; y < h; y++) {
+    if (at(right, y) !== bg) break; // below the band
+    let edge = null;
+    for (let x = right; x >= half; x--) {
+      const v = at(x, y);
+      if (v > bg + (255 - bg) * 0.05) {
+        edge = x + Math.min(1, (v - bg) / (255 - bg));
+        break;
+      }
+    }
+    rows.push(edge);
+  }
+  const runs = [];
+  let last = null;
+  rows.forEach((edge, y) => {
+    if (edge === null) return;
+    if (last === null || y - last > 1) runs.push([]);
+    runs.at(-1).push(edge);
+    last = y;
+  });
+  // A run of a few rows only is anti-aliasing, not ink.
+  return runs.filter((r) => r.length > 2).map((r) => Math.max(...r) / scale);
+}
+
 const dir = mkdtempSync(path.join(tmpdir(), "check-pdf-"));
 const server = await startServer(3308);
 try {
@@ -386,6 +437,17 @@ try {
       Boolean(full) && qrEncodes(qrCodes(source), full),
       `${c.name}: no QR code to ${gmina}'s full rules (${full})`,
     );
+
+    // The band's QR unit, on both pages: the white box's right edge and its
+    // caption ink's right edge both on the right margin (Jakub, t363).
+    for (const n of [1, 2]) {
+      const edges = bandRightEdges(file, n);
+      check(
+        edges.length === 2 &&
+          edges.every((x) => Math.abs(x - (PAGE_W - SIDE)) <= 0.5),
+        `${c.name}: page ${n}: the QR box and caption end at ${edges.map((x) => x.toFixed(2)).join(", ")} pt (expected ${PAGE_W - SIDE} both)`,
+      );
+    }
 
     // The drawn layout: no word spills out of its table, tile or box on
     // pages 1–2; page 1's tables are all one size, rows of one height.
