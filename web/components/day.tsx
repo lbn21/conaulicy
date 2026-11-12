@@ -73,7 +73,7 @@ export function Day({
         screen, today's word (Intl's) for screen readers only (t373, c). */}
       {empty && today && (
         <span className="govuk-visually-hidden">
-          , {relativeDay(place.today, place.today)}
+          {`, ${relativeDay(place.today, place.today)}`}
         </span>
       )}
     </>
