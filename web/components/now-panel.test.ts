@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -65,4 +66,13 @@ test("not read: muted, no note", () => {
   const html = tile(null);
   assert.match(html, /app-now__value--empty/);
   assert.equal((html.match(/govuk-body-s/g) ?? []).length, 1);
+});
+
+test("the skeleton's heading has no id: the live one's is the page's only", () => {
+  const source = readFileSync(
+    new URL("./now-panel.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /id=\{week \? "teraz" : undefined\}/);
+  assert.equal((source.match(/id="teraz"/g) ?? []).length, 0);
 });

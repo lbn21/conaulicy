@@ -81,11 +81,17 @@ export function NowTile({
   );
 }
 
-/** The panel's head: its heading and the week it counts. */
+/**
+ * The panel's head: its heading and the week it counts. The skeleton's
+ * (week null) has no id: both are in the streamed HTML at once.
+ */
 function Head({ week }: { week: string | null }) {
   return (
     <div className="app-now__head">
-      <h2 id="teraz" className="govuk-heading-m app-now__title">
+      <h2
+        id={week ? "teraz" : undefined}
+        className="govuk-heading-m app-now__title"
+      >
         {HEADING}
       </h2>
       <p className="govuk-body-s">
