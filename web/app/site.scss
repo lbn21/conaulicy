@@ -202,9 +202,11 @@ $app-logo-gap: (govuk-spacing(3) + $app-hair - $app-bar) * .5;
 // centred in the date's line by grid alignment, the caret's centre on the
 // card's edge (two half-caret columns). The line 1px, in the dot's column,
 // to the dot's centre (.5lh, half its row) at either end.
-// Colours: a day with items a white card with a subtle border and shadow,
-// its rows in their modules' colours (.app-mod--*); today and tomorrow
-// with something ringed in the text colour; an empty day or run plain grey
+// Colours: every day with items a white card with the same subtle border
+// and shadow (t385: today and tomorrow stand out by their strong badge
+// alone), its rows in their modules' colours (.app-mod--*); the date
+// never breaks inside (its weekday a grey line under it, day.tsx), the
+// badge wraps whole; an empty day or run plain grey
 // text, no card and no badge. Today's dot (.app-timeline__today, from the
 // date in the markup, never from a badge) filled in the text colour.
 $app-dot: govuk-spacing(3);
@@ -244,10 +246,7 @@ $app-caret: govuk-spacing(2);
 .app-timeline__empty { --app-bg: transparent; --app-line: transparent; }
 .app-timeline__card--empty { box-shadow: none; }
 .app-timeline__card--empty :is(.app-timeline__title, p) { color: govuk-functional-colour(secondary-text); }
-// Louder: today and tomorrow with something (DayWord's strong badge, never
-// on an empty row) ringed in the text colour, 2px with the border.
-.app-timeline > :has(.app-badge--strong) { --app-line: #{govuk-functional-colour(text)}; }
-.app-timeline__card:has(.app-badge--strong) { box-shadow: 0 0 0 $app-hair var(--app-line), $app-shadow; }
+.app-timeline__title time { white-space: nowrap; }
 .app-timeline__card .govuk-summary-list__key { color: var(--app-mod-ink); }
 // Two sizes in a card: the date heading-s, all else body-s.
 .app-timeline__card :is(.govuk-summary-list, .govuk-list) { @include govuk-font-size($size: 16); }

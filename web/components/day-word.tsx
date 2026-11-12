@@ -19,8 +19,8 @@ import {
  * or „jutro, ” before the date that follows, else nothing. label: „Dziś” or
  * „Jutro”, else `text`. title: Intl's relative day („Dzisiaj”, „Jutro”,
  * „Za 6 dni”) as a badge after a timeline card's date (site.scss
- * .app-badge), strong for today and tomorrow (which its card takes up,
- * .app-timeline__card), muted for later; a comma before it for screen
+ * .app-badge), strong for today and tomorrow (their only emphasis, t385),
+ * muted for later; a comma before it for screen
  * readers only; else nothing.
  */
 type Form = "lead" | "word" | "label" | "title";
