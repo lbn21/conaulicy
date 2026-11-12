@@ -69,12 +69,11 @@ const OWN = [
 // t370 kept it at 2806: the header's hover bar, the timeline (a grid, no
 // positioned pseudo-elements) and the icon in a link (a flex row) replace
 // what they did in the same bytes.
-// MAX_ALLOWED: how many css-allow hacks may stay (t370: the h1's tile until
-// t366's C1; 0 after it). Raising either is a reviewed
-// diff.
+// MAX_ALLOWED: how many css-allow hacks may stay: none since t366's C1
+// made the h1 a flex row (t369, t372). Raising either is a reviewed diff.
 const MAX_LINES = 200;
 const MAX_GZIP = 2806;
-const MAX_ALLOWED = 1;
+const MAX_ALLOWED = 0;
 
 const failures = [];
 

@@ -10,37 +10,39 @@ import {
 import { PlaceSuspense } from "@/components/place-suspense";
 import { withHouseNumber } from "@/lib/house";
 import { indexable } from "@/lib/indexing";
+import type { SubpageId } from "@/lib/module-ids";
 import { findSubpage } from "@/lib/modules";
 import { placePath, titleLabel } from "@/lib/places";
 import { getPlace, PLACE_TAGS } from "@/lib/schedule";
 import { shownNr } from "@/lib/schedule-notes";
 import { pageMetadata } from "@/lib/share";
 
-// A module subpage's routes, one body for both: a live module's
-// (app/adres/[id]/[module]/) and the waste subpage's own
-// (app/adres/[id]/smieci/, `waste`), each with its ?nr= (searchParams).
-// The waste subpage has its own folder (a static segment wins
-// over [module]:
-// nextjs.org/docs/app/api-reference/file-conventions/dynamic-routes).
+// A module subpage's routes, one body for all: each subpage has its own
+// static folder (app/adres/[id]/smieci/, woda/, prad/: subpageRoute), so
+// its static shell knows its module and its skeleton is its own page
+// head (components/place-suspense.tsx); a route's App Shell cannot read
+// params (nextjs.org/docs/app/guides/adopting-partial-prefetching). Each
+// with its ?nr= (searchParams). Any other name after the id is a 404 in
+// proxy.ts (lib/address-routes.ts unknownAddress).
 
-type SubpageParams = Promise<{ id: string; module?: string }>;
+type SubpageParams = Promise<{ id: string }>;
 
 type Variant = {
-  /** The waste subpage's route, whose params hold no module. */
-  waste?: boolean;
+  /** The route's module (its folder's name). */
+  module: SubpageId;
 };
 
-/** The place and module the params name. */
-async function subpageOf(params: SubpageParams, { waste }: Variant) {
-  const { id, module = waste ? "smieci" : "" } = await params;
+/** The place and module the route names. */
+async function subpageOf(params: SubpageParams, { module }: Variant) {
+  const { id } = await params;
   return { id, slug: module };
 }
 
 /** A subpage route's generateMetadata. */
-export async function subpageMetadata(
+async function subpageMetadata(
   params: SubpageParams,
   searchParams: AddressSearch,
-  variant: Variant = {},
+  variant: Variant,
 ) {
   const { id, slug } = await subpageOf(params, variant);
   // An unknown module or place: its 404 before ?nr= is read (metadataQuery).
@@ -85,13 +87,13 @@ async function moduleMetadata(
 }
 
 /** A subpage route's page: its params behind PlaceSuspense, as above. */
-export function SubpageRoute({
+function SubpageRoute({
   params,
   searchParams,
   ...variant
 }: Variant & { params: SubpageParams; searchParams: AddressSearch }) {
   return (
-    <PlaceSuspense>
+    <PlaceSuspense module={variant.module}>
       <SubpageContent
         params={params}
         searchParams={searchParams}
@@ -115,4 +117,33 @@ async function SubpageContent({
       unknown={<PlaceNotFound />}
     />
   );
+}
+
+/**
+ * A subpage's route folder, app/adres/[id]/<module>/page.tsx: its metadata
+ * and page, so each folder is three lines.
+ */
+export function subpageRoute(module: SubpageId) {
+  return {
+    generateMetadata: ({
+      params,
+      searchParams,
+    }: {
+      params: SubpageParams;
+      searchParams: AddressSearch;
+    }) => subpageMetadata(params, searchParams, { module }),
+    Page: ({
+      params,
+      searchParams,
+    }: {
+      params: SubpageParams;
+      searchParams: AddressSearch;
+    }) => (
+      <SubpageRoute
+        params={params}
+        searchParams={searchParams}
+        module={module}
+      />
+    ),
+  };
 }

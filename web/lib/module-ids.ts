@@ -14,4 +14,8 @@ export type ModuleId = (typeof MODULE_IDS)[number];
  * The modules with a subpage of their own, /adres/<id>/<module id>. The
  * weather has none: its warnings are cards on the address page.
  */
-export const SUBPAGE_IDS: readonly ModuleId[] = ["smieci", "woda", "prad"];
+const SUBPAGES = ["smieci", "woda", "prad"] as const satisfies ModuleId[];
+export const SUBPAGE_IDS: readonly ModuleId[] = SUBPAGES;
+
+/** A subpage's id: the name of its route folder, app/adres/[id]/<id>/. */
+export type SubpageId = (typeof SUBPAGES)[number];

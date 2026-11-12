@@ -156,7 +156,7 @@ test("the address pages: one read per request, every block at once, shared with 
     /await navigation\(\);\n\s+return houseQuery\(\(await searchParams\)\.nr\);/,
   );
   // One boundary per address route, the page's and its trail's.
-  assert.deepEqual(calling(/<PlaceSuspense>/), [
+  assert.deepEqual(calling(/<PlaceSuspense[ >]/), [
     "app/adres/[id]/page.tsx",
     "components/subpage-route.tsx",
   ]);

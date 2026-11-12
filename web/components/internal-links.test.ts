@@ -33,14 +33,15 @@ const EXPRESSIONS: Record<string, Record<string, string>> = {
   "components/contact-link.tsx": { CONTACT_HREF: "mailto:" },
   "components/hub.tsx": { IMGW_PAGE: "another site" },
   "components/site-footer.tsx": { CONTACT_HREF: "mailto:" },
-  "components/subpage-parts.tsx": { href: "an ICS file (CalendarBlock)" },
+  "components/subpage-parts.tsx": {
+    href: "an ICS file (CalendarBlock)",
+    "file.href": "the page's file (CalendarBlock): /smieci's PDF",
+  },
   "components/parts.tsx": {
     "part.href": "another site: an href starting with / is a PlaceLink",
   },
   "components/place-page.tsx": {
     "place.schedulePage": "another site",
-    '`${placePath(place.id)}/harmonogram.pdf${place.nr ? `?nr=${place.nr}` : ""}`':
-      "the PDF file",
   },
 };
 

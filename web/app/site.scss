@@ -360,10 +360,11 @@ $app-caret: govuk-spacing(2);
 .app-band { margin: 0 0 govuk-spacing(6); padding: govuk-spacing(6) 0 govuk-spacing(4); background: govuk-functional-colour(surface-background); box-shadow: 0 0 0 100vmax govuk-functional-colour(surface-background); clip-path: inset(0 -100vmax); }
 @include govuk-media-query($from: tablet) { .app-band { padding: govuk-spacing(7) 0 govuk-spacing(6); } }
 .app-band > :last-child, .app-band .govuk-button { margin-bottom: 0; }
-// TODO(C1, t366): the tile as a flex item one line tall.
-.app-band h1 > .app-tile { width: 1.2em; height: 1.2em; margin-right: govuk-spacing(2);
-  // css-allow R1, R7: the h1's tile nudged to its line until C1 (t366) makes the h1 a flex row
-  vertical-align: -.2em; }
+// A module's h1 (C1, t366), or its skeleton's <p> (t370): a flex row, its tile one line tall at the
+// first line's top, so the tile's centre is that line's centre, Atkinson's
+// cap centre, at any size; a wrapped title hangs beside the tile.
+.app-band :has(> .app-tile) { display: flex; gap: govuk-spacing(2); }
+.app-band .app-tile { width: 1lh; height: 1lh; margin: 0; }
 
 // A card (shadcn/ui's Card): white, a subtle border and shadow, rounded;
 // accent: a bar on the left in the module's colour (the next pickup).

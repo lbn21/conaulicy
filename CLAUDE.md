@@ -31,7 +31,7 @@ A free site for Lubaczów residents: type your street, see what is coming at you
 - **Light theme only.**
 - Any other deviation needs Jakub's approval and a reason in the PR.
 - **Own CSS:** only `web/app/site.scss`, for what GOV.UK has no equivalent for. GOV.UK Sass functions and mixins only, no raw hex or px. CSS ≤ 2.806 KB gzip, ≤ 200 lines.
-- **No CSS hacks:** align with flex, grid and GOV.UK tokens, never offsets, negative margins, tuned line-heights or raw lengths; `check-own-css` (R1-R10, `web/scripts/lib/css-lint.mjs`) fails on any without a `// css-allow <rule>: <reason>` above it, capped by `MAX_ALLOWED`; the routes check measures alignment at 200 % text (`docs/layout.md`). `web/app/tokens.css` holds only the font's metric-matched fallback.
+- **No CSS hacks:** align with flex, grid and GOV.UK tokens, never offsets, negative margins, tuned line-heights or raw lengths; `check-own-css` (R1-R10, `web/scripts/lib/css-lint.mjs`) fails on any without a `// css-allow <rule>: <reason>` above it, capped by `MAX_ALLOWED` (0: none left); the routes check measures alignment at 100 and 200 % text (`docs/layout.md`). `web/app/tokens.css` holds only the font's metric-matched fallback.
 - **Colours have one home each:** our brand and IMGW's warning levels (`WARNING_LEVELS`) in `web/lib/palette.ts`, GOV.UK's own in `web/lib/govuk-colours.ts`, the bin colours in `web/lib/waste-colours.ts`; `check-palette` fails on a raw hex anywhere else in the site's code. Brand, palette and contrast: [docs/brand.md](docs/brand.md).
 
 ## UI rules

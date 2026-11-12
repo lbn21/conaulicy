@@ -32,6 +32,15 @@ export function checkSchedule(
   return `${lead} odbiory w harmonogramie ${scheduleOwner(place.gmina)}.`;
 }
 
+/**
+ * The calendar help's first line (components/subpage-parts.tsx
+ * CalendarBlock): the schedule's owner, as checkSchedule names it, may
+ * change it, and the file does not follow.
+ */
+export function wasteCalendarRefresh(place: Pick<PlaceView, "gmina">): string {
+  return `Jeśli harmonogram ${scheduleOwner(place.gmina)} się zmieni, pobierz plik jeszcze raz.`;
+}
+
 /** The street page's words for a split street, before the number. */
 const SPLIT_HINT =
   "Na tej ulicy śmieciarka przyjeżdża w różne dni, zależnie od numeru.";

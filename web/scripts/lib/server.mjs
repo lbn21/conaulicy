@@ -22,7 +22,8 @@ export const ROUTES = [
     path: "/adres/0972447-90004/smieci?nr=7a",
     name: "split-street-number-waste",
   },
-  // The water subpage: noindex, and without a ZUK file in CI (no cut to show).
+  // The water subpage: noindex; in CI MZGKiM's fixture cut on the town
+  // street (MZGKIM_MOCK, .github/workflows/ci.yml), none in the village.
   { path: "/adres/0972447-00470/woda", name: "city-street-water" },
   { path: "/adres/0606010/woda", name: "village-water" },
   // The power subpage: PGE's derived outages in CI (PGE_API_URL=mock:ours),

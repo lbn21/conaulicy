@@ -45,7 +45,7 @@ import {
   type Water,
   water,
   waterAiNote,
-  waterCalendarHint,
+  waterCalendarRefresh,
   waterChecked,
   waterEmpty,
   waterNone,
@@ -54,7 +54,11 @@ import {
   waterTrace,
   waterUpcoming,
 } from "./water-module.ts";
-import { MZGKIM as MZGKIM_SOURCE, sourcesAt } from "./water-sources.ts";
+import {
+  GMINA as GMINA_SOURCE,
+  MZGKIM as MZGKIM_SOURCE,
+  sourcesAt,
+} from "./water-sources.ts";
 import { type PostReading, readPost } from "./zuk.ts";
 import {
   AI_DEFERRED,
@@ -711,10 +715,11 @@ test("town, an MZGKiM cut: shown as a ZUK cut, its own post the source", () => {
     waterAiNote(data),
     "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest komunikat MZGKiM.",
   );
-  assert.equal(
-    waterCalendarHint(data),
-    "Plik z przerwami. Jeśli MZGKiM zmieni godziny, pobierz go jeszcze raz.",
-  );
+  // The calendar help names whose change of hours to fetch it again for:
+  // the cut's source only (t370).
+  const refresh = waterCalendarRefresh(data);
+  assert.ok(refresh.includes(` ${MZGKIM_SOURCE.inline} `), refresh);
+  assert.ok(!refresh.includes(` ${GMINA_SOURCE.inline} `), refresh);
   // Its area off our list is only linked, and not here: its cut is.
   assert.deepEqual(data.notices, []);
   // "Osiedle Mazury" (the gazetteer): each of its streets, whole.
@@ -849,9 +854,11 @@ test("town, both sources' cuts: both posts, both in the AI note", () => {
     waterAiNote(both),
     "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejsze są komunikaty gminy i MZGKiM.",
   );
-  assert.equal(
-    waterCalendarHint(both),
-    "Plik z przerwami. Jeśli gmina lub MZGKiM zmieni godziny, pobierz go jeszcze raz.",
+  // Both sources, in the cuts' order, either of which may change the hours.
+  assert.ok(
+    waterCalendarRefresh(both).includes(
+      ` ${GMINA_SOURCE.inline} lub ${MZGKIM_SOURCE.inline} `,
+    ),
   );
   assert.equal(waterSources(both).length, 2);
 });

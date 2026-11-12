@@ -12,7 +12,7 @@ import { unchecked } from "@/lib/hub";
 import { findSubpage, type Module } from "@/lib/modules";
 import { getPlace, type PlaceView } from "@/lib/schedule";
 
-// A module's subpage, /adres/[id]/[module] (lib/modules.ts), with the same
+// A module's subpage, /adres/[id]/<module> (lib/modules.ts), with the same
 // ?nr= as the address page (components/place-page.tsx numberQuery), under
 // the place's breadcrumbs (before <main>): one frame for every module
 // (Subpage), its body the module's Details. An unknown module is a 404.

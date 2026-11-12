@@ -10,7 +10,7 @@ import {
   staleNote,
   type Water,
   waterAiNote,
-  waterCalendarHint,
+  waterCalendarRefresh,
   waterChecked,
   waterEmpty,
   waterSources,
@@ -40,7 +40,7 @@ function waterPage(data: Water): OutagePage {
         : {
             href: calendar,
             label: "Dodaj przerwy do kalendarza",
-            hint: waterCalendarHint(data),
+            refresh: waterCalendarRefresh(data),
             event: "water_calendar_add",
             place: data.place.id,
           },
