@@ -5,7 +5,7 @@
 // (=== only) and a person reviews every new schedule. No network, no
 // database: the core does those, tested end to end by
 // scripts/check-import-run.mjs; this file by lib.test.ts.
-import { DAY_MARKS, MONTH_DAYS } from "../../../lib/pdf-grid.ts";
+import { beyondBounds, DAY_MARKS, MONTH_DAYS } from "../../../lib/pdf-grid.ts";
 import { FRACTIONS, tones } from "../../../lib/waste-bin.ts";
 import { type Etl, eventId } from "../../lib/import-data.ts";
 import type { Layout } from "./prompts.ts";
@@ -205,22 +205,16 @@ export function pdfBoundProblems(
   const marks = new Map<string, number>();
   for (const e of events)
     marks.set(e.start, (marks.get(e.start) ?? 0) + tones(e.subtype).length);
-  const dates = new Map<string, number>();
-  for (const day of marks.keys())
-    dates.set(day.slice(0, 7), (dates.get(day.slice(0, 7)) ?? 0) + 1);
+  const beyond = beyondBounds(marks);
   return [
-    ...[...dates]
-      .filter(([, n]) => n > MONTH_DAYS)
-      .map(
-        ([month, n]) =>
-          `${zoneId}: ${month} has ${n} dates, the PDF holds ${MONTH_DAYS} (lib/pdf-grid.ts MONTH_DAYS)`,
-      ),
-    ...[...marks]
-      .filter(([, n]) => n > DAY_MARKS)
-      .map(
-        ([day, n]) =>
-          `${zoneId}: ${day} has ${n} fractions, the PDF holds ${DAY_MARKS} (lib/pdf-grid.ts DAY_MARKS)`,
-      ),
+    ...beyond.months.map(
+      ([month, n]) =>
+        `${zoneId}: ${month} has ${n} dates, the PDF holds ${MONTH_DAYS} (lib/pdf-grid.ts MONTH_DAYS)`,
+    ),
+    ...beyond.days.map(
+      ([day, n]) =>
+        `${zoneId}: ${day} has ${n} fractions, the PDF holds ${DAY_MARKS} (lib/pdf-grid.ts DAY_MARKS)`,
+    ),
   ].sort();
 }
 

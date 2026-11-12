@@ -8,7 +8,8 @@
 // tables are the same size, rows included, in one fixed 3 × 2 grid inside
 // the page's margins (every month of the six with dates on page 1), every
 // row one height (no date's marks wrap), every header cell's text one
-// padding in, each page's footer rule at one place (its fine print in rows
+// padding in, the band's QR box and caption ink ending on the right margin
+// (both pages, from a 288 dpi render; needs pdftoppm), each page's footer rule at one place (its fine print in rows
 // reserved for the longest: page 1's unverified note shown or not, page 2
 // every source of the gmina's guide, each linked), the key one grid under
 // its own heading (the same rows and
@@ -37,6 +38,7 @@ import QRCode from "qrcode";
 import { SITE_URL } from "../lib/config.generated.ts";
 import { todayInWarsaw } from "../lib/dates.ts";
 import { fileSlug } from "../lib/normalize.ts";
+import { MONTH_DAYS, TABLE_ROW } from "../lib/pdf-grid.ts";
 import { PDF_MONTHS } from "../lib/pdf-key.ts";
 import { GUIDES } from "../lib/sorting-guide.ts";
 import { FRACTIONS, TOKEN } from "../lib/waste-bin.ts";
@@ -194,6 +196,10 @@ const PAGE_H = 841.89;
 const PAGE_W = 595.28;
 // The page's side margin (the route's MARGIN): every table inside it.
 const SIDE = 28;
+/** The band's height (the route's bandH, 37 U) and the gap under it and
+ * between the grid's rows (GRID_GAP, 8 U). */
+const BAND_H = 148;
+const GRID_GAP = 32;
 /** A mark's slot on page 1 (route.ts MARK): a glyph mark is narrower. */
 const MARK_SLOT = 11;
 // Page 1's fixed month grid (the route's MONTH_COLUMNS × MONTH_ROWS).
@@ -279,6 +285,56 @@ function qrEncodes(codes, url) {
       modules.size === want.size &&
       modules.grid.every((dark, i) => dark === want.data[i]),
   );
+}
+
+// The right edges, in points, of the white ink in the band's right half on
+// page n: one per run of rows with ink (the QR box, then its caption),
+// read from a 288 dpi greyscale render, each edge to a sub-pixel by its
+// last pixel's coverage between the band's colour and white.
+const BAND_DPI = 288;
+function bandRightEdges(file, n) {
+  const scale = BAND_DPI / 72;
+  const out = path.join(dir, `band-${n}`);
+  run("pdftoppm", [
+    ...["-f", String(n), "-l", String(n), "-r", String(BAND_DPI)],
+    ...["-gray", "-singlefile", "-H", String(Math.round(160 * scale))],
+    file,
+    out,
+  ]);
+  const pgm = readFileSync(`${out}.pgm`);
+  const head = pgm
+    .toString("latin1", 0, 64)
+    .match(/^P5\s+(\d+)\s+(\d+)\s+255\s/);
+  const [w, h] = [Number(head[1]), Number(head[2])];
+  const at = (x, y) => pgm[head[0].length + y * w + x];
+  // The band's colour: its top right corner, clear of the page's last,
+  // part-covered column.
+  const right = w - 3;
+  const bg = at(right, 1);
+  const half = Math.floor(w / 2);
+  const rows = [];
+  for (let y = 0; y < h; y++) {
+    if (at(right, y) !== bg) break; // below the band
+    let edge = null;
+    for (let x = right; x >= half; x--) {
+      const v = at(x, y);
+      if (v > bg + (255 - bg) * 0.05) {
+        edge = x + Math.min(1, (v - bg) / (255 - bg));
+        break;
+      }
+    }
+    rows.push(edge);
+  }
+  const runs = [];
+  let last = null;
+  rows.forEach((edge, y) => {
+    if (edge === null) return;
+    if (last === null || y - last > 1) runs.push([]);
+    runs.at(-1).push(edge);
+    last = y;
+  });
+  // A run of a few rows only is anti-aliasing, not ink.
+  return runs.filter((r) => r.length > 2).map((r) => Math.max(...r) / scale);
 }
 
 const dir = mkdtempSync(path.join(tmpdir(), "check-pdf-"));
@@ -387,6 +443,17 @@ try {
       `${c.name}: no QR code to ${gmina}'s full rules (${full})`,
     );
 
+    // The band's QR unit, on both pages: the white box's right edge and its
+    // caption ink's right edge both on the right margin (Jakub, t363).
+    for (const n of [1, 2]) {
+      const edges = bandRightEdges(file, n);
+      check(
+        edges.length === 2 &&
+          edges.every((x) => Math.abs(x - (PAGE_W - SIDE)) <= 0.5),
+        `${c.name}: page ${n}: the QR box and caption end at ${edges.map((x) => x.toFixed(2)).join(", ")} pt (expected ${PAGE_W - SIDE} both)`,
+      );
+    }
+
     // The drawn layout: no word spills out of its table, tile or box on
     // pages 1–2; page 1's tables are all one size, rows of one height.
     const strokes = pageStrokes(bytes, PAGE_H);
@@ -447,6 +514,38 @@ try {
     // (±1 pt for the glyphs' own side bearings).
     const words1 = pageWords(file, 1);
     const rowH = [...rows][0] ?? 0;
+    // The fixed geometry, absolute, never grown by the data: every table
+    // its title and header rows and MONTH_DAYS body rows of TABLE_ROW; the
+    // grid GRID_GAP under the band and GRID_GAP between its rows; nothing
+    // drawn in the row's height under a table (a date past the bounds:
+    // the route refuses it, lib/pdf-grid.ts beyondBounds).
+    const tableH = (MONTH_DAYS + 2) * TABLE_ROW;
+    const tops = [...new Set(tables.map((t) => round(t.y0)))].sort(
+      (a, b) => a - b,
+    );
+    const gaps = [
+      tops[0] - BAND_H,
+      ...tops.slice(1).map((y, i) => y - (tops[i] + tableH)),
+    ];
+    check(
+      tables.length > 0 &&
+        tables.every((t) => Math.abs(t.y1 - t.y0 - tableH) <= 0.5) &&
+        gaps.every((gap) => Math.abs(gap - GRID_GAP) <= 0.5),
+      `${c.name}: page 1 tables ${[...sizes].join(", ")} (each ${tableH} pt tall), gaps ${gaps.map(round).join(", ")} pt (each ${GRID_GAP})`,
+    );
+    const under = words1.filter((w) =>
+      tables.some(
+        (t) =>
+          (w.x0 + w.x1) / 2 > t.x0 &&
+          (w.x0 + w.x1) / 2 < t.x1 &&
+          (w.y0 + w.y1) / 2 > t.y1 &&
+          (w.y0 + w.y1) / 2 < t.y1 + TABLE_ROW,
+      ),
+    );
+    check(
+      under.length === 0,
+      `${c.name}: page 1: ${under.length} words under a table (a row past ${MONTH_DAYS} dates)`,
+    );
     const headerPads = tables.flatMap((t) => {
       const split = (strokes[0]?.columns ?? []).find(
         (r) => r.x > t.x0 + 0.1 && r.x < t.x1 - 0.1 && r.y1 > t.y0,

@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  beyondBounds,
   chooseGrid,
+  DAY_MARKS,
   dateRows,
   fitMarks,
   type GridInput,
   gridHeight,
+  MONTH_DAYS,
   mostMarks,
   tableRows,
 } from "./pdf-grid.ts";
@@ -205,4 +208,24 @@ test("headroom: room for one mark more than the data's fullest date", () => {
   assert.equal(exact.dateW, 126 - 88);
   // Seven need 102, past the least date column: they close up.
   assert.ok(roomy.perLine >= 7);
+});
+
+test("the bounds: a month past MONTH_DAYS dates or a date past DAY_MARKS marks is beyond them", () => {
+  const month = (dates: number, marks: number) =>
+    new Map(
+      Array.from({ length: dates }, (_, d) => [
+        `2027-01-${String(1 + 3 * d).padStart(2, "0")}`,
+        marks,
+      ]),
+    );
+  assert.deepEqual(beyondBounds(month(MONTH_DAYS, DAY_MARKS)), {
+    months: [],
+    days: [],
+  });
+  assert.deepEqual(beyondBounds(month(MONTH_DAYS + 1, 1)).months, [
+    ["2027-01", MONTH_DAYS + 1],
+  ]);
+  assert.deepEqual(beyondBounds(month(1, DAY_MARKS + 1)).days, [
+    ["2027-01-01", DAY_MARKS + 1],
+  ]);
 });
