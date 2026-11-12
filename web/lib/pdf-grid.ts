@@ -15,6 +15,15 @@
 // does not fit (the caller takes a smaller size).
 // Pure, so the choice is tested without a PDF (lib/pdf-grid.test.ts).
 
+/**
+ * The bounds every PDF's tables are sized for, whatever the data (Tech
+ * Lead, t334): dates in a month (the real data's most is 7, one more for
+ * headroom), marks on a date, and every row's height.
+ */
+export const MONTH_DAYS = 8;
+export const DAY_MARKS = 5;
+export const TABLE_ROW = 24;
+
 type GridMonth = {
   /** "YYYY-MM". */
   key: string;

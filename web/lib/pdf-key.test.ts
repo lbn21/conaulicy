@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {
-  KEY_ORDER,
-  keyCell,
-  keyGrid,
-  keyOrder,
-  windowKeys,
-} from "./pdf-key.ts";
+import { KEY_ORDER, KEY_TONES, keyCell, keyGrid, keyOrder } from "./pdf-key.ts";
+import { FRACTIONS, tones } from "./waste-bin.ts";
 
 const GAP = 12;
 
@@ -46,29 +41,11 @@ describe("keyOrder", () => {
   });
 });
 
-describe("windowKeys", () => {
-  it("is each zone's key in every window of the span, from each month", () => {
-    const zone = new Map<string, string[]>([
-      ["2026-11", ["zmieszane"]],
-      ["2027-03", ["wielkogabarytowe"]],
-      ["2027-05", ["bio"]],
-    ]);
-    const keys = windowKeys([zone], 6);
-    // Nov–Apr, Mar–Aug, May–Oct.
-    assert.deepEqual(keys, [
-      ["zmieszane", "wielkogabarytowe"],
-      ["bio", "wielkogabarytowe"].sort(
-        (a, b) => KEY_ORDER.indexOf(a) - KEY_ORDER.indexOf(b),
-      ),
-      ["bio"],
-    ]);
-  });
-
-  it("never mixes zones", () => {
-    const keys = windowKeys([
-      new Map([["2026-11", ["zmieszane"]]]),
-      new Map([["2026-11", ["bio"]]]),
-    ]);
-    assert.deepEqual(keys, [["zmieszane"], ["bio"]]);
+describe("KEY_TONES", () => {
+  it("is every fraction the site knows, once, in the key's order", () => {
+    const all = new Set(FRACTIONS.flatMap(({ subtype }) => tones(subtype)));
+    assert.equal(KEY_TONES.length, all.size);
+    assert.deepEqual(new Set(KEY_TONES), all);
+    assert.deepEqual(keyOrder(KEY_TONES), KEY_TONES);
   });
 });

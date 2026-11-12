@@ -1,10 +1,11 @@
+import { FRACTIONS, tones } from "./waste-bin.ts";
+
 // The PDF key's layout („Oznaczenia”, app/adres/[id]/harmonogram.pdf): one
-// fixed grid, the same on every address's PDF, sized from the data alone:
-// the fullest key any zone shows in any window of PDF_MONTHS months
-// (windowKeys), never one address's own. Its heading on a line of its own,
-// then equal cells across the content width, as many columns as the widest
-// name allows, as many rows as the fullest key needs. An address fills the
-// cells in KEY_ORDER, row by row, and leaves the rest empty.
+// fixed grid, the same on every address's PDF whatever the data: a cell for
+// every fraction the site knows (KEY_TONES, from lib/waste-bin.ts
+// FRACTIONS). Its heading on a line of its own, then equal cells across the
+// content width, as many columns as the widest name allows. An address
+// fills the cells in KEY_ORDER, row by row, and leaves the rest empty.
 
 /** Page 1's months: the current one and the five after it. */
 export const PDF_MONTHS = 6;
@@ -31,34 +32,10 @@ export function keyOrder(tones: Iterable<string>): string[] {
   return [...new Set(tones)].sort((a, b) => rank(a) - rank(b));
 }
 
-const monthIndex = (key: string) =>
-  Number(key.slice(0, 4)) * 12 + Number(key.slice(5, 7)) - 1;
-
-/**
- * Every zone's key in every window of `span` months (from each month it has
- * dates): per zone, its months ("YYYY-MM") and their fractions.
- */
-export function windowKeys(
-  zones: Iterable<Map<string, Iterable<string>>>,
-  span = PDF_MONTHS,
-): string[][] {
-  const keys: string[][] = [];
-  for (const months of zones) {
-    const entries = [...months].map(
-      ([key, tones]) => [monthIndex(key), [...tones]] as const,
-    );
-    for (const [start] of entries) {
-      keys.push(
-        keyOrder(
-          entries
-            .filter(([m]) => m >= start && m < start + span)
-            .flatMap(([, tones]) => tones),
-        ),
-      );
-    }
-  }
-  return keys;
-}
+/** Every fraction the site knows, in the key's order: the key's cells. */
+export const KEY_TONES: readonly string[] = keyOrder(
+  FRACTIONS.flatMap(({ subtype }) => tones(subtype)),
+);
 
 export type KeyGrid = {
   columns: number;

@@ -15,6 +15,7 @@ import { NOINDEX } from "@/lib/indexing";
 import { LOCALE } from "@/lib/locale";
 import {
   LOGO_HEIGHT,
+  LOGO_WIDTH,
   PLATE,
   RIM,
   RIM_WIDTH,
@@ -24,9 +25,22 @@ import {
 } from "@/lib/logo";
 import { fileSlug } from "@/lib/normalize";
 import { type Block, flow, type Spot } from "@/lib/pdf-flow";
-import { chooseGrid, dateRows, tableRows } from "@/lib/pdf-grid";
+import {
+  chooseGrid,
+  DAY_MARKS,
+  dateRows,
+  MONTH_DAYS,
+  TABLE_ROW,
+  tableRows,
+} from "@/lib/pdf-grid";
 import { drawIcon, FRACTION_ICONS, PDF_ICONS } from "@/lib/pdf-icon";
-import { keyCell, keyGrid, keyOrder, PDF_MONTHS } from "@/lib/pdf-key";
+import {
+  KEY_TONES,
+  keyCell,
+  keyGrid,
+  keyOrder,
+  PDF_MONTHS,
+} from "@/lib/pdf-key";
 import { scheduleName } from "@/lib/places";
 import {
   getPlace,
@@ -34,8 +48,6 @@ import {
   type Pickup,
   type PickupDay,
   type PlaceView,
-  type WasteMaxima,
-  wasteMaxima,
 } from "@/lib/schedule";
 import { hasUpcoming, laterNote, putOutNote } from "@/lib/schedule-notes";
 import { SITE_NAME } from "@/lib/share";
@@ -108,12 +120,11 @@ const TYPE = {
 
 // Atkinson Hyperlegible Next's vertical metrics, in em. PDFKit sets a line
 // from the top of its ascender (0.984), so the baseline is ASCENT below y and
-// the cap height (0.668) starts CAP_TOP below it. Spacing is measured to the
-// ink: inkOf() gives a text's own glyphs.
+// the cap height (0.668) starts ASCENT - CAP below it. Spacing is measured
+// to the ink: inkOf() gives a text's own glyphs.
 const ASCENT = 0.984;
 const LINE = ASCENT + 0.316;
 const CAP = 0.668;
-const CAP_TOP = ASCENT - CAP;
 
 /** Each size's row on the scale, and the gap PDFKit adds for that pitch. */
 const ROW: Record<number, number> = {
@@ -430,11 +441,7 @@ function emptyRange(keys: string[]): string {
 
 // ---------------------------------------------------------------- render
 
-function render(
-  place: PlaceView,
-  url: string,
-  maxima: WasteMaxima,
-): Promise<Buffer> {
+function render(place: PlaceView, url: string): Promise<Buffer> {
   const months = windowMonths(place.today);
   const inWindow = place.days.filter((day) =>
     months.includes(day.date.slice(0, 7)),
@@ -618,15 +625,25 @@ function render(
   };
 
   // ------------------------------------------------------------ bands
-  // The full band on page 1: the plate, where, the street and its day on the
-  // left; the QR code and its caption on the right. Rows on the scale, their
-  // text cap-centred; MARGIN of padding all round.
+  // The band on page 1, compact so six months of tables keep their rows
+  // (Tech Lead, t334): the plate and where, the street, its day; the QR
+  // code and its caption on the right. Rows on the scale, their text
+  // cap-centred; BAND_PAD above and below, MARGIN at the sides. One height
+  // for every address, day line or not: the calendar below starts at one
+  // place on every PDF.
   const LOGO_H = 6 * U;
-  const qrSize = 20 * U;
+  const BAND_PAD = 3 * U;
+  const qrSize = 16 * U;
   const qrBox = qrSize + 2 * U;
   const qrX = PAGE_W - MARGIN - qrBox;
   const bandTextW = qrX - 6 * U - MARGIN;
+  const logoW = (LOGO_WIDTH * LOGO_H) / LOGO_HEIGHT;
+  const kickerX = MARGIN + logoW + 3 * U;
   const kicker = `${place.area} · Harmonogram odbioru odpadów`;
+  const kickerSize = oneLine("regular", kicker, MARGIN + bandTextW - kickerX, [
+    TYPE.body,
+    TYPE.small,
+  ]);
   // The street's name and its day line each on one line, in rows of a
   // fixed height, so the longest name leaves the calendar where it is.
   const titleSize = oneLine("bold", title, bandTextW, [
@@ -640,39 +657,23 @@ function render(
     TYPE.body,
     TYPE.small,
   ]);
-  const kickerTop = MARGIN + LOGO_H + 3 * U;
-  const titleTop = kickerTop + ROW[TYPE.body];
+  // The title's own row gives it the air below the plate.
+  const titleTop = BAND_PAD + LOGO_H;
   const titleH = ROW[TYPE.title];
-  const bandLineTop = titleTop + titleH + U;
-  const leftBottom = bandLine
-    ? bandLineTop + ROW[TYPE.body]
-    : titleTop + titleH;
+  const bandLineTop = titleTop + titleH;
   const scan = "Zeskanuj: aktualne terminy";
-  const scanTop = MARGIN + qrBox + U;
-  const rightBottom = scanTop + ROW[TYPE.small];
-  // One height for every address, day line or not: the calendar below
-  // starts at one place on every PDF.
-  const bandH =
-    Math.max(leftBottom, titleTop + titleH + U + ROW[TYPE.body], rightBottom) +
-    MARGIN;
+  const scanTop = BAND_PAD + qrBox + U;
+  const bandH = bandLineTop + ROW[TYPE.body] + BAND_PAD;
 
   const drawBand = () => {
     artifact(doc, () => {
       doc.rect(0, 0, PAGE_W, bandH).fillColor(HEADER).fill();
-      drawLogo(doc, MARGIN, MARGIN, LOGO_H);
-      doc.rect(qrX, MARGIN, qrBox, qrBox).fillColor(WHITE).fill();
-      drawQr(doc, url, qrX + U, MARGIN + U, qrSize);
+      drawLogo(doc, MARGIN, BAND_PAD, LOGO_H);
+      doc.rect(qrX, BAND_PAD, qrBox, qrBox).fillColor(WHITE).fill();
+      drawQr(doc, url, qrX + U, BAND_PAD + U, qrSize);
     });
     tag(root, "P", () =>
-      rowText(
-        "regular",
-        TYPE.body,
-        WHITE,
-        kicker,
-        MARGIN,
-        kickerTop,
-        ROW[TYPE.body],
-      ),
+      rowText("regular", kickerSize, WHITE, kicker, kickerX, BAND_PAD, LOGO_H),
     );
     tag(root, "H1", () =>
       rowText("bold", titleSize, WHITE, title, MARGIN, titleTop, titleH),
@@ -744,58 +745,6 @@ function render(
     return compactH;
   };
 
-  // ------------------------------------------------------------ note
-  // GOV.UK Warning text on a grey band: one line, that dates may change and
-  // where to check them.
-  const WARN = 7 * U;
-  const noteText =
-    "Terminy mogą się zmienić – zeskanuj kod, by sprawdzić aktualne.";
-  const noteX = MARGIN + WARN + 3 * U;
-  const noteW = PAGE_W - MARGIN - noteX;
-  const noteRows = block("bold", TYPE.body, noteText, noteW);
-  const noteBody = Math.max(WARN, noteRows);
-  const noteH = 3 * U + noteBody + 3 * U;
-  const drawNote = (top: number) => {
-    const mid = top + noteH / 2;
-    artifact(doc, () => {
-      doc.rect(0, top, PAGE_W, noteH).fillColor(PANEL).fill();
-      doc
-        .circle(MARGIN + WARN / 2, mid, WARN / 2)
-        .fillColor(BLACK)
-        .fill();
-      // The "!" centred by its ink: it runs from the cap height to 0.012 em
-      // below the baseline.
-      const size = WARN * 0.72;
-      doc.font("bold").fontSize(size).fillColor(WHITE);
-      const tw = doc.widthOfString("!");
-      doc.text(
-        "!",
-        MARGIN + WARN / 2 - tw / 2,
-        mid - size * (CAP_TOP + 0.68 / 2),
-        {
-          lineBreak: false,
-        },
-      );
-    });
-    // GOV.UK's visually hidden "Warning" prefix, for screen readers.
-    tag(
-      root,
-      "P",
-      () =>
-        blockText(
-          "bold",
-          TYPE.body,
-          BLACK,
-          noteText,
-          noteX,
-          mid - noteRows / 2,
-          noteW,
-        ),
-      { actual: `Ostrzeżenie: ${noteText}` },
-    );
-    return top + noteH;
-  };
-
   // ------------------------------------------------------------ key
   // Above the footer, the same for every address (lib/pdf-key.ts): the
   // key's heading on a line of its own, then one grid of equal cells across
@@ -824,18 +773,14 @@ function render(
       moved: days.some((day) => moved(day)),
     };
   };
-  // Every zone's key, in every window of six months: never this address's.
+  // Every fraction the site knows (lib/pdf-key.ts KEY_TONES), never the
+  // data's: one grid on every PDF, whatever is loaded.
   doc.font("regular").fontSize(TYPE.small);
   const keyLayout = keyGrid(
     CONTENT_W,
     KEY_GAP,
-    Math.max(
-      0,
-      ...maxima.keys
-        .flat()
-        .map((t) => MARK + U + doc.widthOfString(keyName(t))),
-    ),
-    Math.max(0, ...maxima.keys.map((k) => k.length)),
+    Math.max(...KEY_TONES.map((t) => MARK + U + doc.widthOfString(keyName(t)))),
+    KEY_TONES.length,
   );
   /** The heading's row (and the moved date's note), then the grid's. */
   const KEY_H = (1 + keyLayout.rows) * KEY_ROW;
@@ -924,12 +869,10 @@ function render(
       oldest(place.sources.map((s) => s.checkedAt)),
     ),
   );
-  // Sized once for the largest calendar any address prints (lib/schedule.ts
-  // wasteMaxima): every month of the window, each as full as the fullest
-  // month in the data, under the band (one height for every address: a
-  // one-line title, its day line) and above the key's fixed grid. Every
-  // address gets the same tables; fewer months leave the space below
-  // them empty.
+  // Sized once, for every address, from fixed bounds (lib/pdf-grid.ts):
+  // MONTH_DAYS dates in every month, DAY_MARKS marks on a date, rows of
+  // TABLE_ROW at the body size, under the band and above the key's fixed
+  // grid. Fewer months or dates leave the space empty.
   // The footer line at its larger size, whichever this one takes.
   const footerTop = Math.min(
     footer1.top,
@@ -937,86 +880,46 @@ function render(
   );
   // The key, at one place on every page.
   const keyTop = footerTop - SECTION - KEY_H;
-  const gridTop = bandH + noteH + SECTION;
-  const gridMonths = months.map((key) => ({
-    key,
-    // Sized from every zone's months (profiles), never this address's.
-    marks: [],
-  }));
-  // The tables as large as that page allows: a text size of the scale
-  // (with its marks) whose grid fits with every date's marks on one line
-  // (below: the largest marks first), its rows then as tall as fill the
-  // space down to the key (in half points: the one size not on U, so the
-  // tables use the whole page).
+  const gridTop = bandH + SECTION;
+  const gridMonths = months.map((key) => ({ key, marks: [] }));
   // As the leaflet's: nothing bold, headers the days' size, set apart only
-  // by the grey; every table text TABLE_PAD in from its borders.
-  const tableSizes = [
-    { size: TYPE.heading, mark: MARK + 4 },
-    { size: TYPE.body, mark: MARK + 2 },
-    { size: TYPE.small, mark: MARK },
-    { size: TYPE.table, mark: MARK },
-  ];
-  const plan = (headroom: number) =>
-    tableSizes.map(({ size, mark }) => {
-      // The date column holds „Dzień” over one or two digits: the same for
-      // every address, and as narrow as „Dzień” with U each side when the
-      // marks need the room; „Dzień” is still set TABLE_PAD in (lib/pdf-grid.ts fitMarks).
-      const textW = Math.max(
-        widthOf("regular", size, "Dzień"),
-        widthOf("regular", size, "28"),
-      );
-      const dateW = onScale(textW + 2 * TABLE_PAD);
-      const grid = chooseGrid({
-        months: gridMonths,
-        profiles: maxima.profiles,
-        headroom,
-        // Room for five on a day, every address (Jakub, t333).
-        least: 5,
-        width: CONTENT_W,
-        gap: MONTH_GUTTER,
-        height: keyTop - SECTION - gridTop,
-        yearH: YEAR_H,
-        rowGap: ROW_GAP,
-        dateW,
-        // „Dzień” TABLE_PAD in, as every header, still inside the column.
-        minDateW: Math.ceil(textW + 2 * U),
-        minMarksW: onScale(widthOf("regular", size, "Odpady") + 2 * TABLE_PAD),
-        pad: TABLE_PAD,
-        mark,
-        markGap: MARK_GAP,
-        // Only the date column gives way: the marks keep their size and a
-        // full step between them.
-        minMarkGap: MARK_GAP,
-        minMark: mark,
-        columns: MONTH_COLUMNS,
-        gridRows: MONTH_ROWS,
-        maxRow: 2 * ROW[size],
-        minRow: ROW[size],
-        rowStep: 0.5,
-      });
-      return { size, grid };
-    });
-  // Of the sizes that fit, the largest marks, then the widest gap between
-  // them, then the largest text: a narrower date column costs nothing, the
-  // marks give way last.
-  const best = (layouts: ReturnType<typeof plan>) =>
-    layouts
-      .filter((layout) => layout.grid.fits)
-      .sort(
-        (a, b) =>
-          b.grid.mark - a.grid.mark ||
-          b.grid.markGap - a.grid.markGap ||
-          b.size - a.size,
-      )[0];
-  // Room for one mark more than the fullest date of any address, if that
-  // fits without smaller marks; else exactly the fullest.
-  const exact = plan(0);
-  const roomy = best(plan(1));
-  const chosen =
-    roomy && roomy.grid.mark >= (best(exact)?.grid.mark ?? 0)
-      ? roomy
-      : (best(exact) ?? exact[exact.length - 1]);
-  const { size: cellSize, grid } = chosen;
+  // by the grey; every table text TABLE_PAD in from its borders. The date
+  // column holds „Dzień” over one or two digits, as narrow as „Dzień” with
+  // U each side when the marks need the room; „Dzień” is still set
+  // TABLE_PAD in (lib/pdf-grid.ts fitMarks).
+  const cellSize = TYPE.body;
+  const textW = Math.max(
+    widthOf("regular", cellSize, "Dzień"),
+    widthOf("regular", cellSize, "28"),
+  );
+  const grid = chooseGrid({
+    months: gridMonths,
+    profiles: [Array<number>(MONTH_DAYS).fill(DAY_MARKS)],
+    least: DAY_MARKS,
+    width: CONTENT_W,
+    gap: MONTH_GUTTER,
+    height: keyTop - SECTION - gridTop,
+    yearH: YEAR_H,
+    rowGap: ROW_GAP,
+    dateW: onScale(textW + 2 * TABLE_PAD),
+    minDateW: Math.ceil(textW + 2 * U),
+    minMarksW: onScale(widthOf("regular", cellSize, "Odpady") + 2 * TABLE_PAD),
+    pad: TABLE_PAD,
+    mark: MARK + 2,
+    markGap: MARK_GAP,
+    // Only the date column gives way: the marks keep their size and a full
+    // step between them.
+    minMarkGap: MARK_GAP,
+    minMark: MARK + 2,
+    columns: MONTH_COLUMNS,
+    gridRows: MONTH_ROWS,
+    maxRow: TABLE_ROW,
+    minRow: TABLE_ROW,
+    rowStep: 0.5,
+  });
+  if (!grid.fits) {
+    console.warn("harmonogram.pdf: the month grid does not fit page 1");
+  }
   const { rowH, dateW, mark: cellMark, markGap: cellGap } = grid;
   const tableH = (grid.bodyRows + 2) * rowH;
 
@@ -1585,7 +1488,7 @@ function render(
   // ------------------------------------------------------------ calendar
   // Rows that do not fit even at the smallest row height run on, on pages of
   // their own under the compact band.
-  let y = drawNote(drawBand()) + SECTION;
+  let y = drawBand() + SECTION;
   let pageKeys: string[] = [];
   let year = "";
   const yearsTagged = new Set<string>();
@@ -1844,11 +1747,7 @@ export async function GET(
     });
   }
 
-  const pdf = await render(
-    place,
-    `${SITE_URL}${wastePath(place)}`,
-    await wasteMaxima(),
-  );
+  const pdf = await render(place, `${SITE_URL}${wastePath(place)}`);
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
