@@ -1,16 +1,20 @@
-// Checks the street PDFs (app/adres/[id]/harmonogram.pdf) on the CI fixture: a
-// city street over twelve months, one with two, a village, and a split street
-// with ?nr=.
+// Checks the street PDFs (app/adres/[id]/harmonogram.pdf) of every address
+// the CI fixture's database has (each waste zone's members, a split street
+// with a number in its part), never a list of ours.
 // Each must be a tagged PDF (MarkInfo, Lang, structure tree) with no PDF/UA
-// claim (it fails veraPDF), of a sane length, within the size budget, with
-// only Atkinson Hyperlegible Next embedded, a one-page calendar, a one-page
-// guide from the gmina's own rules and the text version after them. Every
-// address's month tables are the same size, rows included, however many
-// months it has, in one fixed 4 × 3 grid inside the page's margins (a
-// whole year's twelve months on page 1), every row one height (no date's
-// marks wrap), at one place
-// on the page whatever the street's name (the longest on one line), and so
-// are the guide's tiles; no word on pages 1–2 spills
+// claim (it fails veraPDF), within the size budget, with only Atkinson
+// Hyperlegible Next embedded, and exactly two pages: the calendar, then the
+// guide from the gmina's own rules. Every address's month
+// tables are the same size, rows included, in one fixed 3 × 2 grid inside
+// the page's margins (every month of the six with dates on page 1), every
+// row one height (no date's marks wrap), every header cell's text one
+// padding in, each page's footer rule at one place (its fine print in rows
+// reserved for the longest: page 1's unverified note shown or not, page 2
+// every source of the gmina's guide, each linked), the key one grid under
+// its own heading (the same rows and
+// columns on every address's PDF: equal, margin to margin), all at one
+// place on the page whatever the street's name (the longest on one line),
+// and so are the guide's tiles; no word on pages 1–2 spills
 // out of its table, tile or box (scripts/lib/pdf-layout.mjs). Checks are
 // structural (pages, links, QR codes, boxes, sources from data), never the
 // wording (CLAUDE.md, Workflow). A split street without a number has
@@ -27,82 +31,132 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { inflateSync } from "node:zlib";
+import pg from "pg";
 import QRCode from "qrcode";
 import { SITE_URL } from "../lib/config.generated.ts";
+import { todayInWarsaw } from "../lib/dates.ts";
+import { fileSlug } from "../lib/normalize.ts";
+import { PDF_MONTHS } from "../lib/pdf-key.ts";
 import { GUIDES } from "../lib/sorting-guide.ts";
 import { walk } from "./lib/files.mjs";
+import { localDatabaseUrl } from "./lib/local-db.ts";
 import { pageStrokes, pageWords, spills } from "./lib/pdf-layout.mjs";
 import { finish, startServer } from "./lib/server.mjs";
 
+const failures = [];
+const check = (ok, message) => {
+  if (!ok) failures.push(message);
+};
 const ROOT = path.resolve(import.meta.dirname, "..");
 const MAX_BYTES = 150_000;
-const MIN_PAGES = 3;
-// The calendar and „Co wrzucać” (a page each), then the text version.
-const MAX_PAGES = 8;
-// The town's streets (SIMC 0972447) are the Urząd Miejski's schedule, the
-// rest the gmina's (lib/places.ts scheduleOwner).
-const gminaOf = (p) =>
-  p.startsWith("/adres/0972447") ? "Lubaczów (miasto)" : "Lubaczów (gmina)";
-const CASES = [
-  {
-    name: "city street",
-    path: "/adres/0972447-00470/harmonogram.pdf",
-    page: "/adres/0972447-00470/smieci",
-  },
-  {
-    name: "two-month street",
-    path: "/adres/0972447-19253/harmonogram.pdf",
-    page: "/adres/0972447-19253/smieci",
-  },
-  {
-    // Longer than any real place's name (scripts/ci-fixture.ts): on one
-    // line, the calendar where every address's is.
-    name: "longest street name",
-    path: "/adres/0972447-90011/harmonogram.pdf",
-    page: "/adres/0972447-90011/smieci",
-    title: true,
-  },
-  {
-    name: "village",
-    path: "/adres/0606375/harmonogram.pdf",
-    page: "/adres/0606375/smieci",
-  },
-  {
-    name: "split street, nr 7a",
-    path: "/adres/0972447-90004/harmonogram.pdf?nr=7a",
-    page: "/adres/0972447-90004/smieci?nr=7a",
-  },
-  {
-    name: "split street, no nr",
-    path: "/adres/0972447-90004/harmonogram.pdf",
-    status: 404,
-  },
-  {
-    name: "schedule ended",
-    path: "/adres/0972447-90009/harmonogram.pdf",
-    status: 404,
-  },
-];
+// Page 1 the calendar and its key, page 2 „Co wrzucać”: two pages, every
+// address.
+const PAGES = 2;
+
+// Every address the CI fixture has, from its database (scripts/ci-fixture.ts),
+// never a list of ours: each waste zone's members, a split street's part with
+// a number in it (and without one: a 404), and each zone's window months with
+// dates; a zone with none left (an ended schedule) is a 404 too.
+async function fixtureCases() {
+  const db = new pg.Client({ connectionString: localDatabaseUrl() });
+  await db.connect();
+  try {
+    const today = todayInWarsaw();
+    const { rows: members } = await db.query(
+      `select m.zone_id, m.locality_id, m.street_id, m.house_from, m.parity,
+              z.name as zone_name, coalesce(s.name, l.name) as name,
+              g.name as gmina
+         from zone_members m
+         join zones z on z.id = m.zone_id
+         join localities l on l.id = m.locality_id
+         join gminy g on g.id = l.gmina_id
+         left join streets s on s.id = m.street_id
+        where z.type = 'waste'
+        order by m.zone_id, m.locality_id, m.street_id, m.house_from`,
+    );
+    const { rows: months } = await db.query(
+      `select zone_id, array_agg(distinct substr(start, 1, 7)) as months,
+              max(start) as last
+         from events where type = 'waste' group by zone_id`,
+    );
+    const window = Array.from({ length: PDF_MONTHS }, (_, i) => {
+      const n =
+        Number(today.slice(0, 4)) * 12 + Number(today.slice(5, 7)) - 1 + i;
+      return `${Math.floor(n / 12)}-${String((n % 12) + 1).padStart(2, "0")}`;
+    });
+    const byZone = new Map(months.map((r) => [r.zone_id, r]));
+    const cases = [];
+    const seen = new Set();
+    for (const m of members) {
+      const id = m.street_id ?? m.locality_id;
+      const split = m.house_from !== null || m.parity !== null;
+      const nr = !split
+        ? null
+        : (m.house_from ?? (m.parity === "odd" ? "1" : "2"));
+      const query = nr ? `?nr=${nr}` : "";
+      const zone = byZone.get(m.zone_id);
+      const live = Boolean(zone && zone.last >= today);
+      const add = (c) => {
+        if (seen.has(c.path)) return;
+        seen.add(c.path);
+        cases.push(c);
+      };
+      add({
+        name: `${id}${query}`,
+        path: `/adres/${id}/harmonogram.pdf${query}`,
+        page: `/adres/${id}/smieci${query}`,
+        id,
+        zoneId: m.zone_id,
+        zoneName: m.zone_name,
+        placeName: m.name,
+        gmina: m.gmina,
+        months: live
+          ? window.filter((key) => zone.months.includes(key)).length
+          : 0,
+        status: live ? 200 : 404,
+      });
+      if (split) {
+        add({
+          name: `${id} (no number)`,
+          path: `/adres/${id}/harmonogram.pdf`,
+          status: 404,
+        });
+      }
+    }
+    // The longest place name among the PDFs: on one line of page 1.
+    const named = cases.filter((c) => c.status === 200);
+    const longest = named.reduce((a, b) =>
+      b.placeName.length > a.placeName.length ? b : a,
+    );
+    longest.title = true;
+    return cases;
+  } finally {
+    await db.end();
+  }
+}
+const CASES = await fixtureCases();
+const LIVE = CASES.filter((c) => c.status === 200);
+const ENDED = CASES.find((c) => c.status === 404 && c.page);
+check(LIVE.length > 0, "the fixture has no address with a PDF");
+check(Boolean(ENDED), "the fixture has no ended schedule");
 // Responses the CDN keeps (when the gate is off), tagged DATASET alone, the
 // import's purge, the only one (lib/headers.ts); the ended schedule's PDF
-// is a 404.
+// is a 404. A live address, its zone's calendar file, an ended one, a search.
+const sample = LIVE[0];
 const TAGGED = [
-  "/adres/0972447-00470/harmonogram.pdf",
-  "/ics/waste%3Amiasto-s1",
-  "/adres/0972447-00470/woda.ics",
-  "/adres/0972447-90009/harmonogram.pdf",
-  "/api/search?q=asnyka",
+  sample.path,
+  `/ics/${encodeURIComponent(sample.zoneId)}`,
+  `/adres/${sample.id}/woda.ics`,
+  ...(ENDED ? [ENDED.path] : []),
+  `/api/search?q=${encodeURIComponent(sample.placeName.split(" ").at(-1).toLowerCase())}`,
 ];
 // Every address route's shell (its ISR entry's tags, Next's
 // x-next-cache-tags, each page's own entry in .next/server): tagged
 // DATASET, so an import's purge reaches each one, the only way a shell
 // cached with cacheLife "max" changes before the next deploy.
-const PAGE_TAGS = [
-  "/adres/0972447-00470",
-  "/adres/0972447-00470/smieci",
-  "/adres/0972447-00470/woda",
-  "/adres/0972447-00470/prad",
-];
+const PAGE_TAGS = ["", "/smieci", "/woda", "/prad"].map(
+  (sub) => `/adres/${sample.id}${sub}`,
+);
 
 // The tags of the ISR entry `next start` wrote for a page, found by its
 // path's implicit tag; written just after the response, so polled.
@@ -138,16 +192,24 @@ const PAGE_H = 841.89;
 const PAGE_W = 595.28;
 // The page's side margin (the route's MARGIN): every table inside it.
 const SIDE = 28;
+/** A mark's slot on page 1 (route.ts MARK): a glyph mark is narrower. */
+const MARK_SLOT = 11;
 // Page 1's fixed month grid (the route's MONTH_COLUMNS × MONTH_ROWS).
-const GRID = { columns: 4, rows: 3 };
+const GRID = { columns: 3, rows: 2 };
 const round = (n) => Math.round(n * 100) / 100;
 // Per case: page 1's table size and row height, page 2's largest tile.
 const layouts = [];
+// Per case: page 1's key, its heading's line, its rows and columns.
+const keys = [];
+// Every address's tables' positions: together, one 3 × 2 grid.
+const gridXs = new Set();
+const gridYs = new Set();
+/** A key row and the gap between its cells (the route's KEY_ROW, KEY_GAP). */
+const KEY_ROW = 20;
+const KEY_GAP = 12;
+/** A key label's start in its cell: its mark's slot and a step. */
+const KEY_LABEL_IN = MARK_SLOT + 4;
 
-const failures = [];
-const check = (ok, message) => {
-  if (!ok) failures.push(message);
-};
 const run = (cmd, args) => execFileSync(cmd, args, { encoding: "utf8" });
 // The raw file plus every stream that inflates, so compressed metadata counts.
 function pdfSource(bytes) {
@@ -166,8 +228,9 @@ function pdfSource(bytes) {
 
 // The QR codes' modules, read back from the drawing: one square per dark
 // module ("x y w h re", w = h = cell + 0.05); each code's modules share one
-// size, so each size with enough squares is one code (the waste subpage's on
-// page 1, the gmina's full rules on page 2).
+// size, and two codes of one size (the waste subpage's on page 1, the
+// gmina's full rules on page 2) lie apart: more than a quiet zone (4
+// modules) between their rows.
 function qrCodes(source) {
   const squares = [
     ...source.matchAll(/(-?[\d.]+) (-?[\d.]+) ([\d.]+) ([\d.]+) re\b/g),
@@ -175,6 +238,16 @@ function qrCodes(source) {
     .map((m) => m.slice(1, 5).map(Number))
     .filter(([, , w, h]) => w === h);
   return [...Map.groupBy(squares, ([, , w]) => w)]
+    .flatMap(([w, cells]) => {
+      const sorted = [...cells].sort((a, b) => a[1] - b[1]);
+      const codes = [];
+      for (const square of sorted) {
+        const last = codes.at(-1);
+        if (last && square[1] - last.at(-1)[1] <= 4 * w) last.push(square);
+        else codes.push([square]);
+      }
+      return codes.map((code) => [w, code]);
+    })
     .filter(([, cells]) => cells.length >= 100)
     .map(([w, cells]) => {
       const cell = w - 0.05;
@@ -226,10 +299,7 @@ try {
 
     const info = run("pdfinfo", [file]);
     const pages = Number(info.match(/^Pages:\s+(\d+)/m)?.[1]);
-    check(
-      pages >= MIN_PAGES && pages <= MAX_PAGES,
-      `${c.name}: ${pages} pages (expected ${MIN_PAGES}–${MAX_PAGES})`,
-    );
+    check(pages === PAGES, `${c.name}: ${pages} pages (expected ${PAGES})`);
     check(/^Tagged:\s+yes/m.test(info), `${c.name}: not a tagged PDF`);
     const source = pdfSource(bytes);
     check(
@@ -265,7 +335,7 @@ try {
 
     const text = run("pdftotext", ["-layout", file, "-"]);
     const flat = text.replace(/\s+/g, " ");
-    const gmina = gminaOf(c.path);
+    const gmina = c.gmina;
     // The QR code and the printed link: the waste subpage, never the hub or
     // a preview deployment.
     const page = SITE_URL + c.page;
@@ -283,8 +353,8 @@ try {
     // The calendar is page 1 and „Co wrzucać” page 2, each one page: the
     // gmina's guide (lib/sorting-guide.ts, its publisher) is named on page 2
     // only, neither page prints a URL (their QR codes carry the links), the
-    // guide's QR code opens its full rules, and the text version lists every
-    // source link. No other gmina's source appears anywhere.
+    // guide's QR code opens its full rules. No other gmina's source appears
+    // anywhere.
     const pageText = (n) =>
       run("pdftotext", ["-f", String(n), "-l", String(n), file, "-"]).replace(
         /\s+/g,
@@ -366,8 +436,113 @@ try {
         !splits.has(null),
       `${c.name}: page 1 tables ${[...sizes].join(", ")}, rows ${[...rows].join(", ")}, date columns ${[...splits].join(", ")} (one size, every row one height: no marks wrap)`,
     );
-    // A fixed grid inside the page's margins: at most 4 × 3 tables on page
-    // 1, a whole window's twelve months all of them, nothing carried over.
+    // Every header's text the same distance in from its cell's left edge:
+    // the date header from the table's border, the marks' from the rule
+    // (±1 pt for the glyphs' own side bearings).
+    const words1 = pageWords(file, 1);
+    const rowH = [...rows][0] ?? 0;
+    const headerPads = tables.flatMap((t) => {
+      const split = (strokes[0]?.columns ?? []).find(
+        (r) => r.x > t.x0 + 0.1 && r.x < t.x1 - 0.1 && r.y1 > t.y0,
+      );
+      const head = words1
+        .filter((w) => {
+          const cy = (w.y0 + w.y1) / 2;
+          return (
+            cy > t.y0 + rowH &&
+            cy < t.y0 + 2 * rowH &&
+            w.x0 > t.x0 &&
+            w.x1 < t.x1
+          );
+        })
+        .sort((a, b) => a.x0 - b.x0);
+      const after = head.find((w) => split && w.x0 > split.x);
+      return split && head[0] && after
+        ? [head[0].x0 - t.x0, after.x0 - split.x]
+        : [Number.NaN];
+    });
+    check(
+      headerPads.length > 0 &&
+        headerPads.every(
+          (pad) => Math.abs(pad - headerPads[0]) <= 1 && pad > 1,
+        ),
+      `${c.name}: page 1 header cells' left padding ${[...new Set(headerPads.map(round))].join(", ")} pt (one for every header cell)`,
+    );
+    // The key, between the tables and the footer's rule: its heading at
+    // the margin on a line of its own but for a moved date's note
+    // right-aligned (only where the data has one), then its fixed grid,
+    // rows filled in turn, left to right (lib/pdf-key.ts). Lines 5 U
+    // apart. Items are words more than 2 U apart (a mark between them).
+    const tablesEnd = Math.max(...tables.map((t) => t.y1));
+    const footerRule = Math.min(
+      ...(strokes[0]?.rules ?? [])
+        .filter((r) => r.y > tablesEnd && r.x1 - r.x0 > PAGE_W / 2)
+        .map((r) => r.y),
+    );
+    const keyLines = [];
+    for (const w of words1
+      .filter((w) => w.y0 > tablesEnd && w.y1 < footerRule)
+      .sort((a, b) => a.y0 - b.y0 || a.x0 - b.x0)) {
+      // One line: tops within 2 U (pdftotext boxes lowercase-only words
+      // lower).
+      const line = keyLines.find((l) => Math.abs(l[0].y0 - w.y0) < 8);
+      if (line) line.push(w);
+      else keyLines.push([w]);
+    }
+    const blocks = [];
+    for (const line of keyLines) {
+      const last = blocks.at(-1);
+      if (last && line[0].y0 - last.at(-1)[0].y0 < KEY_ROW + 2) last.push(line);
+      else blocks.push([line]);
+    }
+    const keyBlock = blocks.at(-1) ?? [];
+    const itemsOf = (line) =>
+      [...line]
+        .sort((a, b) => a.x0 - b.x0)
+        .reduce((out, w) => {
+          const prev = out.at(-1);
+          if (prev && w.x0 - prev.x1 <= 8) {
+            // A mark drawn as a glyph reads as a word before its label:
+            // the item starts at the label.
+            if (prev.mark) prev.start = w.x0;
+            prev.mark = false;
+            prev.x1 = w.x1;
+          } else {
+            out.push({ start: w.x0, x1: w.x1, mark: w.x1 - w.x0 < MARK_SLOT });
+          }
+          return out;
+        }, []);
+    const heading = keyBlock[0] ? itemsOf(keyBlock[0]) : [];
+    const cellRows = keyBlock.slice(1).map(itemsOf);
+    const counts = cellRows.map((r) => r.length);
+    check(
+      heading.length >= 1 &&
+        heading.length <= 2 &&
+        Math.abs(heading[0].start - SIDE) < 1 &&
+        (heading.length === 1 ||
+          Math.abs(heading[1].x1 - (PAGE_W - SIDE)) < 2) &&
+        blocks.length === 1 &&
+        cellRows.length >= 1 &&
+        counts.every(
+          (n, i) => n <= counts[0] && (i === 0 || counts[i - 1] === counts[0]),
+        ),
+      `${c.name}: page 1 key: heading at the margin (${heading.length > 1 ? "a moved date's note right-aligned" : "alone"}), then ${counts.join(" + ")} items in ${cellRows.length} rows (filled in turn)`,
+    );
+    keys.push({
+      name: c.name,
+      items: counts.reduce((a, b) => a + b, 0),
+      top: round(keyBlock[0]?.[0].y0 ?? Number.NaN),
+      rows: keyBlock.slice(1).map((line) => round(line[0].y0)),
+      x: (cellRows[0] ?? []).map((item) => round(item.start)),
+      // Every later row's items in the first's columns.
+      aligned: cellRows.every((r) =>
+        r.every((item, i) => Math.abs(item.start - cellRows[0][i].start) < 1),
+      ),
+      tablesEnd: round(tablesEnd),
+      footerRule: round(footerRule),
+    });
+    // A fixed grid inside the page's margins: at most 3 × 2 tables on page
+    // 1, every month of the window with dates, nothing carried over.
     const xs = new Set(tables.map((t) => round(t.x0)));
     const ys = new Set(tables.map((t) => round(t.y0)));
     check(
@@ -378,6 +553,14 @@ try {
           (xs.size === GRID.columns && ys.size === GRID.rows)),
       `${c.name}: page 1 grid ${xs.size} × ${ys.size} of ${tables.length} tables, x ${[...xs].join(", ")} (a fixed ${GRID.columns} × ${GRID.rows} inside the margins)`,
     );
+    check(
+      tables.length === c.months,
+      `${c.name}: page 1 holds ${tables.length} months, the window ${c.months} with dates`,
+    );
+    for (const t of tables) {
+      gridXs.add(round(t.x0));
+      gridYs.add(round(t.y0));
+    }
     // The place's name (the document title's last part, before the
     // locality) on one line of page 1.
     if (c.title) {
@@ -414,13 +597,27 @@ try {
       tile: tiles[0]
         ? `${round(tiles[0].x1 - tiles[0].x0)}×${round(tiles[0].y1 - tiles[0].y0)}`
         : null,
+      // Each page's footer rule: its block reserved for the longest it can
+      // be (the unverified note's row on page 1, shown or not).
+      foot: [0, 1]
+        .map((n) =>
+          round(
+            Math.max(
+              ...(strokes[n]?.rules ?? [])
+                .filter((r) => r.x1 - r.x0 > PAGE_W / 2)
+                .map((r) => r.y),
+            ),
+          ),
+        )
+        .join(" / "),
     });
     const guideUris = [...source.matchAll(/\/URI \((https:[^)]*)\)/g)]
       .map((m) => m[1])
       .filter((uri) => own.includes(uri) || others.includes(uri));
     check(
-      guideUris.length > 0 && guideUris.every((uri) => own.includes(uri)),
-      `${c.name}: guide links ${guideUris.join(", ")}, expected ${gmina}'s sources only`,
+      own.every((uri) => guideUris.includes(uri)) &&
+        guideUris.every((uri) => own.includes(uri)),
+      `${c.name}: guide links ${guideUris.join(", ")}, expected every one of ${gmina}'s sources and no other`,
     );
     check(
       !others.some((u) => flat.replace(/\s+/g, "").includes(u)),
@@ -432,7 +629,7 @@ try {
   }
 
   // One layout for every address, however many months it has.
-  for (const key of ["table", "date", "row", "top", "tile"]) {
+  for (const key of ["table", "date", "row", "top", "tile", "foot"]) {
     const seen = new Set(layouts.map((l) => l[key]));
     check(
       seen.size === 1 && !seen.has(null),
@@ -440,14 +637,52 @@ try {
     );
   }
   console.log(
-    `ok    one layout: tables ${layouts[0]?.table} from ${layouts[0]?.top} pt, date column ${layouts[0]?.date} pt, rows ${layouts[0]?.row} pt, tiles ${layouts[0]?.tile}`,
+    `ok    one layout: tables ${layouts[0]?.table} from ${layouts[0]?.top} pt, date column ${layouts[0]?.date} pt, rows ${layouts[0]?.row} pt, tiles ${layouts[0]?.tile}, footer rules ${layouts[0]?.foot} pt`,
+  );
+
+  // One key for every address, at one place: its heading's line, and its
+  // rows and columns' x (so one cell width) the fullest key's, an address
+  // with fewer items in the first of its cells. The fullest key's columns
+  // equal, from margin to margin when it fills a row.
+  const worst = keys.reduce((a, b) => (b.items > a.items ? b : a), keys[0]);
+  const prefix = (xs, of) => xs.every((x, i) => Math.abs(x - of[i]) < 1);
+  const pitches = (worst?.x ?? []).slice(1).map((x, i) => x - worst.x[i]);
+  check(
+    Boolean(worst) &&
+      pitches.every((d) => Math.abs(d - pitches[0]) < 0.5) &&
+      Math.abs(worst.x[0] - KEY_LABEL_IN - SIDE) < 1 &&
+      (worst.rows.length < 2 ||
+        Math.abs(
+          worst.x.at(-1) -
+            KEY_LABEL_IN +
+            pitches[0] -
+            KEY_GAP -
+            (PAGE_W - SIDE),
+        ) < 1),
+    `key: the fullest (${worst?.name}) in ${worst?.rows.length} rows of ${worst?.x.length} columns, ${pitches.map(round).join(", ")} pt apart (equal, margin to margin)`,
+  );
+  // Every address's tables in one grid of 3 × 2 places.
+  check(
+    gridXs.size === GRID.columns && gridYs.size === GRID.rows,
+    `month grid: tables at x ${[...gridXs].join(", ")}, y ${[...gridYs].join(", ")} (one ${GRID.columns} × ${GRID.rows} grid for every address)`,
+  );
+  for (const k of keys) {
+    check(
+      k.aligned &&
+        k.top === worst.top &&
+        prefix(k.rows, worst.rows) &&
+        prefix(k.x, worst.x),
+      `${k.name}: key heading at ${k.top}, rows at ${k.rows.join(", ")}, columns at ${k.x.join(", ")}; ${worst.name} (the fullest, ${worst.items} items): ${worst.top}, ${worst.rows.join(", ")}, ${worst.x.join(", ")} (one grid for every address)`,
+    );
+  }
+  const pitch = worst ? round(worst.x[1] - worst.x[0]) : Number.NaN;
+  console.log(
+    `ok    one key: heading at ${worst?.top} pt, rows at ${worst?.rows.join(", ")} pt, columns at ${worst?.x.join(", ")} pt (a cell and its gap ${pitch} pt; fullest ${worst?.name}, ${worst?.items} items); tables end at ${keys.map((k) => `${k.name} ${k.tablesEnd}`).join("; ")}; footer rule ${worst?.footerRule} pt`,
   );
 
   // The waste subpage of an ended schedule (the page that offers both) has
   // no dead PDF link and no empty calendar file.
-  const ended = await (
-    await fetch(`${server.origin}/adres/0972447-90009/smieci`)
-  ).text();
+  const ended = await (await fetch(`${server.origin}${ENDED.page}`)).text();
   check(
     // Links only: the RSC payload names the sibling route harmonogram.pdf.
     !/href="[^"]*harmonogram\.pdf/.test(ended) &&
@@ -474,12 +709,17 @@ try {
     );
   }
   // The waste calendar's file is named after the calendar, not the zone id.
-  const ics = await fetch(`${server.origin}/ics/waste%3Amiasto-s1`);
+  const icsPath = `/ics/${encodeURIComponent(sample.zoneId)}`;
+  const ics = await fetch(`${server.origin}${icsPath}`);
   await ics.arrayBuffer();
   const disposition = ics.headers.get("content-disposition");
+  const zoneSlug = fileSlug(sample.zoneName);
+  const idSlug = fileSlug(sample.zoneId.split(":").at(-1));
   check(
-    disposition === 'inline; filename="wywoz-smieci-lubaczow-sektor-1.ics"',
-    `/ics/waste%3Amiasto-s1: Content-Disposition ${disposition}`,
+    new RegExp(`^inline; filename="[a-z0-9-]*${zoneSlug}\\.ics"$`).test(
+      disposition ?? "",
+    ) && !disposition.includes(idSlug),
+    `${icsPath}: Content-Disposition ${disposition} (named after the zone, ${zoneSlug}, not its id)`,
   );
   console.log(
     `ok    dataset tag alone on ${TAGGED.length} responses, ${PAGE_TAGS.length} address shells`,
@@ -490,5 +730,5 @@ try {
 
 finish(
   failures,
-  `PDFs: tagged, no PDF/UA claim, QR code and links to the waste subpage, a one-page calendar, then a one-page guide from the gmina's own rules, one layout for every address, nothing spilling out of its box, ${MIN_PAGES}–${MAX_PAGES} pages, ≤ ${MAX_BYTES / 1000} KB, Atkinson only, text version, no example data.`,
+  `PDFs: tagged, no PDF/UA claim, QR code and links to the waste subpage, a one-page calendar, then a one-page guide from the gmina's own rules, one layout for every address, nothing spilling out of its box, ${PAGES} pages, ≤ ${MAX_BYTES / 1000} KB, Atkinson only, no example data.`,
 );

@@ -52,7 +52,7 @@ import {
   type SearchHit,
   type SearchIndex,
 } from "@/lib/search";
-import { FRACTIONS, tones } from "@/lib/waste-bin";
+import { FRACTIONS } from "@/lib/waste-bin";
 import { wasteSchedule } from "@/lib/waste-module";
 
 // Every read goes through Next's data cache, tagged DATASET: a traffic spike
@@ -532,66 +532,6 @@ const placeCached = unstable_cache(
   ["place-v7"],
   DAY_CACHE,
 );
-
-/** What the PDF's calendar page must hold for any address (wasteMaxima). */
-export type WasteMaxima = {
-  /** Per zone and month: the fractions on each of its pickup days. */
-  profiles: number[][];
-  /** Per zone: the fractions its key shows (lib/waste-bin.ts tones), and
-   * whether it has a moved date. */
-  keys: Array<{ tones: string[]; moved: boolean }>;
-};
-
-// Every zone's upcoming months, as the PDF's month tables count them, so
-// its calendar page is sized once for the fullest of them
-// (lib/pdf-grid.ts): every address gets the same tables. Keyed by the
-// Warsaw day, as getPlace's.
-const maximaCached = unstable_cache(
-  async (today: string): Promise<WasteMaxima> => {
-    const rows = await db()
-      .select()
-      .from(events)
-      .where(and(eq(events.type, "waste"), gte(events.start, today)));
-    const months = new Map<string, Map<string, number>>();
-    const keys = new Map<string, { tones: Set<string>; moved: boolean }>();
-    for (const event of rows.filter(hasSource)) {
-      const month = `${event.zoneId}|${event.start.slice(0, 7)}`;
-      const days = months.get(month) ?? new Map<string, number>();
-      days.set(
-        event.start,
-        (days.get(event.start) ?? 0) + tones(event.subtype).length,
-      );
-      months.set(month, days);
-      const zone = event.zoneId ?? "";
-      const key = keys.get(zone) ?? { tones: new Set<string>(), moved: false };
-      for (const tone of tones(event.subtype)) key.tones.add(tone);
-      if (event.shiftedFrom) key.moved = true;
-      keys.set(zone, key);
-    }
-    const unique = new Set(
-      [...months.values()].map((days) =>
-        [...days.keys()]
-          .sort()
-          .map((day) => days.get(day))
-          .join(","),
-      ),
-    );
-    return {
-      profiles: [...unique].map((profile) => profile.split(",").map(Number)),
-      keys: [...keys.values()].map((key) => ({
-        tones: [...key.tones],
-        moved: key.moved,
-      })),
-    };
-  },
-  ["waste-maxima-v2"],
-  DAY_CACHE,
-);
-
-/** The largest calendar any address's PDF prints today. */
-export function wasteMaxima(): Promise<WasteMaxima> {
-  return maximaCached(todayInWarsaw());
-}
 
 /**
  * nr: a house number as given (?nr=). One the register lacks at the place

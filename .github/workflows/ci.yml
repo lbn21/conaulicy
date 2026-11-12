@@ -191,7 +191,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: "Street PDFs (tagged, pages, size, Atkinson only, text version)"
+      - name: "Street PDFs (tagged, two pages, one layout, size, Atkinson only)"
         run: node scripts/check-pdf.mjs
 
       - name: "Indexing (CI build: noindex, robots.txt closed)"

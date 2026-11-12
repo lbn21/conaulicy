@@ -2,7 +2,7 @@
 // month tables (a title cell, a „Dzień | Odpady” header row, then the same
 // number of body rows in every month: as many as the fullest month needs,
 // empty ones left blank), in one fixed grid of `columns` × `gridRows`
-// (4 × 3: the twelve months of the window), each grid row under a strip
+// (3 × 2: the six months of the window), each grid row under a strip
 // for its year headings: a year's heading above its first month, wherever
 // in the row that falls, so a year never needs a row of its own and every
 // address's grid has the same geometry. Sized once for the largest case
@@ -14,6 +14,15 @@
 // shrink to the caller's least (the PDF allows neither); past that the grid
 // does not fit (the caller takes a smaller size).
 // Pure, so the choice is tested without a PDF (lib/pdf-grid.test.ts).
+
+/**
+ * The bounds every PDF's tables are sized for, whatever the data (Tech
+ * Lead, t334): dates in a month (the real data's most is 7, one more for
+ * headroom), marks on a date, and every row's height.
+ */
+export const MONTH_DAYS = 8;
+export const DAY_MARKS = 5;
+export const TABLE_ROW = 24;
 
 type GridMonth = {
   /** "YYYY-MM". */

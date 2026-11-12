@@ -13,7 +13,8 @@
 // whose village has none (Holiki, Dąbrowa), the places of the ZUK dev mock's post 39885
 // (lib/water-fixture.ts: ul. Żuki, Załuże; Lisie Jamy above), one month
 // with 6 pickup days and holiday-shifted dates, and the home page's examples
-// (lib/examples.ts) under their real ids.
+// (lib/examples.ts) under their real ids, and the PDF's worst case (WORST:
+// every fraction, the most dates and marks the PDF is sized for).
 import { createHash } from "node:crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { addDays, todayInWarsaw } from "../lib/dates.ts";
@@ -28,7 +29,10 @@ import {
   zones,
 } from "../lib/db/schema.ts";
 import { normalize } from "../lib/normalize.ts";
+import { DAY_MARKS, MONTH_DAYS } from "../lib/pdf-grid.ts";
+import { KEY_TONES } from "../lib/pdf-key.ts";
 import { localitySearchLabel, streetLabel, terytName } from "../lib/places.ts";
+import { FRACTIONS } from "../lib/waste-bin.ts";
 import { polishHolidays } from "./import/waste/lib.ts";
 import { GMINA_SCHEDULE_PAGES } from "./lib/gmina-pages.ts";
 import { unsourced } from "./lib/import-data.ts";
@@ -100,6 +104,8 @@ const STREETS = [
     "Nakoniecznikoffa-Jeziorańskiego",
     "Generała Przemysława Ignacego",
   ],
+  // The PDF's worst case (WORST, below).
+  ["0972447", "90012", "Zapasowa", null],
 ] as const;
 
 // The CI fixture is the only place a redirect is made without review: it
@@ -126,6 +132,37 @@ type Rule = {
 };
 
 const CITY_RECYCLING = ["papier", "tworzywa", "szklo"];
+
+/**
+ * The PDF's worst case, made from its bounds, never from a real schedule:
+ * every fraction the site knows (lib/pdf-key.ts KEY_TONES, from FRACTIONS,
+ * with the site's names), MONTH_DAYS dates in every month, DAY_MARKS
+ * fractions on each (in turn, so every one appears), and one date a month
+ * moved (lib/pdf-grid.ts). check-pdf prints its PDF as every other.
+ */
+const WORST = {
+  id: "waste:miasto-worst",
+  name: "Lubaczów, najpełniejszy harmonogram",
+  streetId: "0972447-90012",
+};
+
+function worstPickups(month: string) {
+  const names = new Map(FRACTIONS.map((f) => [f.subtype, f.label]));
+  return Array.from({ length: MONTH_DAYS }, (_, d) => {
+    // Every third day from the 1st: within any month, two digits too.
+    const date = `${month}-${String(1 + 3 * d).padStart(2, "0")}`;
+    return Array.from({ length: DAY_MARKS }, (_, k) => {
+      const subtype = KEY_TONES[(d * DAY_MARKS + k) % KEY_TONES.length];
+      return {
+        subtype,
+        label: names.get(subtype) ?? subtype,
+        start: date,
+        // The last date of a month moved from the day before.
+        shiftedFrom: d === MONTH_DAYS - 1 ? addDays(date, -1) : null,
+      };
+    });
+  }).flat();
+}
 
 const ZONES: Array<{
   id: string;
@@ -421,6 +458,30 @@ async function main() {
     ),
   );
 
+  const worstRows = window.flatMap((month) =>
+    worstPickups(month).map((pickup) => ({
+      id: createHash("sha256")
+        .update(`${WORST.id}|${pickup.subtype}|${pickup.start}`)
+        .digest("hex"),
+      type: "waste" as const,
+      subtype: pickup.subtype,
+      zoneId: WORST.id,
+      start: pickup.start,
+      shiftedFrom: pickup.shiftedFrom,
+      allDay: true,
+      label: pickup.label,
+      sourceDoc: "ci-fixture",
+      sourceUrl: SOURCE_URL,
+      sourceRef: `Fikstura CI, ${WORST.name}`,
+      checkedAt: today,
+      // Verified, unlike the rest: its PDF has no unverified note, and
+      // check-pdf finds its layout the same as theirs.
+      verified: true,
+      payload: null,
+    })),
+  );
+  eventRows.push(...worstRows);
+
   // No source, no display (lib/event-source.ts): every fixture event is
   // shown, so the site's checks run on all of them.
   const noSource = unsourced(eventRows);
@@ -445,16 +506,19 @@ async function main() {
     await tx.insert(gminy).values(GMINY);
     await tx.insert(localities).values(localityRows);
     await tx.insert(streets).values(streetRows);
-    await tx
-      .insert(zones)
-      .values(
-        ZONES.map(({ id, name }) => ({ id, type: "waste" as const, name })),
-      );
+    await tx.insert(zones).values(
+      [...ZONES, WORST].map(({ id, name }) => ({
+        id,
+        type: "waste" as const,
+        name,
+      })),
+    );
     await tx
       .insert(zoneMembers)
-      .values(
-        ZONES.flatMap((z) => z.members.map((m) => ({ zoneId: z.id, ...m }))),
-      );
+      .values([
+        ...ZONES.flatMap((z) => z.members.map((m) => ({ zoneId: z.id, ...m }))),
+        { zoneId: WORST.id, localityId: "0972447", streetId: WORST.streetId },
+      ]);
     await tx.insert(events).values(eventRows);
     // A renamed street's old page (made up): it must answer 308 to the new.
     await tx.insert(placeRedirects).values(REDIRECTS);
@@ -462,7 +526,7 @@ async function main() {
 
   const shifted = eventRows.filter((e) => e.shiftedFrom);
   console.log(
-    `CI fixture: ${streetRows.length} streets, ${ZONES.length} zones, ${eventRows.length} events ` +
+    `CI fixture: ${streetRows.length} streets, ${ZONES.length + 1} zones, ${eventRows.length} events ` +
       `(${window[0]}…${window.at(-1)}; 6 pickup days in ${busyMonth} on sektor 1; ` +
       `${shifted.length} holiday-shifted).`,
   );
