@@ -25,7 +25,7 @@ import { type NowTileData, weekOf } from "@/lib/now-panel";
 const HEADING = "Teraz w gminie";
 
 /** One tile, from its definition and its read (null: not read now). */
-export function NowTile({
+function NowTile({
   def,
   data,
 }: {
@@ -102,7 +102,7 @@ function Head({ week }: { week: string | null }) {
 }
 
 /** The tiles as given, in one wrapping row; for the panel and its tests. */
-export function NowTiles({
+function NowTiles({
   tiles,
 }: {
   tiles: Array<{ def: NowTileDef; data: NowTileData | null }>;
@@ -142,21 +142,22 @@ async function NowPanelBody() {
           sources.length > 0 && (
             <>
               {"Źródła: "}
-              {LIST.formatToParts(sources.map((s) => s.text)).map((part, i) =>
-                part.type === "element" ? (
+              {LIST.formatToParts(sources.map((s) => s.text)).map((part, i) => {
+                const source = sources.find((s) => s.text === part.value);
+                return source ? (
+                  // A fixed list, never reordered.
+                  // biome-ignore lint/suspicious/noArrayIndexKey: as above
                   <a
-                    // A fixed list, never reordered.
-                    // biome-ignore lint/suspicious/noArrayIndexKey: as above
                     key={i}
                     className="govuk-link govuk-link--inverse"
-                    href={sources.find((s) => s.text === part.value)?.href}
+                    href={source.href}
                   >
                     {part.value}
                   </a>
                 ) : (
                   part.value
-                ),
-              )}
+                );
+              })}
               {". "}
               {imgw && (
                 <>

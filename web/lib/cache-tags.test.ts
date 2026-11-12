@@ -68,8 +68,10 @@ test("IMGW: asked only by the cron; its copy read only on the address pages", ()
     "lib/imgw-mock.ts",
     "lib/imgw-warnings.ts",
   ]);
-  // The weather module, loaded only by the address pages (hubData).
+  // The weather module, loaded by the address pages (hubData), and the
+  // home page's „Teraz w gminie” (t390), each behind its live block.
   assert.deepEqual(calling(/\bimgwCopy\(/), [
+    "components/now-tiles.ts",
     "lib/live-store.ts",
     "lib/modules.ts",
   ]);
@@ -83,8 +85,10 @@ test("PGE: asked only by the cron; its copy read only by the power module", () =
     "lib/pge-feed.ts",
     "lib/pge-mock.ts",
   ]);
-  // The power module's loader, for the address page and /prad.
+  // The power module's loader, for the address page and /prad, and the
+  // home page's „Teraz w gminie” (t390).
   assert.deepEqual(calling(/\bpgeCopy\(/), [
+    "components/now-tiles.ts",
     "lib/live-store.ts",
     "lib/power-load.ts",
   ]);
@@ -99,6 +103,7 @@ test("the shells: every `use cache` scope is cacheLife max and tags the dataset"
     ].map((m) => `${path}: ${m[1]} ${m[2]}`),
   );
   assert.deepEqual(scopes, [
+    "app/page.tsx: max DATASET",
     "app/page.tsx: max DATASET",
     "app/sitemap.ts: dataset DATASET",
     "app/ulice/page.tsx: max DATASET",
@@ -161,6 +166,7 @@ test("the address pages: one read per request, every block at once, shared with 
     "components/subpage-route.tsx",
   ]);
   assert.deepEqual(calling(/<LiveBlock /), [
+    "components/now-panel.tsx",
     "components/place-crumbs.tsx",
     "components/place-suspense.tsx",
   ]);

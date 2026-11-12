@@ -12,6 +12,7 @@ export const PRIMARY = "#6d2048";
 // the h1's last word, the hero's check icons and the panel's tile edges.
 // Only on the hero's dark brand gradient, never on white (it is 1.7 : 1
 // there); every other brand colour stays a tint or shade of PRIMARY.
+/** @public The palette's one accent, for docs/brand.md and the checks. */
 export const ACCENT = "#f5b3cb";
 
 const WHITE = "#ffffff";

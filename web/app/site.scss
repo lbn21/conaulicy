@@ -414,7 +414,7 @@ $app-soft: map.get($app-palette, "tint-80");
 .govuk-width-container:has(> #main-content > .app-hero) { max-width: none; margin-inline: 0; }
 .app-hero { margin: 0 0 govuk-spacing(6); padding: govuk-spacing(6) 0 govuk-spacing(7); color: $app-white; background: radial-gradient(circle, color.change($app-white, $alpha: .06) $app-hair, transparent $app-hair * 1.5) 0 0 #{"/"} govuk-spacing(4) govuk-spacing(4), radial-gradient(55% 85% at var(--app-x) 0%, color.change(map.get($app-palette, "tint-25"), $alpha: .5), transparent 70%), radial-gradient(50% 80% at calc(100% - var(--app-x)) 100%, color.change($app-header, $alpha: .6), transparent 75%), linear-gradient(135deg, map.get($app-palette, "primary"), map.get($app-palette, "shade-25") 55%, $app-header); }
 .app-hero :is(.govuk-heading-xl, .govuk-body-l, .govuk-heading-m, .govuk-body-s) { color: inherit; }
-.app-hero__title { text-wrap: balance; }
+.app-hero__title { margin-bottom: govuk-spacing(4); text-wrap: balance; }
 .app-hero__accent, .app-hero__trust .app-icon { color: $app-accent; }
 .app-hero__grid { display: grid; gap: govuk-spacing(7); }
 .app-hero__search { padding: govuk-spacing(4); border-radius: govuk-spacing(3); background: $app-white; color: govuk-functional-colour(text); box-shadow: 0 govuk-spacing(4) govuk-spacing(7) color.change(govuk-colour("black"), $alpha: .3); }
@@ -443,7 +443,7 @@ $app-soft: map.get($app-palette, "tint-80");
 .app-now__title { display: inline-flex; gap: govuk-spacing(2); align-items: center; }
 .app-now__title::before { content: ""; width: govuk-spacing(2); height: govuk-spacing(2); border-radius: 50%; background: govuk-colour("green", $variant: "tint-50"); }
 .app-now__tiles { display: flex; flex-wrap: wrap; gap: govuk-spacing(2); margin: 0; padding: 0; list-style: none; }
-.app-now__tile { display: flex; flex: 1 1 govuk-spacing(9) * 3; flex-direction: column; gap: govuk-spacing(2); padding: govuk-spacing(3); border: $app-hair solid color.change($app-white, $alpha: .12); border-top-color: color-mix(in srgb, #{$app-accent} 45%, transparent); border-radius: govuk-spacing(3); background: linear-gradient(color.change($app-white, $alpha: .11), color.change($app-white, $alpha: .03)); }
+.app-now__tile { box-sizing: border-box; display: flex; flex: 1 1 govuk-spacing(9) * 3; flex-direction: column; gap: govuk-spacing(2); padding: govuk-spacing(3); border: $app-hair solid color.change($app-white, $alpha: .12); border-top-color: color-mix(in srgb, #{$app-accent} 45%, transparent); border-radius: govuk-spacing(3); background: linear-gradient(color.change($app-white, $alpha: .11), color.change($app-white, $alpha: .03)); }
 .app-now__tile--wide { flex-basis: 100%; }
 .app-now__head > *, .app-now__tile > *, .app-now__label > .app-tile { margin: 0; }
 .app-now__label { display: flex; gap: govuk-spacing(2); align-items: center; @include govuk-typography-weight-bold; }
