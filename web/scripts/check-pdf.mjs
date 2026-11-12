@@ -3,8 +3,8 @@
 // with a number in its part), never a list of ours.
 // Each must be a tagged PDF (MarkInfo, Lang, structure tree) with no PDF/UA
 // claim (it fails veraPDF), within the size budget, with only Atkinson
-// Hyperlegible Next embedded, and exactly three pages: the calendar, the
-// guide from the gmina's own rules, the text version. Every address's month
+// Hyperlegible Next embedded, and exactly two pages: the calendar, then the
+// guide from the gmina's own rules. Every address's month
 // tables are the same size, rows included, in one fixed 3 × 2 grid inside
 // the page's margins (every month of the six with dates on page 1), every
 // row one height (no date's marks wrap), every header cell's text one
@@ -46,9 +46,9 @@ const check = (ok, message) => {
 };
 const ROOT = path.resolve(import.meta.dirname, "..");
 const MAX_BYTES = 150_000;
-// Page 1 the calendar and its key, page 2 „Co wrzucać”, page 3 the text
-// version: three pages, every address.
-const PAGES = 3;
+// Page 1 the calendar and its key, page 2 „Co wrzucać”: two pages, every
+// address.
+const PAGES = 2;
 
 // Every address the CI fixture has, from its database (scripts/ci-fixture.ts),
 // never a list of ours: each waste zone's members, a split street's part with
@@ -225,8 +225,9 @@ function pdfSource(bytes) {
 
 // The QR codes' modules, read back from the drawing: one square per dark
 // module ("x y w h re", w = h = cell + 0.05); each code's modules share one
-// size, so each size with enough squares is one code (the waste subpage's on
-// page 1, the gmina's full rules on page 2).
+// size, and two codes of one size (the waste subpage's on page 1, the
+// gmina's full rules on page 2) lie apart: more than a quiet zone (4
+// modules) between their rows.
 function qrCodes(source) {
   const squares = [
     ...source.matchAll(/(-?[\d.]+) (-?[\d.]+) ([\d.]+) ([\d.]+) re\b/g),
@@ -234,6 +235,16 @@ function qrCodes(source) {
     .map((m) => m.slice(1, 5).map(Number))
     .filter(([, , w, h]) => w === h);
   return [...Map.groupBy(squares, ([, , w]) => w)]
+    .flatMap(([w, cells]) => {
+      const sorted = [...cells].sort((a, b) => a[1] - b[1]);
+      const codes = [];
+      for (const square of sorted) {
+        const last = codes.at(-1);
+        if (last && square[1] - last.at(-1)[1] <= 4 * w) last.push(square);
+        else codes.push([square]);
+      }
+      return codes.map((code) => [w, code]);
+    })
     .filter(([, cells]) => cells.length >= 100)
     .map(([w, cells]) => {
       const cell = w - 0.05;
@@ -339,8 +350,8 @@ try {
     // The calendar is page 1 and „Co wrzucać” page 2, each one page: the
     // gmina's guide (lib/sorting-guide.ts, its publisher) is named on page 2
     // only, neither page prints a URL (their QR codes carry the links), the
-    // guide's QR code opens its full rules, and the text version lists every
-    // source link. No other gmina's source appears anywhere.
+    // guide's QR code opens its full rules. No other gmina's source appears
+    // anywhere.
     const pageText = (n) =>
       run("pdftotext", ["-f", String(n), "-l", String(n), file, "-"]).replace(
         /\s+/g,
@@ -547,11 +558,6 @@ try {
       gridXs.add(round(t.x0));
       gridYs.add(round(t.y0));
     }
-    // Page 3, the text version: no table, tile or box, and words.
-    check(
-      boxesOn(3).length === 0 && pageText(3).trim().length > 0,
-      `${c.name}: page 3 is not the text version (${boxesOn(3).length} boxes)`,
-    );
     // The place's name (the document title's last part, before the
     // locality) on one line of page 1.
     if (c.title) {
@@ -707,5 +713,5 @@ try {
 
 finish(
   failures,
-  `PDFs: tagged, no PDF/UA claim, QR code and links to the waste subpage, a one-page calendar, then a one-page guide from the gmina's own rules, one layout for every address, nothing spilling out of its box, ${PAGES} pages, ≤ ${MAX_BYTES / 1000} KB, Atkinson only, text version, no example data.`,
+  `PDFs: tagged, no PDF/UA claim, QR code and links to the waste subpage, a one-page calendar, then a one-page guide from the gmina's own rules, one layout for every address, nothing spilling out of its box, ${PAGES} pages, ≤ ${MAX_BYTES / 1000} KB, Atkinson only, no example data.`,
 );
