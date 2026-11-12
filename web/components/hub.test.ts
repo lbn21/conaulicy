@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { relativeDay } from "../lib/dates.ts";
+import { dayFace, relativeDay } from "../lib/dates.ts";
 import { unchecked } from "../lib/hub.ts";
 import { copyCheckedAt } from "../lib/imgw-fixture.ts";
 import { IMGW_PAGE } from "../lib/imgw-shown.ts";
@@ -79,6 +79,14 @@ function unicons(html: string) {
 /** „, dzisiaj”: an empty row holding today, after its date (Intl's word). */
 const TODAY_WORD = `, ${relativeDay("2026-10-25", "2026-10-25")}`;
 const count = (html: string, text: string) => html.split(text).length - 1;
+/**
+ * A single day's h3 as its text reads (t385): the date alone on screen,
+ * its weekday (Intl's, lib/dates.ts dayFace) for screen readers only.
+ */
+const dayHeading = (iso: string) => {
+  const { day, month, weekday } = dayFace(iso);
+  return `${day} ${month}, ${weekday}`;
+};
 /** The text of each `<tag>` in the html, tags stripped. */
 const texts = (html: string, tag: string) =>
   [...html.matchAll(new RegExp(`<${tag}\\b[^>]*>(.*?)</${tag}>`, "g"))].map(
@@ -194,10 +202,10 @@ test("timeline: a card per day from today, 2+ empty days as one, Intl's titles",
   assert.deepEqual(texts(timeline, "h3"), [
     // Today empty (its warning is a card above): a plain row, no badge,
     // today's word for screen readers only (Intl's, TODAY_WORD).
-    `Niedziela, 25 października${TODAY_WORD}`,
-    "Poniedziałek, 26 października,  Jutro",
+    `${dayHeading("2026-10-25")}${TODAY_WORD}`,
+    `${dayHeading("2026-10-26")},  Jutro`,
     "27–28 października",
-    "Czwartek, 29 października,  Za 4 dni",
+    `${dayHeading("2026-10-29")},  Za 4 dni`,
     "30–31 października",
   ]);
   // The days' li (the chips are li too, of their own lists).
@@ -427,7 +435,7 @@ test("waste: its pickups by day; in the window, so no „Później” for it", (
   assert.deepEqual(texts(timeline, "h3"), [
     // An empty today and tomorrow: one run.
     `25–26 października${TODAY_WORD}`,
-    "Wtorek, 27 października,  Pojutrze",
+    `${dayHeading("2026-10-27")},  Pojutrze`,
     "28–31 października",
   ]);
   assert.doesNotMatch(html, /app-timeline__later/);
@@ -438,15 +446,16 @@ test("waste: its pickups by day; in the window, so no „Później” for it", (
 });
 
 /**
- * The timeline's day rows, in order: their classes, their date's words (no
- * badge) and their badge's class, or null.
+ * The timeline's day rows, in order: their classes, their date's words on
+ * screen (no badge, nothing visually hidden), their badge's class, or
+ * null, and the weekday line under the h3 (aria-hidden), or null.
  */
 const rows = (html: string) =>
   [
     ...section(html, "najblizsze-dni").matchAll(
-      /<li(?: class="([^"]*)")?><span class="app-timeline__dot"[^>]*><\/span>.*?<h3[^>]*>(.*?)<\/h3>/g,
+      /<li(?: class="([^"]*)")?><span class="app-timeline__dot"[^>]*><\/span>.*?<h3[^>]*>(.*?)<\/h3>(?:<p class="govuk-body-s[^"]*" aria-hidden="true">([^<]*)<\/p>)?/g,
     ),
-  ].map(([, classes = "", title]) => ({
+  ].map(([, classes = "", title, weekday = null]) => ({
     classes: classes.split(" ").filter(Boolean),
     date: title
       .replace(
@@ -455,6 +464,11 @@ const rows = (html: string) =>
       )
       .trim(),
     badge: /<span class="(app-badge[^"]*)"/.exec(title)?.[1] ?? null,
+    weekday,
+    hiddenWeekday:
+      /<span class="govuk-visually-hidden">, ([^<]*)<\/span>/.exec(
+        title,
+      )?.[1] ?? null,
   }));
 
 /** The street with waste on `dates` only (STREET's pickup). */
@@ -519,6 +533,44 @@ test("timeline: something today: today's card, its strong badge, marked today", 
   assert.deepEqual(rest[0].classes, []);
   assert.equal(rest[0].badge, STRONG);
   assert.equal(count(section(html, "najblizsze-dni"), TODAY), 1);
+});
+
+// t385: a day's h3 shows its date alone (and its badge), its weekday a
+// line under it, aria-hidden, and in the h3 for screen readers only; a run
+// of empty days its range, no weekday anywhere.
+test("timeline: a day's weekday under its date, not in it; none on a run", () => {
+  // 25 empty, 26 a pickup, 27–28 empty, 29 a pickup, 30–31 empty.
+  const list = rows(wasteOn("2026-10-26", "2026-10-29"));
+  assert.deepEqual(
+    list.map((row) => row.classes.includes("app-timeline__range")),
+    [false, false, true, false, true],
+  );
+  for (const row of list) {
+    const range = row.classes.includes("app-timeline__range");
+    const weekdays = [
+      "2026-10-25",
+      "2026-10-26",
+      "2026-10-27",
+      "2026-10-28",
+      "2026-10-29",
+      "2026-10-30",
+      "2026-10-31",
+    ].map((d) => dayFace(d).weekday);
+    // The heading's visible words: no weekday, its first letter a digit.
+    assert.ok(weekdays.every((w) => !row.date.toLowerCase().includes(w)));
+    assert.match(row.date, /^\d/);
+    if (range) {
+      assert.equal(row.weekday, null);
+      assert.equal(row.hiddenWeekday, null);
+    } else {
+      assert.ok(row.weekday && weekdays.includes(row.weekday));
+      // Read once, in the heading, as on screen.
+      assert.equal(row.hiddenWeekday, row.weekday);
+    }
+  }
+  // An empty single day too (25), and today's hidden word still one string.
+  assert.equal(list[0].weekday, dayFace("2026-10-25").weekday);
+  assert.equal(count(wasteOn("2026-10-26", "2026-10-29"), HIDDEN_TODAY), 1);
 });
 
 test("waste only after the window: „Później”, its next pickup with its year", () => {
