@@ -102,7 +102,7 @@ PGE Dystrybucja is credited on `/prad`'s source line: „Źródło: PGE Dystrybu
 
 For the pages, a failing mock is a store that cannot be read. When `VERCEL_ENV` is `production`, `upstream()` ignores a `mock:` value, logs it and uses the official URL, and the mock refuses to answer.
 
-CI sets `PGE_API_URL: mock:ours`, so the built site never asks PGE, and the a11y, HTML, zoom, title and route checks see a power row on the town street's address page and on its `/prad`. The village's `/prad` (`/adres/0606010/prad`) is the empty state. Unit tests cannot reach the network (`web/scripts/lib/no-network.mjs`).
+CI sets `PGE_API_URL: mock:ours`, so the built site never asks PGE (and `MZGKIM_MOCK: "5237"`, MZGKiM's fixture cut moved to the day after tomorrow on the same town street, `web/lib/water-fixture.ts` `mockFile`, gated as PGE's mock: off in production, `web/lib/zuk-store.ts`; so `/woda` there has its actions and calendar), and the a11y, HTML, zoom, title and route checks see a power row on the town street's address page and on its `/prad`. The village's `/prad` (`/adres/0606010/prad`) is the empty state. Unit tests cannot reach the network (`web/scripts/lib/no-network.mjs`).
 
 The raw responses of 11 Nov 2026 are not in git. They are to go to the S3 source archive (`etl/sources.yaml`, origin `pge`) when the Tech Lead uploads them.
 
