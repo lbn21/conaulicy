@@ -14,7 +14,6 @@ const base: Omit<GridInput, "months"> = {
   width: 540,
   gap: 12,
   height: 480,
-  yearH: 24,
   rowGap: 8,
   dateW: 44,
   minDateW: 28,
@@ -53,39 +52,31 @@ test("every table gets the fullest month's body rows", () => {
   assert.equal(grid.bodyRows, 4);
 });
 
-test("a year never breaks a row: its heading sits above its first month", () => {
+test("a year never breaks a row: the months in order, whatever their year", () => {
   // November to October: 2026's two months and 2027's ten, three rows.
   const months = [...year("2026", 2, [1], 11), ...year("2027", 10, [1])];
-  const rows = tableRows(months, 4);
   assert.deepEqual(
-    rows.map((row) => row.keys.length),
-    [4, 4, 4],
-  );
-  assert.deepEqual(
-    rows.map((row) => row.years),
+    tableRows(months, 4).map((row) => row.keys),
     [
-      [
-        { column: 0, year: "2026" },
-        { column: 2, year: "2027" },
-      ],
-      [],
-      [],
+      ["2026-11", "2026-12", "2027-01", "2027-02"],
+      ["2027-03", "2027-04", "2027-05", "2027-06"],
+      ["2027-07", "2027-08", "2027-09", "2027-10"],
     ],
   );
 });
 
-test("the height: a year strip above every row, whatever the years", () => {
-  // Three strips of 24, three tables of (2 + 4) × 16, two gaps of 8.
-  assert.equal(gridHeight(3, 4, 16, base), 3 * 24 + 3 * 6 * 16 + 2 * 8);
+test("the height: the rows of tables and the gaps between them", () => {
+  // Three tables of (2 + 4) × 16, two gaps of 8.
+  assert.equal(gridHeight(3, 4, 16, base), 3 * 6 * 16 + 2 * 8);
 });
 
 test("rows shrink in steps to fit, and the grid fits its height", () => {
   const months = year("2027", 12, [2, 2, 2, 2, 2, 2]);
-  // 3 × 24 + 2 × 8 fixed, 3 × 8 rows: (520 − 88) / 24 = 18, down to 16.
-  const grid = chooseGrid({ ...base, months, height: 520 });
+  // 2 × 8 fixed, 3 × 8 rows: (448 − 16) / 24 = 18, down to 16.
+  const grid = chooseGrid({ ...base, months, height: 448 });
   assert.equal(grid.rowH, 16);
   assert.ok(grid.fits);
-  assert.ok(gridHeight(3, grid.bodyRows, grid.rowH, base) <= 520);
+  assert.ok(gridHeight(3, grid.bodyRows, grid.rowH, base) <= 448);
 });
 
 test("too many rows for the height: it does not fit, at the smallest rows", () => {
@@ -119,7 +110,7 @@ test("other addresses' months size the tables: fewer months, the same grid", () 
   );
   // Placed from the top left, in the grid's columns.
   assert.deepEqual(tableRows(window.slice(0, 2), full.columns), [
-    { keys: ["2027-01", "2027-02"], years: [{ column: 0, year: "2027" }] },
+    { keys: ["2027-01", "2027-02"] },
   ]);
 });
 

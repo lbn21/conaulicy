@@ -2,10 +2,9 @@
 // month tables (a title cell, a „Dzień | Odpady” header row, then the same
 // number of body rows in every month: as many as the fullest month needs,
 // empty ones left blank), in one fixed grid of `columns` × `gridRows`
-// (3 × 2: the six months of the window), each grid row under a strip
-// for its year headings: a year's heading above its first month, wherever
-// in the row that falls, so a year never needs a row of its own and every
-// address's grid has the same geometry. Sized once for the largest case
+// (3 × 2: the six months of the window), each table's title its month and
+// year („Styczeń 2027”), so a new year needs no heading of its own and
+// every address's grid has the same geometry. Sized once for the largest case
 // (every month of the window, each as full as the fullest month of any
 // address, `profiles`): fewer months leave the space below empty, never
 // larger tables. A date's marks never wrap: the marks column holds the most
@@ -54,8 +53,7 @@ export type GridInput = {
   gap: number;
   /** Height from the grid's top to the key. */
   height: number;
-  /** A row's year strip (a heading with its space below); the space between table rows. */
-  yearH: number;
+  /** The space between table rows. */
   rowGap: number;
   /** The date column: „Dzień” or the widest date, with its padding … */
   dateW: number;
@@ -101,45 +99,30 @@ export type Grid = {
 export const dateRows = (marks: number, perLine: number) =>
   Math.max(1, Math.ceil(marks / perLine));
 
-/** A grid row: its months, and the year headings in its strip. */
-export type GridRow = {
-  keys: string[];
-  /** A heading per year starting in this row (the first row's first month too), by column. */
-  years: Array<{ column: number; year: string }>;
-};
+/** A grid row: its months. */
+export type GridRow = { keys: string[] };
 
-/**
- * The table rows: the months in order, `columns` to a row, whatever their
- * year; a year's heading in the row's strip above its first month (the
- * first month of all, and every January).
- */
+/** The table rows: the months in order, `columns` to a row, whatever their year. */
 export function tableRows(
   months: Array<Pick<GridMonth, "key">>,
   columns: number,
 ): GridRow[] {
   const rows: GridRow[] = [];
   months.forEach(({ key }, i) => {
-    const column = i % columns;
-    if (column === 0) rows.push({ keys: [], years: [] });
-    const row = rows[rows.length - 1];
-    row.keys.push(key);
-    if (i === 0 || key.endsWith("-01"))
-      row.years.push({ column, year: key.slice(0, 4) });
+    if (i % columns === 0) rows.push({ keys: [] });
+    rows[rows.length - 1].keys.push(key);
   });
   return rows;
 }
 
-/** Height of `gridRows` rows of tables, each under its year strip, at a row height. */
+/** Height of `gridRows` rows of tables at a row height. */
 export function gridHeight(
   gridRows: number,
   bodyRows: number,
   rowH: number,
-  input: Pick<GridInput, "yearH" | "rowGap">,
+  input: Pick<GridInput, "rowGap">,
 ): number {
-  return (
-    gridRows * (input.yearH + (bodyRows + 2) * rowH) +
-    (gridRows - 1) * input.rowGap
-  );
+  return gridRows * (bodyRows + 2) * rowH + (gridRows - 1) * input.rowGap;
 }
 
 /** The most marks any one date has, in these months and the profiles. */
@@ -234,7 +217,7 @@ export function chooseGrid(input: GridInput): Grid {
       ...(input.profiles ?? []),
     ].map((marks) => marks.reduce((sum, n) => sum + dateRows(n, perLine), 0)),
   );
-  const unit = gridHeight(gridRows, bodyRows, 1, { yearH: 0, rowGap: 0 });
+  const unit = gridHeight(gridRows, bodyRows, 1, { rowGap: 0 });
   const fixed = gridHeight(gridRows, bodyRows, 0, input);
   const raw = (input.height - fixed) / unit;
   const rowH = Math.min(
