@@ -16,11 +16,15 @@
 // Pure, so the choice is tested without a PDF (lib/pdf-grid.test.ts).
 
 /**
- * The bounds every PDF's tables are sized for, whatever the data (Tech
- * Lead, t334): dates in a month (the real data's most is 7, one more for
- * headroom), marks on a date, and every row's height.
+ * The bounds every PDF's tables are sized for, whatever the data: the real
+ * data's maxima (t355, measured over every zone's full 2026 schedule,
+ * scripts/import/waste/expected.ts): 7 dates in a month (city sector 1),
+ * 5 marks on a date (one per fraction, the city's fullest days), no
+ * headroom. A schedule beyond them fails the import (scripts/import/waste
+ * lib.ts pdfBoundProblems), never clipped: they grow first. And every
+ * row's height.
  */
-export const MONTH_DAYS = 8;
+export const MONTH_DAYS = 7;
 export const DAY_MARKS = 5;
 export const TABLE_ROW = 24;
 
