@@ -24,6 +24,7 @@ import {
 } from "@/lib/logo";
 import { fileSlug } from "@/lib/normalize";
 import {
+  beyondBounds,
   chooseGrid,
   DAY_MARKS,
   dateRows,
@@ -436,6 +437,17 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   for (const day of inWindow) {
     const key = day.date.slice(0, 7);
     byMonth.set(key, [...(byMonth.get(key) ?? []), day]);
+  }
+  // Data beyond the fixed bounds (lib/pdf-grid.ts) is stopped by the
+  // import's guard; should any reach here, the PDF refuses it (a 500)
+  // rather than clip a date or draw rows past its fixed geometry.
+  const beyond = beyondBounds(
+    new Map(inWindow.map((day) => [day.date, tonesOf(day).length])),
+  );
+  if (beyond.months.length > 0 || beyond.days.length > 0) {
+    throw new Error(
+      `harmonogram.pdf: beyond the PDF's bounds (${MONTH_DAYS} dates a month, ${DAY_MARKS} marks a date): ${[...beyond.months, ...beyond.days].map(([k, n]) => `${k}: ${n}`).join(", ")}`,
+    );
   }
   // Only months with dates are printed, up to the last published one.
   const printed = months.filter((key) => byMonth.has(key));

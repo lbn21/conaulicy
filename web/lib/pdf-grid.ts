@@ -20,12 +20,33 @@
  * scripts/import/waste/expected.ts): 7 dates in a month (city sector 1),
  * 5 marks on a date (one per fraction, the city's fullest days), no
  * headroom. A schedule beyond them fails the import (scripts/import/waste
- * lib.ts pdfBoundProblems), never clipped: they grow first. And every
+ * lib.ts pdfBoundProblems), never clipped, and the PDF refuses such data
+ * (beyondBounds): they grow first. And every
  * row's height.
  */
 export const MONTH_DAYS = 7;
 export const DAY_MARKS = 5;
 export const TABLE_ROW = 24;
+
+/**
+ * What the PDF cannot hold: the months ("YYYY-MM") with more than
+ * MONTH_DAYS dates and the dates with more than DAY_MARKS marks, from each
+ * date's ("YYYY-MM-DD") marks. One rule for the import's guard (scripts/
+ * import/waste/lib.ts pdfBoundProblems) and the PDF itself, which refuses
+ * such data rather than clip it or grow past its fixed geometry.
+ */
+export function beyondBounds(marks: Map<string, number>): {
+  months: Array<[string, number]>;
+  days: Array<[string, number]>;
+} {
+  const dates = new Map<string, number>();
+  for (const day of marks.keys())
+    dates.set(day.slice(0, 7), (dates.get(day.slice(0, 7)) ?? 0) + 1);
+  return {
+    months: [...dates].filter(([, n]) => n > MONTH_DAYS),
+    days: [...marks].filter(([, n]) => n > DAY_MARKS),
+  };
+}
 
 type GridMonth = {
   /** "YYYY-MM". */

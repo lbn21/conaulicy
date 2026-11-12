@@ -38,6 +38,7 @@ import QRCode from "qrcode";
 import { SITE_URL } from "../lib/config.generated.ts";
 import { todayInWarsaw } from "../lib/dates.ts";
 import { fileSlug } from "../lib/normalize.ts";
+import { MONTH_DAYS, TABLE_ROW } from "../lib/pdf-grid.ts";
 import { PDF_MONTHS } from "../lib/pdf-key.ts";
 import { GUIDES } from "../lib/sorting-guide.ts";
 import { FRACTIONS, TOKEN } from "../lib/waste-bin.ts";
@@ -195,6 +196,10 @@ const PAGE_H = 841.89;
 const PAGE_W = 595.28;
 // The page's side margin (the route's MARGIN): every table inside it.
 const SIDE = 28;
+/** The band's height (the route's bandH, 37 U) and the gap under it and
+ * between the grid's rows (GRID_GAP, 8 U). */
+const BAND_H = 148;
+const GRID_GAP = 32;
 /** A mark's slot on page 1 (route.ts MARK): a glyph mark is narrower. */
 const MARK_SLOT = 11;
 // Page 1's fixed month grid (the route's MONTH_COLUMNS × MONTH_ROWS).
@@ -509,6 +514,38 @@ try {
     // (±1 pt for the glyphs' own side bearings).
     const words1 = pageWords(file, 1);
     const rowH = [...rows][0] ?? 0;
+    // The fixed geometry, absolute, never grown by the data: every table
+    // its title and header rows and MONTH_DAYS body rows of TABLE_ROW; the
+    // grid GRID_GAP under the band and GRID_GAP between its rows; nothing
+    // drawn in the row's height under a table (a date past the bounds:
+    // the route refuses it, lib/pdf-grid.ts beyondBounds).
+    const tableH = (MONTH_DAYS + 2) * TABLE_ROW;
+    const tops = [...new Set(tables.map((t) => round(t.y0)))].sort(
+      (a, b) => a - b,
+    );
+    const gaps = [
+      tops[0] - BAND_H,
+      ...tops.slice(1).map((y, i) => y - (tops[i] + tableH)),
+    ];
+    check(
+      tables.length > 0 &&
+        tables.every((t) => Math.abs(t.y1 - t.y0 - tableH) <= 0.5) &&
+        gaps.every((gap) => Math.abs(gap - GRID_GAP) <= 0.5),
+      `${c.name}: page 1 tables ${[...sizes].join(", ")} (each ${tableH} pt tall), gaps ${gaps.map(round).join(", ")} pt (each ${GRID_GAP})`,
+    );
+    const under = words1.filter((w) =>
+      tables.some(
+        (t) =>
+          (w.x0 + w.x1) / 2 > t.x0 &&
+          (w.x0 + w.x1) / 2 < t.x1 &&
+          (w.y0 + w.y1) / 2 > t.y1 &&
+          (w.y0 + w.y1) / 2 < t.y1 + TABLE_ROW,
+      ),
+    );
+    check(
+      under.length === 0,
+      `${c.name}: page 1: ${under.length} words under a table (a row past ${MONTH_DAYS} dates)`,
+    );
     const headerPads = tables.flatMap((t) => {
       const split = (strokes[0]?.columns ?? []).find(
         (r) => r.x > t.x0 + 0.1 && r.x < t.x1 - 0.1 && r.y1 > t.y0,
