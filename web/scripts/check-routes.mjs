@@ -1,4 +1,4 @@
-// The routes smoke: eight checks of the built site on one
+// The routes smoke: ten checks of the built site on one
 // `next start` and the CI fixture, each in scripts/routes/:
 //   examples    the home page's examples have upcoming pickups;
 //   all-places  /ulice lists every place once, in Polish order;
@@ -10,7 +10,10 @@
 //   swap        the skeleton's band and the page's in the same place,
 //               on every subpage, /woda with its fixture cut's actions;
 //   zoom        at 200 % text, the timeline's dots on their date lines;
-//               at 100 and 200 %, the h1's tile on its first line.
+//               at 100 and 200 %, the h1's tile on its first line;
+//   head        the address pages' heads on one spacing scale;
+//   timeline    today's row once, first, its dot alone filled; an empty
+//               row no card and no badge.
 // Every check by default; name some to run only those
 // (`node scripts/check-routes.mjs examples`). With CHECK_URL, a deployed
 // site instead of a local server (examples only: the others need the
@@ -18,11 +21,13 @@
 import { closeRenderedPages, finish, startServer } from "./lib/server.mjs";
 import { check as allPlaces } from "./routes/all-places.mjs";
 import { check as examples } from "./routes/examples.mjs";
+import { check as head } from "./routes/head.mjs";
 import { check as inPage } from "./routes/in-page.mjs";
 import { check as metadata } from "./routes/metadata.mjs";
 import { check as query } from "./routes/query.mjs";
 import { check as search } from "./routes/search.mjs";
 import { check as swap } from "./routes/swap.mjs";
+import { check as timeline } from "./routes/timeline.mjs";
 import { check as zoom } from "./routes/zoom.mjs";
 
 const CHECKS = {
@@ -34,6 +39,8 @@ const CHECKS = {
   search,
   swap,
   zoom,
+  head,
+  timeline,
 };
 
 const asked = process.argv.slice(2);

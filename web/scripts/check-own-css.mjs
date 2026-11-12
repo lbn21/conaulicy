@@ -68,11 +68,14 @@ const OWN = [
 // warning's "!" centred by grid (H6); the hacks they replace are gone.
 // t370 kept it at 2806: the header's hover bar, the timeline (a grid, no
 // positioned pseudo-elements) and the icon in a link (a flex row) replace
-// what they did in the same bytes.
+// what they did in the same bytes. t373 raised it to 2812 (Jakub's
+// ceiling 2830): the page head's one spacing scale (the street line 10 px
+// above the h1, .app-band > .govuk-caption-l); today's dot by its own
+// class saved bytes on the selector it replaces.
 // MAX_ALLOWED: how many css-allow hacks may stay: none since t366's C1
 // made the h1 a flex row (t369, t372). Raising either is a reviewed diff.
 const MAX_LINES = 200;
-const MAX_GZIP = 2806;
+const MAX_GZIP = 2812;
 const MAX_ALLOWED = 0;
 
 const failures = [];

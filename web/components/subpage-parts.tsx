@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Icon } from "@/components/icon";
 import { Parts } from "@/components/parts";
-import { type Checked, type Part, sourceLine } from "@/lib/hub";
+import { type Checked, checkedLine, type Part, sourceLine } from "@/lib/hub";
 
 // The parts every address subpage shares (CLAUDE.md, "One layout for every
 // address subpage"), in its order: after the module's content the AI-read
@@ -134,30 +134,50 @@ export function AiReadNote({ text }: { text: string }) {
 }
 
 /**
- * The subpage's one source block, at the bottom, in GOV.UK's inset text:
- * „Źródło: ‹its sources›. Sprawdziliśmy ‹when›.” (lib/hub.ts sourceLine),
- * small, secondary text as the address page's small print; `children`
- * after it (IMGW's required wording). Nothing to say: nothing.
+ * Every source note, the same everywhere (t373): at the page's bottom, in
+ * GOV.UK's inset text, small, secondary text: the source, then „Sprawdziliśmy
+ * …” always on its own line (a paragraph of its own, 10 px under the
+ * source), its day and time unbroken (lib/hub.ts). The subpages'
+ * (SourceInset) and the address page's (components/hub.tsx: IMGW's
+ * required wording, then every module's check). Neither: nothing.
+ */
+export function SourceNote({
+  source,
+  checked,
+}: {
+  source?: ReactNode;
+  checked: string | null;
+}) {
+  if (!source && !checked) return null;
+  return (
+    <div className="govuk-inset-text">
+      {source && (
+        <p className="govuk-body-s app-quiet govuk-!-margin-bottom-2">
+          {source}
+        </p>
+      )}
+      {checked && <p className="govuk-body-s app-quiet">{checked}</p>}
+    </div>
+  );
+}
+
+/**
+ * The subpage's one source block, at the bottom (SourceNote): „Źródło: ‹its
+ * sources›.”, then „Sprawdziliśmy ‹when›.” (lib/hub.ts sourceLine,
+ * checkedLine).
  */
 export function SourceInset({
   sources,
   at,
-  children,
 }: {
   sources: Part[][];
   at: Checked;
-  children?: ReactNode;
 }) {
-  const line = sourceLine(sources, at);
-  if (line.length === 0 && !children) return null;
+  const line = sourceLine(sources);
   return (
-    <div className="govuk-inset-text">
-      {line.length > 0 && (
-        <p className="govuk-body-s app-quiet">
-          <Parts parts={line} lead={false} />
-        </p>
-      )}
-      {children}
-    </div>
+    <SourceNote
+      source={line.length > 0 && <Parts parts={line} lead={false} />}
+      checked={checkedLine(at)}
+    />
   );
 }

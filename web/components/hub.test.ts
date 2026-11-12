@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { relativeDay } from "../lib/dates.ts";
 import { unchecked } from "../lib/hub.ts";
 import { copyCheckedAt } from "../lib/imgw-fixture.ts";
 import { IMGW_PAGE } from "../lib/imgw-shown.ts";
@@ -75,6 +76,8 @@ function unicons(html: string) {
     assert.match(svg, /aria-hidden="true"/);
   return html.replace(/<svg\b.*?<\/svg>/g, "<svg/>");
 }
+/** „, dzisiaj”: an empty row holding today, after its date (Intl's word). */
+const TODAY_WORD = `, ${relativeDay("2026-10-25", "2026-10-25")}`;
 const count = (html: string, text: string) => html.split(text).length - 1;
 /** The text of each `<tag>` in the html, tags stripped. */
 const texts = (html: string, tag: string) =>
@@ -82,14 +85,37 @@ const texts = (html: string, tag: string) =>
     (m) => m[1].replace(/<[^>]+>/g, ""),
   );
 /** The section labelled by `id`. */
-/** The small print, the page's last paragraph, as html. */
+/** The source note, the page's last block (SourceNote's inset), as html. */
 const smallPrintHtml = (html: string) =>
-  /<p class="govuk-body-s app-quiet">((?:(?!<\/p>).)*)<\/p><\/div><\/div>$/.exec(
+  /<div class="govuk-inset-text">((?:<p class="govuk-body-s app-quiet[^"]*">(?:(?!<\/p>).)*<\/p>)+)<\/div><\/div><\/div>$/.exec(
     html,
   )?.[1] ?? "";
 /** The small print's text, tags stripped. */
 const smallPrint = (html: string) =>
-  smallPrintHtml(html).replace(/<[^>]+>/g, "");
+  smallPrintHtml(html)
+    .replace(/<\/p>/g, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replaceAll("\u00a0", " ")
+    .trim();
+/**
+ * The check times in the source note (lib/hub.ts freshnessLine, each day
+ * once): each module's title and when ("25 października 13:30", or the day
+ * alone). Its words are LIST's and the line's, read by their shape only.
+ */
+const checkTimes = (html: string) =>
+  new Map(
+    // Its own line, the note's last.
+    (/^\S+ (.*)\.$/.exec(smallPrint(html).split("\n").at(-1) ?? "")?.[1] ?? "")
+      .split("; ")
+      .flatMap((group) => {
+        const [day, list] = group.split(": ");
+        return list.split(/, | i /).map((entry) => {
+          const time = / (\d{1,2}:\d{2})$/.exec(entry)?.[1];
+          const name = time ? entry.slice(0, -time.length - 1) : entry;
+          return [name, time ? `${day} ${time}` : day] as const;
+        });
+      }),
+  );
 const section = (html: string, id: string) =>
   new RegExp(`<section aria-labelledby="${id}">.*?</section>`).exec(
     html,
@@ -166,7 +192,9 @@ test("timeline: a card per day from today, 2+ empty days as one, Intl's titles",
   // 25-31 Oct: today, the cut on 26, 27-28 empty, the cut on 29, 30-31
   // empty; nothing after the window, so no „Później”.
   assert.deepEqual(texts(timeline, "h3"), [
-    "Niedziela, 25 października,  Dzisiaj",
+    // Today empty (its warning is a card above): a plain row, no badge,
+    // today's word for screen readers only (Intl's, TODAY_WORD).
+    `Niedziela, 25 października${TODAY_WORD}`,
     "Poniedziałek, 26 października,  Jutro",
     "27–28 października",
     "Czwartek, 29 października,  Za 4 dni",
@@ -177,8 +205,8 @@ test("timeline: a card per day from today, 2+ empty days as one, Intl's titles",
     timeline.match(/<li(?: class="app-timeline__[^"]*")?>/g)?.length,
     5,
   );
-  // No class marks today: the first dot is CSS's (li:first-child).
-  assert.doesNotMatch(timeline, /app-timeline__today/);
+  // Today's row, and only it, marked: its dot filled (site.scss).
+  assert.equal(count(timeline, "app-timeline__today"), 1);
   assert.equal(
     count(timeline, '<li class="app-timeline__empty app-timeline__range">'),
     2,
@@ -315,14 +343,13 @@ test("„Wszystko o Twoim adresie” and the small print: a link per module with
   // The checks, with their times; no waste check here, so waste is left
   // out; then IMGW's required wording, as given (IMGW_ATTRIBUTION).
   const small = smallPrint(html);
-  for (const part of [
-    MODULES.woda.title,
-    `${MODULES.prad.title} 25 października 13:30`,
-    `${MODULES.pogoda.title} 25 października 13:20`,
-  ])
-    assert.ok(small.includes(part), part);
-  assert.ok(!small.includes(MODULES.smieci.title));
-  assert.ok(small.endsWith(IMGW_ATTRIBUTION.processed));
+  const times = checkTimes(html);
+  assert.ok(times.has(MODULES.woda.title));
+  assert.equal(times.get(MODULES.prad.title), "25 października 13:30");
+  assert.equal(times.get(MODULES.pogoda.title), "25 października 13:20");
+  assert.ok(!times.has(MODULES.smieci.title));
+  // IMGW's wording, then the checks on their own line (t373).
+  assert.ok(small.split("\n")[0].endsWith(IMGW_ATTRIBUTION.processed));
   // The weather has no subpage: its source link is IMGW's name here.
   assert.ok(
     smallPrintHtml(html).includes(
@@ -377,9 +404,7 @@ test("nothing in the window and nothing later: one line, no cards; the links and
   );
   assert.doesNotMatch(html, /app-timeline/);
   assert.ok(section(html, "wszystko").includes(`>${MODULES.smieci.more}</a>`));
-  assert.ok(
-    smallPrint(html).includes(`${MODULES.smieci.title} 20 października`),
-  );
+  assert.equal(checkTimes(html).get(MODULES.smieci.title), "20 października");
   // IMGW not read: none of its wording.
   assert.equal(count(html, IMGW_NAME), 0);
   // Not checked is never „nothing”: the notice says so, above the line.
@@ -401,7 +426,7 @@ test("waste: its pickups by day; in the window, so no „Później” for it", (
   const timeline = section(html, "najblizsze-dni");
   assert.deepEqual(texts(timeline, "h3"), [
     // An empty today and tomorrow: one run.
-    "25–26 października",
+    `25–26 października${TODAY_WORD}`,
     "Wtorek, 27 października,  Pojutrze",
     "28–31 października",
   ]);
@@ -412,10 +437,94 @@ test("waste: its pickups by day; in the window, so no „Później” for it", (
   );
 });
 
+/**
+ * The timeline's day rows, in order: their classes, their date's words (no
+ * badge) and their badge's class, or null.
+ */
+const rows = (html: string) =>
+  [
+    ...section(html, "najblizsze-dni").matchAll(
+      /<li(?: class="([^"]*)")?><span class="app-timeline__dot"[^>]*><\/span>.*?<h3[^>]*>(.*?)<\/h3>/g,
+    ),
+  ].map(([, classes = "", title]) => ({
+    classes: classes.split(" ").filter(Boolean),
+    date: title
+      .replace(
+        /<span class="govuk-visually-hidden">.*?<\/span>|<span class="app-badge.*?<\/span>|<[^>]+>/g,
+        "",
+      )
+      .trim(),
+    badge: /<span class="(app-badge[^"]*)"/.exec(title)?.[1] ?? null,
+  }));
+
+/** The street with waste on `dates` only (STREET's pickup). */
+const wasteOn = (...dates: string[]) =>
+  page({
+    ...STREET,
+    days: dates.map((date) => ({ date, pickups: [pickup("Papier")] })),
+  });
+
+const TODAY = "app-timeline__today";
+/** What an empty row holding today says to screen readers only. */
+const HIDDEN_TODAY = `<span class="govuk-visually-hidden">${TODAY_WORD}</span>`;
+const EMPTY = "app-timeline__empty";
+const STRONG = "app-badge app-badge--strong";
+
+// t373: a card only for a day with something; an empty day or run, today
+// and tomorrow included, a plain row without a badge; today's row marked in
+// the markup (its dot filled, site.scss), and no other, whatever its badge.
+test("timeline: an empty today alone is a plain row, marked today; tomorrow's card is not", () => {
+  const html = wasteOn("2026-10-26");
+  const [today, tomorrow, ...rest] = rows(html);
+  assert.deepEqual(today.classes, [TODAY, EMPTY]);
+  assert.equal(count(html, HIDDEN_TODAY), 1);
+  assert.equal(today.badge, null);
+  assert.match(today.date, /25/);
+  assert.deepEqual(tomorrow.classes, []);
+  assert.equal(tomorrow.badge, STRONG);
+  assert.ok(rest.every((row) => !row.classes.includes(TODAY)));
+});
+
+test("timeline: an empty today and tomorrow before a day with something: one run, marked today", () => {
+  const html = wasteOn("2026-10-27");
+  const [run, day] = rows(html);
+  assert.deepEqual(run.classes, [TODAY, EMPTY, "app-timeline__range"]);
+  // The range keeps its date on screen, „dzisiaj” for screen readers only,
+  // once: the later empty run (28–31) says nothing of today.
+  assert.equal(count(html, HIDDEN_TODAY), 1);
+  assert.equal(run.badge, null);
+  assert.deepEqual(day.classes, []);
+  assert.notEqual(day.badge, null);
+});
+
+test("timeline: all 7 days empty: one run from today, then „Później”", () => {
+  const html = wasteOn("2026-11-10");
+  const list = rows(html);
+  assert.equal(count(html, HIDDEN_TODAY), 1);
+  assert.deepEqual(
+    list.map((row) => row.classes),
+    [[TODAY, EMPTY, "app-timeline__range"], ["app-timeline__later"]],
+  );
+  assert.equal(list[0].badge, null);
+});
+
+test("timeline: something today: today's card, its strong badge, marked today", () => {
+  const html = wasteOn("2026-10-25", "2026-10-26");
+  const [today, ...rest] = rows(html);
+  assert.deepEqual(today.classes, [TODAY]);
+  // A card's badge says it: no hidden word.
+  assert.equal(count(html, HIDDEN_TODAY), 0);
+  assert.equal(today.badge, STRONG);
+  // Tomorrow keeps its strong badge, not today's mark.
+  assert.deepEqual(rest[0].classes, []);
+  assert.equal(rest[0].badge, STRONG);
+  assert.equal(count(section(html, "najblizsze-dni"), TODAY), 1);
+});
+
 test("waste only after the window: „Później”, its next pickup with its year", () => {
   const html = page(testPlace({ ...STREET, days: STREET.days.slice(1) }));
   const timeline = section(html, "najblizsze-dni");
-  assert.deepEqual(texts(timeline, "h3")[0], "25–31 października");
+  assert.deepEqual(texts(timeline, "h3")[0], `25–31 października${TODAY_WORD}`);
   assert.equal(count(timeline, "<h3 "), 2);
   // „Później”: only the next pickup after the window, its date the value.
   const later = /<li class="app-timeline__later">.*?<\/li>/.exec(timeline)?.[0];
@@ -432,8 +541,9 @@ test("waste only after the window: „Później”, its next pickup with its yea
     ),
   );
   const checks = smallPrint(html);
-  assert.ok(checks.includes(`${MODULES.smieci.title} 20 października`));
-  assert.ok(checks.includes(`${MODULES.prad.title} 25 października 13:30`));
+  const times = checkTimes(html);
+  assert.equal(times.get(MODULES.smieci.title), "20 października");
+  assert.equal(times.get(MODULES.prad.title), "25 października 13:30");
   // Dates not checked yet: the small print stays the same (the caveat is
   // on the waste subpage).
   assert.equal(

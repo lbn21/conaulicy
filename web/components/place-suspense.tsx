@@ -67,12 +67,9 @@ const skeleton = (module: Module<unknown> | null) => (
             {CHANGE}
           </PageHead>
         ) : (
-          <div className="app-band">
-            <p className="govuk-heading-l">
-              <Skeleton>ul. Adama Mickiewicza</Skeleton>
-            </p>
+          <PageHead tag="p" title={<Skeleton>ul. Adama Mickiewicza</Skeleton>}>
             {CHANGE}
-          </div>
+          </PageHead>
         )}
         {CARD}
       </BlockSkeleton>
