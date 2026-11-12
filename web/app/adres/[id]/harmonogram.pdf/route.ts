@@ -15,7 +15,6 @@ import { NOINDEX } from "@/lib/indexing";
 import { LOCALE } from "@/lib/locale";
 import {
   LOGO_HEIGHT,
-  LOGO_WIDTH,
   PLATE,
   RIM,
   RIM_WIDTH,
@@ -666,51 +665,47 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     doc.font(font).fontSize(size);
     return doc.widthOfString(text);
   };
-  // The band, one on both pages (Jakub, t359), balanced by its ink
-  // (t357): two blocks of one height, centred on the band's midline, with
-  // equal padding above and below. Right: the QR code's white box, two
-  // steps, then its caption in two lines, each centred under the box.
-  // Left: the plate (where, cap-centred beside it), the street's name, its
-  // day line, with one gap between the plate and the name's cap height and
-  // between the name's baseline and the day line's cap height, so the left
-  // block is exactly as tall as the right. The rows are measured at the
-  // scale's sizes (the title's, the body's); a name or day line set smaller
-  // to fit keeps its cap centre, so the geometry is one for every address,
-  // day line or not. Its height (35 U) is the most page 2 leaves: the
+  // The band, one on both pages (Jakub, t359), stacked as the first
+  // redesign's (#263, 59034e6; Jakub, t360): the plate, then where, then the
+  // street's name, then its day line, one under another at the left margin,
+  // each on its row of the scale as there (the plate, three steps, the
+  // body's row, the title's row, a step, the body's row); on the right the
+  // QR code's white box, a step, then its caption on one line, centred
+  // under the box. Each block is centred by its ink on the band's midline
+  // (the plate's top to the day line's baseline; the box's top to the
+  // caption's baseline): equal padding above and below each. The rows are
+  // reserved at the scale's sizes, so a name set smaller to fit, or no day
+  // line, leaves the geometry one for every address. Its height (37 U) is
+  // the most page 2 leaves under the same gap as page 1's (GRID_GAP): the
   // guide's tiles, at its least type size, fit the rest of the page with
-  // the longest content of any gmina's guide (t359).
+  // the longest content of any gmina's guide (t360).
   const LOGO_H = 6 * U;
-  const qrSize = 16 * U;
+  const qrSize = 20 * U;
   const qrBox = qrSize + 2 * U;
-  // Two lines: one would be wider than the box by so much that, centred
-  // under it, it would push the box in and the plate's line down a size.
-  const scan = ["Zeskanuj:", "aktualne terminy"];
-  const scanW = Math.max(...scan.map((l) => widthOf("regular", TYPE.small, l)));
-  const scanGap = 2 * U;
-  const qrCentre = PAGE_W - MARGIN - Math.max(qrBox, scanW) / 2;
+  const scan = "Zeskanuj: aktualne terminy";
+  const scanW = widthOf("regular", TYPE.small, scan);
+  const qrColumn = Math.max(qrBox, scanW);
+  const qrCentre = PAGE_W - MARGIN - qrColumn / 2;
   const qrX = qrCentre - qrBox / 2;
-  const cap = (size: number) => size * CAP;
-  /** Both blocks' height, from the box's top to the caption's last baseline. */
-  const blockH =
-    qrBox + scanGap + cap(TYPE.small) + (scan.length - 1) * ROW[TYPE.small];
-  const bandGap = (blockH - LOGO_H - cap(TYPE.title) - cap(TYPE.body)) / 2;
-  const bandH = 35 * U;
-  const blockTop = (bandH - blockH) / 2;
-  const titleMid = blockTop + LOGO_H + bandGap + cap(TYPE.title) / 2;
-  const bandLineMid =
-    blockTop + LOGO_H + 2 * bandGap + cap(TYPE.title) + cap(TYPE.body) / 2;
-  const scanMid = blockTop + qrBox + scanGap + cap(TYPE.small) / 2;
-  // The plate's line and the name end a gap and a half before the QR's
-  // box, beside them; the day line before the caption, beside it.
+  /** A row's cap baseline below the row's top: its cap centred in it. */
+  const baseline = (size: number) => ROW[size] / 2 + (size * CAP) / 2;
+  // The left block's rows, from its top.
+  const kickerRow = LOGO_H + 3 * U;
+  const titleRow = kickerRow + ROW[TYPE.body];
+  const lineRow = titleRow + ROW[TYPE.title] + U;
+  const leftInk = lineRow + baseline(TYPE.body);
+  // The right block's caption row, from its top.
+  const scanRow = qrBox + U;
+  const rightInk = scanRow + baseline(TYPE.small);
+  const bandH = 37 * U;
+  const leftTop = (bandH - leftInk) / 2;
+  const rightTop = (bandH - rightInk) / 2;
+  // Where and the name end a gap and a half before the QR's box, beside
+  // them; the day line before the caption, beside it.
   const bandTextW = qrX - 6 * U - MARGIN;
-  const bandLineW = qrCentre - Math.max(qrBox, scanW) / 2 - 6 * U - MARGIN;
-  const logoW = (LOGO_WIDTH * LOGO_H) / LOGO_HEIGHT;
-  const kickerX = MARGIN + logoW + 3 * U;
+  const bandLineW = qrCentre - qrColumn / 2 - 6 * U - MARGIN;
   const kicker = `${place.area} · Harmonogram odbioru odpadów`;
-  const kickerSize = oneLine("regular", kicker, MARGIN + bandTextW - kickerX, [
-    TYPE.body,
-    TYPE.small,
-  ]);
+  const kickerSize = oneLine("regular", kicker, bandTextW, [TYPE.body]);
   // The street's name and its day line each on one line, so the longest
   // name leaves the calendar where it is.
   const titleSize = oneLine("bold", title, bandTextW, [
@@ -728,35 +723,56 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const drawBand = (parent: PDFKit.PDFStructureElement) => {
     artifact(doc, () => {
       doc.rect(0, 0, PAGE_W, bandH).fillColor(HEADER).fill();
-      drawLogo(doc, MARGIN, blockTop, LOGO_H);
-      doc.rect(qrX, blockTop, qrBox, qrBox).fillColor(WHITE).fill();
-      drawQr(doc, url, qrX + U, blockTop + U, qrSize);
+      drawLogo(doc, MARGIN, leftTop, LOGO_H);
+      doc.rect(qrX, rightTop, qrBox, qrBox).fillColor(WHITE).fill();
+      drawQr(doc, url, qrX + U, rightTop + U, qrSize);
     });
     tag(parent, "P", () =>
-      rowText("regular", kickerSize, WHITE, kicker, kickerX, blockTop, LOGO_H),
+      rowText(
+        "regular",
+        kickerSize,
+        WHITE,
+        kicker,
+        MARGIN,
+        leftTop + kickerRow,
+        ROW[TYPE.body],
+      ),
     );
-    // Rows of no height: the text's cap centred on the line.
     tag(parent, "H1", () =>
-      rowText("bold", titleSize, WHITE, title, MARGIN, titleMid, 0),
+      rowText(
+        "bold",
+        titleSize,
+        WHITE,
+        title,
+        MARGIN,
+        leftTop + titleRow,
+        ROW[TYPE.title],
+      ),
     );
     if (bandLine) {
       tag(parent, "P", () =>
-        rowText("bold", bandLineSize, WHITE, bandLine, MARGIN, bandLineMid, 0),
+        rowText(
+          "bold",
+          bandLineSize,
+          WHITE,
+          bandLine,
+          MARGIN,
+          leftTop + lineRow,
+          ROW[TYPE.body],
+        ),
       );
     }
     tag(parent, "P", () =>
-      scan.forEach((line, i) => {
-        rowText(
-          "regular",
-          TYPE.small,
-          WHITE,
-          line,
-          qrCentre - widthOf("regular", TYPE.small, line) / 2,
-          scanMid + i * ROW[TYPE.small],
-          0,
-          { link: url },
-        );
-      }),
+      rowText(
+        "regular",
+        TYPE.small,
+        WHITE,
+        scan,
+        qrCentre - scanW / 2,
+        rightTop + scanRow,
+        ROW[TYPE.small],
+        { link: url },
+      ),
     );
     return bandH;
   };
@@ -878,7 +894,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // Between the band and the grid, and between grid rows: one gap; the
   // key below the grid takes the rest, its heading row's own air above its
   // ink making the same gap (t358).
-  const GRID_GAP = 9 * U;
+  const GRID_GAP = 8 * U;
   const ROW_GAP = GRID_GAP;
   // Page 1's footer: the source line and the unverified note's row, on
   // every PDF (the note in one row at the fine size, either gmina's).
@@ -1060,7 +1076,9 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const SEPARATE_COLUMNS = 4;
   const QR_GUIDE = 16 * U;
   const separateHeading = "Oddajesz osobno";
-  const guideTop = bandH + SECTION;
+  // Under the band, the same gap as page 1's (Jakub, t360); between the
+  // guide's blocks, the tiles' own gutter.
+  const guideTop = bandH + GRID_GAP;
   // Rows for the longest source list of any gmina's guide: one height
   // on every PDF.
   const footer2 = guide
@@ -1188,10 +1206,26 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
             wordsFit("bold", size, itemName(item), sepNameW) &&
             wordsFit("regular", size, whereText(item, true), whereW),
         );
-      const stripTop = footer2.top - SECTION - stripH;
-      const sepTop = stripTop - SECTION - sepH;
+      const stripTop = footer2.top - GUTTER - stripH;
+      console.error(
+        "DBG",
+        JSON.stringify({
+          size,
+          headH,
+          yesH,
+          noH,
+          binNeed,
+          sepH,
+          sepHeadH,
+          sepBodyH,
+          stripH,
+          f2: footer2.top,
+          guideTop,
+        }),
+      );
+      const sepTop = stripTop - GUTTER - sepH;
       const binH =
-        (sepTop - SECTION - guideTop - GUTTER * (BIN_ROWS - 1)) / BIN_ROWS;
+        (sepTop - GUTTER - guideTop - GUTTER * (BIN_ROWS - 1)) / BIN_ROWS;
       return {
         size,
         headH,
