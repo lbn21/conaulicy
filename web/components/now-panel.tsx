@@ -7,8 +7,6 @@ import { Skeleton } from "@/components/skeleton";
 import { SourceNote } from "@/components/subpage-parts";
 import { dayRange, todayInWarsaw } from "@/lib/dates";
 import { freshnessLine } from "@/lib/hub";
-import { IMGW_PAGE } from "@/lib/imgw-shown";
-import { IMGW_ATTRIBUTION, IMGW_NAME } from "@/lib/imgw-warnings";
 import { LIST } from "@/lib/locale";
 import { type NowTileData, weekOf } from "@/lib/now-panel";
 
@@ -25,7 +23,7 @@ import { type NowTileData, weekOf } from "@/lib/now-panel";
 const HEADING = "Teraz w gminie";
 
 /** One tile, from its definition and its read (null: not read now). */
-function NowTile({
+export function NowTile({
   def,
   data,
 }: {
@@ -131,7 +129,6 @@ async function NowPanelBody() {
   );
   const tiles = NOW_TILES.map((def, i) => ({ def, data: reads[i] }));
   const read = tiles.filter((t) => t.data !== null);
-  const imgw = read.some((t) => t.def.id === "pogoda");
   const sources = read.flatMap(({ def }) => (def.source ? [def.source] : []));
   return (
     <section aria-labelledby="teraz" className="app-now">
@@ -142,13 +139,11 @@ async function NowPanelBody() {
           sources.length > 0 && (
             <>
               {"Źródła: "}
-              {LIST.formatToParts(sources.map((s) => s.text)).map((part, i) => {
+              {LIST.formatToParts(sources.map((s) => s.text)).map((part) => {
                 const source = sources.find((s) => s.text === part.value);
                 return source ? (
-                  // A fixed list, never reordered.
-                  // biome-ignore lint/suspicious/noArrayIndexKey: as above
                   <a
-                    key={i}
+                    key={source.href}
                     className="govuk-link govuk-link--inverse"
                     href={source.href}
                   >
@@ -158,19 +153,7 @@ async function NowPanelBody() {
                   part.value
                 );
               })}
-              {". "}
-              {imgw && (
-                <>
-                  {IMGW_ATTRIBUTION.source[0]}
-                  <a
-                    className="govuk-link govuk-link--inverse"
-                    href={IMGW_PAGE}
-                  >
-                    {IMGW_NAME}
-                  </a>
-                  {`${IMGW_ATTRIBUTION.source[1]} ${IMGW_ATTRIBUTION.processed}`}
-                </>
-              )}
+              .
             </>
           )
         }

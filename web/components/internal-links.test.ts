@@ -35,8 +35,8 @@ const EXPRESSIONS: Record<string, Record<string, string>> = {
   "components/now-panel.tsx": {
     "def.source.href": "another site: a tile's source (NOW_TILES)",
     "source.href": "another site: a tile's source (NOW_TILES)",
-    IMGW_PAGE: "another site",
   },
+  "app/page.tsx": { IMGW_PAGE: "another site" },
   "components/site-footer.tsx": { CONTACT_HREF: "mailto:" },
   "components/subpage-parts.tsx": {
     href: "an ICS file (CalendarBlock)",

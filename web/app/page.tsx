@@ -12,6 +12,8 @@ import { PlaceLink } from "@/components/place-link";
 import { SITE_URL } from "@/lib/config.generated";
 import { HOME_EXAMPLES } from "@/lib/examples";
 import { DATASET } from "@/lib/headers";
+import { IMGW_PAGE } from "@/lib/imgw-shown";
+import { IMGW_ATTRIBUTION, IMGW_NAME } from "@/lib/imgw-warnings";
 import { LANG } from "@/lib/locale";
 import { examplePlaces, searchIndexUrl } from "@/lib/schedule";
 import { placeHref } from "@/lib/search";
@@ -86,7 +88,8 @@ async function HomeExamples() {
 // gradient (HomeHero, site.scss .app-hero), the task in the heading, one
 // line, the search on a white card, three reassurances; beside it (under
 // it on a phone) „Teraz w gminie”, read per request behind its skeleton
-// (components/now-panel.tsx). Then the sample addresses. Everything but
+// (components/now-panel.tsx). Then the sample addresses and IMGW's
+// required wording. Everything but
 // the panel is static, cached until the next import or deploy.
 export default function Home() {
   return (
@@ -99,6 +102,16 @@ export default function Home() {
       <HomeHero />
       <div className="govuk-width-container">
         <HomeExamples />
+        {/* IMGW-PIB's terms (§5), once, at the end of the page, above the
+          footer: the panel shows its warnings. Small print, as the address
+          page's source note. */}
+        <p className="govuk-body-s app-quiet">
+          {IMGW_ATTRIBUTION.source[0]}
+          <a className="govuk-link" href={IMGW_PAGE}>
+            {IMGW_NAME}
+          </a>
+          {`${IMGW_ATTRIBUTION.source[1]} ${IMGW_ATTRIBUTION.processed}`}
+        </p>
       </div>
     </SearchErrorProvider>
   );

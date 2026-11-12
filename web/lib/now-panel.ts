@@ -5,7 +5,7 @@
 // registry with the reads is components/now-tiles.ts.
 
 import { warsawDay } from "./date-labels.ts";
-import { addDays, dayRange } from "./dates.ts";
+import { addDays } from "./dates.ts";
 import type { Disruption } from "./disruptions.ts";
 import { hasSource } from "./event-source.ts";
 import type { Checked } from "./hub.ts";
@@ -20,7 +20,7 @@ export type NowLink = { href: string; text: string };
 export type NowTileData = {
   /** The headline: „2 przerwy”, „Silny wiatr”, „Brak przerw”. */
   value: string;
-  /** The line under it, stating the window: „w tym tygodniu, 9–15 listopada”. */
+  /** The line under it, stating the window: „w tym tygodniu”. */
   note: string;
   /** Nothing to report (or nothing could be read): the value muted. */
   empty: boolean;
@@ -43,10 +43,6 @@ export function weekOf(today: string): Week {
   const from = addDays(today, -weekday);
   return { from, to: addDays(from, 6), until: addDays(from, 7) };
 }
-
-/** „w tym tygodniu, 9–15 listopada”: the window every count states. */
-export const weekNote = (week: Week) =>
-  `w tym tygodniu, ${dayRange(week.from, week.to)}`;
 
 const plurals = new Intl.PluralRules(LOCALE);
 

@@ -11,7 +11,6 @@ import {
   topWarning,
   type Week,
   waterWeek,
-  weekNote,
 } from "@/lib/now-panel";
 import { PGE_PAGE } from "@/lib/power-module";
 import { wasteWeek } from "@/lib/schedule";
@@ -27,6 +26,9 @@ import { getWaterData } from "@/lib/zuk-store";
 // module is one more entry here and its read, no layout or CSS change
 // (docs/layout.md, „Teraz w gminie”). A read gives null when its source
 // could not be read now: the tile says so, muted.
+
+/** Every count's window; the week's dates are in the panel's subtitle. */
+const WEEK = "w tym tygodniu";
 
 export type NowTileDef = {
   id: string;
@@ -53,13 +55,13 @@ const pogoda: NowTileDef = {
     if (!top)
       return {
         value: "Brak ostrzeżeń",
-        note: "dla powiatu lubaczowskiego, teraz",
+        note: "dla powiatu, teraz",
         empty: true,
         checkedAt,
       };
     return {
       value: top.event,
-      note: `${warningWhen(top, now)} Powiat lubaczowski.`,
+      note: warningWhen(top, now),
       empty: false,
       featured: true,
       tag: { text: `Ostrzeżenie ${top.level}. stopnia`, level: top.level },
@@ -89,7 +91,7 @@ const woda: NowTileDef = {
         count > 0
           ? counted(count, ["przerwa", "przerwy", "przerw"])
           : "Brak przerw",
-      note: `zapowiedzianych ${weekNote(week)}`,
+      note: WEEK,
       empty: count === 0,
       checkedAt: checked[0] ? new Date(checked[0]) : null,
     };
@@ -111,7 +113,7 @@ const prad: NowTileDef = {
         count > 0
           ? counted(count, ["wyłączenie", "wyłączenia", "wyłączeń"])
           : "Brak wyłączeń",
-      note: `planowanych ${weekNote(week)}`,
+      note: WEEK,
       empty: count === 0,
       checkedAt: new Date(copy.checkedAt),
     };
@@ -132,7 +134,7 @@ const smieci: NowTileDef = {
         count > 0
           ? counted(count, ["odbiór", "odbiory", "odbiorów"])
           : "Brak odbiorów",
-      note: `w gminie ${weekNote(week)}, w różne dni dla różnych ulic`,
+      note: `${WEEK}, różne dni dla ulic`,
       empty: count === 0,
       action: { href: `#${SEARCH_ID}`, text: "Sprawdź swój termin" },
       checkedAt,
