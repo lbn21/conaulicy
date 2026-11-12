@@ -64,9 +64,23 @@ export function Icon({ name }: { name: IconName }) {
  * An icon on its tile, in its module's colours (site.scss .app-tile,
  * .app-mod--*); any other icon on the neutral grey.
  */
-export function Tile({ name }: { name: IconName }) {
+export function Tile({
+  name,
+  muted = false,
+}: {
+  name: IconName;
+  /** Grey: .app-mod's neutral tint and the secondary text colour, for a
+   * card with nothing to show (components/hub.tsx). */
+  muted?: boolean;
+}) {
   return (
-    <span className={`app-tile app-mod app-mod--${name}`}>
+    <span
+      className={
+        muted
+          ? "app-tile app-mod app-quiet"
+          : `app-tile app-mod app-mod--${name}`
+      }
+    >
       <Icon name={name} />
     </span>
   );
