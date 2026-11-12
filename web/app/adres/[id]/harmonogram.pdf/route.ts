@@ -636,12 +636,13 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const unverified: Paragraph | null = place.verified
     ? null
     : { runs: [{ text: unverifiedNote(place.gmina) }], colour: BLACK };
-  /** A guide's sources: each named and linked (its site), then the day. */
+  /** A guide's publisher and sources, each named and linked (its site),
+   * then the day. */
   const sourcesFooter = (g: NonNullable<ReturnType<typeof guideFor>>) => {
     const name = (label: string) =>
       label.match(/„([^”]+)”/)?.[1] ?? label.split(",")[0];
     const site = (url: string) => new URL(url).hostname.replace(/^www\./, "");
-    const runs: Run[] = [{ text: "Źródła zasad: " }];
+    const runs: Run[] = [{ text: `Źródła zasad (${g.publisher}): ` }];
     // Each source ends with its comma and the next starts with the space,
     // so a line never starts with the comma.
     g.sources.forEach((source, i) => {
