@@ -48,7 +48,7 @@ import {
   type PickupDay,
   type PlaceView,
 } from "@/lib/schedule";
-import { hasUpcoming, putOutNote } from "@/lib/schedule-notes";
+import { hasUpcoming, putOutNote, unverifiedNote } from "@/lib/schedule-notes";
 import { SITE_NAME } from "@/lib/share";
 import { GUIDES, type GuideItem, guideFor } from "@/lib/sorting-guide";
 import { THEME_COLOR } from "@/lib/theme";
@@ -573,37 +573,89 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     return w <= width ? size : Math.floor((size * width * 4) / w) / 4;
   };
 
-  // ------------------------------------------------------------ footer line
-  // One short line a page: the source, the day it was checked, and that we
-  // are not an office. The sources in full stay on the site.
+  // ------------------------------------------------------------ footer
+  // At the foot of each page, under a rule: a block of fine print in rows
+  // reserved for the longest it can be, so it never moves what is above it
+  // (Tech Lead, t351). Page 1: the schedule's source and the day it was
+  // checked, then the unverified note where the place has one (else the row
+  // stays empty). Page 2: every source of the gmina's guide, each linked,
+  // and the day they were checked.
+  const FOOT = TYPE.fine;
+  type Run = { text: string; link?: string };
+  type Paragraph = { runs: Run[]; colour: string };
+  const plain = (p: Paragraph) => p.runs.map((r) => r.text).join("");
+  const rowsOf = (p: Paragraph) =>
+    block("regular", FOOT, plain(p), CONTENT_W) / ROW[FOOT];
   const oldest = (days: Array<string | null>) =>
     days.filter((d): d is string => d !== null).sort()[0] ?? null;
-  const footerText = (source: string, checked: string | null) =>
-    [
-      `Źródło: ${source}`,
-      ...(checked ? [`stan na ${longDate(checked)}`] : []),
-      "Nie jesteśmy urzędem.",
-    ].join(" · ");
-  const footerLine = (text: string) => {
-    const size = fitting("regular", text, CONTENT_W, [TYPE.small, TYPE.fine]);
-    const h = block("regular", size, text, CONTENT_W);
-    const top = PAGE_H - MARGIN - h;
+  const footerBlock = (rows: number) => {
+    const top = PAGE_H - MARGIN - rows * ROW[FOOT];
     const ruleY = top - 2 * U;
-    const draw = (parent: PDFKit.PDFStructureElement) => {
+    const draw = (
+      parent: PDFKit.PDFStructureElement,
+      paragraphs: Paragraph[],
+    ) => {
       artifact(doc, () => rule(ruleY));
-      tag(parent, "P", () =>
-        blockText(
-          "regular",
-          size,
-          SECONDARY_TEXT,
-          text,
-          MARGIN,
-          top,
-          CONTENT_W,
-        ),
-      );
+      let y = top;
+      for (const p of paragraphs) {
+        const at = y;
+        tag(parent, "P", () => {
+          doc.font("regular").fontSize(FOOT).fillColor(p.colour);
+          p.runs.forEach((run, i) => {
+            const options = {
+              width: CONTENT_W,
+              lineGap: lineGap(FOOT),
+              continued: i < p.runs.length - 1,
+              link: run.link ?? null,
+            };
+            if (i === 0) {
+              doc.text(run.text, MARGIN, capTop(FOOT, at, ROW[FOOT]), options);
+            } else doc.text(run.text, options);
+          });
+        });
+        y += rowsOf(p) * ROW[FOOT];
+      }
     };
     return { top: ruleY, draw };
+  };
+  const scheduleFooter: Paragraph = {
+    runs: [
+      {
+        text: [
+          `Źródło: ${scheduleName(place.gmina)}`,
+          ...(() => {
+            const checked = oldest(place.sources.map((s) => s.checkedAt));
+            return checked ? [`stan na ${longDate(checked)}`] : [];
+          })(),
+          "Nie jesteśmy urzędem.",
+        ].join(" · "),
+      },
+    ],
+    colour: SECONDARY_TEXT,
+  };
+  const unverified: Paragraph | null = place.verified
+    ? null
+    : { runs: [{ text: unverifiedNote(place.gmina) }], colour: BLACK };
+  /** A guide's sources: each named and linked (its site), then the day. */
+  const sourcesFooter = (g: NonNullable<ReturnType<typeof guideFor>>) => {
+    const name = (label: string) =>
+      label.match(/„([^”]+)”/)?.[1] ?? label.split(",")[0];
+    const site = (url: string) => new URL(url).hostname.replace(/^www\./, "");
+    const runs: Run[] = [{ text: "Źródła zasad: " }];
+    // Each source ends with its comma and the next starts with the space,
+    // so a line never starts with the comma.
+    g.sources.forEach((source, i) => {
+      const last = i === g.sources.length - 1;
+      runs.push({
+        text: `${i > 0 ? " " : ""}${name(source.label)} (${site(source.url)})${last ? "" : ","}`,
+        link: source.url,
+      });
+    });
+    const checked = oldest(g.sources.map((s) => s.checkedAt));
+    runs.push({
+      text: ` · ${checked ? `stan na ${longDate(checked)} · ` : ""}Nie jesteśmy urzędem.`,
+    });
+    return { runs, colour: SECONDARY_TEXT } satisfies Paragraph;
   };
 
   // ------------------------------------------------------------ bands
@@ -829,23 +881,16 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const YEAR_H = ROW[TYPE.heading];
   // Between grid rows: the next row's year strip adds its own air.
   const ROW_GAP = 2 * U;
-  const footer1 = footerLine(
-    footerText(
-      scheduleName(place.gmina),
-      oldest(place.sources.map((s) => s.checkedAt)),
-    ),
-  );
+  // Page 1's footer: the source line and the unverified note's row, on
+  // every PDF (the note in one row at the fine size, either gmina's).
+  const footer1 = footerBlock(2);
   // Sized once, for every address, from fixed bounds (lib/pdf-grid.ts):
   // MONTH_DAYS dates in every month, DAY_MARKS marks on a date, rows of
   // TABLE_ROW at the body size, under the band and above the key's fixed
   // grid. Fewer months or dates leave the space empty.
-  // The footer line at its larger size, whichever this one takes.
-  const footerTop = Math.min(
-    footer1.top,
-    PAGE_H - MARGIN - ROW[TYPE.small] - 2 * U,
-  );
-  // The key, at one place on every page.
-  const keyTop = footerTop - SECTION - KEY_H;
+  // The key, at one place on every PDF: a step above the footer's rule
+  // (its last row's own air above it).
+  const keyTop = footer1.top - 2 * U - KEY_H;
   const gridTop = bandH + SECTION;
   const gridMonths = months.map((key) => ({ key, marks: [] }));
   // As the leaflet's: nothing bold, headers the days' size, set apart only
@@ -1018,11 +1063,15 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const QR_GUIDE = 16 * U;
   const separateHeading = "Oddajesz osobno";
   const guideTop = compactH + SECTION;
+  // Rows for the longest source list of any gmina's guide: one height
+  // on every PDF.
   const footer2 = guide
-    ? footerLine(
-        footerText(
-          `zasady segregacji, ${guide.publisher}`,
-          oldest(guide.sources.map((s) => s.checkedAt)),
+    ? footerBlock(
+        Math.max(
+          ...Object.keys(GUIDES).flatMap((gmina) => {
+            const g = guideFor(gmina);
+            return g ? [rowsOf(sourcesFooter(g))] : [];
+          }),
         ),
       )
     : null;
@@ -1141,12 +1190,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
             wordsFit("bold", size, itemName(item), sepNameW) &&
             wordsFit("regular", size, whereText(item, true), whereW),
         );
-      // The footer line at its larger size, whichever this one takes.
-      const footerTop = Math.min(
-        footer2.top,
-        PAGE_H - MARGIN - ROW[TYPE.small] - 2 * U,
-      );
-      const stripTop = footerTop - SECTION - stripH;
+      const stripTop = footer2.top - SECTION - stripH;
       const sepTop = stripTop - SECTION - sepH;
       const binH =
         (sepTop - SECTION - guideTop - GUTTER * (BIN_ROWS - 1)) / BIN_ROWS;
@@ -1448,7 +1492,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     });
     drawSeparate();
     drawStrip();
-    footer2.draw(root);
+    footer2.draw(root, [sourcesFooter(guide)]);
   };
 
   // ------------------------------------------------------------ calendar
@@ -1490,7 +1534,10 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const key = keyFor(printed);
   drawKey(root, key, keyTop);
   if (key.moved) drawMoved(root, keyTop);
-  footer1.draw(root);
+  footer1.draw(
+    root,
+    unverified ? [scheduleFooter, unverified] : [scheduleFooter],
+  );
 
   // Page 2, „Co wrzucać”: the last page.
   drawGuide();
