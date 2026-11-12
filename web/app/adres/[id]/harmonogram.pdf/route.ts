@@ -666,14 +666,15 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   };
 
   // ------------------------------------------------------------ bands
-  // The band on page 1, compact so six months of tables keep their rows
-  // (Tech Lead, t334): the plate and where, the street, its day; the QR
+  // The band on page 1: the plate and where, the street, its day; the QR
   // code and its caption on the right. Rows on the scale, their text
-  // cap-centred; BAND_PAD above and below, MARGIN at the sides. One height
-  // for every address, day line or not: the calendar below starts at one
-  // place on every PDF.
+  // cap-centred; MARGIN of padding all round, a step and a half under the
+  // plate and a step above the day line, as the first redesign's band
+  // (t355: the room the real data's bounds give back goes here first). One
+  // height for every address, day line or not: the calendar below starts
+  // at one place on every PDF.
   const LOGO_H = 6 * U;
-  const BAND_PAD = 3 * U;
+  const BAND_PAD = MARGIN;
   const qrSize = 16 * U;
   const qrBox = qrSize + 2 * U;
   const qrX = PAGE_W - MARGIN - qrBox;
@@ -698,10 +699,9 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     TYPE.body,
     TYPE.small,
   ]);
-  // The title's own row gives it the air below the plate.
-  const titleTop = BAND_PAD + LOGO_H;
+  const titleTop = BAND_PAD + LOGO_H + 3 * U;
   const titleH = ROW[TYPE.title];
-  const bandLineTop = titleTop + titleH;
+  const bandLineTop = titleTop + titleH + U;
   const scan = "Zeskanuj: aktualne terminy";
   const scanTop = BAND_PAD + qrBox + U;
   const bandH = bandLineTop + ROW[TYPE.body] + BAND_PAD;
@@ -896,8 +896,9 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // A strip above every grid row: the year heading's own row, its ink
   // leaving air above the tables.
   const YEAR_H = ROW[TYPE.heading];
-  // Between grid rows: the next row's year strip adds its own air.
-  const ROW_GAP = 2 * U;
+  // Between grid rows: the next row's year strip is the air (24 pt, as
+  // the gaps around the grid; t355).
+  const ROW_GAP = 0;
   // Page 1's footer: the source line and the unverified note's row, on
   // every PDF (the note in one row at the fine size, either gmina's).
   const footer1 = footerBlock(2);
@@ -908,7 +909,9 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // The key, at one place on every PDF: a step above the footer's rule
   // (its last row's own air above it).
   const keyTop = footer1.top - 2 * U - KEY_H;
-  const gridTop = bandH + SECTION;
+  // A step more than SECTION under the band: with the year strip's own air,
+  // the grid sits as far below the band as the key sits below the grid.
+  const gridTop = bandH + SECTION + U;
   const gridMonths = months.map((key) => ({ key, marks: [] }));
   // As the leaflet's: nothing bold, headers the days' size, set apart only
   // by the grey; every table text TABLE_PAD in from its borders. The date
@@ -1516,7 +1519,8 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // Every month of the window on page 1 (the grid is sized for the most any
   // month can hold), each row under its strip of year headings, a year's
   // above its first month; then the key and the footer line.
-  let y = drawBand() + SECTION;
+  drawBand();
+  let y = gridTop;
   let year = "";
   const placedRows = tableRows(
     printed.map((key) => ({ key })),
