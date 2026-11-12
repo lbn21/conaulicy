@@ -13,11 +13,12 @@ $app-shadow: 0 $app-hair $app-hair * 3 color-mix(in srgb, #{govuk-colour("black"
 $app-gap: govuk-spacing(4);
 
 // Our "ul." plate in the Generic header (site-header.tsx: 30px, the GOV.UK
-// header's logo height). The homepage link is a flex box round the plate,
-// so its box is the logo's, and the bars hang from the logo, not from the
-// font. Deviation from the Generic header's 15/15: the plate 16px from
-// the bar's top and 16 from its bottom, the 1px transparent border below
-// (for forced colours) mirrored above, in a 62px bar (docs/brand.md).
+// header's logo height). The logo container is a flex box as wide as the
+// plate, so the homepage link's box is the logo's, and the bars hang from
+// the logo, not from the font. Deviation from the Generic header's 15/15:
+// the plate 16px from the bar's top and 16 from its bottom (6, the hover
+// bar's 4, 5 and the header's 1px transparent border for forced colours),
+// in a 62px bar (docs/brand.md).
 // Deviation from the Generic header's black bar:
 // the brand group's darkest step, as GOV.UK's header takes its brand
 // colour (HEADER in lib/palette.ts, as theme-color and the PDF's band).
@@ -60,11 +61,19 @@ $app-logo-gap: (govuk-spacing(3) + $app-hair - $app-bar) * .5;
   .govuk-template__body:has(.govuk-skip-link:focus)::before { display: none; }
 }
 
-.govuk-generic-header__logo { display: flex; padding-top: govuk-spacing(3) + $app-hair; }
-
-// A flex item, so a block: its box the plate's (GOV.UK's 30px line, the
-// logo's height, the logo at its top).
-.govuk-generic-header__homepage-link { position: relative; }
+// A flex box as wide as the plate; the homepage link a flex item, so a
+// block: its box the plate's (GOV.UK's 30px line, the logo's height). GOV.UK's
+// hover bar (a bottom border, flush with the link's box) is the
+// container's own bottom border instead, $app-logo-gap under the plate,
+// always there and transparent, so hover changes only its colour, nothing
+// moves. A border, so forced colours show it, as GOV.UK's (in CanvasText,
+// the container's colour there): Canvas unless hovered, as transparent
+// would show. None while focused, as GOV.UK's. GOV.UK's margin and hover
+// border on the link cleared.
+.govuk-generic-header__logo { display: flex; width: fit-content; margin-bottom: $app-logo-gap - $app-hair; padding: govuk-spacing(3) + $app-hair 0 $app-logo-gap; border-bottom: $app-bar solid transparent; }
+.govuk-generic-header__logo:has(> :is(:hover, :active):not(:focus)) { border-bottom-color: currentColor; }
+.govuk-generic-header__homepage-link, .govuk-generic-header__homepage-link:is(:hover, :active) { margin: 0; border-bottom: 0; }
+@media (forced-colors: active) { .govuk-generic-header__logo { border-bottom-color: Canvas; } }
 
 // The plate's fill is one custom property: GOV.UK white on the header's
 // cherry, as GOV.UK's white crown, so the cut-out "ul." and rim show the
@@ -75,12 +84,6 @@ $app-logo-gap: (govuk-spacing(3) + $app-hair - $app-bar) * .5;
 .app-logo__plate {
   fill: var(--app-logo-plate, #{govuk-colour("white")});
 }
-
-// GOV.UK's hover bar (a bottom border, flush with the link's box) drawn
-// under the plate instead, $app-logo-gap below it. A border, so it shows in
-// forced colours as GOV.UK's; none while focused, as GOV.UK's.
-.govuk-generic-header__homepage-link:is(:hover, :active) { margin-bottom: 0; border-bottom: 0; }
-.govuk-generic-header__homepage-link:is(:hover, :active):not(:focus)::after { content: ""; position: absolute; inset: calc(100% + #{$app-logo-gap}) 0 auto; border-bottom: $app-bar solid; }
 
 // Focus: GOV.UK's yellow box is the plate's box (the link's), framed by an
 // even $app-logo-gap of yellow all round; GOV.UK's black bar under it is
@@ -189,13 +192,16 @@ $app-logo-gap: (govuk-spacing(3) + $app-hair - $app-bar) * .5;
 // The address page's timeline (components/timeline.tsx), as
 // CodyHouse's vertical timeline, our own CSS: one unbroken line on the left
 // from the first dot to the last, a dot per day on it, a card per day with
-// a caret at its dot. All of it decorative pseudo-elements; the markup stays
-// an ol of days. Mobile-first, the same at every width. Dots 15px on a 1px
-// line, centred on every card's 19/25 date line (--app-y: the card's border,
-// its padding, half the line: the list set in the date's size, 19/25, by
-// GOV.UK's font-size-19 in timeline.tsx, so .5lh is half the date's line
-// at any text size); the caret's centre on the same y. One padding
-// for every card, GOV.UK's margins inside it trimmed.
+// a caret at its dot. Each day's li a grid, a marker column and the card's:
+// the dot (components/day.tsx, aria-hidden), the line (::before) and the
+// caret (::after) are grid items, nothing positioned. Rows: the card's
+// border and padding, then its date's line (1lh: the list set in the
+// date's 19/25 by GOV.UK's font-size-19 in timeline.tsx, so at any text
+// size), the rest of the card, and the gap to the next day (an implicit
+// row, only where the line crosses it). The dot (15px) and the caret are
+// centred in the date's line by grid alignment, the caret's centre on the
+// card's edge (two half-caret columns). The line 1px, in the dot's column,
+// to the dot's centre (.5lh, half its row) at either end.
 // Colours: a day with items a white card with a subtle border and shadow,
 // its rows in their modules' colours (.app-mod--*); today and tomorrow
 // ringed in the text colour; an empty day or run plain grey text, no card.
@@ -203,54 +209,44 @@ $app-logo-gap: (govuk-spacing(3) + $app-hair - $app-bar) * .5;
 $app-dot: govuk-spacing(3);
 $app-caret: govuk-spacing(2);
 
-.app-timeline { position: relative; margin: 0 0 govuk-spacing(6); padding: 0; list-style: none; }
-.app-timeline::before { content: ""; position: absolute; top: 0; bottom: 0; left: ($app-dot - $app-hair) * .5; border-left: $app-hair solid govuk-functional-colour(border); }
-.app-timeline > li { --app-y: calc(#{$app-hair + govuk-spacing(3)} + .5lh); position: relative; margin: 0; padding: 0 0 $app-gap govuk-spacing(6); }
-.app-timeline > li:last-child { padding-bottom: 0; }
+.app-timeline { margin: 0 0 govuk-spacing(6); padding: 0; list-style: none; }
+.app-timeline > * { --app-line: #{govuk-functional-colour(border)}; display: grid; grid-template: #{$app-hair + govuk-spacing(3)} 1lh 1fr #{"/"} $app-dot (govuk-spacing(6) - $app-dot - $app-caret * .5) $app-caret * .5 $app-caret * .5 1fr; grid-auto-rows: $app-gap; }
 
-// The line's ends: the page's background over it above the first dot and
-// below the last, so it runs dot to dot with no seams between days.
-.app-timeline > li:first-child::after,
-.app-timeline > li:last-child::after { content: ""; position: absolute; left: 0; width: $app-dot; background: govuk-functional-colour(body-background); }
-.app-timeline > li:first-child::after { top: 0; height: var(--app-y); }
-.app-timeline > li:last-child::after { top: var(--app-y); bottom: 0; }
+.app-timeline > *::before { content: ""; grid-area: 1 / 1 / 5; justify-self: center; width: $app-hair; background: govuk-functional-colour(border); }
+.app-timeline > :first-child::before { grid-row-start: 2; margin-top: .5lh; background-position-y: calc(-.5lh - #{$app-hair + govuk-spacing(3)}); }
+.app-timeline > :last-child::before { grid-row-end: 3; margin-bottom: .5lh; border-bottom: 0; }
 
-.app-timeline > li::before {
-  content: "";
-  position: absolute;
-  z-index: 1;
-  top: calc(var(--app-y) - #{$app-dot * .5});
-  left: 0;
-  box-sizing: border-box;
-  width: $app-dot;
-  height: $app-dot;
+.app-timeline__dot {
+  grid-area: 2 / 1;
+  align-self: center;
+  aspect-ratio: 1;
   border: $govuk-border-width-form-element solid govuk-functional-colour(secondary-text);
   border-radius: 50%;
   background: govuk-colour("white");
 }
 
-.app-timeline > .app-timeline__empty::before { border-color: govuk-functional-colour(border); }
+.app-timeline__empty > .app-timeline__dot { border-color: govuk-functional-colour(border); }
 
 // „Później”: past the window, a ringed dot (a dot in a ring).
-.app-timeline > .app-timeline__later::before { background: govuk-functional-colour(secondary-text); box-shadow: inset 0 0 0 $app-hair * 2 govuk-colour("white"); }
+.app-timeline__later > .app-timeline__dot { background: govuk-functional-colour(secondary-text); box-shadow: inset 0 0 0 $app-hair * 2 govuk-colour("white"); }
 
-// The first dot, „you are here”, whatever its card.
-.app-timeline > li:first-child::before { border-color: govuk-functional-colour(text); background: govuk-functional-colour(text); }
+// The first dot, „you are here”, whatever its card; today and tomorrow too.
+:is(:first-child, :has(.app-badge--strong)) > .app-timeline__dot { border-color: govuk-functional-colour(text); background: govuk-functional-colour(text); }
 
-// A run of empty days: one dot, and the line dashed alongside
-// its whole card (the page's background under the dashes), to the dot only
-// when it ends the line.
-.app-timeline__range > .app-timeline__card::after { content: ""; position: absolute; top: -$app-hair; bottom: -$app-hair; left: -(govuk-spacing(6) + $app-hair); width: $app-dot; background: repeating-linear-gradient(govuk-functional-colour(border) 0 govuk-spacing(1), transparent 0 govuk-spacing(2)) 50% 0 no-repeat, govuk-functional-colour(body-background); background-size: $app-hair 100%, auto; }
-.app-timeline__range:last-child > .app-timeline__card::after { bottom: auto; height: var(--app-y); }
+// A run of empty days: the line dashed alongside its whole card (from its
+// top, so the first day's dashes fall as the others'), solid across the
+// gap under it, to the dot only when it ends the line.
+.app-timeline__range::before { border-bottom: $app-gap solid govuk-functional-colour(border); background: linear-gradient(govuk-functional-colour(border) 50%, transparent 0) 0 0 / 100% govuk-spacing(2); }
 
-.app-timeline__card { --app-bg: #{govuk-colour("white")}; --app-line: #{govuk-functional-colour(border)}; position: relative; padding: govuk-spacing(3); border: $app-hair solid var(--app-line); border-radius: $app-radius; background: var(--app-bg); box-shadow: $app-shadow; }
+.app-timeline__card { grid-area: 1 / 4 / 4 / -1; padding: govuk-spacing(3); border: $app-hair solid var(--app-line); border-radius: $app-radius; background: var(--app-bg, #{govuk-colour("white")}); box-shadow: $app-shadow; }
 // Quieter: an empty day or run is text on the page, no card.
-.app-timeline__card--empty { --app-bg: transparent; --app-line: transparent; box-shadow: none; }
+.app-timeline__empty { --app-bg: transparent; --app-line: transparent; }
+.app-timeline__card--empty { box-shadow: none; }
 .app-timeline__card--empty :is(.app-timeline__title, p) { color: govuk-functional-colour(secondary-text); }
 // Louder: today and tomorrow (DayWord's strong badge) ringed in the text
-// colour, 2px with the border, and their dot filled.
-.app-timeline__card:has(.app-badge--strong) { --app-line: #{govuk-functional-colour(text)}; box-shadow: 0 0 0 $app-hair var(--app-line), $app-shadow; }
-.app-timeline > li:has(.app-badge--strong)::before { border-color: govuk-functional-colour(text); background: govuk-functional-colour(text); }
+// colour, 2px with the border.
+.app-timeline > :has(.app-badge--strong) { --app-line: #{govuk-functional-colour(text)}; }
+.app-timeline__card:has(.app-badge--strong) { box-shadow: 0 0 0 $app-hair var(--app-line), $app-shadow; }
 .app-timeline__card .govuk-summary-list__key { color: var(--app-mod-ink); }
 // Two sizes in a card: the date heading-s, all else body-s.
 .app-timeline__card :is(.govuk-summary-list, .govuk-list) { @include govuk-font-size($size: 16); }
@@ -269,14 +265,14 @@ $app-caret: govuk-spacing(2);
 :is(.app-timeline__card, .app-card) .govuk-summary-list__row:last-child,
 :is(.app-timeline__card, .app-card) .govuk-summary-list__row:last-child > :last-child { margin-bottom: 0; }
 
-// Every link in a card at least 24px tall to tap (WCAG 2.5.8): an
-// invisible box 25px tall centred on it. Nothing moves and GOV.UK's
-// focus style stays as it is. On one line, under the cap.
-.app-timeline__card a { position: relative; &::after { content: ""; position: absolute; inset: calc(50% - #{govuk-spacing(5) * .5}) 0; } }
+// Every link in a card at least 24px tall to tap (WCAG 2.5.8): an inline
+// link's padding grows its box, not its line, so nothing moves. None while
+// focused, so GOV.UK's focus style stays as it is.
+.app-timeline__card a:not(:focus) { padding-block: govuk-spacing(1) * .5; }
 
 // The caret: a square turned 45°, its two outer sides the card's border,
 // its centre on the card's left edge, level with the dot.
-.app-timeline__card::before { content: ""; position: absolute; top: calc(var(--app-y) - #{$app-hair + $app-caret * .5}); left: -($app-caret * .5) - $app-hair; box-sizing: border-box; width: $app-caret; height: $app-caret; border-bottom: $app-hair solid var(--app-line); border-left: $app-hair solid var(--app-line); background: var(--app-bg); transform: rotate(45deg); }
+.app-timeline > *::after { content: ""; grid-area: 2 / 3 / 3 / 5; align-self: center; aspect-ratio: 1; border-bottom: $app-hair solid var(--app-line); border-left: $app-hair solid var(--app-line); background: var(--app-bg, #{govuk-colour("white")}); transform: rotate(45deg); }
 
 // IMGW's warnings (components/warning-cards.tsx): a card each
 // above the timeline, its border and radius as a timeline card's. Its top
@@ -378,14 +374,15 @@ $app-caret: govuk-spacing(2);
 // frame, pill or colour (a pill or colour only when there is something).
 .app-empty { color: govuk-functional-colour(secondary-text); }
 
-// An icon leading a button's words: a flex row, centred on them, a space's
-// width from them. In a link (which may wrap) the icon stays inline: one
-// line tall, at the line's top, so its centre is the line's, which for
-// Atkinson is the cap centre (ascent and descent 984/316).
+// An icon leading a button's or a link's words: a flex row, a space's
+// width from them. In a button centred on them; in a link (which may wrap)
+// the icon one line tall at the top, so its centre is the first line's,
+// which for Atkinson is the cap centre (ascent and descent 984/316), and
+// wrapped words hang beside it. The words on the link's baseline, so it
+// sits in its line as text.
 .govuk-button:has(> .app-icon) { display: inline-flex; gap: govuk-spacing(1); align-items: center; justify-content: center; }
-.govuk-link > .app-icon:first-child { height: 1lh; margin-right: govuk-spacing(1);
-  // css-allow R1: centres the icon on its line in a link that may wrap, where flex cannot
-  vertical-align: top; }
+.govuk-link:has(> .app-icon:first-child) { display: inline-flex; gap: govuk-spacing(1); align-items: baseline; }
+.govuk-link > .app-icon:first-child { align-self: flex-start; height: 1lh; }
 
 // Running text breathes (a deviation, Jakub's OK, t332): GOV.UK's
 // 19/25 and 16/20 (about 1.3) become 1.5 for paragraphs, leads, lists,

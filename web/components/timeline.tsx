@@ -39,7 +39,8 @@ export function Timeline({
         <p className="app-empty govuk-body">{EMPTY}</p>
       ) : (
         // A vertical timeline (site.scss .app-timeline): the
-        // line, dots and carets are CSS only.
+        // line and carets are CSS only, each day's dot an empty span
+        // (components/day.tsx), all on a grid.
         <ol className="app-timeline govuk-!-font-size-19">
           {groups.map((group) => (
             <Day key={group.from} group={group} place={place} />
