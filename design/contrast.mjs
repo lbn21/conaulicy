@@ -156,6 +156,8 @@ function requiredPairs() {
     ["inverse-text", "button-hover", "text"],
     ["inverse-text", "error", "text"],
     ["text", "secondary-button", "text"],
+    // A muted card's tile (components/hub.tsx): its icon on the grey.
+    ["secondary-text", "secondary-button", "text"],
     ["surface-text", "surface-background", "text"],
     ["inverse-text", "header-background", "text"],
     ["input-border", "body-background", "ui"],

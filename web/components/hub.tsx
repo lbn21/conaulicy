@@ -190,28 +190,36 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
           {/* A card per module (site.scss .app-items): its icon on its
             colour's tile, its title, a plain heading whose one link
             stretches over the whole card (the link's name the title), how
-            many of its items are in the window, a chevron. */}
+            many of its items are in the window, a chevron. A card with
+            nothing in the window is muted: its title regular, its tile
+            grey (Tile muted), so it never draws the eye as one with
+            something does; the same size, still a link. */}
           <ul className="app-items">
-            {links.map(({ module }) => (
-              <li
-                key={module.id}
-                className={`app-item app-mod app-mod--${module.id}`}
-              >
-                <Tile name={module.id} />
-                <div className="app-item__body">
-                  <h3 className="govuk-heading-s govuk-!-margin-bottom-0">
-                    <PlaceLink
-                      className="govuk-link govuk-link--text-colour govuk-link--no-underline app-item__link"
-                      href={subpageHref(module, place)}
+            {links.map(({ module }) => {
+              const empty = (counts.get(module.id) ?? 0) === 0;
+              return (
+                <li
+                  key={module.id}
+                  className={`app-item app-mod app-mod--${module.id}`}
+                >
+                  <Tile name={module.id} muted={empty} />
+                  <div className="app-item__body">
+                    <h3
+                      className={`govuk-heading-s govuk-!-margin-bottom-0 ${empty ? "govuk-!-font-weight-regular" : ""}`.trim()}
                     >
-                      {module.more}
-                    </PlaceLink>
-                  </h3>
-                  <CountBadge count={counts.get(module.id) ?? 0} />
-                </div>
-                <Icon name="chevron" />
-              </li>
-            ))}
+                      <PlaceLink
+                        className="govuk-link govuk-link--text-colour govuk-link--no-underline app-item__link"
+                        href={subpageHref(module, place)}
+                      >
+                        {module.more}
+                      </PlaceLink>
+                    </h3>
+                    <CountBadge count={counts.get(module.id) ?? 0} />
+                  </div>
+                  <Icon name="chevron" />
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

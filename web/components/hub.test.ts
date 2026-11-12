@@ -300,7 +300,18 @@ test("„Wszystko o Twoim adresie” and the small print: a link per module with
     ["app-badge app-badge--mod"],
   );
   assert.match(badges[0][2], /^2\D/);
-  assert.equal(count(links, 'app-quiet">'), 1);
+  assert.equal(count(links, 'app-quiet">'), 2);
+  // A card with nothing in the window is muted: its title regular, its
+  // tile grey (no module colour); one with something keeps both.
+  const [full, empty] = links.split("<li ").slice(1);
+  assert.match(full, /app-tile app-mod app-mod--woda/);
+  assert.doesNotMatch(full, /font-weight-regular|app-tile[^"]*app-quiet/);
+  assert.match(empty, /<span class="app-tile app-mod app-quiet">/);
+  assert.match(empty, /<h3 class="[^"]*govuk-!-font-weight-regular"/);
+  assert.doesNotMatch(empty, /app-tile[^"]*app-mod--/);
+  // The same card otherwise: one link, the chevron.
+  assert.equal(count(empty, "<a "), 1);
+  assert.equal(count(empty, "<svg/>"), count(full, "<svg/>"));
   // The checks, with their times; no waste check here, so waste is left
   // out; then IMGW's required wording, as given (IMGW_ATTRIBUTION).
   const small = smallPrint(html);

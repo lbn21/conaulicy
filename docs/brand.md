@@ -80,6 +80,8 @@ A colour per module of the address page, after the utility colour codes people k
 | prąd (Zap) | #c46a00 | #935000 | #f3e1cc | 6.20 | 4.86 | 3.88 |
 | pogoda (CloudSun) | #3f6a8a | #2f5068 | #d9e1e8 | 8.51 | 6.44 | 5.77 |
 
+**Empty cards** („Wszystko o Twoim adresie”, `web/components/hub.tsx`): a module's card with nothing in the next 7 days (the count that prints „Nic w ciągu 7 dni”) is muted, so it never draws the eye as one with something does: its title regular (`govuk-!-font-weight-regular`) in the text colour, its tile neutral (`Tile muted`: `.app-mod`'s black tint-95 with the secondary text colour, 8.14 : 1), „Nic w ciągu 7 dni” and the chevron in the secondary text colour (9.03 : 1). It stays a link, in its place, with the same size, padding, border, hover and focus; a card with something keeps its bold title, its module's tile and badge. No own CSS.
+
 Badges outside a module: muted, text on GOV.UK's black tint-95 (17.65 : 1); strong („Dzisiaj”, „Jutro”), white on text (19.59 : 1); alert („Awaria”), white on GOV.UK red (5.16 : 1). The page head's band is the brand's surface tint (`surface-background`), as the footer's.
 
 ### Changing the palette
