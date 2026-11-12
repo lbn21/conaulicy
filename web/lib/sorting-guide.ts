@@ -17,7 +17,7 @@
 // „no” items in the genitive („Nie należy wrzucać: …”), the gmina's booklet
 // in the nominative; the PDF heads them „Tak” and „Nie”, which fits both.
 
-import { FRACTIONS, TOKEN } from "./waste-bin.ts";
+import { tokenSubtype } from "./waste-bin.ts";
 
 /** Items a short list may hold: the same for every fraction. */
 export const SHORT_MAX = 3;
@@ -388,15 +388,6 @@ export const GUIDES: Record<string, Guide> = {
 /** A guide entry with the subtype that names it (lib/waste-bin.ts FRACTIONS). */
 export type GuideItem = GuideFraction & { subtype: string };
 
-/** The subtype whose label names a token's tile: the first in FRACTIONS. */
-const NAMED_BY: Record<string, string> = {
-  "plastik-metale": "tworzywa_metale",
-};
-const subtypeOf = (token: string) =>
-  NAMED_BY[token] ??
-  FRACTIONS.map((f) => f.subtype).find((subtype) => TOKEN[subtype] === token) ??
-  token;
-
 /**
  * A gmina's „Co wrzucać” page, the same for every address in it: a tile
  * per bin its guide covers (BIN_TOKENS order), the waste handed in
@@ -416,7 +407,7 @@ export function guideFor(gmina: string): {
   const pick = (tokens: readonly string[]) =>
     tokens.flatMap((token) => {
       const entry = guide.fractions.find((f) => f.token === token);
-      return entry ? [{ ...entry, subtype: subtypeOf(token) }] : [];
+      return entry ? [{ ...entry, subtype: tokenSubtype(token) }] : [];
     });
   const bins = pick(BIN_TOKENS);
   const separate = pick(SEPARATE_TOKENS);

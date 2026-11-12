@@ -1,7 +1,20 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { KEY_ORDER, KEY_TONES, keyCell, keyGrid, keyOrder } from "./pdf-key.ts";
-import { FRACTIONS, tones } from "./waste-bin.ts";
+import {
+  KEY_ORDER,
+  KEY_TOKENS,
+  keyCell,
+  keyGrid,
+  keyOrder,
+  keyTokens,
+} from "./pdf-key.ts";
+import {
+  FRACTIONS,
+  TOKEN,
+  tokenLabel,
+  tokenSubtype,
+  tones,
+} from "./waste-bin.ts";
 
 const GAP = 12;
 
@@ -41,11 +54,54 @@ describe("keyOrder", () => {
   });
 });
 
-describe("KEY_TONES", () => {
-  it("is every fraction the site knows, once, in the key's order", () => {
-    const all = new Set(FRACTIONS.flatMap(({ subtype }) => tones(subtype)));
-    assert.equal(KEY_TONES.length, all.size);
-    assert.deepEqual(new Set(KEY_TONES), all);
-    assert.deepEqual(keyOrder(KEY_TONES), KEY_TONES);
+describe("keyTokens", () => {
+  it("gives fractions sharing a colour token one entry", () => {
+    const shared = FRACTIONS.map(({ subtype }) => subtype).filter((s, _, all) =>
+      all.some((o) => o !== s && TOKEN[o] === TOKEN[s]),
+    );
+    assert.ok(shared.length > 1, "the site has fractions sharing a token");
+    assert.deepEqual(keyTokens(shared), [
+      ...new Set(shared.map((s) => TOKEN[s])),
+    ]);
+  });
+
+  it("splits a combined subtype into its fractions' tokens", () => {
+    for (const { subtype } of FRACTIONS) {
+      assert.deepEqual(
+        new Set(keyTokens([subtype])),
+        new Set(tones(subtype).map((t) => TOKEN[t])),
+      );
+    }
+  });
+});
+
+describe("KEY_TOKENS", () => {
+  it("is every colour token the site knows, once, in the key's order", () => {
+    const all = new Set(
+      FRACTIONS.flatMap(({ subtype }) => tones(subtype)).map((t) => TOKEN[t]),
+    );
+    assert.equal(KEY_TOKENS.length, all.size);
+    assert.deepEqual(new Set(KEY_TOKENS), all);
+    assert.deepEqual(keyOrder(KEY_TOKENS), KEY_TOKENS);
+  });
+
+  it("fewer entries than fractions where fractions share a token", () => {
+    const fractions = new Set(
+      FRACTIONS.flatMap(({ subtype }) => tones(subtype)),
+    );
+    assert.ok(KEY_TOKENS.length < fractions.size);
+  });
+
+  it("names each entry by its token: one name, no two alike", () => {
+    const names = KEY_TOKENS.map(tokenLabel);
+    assert.equal(new Set(names).size, names.length);
+    for (const token of KEY_TOKENS) {
+      const subtype = tokenSubtype(token);
+      assert.equal(TOKEN[subtype], token);
+      assert.equal(
+        tokenLabel(token),
+        FRACTIONS.find((f) => f.subtype === subtype)?.label,
+      );
+    }
   });
 });
