@@ -82,7 +82,7 @@ A plain `<a>` stays only for another site, `mailto:` and a file the browser open
 
 ## Titles
 
-GOV.UK's title is the page's h1, then „ – conaulicy.pl” (the home page's „Co na Twojej ulicy? – conaulicy.pl”, t390). A place's pages add its locality to the title only, never to the h1, so that search results for the same street name in two places differ: the hub „ul. Leśna, Lubaczów – conaulicy.pl”, a village's street „ul. Leśna, Basznia Dolna – conaulicy.pl”, a whole village „Antoniki, gm. Lubaczów – conaulicy.pl”; `/smieci` „Odbiór śmieci – ul. Leśna, Lubaczów – conaulicy.pl”, `/woda` „Przerwy w dostawie wody – ul. Leśna, Lubaczów – conaulicy.pl”. Built from the place's label (`titleLabel`, `web/lib/places.ts`); `web/scripts/routes/metadata.mjs` checks the pattern, `check-indexing.mjs --expect=index` (by hand) that no two titles in the sitemap are the same.
+GOV.UK's title is the page's h1, then „ – conaulicy.pl” (the home page adds its locality to the title only, never the h1: „Co na Twojej ulicy? Lubaczów i gmina – conaulicy.pl”, `HOME_TITLE`, `web/lib/share.ts`, t396). A place's pages add its locality to the title only, never to the h1, so that search results for the same street name in two places differ: the hub „ul. Leśna, Lubaczów – conaulicy.pl”, a village's street „ul. Leśna, Basznia Dolna – conaulicy.pl”, a whole village „Antoniki, gm. Lubaczów – conaulicy.pl”; `/smieci` „Odbiór śmieci – ul. Leśna, Lubaczów – conaulicy.pl”, `/woda` „Przerwy w dostawie wody – ul. Leśna, Lubaczów – conaulicy.pl”. Built from the place's label (`titleLabel`, `web/lib/places.ts`); `web/scripts/routes/metadata.mjs` checks the pattern, `check-indexing.mjs --expect=index` (by hand) that no two titles in the sitemap are the same.
 
 ## Headings
 
@@ -122,7 +122,7 @@ On purpose, so nobody "fixes" them:
 
 ## Checks and tests: structure, not copy
 
-The route, HTML, PDF and IMGW checks (`web/scripts/**`) and the rendered-markup tests (`web/components/*.test.ts`) check structure and data, never the page's words: an h1 with text, a description, the title's pattern („‹h1› – conaulicy.pl”, a place's with its locality), the order of the page's parts by their markup, dates and times from the data. No check bans a word. A test that needs a page's words reads them from their source (`MODULES`, `unchecked`, `IMGW_ATTRIBUTION`…), so changing copy never breaks a test. The library tests (`web/lib/*.test.ts`) still check which message a state gives, as the behaviour under test.
+The route, HTML, PDF and IMGW checks (`web/scripts/**`) and the rendered-markup tests (`web/components/*.test.ts`) check structure and data, never the page's words: an h1 with text, a description, the title's pattern („‹h1› – conaulicy.pl”, the home page's and a place's with a locality), the order of the page's parts by their markup, dates and times from the data. No check bans a word. A test that needs a page's words reads them from their source (`MODULES`, `unchecked`, `IMGW_ATTRIBUTION`…), so changing copy never breaks a test. The library tests (`web/lib/*.test.ts`) still check which message a state gives, as the behaviour under test.
 
 ## Site-wide: the same job, the same component
 

@@ -21,8 +21,14 @@ function pageTitle(h1: string): string {
 /** The home page's H1. */
 const HOME_H1 = "Co na Twojej ulicy?";
 
-/** The home page's title (GOV.UK: its H1, then the service). */
-export const HOME_TITLE = pageTitle(HOME_H1);
+/**
+ * The locality after the home page's H1 in its title only (never the h1), as
+ * a place's pages add theirs: local searches name the town (t396).
+ */
+const HOME_LOCALITY = "Lubaczów i gmina";
+
+/** The home page's title: its H1 and locality, then the service. */
+export const HOME_TITLE = pageTitle(`${HOME_H1} ${HOME_LOCALITY}`);
 
 /** The layout's share metadata: every page's image, name and language. */
 export const SHARE = {

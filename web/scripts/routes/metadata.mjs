@@ -6,6 +6,8 @@
 // canonical address, with the share image; the home page's WebSite JSON-LD
 // parses. Every page in ROUTES, those included: the title is GOV.UK's
 // "<H1> – conaulicy.pl", but a place's pages name its locality too:
+// the home page "<H1> <locality> – conaulicy.pl" (its locality a fixed
+// suffix in the title only, t396; any other route keeps the plain rule),
 // the address page "<H1>, <locality> – conaulicy.pl",
 // every module's subpage "<H1> – <place>, <locality> – conaulicy.pl"
 // ("Błąd: " first with an error summary). The share title is the same, and
@@ -66,11 +68,14 @@ export async function check(server, failures) {
         )
       : null;
     const hub = /^\/adres\/[^/?]+(?:\?|$)/.test(path) && status === 200;
+    const home = path === "/";
     const prefix = subpage
       ? `${error}${h1[0]} – ${place}, `
-      : `${error}${h1[0]}, `;
+      : home
+        ? `${error}${h1[0]} `
+        : `${error}${h1[0]}, `;
     const ok =
-      subpage || hub
+      subpage || hub || home
         ? title[0]?.startsWith(prefix) &&
           title[0].endsWith(" – conaulicy.pl") &&
           title[0].length > prefix.length + " – conaulicy.pl".length
@@ -202,5 +207,5 @@ export async function check(server, failures) {
         `manifest icon ${src}: ${response.status} ${response.headers.get("content-type")}`,
       );
   }
-  return `Metadata: ${ROUTES.length} pages titled "<H1> – conaulicy.pl" (a place's with its locality); ${titles.size} with their own title and description.`;
+  return `Metadata: ${ROUTES.length} pages titled "<H1> – conaulicy.pl" (the home page's and a place's with a locality); ${titles.size} with their own title and description.`;
 }
