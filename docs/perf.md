@@ -23,7 +23,7 @@ Lighthouse (npm `lighthouse`, free, no Lighthouse CI server) with its mobile set
 | Preloaded fonts | ≤ 4 files | the page's `<link rel="preload" as="font">` |
 | Search keystroke → list updated | ≤ 50 ms | median of 5 keys, index loaded, CPU 4× slower |
 | First-load JS | ≤ 200 KB gzip | `npm run budget` (separate step) |
-| Street PDF | ≤ 150 KB, 3–8 pages | `scripts/check-pdf.mjs` (separate step): CI fixture's city street, village and split street with `?nr=` |
+| Street PDF | ≤ 150 KB, exactly 2 pages | `scripts/check-pdf.mjs` (separate step): every CI fixture address, the synthetic worst case included |
 
 **Hard gates:** LCP, TBT and the search keystroke are what people feel. CLS is not a hard gate: live blocks reveal after the static shell (`docs/layout.md`), and a little shift on reveal is accepted (held to ≤ 0.1). It is reported by `check-perf`. They never move to make room for code; if one fails, report to Jakub.
 
