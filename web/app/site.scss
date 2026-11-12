@@ -1,6 +1,7 @@
 // The only own CSS: what GOV.UK has no equivalent for.
 // GOV.UK Sass functions and mixins only; no raw colours or px.
 // Capped by scripts/check-own-css.mjs.
+@use "sass:color";
 @use "sass:map";
 @use "settings" as *;
 
@@ -342,7 +343,6 @@ $app-caret: govuk-spacing(2);
 // (govuk-link--no-underline); focus: GOV.UK's own focus style on the title.
 .app-item:hover { border-color: govuk-functional-colour(text); }
 .app-item > .app-icon { color: govuk-functional-colour(secondary-text); }
-.app-items--plain > .app-item { padding: 0; border: 0; box-shadow: none; }
 
 // The failure banner (components/now-banner.tsx), shadcn/ui's Alert in
 // GOV.UK red: a thick left bar, a red wash, the heading's icon red.
@@ -400,3 +400,60 @@ $app-caret: govuk-spacing(2);
 $app-flow: ".govuk-body, .govuk-body-s, .govuk-list, .govuk-heading-m, .govuk-heading-s";
 :is(#{$app-flow}) { margin-bottom: govuk-spacing(4); }
 @include govuk-media-query($from: tablet) { :is(#{$app-flow}) { margin-bottom: govuk-spacing(5); } }
+
+// The home page's hero (t390, mockup D, Jakub's OK): the full width of the
+// window, so the layout's width container lets go of it on this page only
+// (:has), and the hero and the page under it hold their own. The brand's
+// gradient (PRIMARY to shade-50) with a glow (tint-25) and a dotted
+// texture; the accent (ACCENT, lib/palette.ts) on the h1's last word and
+// the check icons. The glow drifts once there and back, never the h1, and
+// not at all under prefers-reduced-motion.
+$app-white: govuk-colour("white");
+$app-soft: map.get($app-palette, "tint-80");
+@property --app-x { syntax: "<percentage>"; inherits: false; initial-value: 30%; }
+.govuk-width-container:has(> #main-content > .app-hero) { max-width: none; margin-inline: 0; }
+.app-hero { margin: 0 0 govuk-spacing(6); padding: govuk-spacing(6) 0 govuk-spacing(7); color: $app-white; background: radial-gradient(circle, color.change($app-white, $alpha: .06) $app-hair, transparent $app-hair * 1.5) 0 0 #{"/"} govuk-spacing(4) govuk-spacing(4), radial-gradient(55% 85% at var(--app-x) 0%, color.change(map.get($app-palette, "tint-25"), $alpha: .5), transparent 70%), radial-gradient(50% 80% at calc(100% - var(--app-x)) 100%, color.change($app-header, $alpha: .6), transparent 75%), linear-gradient(135deg, map.get($app-palette, "primary"), map.get($app-palette, "shade-25") 55%, $app-header); }
+.app-hero :is(.govuk-heading-xl, .govuk-body-l, .govuk-heading-m, .govuk-body-s) { color: inherit; }
+.app-hero__title { margin-bottom: govuk-spacing(4); text-wrap: balance; }
+.app-hero__accent, .app-hero__trust .app-icon { color: $app-accent; }
+.app-hero__grid { display: grid; gap: govuk-spacing(7); }
+.app-hero__search { padding: govuk-spacing(4); border-radius: govuk-spacing(3); background: $app-white; color: govuk-functional-colour(text); box-shadow: 0 govuk-spacing(4) govuk-spacing(7) color.change(govuk-colour("black"), $alpha: .3); }
+.app-hero__search .govuk-button { margin-bottom: 0; }
+.app-hero__trust { display: flex; flex-wrap: wrap; gap: govuk-spacing(1) govuk-spacing(3); margin: govuk-spacing(4) 0 0; padding: 0; list-style: none; }
+.app-hero__trust > li { display: flex; gap: govuk-spacing(1); align-items: center; }
+.app-hero .govuk-inset-text { border-color: color.change($app-white, $alpha: .3); }
+.app-hero .app-quiet, .app-now .govuk-body-s, .app-now__value--empty { color: $app-soft; }
+@include govuk-media-query($from: tablet) {
+  .app-hero__search form { display: grid; grid-template-columns: 1fr auto; column-gap: govuk-spacing(3); align-items: end; }
+  .app-hero__search .govuk-form-group { margin: 0; }
+}
+@include govuk-media-query($from: desktop) {
+  .app-hero { padding: govuk-spacing(8) 0; }
+  .app-hero__grid { grid-template-columns: 7fr 5fr; align-items: start; }
+}
+@media (prefers-reduced-motion: no-preference) { .app-hero { animation: app-drift 12s ease-in-out 2 alternate; } }
+@keyframes app-drift { to { --app-x: 75%; } }
+
+// „Teraz w gminie” (components/now-panel.tsx): its head, then a tile per
+// entry (components/now-tiles.ts) in one grid: auto-fit columns at least
+// three GOV.UK 60s wide, so the columns follow the panel's width and the
+// tile count; a tile left alone in the last row keeps its column, and
+// only a featured tile (an active alert) takes a whole row.
+.app-now__head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: govuk-spacing(1) govuk-spacing(3); margin-bottom: govuk-spacing(3); }
+.app-now__title { display: inline-flex; gap: govuk-spacing(2); align-items: center; }
+.app-now__title::before { content: ""; width: govuk-spacing(2); height: govuk-spacing(2); border-radius: 50%; background: govuk-colour("green", $variant: "tint-50"); }
+.app-now__tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(#{govuk-spacing(9) * 3}, 100%), 1fr)); gap: govuk-spacing(2); margin: 0; padding: 0; list-style: none; }
+.app-now__tile { display: flex; flex-direction: column; gap: govuk-spacing(2); padding: govuk-spacing(3); border: $app-hair solid color.change($app-white, $alpha: .12); border-top-color: color-mix(in srgb, #{$app-accent} 45%, transparent); border-radius: govuk-spacing(3); background: linear-gradient(color.change($app-white, $alpha: .11), color.change($app-white, $alpha: .03)); }
+.app-now__tile--wide { grid-column: 1 / -1; }
+.app-now__head > *, .app-now__tile > *, .app-now__label > .app-tile { margin: 0; }
+.app-now__label { display: flex; gap: govuk-spacing(2); align-items: center; @include govuk-typography-weight-bold; }
+.app-now__tag { align-self: flex-start; padding: $app-hair * 2 govuk-spacing(2); border-radius: govuk-spacing(6); background: var(--app-level, #{$app-warning-level-1}); color: var(--app-on, #{govuk-functional-colour(text)}); @include govuk-typography-weight-bold; }
+.app-now__value--empty { @include govuk-typography-weight-regular; }
+
+// The hero's search button (t390, Jakub): GOV.UK's button in the brand,
+// as GOV.UK's own colour variants (--warning): PRIMARY, hover shade-25,
+// the bottom shadow shade-50; white text 10.8 : 1 (13.6 : 1 on hover).
+// GOV.UK's focus rule is more specific, so its yellow focus is unchanged.
+// A modifier, not an override: every other button stays GOV.UK's green.
+.app-button--brand { background-color: map.get($app-palette, "primary"); box-shadow: 0 $govuk-border-width-form-element 0 $app-header; }
+.app-button--brand:hover { background-color: map.get($app-palette, "shade-25"); }

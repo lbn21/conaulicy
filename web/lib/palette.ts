@@ -8,6 +8,13 @@
 
 export const PRIMARY = "#6d2048";
 
+// The one accent (t390, Jakub): a light rose on the home page's hero, for
+// the h1's last word, the hero's check icons and the panel's tile edges.
+// Only on the hero's dark brand gradient, never on white (it is 1.7 : 1
+// there); every other brand colour stays a tint or shade of PRIMARY.
+/** @public The palette's one accent, for docs/brand.md and the checks. */
+export const ACCENT = "#f5b3cb";
+
 const WHITE = "#ffffff";
 const BLACK = "#000000";
 
@@ -153,6 +160,7 @@ export function paletteScss(): string {
     `$app-palette: ${map(PALETTE)};`,
     `$app-roles: ${map(ROLES)};`,
     `$app-header: ${HEADER};`,
+    `$app-accent: ${ACCENT};`,
     ...Object.entries(WARNING_LEVELS).map(([k, v]) => `$app-${k}: ${v};`),
     `$app-modules: (\n${Object.entries(MODULE_ROLES)
       .map(([id, roles]) => `  "${id}": ${map(roles).replaceAll("\n", " ")}`)

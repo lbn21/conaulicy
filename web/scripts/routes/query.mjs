@@ -158,7 +158,8 @@ export async function check(server, failures) {
     /\svalue=""/.test(field),
     !/govuk-input--error/.test(field),
     !/govuk-form-group--error|govuk-error-message/.test(form),
-    form.includes('<button type="submit" class="govuk-button"'),
+    // GOV.UK's button, in the brand's modifier on the hero (t390).
+    /<button type="submit" class="govuk-button(?: [\w-]+)*"/.test(form),
   ]) {
     if (!part) failures.push(`/: search form ${JSON.stringify(form)}`);
   }

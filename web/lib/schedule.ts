@@ -583,3 +583,39 @@ const zoneCached = unstable_cache(
 export function getZone(zoneId: string) {
   return zoneCached(zoneId, todayInWarsaw());
 }
+
+/**
+ * The home page's panel (components/now-tiles.ts): every waste pickup in
+ * the gminas from `from` up to `until` (ISO days, `until` excluded), each
+ * fraction in each sector once, only those with a source (lib/event-source.ts),
+ * and the day they were last checked; with the gminas' schedule pages.
+ */
+export const wasteWeek = unstable_cache(
+  async (from: string, until: string) => {
+    const [rows, pages] = await Promise.all([
+      db()
+        .select({ sourceUrl: events.sourceUrl, checkedAt: events.checkedAt })
+        .from(events)
+        .where(
+          and(
+            eq(events.type, "waste"),
+            gte(events.start, from),
+            sql`${events.start} < ${until}`,
+          ),
+        ),
+      db().select({ url: gminy.scheduleUrl }).from(gminy),
+    ]);
+    const shown = rows.filter(hasSource);
+    return {
+      count: shown.length,
+      checkedAt:
+        shown
+          .map((r) => r.checkedAt)
+          .sort()
+          .at(-1) ?? null,
+      schedulePage: pages.find((p) => p.url)?.url ?? null,
+    };
+  },
+  ["waste-week"],
+  CACHE,
+);

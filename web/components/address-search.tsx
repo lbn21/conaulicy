@@ -487,7 +487,7 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
         </div>
         <button
           type="submit"
-          className="govuk-button"
+          className="govuk-button app-button--brand"
           data-module="govuk-button"
           onMouseDown={keepFocus}
         >
