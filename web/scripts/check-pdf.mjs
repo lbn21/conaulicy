@@ -8,7 +8,10 @@
 // tables are the same size, rows included, in one fixed 3 × 2 grid inside
 // the page's margins (every month of the six with dates on page 1), every
 // row one height (no date's marks wrap), every header cell's text one
-// padding in, the key one grid under its own heading (the same rows and
+// padding in, each page's footer rule at one place (its fine print in rows
+// reserved for the longest: page 1's unverified note shown or not, page 2
+// every source of the gmina's guide, each linked), the key one grid under
+// its own heading (the same rows and
 // columns on every address's PDF: equal, margin to margin), all at one
 // place on the page whatever the street's name (the longest on one line),
 // and so are the guide's tiles; no word on pages 1–2 spills
@@ -594,13 +597,27 @@ try {
       tile: tiles[0]
         ? `${round(tiles[0].x1 - tiles[0].x0)}×${round(tiles[0].y1 - tiles[0].y0)}`
         : null,
+      // Each page's footer rule: its block reserved for the longest it can
+      // be (the unverified note's row on page 1, shown or not).
+      foot: [0, 1]
+        .map((n) =>
+          round(
+            Math.max(
+              ...(strokes[n]?.rules ?? [])
+                .filter((r) => r.x1 - r.x0 > PAGE_W / 2)
+                .map((r) => r.y),
+            ),
+          ),
+        )
+        .join(" / "),
     });
     const guideUris = [...source.matchAll(/\/URI \((https:[^)]*)\)/g)]
       .map((m) => m[1])
       .filter((uri) => own.includes(uri) || others.includes(uri));
     check(
-      guideUris.length > 0 && guideUris.every((uri) => own.includes(uri)),
-      `${c.name}: guide links ${guideUris.join(", ")}, expected ${gmina}'s sources only`,
+      own.every((uri) => guideUris.includes(uri)) &&
+        guideUris.every((uri) => own.includes(uri)),
+      `${c.name}: guide links ${guideUris.join(", ")}, expected every one of ${gmina}'s sources and no other`,
     );
     check(
       !others.some((u) => flat.replace(/\s+/g, "").includes(u)),
@@ -612,7 +629,7 @@ try {
   }
 
   // One layout for every address, however many months it has.
-  for (const key of ["table", "date", "row", "top", "tile"]) {
+  for (const key of ["table", "date", "row", "top", "tile", "foot"]) {
     const seen = new Set(layouts.map((l) => l[key]));
     check(
       seen.size === 1 && !seen.has(null),
@@ -620,7 +637,7 @@ try {
     );
   }
   console.log(
-    `ok    one layout: tables ${layouts[0]?.table} from ${layouts[0]?.top} pt, date column ${layouts[0]?.date} pt, rows ${layouts[0]?.row} pt, tiles ${layouts[0]?.tile}`,
+    `ok    one layout: tables ${layouts[0]?.table} from ${layouts[0]?.top} pt, date column ${layouts[0]?.date} pt, rows ${layouts[0]?.row} pt, tiles ${layouts[0]?.tile}, footer rules ${layouts[0]?.foot} pt`,
   );
 
   // One key for every address, at one place: its heading's line, and its

@@ -474,7 +474,9 @@ async function main() {
       sourceUrl: SOURCE_URL,
       sourceRef: `Fikstura CI, ${WORST.name}`,
       checkedAt: today,
-      verified: false,
+      // Verified, unlike the rest: its PDF has no unverified note, and
+      // check-pdf finds its layout the same as theirs.
+      verified: true,
       payload: null,
     })),
   );
