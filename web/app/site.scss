@@ -449,3 +449,11 @@ $app-soft: map.get($app-palette, "tint-80");
 .app-now__label { display: flex; gap: govuk-spacing(2); align-items: center; @include govuk-typography-weight-bold; }
 .app-now__tag { align-self: flex-start; padding: $app-hair * 2 govuk-spacing(2); border-radius: govuk-spacing(6); background: var(--app-level, #{$app-warning-level-1}); color: var(--app-on, #{govuk-functional-colour(text)}); @include govuk-typography-weight-bold; }
 .app-now__value--empty { @include govuk-typography-weight-regular; }
+
+// The hero's search button (t390, Jakub): GOV.UK's button in the brand,
+// as GOV.UK's own colour variants (--warning): PRIMARY, hover shade-25,
+// the bottom shadow shade-50; white text 10.8 : 1 (13.6 : 1 on hover).
+// GOV.UK's focus rule is more specific, so its yellow focus is unchanged.
+// A modifier, not an override: every other button stays GOV.UK's green.
+.app-button--brand { background-color: map.get($app-palette, "primary"); box-shadow: 0 $govuk-border-width-form-element 0 $app-header; }
+.app-button--brand:hover { background-color: map.get($app-palette, "shade-25"); }
