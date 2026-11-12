@@ -8,16 +8,9 @@ import { MODULE_IDS, type ModuleId, SUBPAGE_IDS } from "./module-ids.ts";
 export { MODULE_IDS, type ModuleId, SUBPAGE_IDS };
 
 /**
- * The subpages app/adres/[id]/[module]/ serves: all but the waste one, which
- * has its own folder (app/adres/[id]/smieci/), so its loading fallback is
- * its own first screen.
- */
-export const MODULE_ROUTE_IDS = SUBPAGE_IDS.filter((id) => id !== "smieci");
-
-/**
  * The address's files, /adres/<id>/<file>: route folders under
- * app/adres/[id]/, which take ?nr= as the subpages do. They win over
- * app/adres/[id]/[module]/, so no module may be called this.
+ * app/adres/[id]/, which take ?nr= as the subpages do, beside each
+ * subpage's own folder, so no module may be called this.
  */
 export const FILE_NAMES = ["harmonogram.pdf", "woda.ics"];
 

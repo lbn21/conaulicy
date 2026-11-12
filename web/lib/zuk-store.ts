@@ -28,10 +28,11 @@ export function writeZukFile(
 }
 
 /**
- * `next dev` only: ZUK_MOCK (the gmina's) and MZGKIM_MOCK, each a fixture
- * post's id, its id with "-stale", or "none", serve a fixture file
- * (lib/water-fixture.ts mockFile) instead of the Blob. Any build (Vercel's
- * included) runs with NODE_ENV=production, so it can never be on there.
+ * ZUK_MOCK (the gmina's) and MZGKIM_MOCK, each a fixture post's id, its id
+ * with "-stale", or "none", serve a fixture file (lib/water-fixture.ts
+ * mockFile) instead of the Blob, as PGE_API_URL's mock (lib/pge-feed.ts):
+ * anywhere but production (VERCEL_ENV), so CI's built site and `next dev`
+ * on db:local show a dated cut on the fixture's town street (t370).
  */
 async function mockView(
   source: WaterSource,
@@ -40,11 +41,8 @@ async function mockView(
   const name =
     source.id === "mzgkim" ? process.env.MZGKIM_MOCK : process.env.ZUK_MOCK;
   if (!name) return null;
-  if (
-    process.env.NODE_ENV !== "development" ||
-    process.env.VERCEL_ENV === "production"
-  ) {
-    console.error("ZUK_MOCK, MZGKIM_MOCK: ignored outside next dev");
+  if (process.env.VERCEL_ENV === "production") {
+    console.error("ZUK_MOCK, MZGKIM_MOCK: the mock is off in production");
     return null;
   }
   const { mockFile } = await import("./water-fixture.ts");

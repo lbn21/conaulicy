@@ -2,20 +2,31 @@ import type { ReactNode } from "react";
 import { CRUMBS_CLASS } from "@/components/breadcrumbs";
 import { GovukFrontend } from "@/components/govuk-frontend";
 import { BlockSkeleton, LiveBlock } from "@/components/live-block";
+import { PageHead } from "@/components/page-head";
 import { Skeleton } from "@/components/skeleton";
+import type { SubpageId } from "@/lib/module-ids";
+import { findSubpage, type Module } from "@/lib/modules";
 
 // The address pages and their subpages: one skeleton, one reveal.
 // The page's content (its params, then every block's
 // data at once: components/hub.tsx hubData, components/module-page.tsx
 // subpageData) sits behind one <Suspense> (react.dev/reference/react/Suspense),
 // so it all comes in together, after the slowest block. The skeleton is
-// generic, not the page's shape, so a new section needs no new one: the
-// h1's bar, „Zmień adres”'s, then one section card, about as tall as the
+// the page's head (a subpage's own, from its module), then one generic
+// section card, so a new section needs no new one, about as tall as the
 // shortest page (/woda with no cuts). No
 // min-height: on a short page the footer stays put at the reveal, on a long
 // one it moves down, already below the first screen. The route's App
 // Shell, shared by every link to it, holds only this: no place, no date
-// (nextjs.org/docs/app/guides/adopting-partial-prefetching#move-url-data-behind-suspense).
+// (nextjs.org/docs/app/guides/adopting-partial-prefetching#move-url-data-behind-suspense):
+// a subpage's module is its route folder's, not a param.
+
+/** „Zmień adres”, the band's last line. */
+const CHANGE = (
+  <p className="govuk-body">
+    <Skeleton>Zmień adres</Skeleton>
+  </p>
+);
 
 /** A section card: a heading's bar and two lines'. */
 const CARD = (
@@ -33,28 +44,36 @@ const CARD = (
 );
 
 /**
- * The skeleton; a subpage's band has its caption (the place, above its
- * h1), the address page's has none, so the band is as tall as the page's
- * and nothing under it moves at the reveal.
+ * The skeleton. The address page's band: its h1's bar and „Zmień
+ * adres”'s. A subpage's band is its own page head (components/page-head.tsx,
+ * as components/place-page.tsx AddressPage draws it): the place's caption
+ * and „Zmień adres” as bars, its module's own title and tile, known to the
+ * route (each subpage its own folder, components/subpage-route.tsx), so the
+ * band wraps as the page's does at every width and text size and nothing
+ * under it moves at the reveal. Its heading a <p>: the page's h1 comes with
+ * the page.
  */
-const skeleton = (caption: boolean) => (
+const skeleton = (module: Module<unknown> | null) => (
   <div className="govuk-grid-row">
     <div className="govuk-grid-column-two-thirds">
       <BlockSkeleton>
-        {/* The page head's band (components/page-head.tsx), as the page. */}
-        <div className="app-band">
-          {caption && (
-            <span className="govuk-caption-l">
-              <Skeleton>Lubaczów, ul. Rynek</Skeleton>
-            </span>
-          )}
-          <p className="govuk-heading-l">
-            <Skeleton>ul. Adama Mickiewicza</Skeleton>
-          </p>
-          <p className="govuk-body">
-            <Skeleton>Zmień adres</Skeleton>
-          </p>
-        </div>
+        {module ? (
+          <PageHead
+            tag="p"
+            title={module.pageTitle}
+            icon={module.id}
+            caption={<Skeleton>Lubaczów, ul. Rynek</Skeleton>}
+          >
+            {CHANGE}
+          </PageHead>
+        ) : (
+          <div className="app-band">
+            <p className="govuk-heading-l">
+              <Skeleton>ul. Adama Mickiewicza</Skeleton>
+            </p>
+            {CHANGE}
+          </div>
+        )}
         {CARD}
       </BlockSkeleton>
     </div>
@@ -84,14 +103,14 @@ export const CRUMBS_SKELETON = (
  */
 export function PlaceSuspense({
   children,
-  caption = false,
+  module,
 }: {
   children: ReactNode;
-  /** A subpage: its band starts with a caption. */
-  caption?: boolean;
+  /** A subpage's module: its band is its own page head. */
+  module?: SubpageId;
 }) {
   return (
-    <LiveBlock skeleton={skeleton(caption)}>
+    <LiveBlock skeleton={skeleton(module ? findSubpage(module) : null)}>
       {children}
       <GovukFrontend />
     </LiveBlock>

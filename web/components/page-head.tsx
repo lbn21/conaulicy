@@ -21,16 +21,20 @@ export function PageHead({
   icon,
   lead,
   size = "l",
+  tag: Heading = "h1",
   before,
   children,
 }: {
   title: ReactNode;
-  caption?: string;
+  caption?: ReactNode;
   /** A module's icon beside the h1 (components/icon.tsx). */
   icon?: IconName;
   lead?: ReactNode;
   /** GOV.UK's heading size: xl on the home page only. */
   size?: "l" | "xl";
+  /** "p" in a skeleton (components/place-suspense.tsx): the page's own
+   * h1 comes with the page. */
+  tag?: "h1" | "p";
   /** Above the caption: an error summary. */
   before?: ReactNode;
   /** After the lead: the page's first action. */
@@ -40,10 +44,10 @@ export function PageHead({
     <div className="app-band">
       {before}
       {caption && <span className={CLASSES[size][0]}>{caption}</span>}
-      <h1 className={CLASSES[size][1]}>
+      <Heading className={CLASSES[size][1]}>
         {icon && <Tile name={icon} />}
         {title}
-      </h1>
+      </Heading>
       {lead && <p className="govuk-body-l">{lead}</p>}
       {children}
     </div>

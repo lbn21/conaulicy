@@ -388,11 +388,11 @@ $app-gap: govuk-spacing(4);
 .app-band { margin: (-(govuk-spacing(4))) 0 govuk-spacing(6); padding: govuk-spacing(6) 0 govuk-spacing(4); background: govuk-functional-colour(surface-background); box-shadow: 0 0 0 100vmax govuk-functional-colour(surface-background); clip-path: inset(0 -100vmax); }
 @include govuk-media-query($from: tablet) { .app-band { margin-top: -(govuk-spacing(7)); padding: govuk-spacing(7) 0 govuk-spacing(6); } }
 .app-band > :last-child, .app-band .govuk-button { margin-bottom: 0; }
-// A module's h1 (C1, t366): a flex row, its tile one line tall at the
+// A module's h1 (C1, t366), or its skeleton's <p> (t370): a flex row, its tile one line tall at the
 // first line's top, so the tile's centre is that line's centre, Atkinson's
 // cap centre, at any size; a wrapped title hangs beside the tile.
-.app-band h1:has(> .app-tile) { display: flex; gap: govuk-spacing(2); }
-.app-band h1 > .app-tile { width: 1lh; height: 1lh; margin: 0; }
+.app-band :has(> .app-tile) { display: flex; gap: govuk-spacing(2); }
+.app-band .app-tile { width: 1lh; height: 1lh; margin: 0; }
 
 // A card (shadcn/ui's Card): white, a subtle border and shadow, rounded;
 // accent: a bar on the left in the module's colour (the next pickup).
