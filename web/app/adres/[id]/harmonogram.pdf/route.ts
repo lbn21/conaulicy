@@ -24,7 +24,6 @@ import {
   WORDMARK,
 } from "@/lib/logo";
 import { fileSlug } from "@/lib/normalize";
-import { type Block, flow, type Spot } from "@/lib/pdf-flow";
 import {
   chooseGrid,
   DAY_MARKS,
@@ -49,7 +48,7 @@ import {
   type PickupDay,
   type PlaceView,
 } from "@/lib/schedule";
-import { hasUpcoming, laterNote, putOutNote } from "@/lib/schedule-notes";
+import { hasUpcoming, putOutNote } from "@/lib/schedule-notes";
 import { SITE_NAME } from "@/lib/share";
 import { GUIDES, type GuideItem, guideFor } from "@/lib/sorting-guide";
 import { THEME_COLOR } from "@/lib/theme";
@@ -71,16 +70,16 @@ const BOLD = readFileSync(
 );
 
 // A4 portrait in points, laid out as a council's bin leaflet in the site's
-// look, on one spacing scale (U, 4 pt) and one type scale (TYPE): page 1 is
-// the next six months (the cherry band with the "ul." plate and the QR
-// code, one GOV.UK Warning line, identical bordered month tables in a fixed
-// 3 × 2 grid (lib/pdf-grid.ts), the key, one footer line);
-// page 2, „Co wrzucać”, the same for every address: equal tiles for the
-// bins and a row for the waste handed in separately, from the gmina's own
-// rules (lib/sorting-guide.ts) with Lucide's icons, the PSZOK line beside the
-// QR code to the full rules, one footer line; then the text-only version,
-// for screen readers and black-and-white use, on page 3. Three pages, every
-// address.
+// look, on one spacing scale (U, 4 pt) and one type scale (TYPE). Two
+// pages, every address, one geometry whatever the data: page 1 is the next
+// six months (a compact cherry band with the "ul." plate and the QR code,
+// identical bordered month tables in a fixed 3 × 2 grid (lib/pdf-grid.ts),
+// the key, one footer line); page 2, „Co wrzucać”, the same for every
+// address: equal tiles for the bins and a row for the waste handed in
+// separately, from the gmina's own rules (lib/sorting-guide.ts) with
+// Lucide's icons, the PSZOK line beside the QR code to the full rules, one
+// footer line. Page 1 is tagged (headings, tables, the key's list) for
+// screen readers; the site has every date as text.
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
 // The spacing scale: every gap, padding and size a multiple of U.
@@ -425,20 +424,6 @@ function spoken(day: PickupDay): string {
   return from ? `${when} (zamiast: ${absoluteDay(from)})` : when;
 }
 
-/** Consecutive months without data, as "styczeń–wrzesień 2027" or "2027". */
-function emptyRange(keys: string[]): string {
-  const first = keys[0];
-  const last = keys[keys.length - 1];
-  const name = (key: string) => monthName(key).toLowerCase();
-  if (first === last) return `${name(first)} ${first.slice(0, 4)}`;
-  if (first.slice(0, 4) === last.slice(0, 4)) {
-    // The rest of the window from January: just the year.
-    if (first.endsWith("-01")) return first.slice(0, 4);
-    return `${name(first)}–${name(last)} ${last.slice(0, 4)}`;
-  }
-  return `${name(first)} ${first.slice(0, 4)} – ${name(last)} ${last.slice(0, 4)}`;
-}
-
 // ---------------------------------------------------------------- render
 
 function render(place: PlaceView, url: string): Promise<Buffer> {
@@ -453,7 +438,6 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   }
   // Only months with dates are printed, up to the last published one.
   const printed = months.filter((key) => byMonth.has(key));
-  const laterText = laterNote(place.days);
   const usual = usualWeekday(inWindow);
   const putOutBy = inWindow
     .flatMap((day) => day.pickups)
@@ -495,13 +479,12 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // Content repeated on later pages is tagged once and drawn as an artifact
   // elsewhere.
   const tag = (
-    parent: PDFKit.PDFStructureElement | null,
+    parent: PDFKit.PDFStructureElement,
     type: string,
     draw: () => void,
     options: { actual?: string } = {},
   ) => {
-    if (parent) parent.add(doc.struct(type, options, draw));
-    else draw();
+    parent.add(doc.struct(type, options, draw));
   };
   /** A line of text whose cap height is centred in a row box: its top. */
   const capTop = (size: number, top: number, height: number) =>
@@ -606,9 +589,8 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     const h = block("regular", size, text, CONTENT_W);
     const top = PAGE_H - MARGIN - h;
     const ruleY = top - 2 * U;
-    const draw = (parent: PDFKit.PDFStructureElement | null) => {
-      if (parent) artifact(doc, () => rule(ruleY));
-      else rule(ruleY);
+    const draw = (parent: PDFKit.PDFStructureElement) => {
+      artifact(doc, () => rule(ruleY));
       tag(parent, "P", () =>
         blockText(
           "regular",
@@ -710,12 +692,9 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     return bandH;
   };
 
-  /** Later pages: the plate and one line, with the same padding. */
+  /** Page 2: the plate and one line, with the same padding. */
   const compactH = MARGIN + LOGO_H + 3 * U + ROW[TYPE.body] + MARGIN - U;
-  const compactBand = (
-    what: string,
-    parent: PDFKit.PDFStructureElement | null,
-  ) => {
+  const compactBand = (what: string, parent: PDFKit.PDFStructureElement) => {
     const text = `${title} · ${what}`;
     const size = oneLine("bold", text, CONTENT_W, [TYPE.body, TYPE.small]);
     const plate = () => {
@@ -732,16 +711,8 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         MARGIN + LOGO_H + 3 * U,
         ROW[TYPE.body],
       );
-    // A repeated band is decoration as a whole.
-    if (parent) {
-      artifact(doc, plate);
-      tag(parent, "H1", words);
-    } else {
-      artifact(doc, () => {
-        plate();
-        words();
-      });
-    }
+    artifact(doc, plate);
+    tag(parent, "H1", words);
     return compactH;
   };
 
@@ -785,23 +756,22 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   /** The heading's row (and the moved date's note), then the grid's. */
   const KEY_H = (1 + keyLayout.rows) * KEY_ROW;
   const drawKey = (
-    parent: PDFKit.PDFStructureElement | null,
+    parent: PDFKit.PDFStructureElement,
     key: ReturnType<typeof keyFor>,
     top: number,
   ) => {
     tag(parent, "H2", () =>
       rowText("bold", TYPE.small, BLACK, keyHeading, MARGIN, top, KEY_ROW),
     );
-    const list = parent ? doc.struct("L") : null;
-    if (parent && list) parent.add(list);
+    const list = doc.struct("L");
+    parent.add(list);
     key.tones.forEach((tone, i) => {
       const cell = keyCell(keyLayout, i);
       const x = MARGIN + cell.x;
       const rowTop = top + (1 + cell.row) * KEY_ROW;
       const mark = () =>
         drawMark(doc, tone, x + MARK / 2, rowTop + KEY_ROW / 2, MARK);
-      if (parent) artifact(doc, mark);
-      else mark();
+      artifact(doc, mark);
       tag(list, "LI", () =>
         rowText(
           "regular",
@@ -814,23 +784,19 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         ),
       );
     });
-    list?.end();
+    list.end();
   };
   /** A moved date's note: its cell's red, then what it means. */
   doc.font("regular").fontSize(TYPE.small);
   const movedX = PAGE_W - MARGIN - (MARK + U + doc.widthOfString(movedLabel));
-  const drawMoved = (
-    parent: PDFKit.PDFStructureElement | null,
-    top: number,
-  ) => {
+  const drawMoved = (parent: PDFKit.PDFStructureElement, top: number) => {
     const cy = top + KEY_ROW / 2;
     const swatch = () =>
       doc
         .rect(movedX, cy - MARK / 2 - U / 2, MARK, MARK + U)
         .fillColor(RED)
         .fill();
-    if (parent) artifact(doc, swatch);
-    else swatch();
+    artifact(doc, swatch);
     tag(parent, "P", () =>
       rowText(
         "regular",
@@ -1486,53 +1452,26 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   };
 
   // ------------------------------------------------------------ calendar
-  // Rows that do not fit even at the smallest row height run on, on pages of
-  // their own under the compact band.
+  // Every month of the window on page 1 (the grid is sized for the most any
+  // month can hold), each row under its strip of year headings, a year's
+  // above its first month; then the key and the footer line.
   let y = drawBand() + SECTION;
-  let pageKeys: string[] = [];
   let year = "";
-  const yearsTagged = new Set<string>();
-  const endPage = (first: boolean) => {
-    const key = keyFor(pageKeys);
-    // At one place on every page and every PDF: the footer's larger size.
-    const top = keyTop;
-    if (first) drawKey(root, key, top);
-    else artifact(doc, () => drawKey(null, key, top));
-    if (key.moved) {
-      if (first) drawMoved(root, top);
-      else artifact(doc, () => drawMoved(null, top));
-    }
-    if (first) footer1.draw(root);
-    else artifact(doc, () => footer1.draw(null));
-  };
-  let firstPage = true;
-  // This address's months, from the top left, in the grid's columns; each
-  // row under its strip of year headings, a year's above its first month.
   const placedRows = tableRows(
     printed.map((key) => ({ key })),
     grid.columns,
   );
   placedRows.forEach((row) => {
-    if (y + YEAR_H + tableH > keyTop - SECTION + 0.01 && pageKeys.length) {
-      endPage(firstPage);
-      firstPage = false;
-      doc.addPage();
-      y = compactBand("ciąg dalszy", null) + SECTION;
-      pageKeys = [];
-      year = "";
-    }
     const yearTop = y;
     y += YEAR_H;
     row.keys.forEach((key, column) => {
       const x = MARGIN + column * (grid.tableW + MONTH_GUTTER);
-      // A year is tagged (H2) once, before its first month; repeated at
-      // the top of a carried-over page, it is decoration.
       const starts = row.years.find((entry) => entry.column === column);
       const shown =
         starts?.year ?? (column === 0 && year === "" ? key.slice(0, 4) : null);
       if (shown) {
         year = shown;
-        const draw = () =>
+        tag(root, "H2", () =>
           rowText(
             "bold",
             TYPE.heading,
@@ -1541,174 +1480,20 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
             x,
             yearTop,
             ROW[TYPE.heading],
-          );
-        if (yearsTagged.has(shown)) artifact(doc, draw);
-        else {
-          yearsTagged.add(shown);
-          tag(root, "H2", draw);
-        }
+          ),
+        );
       }
       drawMonth(key, x, y);
     });
-    pageKeys.push(...row.keys);
     y += tableH + ROW_GAP;
   });
-  endPage(firstPage);
-
-  drawGuide();
-
-  // ------------------------------------------------------------ text version
-  // No colours and no marks: the address's day, then the same dates as a
-  // list, and the pages' one footer line (the sources stay on the site).
-  doc.addPage();
-  y = compactBand("wersja tekstowa", root) + SECTION;
-  const textBottom = footer1.top - 3 * U;
-  // One leading for the page's 19px text: paragraphs, list items and their
-  // wrapped lines alike.
-  const bodyGap = 2;
-  if (dayLine) {
-    const top = y;
-    tag(root, "P", () => {
-      doc
-        .font("regular")
-        .fontSize(px(19))
-        .fillColor(BLACK)
-        .text(`${dayLine}.`, MARGIN, top, {
-          width: CONTENT_W,
-          lineGap: bodyGap,
-        });
-    });
-    y = doc.y + 10;
-  }
-
-  // GOV.UK's scale, as on the site: month headings heading-m, the rest body.
-  const listSize = px(19);
-  const headSize = px(24);
-
-  // Chronological: months with dates in full, gaps collapsed into one line.
-  // Months before the first date (e.g. the rest of this month, with no
-  // pickups left) are simply skipped.
-  type Entry =
-    | { kind: "gap"; range: string; text: string }
-    | { kind: "month"; title: string; items: string[] };
-  const entries: Entry[] = [];
-  let gap: string[] = [];
-  const flushGap = () => {
-    if (gap.length === 0) return;
-    entries.push({
-      kind: "gap",
-      range: `${emptyRange(gap)}: `,
-      text: "terminy jeszcze nieogłoszone.",
-    });
-    gap = [];
-  };
-  for (const key of months.slice(months.indexOf(printed[0]))) {
-    const days = byMonth.get(key);
-    if (!days) {
-      gap.push(key);
-      continue;
-    }
-    flushGap();
-    entries.push({
-      kind: "month",
-      title: monthTitle(`${key}-01`),
-      items: days.map((day) => `${spoken(day)} – ${label(day.pickups)}`),
-    });
-  }
-  // Months after the last date, and the year after, in one short line.
-  gap = [];
-  if (laterText) entries.push({ kind: "gap", range: "", text: laterText });
-
-  // Measured first, so a month is never split across pages (lib/pdf-flow).
-  const itemH = (text: string) => {
-    doc.font("regular").fontSize(listSize);
-    return doc.heightOfString(text, {
-      width: CONTENT_W - 12,
-      lineGap: bodyGap,
-    });
-  };
-  const blocks: Block[] = entries.map((entry) => {
-    if (entry.kind === "gap") {
-      doc.font("bold").fontSize(listSize);
-      const h = doc.heightOfString(entry.range + entry.text, {
-        width: CONTENT_W,
-        lineGap: bodyGap,
-      });
-      return { head: h, lines: [], gap: 8 - bodyGap };
-    }
-    doc.font("bold").fontSize(headSize);
-    const head = doc.heightOfString(entry.title, { width: CONTENT_W }) + 3;
-    return { head, lines: entry.items.map(itemH), gap: 6 };
-  });
-  const continuedTop = compactH + SECTION;
-  const placed = flow(blocks, y, continuedTop, textBottom);
-  let textPageNow = 0;
-  const toPage = (spot: Spot) => {
-    while (textPageNow < spot.page) {
-      artifact(doc, () => footer1.draw(null));
-      doc.addPage();
-      compactBand("wersja tekstowa, ciąg dalszy", null);
-      textPageNow++;
-    }
-    return spot.y;
-  };
-  entries.forEach((entry, i) => {
-    const at = placed[i];
-    if (entry.kind === "gap") {
-      const top = toPage(at.head);
-      tag(root, "P", () => {
-        doc
-          .font("bold")
-          .fontSize(listSize)
-          .fillColor(BLACK)
-          .text(entry.range, MARGIN, top, {
-            width: CONTENT_W,
-            lineGap: bodyGap,
-            continued: true,
-          })
-          .font("regular")
-          .text(entry.text);
-      });
-      return;
-    }
-    const section = doc.struct("Sect");
-    root.add(section);
-    const heading = (text: string, top: number) => () => {
-      doc
-        .font("bold")
-        .fontSize(headSize)
-        .fillColor(BLACK)
-        .text(text, MARGIN, top, { width: CONTENT_W });
-    };
-    tag(section, "H2", heading(entry.title, toPage(at.head)));
-    const list = doc.struct("L");
-    section.add(list);
-    let continued = 0;
-    entry.items.forEach((text, j) => {
-      const spot = at.lines[j];
-      // A month longer than a page: its heading again, as decoration.
-      const repeat = at.continued[continued];
-      if (repeat && repeat.page === spot.page) {
-        continued++;
-        const top = toPage(repeat);
-        artifact(doc, heading(`${entry.title} (ciąg dalszy)`, top));
-      }
-      const top = toPage(spot);
-      tag(list, "LI", () => {
-        doc
-          .font("regular")
-          .fontSize(listSize)
-          .fillColor(BLACK)
-          .text(text, MARGIN + 12, top, {
-            width: CONTENT_W - 12,
-            lineGap: bodyGap,
-          });
-      });
-    });
-    list.end();
-    section.end();
-  });
+  const key = keyFor(printed);
+  drawKey(root, key, keyTop);
+  if (key.moved) drawMoved(root, keyTop);
   footer1.draw(root);
+
+  // Page 2, „Co wrzucać”: the last page.
+  drawGuide();
 
   root.end();
   doc.end();

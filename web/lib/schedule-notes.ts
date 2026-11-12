@@ -40,7 +40,7 @@ export function disclaimer(gmina: string): string {
 }
 
 /**
- * After the last date, on the waste subpage, in its calendar and in the PDF:
+ * After the last date, on the waste subpage and in its calendar:
  * the next year's dates come when published. Null without dates.
  */
 export function laterNote(days: Pick<PickupDay, "date">[]): string | null {
@@ -80,7 +80,7 @@ export const NO_MORE_DATES = "Nie mamy jeszcze kolejnych terminów";
 export const NO_MORE_DATES_NEXT =
   "Dodamy je, gdy tylko gmina ogłosi nowy harmonogram.";
 
-/** Shown on the page and printed in the PDF while a place is not verified. */
+/** Shown on the page while a place is not verified. */
 export function unverifiedNote(gmina: string): string {
   return `Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest harmonogram ${scheduleOwner(gmina)}.`;
 }

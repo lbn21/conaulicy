@@ -9,8 +9,9 @@
 // no official source has no entry, and the PDF leaves its tile out. Keyed by
 // the gmina's TERYT name (PlaceView.gmina) and, inside, by the bin colour
 // token (lib/waste-bin.ts TOKEN), so "tworzywa" and "tworzywa_metale" share
-// one tile. The PDF's text version lists every source with its link and the
-// day we checked it (the hard rule in CLAUDE.md).
+// one tile. The PDF's „Co wrzucać” page links the full rules (fullRules,
+// its QR code) and names the publisher and the day we checked it in its
+// footer line.
 //
 // Items keep the source's own grammatical case: the town's guide lists its
 // „no” items in the genitive („Nie należy wrzucać: …”), the gmina's booklet
