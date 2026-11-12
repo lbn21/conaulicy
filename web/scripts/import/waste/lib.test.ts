@@ -3,6 +3,8 @@ import { test } from "node:test";
 import { parse as parseYaml } from "yaml";
 import { DAY_MARKS, MONTH_DAYS } from "../../../lib/pdf-grid.ts";
 import { FRACTIONS } from "../../../lib/waste-bin.ts";
+import { loadConfig } from "../core/config.ts";
+import type { WasteSource } from "./adapters.ts";
 import { EXPECTED_2026 } from "./expected.ts";
 import {
   checkReply,
@@ -18,6 +20,7 @@ import {
   rowsToEvents,
   validateSchedule,
 } from "./lib.ts";
+import type { Layout } from "./prompts.ts";
 
 const ALL = new Set(["year", "weekday", "counts"]);
 const RULES = {
@@ -326,11 +329,25 @@ test("review PRs: the table, the reviewed file with places, round trip", () => {
   assert.deepEqual(blank.rows.selektywne.styczeń, []);
 });
 
+/**
+ * A zone's layout, from the source whose zone template (etl/sources.yaml,
+ * waste.zone with its {sector}, as adapters.ts fills it) gives this id.
+ */
+function layoutOf(zone: string): Layout {
+  const source = loadConfig().sources.find((s) => {
+    const [head, tail] = (s as WasteSource).waste.zone.split("{sector}");
+    const sector = zone.slice(head.length, zone.length - tail.length);
+    return /^\d+$/.test(sector) && `${head}${sector}${tail}` === zone;
+  });
+  assert.ok(source, `${zone}: no source in etl/sources.yaml makes it`);
+  return source.extract.layout as Layout;
+}
+
 test("validation: the PDF's bounds hold every 2026 schedule, a bigger one fails", () => {
   const src = { doc: "d", url: "u", sha256: "s" };
   // Every zone's full 2026 data, as the database has it: within the bounds.
   for (const [zone, { rows }] of Object.entries(EXPECTED_2026)) {
-    const layout = zone.includes("miasto") ? "miasto" : "gmina";
+    const layout = layoutOf(zone);
     const { events } = rowsToEvents(zone, 2026, rows, LAYOUT_ROWS[layout], src);
     assert.deepEqual(pdfBoundProblems(zone, events), [], zone);
   }
