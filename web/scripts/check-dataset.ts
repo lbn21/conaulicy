@@ -8,7 +8,7 @@
 // here, read-only; the snapshot side is lib/dataset-views.ts, as the pages
 // call it. Compared deep-equal: every place's view (with every house
 // number its zones split on), every zone's events and ICS file, the home
-// page's panel over several windows, the search index (/ulice, the
+// page's panel over several windows (what it shows), the search index (/ulice, the
 // sitemap's places), every place id, the renamed places and the home
 // page's examples. Then the snapshot reads back through its check
 // (parseDataset). Exit 1 on any difference.
@@ -30,7 +30,6 @@ import {
 } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { alias } from "drizzle-orm/pg-core";
-import pg from "pg";
 import * as schema from "../db/schema.ts";
 import { parseDataset } from "../lib/dataset-schema.ts";
 import {
@@ -53,8 +52,8 @@ import { hasSource } from "../lib/event-source.ts";
 import { HOME_EXAMPLES } from "../lib/examples.ts";
 import { UNLISTED_PREFIXES, zoneByNumber } from "../lib/places.ts";
 import { wasteCalendar } from "../lib/waste-ics.ts";
-import { sourcesOf } from "../lib/waste-module.ts";
-import { buildDataset } from "./lib/dataset.ts";
+import { sourcesChecked, sourcesOf } from "../lib/waste-module.ts";
+import { buildDataset, readOnlyPool } from "./lib/dataset.ts";
 import { localDatabaseUrl } from "./lib/local-db.ts";
 
 const {
@@ -69,10 +68,8 @@ const {
 } = schema;
 
 const url = localDatabaseUrl();
-const client = new pg.Client({ connectionString: url });
-await client.connect();
-await client.query("SET default_transaction_read_only = on");
-const db = drizzle(client, { schema, casing: "snake_case" });
+const pool = readOnlyPool(url);
+const db = drizzle(pool, { schema, casing: "snake_case" });
 
 // ------------------------------------------------- the database reference
 
@@ -258,12 +255,21 @@ function same(label: string, actual: unknown, expected: unknown) {
     failures.push(`${label}: ${(error as Error).message.slice(0, 2000)}`);
   }
 }
-/** The panel's sources come in the events' order, which SQL left open. */
-const bySource = <T extends { sources: Array<{ label: string }> }>(
-  week: T,
-) => ({
-  ...week,
-  sources: week.sources.toSorted((a, b) => a.label.localeCompare(b.label)),
+/**
+ * What the panel shows of a week (components/now-tiles.ts): the count, the
+ * schedule page and „Sprawdziliśmy” (sourcesChecked), and each source's
+ * link and check. Not a source's label: for a document several zones cite
+ * (the fixture's one), it is the first event's, an order SQL left open.
+ */
+const panel = (week: Awaited<ReturnType<typeof dbWasteWeek>>) => ({
+  count: week.count,
+  schedulePage: week.schedulePage,
+  checked: sourcesChecked(week.sources),
+  sources: week.sources
+    .map(({ url, checkedAt, seenAt }) =>
+      JSON.stringify([url, checkedAt, seenAt]),
+    )
+    .sort(),
 });
 
 try {
@@ -336,8 +342,8 @@ try {
     const until = addDays(from, days);
     same(
       `wasteWeek ${from}…${until}`,
-      bySource(wasteWeekOf(ds, from, until)),
-      bySource(await dbWasteWeek(from, until)),
+      panel(wasteWeekOf(ds, from, until)),
+      panel(await dbWasteWeek(from, until)),
     );
   }
 
@@ -366,7 +372,7 @@ try {
     `Dataset vs database: ${views} place views (${ids.length} places × ${numbers.length} numbers), ${ds.zones.length} zones with their ICS, 3 panel windows, the search index, redirects, examples.`,
   );
 } finally {
-  await client.end();
+  await pool.end();
 }
 
 if (failures.length > 0) {

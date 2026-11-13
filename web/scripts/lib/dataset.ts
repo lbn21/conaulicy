@@ -57,11 +57,9 @@ export async function buildDataset(
   url: string,
   { batchId = null }: { batchId?: string | null } = {},
 ): Promise<Dataset> {
-  const client = new pg.Client({ connectionString: url });
-  await client.connect();
+  const pool = readOnlyPool(url);
   try {
-    await client.query("SET default_transaction_read_only = on");
-    const db = drizzle(client, { schema, casing: "snake_case" });
+    const db = drizzle(pool, { schema, casing: "snake_case" });
     const generatedAt = new Date().toISOString();
     const [g, l, s, z, m, e, f, r, districts] = await Promise.all([
       db.select().from(gminy).orderBy(asc(gminy.id)),
@@ -115,8 +113,17 @@ export async function buildDataset(
       { generatedAt, batchId, ordered: true },
     );
   } finally {
-    await client.end();
+    await pool.end();
   }
+}
+
+/** Connections that may only read (each one set so as it opens). */
+export function readOnlyPool(url: string): pg.Pool {
+  const pool = new pg.Pool({ connectionString: url, max: 4 });
+  pool.on("connect", (client) => {
+    client.query("SET default_transaction_read_only = on");
+  });
+  return pool;
 }
 
 /** The content's hash, without when or by which batch it was built. */
