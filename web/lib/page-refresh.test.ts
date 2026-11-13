@@ -217,36 +217,57 @@ const page = (
   sources: SourceTag[] = [SOURCE_TAGS.dataset],
 ) => ({ path, digest, sources }) satisfies PageDigest;
 
-test("over the cap: the rest next run, its stored digests kept", () => {
-  const pages = Array.from({ length: 5 }, (_, i) => page(`/p${i}`, "new"));
-  const stored = { "/p0": "old", "/p3": "old", "/gone": "x" };
-  const plan = planRefresh(stored, pages, null, 2);
-  assert.deepEqual(plan.changed, ["/p0", "/p1", "/p2", "/p3", "/p4"]);
-  assert.deepEqual(plan.revalidate, ["/p0", "/p1"]);
-  assert.equal(plan.deferred, 3);
-  assert.deepEqual(plan.next, { "/p0": "new", "/p1": "new", "/p3": "old" });
-  // The next run, from what this one wrote: the deferred ones.
-  const again = planRefresh(plan.next, pages, null, 2);
-  assert.deepEqual(again.revalidate, ["/p2", "/p3"]);
+test("the plan: every changed or missing page, every digest now", () => {
+  const pages = Array.from({ length: 5 }, (_, i) => page(`/p${i}`, `d${i}`));
+  const stored = { "/p0": "d0", "/p1": "old", "/gone": "x" };
+  const plan = planRefresh(stored, pages, null);
+  assert.deepEqual(plan.changed, ["/p1", "/p2", "/p3", "/p4"]);
+  assert.deepEqual(
+    plan.next,
+    Object.fromEntries(pages.map((p) => [p.path, p.digest])),
+  );
 });
 
-test("over 400 changed: 400 revalidated and pre-warmed, home first", async () => {
+test("over 400 changed: all revalidated, 400 pre-warmed, home first, all digests written", async () => {
   const pages = [
     page("/", "h"),
-    ...Array.from({ length: 450 }, (_, i) => page(`/p${i}`, "d")),
+    ...Array.from({ length: 1679 }, (_, i) => page(`/p${i}`, "d")),
   ];
   const run = fakeRun({ pages });
   await refreshPages(run.deps);
-  assert.equal(run.tags.length, 400);
+  assert.equal(run.tags.length, 1680);
   assert.equal(run.tags[0], "page:/");
+  assert.equal(run.warmed.length, 400);
   assert.equal(run.warmed[0], "/");
   assert.deepEqual(run.lines.at(-1), {
-    pagesChanged: 451,
-    pagesRevalidated: 400,
+    pagesChanged: 1680,
+    pagesRevalidated: 1680,
     prewarmed: 400,
-    deferred: 51,
+    notWarmed: 1280,
+    viewsMs: 0,
   });
-  assert.equal(Object.keys(JSON.parse(run.written ?? "{}")).length, 400);
+  assert.equal(Object.keys(JSON.parse(run.written ?? "{}")).length, 1680);
+});
+
+test("the views are worked out during the wait: only the rest is slept", async () => {
+  const run = fakeRun({ pages: [page("/", "h")] });
+  let now = 1_000;
+  run.deps.clock = () => now;
+  run.deps.pages = async () => {
+    now += 20_000;
+    return [page("/", "h")];
+  };
+  await refreshPages(run.deps);
+  assert.deepEqual(run.slept, [45_000]);
+  assert.equal(run.lines.at(-1)?.viewsMs, 20_000);
+});
+
+test("a run that wrote nothing: no wait", async () => {
+  const run = fakeRun({ pages: [page("/", "h")] });
+  run.deps.wait = 0;
+  await refreshPages(run.deps);
+  assert.deepEqual(run.slept, []);
+  assert.deepEqual(run.tags, ["page:/"]);
 });
 
 test("nothing changed: no wait, no revalidation, no write", async () => {
@@ -300,7 +321,20 @@ test("the home page lagging: it and its lagging source's pages again", () => {
     [page("/", "h"), page("/a", "a", ["pge"]), page("/b", "b")],
     lag,
   );
-  assert.deepEqual(plan.revalidate, ["/", "/a"]);
+  assert.deepEqual(plan.changed, ["/", "/a"]);
+});
+
+test("a source this run changed is not lagging when home has the id it read", () => {
+  // Home rendered pge "r1", what the run read at its start; the run then
+  // wrote "r2". Compared with what it read: not lagging.
+  const marks = { digest: "old", dataset: "v1", runs: { pge: "r1" } };
+  assert.deepEqual(laggingTags(marks, { "/": "new" }, { pge: "r1" }), []);
+  const plan = planRefresh(
+    { "/": "h", "/a": "a" },
+    [page("/", "h"), page("/a", "a", ["pge"])],
+    [],
+  );
+  assert.deepEqual(plan.changed, ["/"]);
 });
 
 test("the home page's view hashes no run id", () => {
@@ -344,6 +378,7 @@ function fakeRun({
       run.order.push("write");
     },
     wait: 65_000,
+    clock: () => 0,
     sleep: async (ms) => {
       run.slept.push(ms);
       run.order.push("sleep");

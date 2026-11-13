@@ -79,10 +79,14 @@ export async function GET(request: Request) {
   // home page, with no Blob read of its own; a file the run did not reach,
   // through the Blob's CDN, as the pages read it.
   const bodies: Record<string, string | null> = {};
+  // As read, before the run's own writes: the run ids the run before left.
+  const before: Record<string, string | null> = {};
+  let wrote = false;
   const seen =
     (path: string, read: () => Promise<string | null>) => async () => {
       const body = await read();
       bodies[path] = body;
+      before[path] = body;
       return body;
     };
   const kept =
@@ -90,6 +94,7 @@ export async function GET(request: Request) {
     async (body: string) => {
       await write(body);
       bodies[path] = body;
+      wrote = true;
     };
   const run = (source: PostSource): ZukCronDeps => ({
     fetch,
@@ -179,9 +184,9 @@ export async function GET(request: Request) {
       write: kept(CHECKS_PATH, (body) => writeBlobFile(CHECKS_PATH, body)),
     },
     () => {
-      // Every page's digest from what this run holds, at one clock; the
-      // revalidations after the wait (the run wrote the status file, which
-      // every live page reads: its age class).
+      // Every page's digest from what this run holds, at one clock, worked
+      // out during the wait after the run's last write (the Blob's CDN);
+      // no write, no wait.
       const reads = liveReads(Date.now(), async (path) =>
         Object.hasOwn(bodies, path) ? bodies[path] : cdnFile(path),
       );
@@ -189,10 +194,11 @@ export async function GET(request: Request) {
         refreshPages({
           pages: async () => pageDigests(await allPages(), reads),
           marks,
-          runs: runIdsOf(bodies),
+          runs: runIdsOf(before),
           read: () => readBlobFile(DIGESTS_PATH),
           write: (body) => writeBlobFile(DIGESTS_PATH, body),
-          wait: WAIT_MS,
+          wait: wrote ? WAIT_MS : 0,
+          clock: Date.now,
           sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
           dataset,
           revalidateTag: (tag) => revalidateTag(tag, "max"),

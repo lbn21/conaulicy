@@ -51,13 +51,14 @@ Vercel Blob. No database writes.
    rejected list, the gazetteer): `checkedAt` is that run, `generatedAt`
    the last run that changed what the pages read (every `checkedAt` in it
    aside, and the `rejected` list): the source's `changedAt`, shown as
-   „Bez zmian od …”, and its run id. Every good run's check is in
-   `status/checks.json` (the page's staleness). A run with rejected items
+   „Bez zmian od …”, and its run id. The good runs' checks are in
+   `status/checks.json` (the page's staleness; written only when a page
+   could show it, `checksWorth`, `web/lib/live-status.ts`). A run with rejected items
    logs them in one line, `{zuk: "rejected", source, gazetteer, entries}`.
 6. After every run, each page whose view changed (its digest,
    `status/page-digests.json`) has its own tag revalidated 65 s after the
-   run's writes ("max", inside `after()`; `web/lib/page-refresh.ts`), then
-   is pre-warmed: a water change re-renders the address page, `/woda` and
+   run's writes ("max", inside `after()`; `web/lib/page-refresh.ts`), every
+   changed page in the run, at most 400 of them pre-warmed: a water change re-renders the address page, `/woda` and
    `woda.ics` of the places it concerns, and the home page if its counts
    moved. A run that changed nothing a page shows re-renders nothing.
 
