@@ -19,6 +19,16 @@ import { outagesFile, type PgeOutage } from "./pge-feed.ts";
 import { mockFile, zukFile } from "./water-fixture.ts";
 import { WATER_SOURCES } from "./water-sources.ts";
 
+// The live mocks off (CI's job sets them, lib/live-reads.ts): every live
+// read from the test's files. Each test file runs in its own process.
+for (const name of [
+  "IMGW_WARNINGS_URL",
+  "PGE_API_URL",
+  "ZUK_MOCK",
+  "MZGKIM_MOCK",
+])
+  delete process.env[name];
+
 // The cron's page refresh (lib/page-refresh.ts): every page's digest from
 // the files it holds (lib/pages.ts, the made-up dataset), and which pages
 // a change re-renders. The clock: this week's Monday, 10:00 in Warsaw, so
