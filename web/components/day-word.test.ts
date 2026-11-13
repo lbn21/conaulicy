@@ -4,7 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { todayInWarsaw } from "../lib/dates.ts";
 import { DayWord } from "./day-word.tsx";
-import { WarsawToday } from "./warsaw-today.tsx";
+import { PageDay } from "./page-day.tsx";
 
 // The day word as the server renders it (components/day-word.tsx): for the
 // Warsaw day of the request's instant, so in the HTML, never a skeleton.
@@ -16,7 +16,7 @@ const word = (
 ) =>
   renderToStaticMarkup(
     createElement(
-      WarsawToday,
+      PageDay,
       { day: todayInWarsaw(new Date(at)) },
       createElement(DayWord, { day, form, text: "niedziela, 25 października" }),
     ),
@@ -68,7 +68,7 @@ test("title: Intl's relative day as a badge after a card's date, strong for toda
   );
 });
 
-test("no server day (outside WarsawToday): the date alone, no word", () => {
+test("no server day (outside PageDay): the date alone, no word", () => {
   const html = (form: "lead" | "word" | "label" | "title") =>
     renderToStaticMarkup(
       createElement(DayWord, { day: "2026-10-25", form, text: "x" }),

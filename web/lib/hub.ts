@@ -1,17 +1,11 @@
 // The address page as a hub of modules (lib/modules.ts, components/hub.tsx):
 // what a module gives it, its items' spans (lib/upcoming.ts), the
-// subpages' source line and the address page's freshness line. Pure, so
-// the unit tests read it.
+// subpages' source line and the freshness line. Pure, so the unit tests
+// read it.
 
-import {
-  clockTime,
-  dayGenitive,
-  dayMonth,
-  dayMonthTime,
-  warsawDay,
-} from "./date-labels.ts";
-import { addDays, capitalised, warsawNoon, warsawToIso } from "./dates.ts";
-import { LIST } from "./locale.ts";
+import { clockTime, dayGenitive, warsawDay } from "./date-labels.ts";
+import { addDays, capitalised, WARSAW, warsawToIso } from "./dates.ts";
+import { LOCALE } from "./locale.ts";
 import type { Span } from "./upcoming.ts";
 
 export { capitalised };
@@ -43,28 +37,27 @@ type Line = Part[];
  */
 export type Group = Line[];
 
-/**
- * When a module last checked its source (Module.checkedAt): an instant, or
- * a day ("2026-10-23") when the source keeps no time.
- */
-export type Checked = Date | string | null;
-
-/** Spaces as no-break spaces: a check's day and time never break (t373). */
+/** Spaces as no-break spaces: a day and its time never break (t373). */
 const unbroken = (text: string) => text.replaceAll(" ", "\u00a0");
 
-/** "25 października 14:20", or "23 października" for a day; Polish time. */
-const checkedWhen = (at: Date | string) =>
-  unbroken(
-    typeof at === "string"
-      ? dayMonth(warsawNoon(at).getTime())
-      : dayMonthTime(at.getTime()),
-  );
+const SHORT = new Intl.DateTimeFormat(LOCALE, {
+  timeZone: WARSAW,
+  day: "2-digit",
+  month: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
 
-/** A check's day ("25 października") and its time ("14:20"; a day: none). */
-const checkedParts = (at: Date | string) =>
-  typeof at === "string"
-    ? { day: unbroken(dayMonth(warsawNoon(at).getTime())), time: null }
-    : { day: unbroken(dayMonth(at.getTime())), time: clockTime(at.getTime()) };
+/** An instant as "13.11, 17:45" (DD.MM, HH:MM), Polish time. */
+export function shortDayTime(at: number): string {
+  const part = (type: string) =>
+    SHORT.formatToParts(at).find((p) => p.type === type)?.value ?? "";
+  return `${part("day")}.${part("month")}, ${part("hour")}:${part("minute")}`;
+}
+
+/** Under every freshness line: how often the crons look (vercel.json). */
+export const CHECK_CADENCE = "Sprawdzamy co 15 minut.";
 
 /** A module with no data now: „Nie udało się sprawdzić ‹its subject›.” */
 export const unchecked = (module: { subject: string }) =>
@@ -85,37 +78,25 @@ export function sourceLine(sources: Part[][]): Part[] {
 }
 
 /**
- * A subpage's check line, its source note's own line: „Sprawdziliśmy 25
- * października 14:20.”, absolute, the day and time unbroken; never
- * checked: null.
- */
-export const checkedLine = (at: Checked): string | null =>
-  at ? `Sprawdziliśmy ${checkedWhen(at)}.` : null;
-
-/**
- * The address page's freshness line, each day once (t373): „Sprawdziliśmy
- * 10 listopada: śmieci; 11 listopada: woda 7:00, prąd 7:05 i pogoda
- * 7:07.”, every module with a known check and its own time, the days in
- * the order their first module comes (registry order; Intl.ListFormat
- * within a day); none: null.
+ * The freshness line of the live sources (weather, power, water): when
+ * each one's data last actually changed (its changedAt, written by the
+ * cron only when its content changes), never when it was last checked, so
+ * the line changes only when the page does. One unnamed source (a
+ * subpage's): „Bez zmian od 13.11, 17:45.”; named ones (the address page,
+ * the home panel), in the order given: „Bez zmian od: pogoda 13.11, 17:45;
+ * woda 12.11, 08:00.”. A source with no changedAt is left out (the waste
+ * schedule: its source line says it all); none left: null.
  */
 export function freshnessLine(
-  checks: Array<{ name: string; at: Checked }>,
+  sources: Array<{ name: string | null; changedAt: number | null }>,
 ): string | null {
-  const days = new Map<string, string[]>();
-  for (const { name, at } of checks) {
-    if (!at) continue;
-    const { day, time } = checkedParts(at);
-    days.set(day, [
-      ...(days.get(day) ?? []),
-      time ? `${name}\u00a0${time}` : name,
-    ]);
-  }
-  if (days.size === 0) return null;
-  const parts = [...days].map(
-    ([day, names]) => `${day}: ${LIST.format(names)}`,
+  const known = sources.flatMap(({ name, changedAt }) =>
+    changedAt === null ? [] : [{ name, at: unbroken(shortDayTime(changedAt)) }],
   );
-  return `Sprawdziliśmy ${parts.join("; ")}.`;
+  if (known.length === 0) return null;
+  if (known.length === 1 && known[0].name === null)
+    return `Bez zmian od ${known[0].at}.`;
+  return `Bez zmian od: ${known.map(({ name, at }) => `${name ?? ""} ${at}`.trim()).join("; ")}.`;
 }
 
 /** Adjacent texts as one, so the markup has no empty comments between. */

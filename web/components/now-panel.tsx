@@ -1,19 +1,16 @@
-import { io } from "next/cache";
 import { FieldLink } from "@/components/field-link";
 import { Tile } from "@/components/icon";
-import { BlockSkeleton, LiveBlock } from "@/components/live-block";
 import { NOW_TILES, type NowTileDef } from "@/components/now-tiles";
-import { Skeleton } from "@/components/skeleton";
 import { SourceNote } from "@/components/subpage-parts";
 import { dayRange, todayInWarsaw } from "@/lib/dates";
 import { freshnessLine } from "@/lib/hub";
 import { LIST } from "@/lib/locale";
-import { type NowTileData, weekOf } from "@/lib/now-panel";
+import { type NowTileData, type Week, weekOf } from "@/lib/now-panel";
 
 // „Teraz w gminie” on the home page's hero (docs/layout.md): a tile per
 // entry of NOW_TILES (components/now-tiles.ts), gmina-wide, for the
-// current week, read per request behind its skeleton (LiveBlock), the rest
-// of the page static. Every tile is one NowTile: the module's icon on its
+// current week, prerendered with the page (app/page.tsx), re-rendered
+// when a source it reads changes (lib/live-refresh.ts). Every tile is one NowTile: the module's icon on its
 // tile and its label, an optional level tag, the value, the window it
 // counts and an optional action on the page; no link off the site (the
 // sources are linked in the note under the tiles; t398). The tiles wrap in
@@ -76,26 +73,14 @@ export function NowTile({
   );
 }
 
-/**
- * The panel's head: its heading and the week it counts. The skeleton's
- * (week null) has no id: both are in the streamed HTML at once.
- */
-function Head({ week }: { week: string | null }) {
+/** The panel's head: its heading and the week it counts. */
+function Head({ week }: { week: string }) {
   return (
     <div className="app-now__head">
-      <h2
-        id={week ? "teraz" : undefined}
-        className="govuk-heading-m app-now__title"
-      >
+      <h2 id="teraz" className="govuk-heading-m app-now__title">
         {HEADING}
       </h2>
-      <p className="govuk-body-s">
-        {week ? (
-          `Lubaczów i gmina, ${week}`
-        ) : (
-          <Skeleton>Lubaczów i gmina, w tym tygodniu</Skeleton>
-        )}
-      </p>
+      <p className="govuk-body-s">{`Lubaczów i gmina, ${week}`}</p>
     </div>
   );
 }
@@ -115,10 +100,14 @@ function NowTiles({
   );
 }
 
-/** Every tile's read at once, after io(): never prerendered. */
-async function NowPanelBody() {
-  await io();
-  const now = Date.now();
+/** What the panel shows: the week and every tile's read (nowData). */
+export type NowData = { week: Week; reads: Array<NowTileData | null> };
+
+/**
+ * Every tile's read at once, at `now` (a read that fails: null, its tile
+ * says so), plain JSON: the home page caches it with itself.
+ */
+export async function nowData(now: number): Promise<NowData> {
   const week = weekOf(todayInWarsaw(new Date(now)));
   const reads = await Promise.all(
     NOW_TILES.map((def) =>
@@ -128,6 +117,14 @@ async function NowPanelBody() {
       }),
     ),
   );
+  return { week, reads };
+}
+
+/**
+ * The panel, prerendered with the home page: its head, the tiles, the
+ * sources and, for the live ones, when their data last changed.
+ */
+export function NowPanel({ data: { week, reads } }: { data: NowData }) {
   const tiles = NOW_TILES.map((def, i) => ({ def, data: reads[i] }));
   const read = tiles.filter((t) => t.data !== null);
   const sources = read.flatMap(({ def }) => (def.source ? [def.source] : []));
@@ -158,58 +155,13 @@ async function NowPanelBody() {
             </>
           )
         }
-        checked={freshnessLine(
+        fresh={freshnessLine(
           read.map(({ def, data }) => ({
             name: def.label.toLowerCase(),
-            at: data?.checkedAt ?? null,
+            changedAt: data?.changedAt ?? null,
           })),
         )}
       />
     </section>
-  );
-}
-
-/** The panel's skeleton: its head and a tile per entry, each value a bar. */
-function NowPanelSkeleton() {
-  return (
-    <BlockSkeleton>
-      <section className="app-now">
-        <Head week={null} />
-        <ul className="app-now__tiles">
-          {NOW_TILES.map((def) => (
-            <li
-              key={def.id}
-              className={`app-now__tile app-mod app-mod--${def.icon}`}
-            >
-              <p className="govuk-body-s app-now__label">
-                <Tile name={def.icon} />
-                {def.label}
-              </p>
-              <p className="govuk-heading-m">
-                <Skeleton>Brak przerw</Skeleton>
-              </p>
-              <p className="govuk-body-s">
-                <Skeleton>w tym tygodniu, 9–15 listopada</Skeleton>
-              </p>
-              {/* A tile with an action ends in its link, read or not. */}
-              {def.action && (
-                <p className="govuk-body-s">
-                  <Skeleton>{def.action.text}</Skeleton>
-                </p>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
-    </BlockSkeleton>
-  );
-}
-
-/** The panel, live: its skeleton in the static shell, its tiles per request. */
-export function NowPanel() {
-  return (
-    <LiveBlock skeleton={<NowPanelSkeleton />}>
-      <NowPanelBody />
-    </LiveBlock>
   );
 }

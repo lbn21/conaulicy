@@ -3,11 +3,12 @@
 // edited, read by an older reader (ZUK_READER) or whose last reading
 // failed, and every post with rejected items when the districts changed
 // (the gazetteer hash); keeps every other post's stored result, and writes
-// the file (lib/zuk-data.ts) on every run that read the posts: checkedAt
-// is that run, generatedAt the last run that changed what the pages read
-// (any checkedAt aside, the rejected list too). No purge: the pages read
-// the file per request through the Blob's CDN (lib/zuk-store.ts), so a
-// write shows within 60 s, its „Sprawdziliśmy” time this run's. The
+// the file (lib/zuk-data.ts) when it changed: checkedAt is that run,
+// generatedAt the last run that changed what the pages read
+// (any checkedAt aside, the rejected list too), the source's changedAt and
+// run id. The file is written only when anything but checkedAt changed;
+// a run whose pages' content changed has its pages revalidated
+// (lib/live-refresh.ts). The
 // model reads every post and says what it is: a water cut is read for its
 // cuts, a water-quality warning for its places (not shown yet), anything
 // else is "not-water", never read again. Only the water posts that still
@@ -448,7 +449,6 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
   const changed =
     !previous ||
     content(previous.active, previous.seen) !== content(active, seen);
-  // Written even when unchanged: checkedAt says we read the posts now.
   // The new districts' hash only once every flagged post was read again.
   const gazetteer =
     hash !== null && flagged.every((p) => read.has(p.id))
@@ -464,7 +464,14 @@ export async function runZuk(deps: ZukCronDeps): Promise<RunSummary> {
     rejected,
     retries: retries.filter((r) => window.has(r.postId)),
   };
-  await deps.writeFile(JSON.stringify(file));
+  // Written only when something but checkedAt changed (what the pages
+  // read, or the run's own state: retries, rejections, the gazetteer), so
+  // a run that only re-checked writes nothing; every good run's check is
+  // in the status file (handleZukCron).
+  const state = (f: ZukFile | null) =>
+    f && JSON.stringify({ ...f, checkedAt: undefined });
+  if (state(previous) !== state(file))
+    await deps.writeFile(JSON.stringify(file));
   if (rejected.length > 0)
     deps.log({ zuk: "rejected", ...tag, gazetteer, entries: rejected });
   const summary = {
@@ -542,7 +549,10 @@ export type LiveStep = { key: string; run: () => Promise<LiveRunSummary> };
  * (IMGW's warnings, PGE's outages) runs beside them, each on its own, its
  * result listed under its key, and never changes the water runs' result,
  * another step's or the response's status. Once every run is done, each
- * one's check goes to `checks` (status/checks.json) in one write.
+ * one's check goes to `checks` (status/checks.json) in one write, and
+ * whether each source's content changed (by its key) to `changed`, which
+ * revalidates their pages (lib/live-refresh.ts). `start` runs first,
+ * once the secret is checked.
  */
 export async function handleZukCron(
   request: Request,
@@ -551,9 +561,12 @@ export async function handleZukCron(
   more: ZukCronDeps[] = [],
   live: LiveStep[] = [],
   checks?: ChecksStore,
+  changed?: (sources: Record<string, boolean>) => void,
+  start?: () => Promise<void>,
 ): Promise<Response> {
   const denied = cronDenied(request, cronSecret);
   if (denied) return denied;
+  await start?.();
   const attemptAt = deps.now().toISOString();
   const runs = [deps, ...more];
   const [steps, outcomes] = await Promise.all([
@@ -577,6 +590,19 @@ export async function handleZukCron(
     ok[step.key] = !("error" in steps[i]);
   }
   if (checks) await recordChecks(checks, ok, attemptAt, deps.log);
+  if (changed) {
+    const sources: Record<string, boolean> = {};
+    for (const [i, run] of runs.entries()) {
+      const outcome = outcomes[i];
+      sources[waterKey((run.source ?? gminaLubaczow).id)] =
+        !("error" in outcome) && outcome.changed;
+    }
+    for (const [i, step] of live.entries()) {
+      const result = steps[i];
+      sources[step.key] = "changed" in result && result.changed;
+    }
+    changed(sources);
+  }
   const sources: Record<string, unknown> = {};
   for (const [i, run] of more.entries()) {
     const result = results[i];

@@ -1,19 +1,26 @@
 import { revalidateTag } from "next/cache";
-import { DATASET, NO_STORE } from "@/lib/headers";
+import { after } from "next/server";
+import { MissingDeployHook, syncDataset } from "@/lib/dataset-sync";
+import { NO_STORE } from "@/lib/headers";
+import { SOURCE_TAGS } from "@/lib/page-cache";
+import { prewarm } from "@/lib/prewarm";
+import { placeParams } from "@/lib/schedule";
 import { sameSecret } from "@/lib/secret";
 
-// Called after an import: drops every cached database read, so the next
-// request per page or query reads the new data once. On Vercel the same tag
-// also deletes the CDN copies of the responses that send it as
-// Vercel-Cache-Tag (the PDF, the ICS feed, /api/search and
-// /api/places).
+// Called by every publisher of the dataset snapshot (the import, a
+// rollback), at least 65 s after the pointer moved (the Blob's CDN): one
+// decision, syncDataset (lib/dataset-sync.ts). The same place set as this
+// deployment's: the dataset tag revalidated with the "max" profile (every
+// page built from the snapshot served stale at once, re-rendered in the
+// background), then the pages pre-warmed, the home page first. Another
+// place set: the Vercel Deploy Hook, no revalidation. Answers 500 when the
+// place set changed and DEPLOY_HOOK_URL is not set, or the hook failed, so
+// the import fails loudly.
 //
 //   curl -X POST -H "Authorization: Bearer $REVALIDATE_SECRET" \
 //     https://conaulicy.pl/api/revalidate
-//
-// Outside the Basic Auth gate (proxy.ts matcher): it has its own secret.
 
-export function POST(request: Request) {
+export async function POST(request: Request) {
   const secret = process.env.REVALIDATE_SECRET;
   const given = request.headers.get("authorization") ?? "";
   if (!secret || !sameSecret(given, `Bearer ${secret}`)) {
@@ -22,6 +29,30 @@ export function POST(request: Request) {
       headers: NO_STORE,
     });
   }
-  revalidateTag(DATASET, { expire: 0 });
-  return Response.json({ revalidated: [DATASET] }, { headers: NO_STORE });
+  const origin = new URL(request.url).origin;
+  try {
+    const result = await syncDataset({
+      fetch,
+      hookUrl: process.env.DEPLOY_HOOK_URL,
+      revalidate: () => {
+        revalidateTag(SOURCE_TAGS.dataset, "max");
+        after(async () => {
+          const pages = (await placeParams()).map(({ id }) => `/adres/${id}`);
+          console.log(
+            JSON.stringify({
+              prewarm: await prewarm(origin, ["/", "/ulice", ...pages]),
+            }),
+          );
+        });
+      },
+    });
+    return Response.json(result, { headers: NO_STORE });
+  } catch (error) {
+    const message = (error as Error).message;
+    console.error(message);
+    return Response.json(
+      { error: message, missingHook: error instanceof MissingDeployHook },
+      { status: 500, headers: NO_STORE },
+    );
+  }
 }

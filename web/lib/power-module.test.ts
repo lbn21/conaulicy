@@ -55,7 +55,15 @@ const ASNYKA = testPlace({
 const ZUKI = testPlace();
 
 const at = (place = BASZNIA, { checkedAgo = 0, now = NOW, feed = FEED } = {}) =>
-  power({ feed, checkedAt: now - checkedAgo * MIN }, place, now) as Power;
+  power(
+    {
+      feed,
+      checkedAt: now - checkedAgo * MIN,
+      changedAt: now - checkedAgo * MIN,
+    },
+    place,
+    now,
+  ) as Power;
 
 const uuids = (data: Power) => data.cuts.map((cut) => cut.uuid.slice(0, 8));
 
@@ -173,9 +181,10 @@ test("the copy's age: stale, the notice with PGE's page; too old, the notice alo
 
 /** The /prad subpage's body, as Details renders it. */
 const subpage = (data: Power) =>
-  renderToStaticMarkup(
-    createElement(MODULES.prad.Details, { data, error: null }),
-  ).replace(/<svg\b.*?<\/svg>/g, "<svg/>");
+  renderToStaticMarkup(createElement(MODULES.prad.Details, { data })).replace(
+    /<svg\b.*?<\/svg>/g,
+    "<svg/>",
+  );
 
 test("/prad: a day each, a chip per window, the kind's badge, our names, PGE's numbers verbatim", () => {
   const html = subpage(at(HUTA));
@@ -208,7 +217,7 @@ test("/prad: a day each, a chip per window, the kind's badge, our names, PGE's n
   // The source: PGE's public page, and the check's time.
   assert.match(
     html,
-    /<div class="govuk-inset-text"><p class="govuk-body-s app-quiet govuk-!-margin-bottom-2">[^<]*<a href="https:\/\/pgedystrybucja\.pl\/wylaczenia\/aktualne-przerwy-w-dostawie-energii" class="govuk-link">[^<]+<\/a>[^<]*<\/p><p class="govuk-body-s app-quiet">[^<]*11\u00a0listopada\u00a017:52[^<]*<\/p>/,
+    /<div class="govuk-inset-text"><p class="govuk-body-s app-quiet govuk-!-margin-bottom-2">[^<]*<a href="https:\/\/pgedystrybucja\.pl\/wylaczenia\/aktualne-przerwy-w-dostawie-energii" class="govuk-link">[^<]+<\/a>[^<]*<\/p><p class="govuk-body-s app-quiet govuk-!-margin-bottom-2">[^<]*11\.11,\u00a017:52[^<]*<\/p>/,
   );
   // No calendar and no AI note: PGE's data is read, not guessed.
   assert.doesNotMatch(html, /role="button"|govuk-warning-text/);

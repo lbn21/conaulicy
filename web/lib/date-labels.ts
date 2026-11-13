@@ -50,7 +50,7 @@ export function dayGenitive(at: number): string {
 }
 
 /** An instant's Warsaw day and month. Example: "25 października". */
-export function dayMonth(at: number): string {
+function dayMonth(at: number): string {
   return new Intl.DateTimeFormat(LOCALE, {
     timeZone: WARSAW,
     day: "numeric",

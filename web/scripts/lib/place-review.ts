@@ -9,12 +9,7 @@
 import { createHash } from "node:crypto";
 import { parse as parseYaml, stringify as toYaml } from "yaml";
 import { normalize } from "../../lib/normalize.ts";
-import {
-  isSplitStreet,
-  pickZone,
-  streetName,
-  type ZoneCandidate,
-} from "../../lib/places.ts";
+import { pickZone, streetName, type ZoneCandidate } from "../../lib/places.ts";
 
 /** The review file, relative to the repository root. */
 export const PLACE_REVIEW_FILE = "etl/review/teryt/places.yaml";
@@ -43,7 +38,7 @@ type Places = { streets: PlaceRow[]; localities: PlaceRow[] };
 type AddedPlace = {
   id: string;
   name: string;
-  /** Its waste zone, "split" (by house numbers), or null: no schedule. */
+  /** Its waste zone, or null: no schedule. */
   zone: string | null;
 };
 
@@ -91,8 +86,7 @@ const scope = (p: PlaceRow) => p.localityId ?? `gmina:${p.gminaId}`;
 
 /**
  * The waste zone a new place gets from the new zone members: its own, its
- * locality's or its village's (lib/places.ts pickZone), "split" for a
- * street split by house numbers.
+ * locality's or its village's (lib/places.ts pickZone).
  */
 function zoneOf(
   place: PlaceRow,
@@ -106,7 +100,6 @@ function zoneOf(
     parentId: localities.get(localityId)?.parentId ?? null,
     ...(isStreet && { streetId: place.id }),
   };
-  if (isSplitStreet(members, zonePlace)) return "split";
   return pickZone(members, zonePlace);
 }
 

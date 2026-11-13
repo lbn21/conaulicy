@@ -10,10 +10,7 @@ import robots, { BLOCKED_BOTS } from "../app/robots.ts";
 import nextConfig from "../next.config.ts";
 import { SECURITY } from "./headers.ts";
 
-const saved = {
-  VERCEL_ENV: process.env.VERCEL_ENV,
-  SITE_BASIC_AUTH: process.env.SITE_BASIC_AUTH,
-};
+const saved = { VERCEL_ENV: process.env.VERCEL_ENV };
 afterEach(() => {
   for (const [key, value] of Object.entries(saved)) {
     if (value === undefined) delete process.env[key];
@@ -22,12 +19,12 @@ afterEach(() => {
 });
 const as = (env: "production" | "preview") => {
   process.env.VERCEL_ENV = env;
-  delete process.env.SITE_BASIC_AUTH;
 };
-const headersOf = async () => {
-  const rules = (await nextConfig.headers?.()) ?? [];
+const headersOf = async (source = "/:path*") => {
+  const rules = ((await nextConfig.headers?.()) ?? []).filter(
+    (rule) => rule.source === source,
+  );
   assert.equal(rules.length, 1);
-  assert.equal(rules[0].source, "/:path*");
   return Object.fromEntries(rules[0].headers.map((h) => [h.key, h.value]));
 };
 
@@ -37,19 +34,21 @@ test("indexable: the security headers on every path, no X-Robots-Tag", async () 
 });
 
 test("not indexable: the security headers and noindex, nofollow", async () => {
-  for (const set of [
-    () => as("preview"),
-    () => {
-      as("production");
-      process.env.SITE_BASIC_AUTH = "u:p";
-    },
-  ]) {
-    set();
-    assert.deepEqual(await headersOf(), {
-      ...SECURITY,
-      "X-Robots-Tag": "noindex, nofollow",
-    });
-  }
+  as("preview");
+  assert.deepEqual(await headersOf(), {
+    ...SECURITY,
+    "X-Robots-Tag": "noindex, nofollow",
+  });
+});
+
+test("the street PDFs and calendars are never search results", async () => {
+  as("production");
+  for (const source of [
+    "/adres/:id/harmonogram.pdf",
+    "/adres/:id/woda.ics",
+    "/ics/:zoneId",
+  ])
+    assert.deepEqual(await headersOf(source), { "X-Robots-Tag": "noindex" });
 });
 
 test("conaulicy.vercel.app goes to conaulicy.pl, path and query kept, only that host", async () => {

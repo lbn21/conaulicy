@@ -180,11 +180,8 @@ test("idempotent: the next run reads no page and calls the model 0 times", async
   assert.equal(summary.changed, false);
   assert.deepEqual(w.aiCalls, []);
   assert.deepEqual(w.urls, [MZGKIM_FEED]);
-  // Unchanged, but checked: written, as after every run.
-  const after = saved(w);
-  assert.deepEqual(after.active, before.active);
-  assert.deepEqual(after.seen, before.seen);
-  assert.notEqual(after.checkedAt, before.checkedAt);
+  // Unchanged: nothing written (the status file has the check).
+  assert.deepEqual(saved(w), before);
 });
 
 test("an edit (its summary changed): read again, its last change that run", async () => {

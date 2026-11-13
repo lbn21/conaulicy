@@ -23,7 +23,7 @@ import { type Water, water } from "../lib/water-module.ts";
 import { type Weather, weather } from "../lib/weather-module.ts";
 import { zukView } from "../lib/zuk-data.ts";
 import { Hub } from "./hub.tsx";
-import { WarsawToday } from "./warsaw-today.tsx";
+import { PageDay } from "./page-day.tsx";
 
 // The address page (components/hub.tsx Hub) as HubMain renders it, for the
 // server's Warsaw day, at the water fixture's NOW (Sunday 25 Oct 2026, 13:30
@@ -39,6 +39,7 @@ const noOutages = (place: PlaceView) =>
     {
       feed: { fetchedAt: NOW.toISOString(), items: [] },
       checkedAt: NOW.getTime(),
+      changedAt: NOW.getTime(),
     },
     place,
     NOW.getTime(),
@@ -56,11 +57,12 @@ const page = (
     return unicons(
       renderToStaticMarkup(
         createElement(
-          WarsawToday,
+          PageDay,
           { day: place.today },
           createElement(Hub, {
             data: [place, cuts, outages, warnings],
             place,
+            now: NOW.getTime(),
           }),
         ),
       ),
@@ -106,24 +108,19 @@ const smallPrint = (html: string) =>
     .replaceAll("\u00a0", " ")
     .trim();
 /**
- * The check times in the source note (lib/hub.ts freshnessLine, each day
- * once): each module's title and when ("25 października 13:30", or the day
- * alone). Its words are LIST's and the line's, read by their shape only.
+ * The freshness line in the source note (lib/hub.ts freshnessLine): each
+ * live module's title and when its data last changed ("25.10, 13:30"),
+ * read by its shape only: the line before the cadence, the note's last.
  */
-const checkTimes = (html: string) =>
-  new Map(
-    // Its own line, the note's last.
-    (/^\S+ (.*)\.$/.exec(smallPrint(html).split("\n").at(-1) ?? "")?.[1] ?? "")
-      .split("; ")
-      .flatMap((group) => {
-        const [day, list] = group.split(": ");
-        return list.split(/, | i /).map((entry) => {
-          const time = / (\d{1,2}:\d{2})$/.exec(entry)?.[1];
-          const name = time ? entry.slice(0, -time.length - 1) : entry;
-          return [name, time ? `${day} ${time}` : day] as const;
-        });
-      }),
+const checkTimes = (html: string) => {
+  const lines = smallPrint(html).split("\n");
+  const line = lines.at(-2) ?? "";
+  return new Map(
+    [...line.matchAll(/(\p{L}+) (\d\d\.\d\d, \d\d:\d\d)/gu)].map(
+      ([, name, at]) => [name, at] as const,
+    ),
   );
+};
 const section = (html: string, id: string) =>
   new RegExp(`<section aria-labelledby="${id}">.*?</section>`).exec(
     html,
@@ -353,10 +350,10 @@ test("„Wszystko o Twoim adresie” and the small print: a link per module with
   const small = smallPrint(html);
   const times = checkTimes(html);
   assert.ok(times.has(MODULES.woda.title));
-  assert.equal(times.get(MODULES.prad.title), "25 października 13:30");
-  assert.equal(times.get(MODULES.pogoda.title), "25 października 13:20");
+  assert.equal(times.get(MODULES.prad.title), "25.10, 13:30");
+  assert.equal(times.get(MODULES.pogoda.title), "25.10, 13:20");
   assert.ok(!times.has(MODULES.smieci.title));
-  // IMGW's wording, then the checks on their own line (t373).
+  // IMGW's wording, then the freshness on its own line (t373).
   assert.ok(small.split("\n")[0].endsWith(IMGW_ATTRIBUTION.processed));
   // The weather has no subpage: its source link is IMGW's name here.
   assert.ok(
@@ -412,21 +409,14 @@ test("nothing in the window and nothing later: one line, no cards; the links and
   );
   assert.doesNotMatch(html, /app-timeline/);
   assert.ok(section(html, "wszystko").includes(`>${MODULES.smieci.more}</a>`));
-  assert.equal(checkTimes(html).get(MODULES.smieci.title), "20 października");
+  // The waste schedule has no freshness line: its source says it all.
+  assert.ok(!checkTimes(html).has(MODULES.smieci.title));
   // IMGW not read: none of its wording.
   assert.equal(count(html, IMGW_NAME), 0);
   // Not checked is never „nothing”: the notice says so, above the line.
   assert.ok(
     html.indexOf(unchecked(MODULES.woda)) < html.indexOf('class="app-empty'),
   );
-});
-
-test("a split street without a number: „Podaj numer domu” above the timeline", () => {
-  const html = page(
-    testPlace({ ...STREET, askNumber: true, zoneId: null, sources: [] }),
-  );
-  assert.match(html, />Podaj numer domu<\/a>/);
-  assert.ok(html.indexOf("Podaj numer domu") < html.indexOf("najblizsze-dni"));
 });
 
 test("waste: its pickups by day; in the window, so no „Później” for it", () => {
@@ -586,7 +576,7 @@ test("waste only after the window: „Później”, its next pickup with its yea
     /<dt class="govuk-summary-list__key"><span class="app-tile app-mod app-mod--smieci"><svg\/><\/span>[^<]+<\/dt><dd class="govuk-summary-list__value">Wtorek, 3 listopada 2026<\/dd>/,
   );
   assert.doesNotMatch(later, /10 listopada/);
-  // The waste subpage's link and its check in the small print.
+  // The waste subpage's link; the small print has the live sources only.
   assert.ok(
     section(html, "wszystko").includes(
       `<a class="govuk-link govuk-link--text-colour govuk-link--no-underline app-item__link" href="/adres/0000001-00001/smieci">${MODULES.smieci.more}</a>`,
@@ -594,21 +584,14 @@ test("waste only after the window: „Później”, its next pickup with its yea
   );
   const checks = smallPrint(html);
   const times = checkTimes(html);
-  assert.equal(times.get(MODULES.smieci.title), "20 października");
-  assert.equal(times.get(MODULES.prad.title), "25 października 13:30");
+  assert.ok(!times.has(MODULES.smieci.title));
+  assert.equal(times.get(MODULES.prad.title), "25.10, 13:30");
   // Dates not checked yet: the small print stays the same (the caveat is
   // on the waste subpage).
   assert.equal(
     smallPrint(page(testPlace({ ...STREET, verified: false }))),
     checks,
   );
-});
-
-test("a house number given: every subpage link keeps it", () => {
-  const html = page(testPlace({ ...STREET, givenNr: "12a" }));
-  // The row's action and the module's card, both with the number.
-  assert.equal(count(html, 'href="/adres/0000001-00001/smieci?nr=12a"'), 2);
-  assert.doesNotMatch(html, /href="\/adres\/0000001-00001\/smieci"/);
 });
 
 test("power: its row as the water's, a range each, after the water; its notice with PGE's page", () => {
@@ -628,6 +611,7 @@ test("power: its row as the water's, a range each, after the water; its notice w
   const copy = (checkedAt: number, items: PgeOutage[]) => ({
     feed: { fetchedAt: new Date(checkedAt).toISOString(), items },
     checkedAt,
+    changedAt: checkedAt,
   });
   const items = [outage({}), outage({ uuid: "p2", revoked: true })];
   const html = page(

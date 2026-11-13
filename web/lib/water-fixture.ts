@@ -91,8 +91,8 @@ export const lisiePartly = (
   note: "częściowo",
 });
 
-/** ul. Jana III Sobieskiego in Karolówka, with the house number as given. */
-export const sobieskiego = (givenNr: string | null): PlaceView =>
+/** ul. Jana III Sobieskiego in Karolówka. */
+export const sobieskiego = (): PlaceView =>
   testPlace({
     id: "0606116-20431",
     name: "ul. Jana III Sobieskiego",
@@ -102,7 +102,6 @@ export const sobieskiego = (givenNr: string | null): PlaceView =>
     gmina: "Lubaczów (gmina)",
     localityId: "0606116",
     streetId: "0606116-20431",
-    givenNr,
   });
 
 /** ul. Żuki in Lubaczów, as the pages get it, with `overrides`. */
@@ -117,12 +116,6 @@ export const testPlace = (overrides: Partial<PlaceView> = {}): PlaceView => ({
   localityId: "0972447",
   streetId: "0972447-26555",
   zoneId: null,
-  nr: null,
-  askNumber: false,
-  unknownNr: null,
-  givenNr: null,
-  invalidNr: null,
-  knownNr: false,
   today: "2026-10-25",
   schedulePage: null,
   days: [],

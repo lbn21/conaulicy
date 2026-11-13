@@ -37,6 +37,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# the build's dataset snapshot (scripts/dataset-build.ts)
+/.dataset-build.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

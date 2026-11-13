@@ -6,8 +6,8 @@
 // what the site's reads gave when they queried the database. The
 // reference below is those queries (lib/schedule.ts before t402), kept only
 // here, read-only; the snapshot side is lib/dataset-views.ts, as the pages
-// call it. Compared deep-equal: every place's view (with every house
-// number its zones split on), every zone's events and ICS file, the home
+// call it. Compared deep-equal: every place's view, every zone's events
+// and ICS file, the home
 // page's panel over several windows (what it shows), the search index (/ulice, the
 // sitemap's places), every place id, the renamed places and the home
 // page's examples. Then the snapshot reads back through its check
@@ -50,9 +50,9 @@ import {
 import { addDays, todayInWarsaw } from "../lib/dates.ts";
 import { hasSource } from "../lib/event-source.ts";
 import { HOME_EXAMPLES } from "../lib/examples.ts";
-import { UNLISTED_PREFIXES, zoneByNumber } from "../lib/places.ts";
+import { pickZone, UNLISTED_PREFIXES } from "../lib/places.ts";
 import { wasteCalendar } from "../lib/waste-ics.ts";
-import { sourcesChecked, sourcesOf } from "../lib/waste-module.ts";
+import { sourcesOf } from "../lib/waste-module.ts";
 import { buildDataset, readOnlyPool } from "./lib/dataset.ts";
 import { localDatabaseUrl } from "./lib/local-db.ts";
 
@@ -133,9 +133,6 @@ function wasteMembers(where?: SQL) {
       zoneId: zoneMembers.zoneId,
       localityId: zoneMembers.localityId,
       streetId: zoneMembers.streetId,
-      houseFrom: zoneMembers.houseFrom,
-      houseTo: zoneMembers.houseTo,
-      parity: zoneMembers.parity,
     })
     .from(zoneMembers)
     .innerJoin(zones, eq(zones.id, zoneMembers.zoneId))
@@ -162,7 +159,7 @@ async function zoneEvents(zoneId: string, from: string) {
   return rows.sort(byStartAndSubtype);
 }
 
-async function dbPlace(id: string, nr: string | null, today: string) {
+async function dbPlace(id: string, today: string) {
   const place = await findPlace(id);
   if (!place) return null;
   const localityIds = [place.localityId];
@@ -171,18 +168,17 @@ async function dbPlace(id: string, nr: string | null, today: string) {
     isNull(zoneMembers.streetId),
     inArray(zoneMembers.localityId, localityIds),
   );
-  const zone = zoneByNumber(
+  const zone = pickZone(
     await wasteMembers(
       place.streetId
         ? or(eq(zoneMembers.streetId, place.streetId), whole)
         : whole,
     ),
     place,
-    nr,
   );
-  const [upcoming, fractions] = zone.id
+  const [upcoming, fractions] = zone
     ? await Promise.all([
-        zoneEvents(zone.id, today),
+        zoneEvents(zone, today),
         db
           .selectDistinct({
             subtype: events.subtype,
@@ -190,11 +186,11 @@ async function dbPlace(id: string, nr: string | null, today: string) {
             checkedAt: events.checkedAt,
           })
           .from(events)
-          .where(eq(events.zoneId, zone.id))
+          .where(eq(events.zoneId, zone))
           .then(fractionsOf),
       ])
     : [[], []];
-  return assemblePlaceView(place, zone, upcoming, fractions, nr, today);
+  return assemblePlaceView(place, zone, upcoming, fractions, today);
 }
 
 async function dbZone(zoneId: string, today: string) {
@@ -257,14 +253,12 @@ function same(label: string, actual: unknown, expected: unknown) {
 }
 /**
  * What the panel shows of a week (components/now-tiles.ts): the count, the
- * schedule page and „Sprawdziliśmy” (sourcesChecked), and each source's
- * link and check. Not a source's label: for a document several zones cite
+ * schedule page, and each source's link and check. Not a source's label: for a document several zones cite
  * (the fixture's one), it is the first event's, an order SQL left open.
  */
 const panel = (week: Awaited<ReturnType<typeof dbWasteWeek>>) => ({
   count: week.count,
   schedulePage: week.schedulePage,
-  checked: sourcesChecked(week.sources),
   sources: week.sources
     .map(({ url, checkedAt, seenAt }) =>
       JSON.stringify([url, checkedAt, seenAt]),
@@ -285,32 +279,15 @@ try {
   const ids = [...allStreets, ...allVillages].map((p) => p.id);
   same("placeIds", placeIdsOf(ds), ids);
 
-  // Every house number a zone splits on, and around it.
-  const numbers = [
-    null,
-    ...new Set(
-      members.flatMap((m) =>
-        [m.houseFrom, m.houseTo].filter((n): n is string => Boolean(n)),
-      ),
-    ),
-    "1",
-    "2",
-    "999",
-  ];
   let views = 0;
-  for (const id of ids)
-    for (const nr of numbers) {
-      same(
-        `place ${id} nr ${nr}`,
-        placeView(ds, id, nr, today),
-        await dbPlace(id, nr, today),
-      );
-      views++;
-    }
+  for (const id of ids) {
+    same(`place ${id}`, placeView(ds, id, today), await dbPlace(id, today));
+    views++;
+  }
   same(
     "unknown place",
-    placeView(ds, "0000000-00000", null, today),
-    await dbPlace("0000000-00000", null, today),
+    placeView(ds, "0000000-00000", today),
+    await dbPlace("0000000-00000", today),
   );
 
   const now = new Date(`${today}T12:00:00Z`);
@@ -369,7 +346,7 @@ try {
   same("examples", examplePlacesOf(ds, HOME_EXAMPLES), examples);
 
   console.log(
-    `Dataset vs database: ${views} place views (${ids.length} places × ${numbers.length} numbers), ${ds.zones.length} zones with their ICS, 3 panel windows, the search index, redirects, examples.`,
+    `Dataset vs database: ${views} place views, ${ds.zones.length} zones with their ICS, 3 panel windows, the search index, redirects, examples.`,
   );
 } finally {
   await pool.end();

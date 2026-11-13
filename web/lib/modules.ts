@@ -2,22 +2,22 @@
 // (components/hub.tsx) its items for the timeline, its notices, its link
 // and its check time, in registry order, and has a subpage of its own,
 // /adres/<id>/<id of the module>, in one frame (components/module-page.tsx). The ids and their
-// order live in lib/address-routes.ts, so the unit tests and the URL rules
-// can read them without Next.js; this registry must list exactly those.
+// order live in lib/address-routes.ts, so the unit tests can read them
+// without Next.js; this registry must list exactly those.
 import type { ReactNode } from "react";
 import { outageDetails } from "@/components/outage-page";
-import { indexedPlace, numberError, WasteBody } from "@/components/place-page";
+import { indexedPlace, WasteBody } from "@/components/place-page";
 import { OutageRow } from "@/components/rows/outage";
 import { WasteRow } from "@/components/rows/smieci";
 import { WaterDetails } from "@/components/water-page";
 import { isModuleId, type ModuleId, SUBPAGE_IDS } from "@/lib/address-routes";
-import type { Checked, Group, Part } from "@/lib/hub";
+import type { Group, Part } from "@/lib/hub";
 import { imgwCopy } from "@/lib/live-store";
+import { SOURCE_TAGS, type SourceTag } from "@/lib/page-cache";
 import { loadPower } from "@/lib/power-load";
 import {
   POWER_SUBJECT,
   type Power,
-  powerChecked,
   powerDescription,
   powerNotices,
   powerPage,
@@ -28,52 +28,42 @@ import { getPlace, type PlaceView } from "@/lib/schedule";
 import { placeDescription } from "@/lib/schedule-notes";
 import type { Entry } from "@/lib/timeline";
 import type { Item } from "@/lib/upcoming";
-import { wasteChecked, wasteSources, wasteStatus } from "@/lib/waste-module";
+import { wasteSources, wasteStatus } from "@/lib/waste-module";
 import { wasteUpcoming } from "@/lib/waste-upcoming";
 import { loadWater } from "@/lib/water-load";
 import {
   type Water,
-  waterChecked,
   waterDescription,
   waterNotices,
   waterSources,
   waterUpcoming,
 } from "@/lib/water-module";
-import {
-  type Weather,
-  weather,
-  weatherChecked,
-  weatherNotices,
-} from "@/lib/weather-module";
+import { type Weather, weather, weatherNotices } from "@/lib/weather-module";
 
 // Its functions and components are method signatures, so a typed module
 // (Module<PlaceView>) is also a Module<unknown> where the pages pass a
 // module's own data back to it (components/hub.tsx).
 export type Module<D> = {
   id: ModuleId;
-  /** Its name in the address page's freshness line: „śmieci”. */
+  /** Its name in the address page's freshness line: „woda”. */
   title: string;
+  /** The sources load() reads: its pages' tags (lib/page-cache.ts). */
+  tags: SourceTag[];
   /**
-   * `place` is the place id, `nr` a house number. null: no such place
-   * (waste: a 404), or nothing we could read now: the address page and
-   * the subpage say it could not be checked (lib/hub.ts unchecked).
-   * `imgw`: the weather's preview mock (lib/imgw-preview.ts), outside
-   * production only; the others ignore it.
+   * `place` is the place id. null: no such place (waste: a 404), or
+   * nothing we could read now: the address page and the subpage say it
+   * could not be checked (lib/hub.ts unchecked).
    */
-  load(
-    place: string,
-    nr: string | null,
-    imgw?: string | null,
-  ): Promise<D | null>;
+  load(place: string): Promise<D | null>;
   /**
    * Its items for the timeline (lib/upcoming.ts, lib/timeline.ts),
    * structured: its Row words them.
    */
   upcoming(data: D): Item[];
   /**
-   * The hub's lines that belong to no day, above the timeline:
-   * the split street's question, no schedule, a source we could not
-   * check, posts we could not read. Usually none.
+   * The hub's lines that belong to no day, above the timeline: no
+   * schedule, a source we could not check, posts we could not read.
+   * Usually none.
    */
   notices(data: D): Group[];
   /** Its row's key in a timeline card: „Śmieci”, „Ostrzeżenie IMGW”. */
@@ -90,11 +80,12 @@ export type Module<D> = {
   /** Its sources, in its subpage's inset: a link each. */
   sources(data: D): Part[][];
   /**
-   * When we last checked its source: in the address page's freshness line
-   * (lib/hub.ts freshnessLine) and its subpage's source inset
-   * (sourceLine). null: nothing shown.
+   * When its source's data last changed (ms), a live source's only (the
+   * cron writes it when the content changes): the address page's and its
+   * subpage's freshness line (lib/hub.ts freshnessLine). null: none shown
+   * (the waste schedule: its source line only).
    */
-  checkedAt(data: D): Checked;
+  changedAt(data: D): number | null;
   /**
    * Its link to the subpage in „Wszystko o Twoim adresie”, saying where
    * it goes („Wszystkie odbiory śmieci”), never a bare „Szczegóły”.
@@ -105,17 +96,12 @@ export type Module<D> = {
   /** The subpage's description, of the place (without its number). */
   description(place: PlaceView): string;
   /**
-   * The subpage may be a search result (`missing`: ?nr= came without a
-   * usable number); left out: never (its content lasts days).
+   * The subpage may be a search result; left out: never (its content
+   * lasts days).
    */
-  indexed?(place: PlaceView, missing: boolean): boolean;
-  /**
-   * The subpage's error (GOV.UK's summary, „Błąd: ” in its title); left
-   * out or null: none.
-   */
-  error?(place: PlaceView, missing: boolean): string | null;
-  /** The subpage's body, under its heading; `error` is Module.error's. */
-  Details(props: { data: D; error: string | null }): ReactNode;
+  indexed?(place: PlaceView): boolean;
+  /** The subpage's body, under its heading. */
+  Details(props: { data: D }): ReactNode;
 };
 
 // Waste wraps today's street page data as it is (PlaceView): its pickups on
@@ -123,14 +109,13 @@ export type Module<D> = {
 const waste: Module<PlaceView> = {
   id: "smieci",
   title: "śmieci",
+  tags: [SOURCE_TAGS.dataset],
   more: "Wszystkie odbiory śmieci",
   pageTitle: "Odbiór śmieci",
   load: getPlace,
   upcoming: wasteUpcoming,
   notices: (place) =>
-    place.askNumber ||
-    place.zoneId === null ||
-    !place.days.some((day) => day.date >= place.today)
+    place.zoneId === null || !place.days.some((day) => day.date >= place.today)
       ? wasteStatus(place)
       : [],
   rowLabel: "Śmieci",
@@ -138,10 +123,9 @@ const waste: Module<PlaceView> = {
   subject: "odbiorów śmieci",
   Row: WasteRow,
   sources: wasteSources,
-  checkedAt: wasteChecked,
+  changedAt: () => null,
   description: (place) => placeDescription(place, "waste"),
   indexed: indexedPlace,
-  error: numberError,
   Details: WasteBody,
 };
 
@@ -151,6 +135,7 @@ const waste: Module<PlaceView> = {
 const woda: Module<Water> = {
   id: "woda",
   title: "woda",
+  tags: [SOURCE_TAGS.dataset, SOURCE_TAGS.water],
   more: "Wszystkie przerwy w wodzie",
   pageTitle: "Przerwy w dostawie wody",
   load: loadWater,
@@ -161,7 +146,7 @@ const woda: Module<Water> = {
   subject: "przerw w dostawie wody",
   Row: OutageRow,
   sources: waterSources,
-  checkedAt: waterChecked,
+  changedAt: (data) => data.changedAt,
   description: waterDescription,
   Details: WaterDetails,
 };
@@ -173,6 +158,7 @@ const woda: Module<Water> = {
 const prad: Module<Power> = {
   id: "prad",
   title: "prąd",
+  tags: [SOURCE_TAGS.dataset, SOURCE_TAGS.pge],
   more: "Wszystkie przerwy w dostawie prądu",
   pageTitle: "Przerwy w dostawie prądu",
   load: loadPower,
@@ -183,7 +169,7 @@ const prad: Module<Power> = {
   subject: POWER_SUBJECT,
   Row: OutageRow,
   sources: powerSources,
-  checkedAt: powerChecked,
+  changedAt: (data) => data.changedAt,
   description: powerDescription,
   Details: outageDetails(powerPage),
 };
@@ -196,10 +182,11 @@ const prad: Module<Power> = {
 const pogoda: Module<Weather> = {
   id: "pogoda",
   title: "pogoda",
+  tags: [SOURCE_TAGS.imgw],
   more: "Ostrzeżenia pogodowe IMGW",
   pageTitle: "Ostrzeżenia pogodowe IMGW",
-  async load(_place, _nr, imgw) {
-    return weather(await imgwCopy(imgw), Date.now());
+  async load() {
+    return weather(await imgwCopy(), Date.now());
   },
   upcoming: () => [],
   notices: weatherNotices,
@@ -208,7 +195,7 @@ const pogoda: Module<Weather> = {
   subject: "ostrzeżeń IMGW",
   Row: () => null,
   sources: () => [],
-  checkedAt: weatherChecked,
+  changedAt: (data) => data.changedAt,
   description: () => "",
   Details: () => null,
 };

@@ -36,7 +36,7 @@ export type DatasetLocality = Retired & {
   parentId: string | null;
 };
 
-export type DatasetStreet = Retired & {
+type DatasetStreet = Retired & {
   id: string;
   localityId: string;
   /** TERYT CECHA. */
@@ -46,14 +46,35 @@ export type DatasetStreet = Retired & {
 
 type DatasetZone = { id: string; type: EventType; name: string };
 
+/**
+ * A zone covers a whole street or locality: no data differs by house
+ * number, so the snapshot holds no house ranges, and a member that has
+ * one is refused (rangedMember), never published.
+ */
 export type DatasetMember = {
   zoneId: string;
   localityId: string;
   streetId: string | null;
-  houseFrom: string | null;
-  houseTo: string | null;
-  parity: "even" | "odd" | null;
 };
+
+/** The house-range fields a zone member must not carry. */
+const RANGE_KEYS = ["houseFrom", "houseTo", "parity"] as const;
+
+/**
+ * Throws for a zone member with a house range: one rule for the builder
+ * (datasetFromRows) and every read of a file (parseDataset), so a ranged
+ * member fails the import and the publish loudly.
+ */
+export function rangedMember(
+  member: Record<string, unknown>,
+  at: string,
+): void {
+  const ranged = RANGE_KEYS.filter((key) => (member[key] ?? null) !== null);
+  if (ranged.length > 0)
+    throw new Error(
+      `Dataset snapshot: ${at} has a house range (${ranged.join(", ")}); the site has no house numbers.`,
+    );
+}
 
 /** An events row, only the columns the site shows, with its file's lastSeenAt. */
 export type DatasetEvent = {
@@ -181,16 +202,14 @@ const checkDataset: Check<Dataset> = object<Dataset>({
     }),
   ),
   zones: array(object<DatasetZone>({ id: str, type: eventType, name: str })),
-  zoneMembers: array(
-    object<DatasetMember>({
+  zoneMembers: array((v, at) => {
+    if (isObject(v)) rangedMember(v, at);
+    return object<DatasetMember>({
       zoneId: str,
       localityId: str,
       streetId: nullable(str),
-      houseFrom: nullable(str),
-      houseTo: nullable(str),
-      parity: nullable(oneOf("even", "odd")),
-    }),
-  ),
+    })(v, at);
+  }),
   events: array(
     object<DatasetEvent>({
       id: str,
@@ -354,14 +373,14 @@ export function datasetFromRows(
       ...retired(s),
     })),
     zones: rows.zones.map(({ id, type, name }) => ({ id, type, name })),
-    zoneMembers: rows.zoneMembers.map((m) => ({
-      zoneId: m.zoneId,
-      localityId: m.localityId,
-      streetId: m.streetId ?? null,
-      houseFrom: m.houseFrom ?? null,
-      houseTo: m.houseTo ?? null,
-      parity: m.parity ?? null,
-    })),
+    zoneMembers: rows.zoneMembers.map((m, i) => {
+      rangedMember(m, `zoneMembers[${i}]`);
+      return {
+        zoneId: m.zoneId,
+        localityId: m.localityId,
+        streetId: m.streetId ?? null,
+      };
+    }),
     events: events.map((e) => ({
       id: e.id,
       type: e.type,

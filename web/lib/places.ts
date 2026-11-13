@@ -3,7 +3,6 @@
 // what search matches is what the page shows.
 
 import type { Locality } from "./data-model.ts";
-import { type HouseRange, inRange, isPartial } from "./house.ts";
 import { LANG } from "./locale.ts";
 
 export function gminaShortName(name: string): string {
@@ -114,31 +113,9 @@ export function streetLabel(street: {
   return `${streetName(street.prefix, street.name)}, ${street.locality}`;
 }
 
-/** A place's page, and its house number if given. */
-export function placePath(id: string, nr?: string | null): string {
-  const path = `/adres/${encodeURIComponent(id)}`;
-  // A valid number is only digits, a-z and "/", all fine in a query.
-  return nr ? `${path}?nr=${nr}` : path;
-}
-
-/**
- * A moved place's path (place_redirects): /adres/<oldId> and everything
- * under it (/smieci, /harmonogram.pdf, …), query included, on newId.
- * Null for any other path.
- */
-export function movedPath(
-  path: string,
-  oldId: string,
-  newId: string,
-): string | null {
-  const old = placePath(oldId);
-  if (
-    path !== old &&
-    !path.startsWith(`${old}/`) &&
-    !path.startsWith(`${old}?`)
-  )
-    return null;
-  return `${placePath(newId)}${path.slice(old.length)}`;
+/** A place's page. */
+export function placePath(id: string): string {
+  return `/adres/${encodeURIComponent(id)}`;
 }
 
 /** Not offered in search (nobody lives there); a direct link still works. */
@@ -148,53 +125,27 @@ export type ZoneCandidate = {
   zoneId: string;
   localityId: string;
   streetId: string | null;
-} & Partial<HouseRange>;
+};
 
 type ZonePlace = {
   localityId: string;
   parentId: string | null;
   streetId?: string;
-  /** A valid house number (lib/house.ts), if the visitor gave one. */
-  nr?: string | null;
 };
 
-const range = (c: ZoneCandidate): HouseRange => ({
-  houseFrom: c.houseFrom ?? null,
-  houseTo: c.houseTo ?? null,
-  parity: c.parity ?? null,
-});
-
-/** A street whose house numbers are in different zones. */
-export function isSplitStreet(
-  candidates: ZoneCandidate[],
-  place: ZonePlace,
-): boolean {
-  return candidates.some(
-    (c) =>
-      place.streetId !== undefined &&
-      c.streetId === place.streetId &&
-      isPartial(range(c)),
-  );
-}
-
 /**
- * The zone of a street or village: the street entry covering the house
- * number, then the whole street's entry, then its locality's, then the
- * parent village's (a village part without an entry of its own takes its
- * village's zone, docs/database.md). On a split street without a number:
- * none, never a guess.
+ * The zone of a street or village: the street's entry, then its
+ * locality's, then the parent village's (a village part without an entry
+ * of its own takes its village's zone, docs/database.md). A zone covers a
+ * whole street or locality: the snapshot holds no house ranges
+ * (lib/dataset-schema.ts).
  */
 export function pickZone(
   candidates: ZoneCandidate[],
   place: ZonePlace,
 ): string | null {
-  if (!place.nr && isSplitStreet(candidates, place)) return null;
   const rank = (c: ZoneCandidate) => {
-    if (c.streetId !== null) {
-      if (c.streetId !== place.streetId) return -1;
-      if (!isPartial(range(c))) return 1;
-      return place.nr && inRange(place.nr, range(c)) ? 0 : -1;
-    }
+    if (c.streetId !== null) return c.streetId === place.streetId ? 1 : -1;
     if (c.localityId === place.localityId) return 2;
     if (c.localityId === place.parentId) return 3;
     return -1;
@@ -207,33 +158,15 @@ export function pickZone(
 }
 
 /**
- * A place's waste zone with the house number as given (lib/dataset-views.ts
- * wasteZoneFor reads the candidates): the zone, or null, and whether the
- * street is split by house numbers.
- */
-export function zoneByNumber(
-  candidates: ZoneCandidate[],
-  place: ZonePlace,
-  nr: string | null,
-): { id: string | null; split: boolean } {
-  return {
-    id: pickZone(candidates, { ...place, nr }),
-    split: isSplitStreet(candidates, place),
-  };
-}
-
-/**
- * Whether we have pickup data for a place: a zone of its own, its locality's
- * or its village's, or (a split street) zones for parts of it. Candidates may
- * be every zone member: pickZone ignores other places' entries.
+ * Whether we have pickup data for a place: a zone of its own, its
+ * locality's or its village's. Candidates may be every zone member:
+ * pickZone ignores other places' entries.
  */
 export function hasZone(
   candidates: ZoneCandidate[],
   place: ZonePlace,
 ): boolean {
-  return (
-    isSplitStreet(candidates, place) || pickZone(candidates, place) !== null
-  );
+  return pickZone(candidates, place) !== null;
 }
 
 export type ListedPlace = { id: string; label: string };

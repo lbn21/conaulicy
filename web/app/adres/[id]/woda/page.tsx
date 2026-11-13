@@ -1,13 +1,18 @@
-import { subpageRoute } from "@/components/subpage-route";
+import { ModuleMain, subpageMetadata } from "@/components/module-page";
 
-// The water subpage, /adres/[id]/woda (components/module-page.tsx), in its
-// own folder, so its static shell knows its module
-// (components/subpage-route.tsx). Read per request behind the address
-// pages' one skeleton (components/place-suspense.tsx); every known place,
-// as the address page (../page.tsx).
+// The water subpage, /adres/[id]/woda (components/module-page.tsx),
+// prerendered whole for every place the address page has; any other id is
+// the prerendered 404 (dynamicParams = false).
 
-export { generateStaticParams } from "../page";
+export { placeParams as generateStaticParams } from "@/lib/schedule";
+export const dynamicParams = false;
 
-const route = subpageRoute("woda");
-export const generateMetadata = route.generateMetadata;
-export default route.Page;
+export async function generateMetadata({
+  params,
+}: PageProps<"/adres/[id]/woda">) {
+  return subpageMetadata((await params).id, "woda");
+}
+
+export default async function Page({ params }: PageProps<"/adres/[id]/woda">) {
+  return <ModuleMain id={(await params).id} slug="woda" />;
+}

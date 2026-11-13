@@ -1,6 +1,6 @@
 "use client";
 
-import { useWarsawToday } from "@/components/warsaw-today";
+import { usePageDay } from "@/components/page-day";
 import {
   addDays,
   capitalised,
@@ -9,9 +9,9 @@ import {
   relativeWord,
 } from "@/lib/dates";
 
-// „Dziś”, „Jutro” and „Za 5 dni”, rendered with the page, for the server's
-// Warsaw day, then kept to the device's (components/warsaw-today.tsx). The
-// dates around the word are absolute, with their weekday.
+// „Dziś”, „Jutro” and „Za 5 dni”, rendered with the page, for the Warsaw
+// day it was rendered for (components/page-day.tsx). The dates around the
+// word are absolute, with their weekday.
 
 /**
  * lead: a section's first line, „Dziś: ”, „Jutro: ” or „Za 5 dni: ” before
@@ -35,9 +35,9 @@ type Props = {
 
 /** A day's relative word (see Form). */
 export function DayWord({ day, form, text = "" }: Props) {
-  const today = useWarsawToday();
+  const today = usePageDay();
   if (form === "lead") return dayLead(day, text, today);
-  // No server day (outside WarsawToday) and not yet the device's: no word.
+  // No page day (outside PageDay): no word.
   if (form === "title")
     return today ? (
       <>

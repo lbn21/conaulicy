@@ -17,9 +17,6 @@ import {
   useState,
 } from "react";
 import { ErrorSummary } from "@/components/error-summary";
-import { PlaceLink } from "@/components/place-link";
-import { ResultsSkeleton } from "@/components/search-skeleton";
-import { withHouseNumber } from "@/lib/house";
 import { whenIdle } from "@/lib/idle";
 import {
   addresses,
@@ -47,7 +44,8 @@ type Note = "hint" | "loading" | "error" | "none";
 const NOTES: Record<Note, string> = {
   hint: "Wpisz nazwę ulicy.",
   loading: "Szukam…",
-  error: "Błąd: coś nie zadziałało po naszej stronie. Spróbuj za chwilę.",
+  error:
+    "Nie udało się wczytać wyszukiwarki. Znajdź swój adres na liście wszystkich ulic i wsi.",
   none: "Brak wyników. Nie mamy jeszcze tej ulicy ani wsi – sprawdź przykładowe adresy poniżej.",
 };
 
@@ -67,7 +65,7 @@ type Option = SearchHit | string | undefined;
 function optionText(option: Option): string {
   if (!option) return "";
   if (typeof option === "string") return option;
-  return withHouseNumber(option.label, option.nr ?? null);
+  return option.label;
 }
 
 // Save-Data (Chromium's navigator.connection, not in TypeScript's DOM types).
@@ -105,9 +103,9 @@ function closeList(container: HTMLElement | null) {
 
 /**
  * The suggestions' source: each query matched on the device, over the index
- * (lib/search-index.ts, shared with „Szukaj”), loaded
- * once by `load`; if it cannot load, settled queries go to /api/search.
- * `note` is what the list says when it has no suggestion.
+ * (lib/search-index.ts, shared with „Szukaj”), loaded once by `load` (one
+ * retry); if it cannot load, the list says so. `note` is what the list
+ * says when it has no suggestion.
  */
 function suggestions(indexUrl: string) {
   let note: Note = "none";
@@ -126,15 +124,6 @@ function suggestions(indexUrl: string) {
     );
     return started;
   };
-
-  async function remote(q: string): Promise<SearchHit[] | null> {
-    // Without the index, ask the server once typing settles.
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    if (q !== latest) return null;
-    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return (await res.json()) as SearchHit[];
-  }
 
   async function source(query: string, populate: (options: Option[]) => void) {
     const q = query.trim().replace(/\s+/g, " ");
@@ -156,16 +145,8 @@ function suggestions(indexUrl: string) {
       populate(match(q).hits);
       return;
     }
-    try {
-      const hits = await remote(q);
-      if (hits === null || q !== latest) return;
-      note = "none";
-      populate(hits);
-    } catch {
-      if (q !== latest) return;
-      note = "error";
-      populate([]);
-    }
+    note = "error";
+    populate([]);
   }
 
   return { load, source, note: () => NOTES[note] };
@@ -232,30 +213,32 @@ export function SearchErrorSummary() {
 }
 
 // What „Szukaj” shows under the field: the index still loading, several
-// places, none, or the server's error. None is an answer, not an error
+// places, none, or that the index could not load (after one retry: a
+// fixed message and the list of every place). None is an answer, not an error
 // (GOV.UK's search pattern): plain text, the field left valid; GOV.UK's
 // error message and summary are only for an empty field (validation,
 // design-system.service.gov.uk/components/error-message).
 type Shown = Outcome | { kind: "loading" } | { kind: "failed" };
 
-// The outcome over the index; if it cannot load, over /api/search's answer
-// (ranked as the index would be, never one place opened unasked).
+// The outcome over the index; rejects when it cannot load.
 async function find(indexUrl: string, q: string): Promise<Outcome> {
-  try {
-    return outcomeOf(await loadIndex(indexUrl), q);
-  } catch {
-    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const hits = (await res.json()) as SearchHit[];
-    return hits.length === 0 ? { kind: "none", q } : { kind: "many", q, hits };
-  }
+  return outcomeOf(await loadIndex(indexUrl), q);
 }
 
 /** Several places to choose from, none, or why not; nothing for one. */
 function Results({ shown }: { shown: Shown }) {
-  if (shown.kind === "loading") return <ResultsSkeleton />;
+  if (shown.kind === "loading")
+    return <p className="govuk-body">{NOTES.loading}</p>;
   if (shown.kind === "failed")
-    return <p className="govuk-body">{NOTES.error}</p>;
+    return (
+      <p className="govuk-body">
+        Nie udało się wczytać wyszukiwarki. Znajdź swój adres na liście{" "}
+        <Link href={ALL_PLACES.path} className="govuk-link">
+          {ALL_PLACES.text}
+        </Link>
+        .
+      </p>
+    );
   if (shown.kind === "many")
     return (
       <>
@@ -266,9 +249,9 @@ function Results({ shown }: { shown: Shown }) {
         <ul className="govuk-list">
           {shown.hits.map((hit) => (
             <li key={hit.id}>
-              <PlaceLink href={placeHref(hit)} className="govuk-link">
-                {withHouseNumber(hit.label, hit.nr ?? null)}
-              </PlaceLink>
+              <Link href={placeHref(hit)} className="govuk-link">
+                {hit.label}
+              </Link>
             </li>
           ))}
         </ul>
@@ -303,7 +286,8 @@ function Results({ shown }: { shown: Shown }) {
  * place loads once, in the background once the page has loaded and is
  * idle, or on first focus if that comes first (only then with Save-Data
  * on), so suggestions are ready from the first letter; then each keystroke
- * is matched on the device ("Asnyka 5" carries the house number to ?nr=).
+ * is matched on the device ("Asnyka 5" finds the street; a house number
+ * changes nothing).
  * The list opens inline, under the field and above „Szukaj”, pushing what
  * follows down while it is open (GOV.UK's default), so it never covers the
  * button. As GOV.UK's default (no autoselect), nothing is highlighted until
@@ -319,8 +303,7 @@ function Results({ shown }: { shown: Shown }) {
  * (lib/search-submit.ts): one place (a picked suggestion, or one clearly
  * best) opens its page by client-side navigation (useRouter().push); several
  * are listed under the field, none says what to try next, both on this page
- * with no navigation; while the index is not in yet, a skeleton of one
- * result holds their place. The list region is a polite live region, so
+ * with no navigation; while the index is not in yet, „Szukam…”. The list region is a polite live region, so
  * what appears is announced. An empty field is GOV.UK's error, only after
  * a submit.
  */

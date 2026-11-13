@@ -94,6 +94,8 @@ test("the copy: the feed file and the last good check, never older than the feed
   assert.deepEqual(imgwCopyOf(feed, checks("2026-10-25T12:30:00+01:00")), {
     feed: { fetchedAt: "2026-10-25T12:00:00+01:00", items },
     checkedAt: at("2026-10-25T12:30:00+01:00"),
+    // Its items last changed when the file was written.
+    changedAt: at("2026-10-25T12:00:00+01:00"),
   });
   // No status file, an unreadable one, or one older than the feed: the
   // feed's own time.

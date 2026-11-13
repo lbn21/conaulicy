@@ -4,9 +4,9 @@
 // page's notices when there are no dates to show (lib/modules.ts); its
 // timeline items are lib/waste-upcoming.ts's.
 import type { Pickup, PickupDay, PlaceView, SourceView } from "@/lib/schedule";
-import { absoluteDay, todayInWarsaw } from "./dates.ts";
+import { absoluteDay } from "./dates.ts";
 import { hasSource } from "./event-source.ts";
-import type { Checked, Group, Part } from "./hub.ts";
+import type { Group, Part } from "./hub.ts";
 import { placePath, scheduleName, scheduleOwner } from "./places.ts";
 import {
   hasUpcoming,
@@ -41,13 +41,9 @@ export function wasteCalendarRefresh(place: Pick<PlaceView, "gmina">): string {
   return `Jeśli harmonogram ${scheduleOwner(place.gmina)} się zmieni, pobierz plik jeszcze raz.`;
 }
 
-/** The street page's words for a split street, before the number. */
-const SPLIT_HINT =
-  "Na tej ulicy śmieciarka przyjeżdża w różne dni, zależnie od numeru.";
-
-/** The waste subpage (/adres/<id>/smieci), with the house number. */
-export function wastePath(place: Pick<PlaceView, "id" | "nr">): string {
-  return `${placePath(place.id)}/smieci${place.nr ? `?nr=${place.nr}` : ""}`;
+/** The waste subpage (/adres/<id>/smieci). */
+export function wastePath(place: Pick<PlaceView, "id">): string {
+  return `${placePath(place.id)}/smieci`;
 }
 
 // No dates to show: why, then the gmina's own schedule (linked when we know
@@ -83,20 +79,9 @@ export const allBins = (place: PlaceView, day: PickupDay) =>
  * „Dziś” or „Za 5 dni” put by DayWord; the day as of the render),
  * what goes that day („wszystkie pojemniki” when
  * it is every fraction the place has, more than one) and when to put them
- * out; on a split street without a number, the question's page; or why
- * there are no dates.
+ * out; or why there are no dates.
  */
 export function wasteStatus(place: PlaceView): Group[] {
-  if (place.askNumber) {
-    return [
-      [
-        [
-          `${SPLIT_HINT} `,
-          { href: wastePath(place), text: "Podaj numer domu" },
-        ],
-      ],
-    ];
-  }
   if (place.zoneId === null) {
     return [
       [
@@ -216,37 +201,4 @@ export function sourcesOf(rows: SourceRow[]): SourceView[] {
     ...source,
     seenAt: unseen ? null : source.seenAt,
   }));
-}
-
-/**
- * „Sprawdziliśmy …” for waste, one rule wherever it shows (the address
- * page, /smieci, the PDF, the home page's panel): when an import last saw
- * the sources' files (source_files.lastSeenAt, a time), or, for a source
- * without one, the day we last compared it with the original
- * (events.checkedAt): the oldest of several, a day counting as older than
- * any time on that day.
- */
-export function sourcesChecked(
-  sources: Array<Pick<SourceView, "checkedAt" | "seenAt">>,
-): Checked {
-  let oldest: { key: string; at: Date | string } | null = null;
-  for (const source of sources) {
-    const at = source.seenAt ? new Date(source.seenAt) : source.checkedAt;
-    if (!at) continue;
-    // The Warsaw day first, so a day sorts before that day's times.
-    const key =
-      typeof at === "string" ? at : `${todayInWarsaw(at)}T${at.toISOString()}`;
-    if (!oldest || key < oldest.key) oldest = { key, at };
-  }
-  return oldest?.at ?? null;
-}
-
-/** The place's waste check (sourcesChecked over its sources). */
-export function wasteChecked(place: Pick<PlaceView, "sources">): Checked {
-  return sourcesChecked(place.sources);
-}
-
-/** The check's Warsaw day, for print (the PDF's „sprawdzono”). */
-export function checkedDay(at: Checked): string | null {
-  return at instanceof Date ? todayInWarsaw(at) : at;
 }

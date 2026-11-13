@@ -1,5 +1,5 @@
+import Link from "next/link";
 import { Tile } from "@/components/icon";
-import { PlaceLink } from "@/components/place-link";
 import { absoluteDay, capitalised, dayWithYear } from "@/lib/dates";
 import { MODULES, type Module } from "@/lib/modules";
 import { placePath } from "@/lib/places";
@@ -13,9 +13,9 @@ import type { Entry } from "@/lib/timeline";
 // subpage, with a visually hidden suffix saying which (GOV.UK's „Change”
 // links). The rows own no markup or links of their own.
 
-/** A module's subpage, with the number as given (its breadcrumb back). */
+/** A module's subpage. */
 export const subpageHref = (module: Module<unknown>, place: PlaceView) =>
-  `${placePath(place.id)}/${module.id}${place.givenNr ? `?nr=${place.givenNr}` : ""}`;
+  `${placePath(place.id)}/${module.id}`;
 
 /** What makes entries one row: all but their hours. */
 const rowKey = ({ item, continued }: Entry) =>
@@ -86,15 +86,12 @@ export function FunctionRows({
               )}
             </dd>
             <dd className="govuk-summary-list__actions">
-              <PlaceLink
-                className="govuk-link"
-                href={subpageHref(module, place)}
-              >
+              <Link className="govuk-link" href={subpageHref(module, place)}>
                 Szczegóły
                 <span className="govuk-visually-hidden">
                   {` ${module.hiddenLabel}, ${date}`}
                 </span>
-              </PlaceLink>
+              </Link>
             </dd>
           </div>
         );

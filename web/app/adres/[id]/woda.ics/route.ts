@@ -1,47 +1,34 @@
-import { datasetHeaders } from "@/lib/gate";
-import { TEXT_PLAIN } from "@/lib/headers";
 import { calendarResponse } from "@/lib/ics";
-import { NOINDEX } from "@/lib/indexing";
-import { movedTarget } from "@/lib/schedule";
+import { pageData, SOURCE_TAGS } from "@/lib/page-cache";
+import { placePath } from "@/lib/places";
+import { placeParams } from "@/lib/schedule";
 import { waterCalendar, waterFilename } from "@/lib/water-ics";
 import { loadWater } from "@/lib/water-load";
 
 // The water cuts at an address as a calendar file (lib/water-ics.ts), from
-// the /woda page's own loader. An address with no cut to add gets an empty
-// calendar, as a waste zone with no dates does (app/ics/[zoneId]); an
-// unknown one a 404, a renamed one its new address. Cached by the CDN for an
-// hour, as every calendar (no cron purges it): a calendar app asks again
-// within hours anyway.
+// the /woda page's own loader, prerendered for every place and re-rendered
+// with the water's and the dataset's tags, as /woda. An address with no
+// cut to add gets an empty calendar, as a waste zone with no dates does
+// (app/ics/[zoneId]); any other id is the prerendered 404 (dynamicParams =
+// false). Vercel's own cache headers apply: none of ours.
 
-// A redirect or a 404: an hour at the CDN, without stale-while-revalidate.
-const NO_STALE = "public, s-maxage=3600";
+export const dynamic = "error";
+export const dynamicParams = false;
+export const generateStaticParams = placeParams;
 
 export async function GET(
-  request: Request,
-  ctx: { params: Promise<{ id: string }> },
+  _request: Request,
+  ctx: RouteContext<"/adres/[id]/woda.ics">,
 ) {
   const { id } = await ctx.params;
-  const url = new URL(request.url);
-  const data = await loadWater(id, url.searchParams.get("nr"));
-  const moved = data ? null : await movedTarget(id, url.pathname + url.search);
-  if (moved) {
-    return new Response(null, {
-      status: 308,
-      headers: { Location: moved, ...datasetHeaders(NO_STALE) },
-    });
-  }
-  if (!data) {
-    return new Response("Nie znamy takiego adresu.", {
-      status: 404,
-      headers: { ...TEXT_PLAIN, ...datasetHeaders(NO_STALE), ...NOINDEX },
-    });
-  }
+  const read = await pageData(
+    `${placePath(id)}/woda.ics`,
+    [SOURCE_TAGS.dataset, SOURCE_TAGS.water],
+    async () => ({ now: Date.now(), data: await loadWater(id) }),
+  );
+  if (!read.data) return new Response(null, { status: 404 });
   return calendarResponse(
-    waterCalendar(data, new Date()),
-    waterFilename(data),
-    {
-      ...datasetHeaders(),
-      ...NOINDEX,
-    },
+    waterCalendar(read.data, new Date(read.now)),
+    waterFilename(read.data),
   );
 }

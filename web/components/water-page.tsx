@@ -11,10 +11,8 @@ import {
   type Water,
   waterAiNote,
   waterCalendarRefresh,
-  waterChecked,
   waterEmpty,
   waterSources,
-  waterTrace,
 } from "@/lib/water-module";
 
 // The water module's subpage, /adres/<id>/woda (lib/modules.ts), drawn by
@@ -23,9 +21,8 @@ import {
 // every planned cut still to come at this address, a day each, with its
 // hours and what is cut, then posts we could not match to addresses, as
 // links only, then the AI-read note, and the posts (or, with none, the
-// news pages) as the source with the check time. Read per request with the
-// whole page, so the cuts are those not over now, from the cron's last
-// file.
+// news pages) as the source with the freshness line: the cuts not over
+// when the page was rendered, from the cron's last file.
 
 /** The water's subpage as the outages' one shape (lib/outage-view.ts). */
 function waterPage(data: Water): OutagePage {
@@ -57,14 +54,13 @@ function waterPage(data: Water): OutagePage {
           ],
         })),
     })),
-    trace: waterTrace(data),
     others: data.notices.map((notice) => ({
       key: notice.uid,
       parts: [noticeLink(notice)],
     })),
     aiNote: empty ? null : waterAiNote(data),
     sources: waterSources(data),
-    checkedAt: waterChecked(data),
+    changedAt: data.changedAt,
   };
 }
 

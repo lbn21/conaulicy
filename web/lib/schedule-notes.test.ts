@@ -8,8 +8,6 @@ import {
   placeDescription,
   putOutLine,
   putOutNote,
-  sharedNumberNote,
-  shownNr,
   unverifiedNote,
 } from "./schedule-notes.ts";
 
@@ -92,17 +90,11 @@ test("a place's description offers dates only when the page has them", () => {
     label: "ul. Rynek, Lubaczów",
     gmina: "Lubaczów (miasto)",
     zoneId: "lubaczow-1",
-    askNumber: false,
     days: [day("2026-12-28")],
     today: "2026-12-01",
   };
   assert.match(placeDescription(place), /: ul\. Rynek, Lubaczów\. /);
   assert.match(placeDescription(place), /Najbliższe terminy/);
-  // A split street: the dates come with the house number.
-  assert.match(
-    placeDescription({ ...place, zoneId: "x", askNumber: true, days: [] }),
-    /Najbliższe terminy/,
-  );
   const none = /: ul\. Rynek, Lubaczów\. Terminów wywozu jeszcze tu nie mamy/;
   assert.match(placeDescription({ ...place, zoneId: null, days: [] }), none);
   assert.match(placeDescription({ ...place, today: "2027-01-02" }), none);
@@ -121,7 +113,6 @@ test("the waste subpage's description is its own", () => {
     label: "ul. Rynek, Lubaczów",
     gmina: "Lubaczów (miasto)",
     zoneId: "lubaczow-1",
-    askNumber: false,
     days: [day("2026-12-28")],
     today: "2026-12-01",
   };
@@ -135,71 +126,4 @@ test("the waste subpage's description is its own", () => {
       placeDescription(variant),
     );
   }
-});
-
-// As the CI fixture's views: 0972447-00470 (ul. Adama Asnyka) has one zone,
-// 0972447-90004 is split by house numbers (scripts/ci-fixture.ts).
-const asnyka = {
-  kind: "ulica" as const,
-  zoneId: "lubaczow-sektor-1",
-  nr: null,
-  askNumber: false,
-  givenNr: null,
-  invalidNr: null,
-  knownNr: false,
-};
-
-test("a number on a street with one schedule is acknowledged", () => {
-  assert.equal(
-    sharedNumberNote({ ...asnyka, givenNr: "5" }),
-    "Harmonogram jest wspólny dla całej ulicy, także dla nr 5.",
-  );
-  // As normalised by lib/house.ts: lower case, the slash kept.
-  assert.equal(
-    sharedNumberNote({ ...asnyka, givenNr: "7/22" }),
-    "Harmonogram jest wspólny dla całej ulicy, także dla nr 7/22.",
-  );
-});
-
-test("the number after the name: one the register has, or a split street's", () => {
-  assert.equal(shownNr({ nr: null, givenNr: "44", knownNr: true }), "44");
-  // Unknown to the register, or not checked: as before, none.
-  assert.equal(shownNr({ nr: null, givenNr: "44", knownNr: false }), null);
-  assert.equal(shownNr({ nr: "7a", givenNr: "7a", knownNr: false }), "7a");
-});
-
-test("no number, no note", () => {
-  assert.equal(sharedNumberNote(asnyka), null);
-});
-
-test("a split street (0972447-90004) never shows the note", () => {
-  const split = { ...asnyka, zoneId: "lubaczow-sektor-2" };
-  // The number picks its part: the page shows it after the name.
-  assert.equal(sharedNumberNote({ ...split, nr: "7a", givenNr: "7a" }), null);
-  // A number no part has: the page asks again, with the error.
-  assert.equal(
-    sharedNumberNote({
-      ...split,
-      zoneId: null,
-      askNumber: true,
-      givenNr: "42",
-    }),
-    null,
-  );
-  // No number yet: the question.
-  assert.equal(
-    sharedNumberNote({ ...split, zoneId: null, askNumber: true }),
-    null,
-  );
-});
-
-test("a village or a street without dates never shows the note", () => {
-  assert.equal(
-    sharedNumberNote({ ...asnyka, kind: "wies", givenNr: "5" }),
-    null,
-  );
-  assert.equal(
-    sharedNumberNote({ ...asnyka, zoneId: null, givenNr: "5" }),
-    null,
-  );
 });

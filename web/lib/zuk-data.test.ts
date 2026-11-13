@@ -60,6 +60,7 @@ test("no file: empty, the source unavailable, stale", () => {
     unavailable: true,
     stale: true,
     checkedAt: null,
+    changedAt: null,
   });
 });
 

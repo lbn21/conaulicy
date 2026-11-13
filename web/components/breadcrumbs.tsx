@@ -1,4 +1,4 @@
-import { PlaceLink } from "@/components/place-link";
+import Link from "next/link";
 
 export type Crumb = { href: string; label: string };
 
@@ -28,9 +28,9 @@ export function Breadcrumbs({ items }: { items: readonly Crumb[] }) {
       <ol className="govuk-breadcrumbs__list">
         {items.map(({ href, label }) => (
           <li key={href} className="govuk-breadcrumbs__list-item">
-            <PlaceLink className="govuk-breadcrumbs__link" href={href}>
+            <Link className="govuk-breadcrumbs__link" href={href}>
               {label}
-            </PlaceLink>
+            </Link>
           </li>
         ))}
       </ol>

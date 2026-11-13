@@ -294,7 +294,7 @@ test("an older reader: every post read again, four a run", async () => {
   await readsTheRest(w);
 });
 
-test("unchanged posts: no model call or places query, results kept, a new checkedAt every run", async () => {
+test("unchanged posts: no model call or places query, results kept, nothing written", async () => {
   const w = world();
   await runZuk(deps(w));
   await runZuk(deps(w));
@@ -306,46 +306,61 @@ test("unchanged posts: no model call or places query, results kept, a new checke
     w.now = new Date(NOW.getTime() + minutes * 60_000);
     const summary = await runZuk(deps(w));
     assert.equal(summary.changed, false);
-    assert.equal(w.writes.length, 1);
-    assert.equal(saved(w).checkedAt, w.now.toISOString());
-    assert.equal(saved(w).generatedAt, before.generatedAt);
-    assert.deepEqual(saved(w).active, before.active);
-    assert.deepEqual(saved(w).seen, before.seen);
+    // Only checkedAt would differ: no write (the status file has the check).
+    assert.equal(w.writes.length, 0);
+    assert.deepEqual(saved(w), before);
   }
   assert.deepEqual(w.aiCalls, []);
   assert.equal(w.placesLoads, 0);
 });
 
-/**
- * The pages' read of the file (lib/zuk-store.ts): the file itself, through
- * the Blob's CDN, never a copy Next keeps, so no run purges anything.
- */
-const pageCheckedAt = (w: World) =>
-  zukView(w.file ? parseZukFile(w.file) : null, w.now).checkedAt;
-
-test("no purge: the pages read every written run's checkedAt; after a failed one the last good run's", async () => {
+test("the pages' check time: the status file's when the file is unchanged", async () => {
   const w = world();
   await cron(w);
   await cron(w);
-  assert.equal(pageCheckedAt(w), NOW.toISOString());
-  // Unchanged, 15 minutes later: the time new.
-  w.now = new Date(NOW.getTime() + 15 * 60_000);
-  assert.equal((await (await cron(w)).json()).changed, false);
-  const latest = w.now.toISOString();
-  assert.equal(pageCheckedAt(w), latest);
-  // The source down, then the write failing: the last good time.
-  w.now = new Date(NOW.getTime() + 30 * 60_000);
-  const posts = w.posts;
-  w.posts = "down";
-  assert.equal((await cron(w)).status, 502);
-  w.posts = posts;
-  const failed = await cron(w, {
-    writeFile: async () => {
-      throw new Error("blob: 503");
-    },
-  });
-  assert.equal(failed.status, 500);
-  assert.equal(pageCheckedAt(w), latest);
+  const file = parseZukFile(w.file ?? "");
+  assert.ok(file);
+  // 70 minutes on, nothing written since: the status file's last good
+  // check keeps the page fresh, never older than the file's own.
+  const later = new Date(NOW.getTime() + 70 * 60_000);
+  const checked = new Date(NOW.getTime() + 65 * 60_000).toISOString();
+  assert.equal(zukView(file, later).stale, true);
+  const view = zukView(file, later, undefined, checked);
+  assert.equal(view.stale, false);
+  assert.equal(view.checkedAt, checked);
+  assert.equal(view.changedAt, file.generatedAt);
+  const old = zukView(file, later, undefined, "2020-01-01T00:00:00Z");
+  assert.equal(old.checkedAt, file.checkedAt);
+});
+
+test("changed: each source's content changed or not, after the runs", async () => {
+  const w = world();
+  const runs: Array<Record<string, boolean>> = [];
+  const run = () =>
+    handleZukCron(
+      new Request("https://conaulicy.pl/api/cron/zuk", {
+        headers: { authorization: `Bearer ${SECRET}` },
+      }),
+      SECRET,
+      deps(w),
+      [],
+      [{ key: IMGW_KEY, run: async () => ({ checked: true, changed: false }) }],
+      undefined,
+      (sources) => runs.push(sources),
+    );
+  // The first run writes the file; once every post is read (MAX_AI_CALLS
+  // a run), an unchanged run changes nothing.
+  for (let i = 0; i < 4; i++) {
+    w.now = new Date(NOW.getTime() + i * 15 * 60_000);
+    await run();
+  }
+  const water = waterKey(gminaLubaczow.id);
+  assert.equal(runs[0][water], true);
+  assert.deepEqual(
+    runs.slice(-2).map((r) => r[water]),
+    [false, false],
+  );
+  assert.ok(runs.every((r) => r[IMGW_KEY] === false));
 });
 
 test("an edited post is read again; not read this run, its old reading kept", async () => {

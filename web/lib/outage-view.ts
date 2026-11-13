@@ -2,7 +2,7 @@
 // whatever is cut: water (components/water-page.tsx waterPage) and power
 // (lib/power-module.ts powerPage) each fill it from their own data. Pure
 // and client-safe.
-import type { Checked, Part } from "./hub.ts";
+import type { Part } from "./hub.ts";
 
 /** A row of an outage's summary list: „Godziny”, „Gdzie”. */
 type OutageRowView = {
@@ -47,12 +47,11 @@ export type OutagePage = {
   empty: Part[] | null;
   /** A day each (Warsaw, ISO), soonest first, its outages in order. */
   days: Array<{ date: string; blocks: OutageBlock[] }>;
-  /** After the days: one left out for the house number. */
-  trace: string | null;
   /** „Inne komunikaty”: a line each; none, no section. */
   others: Array<{ key: string; parts: Part[] }>;
   /** The read-by-a-program note; null: none. */
   aiNote: string | null;
   sources: Part[][];
-  checkedAt: Checked;
+  /** When the source's data last changed (ms): the freshness line. */
+  changedAt: number | null;
 };

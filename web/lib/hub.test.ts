@@ -1,59 +1,30 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { checkedLine, freshnessLine, sourceLine } from "./hub.ts";
+import { freshnessLine, shortDayTime, sourceLine } from "./hub.ts";
 
-/** The check line, its no-break spaces as spaces (asserted below). */
-const checked = (at: Parameters<typeof checkedLine>[0]) =>
-  checkedLine(at)?.replaceAll("\u00a0", " ") ?? null;
-
-test("check time: a day alone, an instant with its Warsaw time, over midnight and DST", () => {
-  assert.equal(checked("2026-10-23"), "Sprawdziliśmy 23 października.");
+test("change time: DD.MM, HH:MM in Warsaw, over midnight and DST", () => {
   // 22:30 UTC on 31 August is already 1 September in Warsaw.
   assert.equal(
-    checked(new Date("2026-08-31T22:30:00Z")),
-    "Sprawdziliśmy 1 września 0:30.",
+    shortDayTime(Date.parse("2026-08-31T22:30:00Z")),
+    "01.09, 00:30",
   );
   assert.equal(
-    checked(new Date("2026-10-25T14:42:00Z")),
-    "Sprawdziliśmy 25 października 15:42.",
+    shortDayTime(Date.parse("2026-10-25T14:42:00Z")),
+    "25.10, 15:42",
   );
-  assert.equal(checked(null), null);
-  assert.equal(checked("2026-10-23"), "Sprawdziliśmy 23 października.");
-  assert.equal(
-    checked(new Date("2026-10-25T14:42:00Z")),
-    "Sprawdziliśmy 25 października 15:42.",
-  );
-  const line = (iso: string) => checked(new Date(iso));
+  const at = (iso: string) => shortDayTime(Date.parse(iso));
   // Summer time until 3:00 on 25 Oct: midnight is 22:00 UTC the day before.
-  assert.equal(
-    line("2026-10-24T21:59:00Z"),
-    "Sprawdziliśmy 24 października 23:59.",
-  );
-  assert.equal(
-    line("2026-10-24T22:00:00Z"),
-    "Sprawdziliśmy 25 października 0:00.",
-  );
+  assert.equal(at("2026-10-24T21:59:00Z"), "24.10, 23:59");
+  assert.equal(at("2026-10-24T22:00:00Z"), "25.10, 00:00");
   // 2:30 happens twice: CEST (0:30 UTC), then CET (1:30 UTC).
-  assert.equal(
-    line("2026-10-25T00:30:00Z"),
-    "Sprawdziliśmy 25 października 2:30.",
-  );
-  assert.equal(
-    line("2026-10-25T01:30:00Z"),
-    "Sprawdziliśmy 25 października 2:30.",
-  );
+  assert.equal(at("2026-10-25T00:30:00Z"), "25.10, 02:30");
+  assert.equal(at("2026-10-25T01:30:00Z"), "25.10, 02:30");
   // From then on, CET: midnight is 23:00 UTC.
-  assert.equal(
-    line("2026-10-25T22:59:00Z"),
-    "Sprawdziliśmy 25 października 23:59.",
-  );
-  assert.equal(
-    line("2026-10-25T23:00:00Z"),
-    "Sprawdziliśmy 26 października 0:00.",
-  );
+  assert.equal(at("2026-10-25T22:59:00Z"), "25.10, 23:59");
+  assert.equal(at("2026-10-25T23:00:00Z"), "26.10, 00:00");
 });
 
-test("source line: sources joined; the check its own line, unbroken", () => {
+test("source line: sources joined", () => {
   const link = (text: string) => ({
     href: `https://example.org/${text}`,
     text,
@@ -66,30 +37,27 @@ test("source line: sources joined; the check its own line, unbroken", () => {
     ".",
   ]);
   assert.deepEqual(sourceLine([["IMGW-PIB"]]), ["Źródło: IMGW-PIB."]);
-  // The check is its own line, its day and time never broken (t373).
-  assert.equal(
-    checkedLine(new Date("2026-10-28T14:52:00Z")),
-    "Sprawdziliśmy 28\u00a0października\u00a015:52.",
-  );
   assert.deepEqual(sourceLine([]), []);
 });
 
-test("freshness line: each module with a known check, in order, as a Polish list", () => {
-  assert.equal(
-    freshnessLine([
-      { name: "śmieci", at: new Date("2026-11-10T21:40:00Z") },
-      { name: "woda", at: new Date("2026-11-11T06:00:00Z") },
-      { name: "pogoda", at: new Date("2026-11-11T06:07:00Z") },
-    ]),
-    "Sprawdziliśmy 10\u00a0listopada: śmieci\u00a022:40; 11\u00a0listopada: woda\u00a07:00 i pogoda\u00a07:07.",
+// The line's shape, never its words: the time unbroken (no-break spaces),
+// one source unnamed, several by name in the order given, a source with
+// no change time left out.
+test("freshness line: when each live source's data last changed", () => {
+  const nov = Date.parse("2026-11-13T16:45:00Z");
+  const oct = Date.parse("2026-10-12T06:00:00Z");
+  const one = freshnessLine([{ name: null, changedAt: nov }]);
+  assert.match(one ?? "", /^[^\d;:]+ 13\.11, 17:45\.$/);
+  const several = freshnessLine([
+    { name: "pogoda", changedAt: nov },
+    { name: "śmieci", changedAt: null },
+    { name: "woda", changedAt: oct },
+  ]);
+  assert.match(
+    several ?? "",
+    /^[^\d;]+: pogoda 13\.11, 17:45; woda 12\.10, 08:00\.$/,
   );
-  assert.equal(
-    freshnessLine([
-      { name: "śmieci", at: "2026-10-23" },
-      { name: "woda", at: null },
-      { name: "pogoda", at: new Date("2026-11-11T06:07:00Z") },
-    ]),
-    "Sprawdziliśmy 23\u00a0października: śmieci; 11\u00a0listopada: pogoda\u00a07:07.",
-  );
-  assert.equal(freshnessLine([{ name: "woda", at: null }]), null);
+  assert.doesNotMatch(several ?? "", /śmieci/);
+  assert.equal(freshnessLine([{ name: "woda", changedAt: null }]), null);
+  assert.equal(freshnessLine([]), null);
 });

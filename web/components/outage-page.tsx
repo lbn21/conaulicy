@@ -97,7 +97,6 @@ function OutageDetails({ page }: { page: OutagePage }) {
           </section>
         ))
       )}
-      {page.trace && <p className="govuk-body">{page.trace}</p>}
       {page.others.length > 0 && (
         <section aria-labelledby="inne-komunikaty">
           <h2 id="inne-komunikaty" className="govuk-heading-m">
@@ -120,7 +119,7 @@ function OutageDetails({ page }: { page: OutagePage }) {
           place={page.calendar.place}
         />
       )}
-      <SourceInset sources={page.sources} at={page.checkedAt} />
+      <SourceInset sources={page.sources} changedAt={page.changedAt} />
     </>
   );
 }

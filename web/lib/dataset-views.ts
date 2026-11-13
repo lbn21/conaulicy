@@ -1,26 +1,25 @@
 // What the pages read of the dataset (lib/dataset-schema.ts), as plain
 // functions of the snapshot: lib/schedule.ts gives them the current one
 // (lib/dataset.ts), scripts/check-dataset.ts checks them against the
-// database. No I/O and no Next.js here; dates and house numbers are
-// filtered here, per call, never in a cache key.
+// database. No I/O and no Next.js here; dates are filtered here, per
+// call, never in a cache key.
 import { createHash } from "node:crypto";
 import type {
   Dataset,
   DatasetEvent,
   DatasetLocality,
   DatasetMember,
-  DatasetStreet,
 } from "./dataset-schema.ts";
 import { hasSource } from "./event-source.ts";
 import {
   gminaShortName,
   hasZone,
+  pickZone,
   placeList,
   streetLabel,
   streetName,
   UNLISTED_PREFIXES,
   villageLabel,
-  zoneByNumber,
 } from "./places.ts";
 import { byLabel, type SearchHit, type SearchIndex } from "./search.ts";
 import { FRACTIONS } from "./waste-bin.ts";
@@ -92,22 +91,6 @@ export type PlaceView = {
   /** TERYT SIMC-SYM_UL; null for a village. */
   streetId: string | null;
   zoneId: string | null;
-  /** The house number this view is for, shown after the name. */
-  nr: string | null;
-  /** A street split by house numbers, and no number that picks its zone. */
-  askNumber: boolean;
-  /** The number given on a split street when no part of it has that number. */
-  unknownNr: string | null;
-  /** The house number as given (?nr=, normalised), split street or not. */
-  givenNr: string | null;
-  /**
-   * The value given when the register has no such number at the place
-   * (lib/prg.ts isValidHouseNumber), as given; the view is then the whole
-   * place's.
-   */
-  invalidNr: string | null;
-  /** The register has givenNr at the place, so the h1 may show it. */
-  knownNr: boolean;
   /** Warsaw day this view was computed for; the page renders "dziś"/"jutro" from it. */
   today: string;
   schedulePage: string | null;
@@ -215,15 +198,11 @@ type UpcomingEvent = Parameters<typeof wasteSchedule>[0][number];
  */
 export function assemblePlaceView(
   place: Place,
-  zone: { id: string | null; split: boolean },
+  zoneId: string | null,
   upcoming: UpcomingEvent[],
   fractions: string[],
-  nr: string | null,
   today: string,
 ): PlaceView {
-  // On a split street the number picks the zone; one that picks none is
-  // set aside, and the page asks again.
-  const askNumber = zone.split && !zone.id;
   return {
     id: place.id,
     kind: place.kind,
@@ -234,15 +213,7 @@ export function assemblePlaceView(
     gmina: place.gmina,
     localityId: place.localityId,
     streetId: place.streetId ?? null,
-    zoneId: zone.id,
-    // A number only matters on a split street; elsewhere it is ignored,
-    // so the page never repeats one nobody checked.
-    nr: zone.split && !askNumber ? nr : null,
-    askNumber,
-    unknownNr: askNumber ? nr : null,
-    givenNr: nr,
-    invalidNr: null,
-    knownNr: false,
+    zoneId,
     today,
     schedulePage: place.schedulePage,
     fractions,
@@ -285,8 +256,6 @@ type Indexes = {
   villages: VillageRow[];
   streetById: Map<string, StreetRow>;
   villageById: Map<string, VillageRow>;
-  /** Every locality and street by id, retired ones too. */
-  retired: Map<string, DatasetLocality | DatasetStreet>;
   localityById: Map<string, DatasetLocality>;
   gminaById: Map<string, Dataset["gminy"][number]>;
   wasteMembers: DatasetMember[];
@@ -350,11 +319,6 @@ function indexes(ds: Dataset): Indexes {
     villages,
     streetById: new Map(streets.map((s) => [s.id, s])),
     villageById: new Map(villages.map((v) => [v.id, v])),
-    retired: new Map(
-      [...ds.localities, ...ds.streets]
-        .filter((p) => !current(p))
-        .map((p) => [p.id, p]),
-    ),
     localityById,
     gminaById,
     wasteMembers: ds.zoneMembers.filter((m) => waste.has(m.zoneId)),
@@ -374,7 +338,7 @@ function findPlace(ds: Dataset, id: string): Place | null {
   return village ? villagePlace(village) : null;
 }
 
-function wasteZoneFor(ds: Dataset, place: Place, nr: string | null) {
+function wasteZoneFor(ds: Dataset, place: Place) {
   const localityIds = [place.localityId];
   if (place.parentId) localityIds.push(place.parentId);
   const candidates = indexes(ds).wasteMembers.filter(
@@ -382,7 +346,7 @@ function wasteZoneFor(ds: Dataset, place: Place, nr: string | null) {
       (place.streetId !== undefined && m.streetId === place.streetId) ||
       (m.streetId === null && localityIds.includes(m.localityId)),
   );
-  return zoneByNumber(candidates, place, nr);
+  return pickZone(candidates, place);
 }
 
 /** A zone's events from `from` on, by start, then fraction. */
@@ -393,23 +357,22 @@ function zoneEvents(ds: Dataset, zoneId: string, from: string) {
 }
 
 /**
- * The place's view for `today` (an ISO day in Warsaw) and a house number
- * (normalised, valid for the place, or null); null: no such place.
+ * The place's view for `today` (an ISO day in Warsaw); null: no such
+ * place.
  */
 export function placeView(
   ds: Dataset,
   id: string,
-  nr: string | null,
   today: string,
 ): PlaceView | null {
   const place = findPlace(ds, id);
   if (!place) return null;
-  const zone = wasteZoneFor(ds, place, nr);
-  const upcoming = zone.id ? zoneEvents(ds, zone.id, today) : [];
-  const fractions = zone.id
-    ? fractionsOf(indexes(ds).eventsByZone.get(zone.id) ?? [])
+  const zone = wasteZoneFor(ds, place);
+  const upcoming = zone ? zoneEvents(ds, zone, today) : [];
+  const fractions = zone
+    ? fractionsOf(indexes(ds).eventsByZone.get(zone) ?? [])
     : [];
-  return assemblePlaceView(place, zone, upcoming, fractions, nr, today);
+  return assemblePlaceView(place, zone, upcoming, fractions, today);
 }
 
 /** A zone with its gmina and its events from `today` on (its ICS feed). */
@@ -471,27 +434,34 @@ export function searchIndexOf(ds: Dataset) {
 }
 
 /**
- * Every place's id, as placeView finds them, listed or not (a roundabout's
- * too), and every retired one (its page says it is gone): for proxy.ts's
- * 404 of an unknown address (/api/places).
+ * Every current place's id, as placeView finds them, listed or not (a
+ * roundabout's too): the address routes' prerendered pages. A retired
+ * place has none: a renamed one answers 308 (the build's redirects), any
+ * other the 404.
  */
 export function placeIdsOf(ds: Dataset): string[] {
-  const { streets, villages, retired } = indexes(ds);
-  return [...streets, ...villages]
-    .map(({ id }) => id)
-    .concat([...retired.keys()]);
+  const { streets, villages } = indexes(ds);
+  return [...streets, ...villages].map(({ id }) => id);
 }
 
-/** A place TERYT no longer lists and nothing replaced, or null. */
-export function retiredPlaceOf(
-  ds: Dataset,
-  id: string,
-): { id: string; name: string; kind: Place["kind"] } | null {
-  const place = indexes(ds).retired.get(id);
-  if (!place || ds.redirects[id]) return null;
-  return "prefix" in place
-    ? { id, name: streetName(place.prefix, place.name), kind: "ulica" }
-    : { id, name: place.name, kind: "wies" };
+/**
+ * The place set's hash: every current place's id and label, and every
+ * rename (old id → new id), sorted. Equal hashes, the same pages, lists
+ * and redirects: a snapshot with another set needs a new build
+ * (lib/dataset.ts, lib/dataset-sync.ts).
+ */
+export function placeSetOf(ds: Dataset): string {
+  const { streets, villages } = indexes(ds);
+  const places = [...streets.map(streetPlace), ...villages.map(villagePlace)]
+    .map(({ id, label }) => [id, label])
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  const redirects = Object.entries(ds.redirects).sort(([a], [b]) =>
+    a < b ? -1 : a > b ? 1 : 0,
+  );
+  return createHash("sha256")
+    .update(JSON.stringify({ places, redirects }))
+    .digest("hex")
+    .slice(0, 16);
 }
 
 /** The home page's examples (lib/examples.ts), by their own names. */

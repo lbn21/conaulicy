@@ -1,23 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { type Checked, checkedLine } from "./hub.ts";
-
-/** The check, as a subpage's source block says it; none: null. */
-const checkedText = (at: Checked) =>
-  checkedLine(at)?.replaceAll("\u00a0", " ") ?? null;
-
 import {
   copyCheckedAt as copy,
   NO_WARNINGS_2026_10_18,
 } from "./imgw-fixture.ts";
 import { shownWarnings, UNREADABLE } from "./imgw-shown.ts";
 import { parseFeed } from "./imgw-warnings.ts";
-import {
-  warningWhen,
-  weather,
-  weatherChecked,
-  weatherNotices,
-} from "./weather-module.ts";
+import { warningWhen, weather, weatherNotices } from "./weather-module.ts";
 
 const at = (iso: string) => Date.parse(iso);
 const none = parseFeed(JSON.parse(NO_WARNINGS_2026_10_18), () => {});
@@ -116,10 +105,7 @@ test("stale: the notice, linked to IMGW, and the warnings still shown", () => {
     ],
   ]);
   assert.equal(data.shown?.warnings.length, 1);
-  assert.equal(
-    weatherChecked(data)?.getTime(),
-    at("2026-10-25T12:59:59+01:00"),
-  );
+  assert.equal(data.checkedAt, at("2026-10-25T12:59:59+01:00"));
   // No warning: the notice alone, never „Brak ostrzeżeń”.
   const none = weather(copy("2026-10-25T12:59:59+01:00", []), now);
   assert.ok(none);
@@ -155,14 +141,8 @@ test("checked line: the last good check, warning or not", () => {
   for (const items of [undefined, none]) {
     const data = weather(copy("2026-10-25T13:52:10+01:00", items), now);
     assert.ok(data);
-    assert.equal(
-      weatherChecked(data)?.getTime(),
-      at("2026-10-25T13:52:10+01:00"),
-    );
-    assert.equal(
-      checkedText(weatherChecked(data)),
-      "Sprawdziliśmy 25 października 13:52.",
-    );
+    assert.equal(data.checkedAt, at("2026-10-25T13:52:10+01:00"));
+    assert.equal(data.changedAt, at("2026-10-25T13:52:10+01:00"));
   }
 });
 
@@ -173,6 +153,6 @@ test("the store unreadable now: the notice alone, no card, no check time", () =>
   assert.deepEqual(weatherNotices(data), [
     [[`Nie udało się teraz sprawdzić ostrzeżeń IMGW.${NOTICE_END}`, link, "."]],
   ]);
-  assert.equal(weatherChecked(data), null);
-  assert.equal(checkedText(weatherChecked(data)), null);
+  assert.equal(data.checkedAt, null);
+  assert.equal(data.changedAt, null);
 });

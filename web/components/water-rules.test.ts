@@ -3,13 +3,12 @@ import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { todayInWarsaw } from "../lib/dates.ts";
-import type { Disruption, DisruptionScope } from "../lib/disruptions.ts";
+import type { Disruption } from "../lib/disruptions.ts";
 import { onDay, days as timelineDays } from "../lib/timeline.ts";
 import type { Item } from "../lib/upcoming.ts";
 import { bothViews, testPlace, zukFile } from "../lib/water-fixture.ts";
 import { waterCalendar, waterCalendarHref } from "../lib/water-ics.ts";
 import {
-  cutWhere,
   type Water,
   water,
   waterStatus,
@@ -160,24 +159,6 @@ test("over at its end: no status, /woda, button or event once over", () => {
   assert.deepEqual(waterStatus(none), [[["Brak zapowiedzianych przerw."]]]);
 });
 
-test("over at its end: the line on a number left out goes too", () => {
-  const other = [
-    cut({
-      date: "2026-10-28",
-      start: "2026-10-28 08:00:00",
-      end: "2026-10-28 16:00:00",
-      scope: { type: "numbers", numbers: ["7"] },
-    }),
-  ];
-  const five = { ...PLACE, givenNr: "5" };
-  const before = at(other, new Date("2026-10-28T14:59:59Z"), five);
-  assert.equal(before.hiddenForNr, true);
-  assert.match(JSON.stringify(waterStatus(before)), /nie obejmuje nr 5/);
-  const after = at(other, new Date("2026-10-28T15:00:00Z"), five);
-  assert.equal(after.hiddenForNr, false);
-  assert.doesNotMatch(JSON.stringify(waterStatus(after)), /nie obejmuje/);
-});
-
 test("no end: kept until the Warsaw midnight after its day, DST days too", () => {
   for (const [date, midnight] of [
     // Back to CET at 3:00: 25 hours.
@@ -192,57 +173,4 @@ test("no end: kept until the Warsaw midnight after its day, DST days too", () =>
     assert.deepEqual(day(new Date(end - 1).toISOString()), [date], date);
     assert.deepEqual(day(midnight), [], date);
   }
-});
-
-const NOTE =
-  "Nr „999” nie ma w rejestrze adresów, więc nie wiemy, czy ta przerwa obejmuje Twój dom";
-
-test("a number not in the register: said beside a cut of only some houses", () => {
-  const invalid = { ...PLACE, invalidNr: "999" };
-  const now = new Date("2026-10-27T12:00:00Z");
-  const scopes: DisruptionScope[] = [
-    { type: "ranges", ranges: [{ from: "1", to: "15" }] },
-    { type: "numbers", numbers: ["3", "5"] },
-    { type: "unknown" },
-  ];
-  for (const scope of scopes) {
-    const some = [
-      cut({
-        date: "2026-10-28",
-        start: "2026-10-28 08:00:00",
-        end: "2026-10-28 16:00:00",
-        scope,
-      }),
-    ];
-    const data = at(some, now, invalid);
-    const where = cutWhere(data.outages[0], data.place);
-    assert.ok(where.endsWith(`. ${NOTE}`), where);
-    // On the address page, its own line: the cut is the list's.
-    assert.deepEqual(waterStatus(data), [[[`${NOTE}.`]]]);
-    assert.ok(
-      renderToStaticMarkup(createElement(WaterDetails, { data })).includes(
-        NOTE,
-      ),
-    );
-    const ics = waterCalendar(data, now)
-      .replaceAll(/\r?\n[ \t]/g, "")
-      .replaceAll("\\,", ",");
-    assert.ok(ics.includes(`DESCRIPTION:`) && ics.includes(`${NOTE}.\\n`), ics);
-    // A valid number, or none: as ever.
-    const plain = at(some, now);
-    assert.equal(
-      cutWhere(plain.outages[0], plain.place),
-      where.slice(0, -`. ${NOTE}`.length),
-    );
-  }
-  // A note: only some houses as well.
-  const noted = at(
-    [cut({ date: "2026-10-28", note: "zasilane z ujęcia" })],
-    now,
-    invalid,
-  );
-  assert.ok(cutWhere(noted.outages[0], noted.place).endsWith(NOTE));
-  // The whole street, certain: nothing to say.
-  const whole = at([cut({ date: "2026-10-28" })], now, invalid);
-  assert.equal(cutWhere(whole.outages[0], whole.place), "cała ulica Próbna");
 });

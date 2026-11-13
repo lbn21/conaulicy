@@ -2,10 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   hasZone,
-  isSplitStreet,
   localityAnchor,
   localitySearchLabel,
-  movedPath,
   pickZone,
   placeList,
   scheduleName,
@@ -14,8 +12,6 @@ import {
   terytName,
   titleLabel,
   villageLabel,
-  type ZoneCandidate,
-  zoneByNumber,
 } from "./places.ts";
 
 test("village parts name their village, villages their gmina", () => {
@@ -94,11 +90,11 @@ test("pickZone: street entry, then own locality, then the parent village", () =>
   );
 });
 
-test("hasZone: own, locality's, village's or a split street's parts", () => {
+test("hasZone: own, locality's or village's", () => {
   const members = [
     { zoneId: "z1", localityId: "L", streetId: "L-1" },
     { zoneId: "z2", localityId: "V", streetId: null },
-    { zoneId: "z3", localityId: "L", streetId: "L-2", parity: "odd" as const },
+    { zoneId: "z3", localityId: "L", streetId: "L-2" },
   ];
   const street = (streetId: string) => ({
     localityId: "L",
@@ -122,128 +118,6 @@ test("a schedule link names who publishes it", () => {
     "harmonogram Urzędu Gminy Lubaczów",
   );
   assert.equal(scheduleName("Oleszyce (gmina)"), "harmonogram gminy Oleszyce");
-});
-
-test("pickZone: a split street needs the house number", () => {
-  const even = {
-    zoneId: "z-even",
-    localityId: "L",
-    streetId: "L-1",
-    houseFrom: null,
-    houseTo: null,
-    parity: "even" as const,
-  };
-  const odd = { ...even, zoneId: "z-odd", parity: "odd" as const };
-  const lowOdd = { ...odd, zoneId: "z-low", houseTo: "9" };
-  const town = { zoneId: "z-town", localityId: "L", streetId: null };
-  const street = { localityId: "L", parentId: null, streetId: "L-1" };
-
-  assert.equal(isSplitStreet([even, odd], street), true);
-  assert.equal(isSplitStreet([town], street), false);
-  // No number: no guess, not even the town's zone.
-  assert.equal(pickZone([even, odd, town], street), null);
-  assert.equal(pickZone([even, odd], { ...street, nr: "12a" }), "z-even");
-  assert.equal(pickZone([even, odd], { ...street, nr: "7/22" }), "z-odd");
-  // A range with a bound: odd numbers up to 9.
-  assert.equal(pickZone([lowOdd, even], { ...street, nr: "7" }), "z-low");
-  // Not covered by any range: the town's zone, if there is one.
-  assert.equal(
-    pickZone([lowOdd, even, town], { ...street, nr: "11" }),
-    "z-town",
-  );
-  assert.equal(pickZone([lowOdd, even], { ...street, nr: "11" }), null);
-  // A number on a street that is not split changes nothing.
-  assert.equal(pickZone([town], { ...street, nr: "12" }), "z-town");
-});
-
-test("zoneByNumber: a split street's ranges, their bounds and letters", () => {
-  const part = (
-    zoneId: string,
-    houseFrom: string | null,
-    houseTo: string | null,
-  ) => ({
-    zoneId,
-    localityId: "L",
-    streetId: "L-1",
-    houseFrom,
-    houseTo,
-    parity: null,
-  });
-  // 1–10, 10a–20, 21 and up; 20a lies in none of them.
-  const ranges: ZoneCandidate[] = [
-    part("z-low", null, "10"),
-    part("z-mid", "10a", "20"),
-    part("z-high", "21", null),
-  ];
-  const town = { zoneId: "z-town", localityId: "L", streetId: null };
-  const street = { localityId: "L", parentId: null, streetId: "L-1" };
-  const zone = (nr: string | null, candidates = ranges) =>
-    zoneByNumber(candidates, street, nr);
-
-  assert.deepEqual(zone(null), { id: null, split: true });
-  for (const [nr, id] of [
-    ["1", "z-low"],
-    ["7/22", "z-low"],
-    ["10", "z-low"],
-    ["10a", "z-mid"],
-    ["12", "z-mid"],
-    ["12a", "z-mid"],
-    ["20", "z-mid"],
-    ["21", "z-high"],
-    ["21b", "z-high"],
-    ["9999", "z-high"],
-  ]) {
-    assert.deepEqual(zone(nr), { id, split: true }, nr);
-  }
-  // Outside every range: none, or the town's zone if there is one.
-  assert.deepEqual(zone("20a"), { id: null, split: true });
-  assert.deepEqual(zone("20a", [...ranges, town]), {
-    id: "z-town",
-    split: true,
-  });
-});
-
-test("zoneByNumber: odd and even sides, one with a bound", () => {
-  const even = {
-    zoneId: "z-even",
-    localityId: "L",
-    streetId: "L-1",
-    houseFrom: "2",
-    houseTo: null,
-    parity: "even" as const,
-  };
-  const odd = {
-    ...even,
-    zoneId: "z-odd",
-    houseFrom: "1",
-    houseTo: "9",
-    parity: "odd" as const,
-  };
-  const street = { localityId: "L", parentId: null, streetId: "L-1" };
-  for (const [nr, id] of [
-    ["1", "z-odd"],
-    ["9", "z-odd"],
-    ["9a", null],
-    ["11", null],
-    ["2", "z-even"],
-    ["12a", "z-even"],
-    ["12/14", "z-even"],
-    ["100", "z-even"],
-  ] as const) {
-    assert.deepEqual(
-      zoneByNumber([even, odd], street, nr),
-      { id, split: true },
-      nr,
-    );
-  }
-  // A street that is not split: its zone, whatever the number.
-  const whole = { zoneId: "z-whole", localityId: "L", streetId: "L-1" };
-  for (const nr of [null, "1", "12a"]) {
-    assert.deepEqual(zoneByNumber([whole], street, nr), {
-      id: "z-whole",
-      split: false,
-    });
-  }
 });
 
 test("/ulice lists the town by letter in Polish order, villages with their streets", () => {
@@ -327,25 +201,4 @@ test("a street's name in TERYT's order: NAZWA_2, then NAZWA_1", () => {
     streetName("os.", terytName("Osiedle Mickiewicza", null)),
     "Osiedle Mickiewicza",
   );
-});
-
-test("a moved place: every address under the old id, query kept", () => {
-  const move = (path: string) =>
-    movedPath(path, "0972447-99999", "0972447-00470");
-  assert.equal(move("/adres/0972447-99999"), "/adres/0972447-00470");
-  assert.equal(
-    move("/adres/0972447-99999?nr=7/22"),
-    "/adres/0972447-00470?nr=7/22",
-  );
-  assert.equal(
-    move("/adres/0972447-99999/harmonogram.pdf?nr=12"),
-    "/adres/0972447-00470/harmonogram.pdf?nr=12",
-  );
-  assert.equal(
-    move("/adres/0972447-99999/smieci?nr="),
-    "/adres/0972447-00470/smieci?nr=",
-  );
-  // Only that id: never a longer one, nor another page.
-  assert.equal(move("/adres/0972447-999990"), null);
-  assert.equal(move("/ulice"), null);
 });

@@ -181,13 +181,7 @@ function worstPickups(month: string) {
 const ZONES: Array<{
   id: string;
   name: string;
-  members: Array<{
-    localityId: string;
-    streetId?: string;
-    houseFrom?: string;
-    houseTo?: string;
-    parity?: "even" | "odd";
-  }>;
+  members: Array<{ localityId: string; streetId?: string }>;
   rule: Rule;
   /** Only the three months before this one: a schedule that has ended. */
   ended?: true;
@@ -202,15 +196,6 @@ const ZONES: Array<{
         localityId: "0972447",
         streetId: `0972447-${sym}`,
       })),
-      // A made-up split street: even 2–40 here, odd ones in sektor 2, and
-      // no zone for even numbers above 40.
-      {
-        localityId: "0972447",
-        streetId: "0972447-90004",
-        houseFrom: "2",
-        houseTo: "40",
-        parity: "even",
-      },
     ],
     rule: {
       weekday: 1,
@@ -225,7 +210,7 @@ const ZONES: Array<{
     id: "waste:miasto-s2",
     name: "Lubaczów, sektor 2",
     members: [
-      { localityId: "0972447", streetId: "0972447-90004", parity: "odd" },
+      { localityId: "0972447", streetId: "0972447-90004" },
       { localityId: "0972447", streetId: "0972447-90005" },
       { localityId: "0972447", streetId: "0972447-26555" },
     ],

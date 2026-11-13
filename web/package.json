@@ -9,7 +9,7 @@
   "scripts": {
     "predev": "node scripts/brand-assets.ts",
     "dev": "next dev",
-    "prebuild": "node scripts/brand-assets.ts",
+    "prebuild": "node scripts/brand-assets.ts && node --import ./scripts/lib/server-only.mjs scripts/dataset-build.ts",
     "build": "next build",
     "budget": "node scripts/check-bundle.mjs",
     "check:html": "npm run build && node scripts/check-html.mjs",
@@ -19,7 +19,6 @@
     "sources:pull": "node scripts/sources-pull.ts",
     "config:sync": "node scripts/config-sync.ts",
     "zuk:places": "node scripts/zuk-places-snapshot.ts",
-    "prg:update": "node scripts/prg-update.ts",
     "config:check": "node scripts/config-sync.ts --check",
     "check:perf": "npm run build && node scripts/check-perf.mjs",
     "start": "next start",
@@ -45,7 +44,7 @@
     "dataset:publish": "node --env-file-if-exists=.env.local scripts/dataset.ts publish",
     "dataset:list": "node --env-file-if-exists=.env.local scripts/dataset.ts list",
     "dataset:rollback": "node --env-file-if-exists=.env.local scripts/dataset.ts rollback",
-    "test": "node --import ./scripts/lib/no-network.mjs --import ./scripts/lib/server-only.mjs --import tsx --test \"lib/**/*.test.ts\" \"scripts/**/*.test.ts\" \"components/**/*.test.ts\" proxy.test.ts"
+    "test": "node --import ./scripts/lib/no-network.mjs --import ./scripts/lib/server-only.mjs --import tsx --test \"lib/**/*.test.ts\" \"scripts/**/*.test.ts\" \"components/**/*.test.ts\""
   },
   "dependencies": {
     "@leeoniya/ufuzzy": "1.0.19",

@@ -7,6 +7,8 @@ import { BACKGROUND_COLOR, THEME_COLOR } from "@/lib/theme";
 // full-bleed plate for launchers that mask (maskable 512), drawn from the
 // palette by scripts/brand-assets.ts (not in git). id and scope "/": the
 // app's identity stays the same if start_url ever changes.
+export const dynamic = "error";
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",

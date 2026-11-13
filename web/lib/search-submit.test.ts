@@ -10,11 +10,11 @@ test("one clear place, typed or picked: straight to its page", () => {
   for (const [q, href] of [
     ["Rynek", "/adres/p239"],
     ["Piłsudskiego", "/adres/p142"],
-    ["asnyka 12", "/adres/p062?nr=12"],
+    ["asnyka 12", "/adres/p062"],
     // A picked suggestion's text, also with a number typed after it.
     ["ul. Adama Mickiewicza, Lubaczów", "/adres/p063"],
-    ["ul. Rynek, Lubaczów 5", "/adres/p239?nr=5"],
-    ["ul. Adama Asnyka 12, Lubaczów", "/adres/p062?nr=12"],
+    ["ul. Rynek, Lubaczów 5", "/adres/p239"],
+    ["ul. Adama Asnyka 12, Lubaczów", "/adres/p062"],
   ]) {
     assert.equal(placeTarget(index, q), href, q);
   }

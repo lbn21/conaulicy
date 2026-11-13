@@ -64,6 +64,8 @@ export type Power = {
   shown: boolean;
   /** The last good check (ms); null: the store could not be read now. */
   checkedAt: number | null;
+  /** When PGE's items last changed (ms); null: unknown. */
+  changedAt: number | null;
 };
 
 const LOCALITY = new Map(ZUK_PLACES.localities.map((l) => [l.id, l.name]));
@@ -144,6 +146,7 @@ export function power(
       notice: `Nie udało się teraz sprawdzić ${POWER_SUBJECT}.`,
       shown: false,
       checkedAt: null,
+      changedAt: null,
     };
   const shown = checkAge(copy.checkedAt, now) !== "too-old";
   const cuts = shown
@@ -158,6 +161,7 @@ export function power(
     notice: liveNotice("danych PGE", copy.checkedAt, now, live),
     shown,
     checkedAt: copy.checkedAt,
+    changedAt: copy.changedAt,
   };
 }
 
@@ -278,11 +282,10 @@ export function powerPage(data: Power): OutagePage {
         ];
       }),
     })),
-    trace: null,
     others: [],
     aiNote: null,
     sources: powerSources(),
-    checkedAt: powerChecked(data),
+    changedAt: data.changedAt,
   };
 }
 
@@ -290,11 +293,6 @@ export function powerPage(data: Power): OutagePage {
 export const powerSources = (): Part[][] => [
   [{ href: PGE_PAGE, text: PGE_NAME }],
 ];
-
-/** The last good check of PGE; none when unknown. */
-export function powerChecked(data: Power): Date | null {
-  return data.checkedAt === null ? null : new Date(data.checkedAt);
-}
 
 /** /prad's description: the place, and whose data it is. */
 export const powerDescription = (place: PlaceView) =>

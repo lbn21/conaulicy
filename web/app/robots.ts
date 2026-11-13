@@ -2,9 +2,10 @@ import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/config.generated";
 import { indexable } from "@/lib/indexing";
 
-// SEO and backlink crawlers: no use to residents, and each fetch of an
-// address page is a function invocation (SE Ranking's bot made
-// 22.6k on 6–7 Nov 2026 re-fetching /adres/*/woda).
+// SEO and backlink crawlers: no use to residents (SE Ranking's bot made
+// 22.6k requests on 6–7 Nov 2026 re-fetching /adres/*/woda).
+
+export const dynamic = "error";
 export const BLOCKED_BOTS = [
   "SERankingBacklinksBot",
   "AhrefsBot",
@@ -17,7 +18,7 @@ export const BLOCKED_BOTS = [
   "Barkrowler",
 ];
 
-// While gated, proxy.ts answers /robots.txt itself (Disallow: /).
+// A build that is not indexable (lib/indexing.ts) closes everything.
 export default function robots(): MetadataRoute.Robots {
   if (!indexable()) {
     return { rules: { userAgent: "*", disallow: "/" } };

@@ -289,6 +289,11 @@ export type ZukData = {
   /** Unavailable, or last checked more than STALE_MS ago. */
   stale: boolean;
   checkedAt: string | null;
+  /**
+   * When what the pages read last changed (the file's generatedAt), which
+   * is also the changing run's id (lib/live-refresh.ts); null: no file.
+   */
+  changedAt: string | null;
 };
 
 const dayAndPlace = (d: Disruption) =>
@@ -334,6 +339,8 @@ export function zukView(
   file: ZukFile | null,
   now: Date,
   source: WaterSource = GMINA,
+  /** The last good check (status/checks.json), when later than the file's. */
+  lastCheck: string | null = null,
 ): ZukData {
   if (!file)
     return {
@@ -342,6 +349,7 @@ export function zukView(
       unavailable: true,
       stale: true,
       checkedAt: null,
+      changedAt: null,
     };
   const today = todayInWarsaw(now);
   const from = (post: StoredPost) => ({
@@ -406,11 +414,18 @@ export function zukView(
     if (!shown) continue;
     notices.push(notice(post));
   }
+  // The file is written only when it changed (lib/zuk-cron.ts): every good
+  // run's check is in the status file.
+  const checkedAt =
+    lastCheck && Date.parse(lastCheck) > Date.parse(file.checkedAt)
+      ? lastCheck
+      : file.checkedAt;
   return {
     disruptions,
     notices,
     unavailable: false,
-    stale: now.getTime() - Date.parse(file.checkedAt) > STALE_MS,
-    checkedAt: file.checkedAt,
+    stale: now.getTime() - Date.parse(checkedAt) > STALE_MS,
+    checkedAt,
+    changedAt: file.generatedAt,
   };
 }

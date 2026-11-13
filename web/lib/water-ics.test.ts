@@ -14,17 +14,10 @@ import {
   NOW,
   POST_39885,
   POST_39885_URL as POST_URL,
-  SOBIESKIEGO_RANGE,
-  sobieskiego,
   storedPost,
   testPlace,
 } from "./water-fixture.ts";
-import {
-  calendarCuts,
-  waterCalendar,
-  waterCalendarHref,
-  waterFilename,
-} from "./water-ics.ts";
+import { calendarCuts, waterCalendar, waterCalendarHref } from "./water-ics.ts";
 import { water } from "./water-module.ts";
 import type { StoredPost } from "./zuk-data.ts";
 
@@ -215,21 +208,7 @@ test("no cut here: an empty calendar, as a waste zone with no dates", () => {
   assert.equal(events(waterCalendar(none, NOW)), 0);
 });
 
-test("the house number: in the place, the file name and the page link", () => {
-  const data = at([post()], { ...ZUKI, givenNr: "12" });
-  const ics = waterCalendar(data, NOW);
-  assert.ok(lines(ics).includes("LOCATION:ul. Żuki 12\\, Lubaczów"));
-  assert.equal(waterFilename(data), "woda-ul-zuki-12-lubaczow.ics");
-  const page = `${ZUKI_PAGE}?nr=12`;
-  assert.equal(page, "https://conaulicy.pl/adres/0972447-26555/woda?nr=12");
-  assert.ok(
-    value(ics, "DESCRIPTION")[0].endsWith(
-      `\\nSprawdź\\, czy przerwa jest aktualna: ${page}`,
-    ),
-  );
-});
-
-test("a streetless village with a house number: the link keeps ?nr=, folded", () => {
+test("a streetless village: the page link, folded", () => {
   const opaka = testPlace({
     id: "0606317",
     kind: "wies",
@@ -237,9 +216,8 @@ test("a streetless village with a house number: the link keeps ?nr=, folded", ()
     label: "Opaka",
     localityId: "0606317",
     streetId: null,
-    givenNr: "105",
   });
-  // 39885: Opaka „od numeru 104 do 110” on 27 Oct; 105 is inside.
+  // 39885: Opaka „od numeru 104 do 110” on 27 Oct.
   const data = at([post()], opaka);
   const cuts = calendarCuts(data).filter(
     (cut) => cut.place.localityId === "0606317",
@@ -248,8 +226,8 @@ test("a streetless village with a house number: the link keeps ?nr=, folded", ()
   assert.equal(cuts[0].date, "2026-10-27");
   const ics = waterCalendar(data, NOW);
   assert.equal(events(ics), 1);
-  const page = `${SITE_URL}/adres/0606317/woda?nr=105`;
-  assert.equal(page, "https://conaulicy.pl/adres/0606317/woda?nr=105");
+  const page = `${SITE_URL}/adres/0606317/woda`;
+  assert.equal(page, "https://conaulicy.pl/adres/0606317/woda");
   const check = `Sprawdź\\, czy przerwa jest aktualna: ${page}`;
   assert.ok(value(ics, "DESCRIPTION")[0].endsWith(`\\n${check}`));
   assert.ok(value(ics, "DESCRIPTION")[1].endsWith(`.\\n${check}`));
@@ -282,14 +260,10 @@ test("house numbers in a village with streets: the village's UID, the range as w
   );
 });
 
-test("the button's link: the file, with the house number as given", () => {
+test("the button's link: the file", () => {
   assert.equal(
     waterCalendarHref(at([post()])),
     "/adres/0972447-26555/woda.ics",
-  );
-  assert.equal(
-    waterCalendarHref(at([post()], { ...ZUKI, givenNr: "12" })),
-    "/adres/0972447-26555/woda.ics?nr=12",
   );
 });
 
@@ -303,37 +277,6 @@ test("no dated cut, no button: an emergency, no hours, a Notice, none", () => {
     water({}, ZUKI),
   ])
     assert.equal(waterCalendarHref(data), null);
-});
-
-test("a house number outside a cut's range: no event; inside: the UID with the number", () => {
-  const [first] = post().items;
-  const sob = post({ items: [{ ...first, ...SOBIESKIEGO_RANGE }] });
-  const outside = at([sob], sobieskiego("5"));
-  assert.equal(events(waterCalendar(outside, NOW)), 0);
-  assert.equal(waterCalendarHref(outside), null);
-  const inside = waterCalendar(at([sob], sobieskiego("30")), NOW);
-  assert.equal(events(inside), 1);
-  assert.deepEqual(value(inside, "UID"), [
-    `woda-${POST_39885}-0606116-0606116-20431-nr-30-${first.date}@conaulicy.pl`,
-  ]);
-  // A streetless village's range: 39885's Załuże, Podłęże 44–92.
-  const zaluze = (givenNr: string) =>
-    waterCalendar(
-      at([post()], {
-        ...ZUKI,
-        id: "0606464",
-        kind: "wies",
-        name: "Załuże",
-        localityId: "0606464",
-        streetId: null,
-        givenNr,
-      }),
-      NOW,
-    );
-  assert.deepEqual(value(zaluze("50"), "DTSTART;TZID=Europe/Warsaw"), [
-    "20261028T080000",
-  ]);
-  assert.equal(events(zaluze("10")), 0);
 });
 
 test("an MZGKiM cut: its own UID, its post as the source and the note", () => {
@@ -373,11 +316,7 @@ test("an MZGKiM cut: its own UID, its post as the source and the note", () => {
 
 // A village's grouped streets, a part's village, the note's dash.
 
-const villagePlace = (
-  id: string,
-  name: string,
-  givenNr: string | null = null,
-) =>
+const villagePlace = (id: string, name: string) =>
   testPlace({
     id,
     kind: "wies",
@@ -385,7 +324,6 @@ const villagePlace = (
     label: name,
     localityId: id,
     streetId: null,
-    givenNr,
   });
 
 test("a village's streets in one post and hours: one event, its own UID", () => {
@@ -443,15 +381,6 @@ test("a part: its village's partial cut, the village's UID, a line to check; the
     value(ics, "DESCRIPTION")[0]?.split("\\n").slice(0, 2).join("\n"),
     "Załuże: Podłęże od numeru 44 do numeru 92.\nCzarne należy do miejscowości Załuże\\, a komunikat dotyczy tylko jej części. Sprawdź\\, czy obejmuje Twój dom.",
   );
-  const zaluze = (nr: string) =>
-    waterCalendar(at([post()], villagePlace("0606464", "Załuże", nr)), NOW);
-  // With a number: its own UID, so it never replaces the whole village's.
-  assert.deepEqual(value(zaluze("44"), "UID"), [
-    "woda-39885-0606464-all-nr-44-2026-10-28@conaulicy.pl",
-  ]);
-  assert.deepEqual(value(zaluze("44"), "UID"), value(zaluze("44"), "UID"));
-  assert.doesNotMatch(zaluze("44"), /należy do miejscowości/);
-  assert.equal(events(zaluze("43")), 0);
   // Smolińce: Lisie Jamy's whole cuts, no line to check.
   assert.doesNotMatch(
     waterCalendar(at([post()], villagePlace("0606257", "Smolińce")), NOW),

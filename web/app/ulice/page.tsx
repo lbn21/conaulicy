@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import { cacheLife, cacheTag } from "next/cache";
 import Link from "next/link";
 import { PageHead } from "@/components/page-head";
-import { PlaceLink } from "@/components/place-link";
-import { DATASET } from "@/lib/headers";
+import { pageData, SOURCE_TAGS } from "@/lib/page-cache";
 import { type ListedPlace, localityAnchor, placePath } from "@/lib/places";
 import { searchIndex } from "@/lib/schedule";
 import { pageMetadata } from "@/lib/share";
@@ -23,22 +21,22 @@ export const metadata: Metadata = pageMetadata({
  * under it if they have any. Its only client JS is PlaceLink's prefetch on
  * intent (components/place-link.tsx).
  *
- * Static: from the cached search index, as the sitemap, the same places,
- * cached until the next import (tag `dataset`, POST /api/revalidate) or
- * deploy.
+ * Prerendered from the search index, as the sitemap, the same places,
+ * re-rendered with the dataset (its tag, lib/page-cache.ts).
  */
 export default async function AllPlacesPage() {
-  "use cache";
-  cacheLife("max");
-  cacheTag(DATASET);
-  const { list } = await searchIndex();
+  const list = await pageData(
+    ALL_PLACES.path,
+    [SOURCE_TAGS.dataset],
+    async () => (await searchIndex()).list,
+  );
   const town = list.townId ? localityAnchor(list.townId) : undefined;
   // Every place alike: one without a waste schedule still has its page,
   // its water and IMGW's warnings.
   const Place = ({ place }: { place: ListedPlace }) => (
-    <PlaceLink href={placePath(place.id)} className="govuk-link">
+    <Link href={placePath(place.id)} className="govuk-link">
       {place.label}
-    </PlaceLink>
+    </Link>
   );
 
   return (

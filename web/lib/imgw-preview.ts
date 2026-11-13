@@ -1,34 +1,33 @@
-// Preview and development only: ?imgw= on an address page shows
-// IMGW warnings from the mock (lib/imgw-mock.ts), so a Preview can be
-// reviewed without setting IMGW_WARNINGS_URL. Never in production: there
-// the parameter is not even allowed (lib/clean-query.ts), and the mock
-// refuses to answer.
-//   ?imgw=2            one warning, level 2, in force since an hour ago
-//   ?imgw=3,1          two: ours at level 3, one more at level 1
-//   ?imgw=1,upcoming   one, level 1, starting at the next 10:00
-// Levels 1-3, at most three; `upcoming` or `night` moves the start
-// (lib/imgw-mock.ts STARTS).
+// Preview and development only: /podglad/imgw/<scenario> shows IMGW's
+// warnings from the mock (lib/imgw-mock.ts) as the address page draws
+// them, so a Preview can be reviewed, and CI's check-warnings can check
+// every state, on the static build. Never in production: there the route
+// has no pages (its generateStaticParams is empty), so every scenario is
+// the prerendered 404, and the mock refuses to answer anyway.
 
-/** The query parameter. */
-export const IMGW_PREVIEW = "imgw";
+/** Each scenario's mock upstream (lib/imgw-mock.ts STARTS, levels 1-3). */
+export const IMGW_SCENARIOS: Record<string, string> = {
+  "l1-active": "mock:1809?level=1",
+  "l1-upcoming": "mock:1809?level=1&start=upcoming",
+  "l2-active": "mock:1809?level=2",
+  "l2-upcoming": "mock:1809?level=2&start=upcoming",
+  "l3-active": "mock:1809?level=3",
+  "l3-upcoming": "mock:1809?level=3&start=upcoming",
+  "two-l2-l3": "mock:1809?level=2&also=3",
+  "three-l1-l2-l3": "mock:1809?level=1&also=2,3",
+  "cross-day-upcoming": "mock:1809?level=2&start=night",
+  // The last good check over an hour back, and over three hours.
+  stale: "mock:1809?level=2&checkedAgo=70",
+  "stale-none": "mock:none?checkedAgo=70",
+  "too-old": "mock:1809?level=2&checkedAgo=190",
+  // The store cannot be read: an expected error, rendered as a notice.
+  unreadable: "mock:1809?fail=500",
+};
 
-/** Whether this deployment may read it: anything but production. */
-export const imgwPreviewAllowed = (
+/** The route's pages: every scenario, none in production. */
+export function imgwPreviewParams(
   env: Record<string, string | undefined> = process.env,
-) => env.VERCEL_ENV !== "production";
-
-/** The mock's IMGW_WARNINGS_URL for ?imgw=, or null: none, or not allowed. */
-export function imgwPreview(
-  value: unknown,
-  env: Record<string, string | undefined> = process.env,
-): string | null {
-  if (!imgwPreviewAllowed(env) || typeof value !== "string") return null;
-  const tokens = value.split(",");
-  const levels = tokens.filter((t) => /^[123]$/.test(t)).slice(0, 3);
-  if (levels.length === 0) return null;
-  const query = new URLSearchParams({ level: levels[0] });
-  if (levels.length > 1) query.set("also", levels.slice(1).join(","));
-  const start = tokens.find((t) => t === "upcoming" || t === "night");
-  if (start) query.set("start", start);
-  return `mock:1809?${query}`;
+): Array<{ scenario: string }> {
+  if (env.VERCEL_ENV === "production") return [];
+  return Object.keys(IMGW_SCENARIOS).map((scenario) => ({ scenario }));
 }
