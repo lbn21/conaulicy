@@ -402,8 +402,8 @@ $app-flow: ".govuk-body, .govuk-body-s, .govuk-list, .govuk-heading-m, .govuk-he
 @include govuk-media-query($from: tablet) { :is(#{$app-flow}) { margin-bottom: govuk-spacing(5); } }
 
 // The home page's hero (t390, mockup D, Jakub's OK): the full width of the
-// window, so the layout's width container lets go of it on this page only
-// (:has), and the hero and the page under it hold their own. The brand's
+// window, outside any width container (every page holds its own, t398), the
+// hero's and the page's under it their own. The brand's
 // gradient (PRIMARY to shade-50) with a glow (tint-25) and a dotted
 // texture; the accent (ACCENT, lib/palette.ts) on the h1's last word and
 // the check icons. The glow drifts once there and back, never the h1, and
@@ -411,7 +411,6 @@ $app-flow: ".govuk-body, .govuk-body-s, .govuk-list, .govuk-heading-m, .govuk-he
 $app-white: govuk-colour("white");
 $app-soft: map.get($app-palette, "tint-80");
 @property --app-x { syntax: "<percentage>"; inherits: false; initial-value: 30%; }
-.govuk-width-container:has(> #main-content > .app-hero) { max-width: none; margin-inline: 0; }
 .app-hero { margin: 0 0 govuk-spacing(6); padding: govuk-spacing(6) 0 govuk-spacing(7); color: $app-white; background: radial-gradient(circle, color.change($app-white, $alpha: .06) $app-hair, transparent $app-hair * 1.5) 0 0 #{"/"} govuk-spacing(4) govuk-spacing(4), radial-gradient(55% 85% at var(--app-x) 0%, color.change(map.get($app-palette, "tint-25"), $alpha: .5), transparent 70%), radial-gradient(50% 80% at calc(100% - var(--app-x)) 100%, color.change($app-header, $alpha: .6), transparent 75%), linear-gradient(135deg, map.get($app-palette, "primary"), map.get($app-palette, "shade-25") 55%, $app-header); }
 .app-hero :is(.govuk-heading-xl, .govuk-body-l, .govuk-heading-m, .govuk-body-s) { color: inherit; }
 .app-hero__title { margin-bottom: govuk-spacing(4); text-wrap: balance; }

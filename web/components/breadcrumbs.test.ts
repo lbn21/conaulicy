@@ -82,7 +82,7 @@ test("address pages: home, the place's list, the address on a subpage", () => {
 test("the layout: the breadcrumbs slot, then the one <main>", () => {
   assert.match(
     source("app/layout.tsx"),
-    /<div className="govuk-width-container">\s*\{breadcrumbs\}\s*<main\s+className="govuk-main-wrapper govuk-!-padding-top-0"\s+id="main-content"\s*>\s*\{children\}\s*<\/main>\s*<\/div>/,
+    /<div className="govuk-width-container">\{breadcrumbs\}<\/div>\s*<main\s+className="govuk-main-wrapper govuk-!-padding-top-0"\s+id="main-content"\s*>\s*\{children\}\s*<\/main>/,
   );
 });
 

@@ -24,84 +24,87 @@ const TERYT_PAGE = "https://eteryt.stat.gov.pl/";
 
 export default function AboutPage() {
   return (
-    <div className="govuk-grid-row">
-      <div className="govuk-grid-column-two-thirds">
-        <PageHead
-          title={ABOUT.text}
-          lead="conaulicy.pl to prosta strona dla Lubaczowa i okolicznych wsi: wpisujesz ulicę albo wieś i od razu widzisz, kiedy przyjedzie śmieciarka, czy zapowiedziano przerwę w dostawie wody lub prądu i czy IMGW ostrzega przed złą pogodą."
-        />
-        <p className="govuk-body">
-          Przerwy w dostawie wody bierzemy z komunikatów, które gmina ogłasza w
-          swoich{" "}
-          <a href={GMINA_NEWS} className="govuk-link">
-            aktualnościach na gminalubaczow.pl
-          </a>
-          , a w Lubaczowie także z{" "}
-          <a href={MZGKIM_NEWS} className="govuk-link">
-            komunikatów MZGKiM
-          </a>
-          .
-        </p>
-        <p className="govuk-body">
-          Przerwy w dostawie prądu, planowane wyłączenia i awarie, bierzemy od{" "}
-          <a href={PGE_PAGE} className="govuk-link">
-            PGE Dystrybucja
-          </a>
-          . Pokazujemy je tak, jak podaje je PGE, razem z numerami domów.
-        </p>
-        <p className="govuk-body">
-          Ostrzeżenia pogodowe IMGW dla powiatu lubaczowskiego pokazujemy na
-          stronie adresu, nad „Najbliższymi 7 dniami”, każde z opisem, czego się
-          spodziewać. Gdy ostrzeżeń nie ma, nic tam nie wyświetlamy. Źródło i
-          godzinę, kiedy je sprawdziliśmy, podajemy na dole strony adresu.
-        </p>
-        <p className="govuk-body">
-          Strona jest darmowa i niekomercyjna. Nie ma na niej reklam ani kont.
-        </p>
-        <p className="govuk-body">
-          Zrobił ją Jakub Marciniszyn dla mieszkańców Lubaczowa i gminy.
-        </p>
-        <p className="govuk-body">
-          Terminy wywozu i przerwy w dostawie wody odczytujemy automatycznie, z
-          pomocą sztucznej inteligencji, z harmonogramów i komunikatów miasta
-          Lubaczów i gminy Lubaczów. Potem je sprawdzamy, a dopóki tego nie
-          zrobimy, piszemy o tym przy adresie. Źródło i datę, kiedy je
-          sprawdziliśmy, podajemy na stronie każdego tematu: śmieci, wody i
-          prądu.
-        </p>
-        <p className="govuk-body">
-          Nazwy ulic i miejscowości bierzemy z{" "}
-          <a href={TERYT_PAGE} className="govuk-link">
-            rejestru TERYT (GUS)
-          </a>
-          .
-        </p>
-        <p className="govuk-body">
-          Wpisany numer domu porównujemy z{" "}
-          <a href={PRG_PAGE} className="govuk-link">
-            państwowym rejestrem adresów (PRG, GUGiK)
-          </a>
-          .
-        </p>
-        <p className="govuk-body">
-          Nie jesteśmy urzędem. Gdyby coś się nie zgadzało, rację mają
-          harmonogram i komunikaty Urzędu Gminy Lubaczów i Urzędu Miejskiego w
-          Lubaczowie.
-        </p>
-        <p className="govuk-body">
-          Jak dbamy o Twoją prywatność, opisujemy w zakładce{" "}
-          <Link href={PRIVACY.path} className="govuk-link">
-            {PRIVACY.text}
-          </Link>
-          , a o wygodę korzystania – w zakładce{" "}
-          <Link href={ACCESSIBILITY.path} className="govuk-link">
-            {ACCESSIBILITY.text}
-          </Link>
-          .
-        </p>
-        <p className="govuk-body">
-          Masz uwagę albo widzisz błąd? Napisz: <ContactLink />
-        </p>
+    <div className="govuk-width-container">
+      <div className="govuk-grid-row">
+        <div className="govuk-grid-column-two-thirds">
+          <PageHead
+            title={ABOUT.text}
+            lead="conaulicy.pl to prosta strona dla Lubaczowa i okolicznych wsi: wpisujesz ulicę albo wieś i od razu widzisz, kiedy przyjedzie śmieciarka, czy zapowiedziano przerwę w dostawie wody lub prądu i czy IMGW ostrzega przed złą pogodą."
+          />
+          <p className="govuk-body">
+            Przerwy w dostawie wody bierzemy z komunikatów, które gmina ogłasza
+            w swoich{" "}
+            <a href={GMINA_NEWS} className="govuk-link">
+              aktualnościach na gminalubaczow.pl
+            </a>
+            , a w Lubaczowie także z{" "}
+            <a href={MZGKIM_NEWS} className="govuk-link">
+              komunikatów MZGKiM
+            </a>
+            .
+          </p>
+          <p className="govuk-body">
+            Przerwy w dostawie prądu, planowane wyłączenia i awarie, bierzemy od{" "}
+            <a href={PGE_PAGE} className="govuk-link">
+              PGE Dystrybucja
+            </a>
+            . Pokazujemy je tak, jak podaje je PGE, razem z numerami domów.
+          </p>
+          <p className="govuk-body">
+            Ostrzeżenia pogodowe IMGW dla powiatu lubaczowskiego pokazujemy na
+            stronie adresu, nad „Najbliższymi 7 dniami”, każde z opisem, czego
+            się spodziewać. Gdy ostrzeżeń nie ma, nic tam nie wyświetlamy.
+            Źródło i godzinę, kiedy je sprawdziliśmy, podajemy na dole strony
+            adresu.
+          </p>
+          <p className="govuk-body">
+            Strona jest darmowa i niekomercyjna. Nie ma na niej reklam ani kont.
+          </p>
+          <p className="govuk-body">
+            Zrobił ją Jakub Marciniszyn dla mieszkańców Lubaczowa i gminy.
+          </p>
+          <p className="govuk-body">
+            Terminy wywozu i przerwy w dostawie wody odczytujemy automatycznie,
+            z pomocą sztucznej inteligencji, z harmonogramów i komunikatów
+            miasta Lubaczów i gminy Lubaczów. Potem je sprawdzamy, a dopóki tego
+            nie zrobimy, piszemy o tym przy adresie. Źródło i datę, kiedy je
+            sprawdziliśmy, podajemy na stronie każdego tematu: śmieci, wody i
+            prądu.
+          </p>
+          <p className="govuk-body">
+            Nazwy ulic i miejscowości bierzemy z{" "}
+            <a href={TERYT_PAGE} className="govuk-link">
+              rejestru TERYT (GUS)
+            </a>
+            .
+          </p>
+          <p className="govuk-body">
+            Wpisany numer domu porównujemy z{" "}
+            <a href={PRG_PAGE} className="govuk-link">
+              państwowym rejestrem adresów (PRG, GUGiK)
+            </a>
+            .
+          </p>
+          <p className="govuk-body">
+            Nie jesteśmy urzędem. Gdyby coś się nie zgadzało, rację mają
+            harmonogram i komunikaty Urzędu Gminy Lubaczów i Urzędu Miejskiego w
+            Lubaczowie.
+          </p>
+          <p className="govuk-body">
+            Jak dbamy o Twoją prywatność, opisujemy w zakładce{" "}
+            <Link href={PRIVACY.path} className="govuk-link">
+              {PRIVACY.text}
+            </Link>
+            , a o wygodę korzystania – w zakładce{" "}
+            <Link href={ACCESSIBILITY.path} className="govuk-link">
+              {ACCESSIBILITY.text}
+            </Link>
+            .
+          </p>
+          <p className="govuk-body">
+            Masz uwagę albo widzisz błąd? Napisz: <ContactLink />
+          </p>
+        </div>
       </div>
     </div>
   );
