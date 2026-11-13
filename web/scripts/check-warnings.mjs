@@ -127,35 +127,45 @@ async function hubChecks(origin, state) {
   const weatherGone = await notFoundAt(origin + WEATHER);
   const timelineAt = hub.indexOf('<section aria-labelledby="najblizsze-dni">');
   const timeline = hub.slice(timelineAt, hub.indexOf("</section>", timelineAt));
-  const cards = [...hub.matchAll(CARD)];
-  const levels = cards.map(([, level]) => Number(level));
-  const meters = cards.map(([, , , steps]) => steps.split("__on").length - 1);
+  const { cards, problems: own } = cardProblems(hub, state);
   const lastCard = cards.at(-1);
   const cardsEnd = lastCard ? lastCard.index + lastCard[0].length : -1;
   const imgwLinks = hub.split('<a href="https://meteo.imgw.pl/"').length - 1;
   const problems = [
-    levels.join() !== state.levels.join() &&
-      `cards ${levels}, want ${state.levels}`,
-    (hub.match(/class="app-warning /g)?.length ?? 0) !== cards.length &&
-      "a card off its markup",
-    meters.join() !== levels.join() && `meters ${meters}, want ${levels}`,
+    ...own,
     // Directly above „Najbliższe 7 dni”.
     lastCard &&
       cardsEnd !== timelineAt &&
       "the cards not right above the timeline",
     /app-warning/.test(timeline) && "a warning in the timeline",
-    /govuk-tag/.test(hub) && "a tag on the address page",
     !/<h2 id="najblizsze-dni"[^>]*>[^<]/.test(hub) && "no timeline heading",
     imgwLinks !== (state.notice ? 1 : 0) &&
       `${imgwLinks} links to IMGW on the address page`,
     weatherGone && `${WEATHER}: ${weatherGone}`,
     hub.includes(`href="${WEATHER}`) && `a link to ${WEATHER}`,
-    // The notice: in the inset above the cards; none when fresh.
-    NOTICE.test(hub) !== Boolean(state.notice) && "the notice",
     /app-warning/.test(waste) && "a warning on /smieci",
   ].filter(Boolean);
   if (problems.length > 0) failures.push(`${label}: ${problems.join("; ")}`);
   else console.log(`ok    ${label}: ${state.levels.length} cards`);
+}
+
+// The cards in `html` against the state: highest first, each with its
+// meter, every one in its markup; the notice in the inset (none when
+// fresh); no tag.
+function cardProblems(html, state) {
+  const cards = [...html.matchAll(CARD)];
+  const levels = cards.map(([, level]) => Number(level));
+  const meters = cards.map(([, , , steps]) => steps.split("__on").length - 1);
+  const problems = [
+    levels.join() !== state.levels.join() &&
+      `cards ${levels}, want ${state.levels}`,
+    (html.match(/class="app-warning /g)?.length ?? 0) !== cards.length &&
+      "a card off its markup",
+    meters.join() !== levels.join() && `meters ${meters}, want ${levels}`,
+    /govuk-tag/.test(html) && "a tag",
+    NOTICE.test(html) !== Boolean(state.notice) && "the notice",
+  ].filter(Boolean);
+  return { cards, problems };
 }
 
 // A scenario's preview page (/podglad/imgw/<name>): its cards, highest
@@ -165,19 +175,7 @@ async function previewChecks(origin, state) {
   const label = preview(state.name);
   const { status, html: raw } = await renderedPage(origin + label);
   if (status !== 200) failures.push(`${label}: HTTP ${status}`);
-  const page = raw.replace(/<!--.*?-->/g, "");
-  const cards = [...page.matchAll(CARD)];
-  const levels = cards.map(([, level]) => Number(level));
-  const meters = cards.map(([, , , steps]) => steps.split("__on").length - 1);
-  const problems = [
-    levels.join() !== state.levels.join() &&
-      `cards ${levels}, want ${state.levels}`,
-    (page.match(/class="app-warning /g)?.length ?? 0) !== cards.length &&
-      "a card off its markup",
-    meters.join() !== levels.join() && `meters ${meters}, want ${levels}`,
-    /govuk-tag/.test(page) && "a tag",
-    NOTICE.test(page) !== Boolean(state.notice) && "the notice",
-  ].filter(Boolean);
+  const { problems } = cardProblems(raw.replace(/<!--.*?-->/g, ""), state);
   if (problems.length > 0) failures.push(`${label}: ${problems.join("; ")}`);
   else console.log(`ok    ${label}: ${state.levels.length} cards`);
 }
