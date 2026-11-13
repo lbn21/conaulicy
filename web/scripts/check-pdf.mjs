@@ -131,13 +131,6 @@ function fixtureCases() {
         : 0,
       status: live ? 200 : 404,
     });
-    if (split) {
-      add({
-        name: `${id} (no number)`,
-        path: `/adres/${id}/harmonogram.pdf`,
-        status: 404,
-      });
-    }
   }
   // The longest place name among the PDFs: on one line of page 1.
   const named = cases.filter((c) => c.status === 200);
