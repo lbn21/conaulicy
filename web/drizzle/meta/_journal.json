@@ -29,6 +29,13 @@
       "when": 1793036512193,
       "tag": "0003_district_aliases",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794579137478,
+      "tag": "0004_retired_places",
+      "breakpoints": true
     }
   ]
 }
