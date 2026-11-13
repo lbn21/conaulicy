@@ -16,6 +16,7 @@
 // hero the window's full width and its own container centred.
 import { HOME_EXAMPLES } from "../../lib/examples.ts";
 import { ABOUT } from "../../lib/static-pages.ts";
+import { eachPage } from "./each-page.mjs";
 
 const WIDTHS = [1280, 1920];
 const QUERY = "asn";
@@ -115,33 +116,18 @@ const PATHS = {
 };
 
 export async function check(server, failures) {
-  const { chromium } = await import("playwright");
-  const browser = await chromium.launch();
-  const seen = [];
-  try {
-    for (const width of WIDTHS) {
-      for (const [name, walk] of Object.entries(PATHS)) {
-        const context = await browser.newContext({
-          viewport: { width, height: 900 },
-          reducedMotion: "reduce",
-        });
-        const page = await context.newPage();
-        const at = async (where, home) => {
-          for (const wrong of await layout(page, home))
-            failures.push(`${name} at ${width}, ${where}: ${wrong}`);
-        };
-        try {
-          await walk(page, server.origin, at);
-          seen.push(`${name}@${width}`);
-        } catch (error) {
-          failures.push(`${name} at ${width}: ${error.message.split("\n")[0]}`);
-        } finally {
-          await context.close();
-        }
-      }
-    }
-  } finally {
-    await browser.close();
-  }
+  const seen = await eachPage(
+    failures,
+    WIDTHS,
+    PATHS,
+    async (page, walk, at) => {
+      const count = failures.length;
+      await walk(page, server.origin, async (where, home) => {
+        for (const wrong of await layout(page, home))
+          failures.push(`${at}, ${where}: ${wrong}`);
+      });
+      return failures.length === count;
+    },
+  );
   return `Client-side navigation: the width containers centred and ≤ ${MAX_WIDTH} px, the hero on the home page only (${seen.join(", ")}).`;
 }

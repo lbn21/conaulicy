@@ -1,4 +1,4 @@
-// The routes smoke: eleven checks of the built site on one
+// The routes smoke: twelve checks of the built site on one
 // `next start` and the CI fixture, each in scripts/routes/:
 //   examples    the home page's examples have upcoming pickups;
 //   all-places  /ulice lists every place once, in Polish order;
@@ -15,7 +15,9 @@
 //   timeline    today's row once, first, its dot alone filled; an empty
 //               row no card and no badge;
 //   soft-nav    after client-side navigations from and to the home page,
-//               the width containers centred, the hero on home only.
+//               the width containers centred, the hero on home only;
+//   field-link  „Teraz w gminie”'s action puts the caret in the search
+//               field; no tile links off the site.
 // Every check by default; name some to run only those
 // (`node scripts/check-routes.mjs examples`). With CHECK_URL, a deployed
 // site instead of a local server (examples only: the others need the
@@ -23,6 +25,7 @@
 import { closeRenderedPages, finish, startServer } from "./lib/server.mjs";
 import { check as allPlaces } from "./routes/all-places.mjs";
 import { check as examples } from "./routes/examples.mjs";
+import { check as fieldLink } from "./routes/field-link.mjs";
 import { check as head } from "./routes/head.mjs";
 import { check as inPage } from "./routes/in-page.mjs";
 import { check as metadata } from "./routes/metadata.mjs";
@@ -45,6 +48,7 @@ const CHECKS = {
   head,
   timeline,
   "soft-nav": softNav,
+  "field-link": fieldLink,
 };
 
 const asked = process.argv.slice(2);
