@@ -30,7 +30,6 @@ const TOLERANCE = 1;
 
 /** What is wrong with the page's layout now, as a list. */
 async function layout(page, home) {
-  await page.waitForFunction(() => !document.querySelector(".app-skeleton"));
   const seen = await page.evaluate(() => {
     const shown = (el) => el.getClientRects().length > 0;
     const box = (el) => {

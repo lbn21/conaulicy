@@ -24,7 +24,6 @@ async function open(browser, url, width, scale = "200%") {
     })
   ).newPage();
   await page.goto(url, { waitUntil: "networkidle" });
-  await page.waitForFunction(() => !document.querySelector(".app-skeleton"));
   await page.evaluate(async () => {
     await document.fonts.ready;
   });

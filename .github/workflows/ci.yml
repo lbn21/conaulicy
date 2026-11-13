@@ -188,8 +188,16 @@ jobs:
         env:
           DATABASE_URL: postgres://ci:ci@localhost:5432/conaulicy
 
+      # The build's log kept for its route table (check-routes-table.mjs).
       - name: Build
-        run: npm run build
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee "$RUNNER_TEMP/build.log"
+
+      # Every page and file prerendered: no ƒ or ◐ row but the crons and
+      # /api/revalidate, and no proxy (t416).
+      - name: "Route table (everything static but the crons and /api/revalidate)"
+        run: node scripts/check-routes-table.mjs "$RUNNER_TEMP/build.log"
 
       - name: GOV.UK brand assets (none shipped)
         run: node scripts/check-govuk-assets.mjs
@@ -247,18 +255,24 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      # Hard reloads at 1280 and 390 px, from the top, the middle and below:
+      # the page whole in its HTML, no skeleton, no view transition, CLS 0,
+      # the scroll kept (t416).
+      - name: "Reload (no skeleton, no view transition, CLS 0, scroll kept)"
+        run: node scripts/check-reload.mjs
+
       - name: "Street PDFs (tagged, two pages, one layout, size, Atkinson only)"
         run: node scripts/check-pdf.mjs
 
       - name: "Indexing (CI build: noindex, robots.txt closed)"
         run: node scripts/check-indexing.mjs --expect=noindex
 
-      # No warning (mock:none) and three warnings, the address page
-      # re-rendered by a server with that setting; at the end its pages are
-      # dropped again, so the checks below render them with mock:none.
-      # Every other state: unit tests (lib/imgw-shown.test.ts,
-      # lib/weather-module.test.ts), and the full run by hand.
-      - name: "IMGW warnings (address page only, each once: markup, axe, focus, zoom, contrast)"
+      # No warning on the built address page (mock:none), and three
+      # warnings on their prerendered preview page (/podglad/imgw/…,
+      # outside production only). Every other state: unit tests
+      # (lib/imgw-shown.test.ts, lib/weather-module.test.ts), and the full
+      # run by hand.
+      - name: "IMGW warnings (address page and preview: markup, axe, focus, zoom, contrast)"
         run: node scripts/check-warnings.mjs --ci
         env:
           SCREENSHOT_DIR: ${{ runner.temp }}/imgw-warnings-screenshots

@@ -19,7 +19,6 @@ const WAYS = {
 export async function check(server, failures) {
   const seen = await eachPage(failures, WIDTHS, WAYS, async (page, use, at) => {
     await page.goto(`${server.origin}/`, { waitUntil: "networkidle" });
-    await page.waitForFunction(() => !document.querySelector(".app-skeleton"));
     const off = await page
       .locator(".app-now__tile a")
       .evaluateAll((links) =>

@@ -8,8 +8,7 @@
 // ids; a village with streets is one link with its streets nested under it,
 // and the town is no place; and the route
 // loads no JS beyond what /dostepnosc, a page without client code, loads,
-// but one small chunk: PlaceLink's prefetch on intent
-// (components/place-link.tsx).
+// but at most one small chunk (its links are next/link, shared).
 //
 // With SCREENSHOT_DIR, also saves screenshots of /ulice at 390 px and 1280 px
 // there (needs Playwright's Chromium). Runs against `next start` on the
@@ -20,7 +19,7 @@ import { gzipSync } from "node:zlib";
 import { searchIndexOf } from "../lib/server.mjs";
 
 const collator = new Intl.Collator("pl");
-// PlaceLink's chunk, gzip: a wrapper around next/link (shared) and a state.
+// At most one small chunk of its own, gzip.
 const OWN_JS_MAX = 1024;
 const LINK = /<a class="govuk-link" href="\/adres\/([^"]+)">([^<]+)<\/a>/g;
 const LETTER = /<h3 class="govuk-heading-s">([^<]+)<\/h3>/g;
@@ -133,9 +132,7 @@ export async function check({ origin }, failures) {
     0,
   );
   if (extra.length > 1 || extraGzip > OWN_JS_MAX) {
-    failures.push(
-      `/ulice: own JS beyond PlaceLink's, ${extraGzip} B gzip: ${extra.join(", ")}`,
-    );
+    failures.push(`/ulice: own JS, ${extraGzip} B gzip: ${extra.join(", ")}`);
   }
 
   console.log(

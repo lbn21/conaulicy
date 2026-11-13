@@ -1,8 +1,8 @@
 // Checks what search engines are told (lib/indexing.ts), per build:
 //   --expect=noindex  a normal CI build: X-Robots-Tag and meta robots say
 //                     noindex, nofollow; robots.txt disallows everything.
-//   --expect=index    a production-like build (VERCEL_ENV=production, no
-//                     SITE_BASIC_AUTH): no X-Robots-Tag, meta robots says
+//   --expect=index    a production-like build (VERCEL_ENV=production): no
+//                     X-Robots-Tag, meta robots says
 //                     index, follow; robots.txt allows all but /api/ and
 //                     names the sitemap; conaulicy.vercel.app redirects (308)
 //                     to conaulicy.pl, path and query kept. By hand
@@ -14,9 +14,9 @@
 // the fixture's one without a waste schedule (street-without-schedule, the
 // only one: scripts/routes/all-places.mjs), each with its waste subpage
 // (/adres/<id>/smieci, canonical itself), nothing else. The address page and
-// /smieci canonicalise to themselves, ?nr= left out. PDFs and calendars send
-// X-Robots-Tag: noindex; the number error (an empty ?nr=) and a place
-// without data have meta robots noindex; the
+// /smieci canonicalise to themselves, any query left out. PDFs and calendars
+// send X-Robots-Tag: noindex; a place without data has meta robots
+// noindex; the
 // static pages have one canonical link each (the home page's as the
 // sitemap has it, no trailing slash). Indexable: every URL in the sitemap
 // answers 200 with no noindex (meta or X-Robots-Tag), canonicalises to
@@ -26,15 +26,16 @@
 // conaulicy.pl", a link home, robots meta noindex (one or more tags, every
 // one noindex, none index), and no description; an unknown module
 // (/adres/<id>/<slug>) too; asked
-// without following redirects, and never under a renamed id (the 308s of
-// /api/places, scripts/routes/query.mjs). Both: /, an
+// without following redirects, and never under a renamed id (the build's
+// 308s, scripts/routes/query.mjs). Both: /, an
 // address page and a calendar send the five security headers.
 //
 // Runs against `next start` on the current build and the CI fixture.
 import { readFileSync } from "node:fs";
 import { request } from "node:http";
+import { fixtureDataset } from "../lib/dataset-fixture.ts";
+import { todayInWarsaw } from "../lib/dates.ts";
 import {
-  fetchJson,
   finish,
   notFoundAt,
   ROUTES,
@@ -231,11 +232,9 @@ try {
     }
   }
 
-  // Never indexed, links followed once indexable: the number-error page and
-  // a place without data.
+  // Never indexed, links followed once indexable: a place without data.
   const noindexWant = index ? "noindex, follow" : "noindex, nofollow";
   for (const path of [
-    "/adres/0972447-90004?nr=",
     ROUTES.find((route) => route.name === "street-without-schedule").path,
   ]) {
     const response = await fetch(`${server.origin}${path}`);
@@ -249,15 +248,12 @@ try {
     }
   }
 
-  // Not found: the whole page in the raw HTML, never Next.js's empty error
-  // shell, and noindex. Next.js 16.4 emits its own noindex on a 404, and on a
-  // cached dynamic 404 that is regenerated (ISR, after 10 minutes) it emits
-  // a second one: harmless, both say noindex. So one or more tags, every one
-  // noindex, none index. Not followed: the first render of a redirect once
-  // sent Location twice, and fetch followed the joined value to a 404 of its
-  // own, so a 308 passed as a 404. A renamed id is a 308, never
-  // one of these: its rows (the CI fixture's) as the proxy reads them.
-  const { moved: renamed } = await fetchJson(`${server.origin}/api/places`);
+  // Not found: the prerendered 404 page in the raw HTML, never Next.js's
+  // empty error shell, and noindex: one or more tags, every one noindex,
+  // none index. Not followed: a 308 must never pass as a 404. A renamed id
+  // is a 308 (the build's redirects, the CI fixture's renames), never one
+  // of these.
+  const renamed = fixtureDataset(todayInWarsaw()).redirects;
   for (const path of [
     "/nie-ma-takiej-strony",
     "/adres/9999999",
@@ -265,11 +261,12 @@ try {
     // An unknown street (0972447-99999 is the fixture's renamed one: a 308,
     // scripts/routes/query.mjs).
     "/adres/0972447-88888",
-    // An unknown module, with and without a number; a module of an unknown
-    // place.
+    // An unknown module, with and without a query; a module and a file of
+    // an unknown place.
     "/adres/0972447-00470/nie-ma-takiego-modulu",
     "/adres/0972447-00470/nie-ma-takiego-modulu?nr=12",
     "/adres/9999999/smieci",
+    "/adres/9999999/harmonogram.pdf",
     // The old number paths are gone.
     "/adres/0972447-00470/nr/12",
     "/adres/0972447-00470/numer",

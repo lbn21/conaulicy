@@ -43,7 +43,6 @@ export async function check(server, failures) {
   const landed = [];
   try {
     await page.goto(address, { waitUntil: "networkidle" });
-    await page.waitForFunction(() => !document.querySelector(".app-skeleton"));
     const name = await page.locator(VISIBLE_H1).innerText();
 
     // The skip link: its target in view, the URL its hash.
@@ -66,7 +65,6 @@ export async function check(server, failures) {
     }
     await page.goBack();
     await page.waitForURL(before);
-    await page.waitForFunction(() => !document.querySelector(".app-skeleton"));
     const back = await page.locator(VISIBLE_H1).allInnerTexts();
     if (back.length !== 1 || back[0] !== name) {
       failures.push(
@@ -76,7 +74,6 @@ export async function check(server, failures) {
 
     // A direct open with a hash: the browser scrolls to it.
     await page.goto(`${address}#wszystko`, { waitUntil: "networkidle" });
-    await page.waitForFunction(() => !document.querySelector(".app-skeleton"));
     const off = await scrolledTo(page, "#wszystko");
     if (off) failures.push(`${address}#wszystko opened: ${off}`);
   } finally {

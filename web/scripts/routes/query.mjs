@@ -1,89 +1,62 @@
-// Unknown query parameters redirect (308) to the clean URL, so random query
-// strings cannot bust the CDN cache (proxy.ts, lib/clean-query.ts). Allowed
-// ones (nr on street pages and PDFs, q on /api/search) are
-// served as they are; Next.js assets, icons with their cache-busting query,
-// other files and POST /api/revalidate are never redirected. The Apple icon
-// is linked at the root with no query, and served as a PNG.
+// Query strings change nothing: every page and file is prerendered whole,
+// and a query never reaches a function (no proxy.ts, no searchParams), so
+// a known address with any query (?x=1, ?nr=12, ?utm_source=…) is the same
+// 200, never a redirect; Next.js assets and icons with their cache-busting
+// query are served; POST /api/revalidate without its secret is a 401. The
+// Apple icon is linked at the root with no query, and served as a PNG.
 //
 // Also the search (components/address-search.tsx): the home page's raw
 // HTML holds a form with the library's field (a combobox named q, empty, no
 // error) and a submit button; /szukaj is gone, a plain 404. A
 // suggestion's text, as a pick leaves it in the field, resolves to its own
-// place (lib/search-submit.ts, as „Szukaj” does): every label in
-// /api/search-index, and some with a house number.
+// place (lib/search-submit.ts, as „Szukaj” does): every label in the
+// search index; a house number typed after it is ignored.
 //
 // A renamed street's old id (place_redirects; the CI fixture's made-up
-// 0972447-99999) answers 308 on every address under it, query kept, with
-// exactly one Location (the ?nr= ones from proxy.ts); an unknown id, or
-// anything after an id that is no subpage or file, is a 404 on its very
-// first answer (proxy.ts: never the route's 200 shell), with or without a
-// number; fresh paths each run, so no earlier answer is cached.
+// 0972447-99999) answers 308 on every address under it, from the build's
+// redirects (next.config.ts); an unknown id, or anything after an id that
+// is no subpage or file, is the prerendered 404 (dynamicParams = false);
+// fresh paths each run, so no earlier answer is cached.
 //
 // Runs against `next start` on the current build and the CI fixture.
-import { withHouseNumber } from "../../lib/house.ts";
 import { matcher } from "../../lib/search.ts";
 import { placeTarget } from "../../lib/search-submit.ts";
-import { fetchJson, notFoundAt, searchIndexOf } from "../lib/server.mjs";
+import { notFoundAt, searchIndexOf } from "../lib/server.mjs";
 
 const STREET = "/adres/0972447-00470";
-const SPLIT = "/adres/0972447-90004";
 const RENAMED = "/adres/0972447-99999";
 // Digits, so a made-up id looks like a real one (TERYT's).
 const FRESH = String(Date.now());
 
-// [method, path, status, clean path + query for a redirect, user agent].
+// [method, path, status, redirect target, user agent].
 const CASES = [
-  ["GET", `${STREET}?x=1`, 308, STREET],
-  ["GET", `${STREET}?nr=12&x=1`, 308, `${STREET}?nr=12`],
+  ["GET", `${STREET}?x=1`, 200],
   ["GET", `${STREET}?nr=12`, 200],
-  ["GET", `${SPLIT}?nr=`, 200],
-  [
-    "GET",
-    `${SPLIT}/harmonogram.pdf?nr=7a&x=1`,
-    308,
-    `${SPLIT}/harmonogram.pdf?nr=7a`,
-  ],
-  ["GET", `${STREET}/harmonogram.pdf?x=1`, 308, `${STREET}/harmonogram.pdf`],
-  ["GET", "/api/search?q=asn", 200],
-  ["GET", "/api/search?q=asn&x=1", 308, "/api/search?q=asn"],
-  ["GET", "/api/places", 200],
-  ["GET", "/api/places?x=1", 308, "/api/places"],
-  ["GET", "/?fbclid=1", 308, "/"],
-  ["HEAD", "/ulice?utm_source=fb", 308, "/ulice"],
+  ["GET", `${STREET}?utm_source=fb`, 200],
+  ["GET", `${STREET}/harmonogram.pdf?x=1`, 200],
+  ["GET", `${STREET}/smieci?nr=12`, 200],
+  ["GET", "/?fbclid=1", 200],
+  ["HEAD", "/ulice?utm_source=fb", 200],
   ["POST", "/api/revalidate?x=1", 401],
   ["GET", "/manifest.webmanifest?x=1", 200],
   ["GET", "/robots.txt?x=1", 200],
-  // The search page is gone: no redirect.
+  ["GET", "/search-index.json?x=1", 200],
+  // The search page and the old APIs are gone: no redirect.
   ["GET", "/szukaj?q=Rynek", 404],
+  ["GET", "/api/search?q=asn", 404],
+  ["GET", "/api/places", 404],
   ["GET", RENAMED, 308, STREET],
-  ["GET", `${RENAMED}?nr=12`, 308, `${STREET}?nr=12`],
-  ["GET", `${RENAMED}?nr=`, 308, `${STREET}?nr=`],
-  [
-    "GET",
-    `${RENAMED}/harmonogram.pdf?nr=12`,
-    308,
-    `${STREET}/harmonogram.pdf?nr=12`,
-  ],
+  ["GET", `${RENAMED}/harmonogram.pdf`, 308, `${STREET}/harmonogram.pdf`],
+  ["GET", `${RENAMED}/smieci`, 308, `${STREET}/smieci`],
+  ["GET", `${RENAMED}/woda.ics`, 308, `${STREET}/woda.ics`],
   ["GET", "/adres/0972447-88888", 404],
   ["GET", "/adres/0972447-88888?nr=12", 404],
-  // A module subpage (lib/address-routes.ts): the street page's rules.
-  ["GET", `${STREET}/smieci?x=1`, 308, `${STREET}/smieci`],
-  ["GET", `${STREET}/smieci?nr=12&x=1`, 308, `${STREET}/smieci?nr=12`],
-  ["GET", `${STREET}/smieci?nr=12`, 200],
-  ["GET", `${SPLIT}/smieci?nr=`, 200],
-  ["GET", `${RENAMED}/smieci`, 308, `${STREET}/smieci`],
-  ["GET", `${RENAMED}/smieci?nr=12`, 308, `${STREET}/smieci?nr=12`],
   ["GET", "/adres/0972447-88888/smieci", 404],
-  ["GET", "/adres/0972447-88888/smieci?nr=12", 404],
   ["GET", `${STREET}/nie-ma-takiego-modulu`, 404],
-  // No weather subpage: a 404 like any unknown module, its
-  // parameters left alone.
+  // No weather subpage: a 404 like any unknown module.
   ["GET", `${STREET}/pogoda`, 404],
-  ["GET", `${STREET}/pogoda?nr=12`, 404],
-  ["GET", `${STREET}/pogoda?x=1`, 404],
   // Never asked before (fresh each run), and an unknown id's files.
   ["GET", `${STREET}/x${FRESH}`, 404],
-  ["GET", `${STREET}/x${FRESH}?nr=12`, 404],
   ["GET", `/adres/0972447-8${FRESH.slice(-4)}`, 404],
   ["GET", `/adres/0606${FRESH.slice(-3)}9/woda`, 404],
   ["GET", `/adres/x${FRESH}`, 404],
@@ -91,19 +64,17 @@ const CASES = [
   ["GET", "/adres/0972447-88888/woda.ics", 404],
   ["GET", `/adres/0606${FRESH.slice(-3)}9/prad`, 404],
   ["GET", `${STREET}/prad.ics`, 404],
+  ["GET", "/ics/nie-ma-takiej-strefy", 404],
+  ["GET", "/podglad/imgw/nie-ma-takiego", 404],
 ];
 
-// [query, the one place „Szukaj” opens (its page, with the house number)]. Every label in the index, and some with a number, are
-// added below.
+// [query, the one place „Szukaj” opens]. Every label in the index is added
+// below.
 const LANDS = [
   ["Rynek", "/adres/0972447-19253"],
-  ["asnyka 12", "/adres/0972447-00470?nr=12"],
+  ["asnyka 12", "/adres/0972447-00470"],
   ["ul. Rynek, Lubaczów", "/adres/0972447-19253"],
-  // A house number where the field puts it, or typed after a pick.
-  ["ul. Rynek 5, Lubaczów", "/adres/0972447-19253?nr=5"],
-  ["ul. Rynek, Lubaczów 5", "/adres/0972447-19253?nr=5"],
-  ["ul. Adama Asnyka 12, Lubaczów", "/adres/0972447-00470?nr=12"],
-  ["ul. Adama Asnyka, Lubaczów 12", "/adres/0972447-00470?nr=12"],
+  ["ul. Rynek, Lubaczów 5", "/adres/0972447-19253"],
   ["asn", "/adres/0972447-00470"],
 ];
 
@@ -142,12 +113,8 @@ export async function check(server, failures) {
   for (const [i, [id, label]] of places.entries()) {
     const href = `/adres/${encodeURIComponent(id)}`;
     LANDS.push([label, href]);
-    // Every third with a house number, as the field writes it or as typed
-    // after a pick.
-    if (i % 3 === 0) {
-      for (const text of [withHouseNumber(label, "7a"), `${label} 7a`])
-        LANDS.push([text, `${href}?nr=7a`]);
-    }
+    // A house number typed after a pick: the same place.
+    if (i % 3 === 0) LANDS.push([`${label} 7a`, href]);
   }
 
   const form = /<form[^>]*>[\s\S]*?<\/form>/.exec(home)?.[0] ?? "";
@@ -173,7 +140,7 @@ export async function check(server, failures) {
   // The calendar link is on the waste subpage (the address page has none).
   const street = await (await fetch(`${server.origin}${STREET}/smieci`)).text();
   const ics = /href="(\/ics\/[^"?]+)"/.exec(street)?.[1];
-  if (ics) CASES.push(["GET", `${ics}?x=1`, 308, ics]);
+  if (ics) CASES.push(["GET", `${ics}?x=1`, 200]);
   else failures.push(`${STREET}/smieci: no /ics/ link`);
 
   for (const [method, path, status, clean, ua] of CASES) {
@@ -199,18 +166,6 @@ export async function check(server, failures) {
         `${method} ${path}: ${response.status} → ${location}, want ${status}${clean ? ` → ${clean}` : ""}`,
       );
     }
-    if (path === "/api/search?q=asn" && response.status === 200) {
-      const type = response.headers.get("content-type") ?? "";
-      if (!type.includes("json")) failures.push(`${path}: ${type}`);
-    }
   }
-  const map = await fetchJson(`${server.origin}/api/places`);
-  if (
-    map.moved?.["0972447-99999"] !== "0972447-00470" ||
-    !map.ids?.includes("0972447-00470") ||
-    map.ids.includes("0972447-99999")
-  ) {
-    failures.push(`/api/places: ${JSON.stringify(map).slice(0, 300)}`);
-  }
-  return `Query parameters: ${CASES.length} cases; unknown ones redirect to the clean URL, allowed ones and assets served.`;
+  return `Query parameters: ${CASES.length} cases; any query served as the page, renames 308, unknown 404.`;
 }

@@ -63,9 +63,6 @@ export async function check({ origin }, failures) {
           await page.goto(`${origin}/adres/${id}${sub}`, {
             waitUntil: "networkidle",
           });
-          await page.waitForFunction(
-            () => !document.querySelector(".app-skeleton"),
-          );
           const g = await gaps(page);
           if (g) all[sub || "/"] = g;
           else
