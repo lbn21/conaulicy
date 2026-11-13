@@ -78,7 +78,7 @@ export default function AccessibilityPage() {
                   osobnego testu dostępności PDF.
                 </li>
                 <li>
-                  Oryginalne harmonogramy gminy to często obrazki. Daty
+                  Oryginalne harmonogramy urzędów to często obrazki. Daty
                   odczytujemy z nich automatycznie i pokazujemy jako tekst, ale
                   samych plików źródłowych nie poprawimy.
                 </li>
@@ -136,7 +136,7 @@ export default function AccessibilityPage() {
 
             <p className="govuk-body">
               Ostatnia zmiana tej strony:{" "}
-              <time dateTime="2026-10-25">25 października 2026</time>.
+              <time dateTime="2026-11-14">14 listopada 2026</time>.
             </p>
           </div>
         </div>

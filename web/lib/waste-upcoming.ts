@@ -3,7 +3,7 @@
 // unit tests need no database.
 import type { PlaceView } from "@/lib/schedule";
 import { span } from "./hub.ts";
-import { putOutLine } from "./schedule-notes.ts";
+import { putOutNote } from "./schedule-notes.ts";
 import type { Item } from "./upcoming.ts";
 import { allBins } from "./waste-module.ts";
 
@@ -26,7 +26,7 @@ export function wasteUpcoming(place: PlaceView): Item[] {
           : day.pickups
               .map((p) => p.label.charAt(0).toLowerCase() + p.label.slice(1))
               .join(", "),
-        second: time ? putOutLine(time) : null,
+        second: time ? putOutNote(time, true) : null,
       };
     });
 }

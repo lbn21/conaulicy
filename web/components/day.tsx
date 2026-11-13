@@ -12,7 +12,7 @@ import type { DayGroup, Entry } from "@/lib/timeline";
 // screen readers only, the line aria-hidden, so it is read once, with the
 // date); an empty day the same, a plain row, no card and no badge, today
 // and tomorrow too (t373: a card only for a day with something), over
-// „Nic nie zaplanowano.”; a run of them („11–15 listopada”, Intl's
+// „Nic się nie dzieje tego dnia.” („…w tych dniach.” for a run); a run of them („11–15 listopada”, Intl's
 // formatRange) no weekday line, its line dashed alongside it; „Później” a
 // card at the ringed end of the line. Each li starts with its dot, an
 // empty aria-hidden span (site.scss lays it out on the grid); the li
@@ -20,8 +20,9 @@ import type { DayGroup, Entry } from "@/lib/timeline";
 // dot filled, whatever the row is; an empty one says „dzisiaj” (Intl's
 // word) to screen readers only, after its date.
 
-/** What an empty day or run says. */
-const NOTHING = "Nic nie zaplanowano.";
+/** What an empty day says; a run of them, the same in the plural. */
+const NOTHING = "Nic się nie dzieje tego dnia.";
+const NOTHING_RUN = "Nic się nie dzieje w tych dniach.";
 
 /**
  * A timeline card, every kind the same: the date as an h3,
@@ -118,7 +119,9 @@ export function Day({
         empty={empty}
       >
         {empty ? (
-          <p className="govuk-body-s govuk-!-margin-bottom-0">{NOTHING}</p>
+          <p className="govuk-body-s govuk-!-margin-bottom-0">
+            {single ? NOTHING : NOTHING_RUN}
+          </p>
         ) : (
           <FunctionRows entries={entries} place={place} />
         )}

@@ -44,10 +44,14 @@ export type WaterSource = {
 
 /** The gmina's news: where its water posts appear. */
 export const GMINA_NEWS = "https://www.gminalubaczow.pl/aktualnosci/";
-const gminaNews = { href: GMINA_NEWS, text: "aktualności gminy Lubaczów" };
+export const gminaNews = {
+  href: GMINA_NEWS,
+  text: "aktualności gminy Lubaczów",
+};
 
 /** MZGKiM's posts: where the town's water cuts appear. */
 export const MZGKIM_NEWS = "https://mzgkim.lubaczow.pl/category/komunikaty/";
+export const mzgkimNews = { href: MZGKIM_NEWS, text: "komunikaty MZGKiM" };
 
 /** The town and its parts, from TERYT: MZGKiM's area. */
 const TOWNS = new Set(
@@ -93,7 +97,7 @@ export const MZGKIM: WaterSource = {
   announced: "ogłosił",
   foretold: "zapowiedział",
   of: "MZGKiM",
-  news: { href: MZGKIM_NEWS, text: "komunikaty MZGKiM" },
+  news: mzgkimNews,
   newsOf: { href: MZGKIM_NEWS, text: "komunikatów MZGKiM" },
   announces: [
     "MZGKiM ogłasza je w ",

@@ -1,6 +1,7 @@
 import { Badge } from "@/components/badge";
 import { Icon } from "@/components/icon";
 import { fromTo } from "@/components/rows/when";
+import { POWER_NO_HOURS } from "@/lib/power-module";
 import type { Entry } from "@/lib/timeline";
 import { NO_HOURS } from "@/lib/water-module";
 
@@ -12,6 +13,9 @@ import { NO_HOURS } from "@/lib/water-module";
 
 /** What is cut, after „nie będzie” and „w dostawie”. */
 export const CUT = { woda: "wody", prad: "prądu" } as const;
+
+/** Each module's own words for a cut without hours. */
+const NO_HOURS_OF = { woda: NO_HOURS, prad: POWER_NO_HOURS } as const;
 
 /** Each window of hours a chip with its clock, in a list. */
 export function TimeChips({ windows }: { windows: string[] }) {
@@ -40,7 +44,7 @@ export function OutageRow({ entries }: { entries: Entry[] }) {
     ? "Przerwa trwa"
     : hours
       ? `Nie będzie ${noun}`
-      : `Przerwa w dostawie ${noun}. ${NO_HOURS}`;
+      : `Przerwa w dostawie ${noun}. ${NO_HOURS_OF[item.module]}`;
   return (
     <>
       <p className="govuk-body-s govuk-!-margin-bottom-0">

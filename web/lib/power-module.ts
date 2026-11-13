@@ -20,7 +20,13 @@
 import type { PlaceView } from "@/lib/schedule";
 import { fromTo } from "../components/rows/when.ts";
 import { warsawDay } from "./date-labels.ts";
-import { capitalised, type Group, type Part, span } from "./hub.ts";
+import {
+  capitalised,
+  type Group,
+  type Part,
+  span,
+  uncheckedText,
+} from "./hub.ts";
 import { type LiveCopy, liveNotice, UNREADABLE } from "./live-status.ts";
 import { LIST } from "./locale.ts";
 import { hoursRow, type OutagePage } from "./outage-view.ts";
@@ -31,7 +37,10 @@ import type { Item } from "./upcoming.ts";
 import { ZUK_PLACES } from "./zuk-places.generated.ts";
 
 /** Who publishes the outages, as the pages credit them. */
-const PGE_NAME = "PGE Dystrybucja";
+export const PGE_NAME = "PGE Dystrybucja";
+
+/** The same declined, after „według”, „od”, „na stronie”. */
+export const PGE_GENITIVE = "PGE Dystrybucji";
 
 /** PGE Dystrybucja's public page of current outages: the source link. */
 export const PGE_PAGE =
@@ -107,7 +116,7 @@ function cutAt(item: PgeOutage, place: PlaceRef, now: number): PowerCut | null {
   };
 }
 
-/** The module's subject, after „Nie udało się sprawdzić”. */
+/** The module's subject, after „Nie udało się nam sprawdzić”. */
 export const POWER_SUBJECT = "przerw w dostawie prądu";
 
 /**
@@ -125,7 +134,7 @@ export function power(
     return {
       place,
       cuts: [],
-      notice: `Nie udało się teraz sprawdzić ${POWER_SUBJECT}.`,
+      notice: uncheckedText(POWER_SUBJECT),
       shown: false,
       changedAt: null,
     };
@@ -174,7 +183,7 @@ export function powerUpcoming(data: Power): Item[] {
 function noticeParts(notice: string): Part[] {
   return [
     `${notice} Aktualne znajdziesz na `,
-    { href: PGE_PAGE, text: `stronie ${PGE_NAME}` },
+    { href: PGE_PAGE, text: `stronie ${PGE_GENITIVE}` },
     ".",
   ];
 }
@@ -185,12 +194,12 @@ export function powerNotices(data: Power): Group[] {
 }
 
 /** No outage here, from a copy we show. */
-const NONE = `PGE nie zapowiada ${POWER_SUBJECT} pod tym adresem.`;
+const NONE = `PGE nie podaje teraz żadnych ${POWER_SUBJECT} pod tym adresem.`;
 
 const NO_NUMBERS = "PGE nie podaje numerów";
 
 /** A cut without hours (PGE gives them, so a guard only). */
-const NO_HOURS = "PGE nie podaje godzin.";
+export const POWER_NO_HOURS = "PGE nie podaje godzin.";
 
 /** „Numery domów według PGE”: as given; each place named when several. */
 function numbers(cut: PowerCut): string {
@@ -202,15 +211,15 @@ function numbers(cut: PowerCut): string {
 
 /**
  * The kind, a summary list row: its badge, a failure red; revoked, a
- * muted „Odwołane” and the kind in words, with PGE's note.
+ * muted „Odwołana” and the kind in words, with PGE's note.
  */
 function kindRow(cut: PowerCut) {
   const failure = cut.kind === "failure";
-  const kind = failure ? "Awaria" : "Planowane wyłączenie";
+  const kind = failure ? "Awaria" : "Planowana przerwa";
   return cut.revoked
     ? {
         key: "Rodzaj",
-        badge: { text: "Odwołane", tone: "muted" as const },
+        badge: { text: "Odwołana", tone: "muted" as const },
         value: [cut.revokedNote ? `${kind}. ${cut.revokedNote}` : kind],
       }
     : {
@@ -247,7 +256,7 @@ export function powerPage(data: Power): OutagePage {
             rows: [
               hoursRow(
                 spans.map((s) => fromTo(s, false)),
-                NO_HOURS,
+                POWER_NO_HOURS,
               ),
               kindRow(cut),
               { key: "Gdzie", value: [names(cut)] },
@@ -272,4 +281,4 @@ export const powerSources = (): Part[][] => [
 
 /** /prad's description: the place, and whose data it is. */
 export const powerDescription = (place: PlaceView) =>
-  `Zapowiedziane przerwy w dostawie prądu: ${place.label}. Daty i godziny według ${PGE_NAME}.`;
+  `Przerwy w dostawie prądu: ${place.label}. Daty i godziny według ${PGE_GENITIVE}.`;

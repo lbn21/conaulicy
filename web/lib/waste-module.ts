@@ -11,8 +11,8 @@ import { placePath, scheduleName, scheduleOwner } from "./places.ts";
 import {
   hasUpcoming,
   NO_MORE_DATES,
-  NO_MORE_DATES_NEXT,
-  putOutLine,
+  noMoreDatesNext,
+  putOutNote,
 } from "./schedule-notes.ts";
 
 /**
@@ -21,7 +21,7 @@ import {
  * subpage's heading, and the address page's notice.
  */
 export function noScheduleHeading(kind: PlaceView["kind"]): string {
-  return `Nie mamy jeszcze harmonogramu wywozu śmieci dla ${kind === "ulica" ? "tej ulicy" : "tej wsi"}`;
+  return `Nie mamy jeszcze harmonogramu odbioru śmieci dla ${kind === "ulica" ? "tej ulicy" : "tej wsi"}`;
 }
 
 /** „Sprawdź odbiory w harmonogramie Urzędu Miejskiego.”, after `lead`. */
@@ -98,7 +98,7 @@ export function wasteStatus(place: PlaceView): Group[] {
       [
         noDates(
           place,
-          `${NO_MORE_DATES}. ${NO_MORE_DATES_NEXT} ${checkSchedule(place, "Do tego czasu sprawdź")}`,
+          `${NO_MORE_DATES}. ${noMoreDatesNext()} ${checkSchedule(place, "Do tego czasu sprawdź")}`,
         ),
       ],
     ];
@@ -112,7 +112,7 @@ export function wasteStatus(place: PlaceView): Group[] {
     ],
   ];
   const time = next.pickups.find((pickup) => pickup.putOutBy)?.putOutBy;
-  if (time) groups.push([[putOutLine(time)]]);
+  if (time) groups.push([[putOutNote(time, true)]]);
   return groups;
 }
 

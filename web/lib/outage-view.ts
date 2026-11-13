@@ -11,7 +11,7 @@ type OutageRowView = {
   value: Part[];
   /**
    * A badge before the value (components/badge.tsx): „Awaria” (alert),
-   * „Planowane wyłączenie” (the module's), „Odwołane” (muted).
+   * „Planowana przerwa” (the module's), „Odwołana” (muted).
    */
   badge?: { text: string; tone: "alert" | "mod" | "muted" };
   /** Windows of hours, a chip each, after the value. */

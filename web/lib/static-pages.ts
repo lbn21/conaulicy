@@ -21,3 +21,7 @@ export const STATIC_PAGES: ReadonlyArray<StaticPage> = [
   PRIVACY,
   ABOUT,
 ];
+
+/** Who made the site: in the footer and on „O projekcie”. */
+export const AUTHOR_LINE =
+  "Stronę zrobił Jakub Marciniszyn dla mieszkańców Lubaczowa i gminy.";

@@ -165,7 +165,7 @@ test("nothing to show: no copy, or a fresh one with no warning for 1809, or ever
 test("the store unreadable now: the notice alone, never nothing", () => {
   const shown = shownWarnings(UNREADABLE, at("2026-10-25T12:00:00+01:00"));
   assert.deepEqual(shown, {
-    notice: "Nie udało się teraz sprawdzić ostrzeżeń IMGW.",
+    notice: "Nie udało się nam sprawdzić ostrzeżeń IMGW.",
     warnings: [],
   });
 });

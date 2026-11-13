@@ -10,6 +10,7 @@ import { ImgwSource } from "@/components/imgw-source";
 import { type NowData, NowPanel } from "@/components/now-panel";
 import { SkipTarget } from "@/components/skip-target";
 import { SITE_URL } from "@/lib/config.generated";
+import { capitalised } from "@/lib/dates";
 import { homePage } from "@/lib/home-page";
 import { LANG } from "@/lib/locale";
 import { pageData, pageDigest } from "@/lib/page-cache";
@@ -17,12 +18,12 @@ import { LIVE_ATTR, marksAttr } from "@/lib/page-refresh";
 import { placeHref, SEARCH_INDEX_PATH, type SearchHit } from "@/lib/search";
 import { HOME_TITLE, pageMetadata, SITE_NAME } from "@/lib/share";
 import { ALL_PLACES } from "@/lib/static-pages";
+import { SITE_TOPICS } from "@/lib/topics";
 
 export const metadata: Metadata = pageMetadata({
   path: "/",
   title: { absolute: HOME_TITLE },
-  description:
-    "Wywóz śmieci, zapowiedziane przerwy w dostawie wody i prądu, ostrzeżenia IMGW. Wpisz ulicę w Lubaczowie albo wieś w gminie i sprawdź terminy.",
+  description: `${capitalised(SITE_TOPICS)}. Wpisz ulicę w Lubaczowie albo wieś w gminie i sprawdź terminy.`,
 });
 
 // For search engines: the site's name. No SearchAction: the search has no
@@ -40,7 +41,7 @@ const WEBSITE = JSON.stringify({
 const TRUST = [
   "Za darmo, bez logowania",
   "Bez reklam",
-  "Dane z gminy, IMGW i PGE",
+  "Dane z urzędów, wodociągów, IMGW i PGE",
 ];
 
 /** The sample addresses. */

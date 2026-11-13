@@ -2,6 +2,8 @@
 // the notice when IMGW's checks fail: a function of the last good copy of
 // the feed and the time, so the unit tests read every state.
 // docs/data/imgw.md.
+
+import { uncheckedText } from "./hub.ts";
 import {
   type Feed,
   forPowiat,
@@ -39,8 +41,14 @@ export type ImgwCopy = LiveCopy<Feed>;
 export { UNREADABLE };
 export type ImgwRead = ImgwCopy | null | typeof UNREADABLE;
 
+/** The module's subject, after „Nie udało się nam sprawdzić”. */
+export const WEATHER_SUBJECT = "ostrzeżeń IMGW";
+
+/** Its name in a freshness line: IMGW's changes are warnings. */
+export const WEATHER_FRESH = "ostrzeżenia IMGW";
+
 /** The notice when the store cannot be read now; CURRENT follows it. */
-const UNREADABLE_NOTICE = "Nie udało się teraz sprawdzić ostrzeżeń IMGW.";
+const UNREADABLE_NOTICE = uncheckedText(WEATHER_SUBJECT);
 
 /**
  * The copy from the feed file and the status file (lib/live-store.ts), or

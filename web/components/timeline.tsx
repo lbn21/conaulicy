@@ -4,7 +4,7 @@ import { collapse, days, later, onDay } from "@/lib/timeline";
 import type { Item } from "@/lib/upcoming";
 
 /** What the timeline says with nothing in the window and nothing later. */
-const EMPTY = "Na razie nic nie zaplanowano pod tym adresem.";
+const EMPTY = "Na razie nic się nie dzieje pod tym adresem.";
 
 // „Najbliższe 7 dni”: h2, then a card per
 // day from the read's day (lib/timeline.ts; a run of 2+ empty days as

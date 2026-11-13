@@ -116,7 +116,7 @@ const checkTimes = (html: string) => {
   const lines = smallPrint(html).split("\n");
   const line = lines.at(-2) ?? "";
   return new Map(
-    [...line.matchAll(/(\p{L}+) (\d\d\.\d\d, \d\d:\d\d)/gu)].map(
+    [...line.matchAll(/(?:: |; )([\p{L} ]+?) (\d\d\.\d\d, \d\d:\d\d)/gu)].map(
       ([, name, at]) => [name, at] as const,
     ),
   );
@@ -251,7 +251,7 @@ test("a warning: its card above the timeline, the meter, when, IMGW's words", ()
   assert.ok(html.indexOf(card) < html.indexOf("najblizsze-dni"));
   assert.match(
     card,
-    /^<section class="app-warning app-warning--1" aria-labelledby="ostrzezenie-Sk20261024094213061"><p class="app-warning__level govuk-body-s govuk-!-font-weight-bold"><span class="app-warning__meter" aria-hidden="true"><span class="app-warning__on"><\/span><span><\/span><span><\/span><\/span><svg\/>[^<]*1[^<]*<\/p><div class="app-warning__body app-mod app-mod--pogoda"><h2 id="ostrzezenie-Sk20261024094213061" class="govuk-heading-m govuk-!-margin-bottom-2"><span class="app-tile app-mod app-mod--pogoda"><svg\/><\/span>Silny wiatr<\/h2><p class="govuk-body">[^<]*25 października 19:00[^<]*<\/p><details class="govuk-details govuk-!-margin-bottom-0"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">[^<]+<\/span><\/summary><div class="govuk-details__text">Prognozuje się wystąpienie /,
+    /^<section class="app-warning app-warning--1" aria-labelledby="ostrzezenie-Sk20261024094213061"><p class="app-warning__level govuk-body-s govuk-!-font-weight-bold"><span class="app-warning__meter" aria-hidden="true"><span class="app-warning__on"><\/span><span><\/span><span><\/span><\/span><svg\/>[^<]*1[^<]*<\/p><div class="app-warning__body app-mod app-mod--pogoda"><h2 id="ostrzezenie-Sk20261024094213061" class="govuk-heading-m govuk-!-margin-bottom-2"><span class="app-tile app-mod app-mod--pogoda"><svg\/><\/span>Silny wiatr<\/h2><p class="govuk-body">[^<]*25 października, 19:00[^<]*<\/p><details class="govuk-details govuk-!-margin-bottom-0"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">[^<]+<\/span><\/summary><div class="govuk-details__text">Prognozuje się wystąpienie /,
   );
   // No source link in the card: the small print has IMGW's.
   assert.doesNotMatch(card, /<a /);

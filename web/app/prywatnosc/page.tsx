@@ -44,9 +44,9 @@ export default function PrivacyPage() {
                 tylko pobiera listę ulic, żeby szybciej podpowiadać adresy.
               </p>
               <p className="govuk-body">
-                Ostrzeżenia pogodowe pobiera z IMGW, a przerwy w dostawie prądu
-                z PGE nasz serwer. Twoja przeglądarka nie łączy się ani z IMGW,
-                ani z PGE.
+                Ostrzeżenia IMGW, przerwy w dostawie wody i prądu oraz
+                harmonogramy pobiera nasz serwer. Twoja przeglądarka łączy się
+                tylko z conaulicy.pl.
               </p>
             </section>
 
@@ -60,7 +60,7 @@ export default function PrivacyPage() {
                 zapisywany, a skrót, który odróżnia jedną wizytę od drugiej,
                 znika po 24 godzinach. Widzimy tylko zbiorcze liczby, nigdy
                 pojedynczą osobę. Widzimy, które ulice są oglądane, ale nie to,
-                co wpisujesz, ani numeru domu.
+                co wpisujesz.
               </p>
               <p className="govuk-body">
                 <a
@@ -76,9 +76,9 @@ export default function PrivacyPage() {
               <h2 className="govuk-heading-m">Logi serwera</h2>
               <p className="govuk-body">
                 Stronę udostępnia firma hostingowa. Jak każdy serwer, zapisuje
-                ona techniczne logi: adres IP, godzinę i otwierany adres strony,
-                w tym to, co wpiszesz w wyszukiwarkę. Hosting zapisuje je w
-                naszym imieniu.
+                ona techniczne logi: adres IP, godzinę i otwierany adres strony
+                (np. strony Twojej ulicy). Ten adres może zawierać to, co
+                wpiszesz w wyszukiwarkę. Hosting zapisuje logi w naszym imieniu.
               </p>
             </section>
 

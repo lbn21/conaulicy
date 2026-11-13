@@ -202,19 +202,19 @@ test("PGE's checks failing: the outages still shown, the notice with PGE's page;
     const [[notice]] = powerNotices(failing);
     assert.equal(typeof notice[0], "string");
     assert.deepEqual(notice.slice(1), [
-      { href: PGE_PAGE, text: "stronie PGE Dystrybucja" },
+      { href: PGE_PAGE, text: "stronie PGE Dystrybucji" },
       ".",
     ]);
   }
   const unreadable = power("unreadable", HUTA, NOW);
   assert.equal(
     unreadable?.notice,
-    "Nie udało się teraz sprawdzić przerw w dostawie prądu.",
+    "Nie udało się nam sprawdzić przerw w dostawie prądu.",
   );
   assert.equal(power(null, HUTA, NOW), null);
   // Nothing here, fresh: the plain empty line.
   assert.deepEqual(powerPage(at(ZUKI)).empty, [
-    "PGE nie zapowiada przerw w dostawie prądu pod tym adresem.",
+    "PGE nie podaje teraz żadnych przerw w dostawie prądu pod tym adresem.",
   ]);
 });
 

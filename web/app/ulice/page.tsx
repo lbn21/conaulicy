@@ -6,12 +6,12 @@ import { pageData } from "@/lib/page-cache";
 import { type ListedPlace, localityAnchor, placePath } from "@/lib/places";
 import { pageMetadata } from "@/lib/share";
 import { ALL_PLACES } from "@/lib/static-pages";
+import { SITE_TOPICS } from "@/lib/topics";
 
 export const metadata: Metadata = pageMetadata({
   path: ALL_PLACES.path,
   title: ALL_PLACES.text,
-  description:
-    "Wszystkie ulice Lubaczowa i wsie gminy Lubaczów w jednym miejscu. Wybierz swoją i sprawdź wywóz śmieci, przerwy w dostawie wody i ostrzeżenia IMGW.",
+  description: `Wszystkie ulice Lubaczowa i wsie gminy Lubaczów w jednym miejscu. Wybierz swoją i sprawdź ${SITE_TOPICS}.`,
 });
 
 /**
@@ -41,7 +41,7 @@ export default async function AllPlacesPage() {
         <div className="govuk-grid-column-two-thirds">
           <PageHead
             title={ALL_PLACES.text}
-            lead="Wybierz swoją ulicę albo wieś, żeby zobaczyć terminy wywozu śmieci, przerwy w dostawie wody i prądu oraz ostrzeżenia IMGW."
+            lead={`Wybierz swoją ulicę albo wieś, żeby sprawdzić ${SITE_TOPICS}.`}
           >
             <p className="govuk-body">
               Wolisz wpisać adres?{" "}

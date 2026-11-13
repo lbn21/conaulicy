@@ -27,7 +27,7 @@ export function normalize(text: string): string {
     .trim();
 }
 
-/** A file name's words: "wywoz-smieci-gmina-lubaczow-sektor-1", ≤ 80 chars. */
+/** A file name's words: "odbior-smieci-gmina-lubaczow-sektor-1", ≤ 80 chars. */
 export function fileSlug(text: string): string {
   return normalize(text).replaceAll(" ", "-").slice(0, 80).replace(/-+$/, "");
 }

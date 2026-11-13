@@ -7,7 +7,9 @@ const SHARE_IMAGE = {
   url: "/og.png",
   width: 1200,
   height: 630,
-  alt: "conaulicy.pl: sprawdź swoją ulicę. Wywóz śmieci, przerwy w dostawie wody i ostrzeżenia IMGW. Lubaczów i gmina.",
+  // Exactly what the card shows (its tagline, drawn as outlines in
+  // og.svg, its <title>): no power on it yet.
+  alt: "conaulicy.pl: sprawdź swoją ulicę – śmieci, woda i ostrzeżenia IMGW",
 };
 
 /** The service's one name: in every title, the header and share tags. */

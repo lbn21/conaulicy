@@ -5,7 +5,7 @@ import { FEATURES } from "@/lib/config.generated";
 import { LOGO_HEIGHT, PLATE, PLATE_COLOUR, PLATE_WIDTH } from "@/lib/logo";
 import { DISCLAIMER } from "@/lib/schedule-notes";
 import { SITE_NAME } from "@/lib/share";
-import { STATIC_PAGES } from "@/lib/static-pages";
+import { AUTHOR_LINE, STATIC_PAGES } from "@/lib/static-pages";
 
 // Our own footer markup with GOV.UK's footer classes, laid out as the GOV.UK
 // footer: logo, navigation and section break (once there is enough to
@@ -106,7 +106,7 @@ export function SiteFooter() {
                 </li>
               </ul>
               <div className="govuk-footer__meta-custom">
-                Zrobił Jakub Marciniszyn dla mieszkańców Lubaczowa i gminy.
+                {AUTHOR_LINE}
                 <br />
                 {DISCLAIMER}
               </div>

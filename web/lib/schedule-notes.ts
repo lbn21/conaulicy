@@ -2,7 +2,9 @@
 // kept in one place so they cannot drift. Pure, so the unit tests need no
 // database.
 import type { PickupDay, PlaceView } from "@/lib/schedule";
+import { capitalised } from "./dates.ts";
 import { scheduleOwner } from "./places.ts";
+import { SITE_TOPICS } from "./topics.ts";
 
 /**
  * Whether a place has any pickup on or after `today` (a Warsaw ISO day).
@@ -14,54 +16,77 @@ export function hasUpcoming(days: PickupDay[], today: string): boolean {
 }
 
 /**
- * When to put the bins out, on the page, in the PDF and in the calendar:
- * `time` is the data's hour ("06:00"), shown without its leading zero.
+ * When to put the bins out, on the page, in the PDF, in the calendar and on
+ * the address page: `time` is the data's hour ("06:00"), shown without its
+ * leading zero; `named`: the bins were named right before („je”).
  */
-export function putOutNote(time: string): string {
-  return `Wystaw pojemniki do ${time.replace(/^0/, "")} w dniu odbioru.`;
+export function putOutNote(time: string, named = false): string {
+  return `Wystaw ${named ? "je" : "pojemniki"} do ${time.replace(/^0/, "")} w dniu odbioru.`;
 }
 
 /**
- * The same on the address page, after its bins: "Wystaw je do 6:00 rano.";
- * „rano” before noon, else „w dniu odbioru”.
+ * Who is authoritative, one sentence everywhere (t427 glossary 7):
+ * „Nie jesteśmy urzędem – obowiązuje ‹what›.”
  */
-export function putOutLine(time: string): string {
-  const hour = time.replace(/^0/, "");
-  return `Wystaw je do ${hour} ${Number.parseInt(hour, 10) < 12 ? "rano" : "w dniu odbioru"}.`;
+export function notAnOffice(what: string, verb = "obowiązuje"): string {
+  return `Nie jesteśmy urzędem – ${verb} ${what}.`;
 }
 
-/** In the footer and a calendar without its gmina: we are not an office. */
-export const DISCLAIMER =
-  "Nie jesteśmy urzędem – ważniejszy jest komunikat urzędu.";
+/** In the footer and a calendar without its gmina. */
+export const DISCLAIMER = notAnOffice(
+  "harmonogramy i komunikaty urzędów",
+  "obowiązują",
+);
+
+/** Whose schedule, in the genitive: the town's office, else the gmina's. */
+const ownerOf = (gmina: string | null) =>
+  gmina ? scheduleOwner(gmina) : "urzędu";
 
 /** The same for one gmina's schedule (the calendar, the PDF). */
 export function disclaimer(gmina: string): string {
-  return `Nie jesteśmy urzędem – obowiązuje harmonogram ${scheduleOwner(gmina)}.`;
+  return notAnOffice(`harmonogram ${scheduleOwner(gmina)}`);
 }
+
+/** Dates read by a program, not yet checked: `what` is authoritative. */
+export function aiReadNote(what: string, verb?: string): string {
+  return `Te daty odczytaliśmy automatycznie i jeszcze ich nie sprawdziliśmy. W razie różnic ${verb ?? "obowiązuje"} ${what}.`;
+}
+
+/**
+ * When the next dates come: after the gmina's next schedule, its owner
+ * named; null: unnamed, where the next sentence names it.
+ */
+const nextSchedule = (gmina: string | null | undefined) =>
+  gmina === undefined
+    ? "gdy tylko pojawi się nowy harmonogram"
+    : `gdy tylko pojawi się nowy harmonogram ${ownerOf(gmina)}`;
 
 /**
  * After the last date, on the waste subpage and in its calendar:
  * the next year's dates come when published. Null without dates.
  */
-export function laterNote(days: Pick<PickupDay, "date">[]): string | null {
+export function laterNote(
+  days: Pick<PickupDay, "date">[],
+  gmina: string | null,
+): string | null {
   return days.length > 0
-    ? "Terminy na kolejny rok dodamy, gdy je ogłoszą."
+    ? `Terminy na kolejny rok dodamy, ${nextSchedule(gmina)}.`
     : null;
 }
 
 /** When a place's schedule has ended: the heading, then what comes next. */
 export const NO_MORE_DATES = "Nie mamy jeszcze kolejnych terminów";
-export const NO_MORE_DATES_NEXT =
-  "Dodamy je, gdy tylko gmina ogłosi nowy harmonogram.";
+/** `gmina`: whose schedule; left out where the next sentence names it. */
+export const noMoreDatesNext = (gmina?: string) =>
+  `Dodamy je, ${nextSchedule(gmina)}.`;
 
 /** Shown on the page while a place is not verified. */
 export function unverifiedNote(gmina: string): string {
-  return `Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest harmonogram ${scheduleOwner(gmina)}.`;
+  return aiReadNote(`harmonogram ${scheduleOwner(gmina)}`);
 }
 
 /** What the address page holds, its modules', for its description. */
-const ADDRESS_TOPICS =
-  "Wywóz śmieci, przerwy w dostawie wody i prądu, ostrzeżenia IMGW";
+const ADDRESS_TOPICS = capitalised(SITE_TOPICS);
 
 /**
  * The place's description in search results and when shared: its dates and
@@ -81,5 +106,8 @@ export function placeDescription(
   }
   return dates
     ? `${ADDRESS_TOPICS}: ${place.label}. Najbliższe terminy w jednym miejscu.`
-    : `${ADDRESS_TOPICS}: ${place.label}. Terminów wywozu jeszcze tu nie mamy.`;
+    : `${ADDRESS_TOPICS}: ${place.label}. Terminów odbioru jeszcze tu nie mamy.`;
 }
+
+/** The printed schedule's title (the PDF's band and its metadata). */
+export const PDF_TITLE = "Harmonogram odbioru śmieci";

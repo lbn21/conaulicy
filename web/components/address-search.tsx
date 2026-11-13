@@ -27,7 +27,7 @@ import {
   type SearchHit,
   searchTerms,
 } from "@/lib/search";
-import { HINT, LABEL } from "@/lib/search-hint";
+import { HINT, HINT_EXAMPLES, LABEL } from "@/lib/search-hint";
 import { loadedIndex, loadIndex } from "@/lib/search-index";
 import { type Outcome, outcomeOf, searchQuery } from "@/lib/search-submit";
 import { ALL_PLACES } from "@/lib/static-pages";
@@ -39,14 +39,18 @@ const ERROR_ID = "adres-error";
 
 const EMPTY_ERROR = "Wpisz nazwę ulicy albo wsi";
 
+const FAILED = "Nie udało się wczytać wyszukiwarki.";
+const FIND_IN_LIST = "Znajdź swój adres na liście";
+
 type Note = "hint" | "loading" | "error" | "none";
 
+// What the suggestions list says with no suggestion (tNoResults); the
+// loading and failing ones also under the field after „Szukaj” (Results).
 const NOTES: Record<Note, string> = {
-  hint: "Wpisz nazwę ulicy.",
-  loading: "Szukam…",
-  error:
-    "Nie udało się wczytać wyszukiwarki. Znajdź swój adres na liście wszystkich ulic i wsi.",
-  none: "Brak wyników. Nie mamy jeszcze tej ulicy ani wsi – sprawdź przykładowe adresy poniżej.",
+  hint: `${EMPTY_ERROR}.`,
+  loading: "Szukamy…",
+  error: `${FAILED} ${FIND_IN_LIST} wszystkich ulic i wsi.`,
+  none: `Brak wyników. ${FIND_IN_LIST} wszystkich ulic i wsi.`,
 };
 
 function escapeHtml(text: string): string {
@@ -232,7 +236,7 @@ function Results({ shown }: { shown: Shown }) {
   if (shown.kind === "failed")
     return (
       <p className="govuk-body">
-        Nie udało się wczytać wyszukiwarki. Znajdź swój adres na liście{" "}
+        {`${FAILED} ${FIND_IN_LIST} `}
         <Link href={ALL_PLACES.path} className="govuk-link">
           {ALL_PLACES.text}
         </Link>
@@ -264,7 +268,7 @@ function Results({ shown }: { shown: Shown }) {
         <p className="govuk-body">Możesz:</p>
         <ul className="govuk-list govuk-list--bullet">
           <li>sprawdzić pisownię</li>
-          <li>wpisać samą nazwę ulicy albo wsi, na przykład Asnyka</li>
+          <li>{`wpisać samą nazwę ulicy albo wsi, na przykład ${HINT_EXAMPLES[0].text}`}</li>
           <li>
             znaleźć swój adres na liście{" "}
             <Link href={ALL_PLACES.path} className="govuk-link">
@@ -303,7 +307,7 @@ function Results({ shown }: { shown: Shown }) {
  * (lib/search-submit.ts): one place (a picked suggestion, or one clearly
  * best) opens its page by client-side navigation (useRouter().push); several
  * are listed under the field, none says what to try next, both on this page
- * with no navigation; while the index is not in yet, „Szukam…”. The list region is a polite live region, so
+ * with no navigation; while the index is not in yet, „Szukamy…”. The list region is a polite live region, so
  * what appears is announced. An empty field is GOV.UK's error, only after
  * a submit.
  */
@@ -463,7 +467,7 @@ export function AddressSearch({ indexUrl }: { indexUrl: string }) {
               // to it, so adres-hint and adres-error are not on the field:
               // the error, then the hint, are read from here instead.
               tAssistiveHint={() =>
-                `${error ? `Błąd: ${error}. ` : ""}${HINT} Gdy pojawią się podpowiedzi, wybierz je strzałkami w górę i w dół i Enterem albo dotknij.`
+                `${error ? `Błąd: ${error}. ` : ""}${HINT} Gdy pojawią się podpowiedzi, wybierz jedną strzałkami w górę i w dół, a potem naciśnij Enter albo ją dotknij.`
               }
             />
           </div>
