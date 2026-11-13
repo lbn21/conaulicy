@@ -1,10 +1,17 @@
 import { clockTime, dayGenitive, warsawDay } from "./date-labels.ts";
 
 // When each source was last checked: status/checks.json in the private Blob
-// store (lib/live-store.ts), written by the ZUK cron once at the end of
-// every run (lib/zuk-cron.ts handleZukCron, the one writer). One shape for
-// every source key: the last good check, the last try, and whether that
-// try went well. Pure, so the unit tests read every state. docs/data/imgw.md.
+// store (lib/live-store.ts), by the ZUK cron at the end of a run
+// (lib/zuk-cron.ts handleZukCron, the one writer). One shape for every
+// source key: the last good check, the try the file was written at, and
+// whether the source's last try went well. Pure, so the unit tests read
+// every state. docs/data/imgw.md.
+//
+// Written only when a page could show the difference (checksWorth), as a
+// Blob write is a paid operation: a source's state flips (good, failing),
+// or a source checked well has a stored check CHECK_REFRESH_MS old. So a
+// source checked well never reads as stale, and a failing one turns stale
+// and too old when it did with a write every run, to a run (nextChecks).
 
 /** Raise it when the shape changes: a file of another version is not read. */
 export const CHECKS_VERSION = 1;
@@ -14,6 +21,17 @@ export const STALE_MS = 60 * 60_000;
 
 /** Older than this, the data is not shown at all (only that it is old). */
 export const MAX_AGE_MS = 3 * 3_600_000;
+
+/** The cron's period (vercel.json: 7,22,37,52 * * * *). */
+export const CHECK_EVERY_MS = 15 * 60_000;
+
+/**
+ * A good check is written again once the stored one is this old: the
+ * third run after a write (45 min, however late a run starts), so the
+ * oldest stored check a page can read is 45 min and a run's length (at
+ * most maxDuration, 5 min) old: under STALE_MS.
+ */
+const CHECK_REFRESH_MS = 40 * 60_000;
 
 /** IMGW's warnings feed (lib/imgw-cron.ts). */
 export const IMGW_KEY = "imgw";
@@ -27,7 +45,7 @@ export const waterKey = (id: string) => `water:${id}`;
 type SourceCheck = {
   /** ISO: the last good check; null: none yet. */
   checkedAt: string | null;
-  /** ISO: the last try, good or not. */
+  /** ISO: the try the file was written at. */
   attemptAt: string;
   ok: boolean;
 };
@@ -68,9 +86,25 @@ export function parseChecks(body: string | null): Checks | null {
 }
 
 /**
+ * The last good check of a source failing at `attemptAt` (ms), from its
+ * stored entry. Failing before: its stored check. Good before: the runs
+ * since the stored check went well (checksWorth wrote none of them, as it
+ * writes every flip), the last of them one period ago; a gap a good run
+ * would have written in (CHECK_REFRESH_MS and a period: runs missing, the
+ * cron down) keeps the stored check, never a later guess.
+ */
+function lastGood(stored: SourceCheck | undefined, attemptAt: number) {
+  if (!stored?.checkedAt) return null;
+  const checked = Date.parse(stored.checkedAt);
+  if (!stored.ok || attemptAt - checked >= CHECK_REFRESH_MS + CHECK_EVERY_MS)
+    return stored.checkedAt;
+  return new Date(Math.max(checked, attemptAt - CHECK_EVERY_MS)).toISOString();
+}
+
+/**
  * After a run: each source tried (`results`, its key and whether it went
  * well) at `attemptAt`; a good try is its new check, a failed one keeps the
- * last good. Sources not tried this run stay as they were.
+ * last good (lastGood). Sources not tried this run stay as they were.
  */
 export function nextChecks(
   previous: Checks | null,
@@ -78,13 +112,33 @@ export function nextChecks(
   attemptAt: string,
 ): Checks {
   const sources = { ...previous?.sources };
+  const at = Date.parse(attemptAt);
   for (const [key, ok] of Object.entries(results))
     sources[key] = {
-      checkedAt: ok ? attemptAt : (sources[key]?.checkedAt ?? null),
+      checkedAt: ok ? attemptAt : lastGood(sources[key], at),
       attemptAt,
       ok,
     };
   return { version: CHECKS_VERSION, sources };
+}
+
+/**
+ * Whether `next` is worth writing over `previous` (see above): no file, a
+ * source new or flipped, or a good one whose stored check is
+ * CHECK_REFRESH_MS old.
+ */
+export function checksWorth(previous: Checks | null, next: Checks): boolean {
+  if (!previous) return true;
+  return Object.entries(next.sources).some(([key, now]) => {
+    const before = previous.sources[key];
+    if (!before || before.ok !== now.ok) return true;
+    if (!now.ok || !now.checkedAt) return false;
+    return (
+      !before.checkedAt ||
+      Date.parse(now.checkedAt) - Date.parse(before.checkedAt) >=
+        CHECK_REFRESH_MS
+    );
+  });
 }
 
 /**

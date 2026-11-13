@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  CHECK_EVERY_MS,
   CHECKS_VERSION,
+  type Checks,
   checkAge,
+  checksWorth,
   IMGW_KEY,
   MAX_AGE_MS,
   nextChecks,
@@ -94,4 +97,64 @@ test("age: fresh to STALE_MS, stale over it, too old from MAX_AGE_MS", () => {
   assert.equal(checkAge(at, at + STALE_MS + 1), "stale");
   assert.equal(checkAge(at, at + MAX_AGE_MS - 1), "stale");
   assert.equal(checkAge(at, at + MAX_AGE_MS), "too-old");
+});
+
+// The cron's runs every CHECK_EVERY_MS from T0, each source good or not;
+// the file as checksWorth keeps it, and as a write every run would.
+function runs(goodAt: (i: number) => boolean, n: number) {
+  let lazy: Checks | null = null;
+  let every: Checks | null = null;
+  let writes = 0;
+  const seen: Array<{ at: number; lazy: Checks; every: Checks }> = [];
+  for (let i = 0; i < n; i++) {
+    const at = Date.parse(T0) + i * CHECK_EVERY_MS;
+    const iso = new Date(at).toISOString();
+    const result = { [IMGW_KEY]: goodAt(i) };
+    const next = nextChecks(lazy, result, iso);
+    if (checksWorth(lazy, next)) {
+      lazy = next;
+      writes++;
+    }
+    every = nextChecks(every, result, iso);
+    seen.push({ at, lazy: lazy as Checks, every });
+  }
+  return { writes, seen };
+}
+
+/** The age class a page reads, `after` ms after a run. */
+const ageOf = (checks: Checks, at: number) =>
+  checkAge(Date.parse(checks.sources[IMGW_KEY].checkedAt ?? ""), at);
+
+test("written: a good source every third run, never read as stale", () => {
+  const day = runs(() => true, 96);
+  assert.equal(day.writes, 32);
+  // A page rendered up to a run's whole length (5 min) after it, before
+  // the next run's write.
+  for (const { at, lazy } of day.seen)
+    for (const after of [0, CHECK_EVERY_MS + 5 * 60_000])
+      assert.equal(ageOf(lazy, at + after), "fresh");
+});
+
+test("written: a failing source turns stale and too old when it did with a write every run", () => {
+  // Down from each run of a cycle of writes (the stored check 0 to 30 min
+  // behind), for 5 hours.
+  for (const down of [6, 7, 8, 9, 10, 11]) {
+    const { seen } = runs((i) => i < down, down + 20);
+    for (const [i, { at, lazy, every }] of seen.entries()) {
+      // Good: the stored check may lag, its age class never.
+      if (i >= down)
+        assert.equal(lazy.sources.imgw.checkedAt, every.sources.imgw.checkedAt);
+      assert.equal(ageOf(lazy, at), ageOf(every, at), `down ${down}, run ${i}`);
+    }
+    const last = seen.at(-1) as (typeof seen)[number];
+    assert.equal(ageOf(last.lazy, last.at), "too-old");
+  }
+});
+
+test("written: after a gap (the cron down), a failure keeps the stored check", () => {
+  const good = nextChecks(null, { [IMGW_KEY]: true }, T0);
+  const late = new Date(Date.parse(T0) + 2 * 3_600_000).toISOString();
+  const failing = nextChecks(good, { [IMGW_KEY]: false }, late);
+  assert.equal(failing.sources.imgw.checkedAt, T0);
+  assert.ok(checksWorth(good, failing));
 });

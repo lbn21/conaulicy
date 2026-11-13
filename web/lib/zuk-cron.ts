@@ -33,7 +33,12 @@ import { addDays, isoWithOffset, todayInWarsaw } from "./dates.ts";
 import type { District } from "./districts.ts";
 import { NO_STORE } from "./headers.ts";
 import type { LiveRunSummary } from "./live-cron.ts";
-import { nextChecks, parseChecks, waterKey } from "./live-status.ts";
+import {
+  checksWorth,
+  nextChecks,
+  parseChecks,
+  waterKey,
+} from "./live-status.ts";
 import { cronDenied } from "./secret.ts";
 import { gminaLubaczow } from "./sources/gmina-lubaczow/index.ts";
 import { type PostSource, SourceDown } from "./sources/source.ts";
@@ -526,8 +531,11 @@ async function recordChecks(
   } catch (error) {
     log({ checks: "read-error", error: (error as Error).message });
   }
+  const next = nextChecks(previous, results, attemptAt);
+  // Only what a page could show (lib/live-status.ts checksWorth).
+  if (!checksWorth(previous, next)) return;
   try {
-    await store.write(JSON.stringify(nextChecks(previous, results, attemptAt)));
+    await store.write(JSON.stringify(next));
   } catch (error) {
     log({ checks: "write-error", error: (error as Error).message });
   }
