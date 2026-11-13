@@ -22,7 +22,9 @@ export async function check(server, failures) {
   for (const id of HOME_EXAMPLES) {
     const response = await fetch(`${server.origin}/adres/${id}`, { headers });
     const html = await response.text();
-    const name = html.match(/<h1 [^>]*class="govuk-heading-l">([^<]+)<\/h1>/)?.[1];
+    const name = html.match(
+      /<h1 [^>]*class="govuk-heading-l">([^<]+)<\/h1>/,
+    )?.[1];
     names.set(id, name);
     if (response.status !== 200 || !name) {
       failures.push(`/adres/${id}: ${response.status}, not a place page`);
