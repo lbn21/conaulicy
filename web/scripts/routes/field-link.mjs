@@ -41,9 +41,12 @@ export async function check(server, failures) {
           const label = document
             .querySelector(`label[for="${id}"]`)
             ?.getBoundingClientRect();
+          // In view within 1 px: scrollIntoView() puts its top at the
+          // viewport's, on a fractional y.
           return {
+            label: label && [label.top, label.bottom].map((y) => y.toFixed(2)),
             labelInView:
-              !!label && label.top >= 0 && label.bottom <= innerHeight,
+              !!label && label.top >= -1 && label.bottom <= innerHeight + 1,
           };
         }, SEARCH_INPUT_ID),
       )
@@ -55,7 +58,9 @@ export async function check(server, failures) {
     if ("active" in state)
       failures.push(`${at}: focus on ${state.active}, not #${SEARCH_INPUT_ID}`);
     else if (!state.labelInView)
-      failures.push(`${at}: the field's label out of view`);
+      failures.push(
+        `${at}: the field's label out of view (y ${state.label?.join("–")})`,
+      );
     else return off.length === 0;
   });
   return `„Teraz w gminie”'s action focuses the search field (${seen.join(", ")}); no tile links off the site.`;
