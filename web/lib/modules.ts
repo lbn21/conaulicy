@@ -11,6 +11,7 @@ import { OutageRow } from "@/components/rows/outage";
 import { WasteRow } from "@/components/rows/smieci";
 import { WaterDetails } from "@/components/water-page";
 import { isModuleId, type ModuleId, SUBPAGE_IDS } from "@/lib/address-routes";
+import type { Cadence } from "@/lib/cadence";
 import type { Group, Part } from "@/lib/hub";
 import type { LiveReads } from "@/lib/live-reads";
 import { SOURCE_TAGS, type SourceTag } from "@/lib/page-cache";
@@ -86,6 +87,8 @@ export type Module<D> = {
    * (the waste schedule: its source line only).
    */
   changedAt(data: D): number | null;
+  /** How often its source is checked (lib/cadence.ts); null: never. */
+  cadence: Cadence | null;
   /**
    * Its link to the subpage in „Wszystko o Twoim adresie”, saying where
    * it goes („Wszystkie odbiory śmieci”), never a bare „Szczegóły”.
@@ -124,6 +127,7 @@ const waste: Module<PlaceView> = {
   Row: WasteRow,
   sources: wasteSources,
   changedAt: () => null,
+  cadence: null,
   description: (place) => placeDescription(place, "waste"),
   indexed: indexedPlace,
   Details: WasteBody,
@@ -147,6 +151,7 @@ const woda: Module<Water> = {
   Row: OutageRow,
   sources: waterSources,
   changedAt: (data) => data.changedAt,
+  cadence: "water",
   description: waterDescription,
   Details: WaterDetails,
 };
@@ -170,6 +175,7 @@ const prad: Module<Power> = {
   Row: OutageRow,
   sources: powerSources,
   changedAt: (data) => data.changedAt,
+  cadence: "live",
   description: powerDescription,
   Details: outageDetails(powerPage),
 };
@@ -196,6 +202,7 @@ const pogoda: Module<Weather> = {
   Row: () => null,
   sources: () => [],
   changedAt: (data) => data.changedAt,
+  cadence: "live",
   description: () => "",
   Details: () => null,
 };

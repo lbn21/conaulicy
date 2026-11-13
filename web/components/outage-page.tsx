@@ -119,7 +119,11 @@ function OutageDetails({ page }: { page: OutagePage }) {
           place={page.calendar.place}
         />
       )}
-      <SourceInset sources={page.sources} changedAt={page.changedAt} />
+      <SourceInset
+        sources={page.sources}
+        changedAt={page.changedAt}
+        cadence={page.cadence}
+      />
     </>
   );
 }

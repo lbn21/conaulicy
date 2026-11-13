@@ -150,7 +150,7 @@ const handle = (
     }),
     SECRET,
     d,
-    more,
+    [d, ...more],
     typeof imgw === "function" ? [{ key: IMGW_KEY, run: imgw }] : imgw,
     checks,
   );
@@ -337,7 +337,7 @@ test("done: once, after every run and the checks' write", async () => {
     }),
     SECRET,
     deps(w),
-    [],
+    [deps(w)],
     [
       {
         key: IMGW_KEY,
@@ -1003,4 +1003,30 @@ test("a reply off the schema: that post alone, again after 1 h and 6 h, then giv
   assert.deepEqual(saved(w).retries, []);
   assert.deepEqual(saved(w).rejected, []);
   assert.equal(byId(w, 39885)?.status, "parsed");
+});
+
+test("a live sources' run: no water run, the live steps' results, only their checks", async () => {
+  const w = world();
+  let status: string | null = null;
+  const response = await handleZukCron(
+    new Request("https://conaulicy.pl/api/cron/zuk", {
+      headers: { authorization: `Bearer ${SECRET}` },
+    }),
+    SECRET,
+    deps(w),
+    [],
+    [{ key: IMGW_KEY, run: async () => ({ checked: true, changed: false }) }],
+    {
+      read: async () => status,
+      write: async (body) => {
+        status = body;
+      },
+    },
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    imgw: { checked: true, changed: false },
+  });
+  assert.deepEqual(Object.keys(parseChecks(status)?.sources ?? {}), [IMGW_KEY]);
+  assert.equal(w.file, null);
 });

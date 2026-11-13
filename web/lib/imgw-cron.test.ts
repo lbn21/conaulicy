@@ -167,7 +167,7 @@ function cron(w: World, now: Date) {
     }),
     SECRET,
     water,
-    [],
+    [water],
     [{ key: IMGW_KEY, run: () => runImgw(deps(w, { now: clock })) }],
     file(w, CHECKS),
   );

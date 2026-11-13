@@ -1,7 +1,8 @@
 # ZUK water cuts
 
 Water cuts announced by ZUK Mokrzyca on gminalubaczow.pl, and in the town
-by MZGKiM (below), read every 15 minutes into one JSON file per source in
+by MZGKiM (below), read every 4 hours (`/api/cron/zuk?sources=water`,
+`web/lib/cadence.ts`) into one JSON file per source in
 Vercel Blob. No database writes.
 
 ## A run (`GET /api/cron/zuk`, Vercel Cron `7,22,37,52 * * * *`)

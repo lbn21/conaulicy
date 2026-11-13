@@ -1,5 +1,6 @@
 import { revalidateTag } from "next/cache";
 import { after } from "next/server";
+import { cadenceOf } from "@/lib/cadence";
 import { SITE_URL } from "@/lib/config.generated";
 import { getDataset } from "@/lib/dataset";
 import { DEPLOY_MARKER_PATH, syncDataset } from "@/lib/dataset-sync";
@@ -36,20 +37,22 @@ import { handleZukCron, type ZukCronDeps } from "@/lib/zuk-cron";
 import { ZUK_PLACES } from "@/lib/zuk-places.generated";
 import { readZukFile, writeZukFile } from "@/lib/zuk-store";
 
-// The water cuts of every source into its private Blob file
-// (lib/zuk-cron.ts): the gmina's posts (ZUK) and MZGKiM's at the same
-// time, each failing on its own; beside them, IMGW's warnings and PGE's
-// power outages, each into its own private Blob file (lib/imgw-cron.ts,
-// lib/pge-cron.ts: one PGE request a run, 4 an hour of PGE's 60); then every
-// source's check into the status file (lib/zuk-cron.ts handleZukCron). A
-// file is written only when it changed. The pages are prerendered: after
-// the run, every page whose view changed is revalidated, by its digest
-// (lib/page-refresh.ts); the run starts by reading what the home page
-// shows and syncing the dataset snapshot (lib/dataset-sync.ts). Vercel Cron calls it every
-// 15 minutes (vercel.json) with `Authorization: Bearer $CRON_SECRET`; by
-// hand:
+// Two Vercel Cron entries call it (vercel.json, lib/cadence.ts), each with
+// `Authorization: Bearer $CRON_SECRET`: every 15 minutes IMGW's warnings
+// and PGE's power outages, each into its own private Blob file
+// (lib/imgw-cron.ts, lib/pge-cron.ts: one PGE request a run, 4 an hour of
+// PGE's 60); every 4 hours (?sources=water) the water cuts of every source
+// into its private Blob file (lib/zuk-cron.ts): the gmina's posts (ZUK)
+// and MZGKiM's at the same time, each failing on its own. Then the run's
+// checks into the status file when they changed (lib/zuk-cron.ts
+// handleZukCron). A file is written only when it changed. The pages are
+// prerendered: after the run, every page whose view changed is
+// revalidated, by its digest (lib/page-refresh.ts); the run starts by
+// reading what the home page shows and syncing the dataset snapshot
+// (lib/dataset-sync.ts). By hand:
 //
 //   curl -H "Authorization: Bearer $CRON_SECRET" https://conaulicy.pl/api/cron/zuk
+//   curl -H "Authorization: Bearer $CRON_SECRET" 'https://conaulicy.pl/api/cron/zuk?sources=water'
 
 // Model calls of up to lib/zuk-ai.ts TIMEOUT_MS each, every
 // source's within the run's deadline: a call starts only with its timeout
@@ -170,15 +173,20 @@ export async function GET(request: Request) {
       log({ dataset: "sync-error", error: (error as Error).message });
     }
   };
+  // One cadence a call (lib/cadence.ts, vercel.json): the water sources'
+  // posts every 4 hours, IMGW's and PGE's every 15 minutes.
+  const water = cadenceOf(request.url) === "water";
   return handleZukCron(
     request,
     process.env.CRON_SECRET,
-    run(gminaLubaczow),
-    [run(mzgkim)],
-    [
-      { key: IMGW_KEY, run: imgw },
-      { key: PGE_KEY, run: pge },
-    ],
+    { now: () => new Date(), log },
+    water ? [run(gminaLubaczow), run(mzgkim)] : [],
+    water
+      ? []
+      : [
+          { key: IMGW_KEY, run: imgw },
+          { key: PGE_KEY, run: pge },
+        ],
     {
       read: seen(CHECKS_PATH, () => readBlobFile(CHECKS_PATH)),
       write: kept(CHECKS_PATH, (body) => writeBlobFile(CHECKS_PATH, body)),

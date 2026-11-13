@@ -2,6 +2,7 @@
 // whatever is cut: water (components/water-page.tsx waterPage) and power
 // (lib/power-module.ts powerPage) each fill it from their own data. Pure
 // and client-safe.
+import type { Cadence } from "./cadence.ts";
 import type { Part } from "./hub.ts";
 
 /** A row of an outage's summary list: „Godziny”, „Gdzie”. */
@@ -54,4 +55,6 @@ export type OutagePage = {
   sources: Part[][];
   /** When the source's data last changed (ms): the freshness line. */
   changedAt: number | null;
+  /** How often the source is checked (lib/cadence.ts). */
+  cadence: Cadence;
 };

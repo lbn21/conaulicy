@@ -253,6 +253,7 @@ export function powerPage(data: Power): OutagePage {
     aiNote: null,
     sources: powerSources(),
     changedAt: data.changedAt,
+    cadence: "live",
   };
 }
 

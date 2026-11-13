@@ -3,7 +3,6 @@ import { Tile } from "@/components/icon";
 import { NOW_TILES, type NowTileDef } from "@/components/now-tiles";
 import { SourceNote } from "@/components/subpage-parts";
 import { dayRange, todayInWarsaw } from "@/lib/dates";
-import { freshnessLine } from "@/lib/hub";
 import type { LiveReads } from "@/lib/live-reads";
 import { LIST } from "@/lib/locale";
 import { type NowTileData, type Week, weekOf } from "@/lib/now-panel";
@@ -156,11 +155,16 @@ export function NowPanel({ data: { week, reads } }: { data: NowData }) {
             </>
           )
         }
-        fresh={freshnessLine(
-          read.map(({ def, data }) => ({
-            name: def.label.toLowerCase(),
-            changedAt: data?.changedAt ?? null,
-          })),
+        fresh={read.flatMap(({ def, data }) =>
+          def.cadence === null
+            ? []
+            : [
+                {
+                  name: def.label.toLowerCase(),
+                  changedAt: data?.changedAt ?? null,
+                  cadence: def.cadence,
+                },
+              ],
         )}
       />
     </section>

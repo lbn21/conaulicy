@@ -12,6 +12,10 @@
       "schedule": "7,22,37,52 * * * *"
     },
     {
+      "path": "/api/cron/zuk?sources=water",
+      "schedule": "0 */4 * * *"
+    },
+    {
       "path": "/api/cron/import",
       "schedule": "17 4 * * *"
     }

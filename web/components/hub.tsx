@@ -14,7 +14,7 @@ import { Timeline } from "@/components/timeline";
 import { WarningCards } from "@/components/warning-cards";
 import { hubPage } from "@/lib/address-pages";
 import { MODULE_IDS, SUBPAGE_IDS } from "@/lib/address-routes";
-import { freshnessLine, type Group, unchecked } from "@/lib/hub";
+import { type Group, unchecked } from "@/lib/hub";
 import { MODULES, type Module } from "@/lib/modules";
 import { pageData } from "@/lib/page-cache";
 import type { PlaceView } from "@/lib/schedule";
@@ -126,11 +126,16 @@ export function Hub({
   // IMGW's data was read: its required wording in the small print.
   const imgw = weather?.read === true;
   const counts = windowCounts(items, place.today, now);
-  const fresh = freshnessLine(
-    loaded.map(({ module, data }) => ({
-      name: module.title,
-      changedAt: module.changedAt(data),
-    })),
+  const fresh = loaded.flatMap(({ module, data }) =>
+    module.cadence === null
+      ? []
+      : [
+          {
+            name: module.title,
+            changedAt: module.changedAt(data),
+            cadence: module.cadence,
+          },
+        ],
   );
   return (
     <AddressPage place={place}>

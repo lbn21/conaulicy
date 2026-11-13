@@ -9,7 +9,8 @@ import {
 } from "./page-cache.ts";
 import { PREWARM_MAX } from "./prewarm.ts";
 
-// How the zuk cron (app/api/cron/zuk/route.ts, every 15 minutes) keeps the
+// How the zuk cron (app/api/cron/zuk/route.ts: its live sources every 15
+// minutes, its water sources every 4 hours; lib/cadence.ts) keeps the
 // prerendered pages current: page by page, by digest. After its run it
 // works out every page's view (lib/pages.ts allPages) from the files it
 // read and wrote, at its clock, and hashes it (lib/page-digest.ts). A page

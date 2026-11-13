@@ -117,7 +117,7 @@ test("the cron records PGE's check under its key; a failure begins its own state
       }),
       "s",
       water,
-      [],
+      [water],
       [{ key: PGE_KEY, run: () => runPge(deps()) }],
       checks,
     );

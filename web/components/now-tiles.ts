@@ -1,5 +1,6 @@
 import "server-only";
 import type { IconName } from "@/components/icon";
+import type { Cadence } from "@/lib/cadence";
 import { IMGW_PAGE } from "@/lib/imgw-shown";
 import type { LiveReads } from "@/lib/live-reads";
 import {
@@ -41,11 +42,14 @@ export type NowTileDef = {
   /** A link at the tile's foot to a field on the page, which it focuses
    * (FieldLink); shown read or not. */
   action?: NowLink & { href: `#${string}` };
+  /** How often its source is checked (lib/cadence.ts); null: never. */
+  cadence: Cadence | null;
   read(week: Week, reads: LiveReads): Promise<NowTileData | null>;
 };
 
 const pogoda: NowTileDef = {
   id: "pogoda",
+  cadence: "live",
   icon: "pogoda",
   label: "Pogoda",
   source: { href: IMGW_PAGE, text: "IMGW" },
@@ -75,6 +79,7 @@ const pogoda: NowTileDef = {
 
 const woda: NowTileDef = {
   id: "woda",
+  cadence: "water",
   icon: "woda",
   label: "Woda",
   source: { href: MZGKIM_NEWS, text: "wodociągi" },
@@ -102,6 +107,7 @@ const woda: NowTileDef = {
 
 const prad: NowTileDef = {
   id: "prad",
+  cadence: "live",
   icon: "prad",
   label: "Prąd",
   source: { href: PGE_PAGE, text: "PGE Dystrybucja" },
@@ -125,6 +131,7 @@ const prad: NowTileDef = {
 // count of pickups this week, and the way to the address's own dates.
 const smieci: NowTileDef = {
   id: "smieci",
+  cadence: null,
   icon: "smieci",
   label: "Śmieci",
   source: null,
