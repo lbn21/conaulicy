@@ -57,7 +57,7 @@ export async function buildDataset(
   url: string,
   { batchId = null }: { batchId?: string | null } = {},
 ): Promise<Dataset> {
-  const pool = readOnlyPool(url);
+  const pool = await readOnlyPool(url);
   try {
     const db = drizzle(pool, { schema, casing: "snake_case" });
     const generatedAt = new Date().toISOString();
@@ -117,12 +117,23 @@ export async function buildDataset(
   }
 }
 
-/** Connections that may only read (each one set so as it opens). */
-export function readOnlyPool(url: string): pg.Pool {
-  const pool = new pg.Pool({ connectionString: url, max: 4 });
-  pool.on("connect", (client) => {
-    client.query("SET default_transaction_read_only = on");
+/**
+ * One connection that may only read, set so before any query; the pool
+ * queues the queries on it (never two at once on one client) and keeps it
+ * open until end().
+ */
+export async function readOnlyPool(url: string): Promise<pg.Pool> {
+  const pool = new pg.Pool({
+    connectionString: url,
+    max: 1,
+    idleTimeoutMillis: 0,
   });
+  const client = await pool.connect();
+  try {
+    await client.query("SET default_transaction_read_only = on");
+  } finally {
+    client.release();
+  }
   return pool;
 }
 

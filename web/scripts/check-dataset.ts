@@ -68,7 +68,7 @@ const {
 } = schema;
 
 const url = localDatabaseUrl();
-const pool = readOnlyPool(url);
+const pool = await readOnlyPool(url);
 const db = drizzle(pool, { schema, casing: "snake_case" });
 
 // ------------------------------------------------- the database reference

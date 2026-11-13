@@ -3,11 +3,8 @@
 // cron for the prompts and the gate (scripts/lib/dataset.ts,
 // app/api/cron/zuk/route.ts). Throws if unreadable.
 import { asc } from "drizzle-orm";
-import {
-  type Db,
-  districtAliases,
-  districtAliasStreets,
-} from "../../db/index.ts";
+import type { Db } from "../../db/index.ts";
+import { districtAliases, districtAliasStreets } from "../../db/schema.ts";
 import type { District } from "../../lib/districts.ts";
 
 export async function loadDistricts(db: Db): Promise<District[]> {
