@@ -11,7 +11,7 @@ export const FEATURES: Array<{ section: string; links: Array<{ href: string; tex
     "links": [
       {
         "href": "/",
-        "text": "Wywóz śmieci"
+        "text": "Odbiór śmieci"
       }
     ]
   }

@@ -58,16 +58,19 @@ function dayMonth(at: number): string {
   }).format(at);
 }
 
-/** An instant's Warsaw day, month and time. Example: "25 października 14:20". */
+/** An instant's Warsaw day, month and time. Example: "25 października, 14:20". */
 export function dayMonthTime(at: number): string {
-  return new Intl.DateTimeFormat(LOCALE, {
-    timeZone: WARSAW,
-    day: "numeric",
-    month: "long",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(at);
+  return `${dayMonth(at)}, ${clockTime(at)}`;
 }
+
+/**
+ * The site's one "day, time" style on Intl's moments: a comma between the
+ * date and the time, no leading zero on the hour („12 listopada, 4:00”).
+ */
+const dayTimeStyle = (text: string) =>
+  text
+    .replace(/^(\d{1,2}\s\p{L}+)\s(?=\d)/u, "$1, ")
+    .replace(/(^|\s)0(\d:)/u, "$1$2");
 
 /** An instant's Warsaw date. Example: "2026-10-25". */
 export function warsawDay(at: number): string {
@@ -88,7 +91,7 @@ let moments: Intl.DateTimeFormat | undefined;
 /**
  * Intl's range of two instants (Warsaw day, month and time), split at the
  * dash it puts between them, so a sentence can say „od … do …”: ["11
- * listopada, 10:00", "16:00"], ["11 listopada 22:00", "12 listopada 04:00"].
+ * listopada, 10:00", "16:00"], ["11 listopada, 22:00", "12 listopada, 4:00"].
  */
 export function momentRange(from: number, to: number): [string, string] {
   moments ??= new Intl.DateTimeFormat(LOCALE, {
@@ -103,6 +106,9 @@ export function momentRange(from: number, to: number): [string, string] {
     some.map((part) => part.value).join("");
   const end = parts.findIndex((part) => part.source === "endRange");
   // The same minute: Intl gives one moment, no range.
-  if (end < 0) return [join(parts), join(parts)];
-  return [join(parts.slice(0, end - 1)), join(parts.slice(end))];
+  if (end < 0) return [dayTimeStyle(join(parts)), dayTimeStyle(join(parts))];
+  return [
+    dayTimeStyle(join(parts.slice(0, end - 1))),
+    dayTimeStyle(join(parts.slice(end))),
+  ];
 }

@@ -155,7 +155,7 @@ const TOWN: Guide = {
       token: "popiol",
       container: "popielaty worek",
       where: null,
-      short: { yes: ["popiół - jedynie w zabudowie jednorodzinnej"], no: [] },
+      short: { yes: ["popiół – tylko w zabudowie jednorodzinnej"], no: [] },
       sources: [TOWN_RULES.id],
     },
     {

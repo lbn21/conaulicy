@@ -22,7 +22,7 @@ import {
   hasUpcoming,
   laterNote,
   NO_MORE_DATES,
-  NO_MORE_DATES_NEXT,
+  noMoreDatesNext,
   placeDescription,
   unverifiedNote,
 } from "@/lib/schedule-notes";
@@ -205,12 +205,16 @@ export function WasteBody({ data: place }: { data: PlaceView }) {
         <NoDates
           id="ended-heading"
           heading={NO_MORE_DATES}
-          text={`${NO_MORE_DATES_NEXT} ${checkSchedule(place, "Do tego czasu sprawdź")}`}
+          text={`${noMoreDatesNext(place.gmina)} ${checkSchedule(place, "Do tego czasu sprawdź")}`}
           place={place}
         />
       ) : (
         <>
-          <PickupSchedule days={place.days} later={laterNote(place.days)} />
+          <PickupSchedule
+            days={place.days}
+            next={noMoreDatesNext(place.gmina)}
+            later={laterNote(place.days, place.gmina)}
+          />
 
           {!place.verified && <AiReadNote text={unverifiedNote(place.gmina)} />}
 

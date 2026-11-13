@@ -28,7 +28,14 @@ import { longDate } from "./date-labels.ts";
 import { absoluteDay, warsawToIso } from "./dates.ts";
 import type { Disruption, Notice } from "./disruptions.ts";
 import { hasSource } from "./event-source.ts";
-import { capitalised, type Group, merged, type Part, span } from "./hub.ts";
+import {
+  capitalised,
+  type Group,
+  merged,
+  type Part,
+  span,
+  uncheckedText,
+} from "./hub.ts";
 import { LIST } from "./locale.ts";
 import { VILLAGE_IN } from "./part-streets.ts";
 import {
@@ -37,6 +44,7 @@ import {
   matches as placeMatches,
 } from "./place-match.ts";
 import { placePath } from "./places.ts";
+import { aiReadNote } from "./schedule-notes.ts";
 import type { Item } from "./upcoming.ts";
 import {
   GMINA,
@@ -489,7 +497,7 @@ export function staleNote(data: Water): Part[] | null {
     data.outages.length + data.notices.length > 0
   )
     parts.push(
-      `${parts.length > 0 ? " " : ""}Nie udało się nam teraz sprawdzić komunikatów${named(data, none)}. Zajrzyj też do `,
+      `${parts.length > 0 ? " " : ""}${uncheckedText(`komunikatów${named(data, none)}`)} Zajrzyj też do `,
       ...joined(none.map((s) => s.source.newsOf)),
       ".",
     );
@@ -542,7 +550,7 @@ const cutSources = (data: Water) => {
 
 /** The AI-read note for one source's posts, `of` its genitive. */
 export function aiNote(of: string): string {
-  return `Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest komunikat ${of}.`;
+  return aiReadNote(`komunikat ${of}`);
 }
 
 /**
@@ -553,7 +561,10 @@ export function aiNote(of: string): string {
 export function waterAiNote(data: Water): string {
   const used = cutSources(data);
   if (used.length > 1)
-    return `Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejsze są komunikaty ${listed(used.map((s) => s.of))}.`;
+    return aiReadNote(
+      `komunikaty ${listed(used.map((s) => s.of))}`,
+      "obowiązują",
+    );
   return aiNote((used[0] ?? GMINA).of);
 }
 
@@ -587,7 +598,7 @@ export function waterEmpty(data: Water): Part[] | null {
   const none = down(data);
   if (none.length === data.sources.length)
     return merged([
-      "Nie udało się nam teraz sprawdzić komunikatów o wodzie. Zajrzyj do ",
+      `${uncheckedText("komunikatów o wodzie")} Zajrzyj do `,
       ...joined(data.sources.map((s) => s.source.newsOf)),
       ".",
     ]);
@@ -599,7 +610,7 @@ export function waterEmpty(data: Water): Part[] | null {
   // With a notice, the note above says it (staleNote).
   if (none.length > 0 && data.notices.length === 0)
     parts.push(
-      ` Nie udało się nam jednak teraz sprawdzić komunikatów${named(data, none)}. Zajrzyj do `,
+      ` ${uncheckedText(`komunikatów${named(data, none)}`)} Zajrzyj do `,
       ...joined(none.map((s) => s.source.newsOf)),
       ".",
     );

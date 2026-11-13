@@ -34,11 +34,11 @@ test("its card's when: „Trwa do …” once begun, else Intl's range as „Od 
   const when = (now: string) => plain(warningWhen(warning, at(now)));
   assert.equal(
     when("2026-10-25T14:00:00+01:00"),
-    "Trwa do 25 października 19:00.",
+    "Trwa do 25 października, 19:00.",
   );
   assert.equal(
     when("2026-10-25T13:00:00+01:00"),
-    "Trwa do 25 października 19:00.",
+    "Trwa do 25 października, 19:00.",
   );
   assert.equal(
     when("2026-10-25T12:59:59+01:00"),
@@ -52,11 +52,11 @@ test("its card's when: „Trwa do …” once begun, else Intl's range as „Od 
   };
   assert.equal(
     plain(warningWhen(night, at("2026-11-11T12:00:00+01:00"))),
-    "Od 11 listopada 22:00 do 12 listopada 04:00.",
+    "Od 11 listopada, 22:00 do 12 listopada, 4:00.",
   );
   assert.equal(
     plain(warningWhen(night, at("2026-11-11T23:00:00+01:00"))),
-    "Trwa do 12 listopada 4:00.",
+    "Trwa do 12 listopada, 4:00.",
   );
 });
 
@@ -131,7 +131,7 @@ test("the store unreadable now: the notice alone, no card, no check time", () =>
   assert.ok(data);
   assert.deepEqual(data.shown?.warnings, []);
   assert.deepEqual(weatherNotices(data), [
-    [[`Nie udało się teraz sprawdzić ostrzeżeń IMGW.${NOTICE_END}`, link, "."]],
+    [[`Nie udało się nam sprawdzić ostrzeżeń IMGW.${NOTICE_END}`, link, "."]],
   ]);
   assert.equal(data.read, false);
   assert.equal(data.changedAt, null);

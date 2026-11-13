@@ -1,7 +1,7 @@
 import "server-only";
 import type { IconName } from "@/components/icon";
 import type { Cadence } from "@/lib/cadence";
-import { IMGW_PAGE } from "@/lib/imgw-shown";
+import { IMGW_PAGE, WEATHER_FRESH } from "@/lib/imgw-shown";
 import type { LiveReads } from "@/lib/live-reads";
 import {
   counted,
@@ -12,10 +12,10 @@ import {
   type Week,
   waterWeek,
 } from "@/lib/now-panel";
-import { PGE_PAGE } from "@/lib/power-module";
+import { PGE_NAME, PGE_PAGE } from "@/lib/power-module";
 import { wasteWeek } from "@/lib/schedule";
 import { SEARCH_INPUT_ID } from "@/lib/search";
-import { MZGKIM_NEWS } from "@/lib/water-sources";
+import { gminaNews, mzgkimNews } from "@/lib/water-sources";
 import { warningWhen, weather } from "@/lib/weather-module";
 
 // The home page's „Teraz w gminie” tiles, in order: one entry each, its
@@ -36,9 +36,11 @@ export type NowTileDef = {
   /** Its module's icon and colour (.app-mod--<icon>). */
   icon: IconName;
   label: string;
-  /** Its source, linked in the panel's source line; null: no single page
+  /** Its sources, linked in the panel's source line; none: no single page
    * (the waste schedules, one per gmina). */
-  source: NowLink | null;
+  sources: NowLink[];
+  /** Its name in the panel's freshness line; default: its label. */
+  freshName?: string;
   /** A link at the tile's foot to a field on the page, which it focuses
    * (FieldLink); shown read or not. */
   action?: NowLink & { href: `#${string}` };
@@ -52,7 +54,8 @@ const pogoda: NowTileDef = {
   cadence: "live",
   icon: "pogoda",
   label: "Pogoda",
-  source: { href: IMGW_PAGE, text: "IMGW" },
+  sources: [{ href: IMGW_PAGE, text: "IMGW" }],
+  freshName: WEATHER_FRESH,
   async read(_week, { imgw, now }) {
     const data = weather(await imgw(), now);
     if (!data?.read) return null;
@@ -62,7 +65,7 @@ const pogoda: NowTileDef = {
     if (!top)
       return {
         value: "Brak ostrzeżeń",
-        note: "dla powiatu, teraz",
+        note: "teraz, w powiecie lubaczowskim",
         empty: true,
         changedAt,
       };
@@ -82,7 +85,8 @@ const woda: NowTileDef = {
   cadence: "water",
   icon: "woda",
   label: "Woda",
-  source: { href: MZGKIM_NEWS, text: "wodociągi" },
+  // Every gmina's cuts: both sources (lib/water-sources.ts).
+  sources: [gminaNews, mzgkimNews],
   async read(week, { water }) {
     const views = Object.values(await water());
     if (views.every((v) => v.unavailable)) return null;
@@ -110,7 +114,7 @@ const prad: NowTileDef = {
   cadence: "live",
   icon: "prad",
   label: "Prąd",
-  source: { href: PGE_PAGE, text: "PGE Dystrybucja" },
+  sources: [{ href: PGE_PAGE, text: PGE_NAME }],
   async read(week, { pge }) {
     const copy = await pge();
     if (!copy || typeof copy === "string") return null;
@@ -118,8 +122,8 @@ const prad: NowTileDef = {
     return {
       value:
         count > 0
-          ? counted(count, ["wyłączenie", "wyłączenia", "wyłączeń"])
-          : "Brak wyłączeń",
+          ? counted(count, ["przerwa", "przerwy", "przerw"])
+          : "Brak przerw",
       note: WEEK,
       empty: count === 0,
       changedAt: copy.changedAt,
@@ -134,7 +138,7 @@ const smieci: NowTileDef = {
   cadence: null,
   icon: "smieci",
   label: "Śmieci",
-  source: null,
+  sources: [],
   action: { href: `#${SEARCH_INPUT_ID}`, text: "Sprawdź swój termin" },
   async read(week) {
     const { count } = await wasteWeek(week.from, week.until);

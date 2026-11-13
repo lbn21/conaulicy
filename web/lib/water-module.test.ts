@@ -561,7 +561,7 @@ test("town, an MZGKiM cut: shown as a ZUK cut, its own post the source", () => {
   );
   assert.equal(
     waterAiNote(data),
-    "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest komunikat MZGKiM.",
+    "Te daty przepisał automatycznie program. Nie jesteśmy urzędem – obowiązuje komunikat MZGKiM.",
   );
   // The calendar help names whose change of hours to fetch it again for:
   // the cut's source only (t370).
@@ -700,7 +700,7 @@ test("town, both sources' cuts: both posts, both in the AI note", () => {
   );
   assert.equal(
     waterAiNote(both),
-    "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejsze są komunikaty gminy i MZGKiM.",
+    "Te daty przepisał automatycznie program. Nie jesteśmy urzędem – obowiązują komunikaty gminy i MZGKiM.",
   );
   // Both sources, in the cuts' order, either of which may change the hours.
   assert.ok(
@@ -765,14 +765,14 @@ test("town, MZGKiM unavailable: said, with its posts; the gmina's none kept", ()
   assert.deepEqual(waterEmpty(quiet), [
     "Brak zapowiedzianych przerw. Gmina ogłasza je w ",
     GMINA,
-    ". Nie udało się nam jednak teraz sprawdzić komunikatów MZGKiM. Zajrzyj do ",
+    ". Nie udało się nam sprawdzić komunikatów MZGKiM. Zajrzyj do ",
     MZGKIM_OF,
     ".",
   ]);
   assert.equal(staleNote(quiet), null);
   // Beside a ZUK cut: the note says it.
   assert.deepEqual(staleNote(cut), [
-    "Nie udało się nam teraz sprawdzić komunikatów MZGKiM. Zajrzyj też do ",
+    "Nie udało się nam sprawdzić komunikatów MZGKiM. Zajrzyj też do ",
     MZGKIM_OF,
     ".",
   ]);
@@ -784,7 +784,7 @@ test("town, no file at all: the gmina's and MZGKiM's posts to check", () => {
     const data = water({}, address);
     assert.equal(waterNone(data), "nie udało się nam sprawdzić komunikatów");
     assert.deepEqual(waterEmpty(data), [
-      "Nie udało się nam teraz sprawdzić komunikatów o wodzie. Zajrzyj do ",
+      "Nie udało się nam sprawdzić komunikatów o wodzie. Zajrzyj do ",
       GMINA,
       " i ",
       MZGKIM_OF,
@@ -839,7 +839,7 @@ test("no file: the gmina's news only, no cut, no change time", () => {
   assert.equal(waterNone(data), "nie udało się nam sprawdzić komunikatów");
   assert.deepEqual(waterSources(data), [[GMINA]]);
   assert.deepEqual(waterEmpty(data), [
-    "Nie udało się nam teraz sprawdzić komunikatów o wodzie. Zajrzyj do ",
+    "Nie udało się nam sprawdzić komunikatów o wodzie. Zajrzyj do ",
     GMINA,
     ".",
   ]);

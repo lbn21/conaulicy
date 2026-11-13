@@ -38,7 +38,7 @@ export function weather(copy: ImgwRead, now: number): Weather | null {
 }
 
 /**
- * When a warning applies, in its card: „Trwa do 11 listopada
+ * When a warning applies, in its card: „Trwa do 11 listopada,
  * 19:00.” once it has begun, else „Od 11 listopada, 10:00 do 16:00.”
  * (Intl's range, lib/date-labels.ts momentRange).
  */

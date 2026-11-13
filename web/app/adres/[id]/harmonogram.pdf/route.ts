@@ -6,7 +6,7 @@ import QRCode from "qrcode";
 import { SITE_URL } from "@/lib/config.generated";
 import { readableInk } from "@/lib/contrast";
 import { pdfPage } from "@/lib/data-pages";
-import { longDate, monthTitle } from "@/lib/date-labels";
+import { monthTitle } from "@/lib/date-labels";
 import { absoluteDay } from "@/lib/dates";
 import { GOVUK_COLOUR, GOVUK_FUNCTIONAL } from "@/lib/govuk-colours";
 import { LOCALE } from "@/lib/locale";
@@ -45,7 +45,13 @@ import {
   type PlaceView,
   placeParams,
 } from "@/lib/schedule";
-import { hasUpcoming, putOutNote, unverifiedNote } from "@/lib/schedule-notes";
+import {
+  hasUpcoming,
+  notAnOffice,
+  PDF_TITLE,
+  putOutNote,
+  unverifiedNote,
+} from "@/lib/schedule-notes";
 import { SITE_NAME } from "@/lib/share";
 import { GUIDES, type GuideItem, guideFor } from "@/lib/sorting-guide";
 import { THEME_COLOR } from "@/lib/theme";
@@ -460,7 +466,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     displayTitle: true,
     font: REGULAR as unknown as string,
     info: {
-      Title: `Harmonogram odbioru odpadów – ${place.label}`,
+      Title: `${PDF_TITLE} – ${place.label}`,
       Author: SITE_NAME,
       Subject: place.gmina,
     },
@@ -575,18 +581,15 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // ------------------------------------------------------------ footer
   // At the foot of each page, under a rule: a block of fine print in rows
   // reserved for the longest it can be, so it never moves what is above it
-  // (Tech Lead, t351). Page 1: the schedule's source and the day it was
-  // checked, then the unverified note where the place has one (else the row
-  // stays empty). Page 2: every source of the gmina's guide, each linked,
-  // and the day they were checked.
+  // (Tech Lead, t351). Page 1: the schedule's source, then the unverified
+  // note where the place has one (else the row stays empty). Page 2: every
+  // source of the gmina's guide, each linked. No check time (t429).
   const FOOT = TYPE.fine;
   type Run = { text: string; link?: string };
   type Paragraph = { runs: Run[]; colour: string };
   const plain = (p: Paragraph) => p.runs.map((r) => r.text).join("");
   const rowsOf = (p: Paragraph) =>
     block("regular", FOOT, plain(p), CONTENT_W) / ROW[FOOT];
-  const oldest = (days: Array<string | null>) =>
-    days.filter((d): d is string => d !== null).sort()[0] ?? null;
   const footerBlock = (rows: number) => {
     const top = PAGE_H - MARGIN - rows * ROW[FOOT];
     const ruleY = top - 2 * U;
@@ -622,7 +625,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       {
         text: [
           `Źródło: ${scheduleName(place.gmina)}`,
-          "Nie jesteśmy urzędem.",
+          notAnOffice("ten harmonogram"),
         ].join(" · "),
       },
     ],
@@ -631,8 +634,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   const unverified: Paragraph | null = place.verified
     ? null
     : { runs: [{ text: unverifiedNote(place.gmina) }], colour: BLACK };
-  /** A guide's publisher and sources, each named and linked (its site),
-   * then the day. */
+  /** A guide's publisher and sources, each named and linked (its site). */
   const sourcesFooter = (g: NonNullable<ReturnType<typeof guideFor>>) => {
     const name = (label: string) =>
       label.match(/„([^”]+)”/)?.[1] ?? label.split(",")[0];
@@ -647,10 +649,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         link: source.url,
       });
     });
-    const checked = oldest(g.sources.map((s) => s.checkedAt));
-    runs.push({
-      text: ` · ${checked ? `stan na ${longDate(checked)} · ` : ""}Nie jesteśmy urzędem.`,
-    });
+    runs.push({ text: ` · ${notAnOffice("zasady urzędu", "obowiązują")}` });
     return { runs, colour: SECONDARY_TEXT } satisfies Paragraph;
   };
 
@@ -701,7 +700,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   // them; the day line before the caption, beside it.
   const bandTextW = qrX - 6 * U - MARGIN;
   const bandLineW = Math.min(qrX, scanX + scanInk.left) - 6 * U - MARGIN;
-  const kicker = `${place.area} · Harmonogram odbioru odpadów`;
+  const kicker = `${place.area} · ${PDF_TITLE}`;
   const kickerSize = oneLine("regular", kicker, bandTextW, [TYPE.body]);
   // The street's name and its day line each on one line, so the longest
   // name leaves the calendar where it is.

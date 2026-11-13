@@ -6,7 +6,6 @@ import {
   hasUpcoming,
   laterNote,
   placeDescription,
-  putOutLine,
   putOutNote,
   unverifiedNote,
 } from "./schedule-notes.ts";
@@ -48,20 +47,18 @@ test("the put-out note gives the data's hour without a leading zero", () => {
   );
 });
 
-test("the address page's put-out line: „rano” before noon only", () => {
-  assert.equal(putOutLine("06:00"), "Wystaw je do 6:00 rano.");
-  assert.equal(putOutLine("11:59"), "Wystaw je do 11:59 rano.");
-  assert.equal(putOutLine("12:00"), "Wystaw je do 12:00 w dniu odbioru.");
+test("the address page's put-out line: the same note, the bins named before", () => {
+  assert.equal(putOutNote("06:00", true), "Wystaw je do 6:00 w dniu odbioru.");
 });
 
 test("the unverified note names whose schedule wins: the gmina's, or the town's", () => {
   assert.equal(
     unverifiedNote("Lubaczów (gmina)"),
-    "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest harmonogram gminy.",
+    "Te daty przepisał automatycznie program. Nie jesteśmy urzędem – obowiązuje harmonogram gminy.",
   );
   assert.equal(
     unverifiedNote("Lubaczów (miasto)"),
-    "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest harmonogram Urzędu Miejskiego.",
+    "Te daty przepisał automatycznie program. Nie jesteśmy urzędem – obowiązuje harmonogram Urzędu Miejskiego.",
   );
   assert.equal(
     disclaimer("Lubaczów (miasto)"),
@@ -73,16 +70,18 @@ test("the unverified note names whose schedule wins: the gmina's, or the town's"
   );
   assert.equal(
     DISCLAIMER,
-    "Nie jesteśmy urzędem – ważniejszy jest komunikat urzędu.",
+    "Nie jesteśmy urzędem – obowiązują harmonogramy i komunikaty urzędów.",
   );
 });
 
-test("after the last date: the next year's dates come when published", () => {
-  assert.equal(
-    laterNote([day("2026-11-02"), day("2026-12-31")]),
-    "Terminy na kolejny rok dodamy, gdy je ogłoszą.",
+test("after the last date: the next year's dates come with the owner's schedule", () => {
+  const days = [day("2026-11-02"), day("2026-12-31")];
+  assert.match(
+    laterNote(days, "Lubaczów (miasto)") ?? "",
+    /Urzędu Miejskiego\.$/,
   );
-  assert.equal(laterNote([]), null);
+  assert.match(laterNote(days, "Lubaczów (gmina)") ?? "", /gminy\.$/);
+  assert.equal(laterNote([], "Lubaczów (gmina)"), null);
 });
 
 test("a place's description offers dates only when the page has them", () => {
@@ -95,7 +94,7 @@ test("a place's description offers dates only when the page has them", () => {
   };
   assert.match(placeDescription(place), /: ul\. Rynek, Lubaczów\. /);
   assert.match(placeDescription(place), /Najbliższe terminy/);
-  const none = /: ul\. Rynek, Lubaczów\. Terminów wywozu jeszcze tu nie mamy/;
+  const none = /: ul\. Rynek, Lubaczów\. Terminów odbioru jeszcze tu nie mamy/;
   assert.match(placeDescription({ ...place, zoneId: null, days: [] }), none);
   assert.match(placeDescription({ ...place, today: "2027-01-02" }), none);
   for (const label of [

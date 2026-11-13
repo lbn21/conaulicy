@@ -3,6 +3,7 @@ import { Tile } from "@/components/icon";
 import { NOW_TILES, type NowTileDef } from "@/components/now-tiles";
 import { SourceNote } from "@/components/subpage-parts";
 import { dayRange, todayInWarsaw } from "@/lib/dates";
+import { UNCHECKED } from "@/lib/hub";
 import type { LiveReads } from "@/lib/live-reads";
 import { LIST } from "@/lib/locale";
 import { type NowTileData, type Week, weekOf } from "@/lib/now-panel";
@@ -28,7 +29,7 @@ export function NowTile({
   def: Pick<NowTileDef, "icon" | "label" | "action">;
   data: NowTileData | null;
 }) {
-  const value = data?.value ?? "Nie udało się sprawdzić";
+  const value = data?.value ?? UNCHECKED;
   const muted = !data || data.empty;
   return (
     <li
@@ -127,7 +128,7 @@ export async function nowData(live: LiveReads): Promise<NowData> {
 export function NowPanel({ data: { week, reads } }: { data: NowData }) {
   const tiles = NOW_TILES.map((def, i) => ({ def, data: reads[i] }));
   const read = tiles.filter((t) => t.data !== null);
-  const sources = read.flatMap(({ def }) => (def.source ? [def.source] : []));
+  const sources = read.flatMap(({ def }) => def.sources);
   return (
     <section aria-labelledby="teraz" className="app-now">
       <Head week={`tydzień ${dayRange(week.from, week.to)}`} />
@@ -160,7 +161,7 @@ export function NowPanel({ data: { week, reads } }: { data: NowData }) {
             ? []
             : [
                 {
-                  name: def.label.toLowerCase(),
+                  name: def.freshName ?? def.label.toLowerCase(),
                   changedAt: data?.changedAt ?? null,
                   cadence: def.cadence,
                 },

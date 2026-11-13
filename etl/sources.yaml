@@ -13,7 +13,7 @@ site:
   features:
     - section: Sprawdź przy swojej ulicy
       links:
-        - { href: /, text: Wywóz śmieci }
+        - { href: /, text: Odbiór śmieci }
 
 import:
   # Network calls: attempts, first backoff (doubles each time).

@@ -5,10 +5,12 @@ import { SiteHeader } from "@/components/site-header";
 import { SkipLink } from "@/components/skip-link";
 import { WebAnalytics } from "@/components/web-analytics";
 import { SITE_URL } from "@/lib/config.generated";
+import { capitalised } from "@/lib/dates";
 import { indexable } from "@/lib/indexing";
 import { LANG } from "@/lib/locale";
 import { SHARE, SITE_NAME } from "@/lib/share";
 import { THEME_COLOR } from "@/lib/theme";
+import { SITE_TOPICS } from "@/lib/topics";
 import { atkinson } from "./fonts";
 import "./tokens.css";
 import "./waste-colours.css";
@@ -24,8 +26,7 @@ export const metadata: Metadata = {
     default: SITE_NAME,
     template: `%s – ${SITE_NAME}`,
   },
-  description:
-    "Wywóz śmieci, zapowiedziane przerwy w dostawie wody i prądu oraz ostrzeżenia IMGW dla Lubaczowa i wsi w gminie Lubaczów.",
+  description: `${capitalised(SITE_TOPICS)} dla Lubaczowa i wsi w gminie Lubaczów.`,
   ...SHARE,
   // "default" on purpose; black-translucent is deprecated by Apple (WebKit
   // bug 317153), never restore it. The bar takes the page's colour: see

@@ -6,11 +6,7 @@ import { usePageDay } from "@/components/page-day";
 import { Bins } from "@/components/waste-bins";
 import { absoluteDay, dayFace } from "@/lib/dates";
 import type { PickupDay } from "@/lib/schedule";
-import {
-  NO_MORE_DATES,
-  NO_MORE_DATES_NEXT,
-  putOutNote,
-} from "@/lib/schedule-notes";
+import { NO_MORE_DATES, putOutNote } from "@/lib/schedule-notes";
 
 const HERO_COUNT = 3;
 
@@ -100,9 +96,12 @@ function DayList({
 
 export function PickupSchedule({
   days,
+  next,
   later = null,
 }: {
   days: PickupDay[];
+  /** When the next dates come, once these are past (noMoreDatesNext). */
+  next: string;
   /** After the last date: when the next dates come (laterNote). */
   later?: string | null;
 }) {
@@ -111,9 +110,7 @@ export function PickupSchedule({
   const visible = days.filter((day) => day.date >= today);
 
   if (visible.length === 0) {
-    return (
-      <p className="govuk-body">{`${NO_MORE_DATES}. ${NO_MORE_DATES_NEXT}`}</p>
-    );
+    return <p className="govuk-body">{`${NO_MORE_DATES}. ${next}`}</p>;
   }
 
   const hero = visible.slice(0, HERO_COUNT);

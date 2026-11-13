@@ -92,9 +92,15 @@ export function cadenceLine(sources: FreshSource[]): string | null {
     .join("; ")}.`;
 }
 
-/** A module with no data now: „Nie udało się sprawdzić ‹its subject›.” */
+/** The no-data failure, as a tile's value with no subject (t427 glossary 6). */
+export const UNCHECKED = "Nie udało się nam sprawdzić";
+
+/** No data at all: „Nie udało się nam sprawdzić ‹subject›.” */
+export const uncheckedText = (subject: string) => `${UNCHECKED} ${subject}.`;
+
+/** A module with no data now, by its subject. */
 export const unchecked = (module: { subject: string }) =>
-  `Nie udało się sprawdzić ${module.subject}.`;
+  uncheckedText(module.subject);
 
 /**
  * A subpage's source line, the first of its source note's

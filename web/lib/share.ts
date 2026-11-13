@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { capitalised } from "./dates.ts";
+import { SITE_TOPICS } from "./topics.ts";
 
 // Drawn by scripts/brand-assets.ts (from lib/brand/og.svg). A static file,
 // not opengraph-image.png: the file convention splits a shared client chunk
@@ -7,7 +9,7 @@ const SHARE_IMAGE = {
   url: "/og.png",
   width: 1200,
   height: 630,
-  alt: "conaulicy.pl: sprawdź swoją ulicę. Wywóz śmieci, przerwy w dostawie wody i ostrzeżenia IMGW. Lubaczów i gmina.",
+  alt: `conaulicy.pl: sprawdź swoją ulicę. ${capitalised(SITE_TOPICS)}. Lubaczów i gmina.`,
 };
 
 /** The service's one name: in every title, the header and share tags. */

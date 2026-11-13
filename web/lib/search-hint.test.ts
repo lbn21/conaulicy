@@ -35,7 +35,7 @@ const match = matcher(INDEX);
 test("the hint quotes every example", () => {
   assert.equal(
     HINT,
-    "Na przykład Asnyka 5 albo Lisie Jamy – polskie znaki nie są potrzebne",
+    "Na przykład Asnyka albo Lisie Jamy – polskie znaki nie są potrzebne",
   );
   for (const { text } of HINT_EXAMPLES) assert.ok(HINT.includes(text), text);
 });

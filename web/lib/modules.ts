@@ -13,6 +13,7 @@ import { WaterDetails } from "@/components/water-page";
 import { isModuleId, type ModuleId, SUBPAGE_IDS } from "@/lib/address-routes";
 import type { Cadence } from "@/lib/cadence";
 import type { Group, Part } from "@/lib/hub";
+import { WEATHER_FRESH, WEATHER_SUBJECT } from "@/lib/imgw-shown";
 import type { LiveReads } from "@/lib/live-reads";
 import { SOURCE_TAGS, type SourceTag } from "@/lib/page-cache";
 import { loadPower } from "@/lib/power-load";
@@ -71,7 +72,7 @@ export type Module<D> = {
   rowLabel: string;
   /** After „Szczegóły”, for screen readers only: „o odbiorze śmieci”. */
   hiddenLabel: string;
-  /** After „Nie udało się sprawdzić”: „przerw w dostawie wody”. */
+  /** After „Nie udało się nam sprawdzić”: „przerw w dostawie wody”. */
   subject: string;
   /**
    * Its row's value on a day: the short summary of entries alike in all
@@ -91,7 +92,7 @@ export type Module<D> = {
   cadence: Cadence | null;
   /**
    * Its link to the subpage in „Wszystko o Twoim adresie”, saying where
-   * it goes („Wszystkie odbiory śmieci”), never a bare „Szczegóły”.
+   * it goes („Wszystkie przerwy w dostawie wody”), never a bare „Szczegóły”.
    */
   more: string;
   /** The subpage's h1; its title is "<h1> – <place>". */
@@ -113,7 +114,7 @@ const waste: Module<PlaceView> = {
   id: "smieci",
   title: "śmieci",
   tags: [SOURCE_TAGS.dataset],
-  more: "Wszystkie odbiory śmieci",
+  more: "Odbiór śmieci: wszystkie terminy",
   pageTitle: "Odbiór śmieci",
   load: (id, reads) => getPlace(id, reads.now),
   upcoming: wasteUpcoming,
@@ -140,7 +141,7 @@ const woda: Module<Water> = {
   id: "woda",
   title: "woda",
   tags: [SOURCE_TAGS.dataset, SOURCE_TAGS.water],
-  more: "Wszystkie przerwy w wodzie",
+  more: "Wszystkie przerwy w dostawie wody",
   pageTitle: "Przerwy w dostawie wody",
   load: loadWater,
   upcoming: waterUpcoming,
@@ -159,7 +160,7 @@ const woda: Module<Water> = {
 // PGE Dystrybucja's outages at the address (lib/power-module.ts), from the
 // cron's last good copy: the same row and subpage as the water's
 // (components/rows/outage.tsx, components/outage-page.tsx); no copy yet,
-// „Nie udało się sprawdzić”; old or unreadable, a notice.
+// „Nie udało się nam sprawdzić”; old or unreadable, a notice.
 const prad: Module<Power> = {
   id: "prad",
   title: "prąd",
@@ -184,10 +185,10 @@ const prad: Module<Power> = {
 // address page only: a card each above the timeline
 // (components/warning-cards.tsx), never in the timeline, and no subpage
 // (SUBPAGE_IDS), so no rows, sources or body of its own; no copy yet,
-// „Nie udało się sprawdzić”; the store unreadable, a notice.
+// „Nie udało się nam sprawdzić”; the store unreadable, a notice.
 const pogoda: Module<Weather> = {
   id: "pogoda",
-  title: "pogoda",
+  title: WEATHER_FRESH,
   tags: [SOURCE_TAGS.imgw],
   more: "Ostrzeżenia pogodowe IMGW",
   pageTitle: "Ostrzeżenia pogodowe IMGW",
@@ -198,7 +199,7 @@ const pogoda: Module<Weather> = {
   notices: weatherNotices,
   rowLabel: "Ostrzeżenie IMGW",
   hiddenLabel: "o ostrzeżeniu IMGW",
-  subject: "ostrzeżeń IMGW",
+  subject: WEATHER_SUBJECT,
   Row: () => null,
   sources: () => [],
   changedAt: (data) => data.changedAt,

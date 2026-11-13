@@ -477,7 +477,8 @@ test("town /woda, an MZGKiM cut: the same page, its post the source", () => {
 });
 
 test("/smieci: after the last date, the next year's line", () => {
-  const later = laterNote([{ date: "2026-10-27" }]);
+  const { gmina } = testPlace({});
+  const later = laterNote([{ date: "2026-10-27" }], gmina);
   assert.ok(later);
   assert.ok(
     wastePage().includes(`<p class="govuk-body">${later}</p></section>`),

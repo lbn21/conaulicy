@@ -9,7 +9,7 @@ export type HintExample = { text: string; id: string };
 
 export const HINT_EXAMPLES: HintExample[] = [
   // ul. Adama Asnyka, the only Asnyka in both gminy.
-  { text: "Asnyka 5", id: "0972447-00470" },
+  { text: "Asnyka", id: "0972447-00470" },
   // The village.
   { text: "Lisie Jamy", id: "0606234" },
 ];

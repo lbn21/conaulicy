@@ -69,9 +69,7 @@ test("a cut at the address: one event, Warsaw hours, place and source", () => {
   assert.match(description, /^Cała ulica Żuki\.\\n/);
   assert.ok(description.includes(`Źródło: ${POST_URL}`));
   // The last line: our /woda page, which always shows the current state.
-  assert.ok(
-    description.endsWith(`ważniejszy jest komunikat gminy.\\n${CHECK}`),
-  );
+  assert.ok(description.endsWith(`obowiązuje komunikat gminy.\\n${CHECK}`));
   assert.equal(ZUKI_PAGE, "https://conaulicy.pl/adres/0972447-26555/woda");
   assert.ok(
     description.endsWith(
@@ -308,7 +306,7 @@ test("an MZGKiM cut: its own UID, its post as the source and the note", () => {
   assert.ok(description.includes(`Źródło: ${url}`));
   assert.ok(
     description.includes(
-      "Te daty przepisał automatycznie program. Jeśli coś się nie zgadza\\, ważniejszy jest komunikat MZGKiM.",
+      "Te daty przepisał automatycznie program. Nie jesteśmy urzędem – obowiązuje komunikat MZGKiM.",
     ),
   );
   folded(ics);

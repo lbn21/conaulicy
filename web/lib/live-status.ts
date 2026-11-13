@@ -150,6 +150,6 @@ export function liveNotice(
   if (failing === null) return null;
   const time = since(failing, now);
   return shown > 0
-    ? `Od ${time} nie udało się nam pobrać ${what}. Pokazujemy ostatnie, jakie mamy.`
+    ? `Od ${time} nie udało się nam pobrać ${what}. Pokazujemy ostatnie dane, jakie mamy.`
     : `Od ${time} nie udało się nam pobrać ${what}.`;
 }

@@ -18,19 +18,19 @@ const ZONES = [1, 2, 3, 4, 5].flatMap((s) => [
 test("the file is named after the calendar, not the zone id", () => {
   assert.equal(
     wasteCalendarName("Gmina Lubaczów, sektor 1"),
-    "Wywóz śmieci – Gmina Lubaczów, sektor 1",
+    "Odbiór śmieci – Gmina Lubaczów, sektor 1",
   );
   assert.equal(
     wasteFilename("Gmina Lubaczów, sektor 1"),
-    "wywoz-smieci-gmina-lubaczow-sektor-1.ics",
+    "odbior-smieci-gmina-lubaczow-sektor-1.ics",
   );
   assert.equal(
     wasteFilename("Miasto Lubaczów, sektor 3"),
-    "wywoz-smieci-miasto-lubaczow-sektor-3.ics",
+    "odbior-smieci-miasto-lubaczow-sektor-3.ics",
   );
   assert.equal(
     wasteFilename("Krowica Sama, sektor 2"),
-    "wywoz-smieci-krowica-sama-sektor-2.ics",
+    "odbior-smieci-krowica-sama-sektor-2.ics",
   );
 });
 
@@ -86,10 +86,10 @@ test("waste calendar: stable UIDs, all-day dates with an exclusive end", () => {
   );
 });
 
-test("waste calendar: each description names its source and the day checked", () => {
+test("waste calendar: each description names its source, never a check time", () => {
   const ics = wasteCalendar(ZONE, new Date("2026-11-07T15:00:00Z"));
   const [first, second] = value(ics, "DESCRIPTION");
-  const source = `Źródło: ${SOURCE} (stan na 25 października 2026)`;
+  const source = `Źródło: ${SOURCE}`;
   assert.equal(
     first,
     escapeText(
@@ -112,7 +112,7 @@ test("waste calendar: long lines folded to 75 octets, whole when unfolded", () =
   assert.ok(ics.endsWith("END:VCALENDAR\r\n"));
   // Unfolded, the description is whole again, Polish letters too.
   assert.ok(
-    value(ics, "DESCRIPTION")[0].includes("stan na 25 października 2026"),
+    value(ics, "DESCRIPTION")[0].includes(disclaimer("Lubaczów (gmina)")),
   );
 });
 
@@ -121,7 +121,7 @@ test("waste calendar without dates: no event, no note on next year", () => {
   assert.equal(events(ics), 0);
   assert.deepEqual(value(ics, "X-WR-CALDESC"), []);
   assert.deepEqual(value(ics, "X-WR-CALNAME"), [
-    "Wywóz śmieci – Gmina Lubaczów\\, sektor 1",
+    "Odbiór śmieci – Gmina Lubaczów\\, sektor 1",
   ]);
 });
 
