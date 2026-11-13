@@ -1,9 +1,9 @@
 import { HubMain } from "@/components/hub";
-import { NOT_FOUND_METADATA } from "@/components/page-not-found";
 import {
   metadataQuery,
-  PlaceNotFound,
+  PlaceUnknown,
   placeMetadata,
+  unknownMetadata,
 } from "@/components/place-page";
 import { PlaceSuspense } from "@/components/place-suspense";
 import { allPlaces } from "@/lib/prerender";
@@ -27,7 +27,7 @@ export async function generateMetadata({
 }: PageProps<"/adres/[id]">) {
   const { id } = await params;
   const query = await metadataQuery(id, searchParams);
-  if (!query) return NOT_FOUND_METADATA;
+  if (!query) return unknownMetadata(id);
   return placeMetadata(id, query.nr, query.missing);
 }
 
@@ -46,9 +46,14 @@ async function PlacePageContent({
   params,
   searchParams,
 }: Pick<PageProps<"/adres/[id]">, "params" | "searchParams">) {
-  // A renamed place's old address: proxy.ts answers its 308.
+  // A renamed place's old address: proxy.ts answers its 308; a retired
+  // one nothing replaced says it is gone.
   const { id } = await params;
   return (
-    <HubMain id={id} searchParams={searchParams} unknown={<PlaceNotFound />} />
+    <HubMain
+      id={id}
+      searchParams={searchParams}
+      unknown={<PlaceUnknown id={id} />}
+    />
   );
 }

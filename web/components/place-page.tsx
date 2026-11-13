@@ -9,6 +9,7 @@ import type { IconName } from "@/components/icon";
 import { PageHead } from "@/components/page-head";
 import { NOT_FOUND_METADATA, PageNotFound } from "@/components/page-not-found";
 import { PickupSchedule } from "@/components/pickup-schedule";
+import { goneMetadata, PlaceGone } from "@/components/place-gone";
 import {
   AiReadNote,
   CalendarBlock,
@@ -24,7 +25,12 @@ import {
   titleLabel,
 } from "@/lib/places";
 import { numberWarning } from "@/lib/prg";
-import { getPlace, PLACE_TAGS, type PlaceView } from "@/lib/schedule";
+import {
+  getPlace,
+  PLACE_TAGS,
+  type PlaceView,
+  retiredPlace,
+} from "@/lib/schedule";
 import {
   hasUpcoming,
   laterNote,
@@ -256,12 +262,35 @@ export async function knownPlace(id: string): Promise<boolean> {
 }
 
 /** The 404 page for an unknown place or module (see NotFound). */
-export function PlaceNotFound() {
+function PlaceNotFound() {
   return (
     <Suspense fallback={<PageNotFound />}>
       <NotFound />
     </Suspense>
   );
+}
+
+/**
+ * A retired place nothing replaced (components/place-gone.tsx), or null,
+ * cached as knownPlace.
+ */
+async function gonePlace(id: string) {
+  "use cache";
+  cacheLife("max");
+  cacheTag(...PLACE_TAGS);
+  return retiredPlace(id);
+}
+
+/** What an id with no place shows: a retired place's page, else the 404. */
+export async function PlaceUnknown({ id }: { id: string }) {
+  const gone = await gonePlace(id);
+  return gone ? <PlaceGone place={gone} /> : <PlaceNotFound />;
+}
+
+/** PlaceUnknown's metadata. */
+export async function unknownMetadata(id: string): Promise<Metadata> {
+  const gone = await gonePlace(id);
+  return gone ? goneMetadata(gone) : NOT_FOUND_METADATA;
 }
 
 /**
