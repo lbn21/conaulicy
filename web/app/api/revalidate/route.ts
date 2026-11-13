@@ -8,7 +8,7 @@ import {
 import { NO_STORE } from "@/lib/headers";
 import { readBlobFile, writeBlobFile } from "@/lib/live-store";
 import { SOURCE_TAGS } from "@/lib/page-cache";
-import { prewarm } from "@/lib/prewarm";
+import { prewarm, warmUntil } from "@/lib/prewarm";
 import { placeParams } from "@/lib/schedule";
 import { sameSecret } from "@/lib/secret";
 
@@ -26,7 +26,11 @@ import { sameSecret } from "@/lib/secret";
 //   curl -X POST -H "Authorization: Bearer $REVALIDATE_SECRET" \
 //     https://conaulicy.pl/api/revalidate
 
+// Every page is pre-warmed in after(), until the function's own end.
+export const maxDuration = 300;
+
 export async function POST(request: Request) {
+  const until = warmUntil(Date.now(), maxDuration);
   const secret = process.env.REVALIDATE_SECRET;
   const given = request.headers.get("authorization") ?? "";
   if (!secret || !sameSecret(given, `Bearer ${secret}`)) {
@@ -52,7 +56,9 @@ export async function POST(request: Request) {
           const pages = (await placeParams()).map(({ id }) => `/adres/${id}`);
           console.log(
             JSON.stringify({
-              prewarm: await prewarm(origin, ["/", "/ulice", ...pages]),
+              prewarm: await prewarm(origin, ["/", "/ulice", ...pages], {
+                until,
+              }),
             }),
           );
         });

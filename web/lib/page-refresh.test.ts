@@ -233,25 +233,45 @@ test("the plan: every changed or missing page, every digest now", () => {
   );
 });
 
-test("over 400 changed: all revalidated, 400 pre-warmed, home first, all digests written", async () => {
+test("every changed page is queued for warming: no count limit, home first", async () => {
   const pages = [
     page("/", "h"),
-    ...Array.from({ length: 1679 }, (_, i) => page(`/p${i}`, "d")),
+    ...Array.from({ length: 2099 }, (_, i) => page(`/p${i}`, "d")),
   ];
   const run = fakeRun({ pages });
   await refreshPages(run.deps);
-  assert.equal(run.tags.length, 1680);
+  assert.equal(run.tags.length, 2100);
   assert.equal(run.tags[0], "page:/");
-  assert.equal(run.warmed.length, 400);
-  assert.equal(run.warmed[0], "/");
+  assert.deepEqual(
+    run.warmed,
+    pages.map((p) => p.path),
+  );
   assert.deepEqual(run.lines.at(-1), {
-    pagesChanged: 1680,
-    pagesRevalidated: 1680,
-    prewarmed: 400,
-    notWarmed: 1280,
+    pagesChanged: 2100,
+    pagesRevalidated: 2100,
+    prewarmed: 2100,
+    notWarmed: 0,
     viewsMs: 0,
+    warmMs: 0,
   });
-  assert.equal(Object.keys(JSON.parse(run.written ?? "{}")).length, 1680);
+  assert.equal(Object.keys(JSON.parse(run.written ?? "{}")).length, 2100);
+});
+
+test("pages the function's time did not reach are logged, with the warm time", async () => {
+  const pages = Array.from({ length: 10 }, (_, i) => page(`/p${i}`, "d"));
+  const run = fakeRun({ pages });
+  let now = 0;
+  run.deps.clock = () => now;
+  run.deps.prewarm = async (paths) => {
+    now += 90_000;
+    return { warmed: 6, failed: 1, skipped: paths.length - 7 };
+  };
+  await refreshPages(run.deps);
+  const line = run.lines.at(-1);
+  assert.equal(line?.prewarmed, 6);
+  assert.equal(line?.notWarmed, 3);
+  assert.equal(line?.warmFailed, 1);
+  assert.equal(line?.warmMs, 90_000);
 });
 
 test("the views are worked out during the wait: only the rest is slept", async () => {
@@ -395,7 +415,7 @@ function fakeRun({
     },
     prewarm: async (paths) => {
       run.warmed.push(...paths);
-      return { warmed: paths.length, failed: 0 };
+      return { warmed: paths.length, failed: 0, skipped: 0 };
     },
     log: (line) => run.lines.push(line),
   };

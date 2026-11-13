@@ -59,7 +59,9 @@ Vercel Blob. No database writes.
 6. After every run, each page whose view changed (its digest,
    `status/page-digests.json`) has its own tag revalidated 65 s after the
    run's writes ("max", inside `after()`; `web/lib/page-refresh.ts`), every
-   changed page in the run, at most 400 of them pre-warmed: a water change re-renders the address page, `/woda` and
+   changed page in the run, every one of them pre-warmed, home first, until
+   the function's own end (`web/lib/prewarm.ts`: no count limit, the pages
+   it did not reach logged as `notWarmed`): a water change re-renders the address page, `/woda` and
    `woda.ics` of the places it concerns, and the home page if its counts
    moved. A run that changed nothing a page shows re-renders nothing.
 

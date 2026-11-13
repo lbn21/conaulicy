@@ -29,7 +29,7 @@ import {
 import { allPages } from "@/lib/pages";
 import { runPge } from "@/lib/pge-cron";
 import { upstream as pgeUpstream } from "@/lib/pge-feed";
-import { prewarm } from "@/lib/prewarm";
+import { prewarm, warmUntil } from "@/lib/prewarm";
 import { gminaLubaczow } from "@/lib/sources/gmina-lubaczow";
 import { mzgkim } from "@/lib/sources/mzgkim";
 import type { PostSource } from "@/lib/sources/source";
@@ -69,9 +69,10 @@ function siteOrigin(request: Request): string {
 }
 
 export async function GET(request: Request) {
-  const deadline = new Date(
-    Date.now() + (maxDuration - REFRESH_RESERVE_S) * 1000,
-  );
+  const started = Date.now();
+  const deadline = new Date(started + (maxDuration - REFRESH_RESERVE_S) * 1000);
+  // Every changed page is pre-warmed until the function's own end.
+  const until = warmUntil(started, maxDuration);
   const origin = siteOrigin(request);
   const log = (line: Record<string, unknown>) =>
     console.log(JSON.stringify(line));
@@ -210,7 +211,7 @@ export async function GET(request: Request) {
           sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
           dataset,
           revalidateTag: (tag) => revalidateTag(tag, "max"),
-          prewarm: (paths) => prewarm(origin, paths),
+          prewarm: (paths) => prewarm(origin, paths, { until }),
           log,
         }),
       );

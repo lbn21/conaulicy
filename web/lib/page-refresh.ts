@@ -7,7 +7,7 @@ import {
   SOURCE_TAGS,
   type SourceTag,
 } from "./page-cache.ts";
-import { PREWARM_MAX } from "./prewarm.ts";
+import type { Prewarmed } from "./prewarm.ts";
 
 // How the zuk cron (app/api/cron/zuk/route.ts: its live sources every 15
 // minutes, its water sources every 4 hours; lib/cadence.ts) keeps the
@@ -18,9 +18,10 @@ import { PREWARM_MAX } from "./prewarm.ts";
 // changed: its own tag is revalidated with the "max" profile WAIT_MS after
 // the run's last write (the Blob's CDN, up to 60 s behind; every file is
 // written with cacheControlMaxAge 60), inside after(), every changed page
-// in the run; the views are worked out during that wait. Then at most
-// PREWARM_MAX of them are pre-warmed, the home page first; the rest are
-// served stale once and re-rendered on their next visit. The new digests
+// in the run; the views are worked out during that wait. Then every one of
+// them is pre-warmed, the home page first, as long as the function's time
+// lasts (lib/prewarm.ts: no count limit); a page the time did not reach is
+// served stale once and re-rendered on its next visit. The new digests
 // are written once the revalidations went through, and only when one
 // changed: the cron is the file's only writer.
 //
@@ -204,7 +205,8 @@ export type RefreshDeps = {
    */
   dataset: boolean;
   revalidateTag(tag: string): void;
-  prewarm(paths: string[]): Promise<{ warmed: number; failed: number }>;
+  /** Every path given, the home page first, within the function's time. */
+  prewarm(paths: string[]): Promise<Prewarmed>;
   log(line: Record<string, unknown>): void;
 };
 
@@ -223,22 +225,28 @@ export async function refreshPages(deps: RefreshDeps): Promise<void> {
       if (rest > 0) await deps.sleep(rest);
     }
     // Every changed page now, in one batch to the cache (Next.js flushes
-    // the tags of after() at its end); "max": a page not pre-warmed is
-    // served stale once and re-rendered on its next visit.
+    // the tags of after() at its end); "max": a page the pre-warm's time
+    // did not reach is served stale once and re-rendered on its next visit.
     if (deps.dataset) deps.revalidateTag(SOURCE_TAGS.dataset);
     else for (const path of plan.changed) deps.revalidateTag(pageTag(path));
     if (JSON.stringify(plan.next) !== JSON.stringify(stored))
       await deps.write(JSON.stringify(plan.next));
     const touched = deps.dataset ? pages.map(({ path }) => path) : plan.changed;
-    const warm = touched.slice(0, PREWARM_MAX);
-    const { warmed } =
-      warm.length > 0 ? await deps.prewarm(warm) : { warmed: 0 };
+    const warmStart = deps.clock();
+    const { warmed, failed, skipped } =
+      touched.length > 0
+        ? await deps.prewarm(touched)
+        : { warmed: 0, failed: 0, skipped: 0 };
+    const warmMs = deps.clock() - warmStart;
     deps.log({
       pagesChanged: plan.changed.length,
       pagesRevalidated: deps.dataset ? touched.length : plan.changed.length,
       prewarmed: warmed,
-      notWarmed: touched.length - warm.length,
+      // Not reached in the function's time (the only limit); failed GETs apart.
+      notWarmed: skipped,
+      ...(failed > 0 && { warmFailed: failed }),
       viewsMs,
+      warmMs,
       ...(deps.dataset && { dataset: "revalidated" }),
     });
   } catch (error) {
