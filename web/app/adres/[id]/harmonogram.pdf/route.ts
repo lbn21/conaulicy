@@ -5,6 +5,7 @@ import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 import { SITE_URL } from "@/lib/config.generated";
 import { readableInk } from "@/lib/contrast";
+import { pdfPage } from "@/lib/data-pages";
 import { longDate, monthTitle } from "@/lib/date-labels";
 import { absoluteDay } from "@/lib/dates";
 import { GOVUK_COLOUR, GOVUK_FUNCTIONAL } from "@/lib/govuk-colours";
@@ -19,7 +20,7 @@ import {
   WORDMARK,
 } from "@/lib/logo";
 import { fileSlug } from "@/lib/normalize";
-import { pageData, SOURCE_TAGS } from "@/lib/page-cache";
+import { pageData } from "@/lib/page-cache";
 import {
   beyondBounds,
   chooseGrid,
@@ -35,11 +36,10 @@ import {
   keyCell,
   keyGrid,
   keyTokens,
-  PDF_MONTHS,
+  windowMonths,
 } from "@/lib/pdf-key";
-import { placePath, scheduleName } from "@/lib/places";
+import { scheduleName } from "@/lib/places";
 import {
-  getPlace,
   type Pickup,
   type PickupDay,
   type PlaceView,
@@ -374,17 +374,6 @@ function inkOf(
     left: Math.min(...xs.map(([l]) => l)) * scale,
     right: Math.max(...xs.map(([, r]) => r)) * scale,
   };
-}
-
-/** The current month and the ones after it, PDF_MONTHS in all, as "YYYY-MM". */
-function windowMonths(today: string): string[] {
-  const year = Number(today.slice(0, 4));
-  const month = Number(today.slice(5, 7)) - 1;
-  return Array.from({ length: PDF_MONTHS }, (_, i) => {
-    const y = year + Math.floor((month + i) / 12);
-    const m = ((month + i) % 12) + 1;
-    return `${y}-${String(m).padStart(2, "0")}`;
-  });
 }
 
 function weekdayName(iso: string): string {
@@ -1579,11 +1568,7 @@ export async function GET(
   ctx: RouteContext<"/adres/[id]/harmonogram.pdf">,
 ) {
   const { id } = await ctx.params;
-  const place = await pageData(
-    `${placePath(id)}/harmonogram.pdf`,
-    [SOURCE_TAGS.dataset],
-    () => getPlace(id),
-  );
+  const { view: place } = await pageData(pdfPage(id));
   if (!place || !hasUpcoming(place.days, place.today))
     return new Response(null, { status: 404 });
   const pdf = await render(place, `${SITE_URL}${wastePath(place)}`);

@@ -3,14 +3,14 @@ import { Tile } from "@/components/icon";
 import { NOW_TILES, type NowTileDef } from "@/components/now-tiles";
 import { SourceNote } from "@/components/subpage-parts";
 import { dayRange, todayInWarsaw } from "@/lib/dates";
-import { freshnessLine } from "@/lib/hub";
+import type { LiveReads } from "@/lib/live-reads";
 import { LIST } from "@/lib/locale";
 import { type NowTileData, type Week, weekOf } from "@/lib/now-panel";
 
 // „Teraz w gminie” on the home page's hero (docs/layout.md): a tile per
 // entry of NOW_TILES (components/now-tiles.ts), gmina-wide, for the
 // current week, prerendered with the page (app/page.tsx), re-rendered
-// when a source it reads changes (lib/live-refresh.ts). Every tile is one NowTile: the module's icon on its
+// when what it shows changes (lib/page-refresh.ts). Every tile is one NowTile: the module's icon on its
 // tile and its label, an optional level tag, the value, the window it
 // counts and an optional action on the page; no link off the site (the
 // sources are linked in the note under the tiles; t398). The tiles wrap in
@@ -104,14 +104,14 @@ function NowTiles({
 export type NowData = { week: Week; reads: Array<NowTileData | null> };
 
 /**
- * Every tile's read at once, at `now` (a read that fails: null, its tile
- * says so), plain JSON: the home page caches it with itself.
+ * Every tile's read at once, at the reads' clock (a read that fails:
+ * null, its tile says so), plain JSON: the home page caches it with itself.
  */
-export async function nowData(now: number): Promise<NowData> {
-  const week = weekOf(todayInWarsaw(new Date(now)));
+export async function nowData(live: LiveReads): Promise<NowData> {
+  const week = weekOf(todayInWarsaw(new Date(live.now)));
   const reads = await Promise.all(
     NOW_TILES.map((def) =>
-      def.read(week, now).catch((error: Error) => {
+      def.read(week, live).catch((error: Error) => {
         console.error(`now panel, ${def.id}: ${error.message}`);
         return null;
       }),
@@ -155,11 +155,16 @@ export function NowPanel({ data: { week, reads } }: { data: NowData }) {
             </>
           )
         }
-        fresh={freshnessLine(
-          read.map(({ def, data }) => ({
-            name: def.label.toLowerCase(),
-            changedAt: data?.changedAt ?? null,
-          })),
+        fresh={read.flatMap(({ def, data }) =>
+          def.cadence === null
+            ? []
+            : [
+                {
+                  name: def.label.toLowerCase(),
+                  changedAt: data?.changedAt ?? null,
+                  cadence: def.cadence,
+                },
+              ],
         )}
       />
     </section>

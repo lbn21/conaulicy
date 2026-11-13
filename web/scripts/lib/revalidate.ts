@@ -11,7 +11,7 @@
 // place set changed and DEPLOY_HOOK_URL is not set, or the hook failed.
 import { loadConfig } from "../import/core/config.ts";
 
-/** The Blob CDN's 60 s and a margin (web/lib/live-refresh.ts WAIT_MS). */
+/** The Blob CDN's 60 s and a margin (web/lib/page-refresh.ts WAIT_MS). */
 const WAIT_MS = 65_000;
 
 /** What the site did: revalidated, deployed, nothing, or not asked. */

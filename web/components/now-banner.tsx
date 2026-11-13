@@ -12,14 +12,17 @@ import type { Item } from "@/lib/upcoming";
 // chips and its subpage. Read per request with the page; nothing appears
 // later on its own. None: no markup at all.
 
-/** The failures on at `now`. */
+/**
+ * The failures on at `now`: begun, and not over, an estimated end (`about`)
+ * never over while the source lists it (lib/timeline.ts onDay).
+ */
 const failuresNow = (items: Item[], now: number) =>
   items.filter(
     (item) =>
       item.module !== "smieci" &&
       item.emergency &&
       Date.parse(item.span.start) <= now &&
-      now < Date.parse(item.span.end),
+      (item.span.about || now < Date.parse(item.span.end)),
   );
 
 export function NowBanner({

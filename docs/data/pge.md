@@ -58,7 +58,7 @@ There is one rule for water and power (`matches`, `web/lib/place-match.ts`). An 
 
 ## Failures and revoked notices
 
-- **A failure past PGE's estimated end:** while PGE still lists it, it is on. Its end is shown as „ok. HH:MM” (an estimate), and it lasts at least until 15 minutes after the last good check (`FAILURE_MARGIN_MS`). This one rule applies to every failure.
+- **A failure:** shown as long as the latest copy lists it, whatever its end, which is only PGE's estimate („ok. HH:MM”): on the address page, `/prad`, the timeline and the „Teraz trwa awaria” banner (an estimated end never ends an item, `onDay`, `web/lib/timeline.ts`); gone once a later copy no longer lists it. A planned outage ends at its scheduled end. Never by the copy's age.
 - **Revoked:** never in the timeline. On `/prad` it stays, with a grey tag „Odwołane” and PGE's note, until its time is over. Someone who saw it earlier can then see it was called off.
 - **An item gone from the feed** is gone from the site. It is a live feed with no history, as IMGW's.
 
@@ -72,14 +72,13 @@ A failure leaves the file as it was and records `pge: { ok: false, attemptAt }`,
 - `rate-limited`: 429.
 - `fetch-error`: anything else.
 
-The pages never ask PGE. They read the file and the status file per request, through the Blob's CDN (`pgeCopy`, `web/lib/live-store.ts`). A good run shows within about 60 s, and a new outage is on the site at most about 16 minutes after PGE publishes it. Vercel Cron runs only on production, so Previews never spend the quota.
+The pages never ask PGE. They read the file and the status file per request, through the Blob's CDN (`web/lib/live-reads.ts`), when a page is re-rendered: the cron re-renders the pages whose view changed (`web/lib/page-refresh.ts`): the address page and `/prad` of the places an outage concerns, and the home page if its count moved. A good run shows within about 2 minutes, and a new outage is on the site at most about 16 minutes after PGE publishes it. Vercel Cron runs only on production, so Previews never spend the quota.
 
 ## Honest states
 
-These follow IMGW's rule (`liveNotice`, `web/lib/live-status.ts`). The notice goes in the address page's inset and on `/prad`, followed by „Aktualne znajdziesz na stronie PGE Dystrybucja.”:
+These follow IMGW's rule (`liveNotice`, `web/lib/live-status.ts`): the latest copy is shown as it is, whatever its age. The notice goes in the address page's inset and on `/prad`, followed by „Aktualne znajdziesz na stronie PGE Dystrybucja.”:
 
-- **over 60 minutes:** the outages still shown, with „Nie udało się teraz pobrać danych PGE. Pokazujemy ostatnie dane z 9:52.”;
-- **from 3 hours:** no outage shown, only „Od 9:52 nie udało się nam pobrać danych PGE, więc ich nie pokazujemy.”;
+- **PGE's checks failing:** the outages still shown, with „Od 9:52 nie udało się nam pobrać danych PGE. Pokazujemy ostatnie, jakie mamy.” (since when they fail);
 - **store unreadable:** „Nie udało się teraz sprawdzić przerw w dostawie prądu.”, and no PGE time in the small print;
 - **no file yet:** „Nie udało się sprawdzić przerw w dostawie prądu.” (`unchecked`).
 
@@ -98,7 +97,7 @@ PGE Dystrybucja is credited on `/prad`'s source line: „Źródło: PGE Dystrybu
 | `mock:real` | the real region-49 list of 11 Nov 2026, trimmed to 7 items (5 in gmina Lubaczów, one in Oleszyce, one Cieszanów street), verbatim without `coordinates`; past after 20 Nov |
 | `mock:ours` | **derived, not real**: those items with one revoked, one without `dateRanges`, and a real Rzeszów failure moved to ul. Adama Asnyka (23, 52, 58A) and ul. Jasna in Lubaczów, moved to now. The planned ones move by whole days so the first is tomorrow; the failure began in the hour before this one |
 | `…?fail=500` / `401` / `429` / `html` / `timeout` | a broken upstream |
-| `…?checkedAgo=70` | the pages' store as a good run that many minutes back left it (stale over 60, too old from 180) |
+| `…?failingAgo=70` | the pages' store as a good run that many minutes back left it, PGE's checks failing since |
 
 For the pages, a failing mock is a store that cannot be read. When `VERCEL_ENV` is `production`, `upstream()` ignores a `mock:` value, logs it and uses the official URL, and the mock refuses to answer.
 

@@ -27,7 +27,7 @@ import {
   waterStatus,
   waterUpcoming,
 } from "../lib/water-module.ts";
-import { STALE_MS, type StoredPost, zukView } from "../lib/zuk-data.ts";
+import { type StoredPost, zukView } from "../lib/zuk-data.ts";
 import { Subpage } from "./module-page.tsx";
 import { PageDay } from "./page-day.tsx";
 import {
@@ -368,11 +368,10 @@ const GMINA = [
 ];
 
 test("village: the hub's water in every state, /woda never MZGKiM", () => {
-  const late = new Date(Date.parse(CHECKED) + STALE_MS + 1);
   const states = {
     cut: zukView(zukFile([storedPost(POST_39885, CHECKED)], CHECKED), NOW),
     none: zukView(zukFile([], CHECKED), NOW),
-    stale: zukView(zukFile([], CHECKED), late),
+    stale: zukView(zukFile([], CHECKED), NOW, undefined, true),
     unavailable: zukView(null, NOW),
   };
   const hub = {
@@ -401,11 +400,11 @@ test("village: the hub's water in every state, /woda never MZGKiM", () => {
       [
         [
           [
-            "Brak zapowiedzianych przerw przy ostatnim sprawdzeniu, ale od ponad godziny nie udało się nam sprawdzić nowych.",
+            "Brak zapowiedzianych przerw przy ostatnim udanym sprawdzeniu, ale ostatnio nie udało się nam sprawdzić nowych.",
           ],
         ],
       ],
-      "brak zapowiedzianych przerw przy ostatnim sprawdzeniu, ale od ponad godziny nie udało się nam sprawdzić nowych",
+      "brak zapowiedzianych przerw przy ostatnim udanym sprawdzeniu, ale ostatnio nie udało się nam sprawdzić nowych",
       [GMINA],
     ],
     unavailable: [

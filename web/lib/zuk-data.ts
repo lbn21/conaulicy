@@ -60,7 +60,6 @@
 
 import { todayInWarsaw } from "./dates.ts";
 import type { Disruption, Doubt, Notice } from "./disruptions.ts";
-import { STALE_MS } from "./live-status.ts";
 import { GMINA, type WaterSource } from "./water-sources.ts";
 import { current, noticeUntil, notOver, type WarningPlace } from "./zuk.ts";
 import type { AiItem } from "./zuk-ai.ts";
@@ -78,9 +77,6 @@ export const ZUK_FILE_VERSION = 5;
  * again.
  */
 export const ZUK_READER = 10;
-
-/** Older than this, the data may be out of date: show the source link (one for every source). */
-export { STALE_MS };
 
 /** The model could not read the post (xAI failed or no key): retried. */
 export const AI_UNAVAILABLE = "ai-unavailable";
@@ -286,12 +282,15 @@ export type ZukData = {
   notices: Notice[];
   /** No file, or an unreadable one: the source could not be read. */
   unavailable: boolean;
-  /** Unavailable, or last checked more than STALE_MS ago. */
+  /**
+   * May be out of date: unavailable, or the source's checks failing
+   * (status/checks.json); never for its age.
+   */
   stale: boolean;
   checkedAt: string | null;
   /**
    * When what the pages read last changed (the file's generatedAt), which
-   * is also the changing run's id (lib/live-refresh.ts); null: no file.
+   * is also the changing run's id (lib/live-runs.ts); null: no file.
    */
   changedAt: string | null;
 };
@@ -339,8 +338,8 @@ export function zukView(
   file: ZukFile | null,
   now: Date,
   source: WaterSource = GMINA,
-  /** The last good check (status/checks.json), when later than the file's. */
-  lastCheck: string | null = null,
+  /** The source's checks failing (status/checks.json, lib/live-status.ts). */
+  failing = false,
 ): ZukData {
   if (!file)
     return {
@@ -414,18 +413,12 @@ export function zukView(
     if (!shown) continue;
     notices.push(notice(post));
   }
-  // The file is written only when it changed (lib/zuk-cron.ts): every good
-  // run's check is in the status file.
-  const checkedAt =
-    lastCheck && Date.parse(lastCheck) > Date.parse(file.checkedAt)
-      ? lastCheck
-      : file.checkedAt;
   return {
     disruptions,
     notices,
     unavailable: false,
-    stale: now.getTime() - Date.parse(checkedAt) > STALE_MS,
-    checkedAt,
+    stale: failing,
+    checkedAt: file.checkedAt,
     changedAt: file.generatedAt,
   };
 }

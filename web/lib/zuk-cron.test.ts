@@ -150,7 +150,7 @@ const handle = (
     }),
     SECRET,
     d,
-    more,
+    [d, ...more],
     typeof imgw === "function" ? [{ key: IMGW_KEY, run: imgw }] : imgw,
     checks,
   );
@@ -314,53 +314,48 @@ test("unchanged posts: no model call or places query, results kept, nothing writ
   assert.equal(w.placesLoads, 0);
 });
 
-test("the pages' check time: the status file's when the file is unchanged", async () => {
+test("the pages' view of an unchanged file: never stale for its age", async () => {
   const w = world();
   await cron(w);
   await cron(w);
   const file = parseZukFile(w.file ?? "");
   assert.ok(file);
-  // 70 minutes on, nothing written since: the status file's last good
-  // check keeps the page fresh, never older than the file's own.
-  const later = new Date(NOW.getTime() + 70 * 60_000);
-  const checked = new Date(NOW.getTime() + 65 * 60_000).toISOString();
-  assert.equal(zukView(file, later).stale, true);
-  const view = zukView(file, later, undefined, checked);
+  // Hours on, nothing written since: shown as it is.
+  const later = new Date(NOW.getTime() + 5 * 3_600_000);
+  const view = zukView(file, later);
   assert.equal(view.stale, false);
-  assert.equal(view.checkedAt, checked);
+  assert.equal(view.checkedAt, file.checkedAt);
   assert.equal(view.changedAt, file.generatedAt);
-  const old = zukView(file, later, undefined, "2020-01-01T00:00:00Z");
-  assert.equal(old.checkedAt, file.checkedAt);
 });
 
-test("changed: each source's content changed or not, after the runs", async () => {
+test("done: once, after every run and the checks' write", async () => {
   const w = world();
-  const runs: Array<Record<string, boolean>> = [];
-  const run = () =>
-    handleZukCron(
-      new Request("https://conaulicy.pl/api/cron/zuk", {
-        headers: { authorization: `Bearer ${SECRET}` },
-      }),
-      SECRET,
-      deps(w),
-      [],
-      [{ key: IMGW_KEY, run: async () => ({ checked: true, changed: false }) }],
-      undefined,
-      (sources) => runs.push(sources),
-    );
-  // The first run writes the file; once every post is read (MAX_AI_CALLS
-  // a run), an unchanged run changes nothing.
-  for (let i = 0; i < 4; i++) {
-    w.now = new Date(NOW.getTime() + i * 15 * 60_000);
-    await run();
-  }
-  const water = waterKey(gminaLubaczow.id);
-  assert.equal(runs[0][water], true);
-  assert.deepEqual(
-    runs.slice(-2).map((r) => r[water]),
-    [false, false],
+  const order: string[] = [];
+  await handleZukCron(
+    new Request("https://conaulicy.pl/api/cron/zuk", {
+      headers: { authorization: `Bearer ${SECRET}` },
+    }),
+    SECRET,
+    deps(w),
+    [deps(w)],
+    [
+      {
+        key: IMGW_KEY,
+        run: async () => {
+          order.push("imgw");
+          return { checked: true, changed: false };
+        },
+      },
+    ],
+    {
+      read: async () => null,
+      write: async () => {
+        order.push("checks");
+      },
+    },
+    () => order.push("done"),
   );
-  assert.ok(runs.every((r) => r[IMGW_KEY] === false));
+  assert.deepEqual(order, ["imgw", "checks", "done"]);
 });
 
 test("an edited post is read again; not read this run, its old reading kept", async () => {
@@ -514,19 +509,11 @@ test("live steps: each on its own, under its key; one failing never another's or
   );
   const at = NOW.toISOString();
   const sources = parseChecks(status)?.sources;
-  assert.deepEqual(sources?.[IMGW_KEY], {
-    checkedAt: at,
-    attemptAt: at,
-    ok: true,
-  });
-  assert.deepEqual(sources?.[PGE_KEY], {
-    checkedAt: null,
-    attemptAt: at,
-    ok: false,
-  });
+  assert.deepEqual(sources?.[IMGW_KEY], { ok: true, since: at });
+  assert.deepEqual(sources?.[PGE_KEY], { ok: false, since: at });
 });
 
-test("checks: one status write per run, after every run, each source's check in it", async () => {
+test("checks: at most one status write per run, after every run, only when a source's state changed", async () => {
   const w = world();
   let status: string | null = null;
   // The water file's and the status file's writes, in order.
@@ -560,27 +547,28 @@ test("checks: one status write per run, after every run, each source's check in 
   const first = parseChecks(status);
   const at = NOW.toISOString();
   assert.deepEqual(first?.sources, {
-    [waterKey("gmina-lubaczow")]: { checkedAt: at, attemptAt: at, ok: true },
-    [waterKey("mzgkim")]: { checkedAt: null, attemptAt: at, ok: false },
-    [IMGW_KEY]: { checkedAt: at, attemptAt: at, ok: true },
+    [waterKey("gmina-lubaczow")]: { ok: true, since: at },
+    [waterKey("mzgkim")]: { ok: false, since: at },
+    [IMGW_KEY]: { ok: true, since: at },
   });
-  // IMGW failing, the gmina's site down: one write still, the last good
-  // checks kept.
+  // The same states 15 minutes on: the status file not written.
+  order.length = 0;
+  w.now = new Date(NOW.getTime() + 15 * 60_000);
+  await handle(run(), [mzgkim], good, checks);
+  assert.ok(!order.includes("checks"));
+  // IMGW failing, the gmina's site down: one write, the flips begun then,
+  // the unchanged entry kept.
   order.length = 0;
   w.posts = "down";
-  w.now = new Date(NOW.getTime() + 15 * 60_000);
+  w.now = new Date(NOW.getTime() + 30 * 60_000);
   const later = w.now.toISOString();
   const down = async () => ({ error: "feed unavailable" });
   await handle(run(), [mzgkim], down, checks);
   assert.deepEqual(order, ["checks"]);
   assert.deepEqual(parseChecks(status)?.sources, {
-    [waterKey("gmina-lubaczow")]: {
-      checkedAt: at,
-      attemptAt: later,
-      ok: false,
-    },
-    [waterKey("mzgkim")]: { checkedAt: null, attemptAt: later, ok: false },
-    [IMGW_KEY]: { checkedAt: at, attemptAt: later, ok: false },
+    [waterKey("gmina-lubaczow")]: { ok: false, since: later },
+    [waterKey("mzgkim")]: { ok: false, since: at },
+    [IMGW_KEY]: { ok: false, since: later },
   });
   // The status file unreadable, or its write failing: logged, the run's
   // response as without it.
@@ -1015,4 +1003,30 @@ test("a reply off the schema: that post alone, again after 1 h and 6 h, then giv
   assert.deepEqual(saved(w).retries, []);
   assert.deepEqual(saved(w).rejected, []);
   assert.equal(byId(w, 39885)?.status, "parsed");
+});
+
+test("a live sources' run: no water run, the live steps' results, only their checks", async () => {
+  const w = world();
+  let status: string | null = null;
+  const response = await handleZukCron(
+    new Request("https://conaulicy.pl/api/cron/zuk", {
+      headers: { authorization: `Bearer ${SECRET}` },
+    }),
+    SECRET,
+    deps(w),
+    [],
+    [{ key: IMGW_KEY, run: async () => ({ checked: true, changed: false }) }],
+    {
+      read: async () => status,
+      write: async (body) => {
+        status = body;
+      },
+    },
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    imgw: { checked: true, changed: false },
+  });
+  assert.deepEqual(Object.keys(parseChecks(status)?.sources ?? {}), [IMGW_KEY]);
+  assert.equal(w.file, null);
 });

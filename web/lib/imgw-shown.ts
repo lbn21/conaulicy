@@ -1,6 +1,7 @@
 // Which IMGW warnings the address page shows (lib/weather-module.ts), and
-// the notice when the last good copy of the feed is old: a function of that
-// copy and the time, so the unit tests read every state. docs/data/imgw.md.
+// the notice when IMGW's checks fail: a function of the last good copy of
+// the feed and the time, so the unit tests read every state.
+// docs/data/imgw.md.
 import {
   type Feed,
   forPowiat,
@@ -8,7 +9,6 @@ import {
   type Warning,
 } from "./imgw-warnings.ts";
 import {
-  checkAge,
   IMGW_KEY,
   type LiveCopy,
   liveCopyOf,
@@ -32,7 +32,7 @@ export const CURRENT = {
 export type ImgwCopy = LiveCopy<Feed>;
 
 /**
- * What the pages read from the store (lib/live-store.ts imgwCopy): the
+ * What the pages read from the store (lib/live-reads.ts imgwCopy): the
  * copy, null when the cron has written none yet, or UNREADABLE
  * (lib/live-status.ts).
  */
@@ -64,31 +64,28 @@ export type ShownWarning = Pick<
 
 export type Shown = {
   /**
-   * First: the last good check is over STALE_MS old (lib/live-status.ts),
-   * so the data may be out of date; CURRENT follows it. null: fresh.
+   * First: IMGW's checks fail (lib/live-status.ts liveNotice), so the data
+   * may be out of date; CURRENT follows it. null: they go well.
    */
   notice: string | null;
-  /** None while the copy is too old, or none in force or to come. */
+  /** The copy's warnings in force or to come; none, none. */
   warnings: ShownWarning[];
 };
 
 /**
- * What to show, or null: no copy, or a fresh one without any warning in
- * force or to come for the powiat (a warning is dropped once it ends).
- * Never null while there is a copy whose last good check is stale: then
- * the notice says so, with or without warnings; too old (MAX_AGE_MS), the
- * warnings are no longer listed, only the notice. The store unreadable:
- * the notice alone, that we could not check now.
+ * What to show, or null: no copy, or one without any warning in force or
+ * to come for the powiat (a warning is dropped once its own end passes)
+ * and no notice. The copy's warnings are shown whatever its age; IMGW's
+ * checks failing, the notice says since when, with or without warnings.
+ * The store unreadable: the notice alone, that we could not check now.
  */
 export function shownWarnings(copy: ImgwRead, now: number): Shown | null {
   if (!copy) return null;
   if (copy === UNREADABLE) return { notice: UNREADABLE_NOTICE, warnings: [] };
-  const age = checkAge(copy.checkedAt, now);
-  const warnings =
-    age === "too-old" ? [] : forPowiat(copy.feed.items, POWIAT, now);
+  const warnings = forPowiat(copy.feed.items, POWIAT, now);
   const said = liveNotice(
     "ostrzeżeń IMGW",
-    copy.checkedAt,
+    copy.failingSince,
     now,
     warnings.length,
   );

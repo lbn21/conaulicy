@@ -86,15 +86,17 @@ export function derived1809(): unknown[] {
 }
 
 /**
- * IMGW's copy as the pages read it (lib/imgw-shown.ts imgwCopyOf): the last
- * good check at `checkedAt`, the feed file written then too; by default the
- * derived 1809 warning (level 1, 25 Oct 13:00-19:00).
+ * IMGW's copy as the pages read it (lib/imgw-shown.ts imgwCopyOf): the feed
+ * file written at `fetchedAt`, IMGW's checks failing since `failing` (null:
+ * going well); by default the derived 1809 warning (level 1, 25 Oct
+ * 13:00-19:00).
  */
-export const copyCheckedAt = (
-  checkedAt: string,
+export const copyAt = (
+  fetchedAt: string,
   items: Feed["items"] = parseFeed(derived1809(), () => {}),
+  failing: string | null = null,
 ) => ({
-  feed: { fetchedAt: checkedAt, items } satisfies Feed,
-  checkedAt: Date.parse(checkedAt),
-  changedAt: Date.parse(checkedAt),
+  feed: { fetchedAt, items } satisfies Feed,
+  failingSince: failing === null ? null : Date.parse(failing),
+  changedAt: Date.parse(fetchedAt),
 });

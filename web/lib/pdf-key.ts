@@ -12,6 +12,17 @@ import { FRACTIONS, TOKEN, tones } from "./waste-bin.ts";
 /** Page 1's months: the current one and the five after it. */
 export const PDF_MONTHS = 6;
 
+/** The current month and the ones after it, PDF_MONTHS in all, as "YYYY-MM". */
+export function windowMonths(today: string): string[] {
+  const year = Number(today.slice(0, 4));
+  const month = Number(today.slice(5, 7)) - 1;
+  return Array.from({ length: PDF_MONTHS }, (_, i) => {
+    const y = year + Math.floor((month + i) / 12);
+    const m = ((month + i) % 12) + 1;
+    return `${y}-${String(m).padStart(2, "0")}`;
+  });
+}
+
 /** The key's fixed order, by token (Tech Lead, t334); any it lacks, after. */
 export const KEY_ORDER: readonly string[] = [
   "zmieszane",

@@ -8,22 +8,20 @@
 // Matching: the one rule (lib/place-match.ts), on each address's TERYT
 // locality and street; PGE's house numbers are shown as given, never
 // compared with the address's. Places are named from TERYT, never PGE's
-// words. A failure's end is PGE's estimate („ok.”); while PGE still lists
-// it, it lasts at least until a quarter of an hour after the last good
-// check. A revoked outage is never in the timeline; the subpage keeps it,
-// tagged, until its time is over. The copy's age decides the rest, as
-// IMGW's (lib/live-status.ts liveNotice).
+// words. A planned outage PGE lists in the latest copy is shown until its
+// scheduled end passes, or a later copy no longer lists it. A failure is
+// shown as long as the latest copy lists it, whatever its end, which is
+// only PGE's estimate („ok.”; its span `about`, lib/timeline.ts onDay);
+// never by the copy's age. A revoked outage is never in the timeline; the
+// subpage keeps it, tagged, until its time is over.
+// PGE's checks failing, a notice says since when, as IMGW's
+// (lib/live-status.ts liveNotice).
 
 import type { PlaceView } from "@/lib/schedule";
 import { fromTo } from "../components/rows/when.ts";
 import { warsawDay } from "./date-labels.ts";
 import { capitalised, type Group, type Part, span } from "./hub.ts";
-import {
-  checkAge,
-  type LiveCopy,
-  liveNotice,
-  UNREADABLE,
-} from "./live-status.ts";
+import { type LiveCopy, liveNotice, UNREADABLE } from "./live-status.ts";
 import { LIST } from "./locale.ts";
 import { hoursRow, type OutagePage } from "./outage-view.ts";
 import type { PgeFeed, PgeOutage } from "./pge-feed.ts";
@@ -39,11 +37,8 @@ const PGE_NAME = "PGE Dystrybucja";
 export const PGE_PAGE =
   "https://pgedystrybucja.pl/wylaczenia/aktualne-przerwy-w-dostawie-energii";
 
-/** What the pages read from the store (lib/live-store.ts pgeCopy). */
+/** What the pages read from the store (lib/live-reads.ts). */
 export type PgeRead = LiveCopy<PgeFeed> | null | typeof UNREADABLE;
-
-/** A failure still listed lasts at least this long past the last check. */
-const FAILURE_MARGIN_MS = 15 * 60_000;
 
 /** One of the outage's addresses here: our name, PGE's numbers as given. */
 type Where = { name: string; numbers: string | null };
@@ -60,10 +55,8 @@ export type Power = {
   cuts: PowerCut[];
   /** The copy is old or unreadable: what we say, before PGE's link. */
   notice: string | null;
-  /** The copy is shown (not too old, not unreadable). */
+  /** The copy is shown (the store could be read). */
   shown: boolean;
-  /** The last good check (ms); null: the store could not be read now. */
-  checkedAt: number | null;
   /** When PGE's items last changed (ms); null: unknown. */
   changedAt: number | null;
 };
@@ -89,28 +82,17 @@ function nameOf(address: PlaceRef, place: PlaceRef): string {
   return street.localityId === place.localityId ? name : `${name}, ${locality}`;
 }
 
-/** The outage at the address, its ranges not over by `now`; or null. */
-function cutAt(
-  item: PgeOutage,
-  place: PlaceRef,
-  checkedAt: number,
-  now: number,
-): PowerCut | null {
+/**
+ * The outage at the address; or null. A planned one: its ranges not over
+ * by `now`; a failure: every range, as long as PGE lists it.
+ */
+function cutAt(item: PgeOutage, place: PlaceRef, now: number): PowerCut | null {
   const here = item.addresses.filter((a) => matches(place, ref(a)));
   if (here.length === 0) return null;
-  const last = item.ranges.length - 1;
-  const ranges = item.ranges
-    .map((r, i) =>
-      item.kind === "failure" && i === last
-        ? {
-            ...r,
-            end: new Date(
-              Math.max(Date.parse(r.end), checkedAt + FAILURE_MARGIN_MS),
-            ).toISOString(),
-          }
-        : r,
-    )
-    .filter((r) => Date.parse(r.end) > now);
+  const ranges =
+    item.kind === "failure"
+      ? item.ranges
+      : item.ranges.filter((r) => Date.parse(r.end) > now);
   if (ranges.length === 0) return null;
   return {
     uuid: item.uuid,
@@ -130,8 +112,8 @@ export const POWER_SUBJECT = "przerw w dostawie prądu";
 
 /**
  * The module's data, or null when there is no copy yet: then the address
- * page says it has not been checked. Too old: no outage shown, the notice
- * alone; the store unreadable: the notice, no check time.
+ * page says it has not been checked. PGE's checks failing: its outages
+ * and the notice; the store unreadable: the notice alone.
  */
 export function power(
   copy: PgeRead,
@@ -145,22 +127,15 @@ export function power(
       cuts: [],
       notice: `Nie udało się teraz sprawdzić ${POWER_SUBJECT}.`,
       shown: false,
-      checkedAt: null,
       changedAt: null,
     };
-  const shown = checkAge(copy.checkedAt, now) !== "too-old";
-  const cuts = shown
-    ? copy.feed.items.flatMap(
-        (item) => cutAt(item, place, copy.checkedAt, now) ?? [],
-      )
-    : [];
+  const cuts = copy.feed.items.flatMap((item) => cutAt(item, place, now) ?? []);
   const live = cuts.filter((cut) => !cut.revoked).length;
   return {
     place,
     cuts,
-    notice: liveNotice("danych PGE", copy.checkedAt, now, live),
-    shown,
-    checkedAt: copy.checkedAt,
+    notice: liveNotice("danych PGE", copy.failingSince, now, live),
+    shown: true,
     changedAt: copy.changedAt,
   };
 }
@@ -286,6 +261,7 @@ export function powerPage(data: Power): OutagePage {
     aiNote: null,
     sources: powerSources(),
     changedAt: data.changedAt,
+    cadence: "live",
   };
 }
 

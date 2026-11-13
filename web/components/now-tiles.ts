@@ -1,8 +1,8 @@
 import "server-only";
 import type { IconName } from "@/components/icon";
+import type { Cadence } from "@/lib/cadence";
 import { IMGW_PAGE } from "@/lib/imgw-shown";
-import { MAX_AGE_MS } from "@/lib/live-status";
-import { imgwCopy, pgeCopy } from "@/lib/live-store";
+import type { LiveReads } from "@/lib/live-reads";
 import {
   counted,
   type NowLink,
@@ -17,7 +17,6 @@ import { wasteWeek } from "@/lib/schedule";
 import { SEARCH_INPUT_ID } from "@/lib/search";
 import { MZGKIM_NEWS } from "@/lib/water-sources";
 import { warningWhen, weather } from "@/lib/weather-module";
-import { getWaterData } from "@/lib/zuk-store";
 
 // The home page's „Teraz w gminie” tiles, in order: one entry each, its
 // module (icon and colour), its label, its source (named and linked in the
@@ -43,17 +42,20 @@ export type NowTileDef = {
   /** A link at the tile's foot to a field on the page, which it focuses
    * (FieldLink); shown read or not. */
   action?: NowLink & { href: `#${string}` };
-  read(week: Week, now: number): Promise<NowTileData | null>;
+  /** How often its source is checked (lib/cadence.ts); null: never. */
+  cadence: Cadence | null;
+  read(week: Week, reads: LiveReads): Promise<NowTileData | null>;
 };
 
 const pogoda: NowTileDef = {
   id: "pogoda",
+  cadence: "live",
   icon: "pogoda",
   label: "Pogoda",
   source: { href: IMGW_PAGE, text: "IMGW" },
-  async read(_week, now) {
-    const data = weather(await imgwCopy(), now);
-    if (!data || data.checkedAt === null) return null;
+  async read(_week, { imgw, now }) {
+    const data = weather(await imgw(), now);
+    if (!data?.read) return null;
     const { changedAt } = data;
     const top = topWarning(data.shown?.warnings ?? []);
     if (data.shown?.notice && !top) return null;
@@ -77,11 +79,12 @@ const pogoda: NowTileDef = {
 
 const woda: NowTileDef = {
   id: "woda",
+  cadence: "water",
   icon: "woda",
   label: "Woda",
   source: { href: MZGKIM_NEWS, text: "wodociągi" },
-  async read(week, now) {
-    const views = Object.values(await getWaterData(new Date(now)));
+  async read(week, { water }) {
+    const views = Object.values(await water());
     if (views.every((v) => v.unavailable)) return null;
     const changed = views.flatMap((v) =>
       v.changedAt ? [Date.parse(v.changedAt)] : [],
@@ -104,13 +107,13 @@ const woda: NowTileDef = {
 
 const prad: NowTileDef = {
   id: "prad",
+  cadence: "live",
   icon: "prad",
   label: "Prąd",
   source: { href: PGE_PAGE, text: "PGE Dystrybucja" },
-  async read(week, now) {
-    const copy = await pgeCopy();
+  async read(week, { pge }) {
+    const copy = await pge();
     if (!copy || typeof copy === "string") return null;
-    if (now - copy.checkedAt > MAX_AGE_MS) return null;
     const count = powerWeek(copy.feed, week);
     return {
       value:
@@ -128,6 +131,7 @@ const prad: NowTileDef = {
 // count of pickups this week, and the way to the address's own dates.
 const smieci: NowTileDef = {
   id: "smieci",
+  cadence: null,
   icon: "smieci",
   label: "Śmieci",
   source: null,

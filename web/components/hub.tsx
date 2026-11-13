@@ -12,11 +12,11 @@ import { AddressPage } from "@/components/place-page";
 import { SourceNote } from "@/components/subpage-parts";
 import { Timeline } from "@/components/timeline";
 import { WarningCards } from "@/components/warning-cards";
+import { hubPage } from "@/lib/address-pages";
 import { MODULE_IDS, SUBPAGE_IDS } from "@/lib/address-routes";
-import { freshnessLine, type Group, unchecked } from "@/lib/hub";
+import { type Group, unchecked } from "@/lib/hub";
 import { MODULES, type Module } from "@/lib/modules";
 import { pageData } from "@/lib/page-cache";
-import { placePath } from "@/lib/places";
 import type { PlaceView } from "@/lib/schedule";
 import { days, onDay } from "@/lib/timeline";
 import type { Item } from "@/lib/upcoming";
@@ -36,40 +36,27 @@ import type { Weather } from "@/lib/weather-module";
 //
 // Prerendered whole at build for every place (app/adres/[id]/page.tsx),
 // every module's data in one cache scope (hubData, lib/page-cache.ts):
-// re-rendered only when a source it reads changes, or the day does.
+// re-rendered only when what it shows changes (lib/page-refresh.ts).
 // Dates are absolute; „Dziś” and „Jutro” come with them, for the
 // render's Warsaw day (components/page-day.tsx).
 
 const MODULE_LIST = MODULE_IDS.map((slug): Module<unknown> => MODULES[slug]);
 
 /**
- * Everything the address page shows: every module's data at once, in
- * registry order (the first, waste's, is the place itself), and the clock
- * it was read at; null: no such place. One read per render (React's
- * cache()), cached with the page (pageData) under every module's tags.
+ * Everything the address page shows (lib/pages.ts hubPage) and the clock
+ * it was read at. One read per render (React's cache()), cached with the
+ * page (pageData).
  */
-export const hubData = cache((id: string) =>
-  pageData(
-    placePath(id),
-    [...new Set(MODULE_LIST.flatMap((module) => module.tags))],
-    async () => {
-      const now = Date.now();
-      const data = await Promise.all(
-        MODULE_LIST.map((module) => module.load(id)),
-      );
-      return data[0] === null ? null : { now, data };
-    },
-  ),
-);
+export const hubData = cache((id: string) => pageData(hubPage(id)));
 
 /** The address page's content (hubData), or the 404. */
 export async function HubMain({ id }: { id: string }) {
-  const read = await hubData(id);
-  if (!read) notFound();
-  const place = read.data[0] as PlaceView;
+  const { now, view: data } = await hubData(id);
+  if (!data) notFound();
+  const place = data[0] as PlaceView;
   return (
     <PageDay day={place.today}>
-      <Hub data={read.data} place={place} now={read.now} />
+      <Hub data={data} place={place} now={now} />
     </PageDay>
   );
 }
@@ -137,13 +124,18 @@ export function Hub({
   );
   const weather = data[MODULE_IDS.indexOf("pogoda")] as Weather | null;
   // IMGW's data was read: its required wording in the small print.
-  const imgw = weather?.checkedAt != null;
+  const imgw = weather?.read === true;
   const counts = windowCounts(items, place.today, now);
-  const fresh = freshnessLine(
-    loaded.map(({ module, data }) => ({
-      name: module.title,
-      changedAt: module.changedAt(data),
-    })),
+  const fresh = loaded.flatMap(({ module, data }) =>
+    module.cadence === null
+      ? []
+      : [
+          {
+            name: module.title,
+            changedAt: module.changedAt(data),
+            cadence: module.cadence,
+          },
+        ],
   );
   return (
     <AddressPage place={place}>

@@ -1,6 +1,6 @@
 // IMGW's warnings, shown only on the address page, in
 // every state, from the mock store (IMGW_WARNINGS_URL=mock:…,
-// lib/imgw-mock.ts mockFiles: the files a good cron run left, checkedAgo
+// lib/imgw-mock.ts mockFiles: the files a good cron run left, failingAgo
 // minutes back), on the built site:
 // - mock:none (the build's own setting in CI): nothing of IMGW's in <main>
 //   on any route (no banner, no line, no card); the breadcrumbs only on
@@ -17,9 +17,9 @@
 // - three warnings: axe at 375 and 1280 px, keyboard focus on a card's
 //   „Co przekazuje IMGW”, 320 px and 200% zoom with no horizontal scroll,
 //   the bands' fills (IMGW's level colours, lib/palette.ts) and contrast;
-// - stale (the last good check over an hour back: the notice, the warning
-//   still shown; with no warning, the notice alone), too old (3 hours: the
-//   notice alone) and a store that cannot be read (the notice alone).
+// - failing (IMGW's checks failing: the notice, the warning still shown;
+//   with no warning, the notice alone) and a store that cannot be read
+//   (the notice alone).
 // Every page is prerendered by the build, so one server reads them all.
 // With SCREENSHOT_DIR, saves <width>-<state>.png (DPR 2). Run after
 // `next build`.
@@ -66,9 +66,8 @@ const EXPECTED = {
   "two-l2-l3": { levels: [3, 2] },
   "three-l1-l2-l3": { levels: [3, 2, 1] },
   "cross-day-upcoming": { levels: [2] },
-  stale: { levels: [2], notice: true },
-  "stale-none": { levels: [], notice: true },
-  "too-old": { levels: [], notice: true },
+  failing: { levels: [2], notice: true },
+  "failing-none": { levels: [], notice: true },
   unreadable: { levels: [], notice: true },
 };
 const STATES = Object.keys(IMGW_SCENARIOS).map((name) => ({

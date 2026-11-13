@@ -210,9 +210,9 @@ test("the feed file: our powiats' items only, round-trips; not one: thrown", () 
     assert.throws(() => parseFeedFile(body), body);
 });
 
-test("the mock's store files: as a good run checkedAgo minutes back left them; a failing mock throws", async () => {
+test("the mock's store files: as a good run failingAgo minutes back left them, failing since; a failing mock throws", async () => {
   const now = EVENING;
-  const files = await mockFiles("mock:1809?checkedAgo=70", now);
+  const files = await mockFiles("mock:1809?failingAgo=70", now);
   const feed = parseFeedFile(files.feed);
   assert.equal(Date.parse(feed?.fetchedAt ?? ""), now - 70 * 60_000);
   assert.deepEqual(
@@ -220,10 +220,14 @@ test("the mock's store files: as a good run checkedAgo minutes back left them; a
     [DERIVED_1809_ID],
   );
   assert.deepEqual(parseChecks(files.checks)?.sources[IMGW_KEY], {
-    checkedAt: feed?.fetchedAt,
-    attemptAt: feed?.fetchedAt,
-    ok: true,
+    ok: false,
+    since: feed?.fetchedAt,
   });
+  assert.equal(
+    parseChecks((await mockFiles("mock:1809", now)).checks)?.sources[IMGW_KEY]
+      .ok,
+    true,
+  );
   assert.equal(
     Date.parse(
       parseFeedFile((await mockFiles("mock:none", now)).feed)?.fetchedAt ?? "",

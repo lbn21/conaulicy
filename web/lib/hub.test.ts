@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { freshnessLine, shortDayTime, sourceLine } from "./hub.ts";
+import { CADENCES } from "./cadence.ts";
+import { cadenceLine, freshnessLine, shortDayTime, sourceLine } from "./hub.ts";
 
 test("change time: DD.MM, HH:MM in Warsaw, over midnight and DST", () => {
   // 22:30 UTC on 31 August is already 1 September in Warsaw.
@@ -46,18 +47,49 @@ test("source line: sources joined", () => {
 test("freshness line: when each live source's data last changed", () => {
   const nov = Date.parse("2026-11-13T16:45:00Z");
   const oct = Date.parse("2026-10-12T06:00:00Z");
-  const one = freshnessLine([{ name: null, changedAt: nov }]);
-  assert.match(one ?? "", /^[^\d;:]+ 13\.11, 17:45\.$/);
+  const one = freshnessLine([{ name: null, changedAt: nov, cadence: "live" }]);
+  assert.match(one ?? "", /^[^\d;:]+\s13\.11,\s17:45\.$/);
   const several = freshnessLine([
-    { name: "pogoda", changedAt: nov },
-    { name: "śmieci", changedAt: null },
-    { name: "woda", changedAt: oct },
+    { name: "pogoda", changedAt: nov, cadence: "live" },
+    { name: "prąd", changedAt: null, cadence: "live" },
+    { name: "woda", changedAt: oct, cadence: "water" },
   ]);
   assert.match(
     several ?? "",
-    /^[^\d;]+: pogoda 13\.11, 17:45; woda 12\.10, 08:00\.$/,
+    /^[^\d;]+: pogoda\s13\.11,\s17:45; woda\s12\.10,\s08:00\.$/,
   );
-  assert.doesNotMatch(several ?? "", /śmieci/);
-  assert.equal(freshnessLine([{ name: "woda", changedAt: null }]), null);
+  assert.doesNotMatch(several ?? "", /prąd/);
+  assert.equal(
+    freshnessLine([{ name: "woda", changedAt: null, cadence: "water" }]),
+    null,
+  );
   assert.equal(freshnessLine([]), null);
+});
+
+// The cadence line's shape, from lib/cadence.ts: one cadence, its words
+// alone; several, each with the sources it covers, in CADENCES' order.
+test("cadence line: how often the shown sources are checked", () => {
+  const at = Date.parse("2026-11-13T16:45:00Z");
+  const { live, water } = CADENCES;
+  assert.equal(
+    cadenceLine([{ name: null, changedAt: at, cadence: "water" }]),
+    `Sprawdzamy co ${water.every}.`,
+  );
+  assert.equal(
+    cadenceLine([
+      { name: "woda", changedAt: at, cadence: "water" },
+      { name: "pogoda", changedAt: at, cadence: "live" },
+      { name: "prąd", changedAt: at, cadence: "live" },
+    ]),
+    `Sprawdzamy co ${live.every}: pogoda, prąd; co ${water.every}: woda.`,
+  );
+  // A source not in the freshness line: not here either.
+  assert.equal(
+    cadenceLine([
+      { name: "woda", changedAt: null, cadence: "water" },
+      { name: "pogoda", changedAt: at, cadence: "live" },
+    ]),
+    `Sprawdzamy co ${live.every}.`,
+  );
+  assert.equal(cadenceLine([]), null);
 });

@@ -3,6 +3,7 @@
 // subpages' source line and the freshness line. Pure, so the unit tests
 // read it.
 
+import { CADENCES, type Cadence } from "./cadence.ts";
 import { clockTime, dayGenitive, warsawDay } from "./date-labels.ts";
 import { addDays, capitalised, WARSAW, warsawToIso } from "./dates.ts";
 import { LOCALE } from "./locale.ts";
@@ -56,8 +57,40 @@ export function shortDayTime(at: number): string {
   return `${part("day")}.${part("month")}, ${part("hour")}:${part("minute")}`;
 }
 
-/** Under every freshness line: how often the crons look (vercel.json). */
-export const CHECK_CADENCE = "Sprawdzamy co 15 minut.";
+/**
+ * A live source in a freshness line: its name (null: a subpage's one
+ * source), when its data last changed (ms; null: none shown) and how often
+ * it is checked (lib/cadence.ts).
+ */
+export type FreshSource = {
+  name: string | null;
+  changedAt: number | null;
+  cadence: Cadence;
+};
+
+/**
+ * Under a freshness line: how often its sources are checked, from
+ * vercel.json's schedules (lib/cadence.ts). One cadence: „Sprawdzamy co 15
+ * minut.”; several, each with its sources: „Sprawdzamy co 15 minut:
+ * pogoda, prąd; co 4 godziny: woda.”. The sources freshnessLine shows
+ * only; none: null.
+ */
+export function cadenceLine(sources: FreshSource[]): string | null {
+  const shown = sources.filter(({ changedAt }) => changedAt !== null);
+  const groups = (Object.keys(CADENCES) as Cadence[]).flatMap((cadence) => {
+    const names = shown.filter((s) => s.cadence === cadence);
+    return names.length > 0 ? [{ cadence, names }] : [];
+  });
+  if (groups.length === 0) return null;
+  if (groups.length === 1)
+    return `Sprawdzamy co ${CADENCES[groups[0].cadence].every}.`;
+  return `Sprawdzamy ${groups
+    .map(
+      ({ cadence, names }) =>
+        `co ${CADENCES[cadence].every}: ${names.map((s) => s.name).join(", ")}`,
+    )
+    .join("; ")}.`;
+}
 
 /** A module with no data now: „Nie udało się sprawdzić ‹its subject›.” */
 export const unchecked = (module: { subject: string }) =>
@@ -87,9 +120,7 @@ export function sourceLine(sources: Part[][]): Part[] {
  * woda 12.11, 08:00.”. A source with no changedAt is left out (the waste
  * schedule: its source line says it all); none left: null.
  */
-export function freshnessLine(
-  sources: Array<{ name: string | null; changedAt: number | null }>,
-): string | null {
+export function freshnessLine(sources: FreshSource[]): string | null {
   const known = sources.flatMap(({ name, changedAt }) =>
     changedAt === null ? [] : [{ name, at: unbroken(shortDayTime(changedAt)) }],
   );

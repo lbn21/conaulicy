@@ -167,41 +167,46 @@ function cron(w: World, now: Date) {
     }),
     SECRET,
     water,
-    [],
+    [water],
     [{ key: IMGW_KEY, run: () => runImgw(deps(w, { now: clock })) }],
     file(w, CHECKS),
   );
 }
 
-test("the cron: a good check is recorded; a failure records ok:false, the feed kept", async () => {
+test("the cron: a good check is recorded once; a failure records ok:false, the feed kept", async () => {
   const w = world();
   await cron(w, T0);
   assert.deepEqual(w.writes, [FEED, CHECKS]);
   const good = parseChecks(w.store.get(CHECKS) ?? null);
   assert.deepEqual(good?.sources[IMGW_KEY], {
-    checkedAt: T0.toISOString(),
-    attemptAt: T0.toISOString(),
     ok: true,
+    since: T0.toISOString(),
   });
   const feed = w.store.get(FEED);
-  // IMGW down 15 minutes on: the feed file untouched, the try recorded.
-  w.body = "down";
+  // 15 minutes on, the same feed, the check good again: nothing written.
   w.writes = [];
-  const later = new Date(T0.getTime() + 15 * 60_000);
+  await cron(w, new Date(T0.getTime() + 15 * 60_000));
+  assert.deepEqual(w.writes, []);
+  // IMGW down 30 minutes on: the feed file untouched, the failure recorded.
+  w.body = "down";
+  const later = new Date(T0.getTime() + 30 * 60_000);
   await cron(w, later);
   assert.deepEqual(w.writes, [CHECKS]);
   assert.equal(w.store.get(FEED), feed);
   assert.deepEqual(parseChecks(w.store.get(CHECKS) ?? null)?.sources.imgw, {
-    checkedAt: T0.toISOString(),
-    attemptAt: later.toISOString(),
     ok: false,
+    since: later.toISOString(),
   });
-  // The pages' copy: the last good feed and check.
+  // Still down: nothing written.
+  w.writes = [];
+  await cron(w, new Date(later.getTime() + 15 * 60_000));
+  assert.deepEqual(w.writes, []);
+  // The pages' copy: the last good feed, failing since then.
   const copy = imgwCopyOf(
     w.store.get(FEED) ?? null,
     w.store.get(CHECKS) ?? null,
   );
-  assert.equal(copy?.checkedAt, T0.getTime());
+  assert.equal(copy?.failingSince, later.getTime());
   assert.deepEqual(
     copy?.feed.items.map((item) => item.id),
     ["Sk1"],

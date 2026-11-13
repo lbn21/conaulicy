@@ -16,6 +16,7 @@ import {
   CHECKED,
   KROWICA_RANGE,
   lisiePartly,
+  mockFailing,
   mockFile,
   mzgkimPost,
   NOW,
@@ -56,7 +57,6 @@ import { type PostReading, readPost } from "./zuk.ts";
 import {
   AI_DEFERRED,
   NOT_WATER,
-  STALE_MS,
   type StoredPost,
   WATER_QUALITY,
   zukView,
@@ -536,7 +536,6 @@ test("town, fresh, no cut: the villages' none, both sources' posts", () => {
       ".",
     ]);
     assert.deepEqual(waterSources(data), [[GMINA], [MZGKIM]]);
-    assert.equal(data.checkedAt, CHECKED);
   }
 });
 
@@ -714,31 +713,24 @@ test("town, both sources' cuts: both posts, both in the AI note", () => {
 
 /**
  * A town street without a cut and ul. Żuki with ZUK's, from `views`: no
- * cut, both sources' posts and the oldest read in the checked line.
+ * cut, both sources' posts.
  */
 function quietAndCut(views: Parameters<typeof water>[0]) {
   const quiet = water(views, ASNYKA);
   assert.deepEqual(waterSources(quiet), [[GMINA], [MZGKIM]]);
-  assert.equal(quiet.checkedAt, CHECKED);
   return { quiet, cut: water(views, ZUKI) };
 }
 
-test("town, MZGKiM stale: „przy ostatnim sprawdzeniu”, its posts named", () => {
-  const late = new Date(Date.parse(CHECKED) + STALE_MS + 1);
+test("town, MZGKiM's checks failing: „przy ostatnim udanym sprawdzeniu”, its posts named", () => {
   const views = {
-    "gmina-lubaczow": zukView(zukFile([post()], late.toISOString()), late),
-    mzgkim: zukView(zukFile([], CHECKED), late, MZGKIM_SOURCE),
+    "gmina-lubaczow": zukView(zukFile([post()], CHECKED), NOW),
+    mzgkim: zukView(zukFile([], CHECKED), NOW, MZGKIM_SOURCE, true),
   };
   const { quiet, cut } = quietAndCut(views);
-  assert.equal(
-    waterNone(quiet),
-    "brak zapowiedzianych przerw przy ostatnim sprawdzeniu, ale od ponad godziny nie udało się nam sprawdzić nowych komunikatów MZGKiM",
-  );
-  assert.deepEqual(staleNote(quiet), [
-    "Od ponad godziny nie udało się nam sprawdzić nowych komunikatów MZGKiM. Zajrzyj też do ",
-    MZGKIM_OF,
-    ".",
-  ]);
+  assert.match(waterNone(quiet), /przy ostatnim udanym sprawdzeniu.*MZGKiM$/);
+  const note = staleNote(quiet);
+  assert.deepEqual(note?.slice(1), [MZGKIM_OF, "."]);
+  assert.match(String(note?.[0]), /MZGKiM/);
   // A ZUK cut: the note joins the card, the source is still its post only.
   assert.deepEqual(waterStatus(cut).at(-1), [staleNote(cut)]);
   assert.deepEqual(waterSources(cut), [
@@ -746,20 +738,21 @@ test("town, MZGKiM stale: „przy ostatnim sprawdzeniu”, its posts named", () 
   ]);
 });
 
-test("town, both stale: as a village, both sources' posts", () => {
-  const late = new Date(Date.parse(CHECKED) + STALE_MS + 1);
-  const quiet = waterAt(ASNYKA, [post()], late);
-  assert.equal(
-    waterNone(quiet),
-    "brak zapowiedzianych przerw przy ostatnim sprawdzeniu, ale od ponad godziny nie udało się nam sprawdzić nowych",
+test("town, both sources' checks failing: as a village, both sources' posts", () => {
+  const quiet = water(
+    {
+      "gmina-lubaczow": zukView(
+        zukFile([post()], CHECKED),
+        NOW,
+        GMINA_SOURCE,
+        true,
+      ),
+      mzgkim: zukView(zukFile([], CHECKED), NOW, MZGKIM_SOURCE, true),
+    },
+    ASNYKA,
   );
-  assert.deepEqual(staleNote(quiet), [
-    "Od ponad godziny nie udało się nam sprawdzić nowych komunikatów. Zajrzyj też do ",
-    GMINA,
-    " i ",
-    MZGKIM_OF,
-    ".",
-  ]);
+  assert.match(waterNone(quiet), /przy ostatnim udanym sprawdzeniu.*nowych$/);
+  assert.deepEqual(staleNote(quiet)?.slice(1), [GMINA, " i ", MZGKIM_OF, "."]);
 });
 
 test("town, MZGKiM unavailable: said, with its posts; the gmina's none kept", () => {
@@ -798,22 +791,30 @@ test("town, no file at all: the gmina's and MZGKiM's posts to check", () => {
       ".",
     ]);
     assert.deepEqual(waterSources(data), [[GMINA], [MZGKIM]]);
-    assert.equal(data.checkedAt, null);
     assert.equal(data.changedAt, null);
   }
 });
 
-test("freshness: the last read always kept, the stale note only after 1 h", () => {
-  const checked = Date.parse(CHECKED);
-  const at = (ms: number) =>
-    waterAt(ZUKI, [post()], new Date(checked + ms), CHECKED);
-  const fresh = at(STALE_MS);
-  assert.equal(fresh.checkedAt, CHECKED);
-  assert.equal(staleNote(fresh), null);
-  assert.equal(lines(fresh).length, 0);
+test("freshness: the stale note only while the source's checks fail, never for the file's age", () => {
+  const at = (failing: boolean, now = NOW) =>
+    water(
+      {
+        "gmina-lubaczow": zukView(
+          zukFile([post()], CHECKED),
+          now,
+          GMINA_SOURCE,
+          failing,
+        ),
+        mzgkim: zukView(zukFile([], CHECKED), now, MZGKIM_SOURCE),
+      },
+      ZUKI,
+    );
+  const old = at(false, new Date(Date.parse(CHECKED) + 4 * 3_600_000));
+  assert.equal(staleNote(old), null);
+  assert.equal(lines(old).length, 0);
+  assert.equal(staleNote(at(false)), null);
 
-  const stale = at(STALE_MS + 1);
-  assert.equal(stale.checkedAt, CHECKED);
+  const stale = at(true);
   const note = staleNote(stale);
   assert.ok(note);
   assert.deepEqual(note[1], {
@@ -823,7 +824,7 @@ test("freshness: the last read always kept, the stale note only after 1 h", () =
   // The cuts stay in the list; the section has the note.
   assert.deepEqual(waterStatus(stale), [[note]]);
   assert.equal(waterUpcoming(stale).length, 1);
-  assert.match(waterNone(at(STALE_MS + 1)), /przy ostatnim sprawdzeniu/);
+  assert.match(waterNone(at(true)), /przy ostatnim udanym sprawdzeniu/);
 });
 
 test("no file: the gmina's news only, no cut, no change time", () => {
@@ -833,7 +834,6 @@ test("no file: the gmina's news only, no cut, no change time", () => {
     [["Nie udało się nam sprawdzić komunikatów."]],
   ]);
   assert.deepEqual(waterUpcoming(data), []);
-  assert.equal(data.checkedAt, null);
   assert.equal(data.changedAt, null);
   assert.equal(staleNote(data), null);
   assert.equal(waterNone(data), "nie udało się nam sprawdzić komunikatów");
@@ -910,13 +910,15 @@ test("past cuts: gone at their end in Warsaw, not in UTC", () => {
   assert.deepEqual(waterStatus(after), [[["Brak zapowiedzianych przerw."]]]);
 });
 
-test("dev mock: fresh, stale or no file; anything else is no mock", () => {
+test("dev mock: good, failing or no file; anything else is no mock", () => {
   const now = NOW.getTime();
   const fresh = mockFile("39885", now);
-  const stale = mockFile("39885-stale", now);
-  assert.ok(fresh && stale);
+  assert.ok(fresh);
+  assert.deepEqual(mockFile("39885-failing", now), fresh);
+  assert.equal(mockFailing("39885"), false);
+  assert.equal(mockFailing("39885-failing"), true);
   assert.equal(zukView(fresh, NOW).stale, false);
-  assert.equal(zukView(stale, NOW).stale, true);
+  assert.equal(mockFile("39885-stale", now), undefined);
   assert.equal(mockFile("none", now), null);
   assert.equal(mockFile("39886", now), undefined);
 });
@@ -924,9 +926,8 @@ test("dev mock: fresh, stale or no file; anything else is no mock", () => {
 test("dev mock: MZGKiM's 5237 moved to now, its cut the day after tomorrow", () => {
   const now = NOW.getTime();
   const fresh = mockFile("5237", now);
-  const stale = mockFile("5237-stale", now);
-  assert.ok(fresh && stale);
-  assert.equal(zukView(stale, NOW, MZGKIM_SOURCE).stale, true);
+  assert.ok(fresh);
+  assert.equal(zukView(fresh, NOW, MZGKIM_SOURCE, true).stale, true);
   const view = zukView(fresh, NOW, MZGKIM_SOURCE);
   assert.equal(view.stale, false);
   // Sunday 25 Oct: Tuesday 27 Oct, 8:30-15:00, as the moved text says.

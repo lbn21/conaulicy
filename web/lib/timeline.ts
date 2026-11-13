@@ -31,7 +31,9 @@ const order = (a: Item, b: Item) =>
 /**
  * What happens on `day`: every item overlapping it and not over at `now`,
  * in registry order, then by start. A multi-day item is on each day it
- * covers, `continued` on all but its first.
+ * covers, `continued` on all but its first. An estimated end (`about`, a
+ * PGE failure's) never ends an item: it is on as long as its source lists
+ * it (lib/power-module.ts).
  */
 export function onDay(items: Item[], day: string, now: number): Entry[] {
   const from = midnight(day);
@@ -41,7 +43,7 @@ export function onDay(items: Item[], day: string, now: number): Entry[] {
       (item) =>
         Date.parse(item.span.start) < to &&
         Date.parse(item.span.end) > from &&
-        Date.parse(item.span.end) > now,
+        (item.span.about || Date.parse(item.span.end) > now),
     )
     .toSorted(order)
     .map((item) => ({ item, continued: Date.parse(item.span.start) < from }));

@@ -281,7 +281,7 @@ const route = (main: ZukCronDeps, more: ZukCronDeps[]) =>
     }),
     SECRET,
     main,
-    more,
+    [main, ...more],
   );
 
 test("the route: the gmina down is 502 as ever, MZGKiM still read", async () => {

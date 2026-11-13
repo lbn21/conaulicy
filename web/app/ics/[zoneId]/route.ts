@@ -1,6 +1,7 @@
+import { zoneIcsPage } from "@/lib/data-pages";
 import { calendarResponse } from "@/lib/ics";
-import { pageData, SOURCE_TAGS } from "@/lib/page-cache";
-import { getZone, zoneParams } from "@/lib/schedule";
+import { pageData } from "@/lib/page-cache";
+import { zoneParams } from "@/lib/schedule";
 import { wasteCalendar, wasteFilename } from "@/lib/waste-ics";
 
 // A waste zone's calendar, prerendered for every zone at build and
@@ -16,18 +17,14 @@ export async function GET(
   ctx: RouteContext<"/ics/[zoneId]">,
 ) {
   const { zoneId } = await ctx.params;
-  const id = decodeURIComponent(zoneId);
-  const read = await pageData(
-    `/ics/${zoneId}`,
-    [SOURCE_TAGS.dataset],
-    async () => ({
-      now: Date.now(),
-      zone: await getZone(id),
-    }),
+  // The param as given at build, or encoded at run time: one path either
+  // way (lib/pages.ts zoneIcsPage).
+  const { now, view: zone } = await pageData(
+    zoneIcsPage(decodeURIComponent(zoneId)),
   );
-  if (!read.zone) return new Response(null, { status: 404 });
+  if (!zone) return new Response(null, { status: 404 });
   return calendarResponse(
-    wasteCalendar(read.zone, new Date(read.now)),
-    wasteFilename(read.zone.name),
+    wasteCalendar(zone, new Date(now)),
+    wasteFilename(zone.name),
   );
 }

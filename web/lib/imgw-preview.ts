@@ -16,10 +16,10 @@ export const IMGW_SCENARIOS: Record<string, string> = {
   "two-l2-l3": "mock:1809?level=2&also=3",
   "three-l1-l2-l3": "mock:1809?level=1&also=2,3",
   "cross-day-upcoming": "mock:1809?level=2&start=night",
-  // The last good check over an hour back, and over three hours.
-  stale: "mock:1809?level=2&checkedAgo=70",
-  "stale-none": "mock:none?checkedAgo=70",
-  "too-old": "mock:1809?level=2&checkedAgo=190",
+  // IMGW's checks failing for 70 minutes: the warning still shown, and
+  // none to show.
+  failing: "mock:1809?level=2&failingAgo=70",
+  "failing-none": "mock:none?failingAgo=70",
   // The store cannot be read: an expected error, rendered as a notice.
   unreadable: "mock:1809?fail=500",
 };

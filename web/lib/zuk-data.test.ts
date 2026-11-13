@@ -9,7 +9,6 @@ import {
   NOT_WATER,
   PAST,
   parseZukFile,
-  STALE_MS,
   type StoredPost,
   settle,
   WATER_QUALITY,
@@ -64,14 +63,14 @@ test("no file: empty, the source unavailable, stale", () => {
   });
 });
 
-test("stale: data last checked more than 60 minutes ago", () => {
+test("stale: only while the source's checks fail, never for the file's age", () => {
   const at = Date.parse(CHECKED);
-  const view = (ms: number) => zukView(file([]), new Date(at + ms));
-  assert.equal(view(0).stale, false);
-  assert.equal(view(STALE_MS).stale, false);
-  assert.equal(view(STALE_MS + 1).stale, true);
-  assert.equal(view(STALE_MS + 1).unavailable, false);
-  assert.equal(view(0).checkedAt, CHECKED);
+  const days = new Date(at + 3 * 24 * 3_600_000);
+  assert.equal(zukView(file([]), days).stale, false);
+  const failing = zukView(file([]), new Date(at), undefined, true);
+  assert.equal(failing.stale, true);
+  assert.equal(failing.unavailable, false);
+  assert.equal(failing.checkedAt, CHECKED);
 });
 
 test("parse: only a file we wrote, of version 5", () => {

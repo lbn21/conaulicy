@@ -2,24 +2,21 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   CHECKS_VERSION,
-  checkAge,
+  checksChanged,
+  failingSince,
   IMGW_KEY,
-  MAX_AGE_MS,
+  liveCopyOf,
+  liveNotice,
   nextChecks,
-  oldestCheck,
   parseChecks,
-  STALE_MS,
   waterKey,
 } from "./live-status.ts";
 
 const T0 = "2026-10-31T08:00:00.000Z";
 const T1 = "2026-10-31T08:15:00.000Z";
+const T2 = "2026-10-31T08:30:00.000Z";
 
-test("the constants: one for every source, water's STALE_MS the same", async () => {
-  assert.equal(STALE_MS, 60 * 60_000);
-  assert.equal(MAX_AGE_MS, 3 * 3_600_000);
-  const { STALE_MS: water } = await import("./zuk-data.ts");
-  assert.equal(water, STALE_MS);
+test("the keys: one for every source", () => {
   assert.equal(IMGW_KEY, "imgw");
   assert.equal(waterKey("mzgkim"), "water:mzgkim");
 });
@@ -35,63 +32,100 @@ test("parse: the file round-trips; none, not JSON, another version or shape: nul
     parseChecks(JSON.stringify({ ...checks, version: CHECKS_VERSION + 1 })),
     null,
   );
-  assert.equal(parseChecks(JSON.stringify({ version: 1 })), null);
+  assert.equal(parseChecks(JSON.stringify({ version: CHECKS_VERSION })), null);
   for (const entry of [
-    { checkedAt: "soon", attemptAt: T0, ok: true },
-    { checkedAt: T0, attemptAt: null, ok: true },
-    { checkedAt: T0, attemptAt: T0, ok: "yes" },
+    { ok: true, since: "soon" },
+    { ok: "yes", since: T0 },
+    { ok: true },
   ])
     assert.equal(
-      parseChecks(JSON.stringify({ version: 1, sources: { x: entry } })),
+      parseChecks(
+        JSON.stringify({ version: CHECKS_VERSION, sources: { x: entry } }),
+      ),
       null,
     );
-  // Never checked well yet: checkedAt null is a valid entry.
-  const never = { checkedAt: null, attemptAt: T0, ok: false };
-  assert.deepEqual(
-    parseChecks(JSON.stringify({ version: 1, sources: { x: never } })),
-    { version: 1, sources: { x: never } },
-  );
 });
 
-test("next: a good try is the new check, a failed one keeps the last good, others untouched", () => {
+test("next: a source in the same state keeps its entry, a flip begins at the run, others untouched", () => {
   const first = nextChecks(
     null,
     { [IMGW_KEY]: true, [waterKey("mzgkim")]: false },
     T0,
   );
   assert.deepEqual(first.sources, {
-    imgw: { checkedAt: T0, attemptAt: T0, ok: true },
-    "water:mzgkim": { checkedAt: null, attemptAt: T0, ok: false },
+    imgw: { ok: true, since: T0 },
+    "water:mzgkim": { ok: false, since: T0 },
   });
-  const second = nextChecks(first, { [IMGW_KEY]: false }, T1);
-  assert.deepEqual(second.sources, {
-    imgw: { checkedAt: T0, attemptAt: T1, ok: false },
-    "water:mzgkim": { checkedAt: null, attemptAt: T0, ok: false },
+  const same = nextChecks(first, { [IMGW_KEY]: true }, T1);
+  assert.deepEqual(same, first);
+  const flipped = nextChecks(same, { [IMGW_KEY]: false }, T2);
+  assert.deepEqual(flipped.sources, {
+    imgw: { ok: false, since: T2 },
+    "water:mzgkim": { ok: false, since: T0 },
   });
   // The previous file itself is not changed.
-  assert.equal(first.sources.imgw.attemptAt, T0);
+  assert.equal(first.sources.imgw.ok, true);
 });
 
-test("oldest of keys: the oldest last good check; any key without one, or none: null", () => {
-  const checks = nextChecks(
-    nextChecks(null, { a: true, b: true }, T0),
-    { b: true, c: false },
-    T1,
+test("written only when the content changes: never for a run that went as the last", () => {
+  const first = nextChecks(null, { [IMGW_KEY]: true }, T0);
+  assert.ok(checksChanged(null, first));
+  // A day of good runs after the first: no write.
+  let stored = first;
+  let writes = 0;
+  for (let i = 1; i < 96; i++) {
+    const at = new Date(Date.parse(T0) + i * 15 * 60_000).toISOString();
+    const next = nextChecks(stored, { [IMGW_KEY]: true }, at);
+    if (checksChanged(stored, next)) {
+      stored = next;
+      writes++;
+    }
+  }
+  assert.equal(writes, 0);
+  // A flip, and a new source: written.
+  assert.ok(checksChanged(first, nextChecks(first, { [IMGW_KEY]: false }, T1)));
+  assert.ok(checksChanged(first, nextChecks(first, { pge: true }, T1)));
+});
+
+test("failing since: the run the failure began at, whatever its age; null while good", () => {
+  const good = nextChecks(null, { [IMGW_KEY]: true }, T0);
+  assert.equal(failingSince(good, IMGW_KEY), null);
+  assert.equal(failingSince(null, IMGW_KEY), null);
+  assert.equal(failingSince(good, "missing"), null);
+  const failing = nextChecks(good, { [IMGW_KEY]: false }, T1);
+  assert.equal(failingSince(failing, IMGW_KEY), Date.parse(T1));
+  assert.equal(
+    failingSince(nextChecks(failing, { [IMGW_KEY]: false }, T2), IMGW_KEY),
+    Date.parse(T1),
   );
-  assert.equal(oldestCheck(checks, ["a"]), Date.parse(T0));
-  assert.equal(oldestCheck(checks, ["b"]), Date.parse(T1));
-  assert.equal(oldestCheck(checks, ["b", "a"]), Date.parse(T0));
-  assert.equal(oldestCheck(checks, ["a", "c"]), null);
-  assert.equal(oldestCheck(checks, ["a", "missing"]), null);
-  assert.equal(oldestCheck(checks, []), null);
-  assert.equal(oldestCheck(null, ["a"]), null);
 });
 
-test("age: fresh to STALE_MS, stale over it, too old from MAX_AGE_MS", () => {
-  const at = Date.parse(T0);
-  assert.equal(checkAge(at, at), "fresh");
-  assert.equal(checkAge(at, at + STALE_MS), "fresh");
-  assert.equal(checkAge(at, at + STALE_MS + 1), "stale");
-  assert.equal(checkAge(at, at + MAX_AGE_MS - 1), "stale");
-  assert.equal(checkAge(at, at + MAX_AGE_MS), "too-old");
+test("the copy: the feed as stored, whatever its age; failing from the status file", () => {
+  const feed = { fetchedAt: T0, items: [] };
+  const good = JSON.stringify(nextChecks(null, { [IMGW_KEY]: true }, T0));
+  assert.deepEqual(liveCopyOf(feed, good, IMGW_KEY), {
+    feed,
+    failingSince: null,
+    changedAt: Date.parse(T0),
+  });
+  const failing = JSON.stringify(nextChecks(null, { [IMGW_KEY]: false }, T1));
+  assert.equal(
+    liveCopyOf(feed, failing, IMGW_KEY)?.failingSince,
+    Date.parse(T1),
+  );
+  assert.equal(liveCopyOf(null, good, IMGW_KEY), null);
+});
+
+test("the notice: none while good, whatever the age; failing, since when", () => {
+  const later = Date.parse(T0) + 30 * 24 * 3_600_000;
+  assert.equal(liveNotice("danych PGE", null, later, 3), null);
+  const failing = Date.parse(T1);
+  assert.match(
+    liveNotice("danych PGE", failing, failing + 60_000, 1) ?? "",
+    /9:15/,
+  );
+  assert.notEqual(
+    liveNotice("danych PGE", failing, failing, 1),
+    liveNotice("danych PGE", failing, failing, 0),
+  );
 });

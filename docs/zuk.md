@@ -1,7 +1,8 @@
 # ZUK water cuts
 
 Water cuts announced by ZUK Mokrzyca on gminalubaczow.pl, and in the town
-by MZGKiM (below), read every 15 minutes into one JSON file per source in
+by MZGKiM (below), read every 4 hours (`/api/cron/zuk?sources=water`,
+`web/lib/cadence.ts`) into one JSON file per source in
 Vercel Blob. No database writes.
 
 ## A run (`GET /api/cron/zuk`, Vercel Cron `7,22,37,52 * * * *`)
@@ -51,17 +52,19 @@ Vercel Blob. No database writes.
    rejected list, the gazetteer): `checkedAt` is that run, `generatedAt`
    the last run that changed what the pages read (every `checkedAt` in it
    aside, and the `rejected` list): the source's `changedAt`, shown as
-   „Bez zmian od …”, and its run id. Every good run's check is in
-   `status/checks.json` (the page's staleness). A run with rejected items
+   „Bez zmian od …”, and its run id. Whether each source's checks go
+   well is in `status/checks.json` (written only when that changes,
+   `web/lib/live-status.ts`). A run with rejected items
    logs them in one line, `{zuk: "rejected", source, gazetteer, entries}`.
-6. A run whose pages' content changed has the `water` tag revalidated 65 s
-   after its write ("max", inside `after()`; `web/lib/live-refresh.ts`),
-   then the pages pre-warmed. A run that wrote nothing (no change, the
-   source down, a file it could not read, the write failed) leaves the old
-   file and re-renders nothing.
+6. After every run, each page whose view changed (its digest,
+   `status/page-digests.json`) has its own tag revalidated 65 s after the
+   run's writes ("max", inside `after()`; `web/lib/page-refresh.ts`), every
+   changed page in the run, at most 400 of them pre-warmed: a water change re-renders the address page, `/woda` and
+   `woda.ics` of the places it concerns, and the home page if its counts
+   moved. A run that changed nothing a page shows re-renders nothing.
 
-The gmina's site down: 502, the file and its `checkedAt` stay, and it turns
-stale after an hour. xAI down: a new
+The gmina's site down: 502, the file and its `checkedAt` stay, and the
+source is stale (its checks failing) until a check goes well again. xAI down: a new
 post is `seen` with `reason: "ai-unavailable"`, retried next run, never
 shown; a new post over the run's 4 calls is stored nowhere and read on a
 later run. Either way an edited post keeps its old reading until it is read.
@@ -251,9 +254,9 @@ ids; our code maps listed names to them.
 Each cut carries our names for its label (`label`: locality, its village
 for a village part, street) and its houses (`scope`); the source's own
 wording stays in `where` (its street, else its locality, as written) and
-`note`. Pages read the file through `lib/zuk-store.ts` `getZukData()`; data last
-checked more than 60 minutes ago (the file's or the status file's last good
-check) is `stale`, so a page shows the source link instead.
+`note`. Pages read the file through `lib/live-reads.ts`, shown as it is
+whatever its age; a source whose checks fail (the status file) is `stale`,
+so a page shows the source link too.
 
 **Caching.** The pages that show water (the hub, `/woda`, its calendar
 file `/adres/[id]/woda.ics` and the home page) are prerendered, their data

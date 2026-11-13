@@ -17,8 +17,8 @@ import {
 export type Weather = {
   /** null: fresh, and no warning in force or to come. */
   shown: Shown | null;
-  /** The last good check (ms); null: the store could not be read now. */
-  checkedAt: number | null;
+  /** IMGW's copy was read: false when the store could not be read now. */
+  read: boolean;
   /** When IMGW's items last changed (ms); null: unknown. */
   changedAt: number | null;
 };
@@ -32,7 +32,7 @@ export function weather(copy: ImgwRead, now: number): Weather | null {
   if (!copy) return null;
   return {
     shown: shownWarnings(copy, now),
-    checkedAt: copy === UNREADABLE ? null : copy.checkedAt,
+    read: copy !== UNREADABLE,
     changedAt: copy === UNREADABLE ? null : copy.changedAt,
   };
 }

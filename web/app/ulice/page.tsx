@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHead } from "@/components/page-head";
-import { pageData, SOURCE_TAGS } from "@/lib/page-cache";
+import { allPlacesPage } from "@/lib/data-pages";
+import { pageData } from "@/lib/page-cache";
 import { type ListedPlace, localityAnchor, placePath } from "@/lib/places";
-import { searchIndex } from "@/lib/schedule";
 import { pageMetadata } from "@/lib/share";
 import { ALL_PLACES } from "@/lib/static-pages";
 
@@ -25,11 +25,7 @@ export const metadata: Metadata = pageMetadata({
  * re-rendered with the dataset (its tag, lib/page-cache.ts).
  */
 export default async function AllPlacesPage() {
-  const list = await pageData(
-    ALL_PLACES.path,
-    [SOURCE_TAGS.dataset],
-    async () => (await searchIndex()).list,
-  );
+  const { view: list } = await pageData(allPlacesPage);
   const town = list.townId ? localityAnchor(list.townId) : undefined;
   // Every place alike: one without a waste schedule still has its page,
   // its water and IMGW's warnings.

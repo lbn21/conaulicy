@@ -61,6 +61,7 @@ function waterPage(data: Water): OutagePage {
     aiNote: empty ? null : waterAiNote(data),
     sources: waterSources(data),
     changedAt: data.changedAt,
+    cadence: "water",
   };
 }
 

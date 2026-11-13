@@ -1,9 +1,8 @@
+import { waterIcsPage } from "@/lib/data-pages";
 import { calendarResponse } from "@/lib/ics";
-import { pageData, SOURCE_TAGS } from "@/lib/page-cache";
-import { placePath } from "@/lib/places";
+import { pageData } from "@/lib/page-cache";
 import { placeParams } from "@/lib/schedule";
 import { waterCalendar, waterFilename } from "@/lib/water-ics";
-import { loadWater } from "@/lib/water-load";
 
 // The water cuts at an address as a calendar file (lib/water-ics.ts), from
 // the /woda page's own loader, prerendered for every place and re-rendered
@@ -21,14 +20,10 @@ export async function GET(
   ctx: RouteContext<"/adres/[id]/woda.ics">,
 ) {
   const { id } = await ctx.params;
-  const read = await pageData(
-    `${placePath(id)}/woda.ics`,
-    [SOURCE_TAGS.dataset, SOURCE_TAGS.water],
-    async () => ({ now: Date.now(), data: await loadWater(id) }),
-  );
-  if (!read.data) return new Response(null, { status: 404 });
+  const { now, view } = await pageData(waterIcsPage(id));
+  if (!view) return new Response(null, { status: 404 });
   return calendarResponse(
-    waterCalendar(read.data, new Date(read.now)),
-    waterFilename(read.data),
+    waterCalendar(view, new Date(now)),
+    waterFilename(view),
   );
 }
