@@ -61,7 +61,7 @@ npm run db:redirect -- --from <old id> --to <new id> --reason "TERYT rename, iss
 
 ## Import tables
 
-The unattended import (docs/import.md) adds `import_runs` (one row per source per run), `import_changes` (every change by batch, for `npm run import:revert`), `source_files` (every source file by SHA-256, with its S3 key) and `source_pages` (watched pages' link hashes). It connects as the Neon role `conaulicy_import`, which can only read places and zones, write `events` and `gminy.schedule_url`, and write those four tables. To publish the dataset snapshot it must also read `place_redirects`, `district_aliases` and `district_alias_streets` (`GRANT SELECT`); without that, the publish fails with an issue and the site keeps its old snapshot.
+The unattended import (docs/import.md) adds `import_runs` (one row per source per run), `import_changes` (every change by batch, for `npm run import:revert`), `source_files` (every source file by SHA-256, with its S3 key) and `source_pages` (watched pages' link hashes). It connects as the Neon role `conaulicy_import`, which can only read places and zones, write `events` and `gminy.schedule_url`, and write those four tables. To publish the dataset snapshot it also reads `place_redirects`, `district_aliases` and `district_alias_streets`: migration `0004_retired_places` grants that (and the new columns, where the role reads `streets` and `localities` by column), a no-op where the role does not exist; CI creates the role as production has it and checks the grants.
 
 ## District names (the gazetteer)
 
@@ -80,7 +80,7 @@ The code may also ship first when it tolerates the old schema (for example, new 
 
 `0003_district_aliases` runs on production through `prod-db.yml` task `migrate-districts` (Jakub approves the run), before the code that reads it is merged.
 
-`0004_retired_places` (two nullable columns on `streets` and on `localities`) runs on production **before** the code that reads them is merged: the snapshot's builder, the TERYT check and `db:import` select them.
+`0004_retired_places` (two nullable columns on `streets` and on `localities`, and the import role's reads for the snapshot) ran on production through `prod-db.yml` task `migrate` (#284) **before** the code that reads them was merged: the snapshot's builder, the TERYT check and `db:import` select them.
 
 ## Testing data changes without touching production
 
