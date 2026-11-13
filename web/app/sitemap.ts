@@ -6,10 +6,10 @@ import { indexable } from "@/lib/indexing";
 import { searchIndex } from "@/lib/schedule";
 import { STATIC_PAGES } from "@/lib/static-pages";
 
-// Rendered at build from the cached search index (no DB read of its own; the
-// build reads it for the home page anyway), kept on the CDN, refreshed hourly
-// as lib/schedule.ts's CACHE (next.config.ts `dataset`), and purged with it
-// by POST /api/revalidate through the index's `dataset` tag.
+// Rendered at build from the search index of the dataset snapshot
+// (lib/dataset.ts; the build reads it for the home page anyway), kept on the
+// CDN, refreshed hourly (next.config.ts `dataset`), and purged with the
+// snapshot by POST /api/revalidate through the `dataset` tag.
 
 const PAGES = ["/", ...STATIC_PAGES.map(({ path }) => path)];
 

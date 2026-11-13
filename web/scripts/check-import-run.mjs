@@ -53,6 +53,18 @@ const dir = mkdtempSync(join(tmpdir(), "conaulicy-schedules-"));
 const archive = join(dir, "archive");
 const mock = join(dir, "xai");
 const issuesFile = join(dir, "issues.json");
+// The dataset snapshot each run publishes (scripts/lib/dataset.ts).
+const datasetDir = join(dir, "dataset");
+const pointer = () =>
+  existsSync(join(datasetDir, "dataset/current.json"))
+    ? JSON.parse(readFileSync(join(datasetDir, "dataset/current.json"), "utf8"))
+    : null;
+const published = () => {
+  const at = pointer();
+  return at
+    ? JSON.parse(readFileSync(join(datasetDir, at.path), "utf8"))
+    : null;
+};
 const reviewsFile = join(dir, "reviews.json");
 const reviewDir = join(dir, "review");
 mkdirSync(mock);
@@ -293,6 +305,7 @@ const env = {
   ISSUES_FILE: issuesFile,
   REVIEWS_FILE: reviewsFile,
   IMPORT_REVIEW_DIR: reviewDir,
+  DATASET_DIR: datasetDir,
   XAI_MOCK_DIR: mock,
   XAI_API_KEY: "",
   // Nothing but loopback: Grok's replies come from XAI_MOCK_DIR only.
@@ -655,8 +668,21 @@ await step(
         gmina.events_added + gmina.events_removed + gmina.events_changed,
       `import_changes: ${logged}`,
     );
+    // The site's snapshot follows the batch, then its revert; the batch's
+    // version stays, for a rollback.
+    const applied = pointer();
+    check(
+      published()?.batchId === gmina.batch_id,
+      `the snapshot after the batch names ${published()?.batchId}`,
+    );
     const r = await revert(gmina.batch_id);
     check(r.code === 0, `revert exited ${r.code}: ${r.out}`);
+    check(
+      published()?.batchId === `revert-${gmina.batch_id}` &&
+        pointer()?.previous === applied?.version &&
+        existsSync(join(datasetDir, applied?.path ?? "none")),
+      `the snapshot after the revert: ${JSON.stringify(pointer())}`,
+    );
     check(
       (await snapshot()) === settled,
       "the revert did not restore the events",

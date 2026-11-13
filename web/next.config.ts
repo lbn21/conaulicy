@@ -26,8 +26,8 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   cacheLife: {
-    // The search index's own files (the sitemap): hourly, as its data
-    // cache (lib/schedule.ts CACHE), and purged with it by its tag.
+    // The search index's own files (the sitemap): hourly, and purged with
+    // the dataset snapshot (lib/dataset.ts) by its tag.
     dataset: { stale: 300, revalidate: 3600, expire: 31_536_000 },
   },
   // The PDF route reads the TTF fonts with fs at runtime.

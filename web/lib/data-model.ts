@@ -1,7 +1,7 @@
 /**
  * Canonical location/event types.
  * Schema is public. The processed dataset is not stored in git.
- * Stored in Neon Postgres: see lib/db/schema.ts.
+ * Stored in Neon Postgres: see db/schema.ts.
  */
 
 export type EventType = "waste" | "water" | "power" | "weather";

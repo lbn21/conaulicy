@@ -1,5 +1,5 @@
 // How a place is named and which zone it belongs to. Pure functions, shared
-// by the pages (lib/schedule.ts) and the importer (localities.search), so
+// by the pages (lib/dataset-views.ts) and the importer (localities.search), so
 // what search matches is what the page shows.
 
 import type { Locality } from "./data-model.ts";
@@ -207,7 +207,7 @@ export function pickZone(
 }
 
 /**
- * A place's waste zone with the house number as given (lib/schedule.ts
+ * A place's waste zone with the house number as given (lib/dataset-views.ts
  * wasteZoneFor reads the candidates): the zone, or null, and whether the
  * street is split by house numbers.
  */

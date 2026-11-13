@@ -1,5 +1,5 @@
 // Checks the street PDFs (app/adres/[id]/harmonogram.pdf) of every address
-// the CI fixture's database has (each waste zone's members, a split street
+// the CI fixture has (lib/dataset-fixture.ts: each waste zone's members, a split street
 // with a number in its part), never a list of ours.
 // Each must be a tagged PDF (MarkInfo, Lang, structure tree) with no PDF/UA
 // claim (it fails veraPDF), within the size budget, with only Atkinson
@@ -33,9 +33,9 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { inflateSync } from "node:zlib";
-import pg from "pg";
 import QRCode from "qrcode";
 import { SITE_URL } from "../lib/config.generated.ts";
+import { fixtureDataset } from "../lib/dataset-fixture.ts";
 import { todayInWarsaw } from "../lib/dates.ts";
 import { fileSlug } from "../lib/normalize.ts";
 import { MONTH_DAYS, TABLE_ROW } from "../lib/pdf-grid.ts";
@@ -43,7 +43,6 @@ import { PDF_MONTHS } from "../lib/pdf-key.ts";
 import { GUIDES } from "../lib/sorting-guide.ts";
 import { FRACTIONS, TOKEN } from "../lib/waste-bin.ts";
 import { walk } from "./lib/files.mjs";
-import { localDatabaseUrl } from "./lib/local-db.ts";
 import { pageStrokes, pageWords, spills } from "./lib/pdf-layout.mjs";
 import { finish, startServer } from "./lib/server.mjs";
 
@@ -57,88 +56,108 @@ const MAX_BYTES = 150_000;
 // address.
 const PAGES = 2;
 
-// Every address the CI fixture has, from its database (scripts/ci-fixture.ts),
-// never a list of ours: each waste zone's members, a split street's part with
-// a number in it (and without one: a 404), and each zone's window months with
-// dates; a zone with none left (an ended schedule) is a 404 too.
-async function fixtureCases() {
-  const db = new pg.Client({ connectionString: localDatabaseUrl() });
-  await db.connect();
-  try {
-    const today = todayInWarsaw();
-    const { rows: members } = await db.query(
-      `select m.zone_id, m.locality_id, m.street_id, m.house_from, m.parity,
-              z.name as zone_name, coalesce(s.name, l.name) as name,
-              g.name as gmina
-         from zone_members m
-         join zones z on z.id = m.zone_id
-         join localities l on l.id = m.locality_id
-         join gminy g on g.id = l.gmina_id
-         left join streets s on s.id = m.street_id
-        where z.type = 'waste'
-        order by m.zone_id, m.locality_id, m.street_id, m.house_from`,
-    );
-    const { rows: months } = await db.query(
-      `select zone_id, array_agg(distinct substr(start, 1, 7)) as months,
-              max(start) as last
-         from events where type = 'waste' group by zone_id`,
-    );
-    const window = Array.from({ length: PDF_MONTHS }, (_, i) => {
-      const n =
-        Number(today.slice(0, 4)) * 12 + Number(today.slice(5, 7)) - 1 + i;
-      return `${Math.floor(n / 12)}-${String((n % 12) + 1).padStart(2, "0")}`;
-    });
-    const byZone = new Map(months.map((r) => [r.zone_id, r]));
-    const cases = [];
-    const seen = new Set();
-    for (const m of members) {
-      const id = m.street_id ?? m.locality_id;
-      const split = m.house_from !== null || m.parity !== null;
-      const nr = !split
-        ? null
-        : (m.house_from ?? (m.parity === "odd" ? "1" : "2"));
-      const query = nr ? `?nr=${nr}` : "";
-      const zone = byZone.get(m.zone_id);
-      const live = Boolean(zone && zone.last >= today);
-      const add = (c) => {
-        if (seen.has(c.path)) return;
-        seen.add(c.path);
-        cases.push(c);
-      };
-      add({
-        name: `${id}${query}`,
-        path: `/adres/${id}/harmonogram.pdf${query}`,
-        page: `/adres/${id}/smieci${query}`,
-        id,
-        zoneId: m.zone_id,
-        zoneName: m.zone_name,
-        placeName: m.name,
-        gmina: m.gmina,
-        months: live
-          ? window.filter((key) => zone.months.includes(key)).length
-          : 0,
-        status: live ? 200 : 404,
-      });
-      if (split) {
-        add({
-          name: `${id} (no number)`,
-          path: `/adres/${id}/harmonogram.pdf`,
-          status: 404,
-        });
+// Every address the CI fixture has, from the dataset the built site shows
+// (lib/dataset-fixture.ts, the rows scripts/ci-fixture.ts writes; CI's
+// build has no snapshot), never a list of ours: each waste zone's members,
+// a split street's part with a number in it (and without one: a 404), and
+// each zone's window months with dates; a zone with none left (an ended
+// schedule) is a 404 too.
+function fixtureCases() {
+  const today = todayInWarsaw();
+  const ds = fixtureDataset(today);
+  const zones = new Map(ds.zones.map((z) => [z.id, z]));
+  const localities = new Map(ds.localities.map((l) => [l.id, l]));
+  const streets = new Map(ds.streets.map((s) => [s.id, s]));
+  const gminy = new Map(ds.gminy.map((g) => [g.id, g]));
+  // By zone, locality, street, first number; none last, as SQL's ORDER BY.
+  const key = (v) => (v === null ? "\uffff" : v);
+  const members = ds.zoneMembers
+    .filter((m) => zones.get(m.zoneId)?.type === "waste")
+    .map((m) => ({
+      zone_id: m.zoneId,
+      locality_id: m.localityId,
+      street_id: m.streetId,
+      house_from: m.houseFrom,
+      parity: m.parity,
+      zone_name: zones.get(m.zoneId).name,
+      name:
+        (m.streetId && streets.get(m.streetId)?.name) ??
+        localities.get(m.localityId).name,
+      gmina: gminy.get(localities.get(m.localityId).gminaId).name,
+    }))
+    .sort((a, b) => {
+      for (const k of ["zone_id", "locality_id", "street_id", "house_from"]) {
+        const [x, y] = [key(a[k]), key(b[k])];
+        if (x !== y) return x < y ? -1 : 1;
       }
+      return 0;
+    });
+  const months = [
+    ...Map.groupBy(
+      ds.events.filter((e) => e.type === "waste"),
+      (e) => e.zoneId,
+    ),
+  ].map(([zone_id, events]) => ({
+    zone_id,
+    months: [...new Set(events.map((e) => e.start.slice(0, 7)))],
+    last: events
+      .map((e) => e.start)
+      .sort()
+      .at(-1),
+  }));
+  const window = Array.from({ length: PDF_MONTHS }, (_, i) => {
+    const n =
+      Number(today.slice(0, 4)) * 12 + Number(today.slice(5, 7)) - 1 + i;
+    return `${Math.floor(n / 12)}-${String((n % 12) + 1).padStart(2, "0")}`;
+  });
+  const byZone = new Map(months.map((r) => [r.zone_id, r]));
+  const cases = [];
+  const seen = new Set();
+  for (const m of members) {
+    const id = m.street_id ?? m.locality_id;
+    const split = m.house_from !== null || m.parity !== null;
+    const nr = !split
+      ? null
+      : (m.house_from ?? (m.parity === "odd" ? "1" : "2"));
+    const query = nr ? `?nr=${nr}` : "";
+    const zone = byZone.get(m.zone_id);
+    const live = Boolean(zone && zone.last >= today);
+    const add = (c) => {
+      if (seen.has(c.path)) return;
+      seen.add(c.path);
+      cases.push(c);
+    };
+    add({
+      name: `${id}${query}`,
+      path: `/adres/${id}/harmonogram.pdf${query}`,
+      page: `/adres/${id}/smieci${query}`,
+      id,
+      zoneId: m.zone_id,
+      zoneName: m.zone_name,
+      placeName: m.name,
+      gmina: m.gmina,
+      months: live
+        ? window.filter((key) => zone.months.includes(key)).length
+        : 0,
+      status: live ? 200 : 404,
+    });
+    if (split) {
+      add({
+        name: `${id} (no number)`,
+        path: `/adres/${id}/harmonogram.pdf`,
+        status: 404,
+      });
     }
-    // The longest place name among the PDFs: on one line of page 1.
-    const named = cases.filter((c) => c.status === 200);
-    const longest = named.reduce((a, b) =>
-      b.placeName.length > a.placeName.length ? b : a,
-    );
-    longest.title = true;
-    return cases;
-  } finally {
-    await db.end();
   }
+  // The longest place name among the PDFs: on one line of page 1.
+  const named = cases.filter((c) => c.status === 200);
+  const longest = named.reduce((a, b) =>
+    b.placeName.length > a.placeName.length ? b : a,
+  );
+  longest.title = true;
+  return cases;
 }
-const CASES = await fixtureCases();
+const CASES = fixtureCases();
 const LIVE = CASES.filter((c) => c.status === 200);
 const ENDED = CASES.find((c) => c.status === 404 && c.page);
 check(LIVE.length > 0, "the fixture has no address with a PDF");

@@ -6,8 +6,9 @@
 // configured), by id: new streets and localities (D), renamed or re-typed
 // ones (M), removed ones (U; a rename is a U plus a D, as SYM_UL names the
 // name, scripts/lib/teryt.ts). It never writes places: waste zones map
-// streets by name, so a person reviews every change (docs/database.md:
-// the import, then scripts/place-redirect.ts for a renamed street).
+// streets by name, so a person reviews every change (docs/import.md,
+// "TERYT reload": the reload's dry run writes the review file). Retired
+// places (gone from TERYT, kept) are not ours any more here.
 //
 // TERYT: the full ULIC and SIMC files ("urzędowy" variant), downloaded once
 // per run from eTERYT's public page (an ASP.NET form: one GET, one POST
@@ -139,12 +140,13 @@ async function oursFromDb(): Promise<Ours> {
     const streets = await db.query(
       `select l.teryt as simc, s.teryt as sym_ul, s.prefix, s.name
          from streets s join localities l on l.id = s.locality_id
-        where s.teryt is not null`,
+        where s.teryt is not null and s.retired_at is null`,
     );
     const localities = await db.query(
       `select g.teryt as terc, l.teryt as simc, l.name, p.teryt as parent
          from localities l join gminy g on g.id = l.gmina_id
-         left join localities p on p.id = l.parent_id`,
+         left join localities p on p.id = l.parent_id
+        where l.retired_at is null`,
     );
     return {
       streets: streets.rows.map((r) => ({
@@ -232,7 +234,7 @@ async function main() {
       "",
       table,
       "",
-      "D: new in TERYT. M: changed (name, CECHA, parent). U: gone from TERYT; a renamed street is a U plus a D (a new SYM_UL), so its page id changes: after the import, keep its old address with `npm run db:redirect` (docs/database.md).",
+      "D: new in TERYT. M: changed (name, CECHA, parent). U: gone from TERYT; a renamed street is a U plus a D (a new SYM_UL), so its page id changes. Reload with `npm run db:import -- --teryt <dir>`: its dry run writes etl/review/teryt/places.yaml (new places with their zones, retired ones with what replaced them) for a review PR; --apply only after it is merged, and never deletes a place (docs/import.md, „TERYT reload”).",
       archived ? `\nArchived:${archived}` : "",
       process.env.ACTIONS_RUN_URL
         ? `\nRun: ${process.env.ACTIONS_RUN_URL}`

@@ -26,6 +26,7 @@
     "lint": "biome check",
     "format": "biome format --write",
     "check:unused": "knip",
+    "check:dataset": "node --env-file-if-exists=.env.local --import ./scripts/lib/server-only.mjs --import tsx scripts/check-dataset.ts",
     "check:dupes": "jscpd --min-tokens 50 --cross-formats js-ts --exit-code --format typescript,tsx,javascript,scss --ignore \"**/drizzle/**,lib/config.generated.ts\" .",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=.env.local node_modules/drizzle-kit/bin.cjs migrate",
@@ -40,6 +41,10 @@
     "check:teryt": "node scripts/check-teryt.ts",
     "import:run": "node --env-file-if-exists=.env.local scripts/import/core/run.ts",
     "import:revert": "node --env-file-if-exists=.env.local scripts/import/core/revert.ts",
+    "dataset:build": "node --env-file-if-exists=.env.local scripts/dataset.ts build",
+    "dataset:publish": "node --env-file-if-exists=.env.local scripts/dataset.ts publish",
+    "dataset:list": "node --env-file-if-exists=.env.local scripts/dataset.ts list",
+    "dataset:rollback": "node --env-file-if-exists=.env.local scripts/dataset.ts rollback",
     "test": "node --import ./scripts/lib/no-network.mjs --import ./scripts/lib/server-only.mjs --import tsx --test \"lib/**/*.test.ts\" \"scripts/**/*.test.ts\" \"components/**/*.test.ts\" proxy.test.ts"
   },
   "dependencies": {

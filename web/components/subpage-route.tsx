@@ -5,7 +5,8 @@ import { NOT_FOUND_METADATA } from "@/components/page-not-found";
 import {
   type AddressSearch,
   metadataQuery,
-  PlaceNotFound,
+  PlaceUnknown,
+  unknownMetadata,
 } from "@/components/place-page";
 import { PlaceSuspense } from "@/components/place-suspense";
 import { withHouseNumber } from "@/lib/house";
@@ -46,8 +47,9 @@ async function subpageMetadata(
 ) {
   const { id, slug } = await subpageOf(params, variant);
   // An unknown module or place: its 404 before ?nr= is read (metadataQuery).
-  const query = findSubpage(slug) && (await metadataQuery(id, searchParams));
-  if (!query) return NOT_FOUND_METADATA;
+  if (!findSubpage(slug)) return NOT_FOUND_METADATA;
+  const query = await metadataQuery(id, searchParams);
+  if (!query) return unknownMetadata(id);
   return moduleMetadata(id, slug, query.nr, query.missing);
 }
 
@@ -114,7 +116,7 @@ async function SubpageContent({
       id={id}
       slug={slug}
       searchParams={searchParams}
-      unknown={<PlaceNotFound />}
+      unknown={<PlaceUnknown id={id} />}
     />
   );
 }

@@ -3,6 +3,10 @@
 # its review PR; a merged review's dates are applied when they pass the date
 # rules; anything else becomes an issue, closed by the next clean run
 # (docs/import.md).
+# After every run that may write, the dataset snapshot the site reads is
+# published to the Blob store (web/scripts/lib/dataset.ts); modes snapshot
+# and rollback publish it, or point the site back at an older version, by
+# hand (web/scripts/dataset.ts). Neither writes the database.
 # Configured in etl/sources.yaml. Started by workflow_dispatch only: no GitHub
 # schedule (it never fired in this repo); daily runs come from Vercel Cron
 # (/api/cron/import, daily 04:17 UTC) dispatching mode=apply.
@@ -12,10 +16,14 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "extract-only: no database, no review PR (tests the reading); dry-run: report and open review PRs, write only the import_runs row; apply: the real import"
+        description: "extract-only: no database, no review PR (tests the reading); dry-run: report and open review PRs, write only the import_runs row; apply: the real import; snapshot: publish the dataset snapshot from the database (read-only); rollback: point the site at the snapshot version below"
         type: choice
-        options: [extract-only, dry-run, apply]
+        options: [extract-only, dry-run, apply, snapshot, rollback]
         default: extract-only
+      version:
+        description: "rollback only: the snapshot version to point the site at (npm run dataset:list)"
+        type: string
+        default: ""
       force_extract:
         description: "Read known and settled files again too: each gets a review PR, unless its sha256 has a merged review"
         type: boolean
@@ -70,6 +78,8 @@ jobs:
         working-directory: web
         run: |
           case "$MODE" in
+            snapshot) exec npm run dataset:publish ;;
+            rollback) exec npm run dataset:rollback -- --to "$VERSION" ;;
             extract-only) flags="--extract-only" ;;
             dry-run) flags="--dry-run" ;;
             apply) flags="" ;;
@@ -79,7 +89,12 @@ jobs:
         env:
           MODE: ${{ inputs.mode }}
           FORCE: ${{ inputs.force_extract }}
-          IMPORT_DATABASE_URL: ${{ inputs.mode != 'extract-only' && secrets.IMPORT_DATABASE_URL || '' }}
+          VERSION: ${{ inputs.version }}
+          IMPORT_DATABASE_URL: ${{ inputs.mode != 'extract-only' && inputs.mode != 'rollback' && secrets.IMPORT_DATABASE_URL || '' }}
+          # The dataset snapshot's store (the site's Blob store): written
+          # after every run that may write, and by snapshot and rollback.
+          # Without it those fail, and the site keeps the old snapshot.
+          BLOB_READ_WRITE_TOKEN: ${{ inputs.mode != 'extract-only' && inputs.mode != 'dry-run' && secrets.BLOB_READ_WRITE_TOKEN || '' }}
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
           GH_TOKEN: ${{ github.token }}

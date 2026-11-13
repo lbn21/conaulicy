@@ -4,29 +4,43 @@
 // Loads the ETL output (format: scripts/lib/import-data.ts; the original
 // plan, docs/import-plan.md, is in git history). Without --apply it is
 // a dry run: validate, check the sources, print the diff against the
-// database, write nothing. With --apply, one transaction: rows are upserted
-// and rows missing from the input deleted. Then the site's cache is
-// revalidated and one address page is checked.
+// database, write nothing but the places' review file. With --apply, one
+// transaction: rows are upserted, and zones and events missing from the
+// input deleted. Places (streets, villages) are never deleted: one missing
+// from the input is retired, and the places' changes are applied only as
+// reviewed (scripts/lib/place-review.ts, docs/import.md "TERYT reload").
+// Then the dataset snapshot the site reads is published
+// (scripts/lib/dataset.ts), the site's cache is revalidated and one
+// address page is checked.
 //
 // --teryt: the archived TERYT ULIC files (ULIC_*.csv, npm run sources:pull,
 // e.g. ../.cache/sources/teryt/2026-10-18): every street's CECHA, NAZWA_1
 // and NAZWA_2 are taken from them, so its name is TERYT's (CLAUDE.md).
 // Without it the ETL's names are used, with a warning.
+// Places: the dry run writes etl/review/teryt/places.yaml (--review <file>
+// elsewhere, scripts/check-import.mjs) when places are
+// added, retired or restored; --apply needs that file merged into main
+// (origin/main, fetched; IMPORT_REVIEW_DIR instead in tests) for this exact
+// plan. A new place without a waste zone blocks --apply and opens an issue;
+// so does retiring over 10% of the places at once, unless
+// --allow-mass-retire.
 // Options: --offline (dry run only: skip downloading the sources),
-// --allow-deletes (more than 10% of a table may go), --yes-production.
-// Env: IMPORT_DATABASE_URL, DATABASE_URL_UNPOOLED or DATABASE_URL; optional
-// REVALIDATE_SECRET (site: etl/sources.yaml site.url, or SITE_URL), SITE_URL
+// --allow-deletes (more than 10% of zones or events may go),
+// --allow-mass-retire, --yes-production.
+// Env: IMPORT_DATABASE_URL, DATABASE_URL_UNPOOLED or DATABASE_URL;
+// BLOB_READ_WRITE_TOKEN (the dataset snapshot; --apply fails without it,
+// the data then imported, the site on the old snapshot); optional
+// GH_TOKEN (the unzoned-place issue), REVALIDATE_SECRET (site: etl/sources.yaml site.url, or SITE_URL), SITE_URL
 // (also the smoke check), SITE_BASIC_AUTH, VERCEL_AUTOMATION_BYPASS_SECRET.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
-import { getTableColumns, inArray, sql } from "drizzle-orm";
+import { and, getTableColumns, inArray, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import { parse as parseYaml } from "yaml";
-import { todayInWarsaw } from "../lib/dates.ts";
 import {
   events,
   gminy,
@@ -35,7 +49,11 @@ import {
   streets,
   zoneMembers,
   zones,
-} from "../lib/db/schema.ts";
+} from "../db/schema.ts";
+import { todayInWarsaw } from "../lib/dates.ts";
+import { Issues } from "./import/core/issues.ts";
+import { ROOT } from "./import/core/paths.ts";
+import { publishDataset } from "./lib/dataset.ts";
 import {
   type Approval,
   type Etl,
@@ -48,6 +66,17 @@ import {
   withTeryt,
 } from "./lib/import-data.ts";
 import { databaseUrl } from "./lib/local-db.ts";
+import {
+  applyBlockers,
+  hasPlaceChanges,
+  PLACE_REVIEW_FILE,
+  type PlacePlan,
+  type PlaceRow,
+  placeReviewYaml,
+  planPlaces,
+  readPlaceReview,
+  unzoned,
+} from "./lib/place-review.ts";
 import { revalidate } from "./lib/revalidate.ts";
 import { parseUlic } from "./lib/teryt.ts";
 
@@ -64,6 +93,8 @@ const { values: args } = parseArgs({
     apply: { type: "boolean", default: false },
     offline: { type: "boolean", default: false },
     "allow-deletes": { type: "boolean", default: false },
+    "allow-mass-retire": { type: "boolean", default: false },
+    review: { type: "string" },
     "yes-production": { type: "boolean", default: false },
   },
 });
@@ -246,6 +277,51 @@ async function smokeCheck(rows: Rows, today: string) {
 
 type Table = PgTable & { id: AnyPgColumn };
 
+function printPlan(plan: PlacePlan) {
+  console.log(
+    `\nPlaces: +${plan.added.length} new, ${plan.retired.length} retired, ${plan.restored.length} restored  [now ${plan.current} current]`,
+  );
+  for (const p of plan.added)
+    console.log(`  + ${p.id} ${p.name}  zone: ${p.zone ?? "NONE"}`);
+  for (const p of plan.retired)
+    console.log(
+      `  − ${p.id} ${p.name}  → ${p.replacedBy ?? "gone"}${p.candidates.length ? `  (candidates: ${p.candidates.join(", ")})` : ""}`,
+    );
+  for (const p of plan.restored) console.log(`  ↺ ${p.id} ${p.name}`);
+}
+
+/**
+ * The places' review file as merged into main: origin/main, fetched first,
+ * so a file only on a branch or in the working tree never counts.
+ * IMPORT_REVIEW_DIR (tests) holds merged files instead, as for the waste
+ * reviews (scripts/import/core/review.ts).
+ */
+function mergedPlaceReview(): string | null {
+  const dir = process.env.IMPORT_REVIEW_DIR;
+  const name = PLACE_REVIEW_FILE.replace(/^etl\/review\//, "");
+  if (dir) {
+    try {
+      return readFileSync(join(dir, name), "utf8");
+    } catch {
+      return null;
+    }
+  }
+  const git = (args: string[]) =>
+    execFileSync("git", ["-C", ROOT, ...args], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+  git(["fetch", "--quiet", "origin", "main"]);
+  try {
+    return git(["show", `origin/main:${PLACE_REVIEW_FILE}`]);
+  } catch {
+    return null;
+  }
+}
+
+const placeRows = (rows: Array<Record<string, unknown>>) =>
+  rows as unknown as PlaceRow[];
+
 async function main() {
   if (!args.from) fail("Usage: npm run db:import -- --from <dir> [--apply]");
   if (args.apply && args.offline)
@@ -369,19 +445,80 @@ async function main() {
   for (const [zoneId, hash] of zoneHashes)
     console.log(`  ${zoneId.padEnd(18)} ${hash}`);
 
+  // Places are never deleted: retired, as reviewed.
+  const plan = planPlaces(
+    {
+      streets: placeRows(curStreets),
+      localities: placeRows(curLocalities),
+    },
+    {
+      streets: placeRows(rows.streets),
+      localities: placeRows(rows.localities),
+    },
+    // The waste zones' members, as the site picks a place's zone.
+    rows.zoneMembers
+      .filter((m) =>
+        rows.zones.some((z) => z.id === m.zoneId && z.type === "waste"),
+      )
+      .map((m) => ({ ...m, streetId: m.streetId ?? null })),
+  );
+  printPlan(plan);
+
   if (!args.apply) {
-    console.log("\nDry run: nothing written. Add --apply to import.");
+    if (hasPlaceChanges(plan)) {
+      const file = args.review ?? join(ROOT, PLACE_REVIEW_FILE);
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, placeReviewYaml(plan, today));
+      console.log(
+        `\nPlaces' review written: ${file}. Commit it on a branch and open a pull request; merging it approves this plan, then run again with --apply.`,
+      );
+    }
+    for (const blocker of applyBlockers(plan, {
+      allowMassRetire: args["allow-mass-retire"],
+    }))
+      console.log(`--apply would stop: ${blocker}`);
+    console.log(
+      "\nDry run: nothing written to the database. Add --apply to import.",
+    );
     await db.$client.end();
     return;
   }
 
+  // Zones and events may go, within the limit; places never do.
   if (!args["allow-deletes"]) {
-    for (const [name, d] of Object.entries(diffs)) {
+    for (const name of ["gminy", "zones", "events"] as const) {
+      const d = diffs[name];
       if (d.total > 0 && d.removed.length / d.total > DELETE_LIMIT)
         fail(
           `${name}: would delete ${d.removed.length} of ${d.total} rows (over ${DELETE_LIMIT * 100}%). Check the diff, then add --allow-deletes.`,
         );
     }
+  }
+  const blockers = applyBlockers(plan, {
+    allowMassRetire: args["allow-mass-retire"],
+  });
+  if (unzoned(plan).length > 0)
+    new Issues().raise(
+      `teryt-unzoned:${plan.sha256.slice(0, 8)}`,
+      "TERYT: nowe miejsca bez strefy odbioru",
+      [
+        "The TERYT reload (`npm run db:import -- --teryt`) found new places no waste zone covers, and applied nothing: no place goes live without its schedule.",
+        "",
+        ...unzoned(plan).map((p) => `- \`${p.id}\` ${p.name}`),
+        "",
+        "Map them to their sector in the ETL's zones, run the dry run again and review the new etl/review/teryt/places.yaml. RUNBOOK: docs/import.md, „TERYT reload”.",
+      ].join("\n"),
+    );
+  if (blockers.length > 0)
+    fail(`Places: nothing written.\n- ${blockers.join("\n- ")}`);
+  let replacedBy = new Map<string, string | null>();
+  if (hasPlaceChanges(plan)) {
+    const { review, errors } = readPlaceReview(mergedPlaceReview(), plan, {
+      streets: placeRows(rows.streets),
+      localities: placeRows(rows.localities),
+    });
+    if (!review) fail(`Places: nothing written.\n- ${errors.join("\n- ")}`);
+    replacedBy = review.replacedBy;
   }
 
   const dataset = {
@@ -428,14 +565,17 @@ async function main() {
     await remove(events, diffs.events.removed);
     // Deleting a zone deletes its members and events (on delete cascade).
     await remove(zones, diffs.zones.removed);
-    await remove(streets, diffs.streets.removed);
-    // Village parts before their villages.
-    await remove(
-      localities,
-      [...diffs.localities.removed].sort(
-        (a, b) => Number(Boolean(b.parentId)) - Number(Boolean(a.parentId)),
-      ),
-    );
+    // Places are retired, never deleted: their addresses keep answering.
+    const retiredAt = new Date().toISOString();
+    for (const place of plan.retired) {
+      const table = curStreets.some((s) => s.id === place.id)
+        ? streets
+        : localities;
+      await tx
+        .update(table)
+        .set({ retiredAt, replacedBy: replacedBy.get(place.id) ?? null })
+        .where(and(inArray(table.id, [place.id]), isNull(table.retiredAt)));
+    }
     await remove(gminy, diffs.gminy.removed);
     await tx.delete(meta).where(inArray(meta.key, ["dataset"]));
     await tx.insert(meta).values({ key: "dataset", value: dataset });
@@ -446,9 +586,12 @@ async function main() {
   );
 
   try {
-    await revalidate();
+    const published = await publishDataset(url);
+    if (published?.changed) await revalidate();
   } catch (error) {
-    fail(`${(error as Error).message} The data is imported.`);
+    fail(
+      `${(error as Error).message} The data is imported; the site shows the old snapshot until \`npm run dataset:publish\` succeeds.`,
+    );
   }
   await smokeCheck(rows, today);
 }

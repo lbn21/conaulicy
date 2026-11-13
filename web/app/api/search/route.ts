@@ -4,8 +4,8 @@ import { search } from "@/lib/schedule";
 import { MAX_QUERY_LENGTH } from "@/lib/search";
 
 // No rate limit (no Vercel WAF rule). The CDN caches each q (proxy.ts
-// redirects unknown parameters away, so they cannot bust it), and the data
-// cache in lib/schedule.ts absorbs the rest. Tagged DATASET, so an import's
+// redirects unknown parameters away, so they cannot bust it), and the rest
+// is matched in memory over the dataset snapshot (lib/schedule.ts search). Tagged DATASET, so an import's
 // POST /api/revalidate deletes the CDN copies too.
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q") ?? "";

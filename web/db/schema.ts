@@ -15,8 +15,8 @@ import {
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
-import type { EventType, Locality } from "../data-model.ts";
-import type { Confidence } from "../districts.ts";
+import type { EventType, Locality } from "../lib/data-model.ts";
+import type { Confidence } from "../lib/districts.ts";
 
 // Optional house-number range, e.g. only the even numbers 2–40.
 const houseNumbers = {
@@ -25,9 +25,9 @@ const houseNumbers = {
   parity: text().$type<"even" | "odd">(),
 };
 
-// A place TERYT no longer lists is never deleted, only retired (t403): its
-// page answers 308 to replacedBy, a reviewed rename, or says it is gone.
-// Nothing reads these columns yet (migration 0004 runs first).
+// A place TERYT no longer lists is never deleted, only retired
+// (scripts/import.ts): its page answers 308 to replacedBy, a reviewed
+// rename, or says it is gone. Zone members and old addresses keep it.
 const retirement = {
   /** When the TERYT reload found it gone; null: a current place. */
   retiredAt: timestamp({ withTimezone: true, mode: "string" }),

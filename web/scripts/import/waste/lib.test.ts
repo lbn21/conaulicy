@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { parse as parseYaml } from "yaml";
+import { polishHolidays } from "../../../lib/holidays.ts";
 import { DAY_MARKS, MONTH_DAYS } from "../../../lib/pdf-grid.ts";
 import { FRACTIONS } from "../../../lib/waste-bin.ts";
 import { loadConfig } from "../core/config.ts";
@@ -14,7 +15,6 @@ import {
   memberLists,
   parseReviewed,
   pdfBoundProblems,
-  polishHolidays,
   readingTable,
   reviewedYaml,
   rowsToEvents,

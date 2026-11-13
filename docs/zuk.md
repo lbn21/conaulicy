@@ -123,8 +123,10 @@ each a name, the forms it is written in, and its streets
 (`lib/districts.ts`; the data, an approved list, in `lib/districts-seed.ts`: high and
 medium confidence in, low out; Załuże and Bałaje are villages, never a town
 district). It lives in the database (`district_aliases`,
-`district_alias_streets`, docs/database.md), which the cron reads
-(`lib/districts-db.ts`) for both prompts and the gate:
+`district_alias_streets`, docs/database.md), and reaches the cron through
+the dataset snapshot (`lib/dataset.ts`; built by
+`scripts/lib/districts-db.ts`), never the database, for both prompts and
+the gate:
 
 - **The prompt:** lists the districts once, in the context, with their
   forms and streets. The model names a district by its listed name; it

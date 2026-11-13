@@ -3,7 +3,6 @@
 // Used by scripts/import.ts; tested on its own. (The original plan,
 // docs/import-plan.md, is in git history.)
 import { createHash } from "node:crypto";
-import type { EventType } from "../../lib/data-model.ts";
 import type {
   events,
   gminy,
@@ -11,7 +10,8 @@ import type {
   streets,
   zoneMembers,
   zones,
-} from "../../lib/db/schema.ts";
+} from "../../db/schema.ts";
+import type { EventType } from "../../lib/data-model.ts";
 import { missingSource, type Sourced } from "../../lib/event-source.ts";
 import { normalize } from "../../lib/normalize.ts";
 import {
@@ -240,6 +240,9 @@ export function transform(
       name: l.name,
       kind: l.kind,
       parentId: l.parentId ? stripPrefix(l.parentId) : null,
+      // Listed by the input: current, a retired one restored.
+      retiredAt: null,
+      replacedBy: null,
       search: normalize(
         localitySearchLabel({
           name: l.name,
@@ -290,6 +293,8 @@ export function transform(
       houseFrom: null,
       houseTo: null,
       parity: null,
+      retiredAt: null,
+      replacedBy: null,
       search: normalize(
         streetLabel({
           prefix: s.prefix,
