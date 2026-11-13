@@ -39,8 +39,10 @@ const SKIP = 0;
 const BUILD = 1;
 commit(["web/app/page.tsx", "docs/a.md"]);
 
-test("no previous deploy and no parent commit: build", () => {
+test("no previous deployed commit: build", () => {
   assert.equal(ignore(), BUILD);
+  commit(["docs/b.md"]);
+  assert.equal(ignore(), BUILD, "never HEAD^, even after a docs-only commit");
 });
 
 test("docs only: skip", () => {
@@ -72,12 +74,10 @@ test("the whole range since the previous deploy counts, not only HEAD", () => {
   commit(["web/lib/places.ts"]);
   commit(["docs/layout.md"]);
   assert.equal(ignore({ VERCEL_GIT_PREVIOUS_SHA: base }), BUILD);
-  assert.equal(ignore(), SKIP, "falls back to HEAD^ without the variable");
 });
 
-test("an unknown previous commit falls back to HEAD^", () => {
-  assert.equal(ignore({ VERCEL_GIT_PREVIOUS_SHA: "0".repeat(40) }), SKIP);
-  commit(["web/package.json"]);
+test("a previous deployed commit not in the clone: build", () => {
+  commit(["docs/c.md"]);
   assert.equal(ignore({ VERCEL_GIT_PREVIOUS_SHA: "0".repeat(40) }), BUILD);
 });
 
