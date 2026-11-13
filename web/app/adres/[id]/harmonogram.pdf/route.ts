@@ -60,7 +60,7 @@ import {
   tones,
 } from "@/lib/waste-bin";
 import { WASTE_COLOURS as WASTE } from "@/lib/waste-colours";
-import { wastePath } from "@/lib/waste-module";
+import { checkedDay, wasteChecked, wastePath } from "@/lib/waste-module";
 
 // Printed QR codes and links point at the waste subpage
 // (/adres/<id>/smieci, with the house number) on the permanent address
@@ -637,8 +637,9 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
         text: [
           `Źródło: ${scheduleName(place.gmina)}`,
           ...(() => {
-            const checked = oldest(place.sources.map((s) => s.checkedAt));
-            return checked ? [`stan na ${longDate(checked)}`] : [];
+            // The site's „Sprawdziliśmy” (wasteChecked), its day.
+            const checked = checkedDay(wasteChecked(place));
+            return checked ? [`sprawdzono ${longDate(checked)}`] : [];
           })(),
           "Nie jesteśmy urzędem.",
         ].join(" · "),
