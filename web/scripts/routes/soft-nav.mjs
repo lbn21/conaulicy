@@ -10,10 +10,14 @@
 //   home, a suggestion clicked (the address page), Back (home), Forward;
 //   home, „Szukaj” (the address page);
 //   home, the link to /ulice; home, the footer's link to /o-projekcie;
-//   the address page, the logo (home).
+//   the address page, the logo (home);
+//   the address page, its first subpage, its breadcrumbs' last link (the
+//   address page again).
 // On every page reached: each visible width container centred, at most
 // GOV.UK's 960 px wide; no visible hero but on the home page; there, the
-// hero the window's full width and its own container centred.
+// hero the window's full width and its own container centred. On an
+// address page, its breadcrumbs the first line of its head's band, the
+// band straight under the header (t400).
 import { HOME_EXAMPLES } from "../../lib/examples.ts";
 import { ABOUT } from "../../lib/static-pages.ts";
 import { eachPage } from "./each-page.mjs";
@@ -42,6 +46,23 @@ async function layout(page, home) {
         .filter(shown)
         .map(box),
       h1: [...document.querySelectorAll("main h1")].filter(shown).length,
+      band: location.pathname.startsWith("/adres/")
+        ? (() => {
+            const band = [...document.querySelectorAll("main .app-band")].find(
+              shown,
+            );
+            const header = document.querySelector(".govuk-template__header");
+            return {
+              crumbs: !!band?.firstElementChild?.matches(
+                "nav.govuk-breadcrumbs",
+              ),
+              gap: band
+                ? band.getBoundingClientRect().top -
+                  header.getBoundingClientRect().bottom
+                : null,
+            };
+          })()
+        : null,
     };
   });
   const wrong = [];
@@ -53,6 +74,10 @@ async function layout(page, home) {
       );
   }
   if (seen.h1 !== 1) wrong.push(`${seen.h1} visible h1`);
+  if (seen.band && !seen.band.crumbs)
+    wrong.push("the breadcrumbs not the band's first line");
+  if (seen.band && !(Math.abs(seen.band.gap) <= TOLERANCE))
+    wrong.push(`the band ${seen.band.gap} px below the header, want 0`);
   if (home) {
     const [hero] = seen.heroes;
     if (seen.heroes.length !== 1) wrong.push(`${seen.heroes.length} heroes`);
@@ -112,6 +137,18 @@ const PATHS = {
     await page.locator(".govuk-generic-header__homepage-link").click();
     await page.waitForURL(`${origin}/`);
     await at("/ after the logo", true);
+  },
+  "a subpage and its breadcrumbs": async (page, origin, at) => {
+    await page.goto(`${origin}${PLACE}`, { waitUntil: "networkidle" });
+    await at(PLACE, false);
+    const link = page.locator(`main a[href^="${PLACE}/"]:visible`).first();
+    const href = await link.getAttribute("href");
+    await link.click();
+    await page.waitForURL(`${origin}${href}`);
+    await at(href, false);
+    await page.locator("main .govuk-breadcrumbs__link:visible").last().click();
+    await page.waitForURL(`${origin}${PLACE}`);
+    await at(`${PLACE} from its breadcrumbs`, false);
   },
 };
 

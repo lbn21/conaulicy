@@ -4,7 +4,7 @@
 // minutes back), on the built site:
 // - mock:none (the build's own setting in CI): nothing of IMGW's in <main>
 //   on any route (no banner, no line, no card); the breadcrumbs only on
-//   the address pages, right before <main>;
+//   the address pages, the first line of the head's band in <main>;
 // - per state, on the address page: a card per warning, highest first,
 //   directly above „Najbliższe 7 dni”: its band („Stopień N z
 //   3”, the meter filled up to N), the event (h2), when („Trwa do …” or
@@ -129,20 +129,21 @@ function forget(page) {
 }
 
 // GOV.UK's breadcrumbs only on an address page (none on a flat site, the
-// home page or a 404), before <main>, as GOV.UK places them: the skip link
-// skips them along with the header. Read without React's marks:
-// the @breadcrumbs slot (app/layout.tsx) is a boundary of its own, and so
-// are an address page's breadcrumbs.
+// home page or a 404), one trail, the first line of the page head's band
+// in <main>, so the band runs unbroken from the header (t400). Read
+// without React's marks: an address page's content is a boundary of its
+// own. A 404's skeleton draws the trail's bar, a <div>, never a <nav>.
 function crumbsPlaced(route, html) {
   const address = route.path.startsWith("/adres/") && !route.status;
+  const trails = html.match(/<nav class="govuk-breadcrumbs/g)?.length ?? 0;
   const main = html.slice(html.indexOf("<main"), html.indexOf("</main>"));
-  const before =
-    /<nav class="govuk-breadcrumbs[^"]*"[^>]*><ol class="govuk-breadcrumbs__list">(?:(?!<\/nav>)[\s\S])*<\/nav><\/div><main class="govuk-main-wrapper[^"]*" id="main-content">/.test(
-      html,
+  const inBand =
+    /<div class="app-band"><nav class="govuk-breadcrumbs[^"]*"[^>]*><ol class="govuk-breadcrumbs__list">/.test(
+      main,
     );
-  if (main.includes("govuk-breadcrumbs") || before !== address)
+  if (address ? trails !== 1 || !inBand : trails !== 0)
     failures.push(
-      `${route.path}: ${address ? "no breadcrumbs right before" : "breadcrumbs, or some in"} <main>`,
+      `${route.path}: ${trails} breadcrumb trail(s)${address ? ", want one, the first line of <main>'s .app-band" : ", want none"}`,
     );
 }
 
@@ -347,9 +348,9 @@ try {
   try {
     for (const route of ROUTES) {
       // The breadcrumbs as the browser shows them: an address page reads its
-      // place behind <Suspense> (components/place-suspense.tsx),
-      // so a house number not prerendered streams them after <main>,
-      // in React's hidden <div>, to be moved in place.
+      // place behind <Suspense> (components/place-suspense.tsx), so a house
+      // number not prerendered streams its content after <main>, in
+      // React's hidden <div>, to be moved in place.
       if (route.status) {
         const html = await (await fetch(plain.origin + route.path)).text();
         crumbsPlaced(route, withoutReactMarks(html));
