@@ -4,16 +4,22 @@ import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { NowTileData } from "../lib/now-panel.ts";
-import { EXTERNAL, NowTile } from "./now-panel.tsx";
+import { NowTile } from "./now-panel.tsx";
 import { NOW_TILES, type NowTileDef } from "./now-tiles.ts";
 
 // One „Teraz w gminie” tile (components/now-panel.tsx NowTile) in its
 // states: structure and data only, its words read from what it is given.
 
-const def = NOW_TILES[0];
-const tile = (data: NowTileData | null) =>
+const def: NowTileDef = {
+  ...NOW_TILES[0],
+  action: { href: "#f-field", text: "A-action" },
+};
+const tile = (
+  data: NowTileData | null,
+  shown: Pick<NowTileDef, "icon" | "label" | "action"> = def,
+) =>
   renderToStaticMarkup(
-    createElement("ul", null, createElement(NowTile, { def, data })),
+    createElement("ul", null, createElement(NowTile, { def: shown, data })),
   );
 
 const populated: NowTileData = {
@@ -22,7 +28,6 @@ const populated: NowTileData = {
   empty: false,
   featured: true,
   tag: { text: "T-level", level: 2 },
-  action: { href: "#szukaj", text: "A-action" },
   checkedAt: null,
 };
 
@@ -42,17 +47,15 @@ test("populated: the module's colour, featured spans, tag in its level, value st
   );
   assert.match(html, /class="govuk-heading-m">V-populated</);
   assert.match(html, /N-populated/);
+  // The action, the tile's one link, at its foot; the label is no link.
   assert.match(
     html,
-    /<a class="govuk-link govuk-link--inverse" href="#szukaj">A-action<\/a>/,
+    /<a class="govuk-link govuk-link--inverse" href="#f-field">A-action<\/a><\/p><\/li><\/ul>$/,
   );
-  // The source's link, at the foot; the label is no link.
-  if (def.source)
-    assert.ok(html.includes(`href="${def.source.href}"`), "source link");
-  assert.doesNotMatch(html, /app-now__label">(?:(?!<\/p>).)*<a /);
+  assert.equal((html.match(/<a /g) ?? []).length, 1);
 });
 
-test("empty: muted value, no span, no tag, no action", () => {
+test("empty: muted value, no span, no tag", () => {
   const html = tile({
     value: "V-empty",
     note: "N-empty",
@@ -60,14 +63,15 @@ test("empty: muted value, no span, no tag, no action", () => {
     checkedAt: null,
   });
   assert.match(html, /class="govuk-heading-m app-now__value--empty">V-empty</);
-  assert.doesNotMatch(html, /app-now__tile--wide|app-now__tag|#szukaj/);
+  assert.doesNotMatch(html, /app-now__tile--wide|app-now__tag/);
 });
 
-test("not read: muted, no note", () => {
+test("not read: muted, no note, the action still there", () => {
   const html = tile(null);
   assert.match(html, /app-now__value--empty/);
-  // The label, and the source's link where the tile has one: no note.
-  assert.equal((html.match(/govuk-body-s/g) ?? []).length, def.source ? 2 : 1);
+  // The label and the action: no note.
+  assert.equal((html.match(/govuk-body-s/g) ?? []).length, 2);
+  assert.match(html, /href="#f-field"/);
 });
 
 test("the skeleton's heading has no id: the live one's is the page's only", () => {
@@ -79,53 +83,16 @@ test("the skeleton's heading has no id: the live one's is the page's only", () =
   assert.equal((source.match(/id="teraz"/g) ?? []).length, 0);
 });
 
-const withSource = (source: NowTileDef["source"]) =>
-  renderToStaticMarkup(
-    createElement(
-      "ul",
-      null,
-      createElement(NowTile, { def: { ...def, source }, data: null }),
-    ),
-  );
-
-test("the registry: every source says whether it is another site", () => {
+test("no tile links off the site: its source is linked in the note only", () => {
+  const read: NowTileData = { ...populated, empty: false };
   for (const d of NOW_TILES) {
-    if (!d.source) continue;
-    assert.equal(typeof d.source.external, "boolean", d.id);
-    assert.ok(d.source.site.trim(), d.id);
-    // An http(s) URL is another site: the flag must say so.
-    if (/^https?:/.test(d.source.href)) assert.equal(d.source.external, true);
+    const html = tile(read, d);
+    for (const [, href] of html.matchAll(/<a [^>]*href="([^"]*)"/g))
+      assert.match(href, /^#/, `${d.id}: ${href}`);
   }
 });
 
-test("an external source: its name on screen, „(strona zewnętrzna)” for screen readers", () => {
-  const source = {
-    href: "https://example.org/",
-    text: "S-name",
-    external: true,
-    site: "S-site",
-  };
-  const html = withSource(source);
-  const link = html.match(
-    /<a [^>]*href="https:\/\/example\.org\/"[^>]*>(.*?)<\/a>/,
-  );
-  assert.ok(link, "a plain <a> to the source");
-  // The visible cue names the site; the hidden text says it is another site.
-  assert.match(link[1], /S-site/);
-  assert.ok(
-    link[1].includes(`<span class="govuk-visually-hidden">${EXTERNAL}</span>`),
-  );
-  // Read or not, the link is there: the tile's last line.
-  assert.match(html, /<\/a><\/p><\/li><\/ul>$/);
-});
-
-test("a source on the site: no external hint", () => {
-  const html = withSource({
-    href: "/o-projekcie",
-    text: "S-name",
-    external: false,
-    site: "S-site",
-  });
-  assert.match(html, /href="\/o-projekcie"/);
-  assert.ok(!html.includes(EXTERNAL));
+test("an action is a link to a field on the page, by its id", () => {
+  for (const d of NOW_TILES)
+    if (d.action) assert.match(d.action.href, /^#[a-z][\w-]*$/, d.id);
 });

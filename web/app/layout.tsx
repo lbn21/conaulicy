@@ -94,16 +94,18 @@ export default function RootLayout({
             a client-side navigation in the document, hidden (Activity), so
             a <main> per page would repeat its id. The address pages'
             breadcrumbs come before it, as GOV.UK places them, from the
-            @breadcrumbs slot (parallel routes; docs/layout.md). */}
-        <div className="govuk-width-container">
-          {breadcrumbs}
-          <main
-            className="govuk-main-wrapper govuk-!-padding-top-0"
-            id="main-content"
-          >
-            {children}
-          </main>
-        </div>
+            @breadcrumbs slot (parallel routes; docs/layout.md). Each page
+            holds its own width container (the home page's hero is the
+            window's full width): a page may never reach out to change the
+            layout's, since a page left hidden is still in the document
+            (t398). */}
+        <div className="govuk-width-container">{breadcrumbs}</div>
+        <main
+          className="govuk-main-wrapper govuk-!-padding-top-0"
+          id="main-content"
+        >
+          {children}
+        </main>
         <SiteFooter />
         <Suspense>
           <GovukFrontend />

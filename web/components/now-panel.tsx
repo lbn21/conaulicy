@@ -1,13 +1,8 @@
 import { io } from "next/cache";
-import Link from "next/link";
-import { FragmentLink } from "@/components/fragment-link";
+import { FieldLink } from "@/components/field-link";
 import { Tile } from "@/components/icon";
 import { BlockSkeleton, LiveBlock } from "@/components/live-block";
-import {
-  NOW_TILES,
-  type NowSource,
-  type NowTileDef,
-} from "@/components/now-tiles";
+import { NOW_TILES, type NowTileDef } from "@/components/now-tiles";
 import { Skeleton } from "@/components/skeleton";
 import { SourceNote } from "@/components/subpage-parts";
 import { dayRange, todayInWarsaw } from "@/lib/dates";
@@ -20,8 +15,8 @@ import { type NowTileData, weekOf } from "@/lib/now-panel";
 // current week, read per request behind its skeleton (LiveBlock), the rest
 // of the page static. Every tile is one NowTile: the module's icon on its
 // tile and its label, an optional level tag, the value, the window it
-// counts, an optional action and its source's link („Na stronie IMGW”,
-// marked as another site). The tiles wrap in
+// counts and an optional action on the page; no link off the site (the
+// sources are linked in the note under the tiles; t398). The tiles wrap in
 // one row by their content (site.scss .app-now__tiles: flex-wrap, a
 // minimum width from GOV.UK's spacing, the last row's tiles share it);
 // only a tile with an active alert (featured) takes a whole row.
@@ -33,7 +28,7 @@ export function NowTile({
   def,
   data,
 }: {
-  def: Pick<NowTileDef, "icon" | "label" | "source">;
+  def: Pick<NowTileDef, "icon" | "label" | "action">;
   data: NowTileData | null;
 }) {
   const value = data?.value ?? "Nie udało się sprawdzić";
@@ -67,47 +62,17 @@ export function NowTile({
         {value}
       </p>
       {data && <p className="govuk-body-s">{data.note}</p>}
-      {data?.action && (
+      {def.action && (
         <p className="govuk-body-s">
-          <FragmentLink
+          <FieldLink
             className="govuk-link govuk-link--inverse"
-            href={data.action.href}
+            href={def.action.href}
           >
-            {data.action.text}
-          </FragmentLink>
-        </p>
-      )}
-      {def.source && (
-        <p className="govuk-body-s">
-          <SourceLink source={def.source} />
+            {def.action.text}
+          </FieldLink>
         </p>
       )}
     </li>
-  );
-}
-
-/** What a screen reader hears after a link to another site. */
-export const EXTERNAL = " (strona zewnętrzna)";
-
-/**
- * A tile's foot link to its source, „Na stronie IMGW”: another site
- * (NowSource.external) a plain <a>, its name with EXTERNAL hidden on
- * screen, the words on screen already naming whose page it is.
- */
-function SourceLink({ source }: { source: NowSource }) {
-  const text = `Na stronie ${source.site}`;
-  const className = "govuk-link govuk-link--inverse";
-  if (!source.external)
-    return (
-      <Link className={className} href={source.href}>
-        {text}
-      </Link>
-    );
-  return (
-    <a className={className} href={source.href}>
-      {text}
-      <span className="govuk-visually-hidden">{EXTERNAL}</span>
-    </a>
   );
 }
 
@@ -226,11 +191,12 @@ function NowPanelSkeleton() {
               <p className="govuk-body-s">
                 <Skeleton>w tym tygodniu, 9–15 listopada</Skeleton>
               </p>
-              {/* Every read tile ends in one link: its source's, or
-                  „Sprawdź swój termin” (smieci's action). */}
-              <p className="govuk-body-s">
-                <Skeleton>Na stronie IMGW</Skeleton>
-              </p>
+              {/* A tile with an action ends in its link, read or not. */}
+              {def.action && (
+                <p className="govuk-body-s">
+                  <Skeleton>{def.action.text}</Skeleton>
+                </p>
+              )}
             </li>
           ))}
         </ul>

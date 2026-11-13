@@ -42,66 +42,68 @@ export default async function AllPlacesPage() {
   );
 
   return (
-    <div className="govuk-grid-row">
-      <div className="govuk-grid-column-two-thirds">
-        <PageHead
-          title={ALL_PLACES.text}
-          lead="Wybierz swoją ulicę albo wieś, żeby zobaczyć terminy wywozu śmieci, przerwy w dostawie wody i prądu oraz ostrzeżenia IMGW."
-        >
-          <p className="govuk-body">
-            Wolisz wpisać adres?{" "}
-            <Link href="/" className="govuk-link">
-              Wyszukaj go na stronie głównej
-            </Link>
-            .
-          </p>
-        </PageHead>
+    <div className="govuk-width-container">
+      <div className="govuk-grid-row">
+        <div className="govuk-grid-column-two-thirds">
+          <PageHead
+            title={ALL_PLACES.text}
+            lead="Wybierz swoją ulicę albo wieś, żeby zobaczyć terminy wywozu śmieci, przerwy w dostawie wody i prądu oraz ostrzeżenia IMGW."
+          >
+            <p className="govuk-body">
+              Wolisz wpisać adres?{" "}
+              <Link href="/" className="govuk-link">
+                Wyszukaj go na stronie głównej
+              </Link>
+              .
+            </p>
+          </PageHead>
 
-        {/* Ids from SIMC (localityAnchor) on the town's heading and every
+          {/* Ids from SIMC (localityAnchor) on the town's heading and every
               village's line, where the breadcrumbs link; the section keeps
               the old #ulice-heading, at the same spot. */}
-        <section id="ulice-heading" aria-labelledby={town}>
-          <h2 id={town} className="govuk-heading-m">
-            Ulice w Lubaczowie
-          </h2>
-          {list.town.map(({ letter, places }) => (
-            <div key={letter}>
-              <h3 className="govuk-heading-s">{letter}</h3>
-              <ul className="govuk-list">
-                {places.map((place) => (
-                  <li key={place.id}>
-                    <Place place={place} />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </section>
-
-        <section aria-labelledby="wsie-heading">
-          <h2
-            id="wsie-heading"
-            className="govuk-heading-m govuk-!-margin-top-6"
-          >
-            Wsie w gminie Lubaczów
-          </h2>
-          <ul className="govuk-list">
-            {list.villages.map((village) => (
-              <li key={village.id} id={localityAnchor(village.id)}>
-                <Place place={village} />
-                {village.streets.length > 0 && (
-                  <ul className="govuk-list govuk-!-margin-left-4 govuk-!-margin-top-1">
-                    {village.streets.map((street) => (
-                      <li key={street.id}>
-                        <Place place={street} />
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
+          <section id="ulice-heading" aria-labelledby={town}>
+            <h2 id={town} className="govuk-heading-m">
+              Ulice w Lubaczowie
+            </h2>
+            {list.town.map(({ letter, places }) => (
+              <div key={letter}>
+                <h3 className="govuk-heading-s">{letter}</h3>
+                <ul className="govuk-list">
+                  {places.map((place) => (
+                    <li key={place.id}>
+                      <Place place={place} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
-        </section>
+          </section>
+
+          <section aria-labelledby="wsie-heading">
+            <h2
+              id="wsie-heading"
+              className="govuk-heading-m govuk-!-margin-top-6"
+            >
+              Wsie w gminie Lubaczów
+            </h2>
+            <ul className="govuk-list">
+              {list.villages.map((village) => (
+                <li key={village.id} id={localityAnchor(village.id)}>
+                  <Place place={village} />
+                  {village.streets.length > 0 && (
+                    <ul className="govuk-list govuk-!-margin-left-4 govuk-!-margin-top-1">
+                      {village.streets.map((street) => (
+                        <li key={street.id}>
+                          <Place place={street} />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
       </div>
     </div>
   );

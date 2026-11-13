@@ -13,7 +13,7 @@ import type { ShownWarning } from "./imgw-shown.ts";
 import { LOCALE } from "./locale.ts";
 import type { PgeFeed } from "./pge-feed.ts";
 
-/** A link: a source (external, a plain <a>) or a place on the site. */
+/** A link: a source (another site, a plain <a>) or a field on the page. */
 export type NowLink = { href: string; text: string };
 
 /** What one tile shows; every tile is drawn by one NowTile. */
@@ -28,8 +28,6 @@ export type NowTileData = {
   featured?: boolean;
   /** A level tag above the value (IMGW's 1-3), in IMGW's level colour. */
   tag?: { text: string; level: 1 | 2 | 3 };
-  /** An optional call to action on the site („Sprawdź swój termin”). */
-  action?: NowLink & { href: `#${string}` };
   /** When the source was last checked (a day alone: a string); null: unknown. */
   checkedAt: Checked;
 };

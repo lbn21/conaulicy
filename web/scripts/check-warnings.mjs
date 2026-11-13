@@ -137,7 +137,7 @@ function crumbsPlaced(route, html) {
   const address = route.path.startsWith("/adres/") && !route.status;
   const main = html.slice(html.indexOf("<main"), html.indexOf("</main>"));
   const before =
-    /<nav class="govuk-breadcrumbs[^"]*"[^>]*><ol class="govuk-breadcrumbs__list">(?:(?!<\/nav>)[\s\S])*<\/nav><main class="govuk-main-wrapper[^"]*" id="main-content">/.test(
+    /<nav class="govuk-breadcrumbs[^"]*"[^>]*><ol class="govuk-breadcrumbs__list">(?:(?!<\/nav>)[\s\S])*<\/nav><\/div><main class="govuk-main-wrapper[^"]*" id="main-content">/.test(
       html,
     );
   if (main.includes("govuk-breadcrumbs") || before !== address)
