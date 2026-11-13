@@ -85,6 +85,10 @@ export function unverifiedNote(gmina: string): string {
   return `Te daty przepisał automatycznie program. Jeśli coś się nie zgadza, ważniejszy jest harmonogram ${scheduleOwner(gmina)}.`;
 }
 
+/** What the address page holds, its modules', for its description. */
+const ADDRESS_TOPICS =
+  "Wywóz śmieci, przerwy w dostawie wody i prądu, ostrzeżenia IMGW";
+
 /**
  * The place's description in search results and when shared: its dates and
  * files only when the page offers them (a split street offers them once the
@@ -108,6 +112,6 @@ export function placeDescription(
       : `Odbiór śmieci: ${place.label}. Terminów jeszcze tu nie mamy – do tego czasu sprawdź harmonogram ${scheduleOwner(place.gmina)}.`;
   }
   return dates
-    ? `Wywóz śmieci, przerwy w dostawie wody i ostrzeżenia IMGW: ${place.label}. Najbliższe terminy w jednym miejscu.`
-    : `Wywóz śmieci, przerwy w dostawie wody i ostrzeżenia IMGW: ${place.label}. Terminów wywozu jeszcze tu nie mamy.`;
+    ? `${ADDRESS_TOPICS}: ${place.label}. Najbliższe terminy w jednym miejscu.`
+    : `${ADDRESS_TOPICS}: ${place.label}. Terminów wywozu jeszcze tu nie mamy.`;
 }

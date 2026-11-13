@@ -219,14 +219,18 @@ export function sourcesOf(rows: SourceRow[]): SourceView[] {
 }
 
 /**
- * When an import last saw the place's source files (source_files.lastSeenAt,
- * a time), or, for a source without one, the day we last compared it with
- * the original (events.checkedAt): the oldest of several, a day counting as
- * older than any time on that day. „Wywozy sprawdziliśmy …”.
+ * „Sprawdziliśmy …” for waste, one rule wherever it shows (the address
+ * page, /smieci, the PDF, the home page's panel): when an import last saw
+ * the sources' files (source_files.lastSeenAt, a time), or, for a source
+ * without one, the day we last compared it with the original
+ * (events.checkedAt): the oldest of several, a day counting as older than
+ * any time on that day.
  */
-export function wasteChecked(place: PlaceView): Checked {
+export function sourcesChecked(
+  sources: Array<Pick<SourceView, "checkedAt" | "seenAt">>,
+): Checked {
   let oldest: { key: string; at: Date | string } | null = null;
-  for (const source of place.sources) {
+  for (const source of sources) {
     const at = source.seenAt ? new Date(source.seenAt) : source.checkedAt;
     if (!at) continue;
     // The Warsaw day first, so a day sorts before that day's times.
@@ -235,4 +239,14 @@ export function wasteChecked(place: PlaceView): Checked {
     if (!oldest || key < oldest.key) oldest = { key, at };
   }
   return oldest?.at ?? null;
+}
+
+/** The place's waste check (sourcesChecked over its sources). */
+export function wasteChecked(place: Pick<PlaceView, "sources">): Checked {
+  return sourcesChecked(place.sources);
+}
+
+/** The check's Warsaw day, for print (the PDF's „sprawdzono”). */
+export function checkedDay(at: Checked): string | null {
+  return at instanceof Date ? todayInWarsaw(at) : at;
 }

@@ -96,10 +96,8 @@ test("a place's description offers dates only when the page has them", () => {
     days: [day("2026-12-28")],
     today: "2026-12-01",
   };
-  assert.equal(
-    placeDescription(place),
-    "Wywóz śmieci, przerwy w dostawie wody i ostrzeżenia IMGW: ul. Rynek, Lubaczów. Najbliższe terminy w jednym miejscu.",
-  );
+  assert.match(placeDescription(place), /: ul\. Rynek, Lubaczów\. /);
+  assert.match(placeDescription(place), /Najbliższe terminy/);
   // A split street: the dates come with the house number.
   assert.match(
     placeDescription({ ...place, zoneId: "x", askNumber: true, days: [] }),
@@ -111,6 +109,7 @@ test("a place's description offers dates only when the page has them", () => {
   for (const label of [
     "Dąbrowa (Basznia Górna, gm. Lubaczów)",
     "ul. Generała Władysława Andersa, Lubaczów",
+    "ul. Kardynała Stefana Wyszyńskiego, Lubaczów",
   ]) {
     assert.ok(placeDescription({ ...place, label }).length <= 160);
     assert.ok(placeDescription({ ...place, label }, "waste").length <= 160);

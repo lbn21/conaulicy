@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     template: `%s – ${SITE_NAME}`,
   },
   description:
-    "Wywóz śmieci, zapowiedziane przerwy w dostawie wody i ostrzeżenia IMGW dla Lubaczowa i wsi w gminie Lubaczów.",
+    "Wywóz śmieci, zapowiedziane przerwy w dostawie wody i prądu oraz ostrzeżenia IMGW dla Lubaczowa i wsi w gminie Lubaczów.",
   ...SHARE,
   // "default" on purpose; black-translucent is deprecated by Apple (WebKit
   // bug 317153), never restore it. The bar takes the page's colour: see

@@ -53,7 +53,7 @@ import {
   type SearchIndex,
 } from "@/lib/search";
 import { FRACTIONS } from "@/lib/waste-bin";
-import { wasteSchedule } from "@/lib/waste-module";
+import { sourcesOf, wasteSchedule } from "@/lib/waste-module";
 
 // Every read goes through Next's data cache, tagged DATASET: a traffic spike
 // hits the cache, not Neon. After an import, POST /api/revalidate purges the
@@ -588,14 +588,23 @@ export function getZone(zoneId: string) {
  * The home page's panel (components/now-tiles.ts): every waste pickup in
  * the gminas from `from` up to `until` (ISO days, `until` excluded), each
  * fraction in each sector once, only those with a source (lib/event-source.ts),
- * and the day they were last checked; with the gminas' schedule pages.
+ * and their sources as the street page reads them (sourcesOf, with
+ * source_files.lastSeenAt), so its „Sprawdziliśmy” is the street page's
+ * (sourcesChecked); with the gminas' schedule pages.
  */
 export const wasteWeek = unstable_cache(
   async (from: string, until: string) => {
     const [rows, pages] = await Promise.all([
       db()
-        .select({ sourceUrl: events.sourceUrl, checkedAt: events.checkedAt })
+        .select({
+          sourceDoc: events.sourceDoc,
+          sourceRef: events.sourceRef,
+          sourceUrl: events.sourceUrl,
+          checkedAt: events.checkedAt,
+          seenAt: sourceFiles.lastSeenAt,
+        })
         .from(events)
+        .leftJoin(sourceFiles, eq(sourceFiles.sha256, events.sourceSha256))
         .where(
           and(
             eq(events.type, "waste"),
@@ -608,14 +617,11 @@ export const wasteWeek = unstable_cache(
     const shown = rows.filter(hasSource);
     return {
       count: shown.length,
-      checkedAt:
-        shown
-          .map((r) => r.checkedAt)
-          .sort()
-          .at(-1) ?? null,
+      sources: sourcesOf(shown),
       schedulePage: pages.find((p) => p.url)?.url ?? null,
     };
   },
-  ["waste-week"],
+  // v2: sources (with lastSeenAt) in place of the newest events.checkedAt.
+  ["waste-week-v2"],
   CACHE,
 );

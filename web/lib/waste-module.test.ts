@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { type Checked, checkedLine } from "./hub.ts";
 
@@ -9,6 +10,8 @@ const checkedText = (at: Checked) =>
 import type { PlaceView } from "./schedule.ts";
 import { hasUpcoming } from "./schedule-notes.ts";
 import {
+  checkedDay,
+  sourcesChecked,
   sourcesOf,
   wasteChecked,
   wastePath,
@@ -393,4 +396,50 @@ test("PDF: an event without a source prints no date and no footer source", () =>
   assert.deepEqual(none.days, []);
   assert.deepEqual(none.sources, []);
   assert.equal(hasUpcoming(none.days, "2026-11-01"), false);
+});
+
+test("one „Sprawdziliśmy” for waste: the home page's panel reads the street page's sources the same way", () => {
+  // The panel's rows (lib/schedule.ts wasteWeek): two sectors' files, one
+  // seen by the import this morning, one an older file without a row. The
+  // newest events.checkedAt („23 października”) is not the check.
+  const rows = [
+    {
+      sourceDoc: "s1",
+      sourceRef: "Sektor 1",
+      sourceUrl: "https://example.org/s1.pdf",
+      checkedAt: "2026-10-23",
+      seenAt: "2026-11-12T04:18:00Z",
+    },
+    {
+      sourceDoc: "s2",
+      sourceRef: "Sektor 2",
+      sourceUrl: "https://example.org/s2.pdf",
+      checkedAt: "2026-10-23",
+      seenAt: "2026-11-12T04:18:30Z",
+    },
+  ];
+  const sources = sourcesOf(rows);
+  const at = sourcesChecked(sources);
+  assert.ok(at instanceof Date);
+  assert.equal(at.toISOString(), "2026-11-12T04:18:00.000Z");
+  // A street page with the same sources says the same.
+  assert.deepEqual(wasteChecked(place({ sources })), at);
+  // The PDF prints its day.
+  assert.equal(checkedDay(at), "2026-11-12");
+  assert.equal(checkedDay("2026-10-20"), "2026-10-20");
+  assert.equal(checkedDay(null), null);
+});
+
+test("every waste check goes through sourcesChecked: home panel, street pages, PDF", () => {
+  const read = (path: string) =>
+    readFileSync(new URL(path, import.meta.url), "utf8");
+  // The panel: the sources' check, never its own pick of events.checkedAt.
+  const tiles = read("../components/now-tiles.ts");
+  assert.match(tiles, /checkedAt: sourcesChecked\(sources\)/);
+  assert.doesNotMatch(read("./schedule.ts"), /\.map\(\(r\) => r\.checkedAt\)/);
+  // The address page and /smieci: the waste module's checkedAt.
+  assert.match(read("./modules.ts"), /checkedAt: wasteChecked/);
+  // The PDF: the same check, its day.
+  const pdf = read("../app/adres/[id]/harmonogram.pdf/route.ts");
+  assert.match(pdf, /checkedDay\(wasteChecked\(place\)\)/);
 });

@@ -24,7 +24,7 @@ export const metadata: Metadata = pageMetadata({
   path: "/",
   title: { absolute: HOME_TITLE },
   description:
-    "Wywóz śmieci, zapowiedziane przez gminę przerwy w dostawie wody i ostrzeżenia IMGW. Wpisz ulicę w Lubaczowie albo wieś w gminie i sprawdź terminy.",
+    "Wywóz śmieci, zapowiedziane przerwy w dostawie wody i prądu, ostrzeżenia IMGW. Wpisz ulicę w Lubaczowie albo wieś w gminie i sprawdź terminy.",
 });
 
 // For search engines: the site's name. No SearchAction: the search has no
