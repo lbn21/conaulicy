@@ -114,7 +114,7 @@ const waste: Module<PlaceView> = {
   id: "smieci",
   title: "śmieci",
   tags: [SOURCE_TAGS.dataset],
-  more: "Odbiór śmieci: wszystkie terminy",
+  more: "Wszystkie terminy odbioru śmieci",
   pageTitle: "Odbiór śmieci",
   load: (id, reads) => getPlace(id, reads.now),
   upcoming: wasteUpcoming,

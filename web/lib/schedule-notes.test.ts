@@ -54,11 +54,11 @@ test("the address page's put-out line: the same note, the bins named before", ()
 test("the unverified note names whose schedule wins: the gmina's, or the town's", () => {
   assert.equal(
     unverifiedNote("Lubaczów (gmina)"),
-    "Te daty przepisał automatycznie program. Nie jesteśmy urzędem – obowiązuje harmonogram gminy.",
+    "Te daty odczytaliśmy automatycznie i jeszcze ich nie sprawdziliśmy. W razie różnic obowiązuje harmonogram gminy.",
   );
   assert.equal(
     unverifiedNote("Lubaczów (miasto)"),
-    "Te daty przepisał automatycznie program. Nie jesteśmy urzędem – obowiązuje harmonogram Urzędu Miejskiego.",
+    "Te daty odczytaliśmy automatycznie i jeszcze ich nie sprawdziliśmy. W razie różnic obowiązuje harmonogram Urzędu Miejskiego.",
   );
   assert.equal(
     disclaimer("Lubaczów (miasto)"),

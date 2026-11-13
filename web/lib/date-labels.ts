@@ -63,15 +63,6 @@ export function dayMonthTime(at: number): string {
   return `${dayMonth(at)}, ${clockTime(at)}`;
 }
 
-/**
- * The site's one "day, time" style on Intl's moments: a comma between the
- * date and the time, no leading zero on the hour („12 listopada, 4:00”).
- */
-const dayTimeStyle = (text: string) =>
-  text
-    .replace(/^(\d{1,2}\s\p{L}+)\s(?=\d)/u, "$1, ")
-    .replace(/(^|\s)0(\d:)/u, "$1$2");
-
 /** An instant's Warsaw date. Example: "2026-10-25". */
 export function warsawDay(at: number): string {
   return todayInWarsaw(new Date(at));
@@ -102,13 +93,23 @@ export function momentRange(from: number, to: number): [string, string] {
     minute: "2-digit",
   });
   const parts = moments.formatRangeToParts(from, to);
+  // The site's one "day, time" style, from Intl's parts: the hour without
+  // its zero, ", " between the month and the hour.
   const join = (some: Intl.DateTimeRangeFormatPart[]) =>
-    some.map((part) => part.value).join("");
+    some
+      .map((part, i) => {
+        if (part.type === "hour") return String(Number(part.value));
+        if (
+          part.type === "literal" &&
+          some[i - 1]?.type === "month" &&
+          some[i + 1]?.type === "hour"
+        )
+          return ", ";
+        return part.value;
+      })
+      .join("");
   const end = parts.findIndex((part) => part.source === "endRange");
   // The same minute: Intl gives one moment, no range.
-  if (end < 0) return [dayTimeStyle(join(parts)), dayTimeStyle(join(parts))];
-  return [
-    dayTimeStyle(join(parts.slice(0, end - 1))),
-    dayTimeStyle(join(parts.slice(end))),
-  ];
+  if (end < 0) return [join(parts), join(parts)];
+  return [join(parts.slice(0, end - 1)), join(parts.slice(end))];
 }

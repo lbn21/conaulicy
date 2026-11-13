@@ -49,12 +49,17 @@ export function disclaimer(gmina: string): string {
 
 /** Dates read by a program, not yet checked: `what` is authoritative. */
 export function aiReadNote(what: string, verb?: string): string {
-  return `Te daty przepisał automatycznie program. ${notAnOffice(what, verb)}`;
+  return `Te daty odczytaliśmy automatycznie i jeszcze ich nie sprawdziliśmy. W razie różnic ${verb ?? "obowiązuje"} ${what}.`;
 }
 
-/** When the next dates come: after the gmina's next schedule. */
-const nextSchedule = (gmina: string | null) =>
-  `gdy tylko pojawi się nowy harmonogram ${ownerOf(gmina)}`;
+/**
+ * When the next dates come: after the gmina's next schedule, its owner
+ * named; null: unnamed, where the next sentence names it.
+ */
+const nextSchedule = (gmina: string | null | undefined) =>
+  gmina === undefined
+    ? "gdy tylko pojawi się nowy harmonogram"
+    : `gdy tylko pojawi się nowy harmonogram ${ownerOf(gmina)}`;
 
 /**
  * After the last date, on the waste subpage and in its calendar:
@@ -71,7 +76,8 @@ export function laterNote(
 
 /** When a place's schedule has ended: the heading, then what comes next. */
 export const NO_MORE_DATES = "Nie mamy jeszcze kolejnych terminów";
-export const noMoreDatesNext = (gmina: string) =>
+/** `gmina`: whose schedule; left out where the next sentence names it. */
+export const noMoreDatesNext = (gmina?: string) =>
   `Dodamy je, ${nextSchedule(gmina)}.`;
 
 /** Shown on the page while a place is not verified. */

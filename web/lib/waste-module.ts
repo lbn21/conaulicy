@@ -98,7 +98,7 @@ export function wasteStatus(place: PlaceView): Group[] {
       [
         noDates(
           place,
-          `${NO_MORE_DATES}. ${noMoreDatesNext(place.gmina)} ${checkSchedule(place, "Do tego czasu sprawdź")}`,
+          `${NO_MORE_DATES}. ${noMoreDatesNext()} ${checkSchedule(place, "Do tego czasu sprawdź")}`,
         ),
       ],
     ];

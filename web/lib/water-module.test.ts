@@ -561,7 +561,7 @@ test("town, an MZGKiM cut: shown as a ZUK cut, its own post the source", () => {
   );
   assert.equal(
     waterAiNote(data),
-    "Te daty przepisał automatycznie program. Nie jesteśmy urzędem – obowiązuje komunikat MZGKiM.",
+    "Te daty odczytaliśmy automatycznie i jeszcze ich nie sprawdziliśmy. W razie różnic obowiązuje komunikat MZGKiM.",
   );
   // The calendar help names whose change of hours to fetch it again for:
   // the cut's source only (t370).
@@ -700,7 +700,7 @@ test("town, both sources' cuts: both posts, both in the AI note", () => {
   );
   assert.equal(
     waterAiNote(both),
-    "Te daty przepisał automatycznie program. Nie jesteśmy urzędem – obowiązują komunikaty gminy i MZGKiM.",
+    "Te daty odczytaliśmy automatycznie i jeszcze ich nie sprawdziliśmy. W razie różnic obowiązują komunikaty gminy i MZGKiM.",
   );
   // Both sources, in the cuts' order, either of which may change the hours.
   assert.ok(

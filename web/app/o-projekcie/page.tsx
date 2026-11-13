@@ -47,8 +47,8 @@ export default function AboutPage() {
             .
           </p>
           <p className="govuk-body">
-            Przerwy w dostawie prądu, zarówno planowane, jak i awarie, bierzemy
-            od{" "}
+            Przerwy w dostawie prądu, zarówno planowane, jak i awaryjne,
+            bierzemy od{" "}
             <a href={PGE_PAGE} className="govuk-link">
               {PGE_GENITIVE}
             </a>

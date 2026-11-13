@@ -306,7 +306,7 @@ test("an MZGKiM cut: its own UID, its post as the source and the note", () => {
   assert.ok(description.includes(`Źródło: ${url}`));
   assert.ok(
     description.includes(
-      "Te daty przepisał automatycznie program. Nie jesteśmy urzędem – obowiązuje komunikat MZGKiM.",
+      "Te daty odczytaliśmy automatycznie i jeszcze ich nie sprawdziliśmy. W razie różnic obowiązuje komunikat MZGKiM.",
     ),
   );
   folded(ics);

@@ -35,3 +35,21 @@ test("momentRange: the same minute, one moment twice", () => {
   assert.equal(from, to);
   assert.match(from, /^11 listopada, 10:00$/);
 });
+
+test("momentRange: the site's „day, H:MM” style, built from Intl's parts", () => {
+  // The same day: a comma after the month, the end's time alone.
+  assert.deepEqual(
+    range("2026-11-14T14:00:00+01:00", "2026-11-14T18:30:00+01:00"),
+    ["14 listopada, 14:00", "18:30"],
+  );
+  // Across days: both sides with their comma.
+  assert.deepEqual(
+    range("2026-11-14T14:00:00+01:00", "2026-11-15T20:00:00+01:00"),
+    ["14 listopada, 14:00", "15 listopada, 20:00"],
+  );
+  // An hour before 10: no leading zero, on either side.
+  assert.deepEqual(
+    range("2026-11-14T07:05:00+01:00", "2026-11-15T08:30:00+01:00"),
+    ["14 listopada, 7:05", "15 listopada, 8:30"],
+  );
+});

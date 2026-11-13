@@ -153,7 +153,7 @@ test("no dates: why, then the gmina's schedule, always a line", () => {
   const ended = wasteStatus(place({ today: "2026-11-01" })).flat();
   assert.equal(
     ended[0][0],
-    "Nie mamy jeszcze kolejnych terminów. Dodamy je, gdy tylko pojawi się nowy harmonogram Urzędu Miejskiego. Do tego czasu sprawdź odbiory w harmonogramie Urzędu Miejskiego.",
+    "Nie mamy jeszcze kolejnych terminów. Dodamy je, gdy tylko pojawi się nowy harmonogram. Do tego czasu sprawdź odbiory w harmonogramie Urzędu Miejskiego.",
   );
   assert.equal(ended[0].length, 1);
 });

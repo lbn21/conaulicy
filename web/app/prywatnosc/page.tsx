@@ -44,9 +44,9 @@ export default function PrivacyPage() {
                 tylko pobiera listę ulic, żeby szybciej podpowiadać adresy.
               </p>
               <p className="govuk-body">
-                Ostrzeżenia, przerwy w dostawie wody i prądu oraz harmonogramy
-                pobiera nasz serwer. Twoja przeglądarka łączy się tylko z
-                conaulicy.pl.
+                Ostrzeżenia IMGW, przerwy w dostawie wody i prądu oraz
+                harmonogramy pobiera nasz serwer. Twoja przeglądarka łączy się
+                tylko z conaulicy.pl.
               </p>
             </section>
 

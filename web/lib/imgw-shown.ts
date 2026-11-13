@@ -41,13 +41,13 @@ export type ImgwCopy = LiveCopy<Feed>;
 export { UNREADABLE };
 export type ImgwRead = ImgwCopy | null | typeof UNREADABLE;
 
-/** The notice when the store cannot be read now; CURRENT follows it. */
 /** The module's subject, after „Nie udało się nam sprawdzić”. */
 export const WEATHER_SUBJECT = "ostrzeżeń IMGW";
 
 /** Its name in a freshness line: IMGW's changes are warnings. */
 export const WEATHER_FRESH = "ostrzeżenia IMGW";
 
+/** The notice when the store cannot be read now; CURRENT follows it. */
 const UNREADABLE_NOTICE = uncheckedText(WEATHER_SUBJECT);
 
 /**

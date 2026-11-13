@@ -205,7 +205,7 @@ export function WasteBody({ data: place }: { data: PlaceView }) {
         <NoDates
           id="ended-heading"
           heading={NO_MORE_DATES}
-          text={`${noMoreDatesNext(place.gmina)} ${checkSchedule(place, "Do tego czasu sprawdź")}`}
+          text={`${noMoreDatesNext()} ${checkSchedule(place, "Do tego czasu sprawdź")}`}
           place={place}
         />
       ) : (
