@@ -358,9 +358,9 @@ test("the mock: none, real, ours (derived, moved to now), failures; never in pro
   }
 });
 
-test("the mock's files: ours only, the derived states, the check checkedAgo back", async () => {
+test("the mock's files: ours only, the derived states, failing failingAgo back", async () => {
   const now = Date.parse("2026-11-11T16:52:00Z");
-  const files = await mockFiles("mock:ours?checkedAgo=70", now);
+  const files = await mockFiles("mock:ours?failingAgo=70", now);
   const feed = parseOutagesFile(files.feed);
   const ids = feed?.items.map((item) => item.uuid) ?? [];
   assert.ok(ids.includes(REVOKED_ID));
@@ -372,10 +372,10 @@ test("the mock's files: ours only, the derived states, the check checkedAgo back
     true,
   );
   assert.equal(feed?.fetchedAt, "2026-11-11T16:42:00+01:00");
-  assert.equal(
-    JSON.parse(files.checks).sources.pge.checkedAt,
-    "2026-11-11T16:42:00+01:00",
-  );
+  assert.deepEqual(JSON.parse(files.checks).sources.pge, {
+    ok: false,
+    since: "2026-11-11T16:42:00+01:00",
+  });
   await assert.rejects(mockFiles("mock:ours?fail=500", now));
   assert.equal(derivedOurs().length, 8);
 });

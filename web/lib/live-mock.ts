@@ -23,10 +23,10 @@ export function mockFailure(kind: string, signal?: AbortSignal | null) {
 }
 
 /**
- * The store's two files for the pages (lib/live-store.ts), as a good cron
- * run `checkedAgo` minutes before `now` (default 0) would have left them:
- * `feedAt`'s file (fetched as at that run), and that run's check of `key`.
- * A mock that fails throws: a store that cannot be read.
+ * The store's two files for the pages (lib/live-store.ts): `feedAt`'s file
+ * as a good cron run left it, `failingAgo` minutes before `now` (default
+ * 0), and the status file: `key` good, or, with `failingAgo`, failing
+ * since then. A mock that fails throws: a store that cannot be read.
  */
 export async function mockLiveFiles(
   url: string,
@@ -34,12 +34,12 @@ export async function mockLiveFiles(
   key: string,
   feedAt: (checkedAt: number) => Promise<string>,
 ): Promise<{ feed: string; checks: string }> {
-  const ago = Number(new URL(url).searchParams.get("checkedAgo") ?? 0);
+  const ago = Number(new URL(url).searchParams.get("failingAgo") ?? 0);
   const checkedAt = now - ago * 60_000;
   return {
     feed: await feedAt(checkedAt),
     checks: JSON.stringify(
-      nextChecks(null, { [key]: true }, isoWithOffset(checkedAt)),
+      nextChecks(null, { [key]: ago === 0 }, isoWithOffset(checkedAt)),
     ),
   };
 }

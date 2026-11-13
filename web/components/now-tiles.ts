@@ -2,7 +2,6 @@ import "server-only";
 import type { IconName } from "@/components/icon";
 import { IMGW_PAGE } from "@/lib/imgw-shown";
 import type { LiveReads } from "@/lib/live-reads";
-import { MAX_AGE_MS } from "@/lib/live-status";
 import {
   counted,
   type NowLink,
@@ -106,10 +105,9 @@ const prad: NowTileDef = {
   icon: "prad",
   label: "Prąd",
   source: { href: PGE_PAGE, text: "PGE Dystrybucja" },
-  async read(week, { pge, now }) {
+  async read(week, { pge }) {
     const copy = await pge();
     if (!copy || typeof copy === "string") return null;
-    if (now - copy.checkedAt > MAX_AGE_MS) return null;
     const count = powerWeek(copy.feed, week);
     return {
       value:

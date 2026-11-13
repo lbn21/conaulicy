@@ -4,7 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { dayFace, relativeDay } from "../lib/dates.ts";
 import { unchecked } from "../lib/hub.ts";
-import { copyCheckedAt } from "../lib/imgw-fixture.ts";
+import { copyAt } from "../lib/imgw-fixture.ts";
 import { IMGW_PAGE } from "../lib/imgw-shown.ts";
 import { IMGW_ATTRIBUTION, IMGW_NAME } from "../lib/imgw-warnings.ts";
 import { MODULES } from "../lib/modules.ts";
@@ -38,7 +38,7 @@ const noOutages = (place: PlaceView) =>
   power(
     {
       feed: { fetchedAt: NOW.toISOString(), items: [] },
-      checkedAt: NOW.getTime(),
+      failingSince: null,
       changedAt: NOW.getTime(),
     },
     place,
@@ -147,10 +147,7 @@ const CUTS = water(
   },
   VILLAGE,
 );
-const WARNINGS = weather(
-  copyCheckedAt("2026-10-25T13:20:00+01:00"),
-  NOW.getTime(),
-);
+const WARNINGS = weather(copyAt("2026-10-25T13:20:00+01:00"), NOW.getTime());
 
 // A street with a waste schedule and its source.
 const SOURCE = {
@@ -261,8 +258,8 @@ test("a warning: its card above the timeline, the meter, when, IMGW's words", ()
 });
 
 test("several warnings: highest level first, then the earliest; each its meter and when", () => {
-  const [ours] = copyCheckedAt("2026-10-25T13:20:00+01:00").feed.items.filter(
-    (item) => item.teryt.includes("1809"),
+  const [ours] = copyAt("2026-10-25T13:20:00+01:00").feed.items.filter((item) =>
+    item.teryt.includes("1809"),
   );
   const later = "2026-10-25T16:00:00+01:00";
   const items = [
@@ -274,7 +271,7 @@ test("several warnings: highest level first, then the earliest; each its meter a
   const html = page(
     VILLAGE,
     CUTS,
-    weather(copyCheckedAt("2026-10-25T13:20:00+01:00", items), NOW.getTime()),
+    weather(copyAt("2026-10-25T13:20:00+01:00", items), NOW.getTime()),
   );
   const cards = [
     ...html.matchAll(
@@ -305,10 +302,7 @@ test("several warnings: highest level first, then the earliest; each its meter a
 });
 
 test("no warning: no card and nothing in its place", () => {
-  const none = weather(
-    copyCheckedAt("2026-10-25T13:20:00+01:00", []),
-    NOW.getTime(),
-  );
+  const none = weather(copyAt("2026-10-25T13:20:00+01:00", []), NOW.getTime());
   const html = page(VILLAGE, CUTS, none);
   assert.doesNotMatch(html, /app-warning/);
   assert.match(html, /<\/div><section aria-labelledby="najblizsze-dni">/);
@@ -608,10 +602,14 @@ test("power: its row as the water's, a range each, after the water; its notice w
     updatedAt: null,
     ...over,
   });
-  const copy = (checkedAt: number, items: PgeOutage[]) => ({
-    feed: { fetchedAt: new Date(checkedAt).toISOString(), items },
-    checkedAt,
-    changedAt: checkedAt,
+  const copy = (
+    fetchedAt: number,
+    items: PgeOutage[],
+    failingSince: number | null = null,
+  ) => ({
+    feed: { fetchedAt: new Date(fetchedAt).toISOString(), items },
+    failingSince,
+    changedAt: fetchedAt,
   });
   const items = [outage({}), outage({ uuid: "p2", revoked: true })];
   const html = page(
@@ -638,12 +636,17 @@ test("power: its row as the water's, a range each, after the water; its notice w
   );
   // After the water's rows, on the same day.
   assert.ok(html.indexOf("app-mod--woda") < html.indexOf("app-mod--prad"));
-  // Over an hour old: the notice in the inset, PGE's page linked.
+  // PGE's checks failing since 12:20: the notice in the inset, PGE's
+  // page linked.
   const stale = page(
     VILLAGE,
     CUTS,
     WARNINGS,
-    power(copy(NOW.getTime() - 70 * 60_000, items), VILLAGE, NOW.getTime()),
+    power(
+      copy(NOW.getTime() - 120 * 60_000, items, NOW.getTime() - 70 * 60_000),
+      VILLAGE,
+      NOW.getTime(),
+    ),
   );
   assert.match(
     stale,

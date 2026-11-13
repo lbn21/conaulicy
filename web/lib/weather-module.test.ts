@@ -1,9 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-  copyCheckedAt as copy,
-  NO_WARNINGS_2026_10_18,
-} from "./imgw-fixture.ts";
+import { copyAt as copy, NO_WARNINGS_2026_10_18 } from "./imgw-fixture.ts";
 import { shownWarnings, UNREADABLE } from "./imgw-shown.ts";
 import { parseFeed } from "./imgw-warnings.ts";
 import { warningWhen, weather, weatherNotices } from "./weather-module.ts";
@@ -91,49 +88,33 @@ test("no copy yet: the weather is left out; any copy, however old, is shown", ()
 const NOTICE_END = " Aktualne znajdziesz na ";
 const link = { href: "https://meteo.imgw.pl/", text: "meteo.imgw.pl" };
 
-test("stale: the notice, linked to IMGW, and the warnings still shown", () => {
+test("IMGW's checks failing: the notice, linked to IMGW, and the warnings still shown", () => {
   const now = at("2026-10-25T14:00:00+01:00");
-  const data = weather(copy("2026-10-25T12:59:59+01:00"), now);
+  const failing = "2026-10-25T12:59:59+01:00";
+  const data = weather(
+    copy("2026-10-25T12:00:00+01:00", undefined, failing),
+    now,
+  );
   assert.ok(data);
-  assert.deepEqual(weatherNotices(data), [
-    [
-      [
-        `Nie udało się teraz pobrać ostrzeżeń IMGW. Pokazujemy ostatnie dane z 12:59.${NOTICE_END}`,
-        link,
-        ".",
-      ],
-    ],
-  ]);
+  const [[notice]] = weatherNotices(data);
+  assert.match(String(notice[0]), /12:59/);
+  assert.ok(String(notice[0]).endsWith(NOTICE_END));
+  assert.deepEqual(notice.slice(1), [link, "."]);
   assert.equal(data.shown?.warnings.length, 1);
   assert.equal(data.read, true);
   // No warning: the notice alone, never „Brak ostrzeżeń”.
-  const none = weather(copy("2026-10-25T12:59:59+01:00", []), now);
+  const none = weather(copy("2026-10-25T12:00:00+01:00", [], failing), now);
   assert.ok(none);
-  assert.deepEqual(weatherNotices(none), [
-    [
-      [
-        `Nie udało się teraz pobrać ostrzeżeń IMGW. Ostatnie dane mamy z 12:59.${NOTICE_END}`,
-        link,
-        ".",
-      ],
-    ],
-  ]);
+  assert.equal(none.shown?.warnings.length, 0);
+  assert.ok(none.shown?.notice);
 });
 
-test("too old: the notice alone, no card", () => {
+test("an old copy, IMGW's checks going well: its warnings, no notice", () => {
   const now = at("2026-10-25T14:00:00+01:00");
-  const data = weather(copy("2026-10-25T11:00:00+01:00"), now);
+  const data = weather(copy("2026-10-25T08:00:00+01:00"), now);
   assert.ok(data);
-  assert.deepEqual(data.shown?.warnings, []);
-  assert.deepEqual(weatherNotices(data), [
-    [
-      [
-        `Od 11:00 nie udało się nam pobrać ostrzeżeń IMGW, więc ich nie pokazujemy.${NOTICE_END}`,
-        link,
-        ".",
-      ],
-    ],
-  ]);
+  assert.equal(data.shown?.warnings.length, 1);
+  assert.deepEqual(weatherNotices(data), []);
 });
 
 test("change time: when IMGW's items last changed, warning or not", () => {

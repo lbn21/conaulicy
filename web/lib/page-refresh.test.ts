@@ -51,14 +51,13 @@ const water = (id: string) =>
   WATER_SOURCES.find((s) => s.id === id)?.pathname as string;
 
 /** Every source checked `ago` ms before NOW. */
-function checks(ago = 60_000) {
-  const at = iso(NOW - ago);
+/** The status file: every source in `ok`'s state since `ago` ms before NOW. */
+function checks(ago = 60_000, ok = true) {
+  const since = iso(NOW - ago);
   const keys = [IMGW_KEY, PGE_KEY, ...WATER_SOURCES.map((s) => waterKey(s.id))];
   return JSON.stringify({
     version: CHECKS_VERSION,
-    sources: Object.fromEntries(
-      keys.map((key) => [key, { checkedAt: at, attemptAt: at, ok: true }]),
-    ),
+    sources: Object.fromEntries(keys.map((key) => [key, { ok, since }])),
   });
 }
 
@@ -155,11 +154,17 @@ test("a re-check and new run ids change no page", async () => {
   assert.deepEqual(await changed(files(), rewritten), []);
 });
 
-test("an age class flip changes the pages that show it", async () => {
-  const stale = files({ [CHECKS_PATH]: checks(2 * 3_600_000) });
-  const paths = await changed(files(), stale);
-  assert.ok(paths.includes("/"));
+test("the files' age alone changes no page; a source's checks failing do", async () => {
+  // Hours on the same day, nothing written since: the same pages.
+  assert.deepEqual(
+    await changed(files(), files(), [NOW, NOW + 8 * 3_600_000]),
+    [],
+  );
+  const failing = files({ [CHECKS_PATH]: checks(10 * 60_000, false) });
+  const paths = await changed(files(), failing);
   assert.ok(paths.includes(hub));
+  assert.ok(paths.includes(`${hub}/woda`));
+  assert.ok(paths.includes(`${hub}/prad`));
 });
 
 test("IMGW's notice: every address page and the home page", async () => {

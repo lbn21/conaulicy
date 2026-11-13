@@ -34,7 +34,7 @@ import type { District } from "./districts.ts";
 import { NO_STORE } from "./headers.ts";
 import type { LiveRunSummary } from "./live-cron.ts";
 import {
-  checksWorth,
+  checksChanged,
   nextChecks,
   parseChecks,
   waterKey,
@@ -532,8 +532,8 @@ async function recordChecks(
     log({ checks: "read-error", error: (error as Error).message });
   }
   const next = nextChecks(previous, results, attemptAt);
-  // Only what a page could show (lib/live-status.ts checksWorth).
-  if (!checksWorth(previous, next)) return;
+  // Only when its content changed (lib/live-status.ts).
+  if (!checksChanged(previous, next)) return;
   try {
     await store.write(JSON.stringify(next));
   } catch (error) {

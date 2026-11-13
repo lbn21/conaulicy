@@ -20,7 +20,7 @@
 // found in them, the part's village included; a post read but for some
 // places (Notice `where`) is linked only where none of its cuts is shown.
 //
-// Each source's file is fresh, stale (last read over an hour ago) or
+// Each source's file is fresh, stale (its last check failed) or
 // unavailable (none): the texts say which, naming the sources only when
 // not all of an address's sources are in that state.
 import type { PlaceView } from "@/lib/schedule";
@@ -56,7 +56,7 @@ type SourceState = {
   source: WaterSource;
   /** When the source's data last changed; null without a file. */
   changedAt: string | null;
-  /** Last read over an hour ago, or no file. */
+  /** Its last check failed, or no file. */
   stale: boolean;
   /** No file, or an unreadable one. */
   unavailable: boolean;
@@ -85,7 +85,7 @@ export type Water = {
    * latest; null: no source has a file.
    */
   changedAt: number | null;
-  /** Some source last read over an hour ago, or without a file. */
+  /** Some source's last check failed, or without a file. */
   stale: boolean;
   /** No source has a file. */
   unavailable: boolean;
@@ -470,7 +470,7 @@ const late = (data: Water) =>
   data.sources.filter((s) => s.stale && !s.unavailable);
 
 /**
- * Over an hour since a source was last read: its posts, to be sure; and,
+ * A source whose last check failed: its posts, to be sure; and,
  * beside a cut or a notice, a source we could not read at all.
  */
 export function staleNote(data: Water): Part[] | null {
@@ -478,7 +478,7 @@ export function staleNote(data: Water): Part[] | null {
   const old = late(data);
   if (old.length > 0)
     parts.push(
-      `Od ponad godziny nie udało się nam sprawdzić nowych komunikatów${named(data, old)}. Zajrzyj też do `,
+      `Ostatnio nie udało się nam sprawdzić nowych komunikatów${named(data, old)}. Zajrzyj też do `,
       ...joined(old.map((s) => s.source.newsOf)),
       ".",
     );
@@ -624,7 +624,7 @@ export function waterNone(data: Water): string {
     return `nie udało się nam sprawdzić komunikatów${named(data, none)}`;
   const old = late(data);
   if (old.length > 0)
-    return `brak zapowiedzianych przerw przy ostatnim sprawdzeniu, ale od ponad godziny nie udało się nam sprawdzić nowych${old.length < data.sources.length ? ` komunikatów${named(data, old)}` : ""}`;
+    return `brak zapowiedzianych przerw przy ostatnim udanym sprawdzeniu, ale ostatnio nie udało się nam sprawdzić nowych${old.length < data.sources.length ? ` komunikatów${named(data, old)}` : ""}`;
   return NO_CUTS.toLowerCase();
 }
 

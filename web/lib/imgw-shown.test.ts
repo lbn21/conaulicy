@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  copyCheckedAt as copy,
+  copyAt as copy,
   derived1809,
   REAL_2026_10_24,
 } from "./imgw-fixture.ts";
 import { imgwCopyOf, POWIAT, shownWarnings, UNREADABLE } from "./imgw-shown.ts";
 import { type Feed, feedFile, POWIATS, parseFeed } from "./imgw-warnings.ts";
-import { IMGW_KEY, MAX_AGE_MS, nextChecks, STALE_MS } from "./live-status.ts";
+import { IMGW_KEY, nextChecks } from "./live-status.ts";
 
 const HOUR = 3_600_000;
 const quiet = () => {};
@@ -83,79 +83,71 @@ test("to come and several: highest level first, then by start", () => {
   );
 });
 
-test("the copy: the feed file and the last good check, never older than the feed", () => {
+test("the copy: the feed file as stored, and whether IMGW's checks fail", () => {
   const items = parseFeed(derived1809(), quiet);
   const feed = feedFile({ fetchedAt: "2026-10-25T12:00:00+01:00", items });
-  const checks = (iso: string) =>
-    JSON.stringify(nextChecks(null, { [IMGW_KEY]: true }, iso));
+  const checks = (ok: boolean, iso: string) =>
+    JSON.stringify(nextChecks(null, { [IMGW_KEY]: ok }, iso));
   // No feed file yet: nothing, whatever the status.
-  assert.equal(imgwCopyOf(null, checks("2026-10-25T12:30:00+01:00")), null);
-  // Checked since the feed was written: that check.
-  assert.deepEqual(imgwCopyOf(feed, checks("2026-10-25T12:30:00+01:00")), {
-    feed: { fetchedAt: "2026-10-25T12:00:00+01:00", items },
-    checkedAt: at("2026-10-25T12:30:00+01:00"),
-    // Its items last changed when the file was written.
-    changedAt: at("2026-10-25T12:00:00+01:00"),
-  });
-  // No status file, an unreadable one, or one older than the feed: the
-  // feed's own time.
-  for (const status of [null, "{", checks("2026-10-25T11:00:00+01:00")])
-    assert.equal(
-      imgwCopyOf(feed, status)?.checkedAt,
-      at("2026-10-25T12:00:00+01:00"),
-    );
+  assert.equal(
+    imgwCopyOf(null, checks(true, "2026-10-25T12:30:00+01:00")),
+    null,
+  );
+  assert.deepEqual(
+    imgwCopyOf(feed, checks(true, "2026-10-25T12:30:00+01:00")),
+    {
+      feed: { fetchedAt: "2026-10-25T12:00:00+01:00", items },
+      failingSince: null,
+      // Its items last changed when the file was written.
+      changedAt: at("2026-10-25T12:00:00+01:00"),
+    },
+  );
+  // No status file, or an unreadable one: not failing.
+  for (const status of [null, "{"])
+    assert.equal(imgwCopyOf(feed, status)?.failingSince, null);
+  assert.equal(
+    imgwCopyOf(feed, checks(false, "2026-10-25T12:30:00+01:00"))?.failingSince,
+    at("2026-10-25T12:30:00+01:00"),
+  );
   // A feed file that is not one: thrown, never an empty copy.
   assert.throws(() => imgwCopyOf('{"version":2}', null), /IMGW feed file/);
   assert.throws(() => imgwCopyOf("not json", null));
 });
 
-test("stale over STALE_MS: the warnings with a notice first; too old from MAX_AGE_MS: the notice alone", () => {
-  const checkedAt = "2026-10-25T12:00:00+01:00";
-  const now = at(checkedAt);
-  const fresh = shownWarnings(copy(checkedAt), now + STALE_MS);
-  assert.equal(fresh?.notice, null);
-  assert.equal(fresh?.warnings.length, 1);
-  const stale = shownWarnings(copy(checkedAt), now + STALE_MS + 1);
-  assert.equal(
-    stale?.notice,
-    "Nie udało się teraz pobrać ostrzeżeń IMGW. Pokazujemy ostatnie dane z 12:00.",
+test("the copy's warnings, whatever its age; IMGW's checks failing: the notice first, the warnings still shown", () => {
+  const fetchedAt = "2026-10-25T12:00:00+01:00";
+  // A warning in force at 18:00, the copy six hours old: shown, no notice.
+  const evening = at("2026-10-25T18:00:00+01:00");
+  const old = shownWarnings(copy(fetchedAt), evening);
+  assert.equal(old?.notice, null);
+  assert.equal(old?.warnings.length, 1);
+  const failing = shownWarnings(
+    copy(fetchedAt, undefined, "2026-10-25T13:00:00+01:00"),
+    evening,
   );
-  assert.equal(stale?.warnings.length, 1);
-  assert.equal(
-    shownWarnings(copy(checkedAt), now + MAX_AGE_MS - 1)?.warnings.length,
-    1,
-  );
-  const old = shownWarnings(copy(checkedAt), now + MAX_AGE_MS);
-  assert.deepEqual(
-    [old?.notice, old?.warnings],
-    [
-      "Od 12:00 nie udało się nam pobrać ostrzeżeń IMGW, więc ich nie pokazujemy.",
-      [],
-    ],
-  );
+  assert.match(failing?.notice ?? "", /13:00/);
+  assert.equal(failing?.warnings.length, 1);
 });
 
-test("stale or too old without any warning: still the notice, never nothing", () => {
-  const checkedAt = "2026-10-25T12:00:00+01:00";
-  const none = copy(checkedAt, []);
-  assert.equal(shownWarnings(none, at(checkedAt) + STALE_MS), null);
-  const stale = shownWarnings(none, at(checkedAt) + STALE_MS + 1);
-  assert.deepEqual(
-    [stale?.notice, stale?.warnings],
-    [
-      "Nie udało się teraz pobrać ostrzeżeń IMGW. Ostatnie dane mamy z 12:00.",
-      [],
-    ],
-  );
+test("failing without any warning: still the notice, never nothing", () => {
+  const fetchedAt = "2026-10-25T12:00:00+01:00";
+  const failing = "2026-10-25T12:15:00+01:00";
+  const none = copy(fetchedAt, [], failing);
+  assert.deepEqual(shownWarnings(none, at(fetchedAt) + 2 * HOUR)?.warnings, []);
+  assert.ok(shownWarnings(none, at(fetchedAt) + 2 * HOUR)?.notice);
   // Days later: the day too.
-  const later = shownWarnings(none, at(checkedAt) + 26 * HOUR);
-  assert.equal(
-    later?.notice,
-    "Od niedzieli 25 października, 12:00 nie udało się nam pobrać ostrzeżeń IMGW, więc ich nie pokazujemy.",
+  assert.match(
+    shownWarnings(none, at(fetchedAt) + 26 * HOUR)?.notice ?? "",
+    /25 października, 12:15/,
   );
-  // A warning over, the copy stale: the notice, without it.
+  // Not failing, no warning: nothing.
+  assert.equal(
+    shownWarnings(copy(fetchedAt, []), at(fetchedAt) + 26 * HOUR),
+    null,
+  );
+  // A warning over (its own end), failing: the notice, without it.
   const end = at("2026-10-25T19:00:00+01:00");
-  const over = shownWarnings(copy("2026-10-25T17:30:00+01:00"), end);
+  const over = shownWarnings(copy(fetchedAt, undefined, failing), end);
   assert.deepEqual([over?.warnings.length, !!over?.notice], [0, true]);
 });
 

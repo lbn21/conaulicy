@@ -65,7 +65,7 @@ const BODIES: Record<string, (now: number) => string> = {
   ours: (now) => JSON.stringify(oursNow(now)),
 };
 
-/** fetch for PGE_API_URL=mock:<none|real|ours>[?fail=…&checkedAgo=…]: 401 without X-Auth-Token, as PGE. */
+/** fetch for PGE_API_URL=mock:<none|real|ours>[?fail=…&failingAgo=…]: 401 without X-Auth-Token, as PGE. */
 export const mockFetch: typeof fetch = async (input, init) => {
   if (process.env.VERCEL_ENV === "production")
     throw new Error("PGE mock: off in production");
@@ -83,7 +83,8 @@ export const mockFetch: typeof fetch = async (input, init) => {
 
 /**
  * The store's two files for the pages (lib/live-store.ts), as a good cron
- * run `checkedAgo` minutes before `now` (default 0) would have left them:
+ * run `failingAgo` minutes before `now` (default 0) left them, failing
+ * since (lib/live-mock.ts mockLiveFiles):
  * the mock's list, our area's outages, and that run's check. A mock that
  * fails (fail=…) is a store that cannot be read: it throws.
  */

@@ -39,7 +39,7 @@ Metadata, one builder for every module (`subpageMetadata`, `web/components/modul
 Each needs Jakub's OK; listed here so nothing drifts silently.
 
 - `/smieci`: „Harmonogram do druku (PDF)” (the file icon before it), the first button of the actions (step 6).
-- `/woda`: when a source's posts were last read over an hour ago (or, beside a cut or notice, one of the address's sources could not be read), an inset with the stale note (`staleNote`, `web/lib/water-module.ts`) between „Zmień adres” and the cuts.
+- `/woda`: when a source's last check failed (or, beside a cut or notice, one of the address's sources could not be read), an inset with the stale note (`staleNote`, `web/lib/water-module.ts`) between „Zmień adres” and the cuts.
 - `/woda` with no cut here: no AI-read note and no source inset; the empty text links each source's news itself (`waterEmpty`: the gmina's; in the town MZGKiM's too).
 
 ## Breadcrumbs

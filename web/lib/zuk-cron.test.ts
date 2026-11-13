@@ -314,23 +314,18 @@ test("unchanged posts: no model call or places query, results kept, nothing writ
   assert.equal(w.placesLoads, 0);
 });
 
-test("the pages' check time: the status file's when the file is unchanged", async () => {
+test("the pages' view of an unchanged file: never stale for its age", async () => {
   const w = world();
   await cron(w);
   await cron(w);
   const file = parseZukFile(w.file ?? "");
   assert.ok(file);
-  // 70 minutes on, nothing written since: the status file's last good
-  // check keeps the page fresh, never older than the file's own.
-  const later = new Date(NOW.getTime() + 70 * 60_000);
-  const checked = new Date(NOW.getTime() + 65 * 60_000).toISOString();
-  assert.equal(zukView(file, later).stale, true);
-  const view = zukView(file, later, undefined, checked);
+  // Hours on, nothing written since: shown as it is.
+  const later = new Date(NOW.getTime() + 5 * 3_600_000);
+  const view = zukView(file, later);
   assert.equal(view.stale, false);
-  assert.equal(view.checkedAt, checked);
+  assert.equal(view.checkedAt, file.checkedAt);
   assert.equal(view.changedAt, file.generatedAt);
-  const old = zukView(file, later, undefined, "2020-01-01T00:00:00Z");
-  assert.equal(old.checkedAt, file.checkedAt);
 });
 
 test("done: once, after every run and the checks' write", async () => {
@@ -514,19 +509,11 @@ test("live steps: each on its own, under its key; one failing never another's or
   );
   const at = NOW.toISOString();
   const sources = parseChecks(status)?.sources;
-  assert.deepEqual(sources?.[IMGW_KEY], {
-    checkedAt: at,
-    attemptAt: at,
-    ok: true,
-  });
-  assert.deepEqual(sources?.[PGE_KEY], {
-    checkedAt: null,
-    attemptAt: at,
-    ok: false,
-  });
+  assert.deepEqual(sources?.[IMGW_KEY], { ok: true, since: at });
+  assert.deepEqual(sources?.[PGE_KEY], { ok: false, since: at });
 });
 
-test("checks: one status write per run, after every run, each source's check in it", async () => {
+test("checks: at most one status write per run, after every run, only when a source's state changed", async () => {
   const w = world();
   let status: string | null = null;
   // The water file's and the status file's writes, in order.
@@ -560,27 +547,28 @@ test("checks: one status write per run, after every run, each source's check in 
   const first = parseChecks(status);
   const at = NOW.toISOString();
   assert.deepEqual(first?.sources, {
-    [waterKey("gmina-lubaczow")]: { checkedAt: at, attemptAt: at, ok: true },
-    [waterKey("mzgkim")]: { checkedAt: null, attemptAt: at, ok: false },
-    [IMGW_KEY]: { checkedAt: at, attemptAt: at, ok: true },
+    [waterKey("gmina-lubaczow")]: { ok: true, since: at },
+    [waterKey("mzgkim")]: { ok: false, since: at },
+    [IMGW_KEY]: { ok: true, since: at },
   });
-  // IMGW failing, the gmina's site down: one write still, the last good
-  // checks kept.
+  // The same states 15 minutes on: the status file not written.
+  order.length = 0;
+  w.now = new Date(NOW.getTime() + 15 * 60_000);
+  await handle(run(), [mzgkim], good, checks);
+  assert.ok(!order.includes("checks"));
+  // IMGW failing, the gmina's site down: one write, the flips begun then,
+  // the unchanged entry kept.
   order.length = 0;
   w.posts = "down";
-  w.now = new Date(NOW.getTime() + 15 * 60_000);
+  w.now = new Date(NOW.getTime() + 30 * 60_000);
   const later = w.now.toISOString();
   const down = async () => ({ error: "feed unavailable" });
   await handle(run(), [mzgkim], down, checks);
   assert.deepEqual(order, ["checks"]);
   assert.deepEqual(parseChecks(status)?.sources, {
-    [waterKey("gmina-lubaczow")]: {
-      checkedAt: at,
-      attemptAt: later,
-      ok: false,
-    },
-    [waterKey("mzgkim")]: { checkedAt: null, attemptAt: later, ok: false },
-    [IMGW_KEY]: { checkedAt: at, attemptAt: later, ok: false },
+    [waterKey("gmina-lubaczow")]: { ok: false, since: later },
+    [waterKey("mzgkim")]: { ok: false, since: at },
+    [IMGW_KEY]: { ok: false, since: later },
   });
   // The status file unreadable, or its write failing: logged, the run's
   // response as without it.

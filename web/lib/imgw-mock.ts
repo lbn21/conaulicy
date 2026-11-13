@@ -72,7 +72,7 @@ const BODIES: Record<string, (params: URLSearchParams, now: number) => string> =
     "1809": (params, now) => JSON.stringify(mock1809(params, now)),
   };
 
-/** fetch for IMGW_WARNINGS_URL=mock:<none|real|1809>[?level=…&start=…&also=…&fail=…&failAfter=…&checkedAgo=…]. */
+/** fetch for IMGW_WARNINGS_URL=mock:<none|real|1809>[?level=…&start=…&also=…&fail=…&failAfter=…&failingAgo=…]. */
 export const mockFetch: typeof fetch = async (input, init) => {
   if (process.env.VERCEL_ENV === "production")
     throw new Error("IMGW mock: off in production");
@@ -94,7 +94,8 @@ export const mockFetch: typeof fetch = async (input, init) => {
 
 /**
  * The store's two files for the pages (lib/live-store.ts), as a good cron
- * run `checkedAgo` minutes before `now` (default 0) would have left them:
+ * run `failingAgo` minutes before `now` (default 0) left them, failing
+ * since (lib/live-mock.ts mockLiveFiles):
  * the mock's feed, our powiats' items, and that run's check. A mock that
  * fails (fail=…, failAfter=…) is a store that cannot be read: it throws.
  */

@@ -54,12 +54,24 @@ const ASNYKA = testPlace({
 });
 const ZUKI = testPlace();
 
-const at = (place = BASZNIA, { checkedAgo = 0, now = NOW, feed = FEED } = {}) =>
+/**
+ * The module at `place`: the copy stored `storedAgo` minutes before `now`;
+ * PGE's checks failing `failingAgo` minutes (null: going well).
+ */
+const at = (
+  place = BASZNIA,
+  {
+    storedAgo = 0,
+    failingAgo = null as number | null,
+    now = NOW,
+    feed = FEED,
+  } = {},
+) =>
   power(
     {
       feed,
-      checkedAt: now - checkedAgo * MIN,
-      changedAt: now - checkedAgo * MIN,
+      failingSince: failingAgo === null ? null : now - failingAgo * MIN,
+      changedAt: now - storedAgo * MIN,
     },
     place,
     now,
@@ -126,12 +138,28 @@ test("the timeline: a row per range, revoked never; a failure's end an estimate"
   assert.equal(failure.span.to, "18:15");
 });
 
-test("a failure past PGE's estimate, still listed: on until a quarter after the last check", () => {
-  const late = NOW + 60 * MIN;
-  const [failure] = powerUpcoming(at(ASNYKA, { now: late }));
-  assert.equal(failure.span.to, "19:07");
-  assert.equal(failure.span.about, true);
-  // A planned range over: gone; the day's later one stays.
+test("a failure in the latest copy: shown whatever the copy's age, until its own end or a copy without it", () => {
+  const failure = (data: Power) => uuids(data).includes(FAILURE_ID.slice(0, 8));
+  for (const ago of [0, 15, 60, 240]) {
+    assert.ok(failure(at(ASNYKA, { storedAgo: ago })), `stored ${ago} min`);
+    assert.ok(
+      failure(at(ASNYKA, { storedAgo: ago, failingAgo: ago })),
+      `failing ${ago} min`,
+    );
+  }
+  // A later copy no longer lists it: gone.
+  const without = {
+    ...FEED,
+    items: FEED.items.filter((item) => item.uuid !== FAILURE_ID),
+  };
+  assert.ok(!failure(at(ASNYKA, { feed: without })));
+  // PGE's own end (18:15) passed: gone, still listed or not.
+  const end = Date.parse("2026-11-11T17:15:00Z");
+  assert.ok(failure(at(ASNYKA, { now: end - 1 })));
+  assert.ok(!failure(at(ASNYKA, { now: end })));
+});
+
+test("a planned range over: gone; the day's later one stays", () => {
   const after = Date.parse("2026-11-17T09:00:00Z");
   assert.deepEqual(
     powerUpcoming(at(HUTA, { now: after })).map((i) => i.span.from),
@@ -146,26 +174,19 @@ test("no dateRanges: the whole startAt-stopAt, one row", () => {
   ]);
 });
 
-test("the copy's age: stale, the notice with PGE's page; too old, the notice alone; unreadable", () => {
+test("PGE's checks failing: the outages still shown, the notice with PGE's page; never for the copy's age; unreadable", () => {
   assert.deepEqual(powerNotices(at(HUTA)), []);
-  const stale = at(HUTA, { checkedAgo: 70 });
-  assert.equal(stale.cuts.length, 3);
-  assert.deepEqual(powerNotices(stale), [
-    [
-      [
-        "Nie udało się teraz pobrać danych PGE. Pokazujemy ostatnie dane z 16:42. Aktualne znajdziesz na ",
-        { href: PGE_PAGE, text: "stronie PGE Dystrybucja" },
-        ".",
-      ],
-    ],
-  ]);
-  const old = at(HUTA, { checkedAgo: 180 });
-  assert.deepEqual(old.cuts, []);
-  assert.equal(
-    old.notice,
-    "Od 14:52 nie udało się nam pobrać danych PGE, więc ich nie pokazujemy.",
-  );
-  assert.equal(powerPage(old).empty, null);
+  assert.deepEqual(powerNotices(at(HUTA, { storedAgo: 600 })), []);
+  for (const ago of [10, 300]) {
+    const failing = at(HUTA, { failingAgo: ago });
+    assert.equal(failing.cuts.length, 3);
+    const [[notice]] = powerNotices(failing);
+    assert.equal(typeof notice[0], "string");
+    assert.deepEqual(notice.slice(1), [
+      { href: PGE_PAGE, text: "stronie PGE Dystrybucja" },
+      ".",
+    ]);
+  }
   const unreadable = power("unreadable", HUTA, NOW);
   assert.equal(
     unreadable?.notice,

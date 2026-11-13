@@ -98,7 +98,7 @@ test("PGE failing: the file kept, the class logged, never thrown", async () => {
   assert.deepEqual(state.logs, [{ pge: "auth-error", error: "PGE: no token" }]);
 });
 
-test("the cron records PGE's check under its key; a failure keeps the last good one", async () => {
+test("the cron records PGE's check under its key; a failure begins its own state", async () => {
   const { state, deps } = setup();
   const water = waterDown(
     () => new Date(state.now),
@@ -126,16 +126,14 @@ test("the cron records PGE's check under its key; a failure keeps the last good 
   assert.deepEqual(await run(), { checked: true, changed: true });
   const at = new Date(T0).toISOString();
   assert.deepEqual(parseChecks(state.store.get(CHECKS) ?? null)?.sources.pge, {
-    checkedAt: at,
-    attemptAt: at,
     ok: true,
+    since: at,
   });
   state.upstream = { status: 500, body: "" };
   state.now += 15 * 60_000;
   assert.deepEqual(await run(), { error: "feed unavailable" });
   assert.deepEqual(parseChecks(state.store.get(CHECKS) ?? null)?.sources.pge, {
-    checkedAt: at,
-    attemptAt: new Date(state.now).toISOString(),
     ok: false,
+    since: new Date(state.now).toISOString(),
   });
 });

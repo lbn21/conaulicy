@@ -17,7 +17,6 @@ import { MZGKIM, type WaterSourceId } from "./water-sources.ts";
 import { type PostReading, readPost, type ZukPost } from "./zuk.ts";
 import type { AiResult } from "./zuk-ai.ts";
 import {
-  STALE_MS,
   type StoredPost,
   ZUK_READER,
   type ZukData,
@@ -288,23 +287,26 @@ function movedCut100(now: number, checkedAt: string): StoredPost {
 }
 
 /**
- * The dev mock's file: for ZUK_MOCK, 39885 checked a minute ago ("39885")
- * or over an hour ago ("39885-stale"); for MZGKIM_MOCK, MZGKiM's 5237
- * moved to now (movedCut100), the same ("5237", "5237-stale"); "none": no
- * file. Else undefined.
+ * The dev mock's file: for ZUK_MOCK, 39885 checked a minute ago ("39885",
+ * or "39885-failing": the source's checks failing since, mockFailing); for
+ * MZGKIM_MOCK, MZGKiM's 5237 moved to now (movedCut100), the same ("5237",
+ * "5237-failing"); "none": no file. Else undefined.
  */
 export function mockFile(
   name: string,
   now: number,
 ): ZukFile | null | undefined {
   if (name === "none") return null;
-  const [id, stale] = name.split("-");
-  const ago = { "": 60_000, stale: STALE_MS + 30 * 60_000 }[stale ?? ""];
-  if (ago === undefined || (id !== "39885" && id !== "5237")) return undefined;
-  const checkedAt = new Date(now - ago).toISOString();
+  const [id, mode = ""] = name.split("-");
+  if (!["", "failing"].includes(mode) || (id !== "39885" && id !== "5237"))
+    return undefined;
+  const checkedAt = new Date(now - 60_000).toISOString();
   const post =
     id === "5237"
       ? movedCut100(now, checkedAt)
       : storedPost(POST_39885, checkedAt);
   return zukFile([post], checkedAt);
 }
+
+/** The dev mock's source checks failing ("…-failing", mockFile). */
+export const mockFailing = (name: string) => name.endsWith("-failing");

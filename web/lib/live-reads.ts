@@ -3,6 +3,7 @@ import { type ImgwRead, imgwCopyOf } from "./imgw-shown.ts";
 import { upstream as imgwUpstream } from "./imgw-warnings.ts";
 import { RUN_PATHS, runIdsOf } from "./live-runs.ts";
 import {
+  failingSince,
   liveCopyOf,
   PGE_KEY,
   parseChecks,
@@ -105,7 +106,7 @@ export async function imgwCopy(
 
 /**
  * ZUK_MOCK (the gmina's) and MZGKIM_MOCK, each a fixture post's id, its id
- * with "-stale", or "none", serve a fixture file (lib/water-fixture.ts
+ * with "-failing", or "none", serve a fixture file (lib/water-fixture.ts
  * mockFile) instead of the Blob, as PGE_API_URL's mock (lib/pge-feed.ts):
  * anywhere but production (VERCEL_ENV), so CI's built site and `next dev`
  * on db:local show a dated cut on the fixture's town street (t370).
@@ -121,15 +122,16 @@ async function mockView(
     console.error("ZUK_MOCK, MZGKIM_MOCK: the mock is off in production");
     return null;
   }
-  const { mockFile } = await import("./water-fixture.ts");
+  const { mockFailing, mockFile } = await import("./water-fixture.ts");
   const file = mockFile(name, now.getTime());
-  return file === undefined ? null : zukView(file, now, source);
+  return file === undefined
+    ? null
+    : zukView(file, now, source, mockFailing(name));
 }
 
 /**
  * One source's water cuts and notices (lib/water-module.ts). No file, or
- * no good check for an hour (its file or, as the file is written only when
- * it changed, the status file): `stale` (lib/zuk-data.ts).
+ * its checks failing (the status file): `stale` (lib/zuk-data.ts).
  */
 async function sourceData(
   source: WaterSource,
@@ -139,10 +141,10 @@ async function sourceData(
   const mock = await mockView(source, now);
   if (mock) return mock;
   const body = await file(source.pathname);
-  const lastCheck =
-    parseChecks(await file(CHECKS_PATH))?.sources[waterKey(source.id)]
-      ?.checkedAt ?? null;
-  return zukView(body ? parseZukFile(body) : null, now, source, lastCheck);
+  const failing =
+    failingSince(parseChecks(await file(CHECKS_PATH)), waterKey(source.id)) !==
+    null;
+  return zukView(body ? parseZukFile(body) : null, now, source, failing);
 }
 
 /** The live reads at `now` from `file`, each made once. */
