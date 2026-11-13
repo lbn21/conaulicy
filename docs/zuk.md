@@ -54,11 +54,12 @@ Vercel Blob. No database writes.
    „Bez zmian od …”, and its run id. Every good run's check is in
    `status/checks.json` (the page's staleness). A run with rejected items
    logs them in one line, `{zuk: "rejected", source, gazetteer, entries}`.
-6. A run whose pages' content changed has the `water` tag revalidated 65 s
-   after its write ("max", inside `after()`; `web/lib/live-refresh.ts`),
-   then the pages pre-warmed. A run that wrote nothing (no change, the
-   source down, a file it could not read, the write failed) leaves the old
-   file and re-renders nothing.
+6. After every run, each page whose view changed (its digest,
+   `status/page-digests.json`) has its own tag revalidated 65 s after the
+   run's writes ("max", inside `after()`; `web/lib/page-refresh.ts`), then
+   is pre-warmed: a water change re-renders the address page, `/woda` and
+   `woda.ics` of the places it concerns, and the home page if its counts
+   moved. A run that changed nothing a page shows re-renders nothing.
 
 The gmina's site down: 502, the file and its `checkedAt` stay, and it turns
 stale after an hour. xAI down: a new
