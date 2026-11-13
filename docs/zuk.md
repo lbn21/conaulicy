@@ -46,16 +46,19 @@ Vercel Blob. No database writes.
    cuts is shown. A day or time that fails, or no place left, makes the
    whole post a Notice: a link, no date.
 5. Drops cuts that are over (`itemCount` keeps how many were read), sorts
-   the posts into `active` and `seen` (below) and writes the file on every
-   run: `checkedAt` is this run (the pages' „Komunikaty o wodzie sprawdziliśmy”),
-   `generatedAt` the last run that changed what the pages read (every
-   `checkedAt` in it aside, and the `rejected` list). About 96 small Blob
-   writes a day. A run with rejected items logs them in one line,
-   `{zuk: "rejected", source, gazetteer, entries}`.
-6. Nothing is purged. The pages read the file per request,
-   through the Blob's CDN, so a written run's cuts and `checkedAt` show
-   within 60 s. A run that wrote nothing (the source down, a file it could
-   not read, the write failed) leaves the old file and its time.
+   the posts into `active` and `seen` (below) and writes the file only when
+   anything but `checkedAt` changed (what the pages read, retries, the
+   rejected list, the gazetteer): `checkedAt` is that run, `generatedAt`
+   the last run that changed what the pages read (every `checkedAt` in it
+   aside, and the `rejected` list): the source's `changedAt`, shown as
+   „Bez zmian od …”, and its run id. Every good run's check is in
+   `status/checks.json` (the page's staleness). A run with rejected items
+   logs them in one line, `{zuk: "rejected", source, gazetteer, entries}`.
+6. A run whose pages' content changed has the `water` tag revalidated 65 s
+   after its write ("max", inside `after()`; `web/lib/live-refresh.ts`),
+   then the pages pre-warmed. A run that wrote nothing (no change, the
+   source down, a file it could not read, the write failed) leaves the old
+   file and re-renders nothing.
 
 The gmina's site down: 502, the file and its `checkedAt` stay, and it turns
 stale after an hour. xAI down: a new
@@ -249,21 +252,16 @@ Each cut carries our names for its label (`label`: locality, its village
 for a village part, street) and its houses (`scope`); the source's own
 wording stays in `where` (its street, else its locality, as written) and
 `note`. Pages read the file through `lib/zuk-store.ts` `getZukData()`; data last
-checked more than 60 minutes ago is `stale`, so a page shows the source link
-instead.
+checked more than 60 minutes ago (the file's or the status file's last good
+check) is `stale`, so a page shows the source link instead.
 
-**Caching.** No Next.js cache in front of the file: the
-pages' live blocks (the hub's „Woda” and „Najbliższe dni”, `/woda`'s
-body, `web/components/live-block.tsx`) read it per request through the
-Blob's CDN (`useCache: true`, at most 60 s behind a write); the cron reads
-its origin. Nothing is tagged `water` or purged. The calendar file
-`/adres/[id]/woda.ics` is cached by the CDN for an hour (a day
-stale-while-revalidate), tagged `dataset` only.
-
-With a house number (`?nr=`), a cut by house ranges or numbers that clearly
-leaves it out is not shown, on the page or in its calendar file, and the page
-says one was left out (`lib/water-module.ts` `outsideRange`); anything we
-cannot compare is always shown.
+**Caching.** The pages that show water (the hub, `/woda`, its calendar
+file `/adres/[id]/woda.ics` and the home page) are prerendered, their data
+in one cache scope each, tagged `water` (`web/lib/page-cache.ts`); they
+read the file through the Blob's CDN (`useCache: true`, at most 60 s
+behind a write) when they are rendered; the cron reads its origin and
+revalidates `water` 65 s after a changed write. The site has no house
+numbers (t416): a cut is shown with the source's own words on its houses.
 
 ## Environment (Vercel, Production and Preview)
 
