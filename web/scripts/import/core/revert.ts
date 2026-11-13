@@ -6,11 +6,16 @@
 // as an import_runs row, so a batch is reverted at most once. Refuses if an
 // event was changed again since the batch (revert the later batch first).
 //
+// Then the dataset snapshot the site reads is published again
+// (scripts/lib/dataset.ts); if that fails, the revert stands in the
+// database and this exits 1: publish with `npm run dataset:publish`.
+//
 // Env: IMPORT_DATABASE_URL (or DATABASE_URL_UNPOOLED / DATABASE_URL);
-// optional REVALIDATE_SECRET to refresh the site (etl/sources.yaml site.url,
+// BLOB_READ_WRITE_TOKEN (the snapshot); optional REVALIDATE_SECRET to refresh the site (etl/sources.yaml site.url,
 // or SITE_URL), VERCEL_AUTOMATION_BYPASS_SECRET.
 import { randomUUID } from "node:crypto";
 import { parseArgs } from "node:util";
+import { publishDataset } from "../../lib/dataset.ts";
 import { databaseUrl } from "../../lib/local-db.ts";
 import { revalidate } from "../../lib/revalidate.ts";
 import { Db } from "./db.ts";
@@ -119,4 +124,11 @@ console.log(
   `Reverted batch ${batchId}: ${changes.length} changes (${undoId}).`,
 );
 
-await revalidate();
+try {
+  const published = await publishDataset(url as string, { batchId: undoId });
+  if (published?.changed) await revalidate();
+} catch (error) {
+  fail(
+    `Reverted in the database, but the dataset snapshot was NOT published (the site shows the old one): ${(error as Error).message}`,
+  );
+}

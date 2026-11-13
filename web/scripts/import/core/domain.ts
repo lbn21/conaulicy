@@ -57,7 +57,8 @@ export type Domain = {
   configErrors(source: Source): string[];
   /**
    * After detection, before any file (not with --extract-only): e.g. keep
-   * the database in step with the config. True if the site needs a refresh.
+   * the database in step with the config. True if the site needs a refresh
+   * (the run publishes the dataset snapshot at its end whenever it changed).
    */
   afterDetect?(input: {
     db: Queryable;

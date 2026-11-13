@@ -26,15 +26,19 @@
 //
 // Env: IMPORT_DATABASE_URL (or DATABASE_URL_UNPOOLED / DATABASE_URL);
 // XAI_API_KEY (Grok reads the waste schedules, Actions only);
-// REVALIDATE_SECRET (site: site.url, or SITE_URL); GH_TOKEN
+// BLOB_READ_WRITE_TOKEN (the dataset snapshot, published at the end of
+// every run that may write: scripts/lib/dataset.ts); REVALIDATE_SECRET
+// (site: site.url, or SITE_URL); GH_TOKEN
 // (issues, review PRs); AWS credentials (archive); ACTIONS_RUN_URL. Tests:
 // IMPORT_CONFIG (another config file), IMPORT_NOW (the clock), ARCHIVE_DIR
-// (instead of S3), ISSUES_FILE and REVIEWS_FILE (instead of GitHub),
+// (instead of S3), DATASET_DIR (instead of the Blob store), ISSUES_FILE and
+// REVIEWS_FILE (instead of GitHub),
 // IMPORT_REVIEW_DIR (instead of etl/review), XAI_MOCK_DIR (Grok's replies).
 import { randomUUID } from "node:crypto";
 import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { todayInWarsaw } from "../../../lib/dates.ts";
+import { publishDataset } from "../../lib/dataset.ts";
 import { databaseUrl } from "../../lib/local-db.ts";
 import { revalidate } from "../../lib/revalidate.ts";
 import { DOMAINS } from "../domains.ts";
@@ -190,6 +194,10 @@ const tracked = Boolean(
   (await db.query("select to_regclass('import_runs') as t")).rows[0].t,
 );
 
+// The batches this run applied: the snapshot published after them names
+// the last (scripts/lib/dataset.ts).
+const batches: string[] = [];
+
 type Outcome = {
   status: "no_change" | "applied" | "needs_review" | "failed";
   via: "api" | "page" | null;
@@ -208,9 +216,8 @@ async function importSource(source: Source): Promise<Outcome> {
   const problems = detection.unrecognised.map(
     (u) => `a new file the adapter cannot read: ${u}`,
   );
-  const refresh =
-    (await domain.afterDetect?.({ db, source, detection, issues, dryRun })) ??
-    false;
+  // What it changes reaches the site with the run's snapshot (at the end).
+  await domain.afterDetect?.({ db, source, detection, issues, dryRun });
 
   // Known files and links.
   const settledMedia = new Map<string, string>();
@@ -499,7 +506,6 @@ async function importSource(source: Source): Promise<Outcome> {
           runUrl ? `\nRun: ${runUrl}` : "",
         ].join("\n"),
       );
-    if (refresh && !dryRun) await revalidate(config.site.url);
     return {
       status: "needs_review",
       ...base,
@@ -509,7 +515,6 @@ async function importSource(source: Source): Promise<Outcome> {
   }
   if (added + removed + changed === 0) {
     for (const w of work) await settle(w.file, w.digest);
-    if (refresh && !dryRun) await revalidate(config.site.url);
     return { status: "no_change", ...base, batchId: null, error: null };
   }
   if (dryRun) {
@@ -536,7 +541,7 @@ async function importSource(source: Source): Promise<Outcome> {
   console.log(
     `\nApplied as batch ${batchId} (undo: npm run import:revert -- ${batchId}).`,
   );
-  await revalidate(config.site.url);
+  batches.push(batchId);
   return { status: "applied", ...base, batchId, error: null };
 }
 
@@ -671,6 +676,43 @@ try {
   console.error(`\nCoverage check failed: ${(error as Error).message}`);
 }
 await db.close();
+
+// The site reads only the dataset snapshot (lib/dataset.ts): after every
+// run that may write, it is built again and published if anything in it
+// changed (a batch, a file's lastSeenAt, a district), then the site's
+// cache is purged. If that fails, the run fails with an issue, and the
+// site keeps the old snapshot.
+if (!dryRun) {
+  try {
+    const published = await publishDataset(url, {
+      batchId: batches.at(-1) ?? null,
+    });
+    if (published?.changed) await revalidate(config.site.url);
+    issues.resolve(
+      "dataset",
+      `Resolved: the dataset snapshot was published on ${today}.${runUrl ? ` ${runUrl}` : ""}`,
+    );
+  } catch (error) {
+    failed = true;
+    issued = true;
+    const message = (error as Error).message;
+    console.error(`\nDataset snapshot FAILED: ${message}`);
+    issues.raise(
+      "dataset",
+      "Snapshot danych nie został opublikowany",
+      [
+        "The import wrote to the database, but the dataset snapshot the site reads was not published, so the site still shows the previous one.",
+        "",
+        "```",
+        message.slice(0, 3000),
+        "```",
+        "",
+        "Fix the cause, then run the import workflow with mode `snapshot` (or `npm run dataset:publish`). RUNBOOK: docs/import.md.",
+        runUrl ? `\nRun: ${runUrl}` : "",
+      ].join("\n"),
+    );
+  }
+}
 if (failed) {
   // The workflow's own failure issue would repeat the one just opened.
   if (process.env.GITHUB_OUTPUT && issued)
