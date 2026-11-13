@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
 # Vercel "Ignored Build Step" (web/vercel.json ignoreCommand, run from web/).
 # Exit 0 = skip the build, exit 1 = build.
-# Skips only when every file changed since the previous deployed commit is
-# docs or tests: docs/**, any *.md, *.test.* / *.spec.*, __tests__/.
-# When in doubt (no base commit, git error, nothing changed), it builds.
+# Production always builds: a Deploy Hook's build of the same HEAD (a new
+# place set in the dataset snapshot, web/lib/dataset-sync.ts) must never be
+# skipped, and VERCEL_GIT_PREVIOUS_SHA is the last successful deployment,
+# so a docs-only merge before it would skip it. A Preview skips only when
+# every file changed since the previous deployed commit is docs or tests:
+# docs/**, any *.md, *.test.* / *.spec.*, __tests__/. When in doubt (no base
+# commit, git error, nothing changed), it builds.
+
+if [ "${VERCEL_ENV:-}" = "production" ]; then
+  echo "vercel-ignore: production, building"
+  exit 1
+fi
 
 base="${VERCEL_GIT_PREVIOUS_SHA:-}"
 if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then

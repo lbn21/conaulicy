@@ -16,8 +16,10 @@ on:
 permissions:
   contents: read
 
+# One queue for every publisher of the dataset snapshot (the import and
+# the production database's runs): never two at once (web/lib/dataset-sync.ts).
 concurrency:
-  group: prod-db
+  group: dataset
   cancel-in-progress: false
 
 jobs:
