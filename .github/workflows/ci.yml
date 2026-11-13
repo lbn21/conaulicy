@@ -182,7 +182,7 @@ jobs:
 
       # One server for four checks (scripts/routes/): the home examples, /ulice,
       # each page's metadata and the query-parameter redirects.
-      - name: "Routes (home examples, /ulice, metadata, query parameters, in-page links and Back, client-side navigation, 200 % text)"
+      - name: "Routes (home examples, /ulice, metadata, query parameters, in-page links and Back, client-side navigation, 200 % text, skip link)"
         run: node scripts/check-routes.mjs
         env:
           SCREENSHOT_DIR: ${{ runner.temp }}/ulice-screenshots

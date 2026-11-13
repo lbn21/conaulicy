@@ -13,8 +13,8 @@ import { findSubpage, type Module } from "@/lib/modules";
 import { getPlace, type PlaceView } from "@/lib/schedule";
 
 // A module's subpage, /adres/[id]/<module> (lib/modules.ts), with the same
-// ?nr= as the address page (components/place-page.tsx numberQuery), under
-// the place's breadcrumbs (before <main>): one frame for every module
+// ?nr= as the address page (components/place-page.tsx numberQuery), the
+// place's breadcrumbs in its head's band: one frame for every module
 // (Subpage), its body the module's Details. An unknown module is a 404.
 // Its metadata: components/subpage-route.tsx. Read per request, whole, behind one
 // <Suspense> with one skeleton, as the address page (components/hub.tsx).
@@ -22,11 +22,11 @@ import { getPlace, type PlaceView } from "@/lib/schedule";
 /**
  * Everything a subpage shows, read per request (after io(), so nothing
  * date-dependent is ever prerendered), the place and the
- * module's data at once. One read per request for the page and its
- * breadcrumbs (React's cache(), as components/hub.tsx hubData). Null for
+ * module's data at once, one read per request (React's cache(), as
+ * components/hub.tsx hubData). Null for
  * an unknown module.
  */
-export const subpageData = cache(
+const subpageData = cache(
   async (id: string, slug: string, nr: string | null) => {
     await io();
     const module = findSubpage(slug);
@@ -64,7 +64,6 @@ export async function ModuleMain({
   const loaded = await subpageData(id, slug, nr);
   if (!loaded?.place) return <>{unknown}</>;
   const { module, place, data } = loaded;
-  // Its breadcrumbs: the layout's @breadcrumbs slot (components/place-crumbs.tsx).
   // „Dziś” and „Jutro” for the read's Warsaw day (components/warsaw-today.tsx).
   return (
     <WarsawToday day={place.today}>

@@ -18,16 +18,14 @@ test("waste first, then water, power, then weather; all but the weather have a s
   // The weather's warnings are cards on the address page.
   assert.deepEqual(SUBPAGE_IDS, ["smieci", "woda", "prad"]);
   for (const id of SUBPAGE_IDS) assert.ok(isModuleId(id), id);
-  // Each subpage its own route folder and its breadcrumbs' (no [module]:
-  // a shared App Shell cannot know its module, components/subpage-route.tsx).
-  const app = new URL("../app/", import.meta.url);
-  for (const root of ["adres/[id]/", "@breadcrumbs/adres/[id]/"]) {
-    const folders = readdirSync(new URL(root, app), { withFileTypes: true })
-      .filter((d) => d.isDirectory() && !FILE_NAMES.includes(d.name))
-      .map((d) => d.name)
-      .sort();
-    assert.deepEqual(folders, [...SUBPAGE_IDS].sort(), root);
-  }
+  // Each subpage its own route folder (no [module]: a shared App Shell
+  // cannot know its module, components/subpage-route.tsx).
+  const root = new URL("../app/adres/[id]/", import.meta.url);
+  const folders = readdirSync(root, { withFileTypes: true })
+    .filter((d) => d.isDirectory() && !FILE_NAMES.includes(d.name))
+    .map((d) => d.name)
+    .sort();
+  assert.deepEqual(folders, [...SUBPAGE_IDS].sort());
 });
 
 test("no module is called like another folder", () => {

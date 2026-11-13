@@ -1,10 +1,11 @@
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { type IconName, Tile } from "@/components/icon";
+import { SkipTarget } from "@/components/skip-target";
 
 // Every page's head, one skeleton for the site (docs/layout.md, Page
 // head): a band in the brand's surface tint, the full width of the window,
-// straight under the header (or the breadcrumbs), holding what comes
-// before the content: an error summary, the caption, the h1 (on a
+// straight under the header, holding what comes before the content: an
+// address page's breadcrumbs (t400), an error summary, the caption, the h1 (on a
 // module's page with the module's icon on its tile), a lead paragraph and
 // the page's first action („Zmień adres”, the search). Then the content on
 // white, then the footer's band. site.scss .app-band.
@@ -15,6 +16,14 @@ const CLASSES = {
   xl: ["govuk-caption-xl", "govuk-heading-xl"],
 } as const;
 
+/** A skeleton's heading block: the element alone, no target. */
+function Plain({
+  as: Tag,
+  ...props
+}: { as: "p" | "span" | "h1" } & HTMLAttributes<HTMLElement>) {
+  return <Tag {...props} />;
+}
+
 export function PageHead({
   title,
   caption,
@@ -22,6 +31,7 @@ export function PageHead({
   lead,
   size = "l",
   tag: Heading = "h1",
+  crumbs,
   before,
   children,
 }: {
@@ -35,19 +45,40 @@ export function PageHead({
   /** "p" in a skeleton (components/place-suspense.tsx): the page's own
    * h1 comes with the page. */
   tag?: "h1" | "p";
+  /** The band's first line: an address page's breadcrumbs. */
+  crumbs?: ReactNode;
   /** Above the caption: an error summary. */
   before?: ReactNode;
   /** After the lead: the page's first action. */
   children?: ReactNode;
 }) {
+  const Target = Heading === "h1" ? SkipTarget : Plain;
+  const heading = (
+    <>
+      {icon && <Tile name={icon} />}
+      {title}
+    </>
+  );
   return (
     <div className="app-band">
+      {crumbs}
       {before}
-      {caption && <span className={CLASSES[size][0]}>{caption}</span>}
-      <Heading className={CLASSES[size][1]}>
-        {icon && <Tile name={icon} />}
-        {title}
-      </Heading>
+      {/* The skip link's target: the heading block's start, the street
+        line, else the h1 (components/skip-target.tsx). Never a
+        skeleton's (tag "p"): its page streams in after it, in the same
+        HTML, with its own. */}
+      {caption && (
+        <Target as="span" className={CLASSES[size][0]}>
+          {caption}
+        </Target>
+      )}
+      {caption ? (
+        <Heading className={CLASSES[size][1]}>{heading}</Heading>
+      ) : (
+        <Target as={Heading} className={CLASSES[size][1]}>
+          {heading}
+        </Target>
+      )}
       {lead && <p className="govuk-body-l">{lead}</p>}
       {children}
     </div>

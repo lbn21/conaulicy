@@ -1,9 +1,9 @@
 // Runs axe-core on five representative routes (the home page, an address
 // page, its waste and weather subpages, /ulice) at 360px and 1280px (light only, as GOV.UK).
 // check-html.mjs covers every route's status, h1 and #main-content statically.
-// Fails on any WCAG 2.0/2.1/2.2 A or AA violation, and on a page whose
-// #main-content is not exactly one visible <main> (the skip link's target)
-// or that uses an id twice. Run after `next build`;
+// Fails on any WCAG 2.0/2.1/2.2 A or AA violation, and on a page without
+// exactly one visible <main> and one #main-content (the skip link's
+// target: visible, in <main>, tabindex -1), or that uses an id twice. Run after `next build`;
 // needs Playwright's Chromium (`npx playwright install chromium`).
 import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "playwright";
@@ -41,7 +41,12 @@ try {
         .analyze();
       const label = `${route.path} [${width}px]`;
       const ids = await mainAndIds(page);
-      if (ids.mains !== 1 || !ids.main || ids.duplicates.length > 0) {
+      if (
+        ids.mains !== 1 ||
+        ids.targets !== 1 ||
+        !ids.target ||
+        ids.duplicates.length > 0
+      ) {
         failures += 1;
         console.log(`FAIL  ${label}  main and ids ${JSON.stringify(ids)}`);
       }

@@ -130,44 +130,33 @@ test("the live blocks: read after io(), never inside a cached scope", () => {
       count,
       path,
     );
-  for (const path of [
-    "components/hub.tsx",
-    "components/module-page.tsx",
-    "components/place-crumbs.tsx",
-  ])
+  for (const path of ["components/hub.tsx", "components/module-page.tsx"])
     assert.doesNotMatch(source(path), /use cache/, path);
 });
 
-test("the address pages: one read per request, every block at once, shared with the breadcrumbs", () => {
+test("the address pages: one read per request, every block at once", () => {
   // Every module's data in one Promise.all, after io(), behind React's
-  // cache(), so the page and its breadcrumbs share one read.
+  // cache(): one read per request.
   assert.match(
     source("components/hub.tsx"),
-    /export const hubData = cache\(\n\s+async \(id: string, nr: string \| null, imgw: string \| null = null\) => \{\n\s+await io\(\);\n\s+return \(await Promise\.all\(\n\s+MODULE_IDS\.map\(\(slug\) => MODULES\[slug\]\.load\(id, nr, imgw\)\),/,
+    /const hubData = cache\(\n\s+async \(id: string, nr: string \| null, imgw: string \| null = null\) => \{\n\s+await io\(\);\n\s+return \(await Promise\.all\(\n\s+MODULE_IDS\.map\(\(slug\) => MODULES\[slug\]\.load\(id, nr, imgw\)\),/,
   );
   assert.match(
     source("components/module-page.tsx"),
-    /export const subpageData = cache\(\n\s+async \(id: string, slug: string, nr: string \| null\) => \{\n\s+await io\(\);/,
+    /const subpageData = cache\(\n\s+async \(id: string, slug: string, nr: string \| null\) => \{\n\s+await io\(\);/,
   );
-  const crumbs = source("components/place-crumbs.tsx");
-  assert.match(
-    crumbs,
-    /await hubData\(id, nr, await imgwQuery\(searchParams\)\)/,
-  );
-  assert.match(crumbs, /await subpageData\(id, module, nr\)/);
   // ?nr= read after navigation(), so the shell and prefetch stay static.
   assert.match(
     source("components/place-page.tsx"),
     /await navigation\(\);\n\s+return houseQuery\(\(await searchParams\)\.nr\);/,
   );
-  // One boundary per address route, the page's and its trail's.
+  // One boundary per address route, its breadcrumbs inside (t400).
   assert.deepEqual(calling(/<PlaceSuspense[ >]/), [
     "app/adres/[id]/page.tsx",
     "components/subpage-route.tsx",
   ]);
   assert.deepEqual(calling(/<LiveBlock /), [
     "components/now-panel.tsx",
-    "components/place-crumbs.tsx",
     "components/place-suspense.tsx",
   ]);
 });

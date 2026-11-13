@@ -4,15 +4,14 @@
 // each component's own module: init.mjs (createAll) pulls in every component,
 // which the bundler cannot drop. Components check for the
 // govuk-frontend-supported class that the layout's snippet sets; errors are
-// logged, as createAll would.
+// logged, as createAll would. Not its SkipLink: it finds its target once,
+// and the target is each page's own (components/skip-link.tsx).
 import { Button } from "govuk-frontend/dist/govuk/components/button/button.mjs";
 import { ErrorSummary } from "govuk-frontend/dist/govuk/components/error-summary/error-summary.mjs";
-import { SkipLink } from "govuk-frontend/dist/govuk/components/skip-link/skip-link.mjs";
 
 const COMPONENTS = [
   ["govuk-button", Button],
   ["govuk-error-summary", ErrorSummary],
-  ["govuk-skip-link", SkipLink],
 ] as const;
 
 /**
