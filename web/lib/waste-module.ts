@@ -140,7 +140,7 @@ export function wasteSources(place: PlaceView): Part[][] {
   ]);
 }
 
-/** An upcoming events row, as lib/schedule.ts reads it. */
+/** An upcoming event, as the dataset snapshot holds it (lib/dataset-schema.ts). */
 type UpcomingRow = SourceRow & {
   id: string;
   start: string;

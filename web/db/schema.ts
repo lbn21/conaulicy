@@ -15,14 +15,24 @@ import {
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
-import type { EventType, Locality } from "../data-model.ts";
-import type { Confidence } from "../districts.ts";
+import type { EventType, Locality } from "../lib/data-model.ts";
+import type { Confidence } from "../lib/districts.ts";
 
 // Optional house-number range, e.g. only the even numbers 2–40.
 const houseNumbers = {
   houseFrom: text(),
   houseTo: text(),
   parity: text().$type<"even" | "odd">(),
+};
+
+// A place TERYT no longer lists is never deleted, only retired
+// (scripts/import.ts): its page answers 308 to replacedBy, a reviewed
+// rename, or says it is gone. Zone members and old addresses keep it.
+const retirement = {
+  /** When the TERYT reload found it gone; null: a current place. */
+  retiredAt: timestamp({ withTimezone: true, mode: "string" }),
+  /** The place that replaced it (a reviewed rename), if any. */
+  replacedBy: text(),
 };
 
 const parityCheck = (name: string, parity: AnyPgColumn) =>
@@ -50,6 +60,7 @@ export const localities = pgTable(
     parentId: text().references((): AnyPgColumn => localities.id),
     /** normalize(label), filled by the importer; what /api/search matches. */
     search: text().notNull(),
+    ...retirement,
   },
   (t) => [
     check("localities_kind", sql`${t.kind} in ('miasto', 'wies', 'czesc_wsi')`),
@@ -77,6 +88,7 @@ export const streets = pgTable(
     nazwa2: text("nazwa_2"),
     ...houseNumbers,
     search: text().notNull(),
+    ...retirement,
   },
   (t) => [parityCheck("streets_parity", t.parity), index().on(t.localityId)],
 );

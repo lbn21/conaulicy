@@ -1,16 +1,19 @@
 // The gazetteer as the database holds it (lib/districts.ts; filled by
-// scripts/districts-seed.ts): what the water cron gives the prompts and
-// the gate (app/api/cron/zuk/route.ts). Throws if unreadable: the run
-// fails without writing, and the old file stays.
-import "server-only";
+// scripts/districts-seed.ts): what the dataset snapshot gives the water
+// cron for the prompts and the gate (scripts/lib/dataset.ts,
+// app/api/cron/zuk/route.ts). Throws if unreadable.
 import { asc } from "drizzle-orm";
-import { db, districtAliases, districtAliasStreets } from "./db/index.ts";
-import type { District } from "./districts.ts";
+import {
+  type Db,
+  districtAliases,
+  districtAliasStreets,
+} from "../../db/index.ts";
+import type { District } from "../../lib/districts.ts";
 
-export async function loadDistricts(): Promise<District[]> {
+export async function loadDistricts(db: Db): Promise<District[]> {
   const [aliases, links] = await Promise.all([
-    db().select().from(districtAliases).orderBy(asc(districtAliases.id)),
-    db()
+    db.select().from(districtAliases).orderBy(asc(districtAliases.id)),
+    db
       .select()
       .from(districtAliasStreets)
       .orderBy(

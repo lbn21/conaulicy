@@ -109,15 +109,17 @@ test("the shells: every `use cache` scope is cacheLife max and tags the dataset"
     "app/ulice/page.tsx: max DATASET",
     "components/place-page.tsx: max ...PLACE_TAGS",
     "components/place-page.tsx: max ...PLACE_TAGS",
+    "components/place-page.tsx: max ...PLACE_TAGS",
     "components/subpage-route.tsx: max ...PLACE_TAGS",
+    "lib/dataset.ts: max DATASET",
   ]);
   // Every scope is one of those.
-  assert.equal(calling(/"use cache"/).length, 5);
+  assert.equal(calling(/"use cache"/).length, 6);
+  // The places' data is the dataset snapshot, under the dataset tag only.
   assert.match(
     source("lib/schedule.ts"),
-    /export const PLACE_TAGS = DAY_CACHE\.tags;/,
+    /export const PLACE_TAGS = \[DATASET\];/,
   );
-  assert.match(source("lib/schedule.ts"), /const DAY_CACHE = CACHE;/);
 });
 
 test("the live blocks: read after io(), never inside a cached scope", () => {

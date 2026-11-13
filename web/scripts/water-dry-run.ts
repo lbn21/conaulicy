@@ -58,8 +58,9 @@ const published =
 let districts: District[] = DISTRICTS;
 if (args.districts === "db") {
   // Only here: it needs DATABASE_URL.
-  const { loadDistricts } = await import("../lib/districts-db.ts");
-  districts = await loadDistricts();
+  const { loadDistricts } = await import("./lib/districts-db.ts");
+  const { db } = await import("../db/index.ts");
+  districts = await loadDistricts(db());
 } else if (args.districts !== "seed") fail("--districts is seed or db.");
 
 let ai: AiResult | undefined;

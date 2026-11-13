@@ -1,5 +1,5 @@
+import { getDataset } from "@/lib/dataset";
 import { unknownStreets } from "@/lib/districts";
-import { loadDistricts } from "@/lib/districts-db";
 import { runImgw } from "@/lib/imgw-cron";
 import { upstream as imgwUpstream } from "@/lib/imgw-warnings";
 import { IMGW_KEY, PGE_KEY } from "@/lib/live-status";
@@ -47,11 +47,12 @@ export function GET(request: Request) {
     writeFile: (body) => writeZukFile(body, source.water.pathname),
     // The TERYT snapshot, not the database: the prompt and the gate need
     // each street's CECHA and NAZWA_1 (lib/zuk-resolve.ts). The town's
-    // district names (the gazetteer, lib/districts.ts) from the database.
+    // district names (the gazetteer, lib/districts.ts) from the dataset
+    // snapshot (lib/dataset.ts), never the database.
     // A district street the snapshot lacks is skipped by the gate: logged
     // (ids only), so a stale seed or snapshot shows in the logs.
     places: async () => {
-      const districts = await loadDistricts();
+      const { districts } = await getDataset();
       for (const u of unknownStreets(districts, ZUK_PLACES.streets))
         console.log(JSON.stringify({ zuk: "district-street-unknown", ...u }));
       return { ...ZUK_PLACES, districts };

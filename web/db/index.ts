@@ -7,7 +7,7 @@ import * as schema from "./schema.ts";
 
 export * from "./schema.ts";
 
-type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
+export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 let client: Db | undefined;
 

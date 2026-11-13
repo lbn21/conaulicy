@@ -2,7 +2,7 @@
 // The search matcher (lib/search.ts) normalizes labels and queries with it,
 // on the device over the cached index and on the server for /api/search.
 // The importer and the CI fixture store normalize(label) per place
-// (lib/schedule.ts orders its place queries by it); fileSlug turns it into
+// (the dataset snapshot lists places in its order, scripts/lib/dataset.ts); fileSlug turns it into
 // the PDF's and both calendars' file names.
 
 const DIACRITICS: Record<string, string> = {

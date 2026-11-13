@@ -1,7 +1,7 @@
 // The informal district names of a town (the gazetteer): estates and
 // areas that TERYT has no name (or, for its town parts, no streets) for,
 // but sources and residents use. Each is stored in the database
-// (lib/db/schema.ts district_aliases, filled by scripts/districts-seed.ts
+// (db/schema.ts district_aliases, filled by scripts/districts-seed.ts
 // from lib/districts-seed.ts) with the forms it is written in and its
 // streets, each street whole or a stretch of it. The prompt gives the
 // model the list (lib/water-prompt.ts); the model names a district by its
