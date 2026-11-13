@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { type IconName, Tile } from "@/components/icon";
 import { SkipTarget } from "@/components/skip-target";
 
@@ -15,6 +15,14 @@ const CLASSES = {
   l: ["govuk-caption-l", "govuk-heading-l"],
   xl: ["govuk-caption-xl", "govuk-heading-xl"],
 } as const;
+
+/** A skeleton's heading block: the element alone, no target. */
+function Plain({
+  as: Tag,
+  ...props
+}: { as: "p" | "span" | "h1" } & HTMLAttributes<HTMLElement>) {
+  return <Tag {...props} />;
+}
 
 export function PageHead({
   title,
@@ -44,6 +52,7 @@ export function PageHead({
   /** After the lead: the page's first action. */
   children?: ReactNode;
 }) {
+  const Target = Heading === "h1" ? SkipTarget : Plain;
   const heading = (
     <>
       {icon && <Tile name={icon} />}
@@ -55,18 +64,20 @@ export function PageHead({
       {crumbs}
       {before}
       {/* The skip link's target: the heading block's start, the street
-        line, else the h1 (components/skip-target.tsx). */}
+        line, else the h1 (components/skip-target.tsx). Never a
+        skeleton's (tag "p"): its page streams in after it, in the same
+        HTML, with its own. */}
       {caption && (
-        <SkipTarget as="span" className={CLASSES[size][0]}>
+        <Target as="span" className={CLASSES[size][0]}>
           {caption}
-        </SkipTarget>
+        </Target>
       )}
       {caption ? (
         <Heading className={CLASSES[size][1]}>{heading}</Heading>
       ) : (
-        <SkipTarget as={Heading} className={CLASSES[size][1]}>
+        <Target as={Heading} className={CLASSES[size][1]}>
           {heading}
-        </SkipTarget>
+        </Target>
       )}
       {lead && <p className="govuk-body-l">{lead}</p>}
       {children}

@@ -94,10 +94,10 @@ try {
       }
       // Every page, browser and bot: an h1 with text in the HTML before
       // anything streamed after it (React's hidden <div id="S:…">), and
-      // before it one <main> and one #main-content (the skip link's target,
+      // before it one <main>, and one #main-content (the skip link's target,
       // the heading block's start, never the <main>: docs/layout.md; an
-      // address page's content streamed after it brings its own, which
-      // replaces the skeleton's). An address page reads its place behind
+      // address page's comes with its content, streamed after its
+      // skeleton, which has none). An address page reads its place behind
       // <Suspense> (components/place-suspense.tsx), so its h1 may
       // come after the skeleton: anywhere in its HTML.
       const streamedAt = html.indexOf('<div hidden id="S:');
@@ -110,7 +110,7 @@ try {
         statuses.push(`${route.path}${suffix}: no h1 in the static HTML`);
       }
       if (
-        (before.match(/id="main-content"/g) ?? []).length !== 1 ||
+        (address ? html : before).match(/id="main-content"/g)?.length !== 1 ||
         (before.match(/<main\b/g) ?? []).length !== 1 ||
         /<main\b[^>]*id="main-content"/.test(html)
       ) {
