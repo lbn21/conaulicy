@@ -10,10 +10,7 @@ import { useEffect } from "react";
 // (nextjs.org/docs/app/api-reference/functions/use-pathname, "Do something
 // in response to a route change"). A component already started is skipped
 // (lib/govuk-frontend.ts). The error summary the search draws is started by
-// the search itself. The address pages' content, which comes in after the
-// layout, starts its own the same way (components/place-suspense.tsx).
-// In a <Suspense> in the layout: on a path not
-// prerendered (a house number), usePathname waits for the request.
+// the search itself.
 export function GovukFrontend() {
   const pathname = usePathname();
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs again on each new path, as the docs' route-change example

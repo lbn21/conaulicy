@@ -12,18 +12,19 @@
 // its replaced_by is set. One deleted before places were kept (no row at
 // all) gets a place_redirects row instead. Checks: the new id is a current
 // place (a street or a locality); the old id is no current place and has
-// no redirect yet, and is no redirect's target (no chains). Then the
-// dataset snapshot is published (scripts/lib/dataset.ts).
+// no redirect yet, and is no redirect's target (no chains). It only writes
+// the row: it never publishes the dataset snapshot itself, so every publish
+// goes through the one queue (the `dataset` concurrency group of the
+// import and prod-db workflows). The next import, or a manual run of the
+// import workflow, publishes it; a rename changes the place set, so that
+// publish calls the Deploy Hook (web/lib/dataset-sync.ts) and the new
+// deployment makes the 308s.
 //
-// Env: IMPORT_DATABASE_URL, DATABASE_URL_UNPOOLED or DATABASE_URL;
-// BLOB_READ_WRITE_TOKEN (the snapshot); optional REVALIDATE_SECRET (then the site's cache is purged, as after an import;
-// site: etl/sources.yaml site.url, or SITE_URL), VERCEL_AUTOMATION_BYPASS_SECRET.
+// Env: IMPORT_DATABASE_URL, DATABASE_URL_UNPOOLED or DATABASE_URL.
 import { parseArgs } from "node:util";
 import pg from "pg";
-import { publishDataset } from "./lib/dataset.ts";
 import { fail, guardTarget } from "./lib/import-data.ts";
 import { databaseUrl } from "./lib/local-db.ts";
-import { revalidate } from "./lib/revalidate.ts";
 
 const { values: args } = parseArgs({
   options: {
@@ -91,15 +92,9 @@ try {
         "insert into place_redirects (old_id, new_id, reason) values ($1, $2, $3)",
         [from, to, reason],
       );
-    console.log("Written.");
-    try {
-      const published = await publishDataset(url);
-      if (published?.changed) await revalidate();
-    } catch (error) {
-      fail(
-        `Written, but the dataset snapshot was NOT published (the site still has no redirect): ${(error as Error).message}`,
-      );
-    }
+    console.log(
+      "Written. The next import (or a manual run of the import workflow) publishes it; its new place set deploys the site.",
+    );
   }
 } finally {
   await client.end();

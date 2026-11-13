@@ -1,6 +1,6 @@
+import Link from "next/link";
 import { subpageHref } from "@/components/function-rows";
 import { Icon, Tile } from "@/components/icon";
-import { PlaceLink } from "@/components/place-link";
 import { CUT, TimeChips, windowsOf } from "@/components/rows/outage";
 import { MODULES, type Module } from "@/lib/modules";
 import type { PlaceView } from "@/lib/schedule";
@@ -57,13 +57,13 @@ export function NowBanner({
                   { item, continued: item.span.day !== place.today },
                 ])}
               />
-              <PlaceLink
+              <Link
                 className="govuk-link govuk-!-font-size-16 govuk-!-display-inline-block govuk-!-margin-top-2"
                 href={subpageHref(module, place)}
               >
                 Szczegóły
                 <span className="govuk-visually-hidden">{` ${module.hiddenLabel}`}</span>
-              </PlaceLink>
+              </Link>
             </li>
           );
         })}

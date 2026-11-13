@@ -1,59 +1,22 @@
-import { HubMain } from "@/components/hub";
-import {
-  metadataQuery,
-  PlaceUnknown,
-  placeMetadata,
-  unknownMetadata,
-} from "@/components/place-page";
-import { PlaceSuspense } from "@/components/place-suspense";
-import { allPlaces } from "@/lib/prerender";
+import { notFound } from "next/navigation";
+import { HubMain, hubData } from "@/components/hub";
+import { placeMetadata } from "@/components/place-page";
+import type { PlaceView } from "@/lib/schedule";
 
-// The address page, the hub of modules (components/hub.tsx): its static
-// shell holds only the skeleton (components/place-suspense.tsx); the whole
-// page is read per request behind it, every block at once, and comes in
-// together. A house number is ?nr= (searchParams), read behind
-// the skeleton too (components/place-page.tsx numberQuery). Its prefetch
-// stays static (the root layout's ensureStatic).
+// The address page, the hub of modules (components/hub.tsx), prerendered
+// whole for every current place: only these exist; any other id is the
+// prerendered 404, answered by Vercel's routing layer with no function
+// (dynamicParams = false).
 
-// Every known place at build (lib/prerender.ts), so none gets the fallback
-// shell.
-export async function generateStaticParams(): Promise<Array<{ id: string }>> {
-  return allPlaces();
+export { placeParams as generateStaticParams } from "@/lib/schedule";
+export const dynamicParams = false;
+
+export async function generateMetadata({ params }: PageProps<"/adres/[id]">) {
+  const read = await hubData((await params).id);
+  if (!read) notFound();
+  return placeMetadata(read.data[0] as PlaceView);
 }
 
-export async function generateMetadata({
-  params,
-  searchParams,
-}: PageProps<"/adres/[id]">) {
-  const { id } = await params;
-  const query = await metadataQuery(id, searchParams);
-  if (!query) return unknownMetadata(id);
-  return placeMetadata(id, query.nr, query.missing);
-}
-
-export default function PlacePage({
-  params,
-  searchParams,
-}: PageProps<"/adres/[id]">) {
-  return (
-    <PlaceSuspense>
-      <PlacePageContent params={params} searchParams={searchParams} />
-    </PlaceSuspense>
-  );
-}
-
-async function PlacePageContent({
-  params,
-  searchParams,
-}: Pick<PageProps<"/adres/[id]">, "params" | "searchParams">) {
-  // A renamed place's old address: proxy.ts answers its 308; a retired
-  // one nothing replaced says it is gone.
-  const { id } = await params;
-  return (
-    <HubMain
-      id={id}
-      searchParams={searchParams}
-      unknown={<PlaceUnknown id={id} />}
-    />
-  );
+export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {
+  return <HubMain id={(await params).id} />;
 }

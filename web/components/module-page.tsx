@@ -1,101 +1,108 @@
-import { io } from "next/cache";
-import { cache, type ReactNode } from "react";
-import {
-  AddressPage,
-  type AddressSearch,
-  knownPlace,
-  numberQuery,
-  placeCaption,
-} from "@/components/place-page";
-import { WarsawToday } from "@/components/warsaw-today";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { cache } from "react";
+import { PageDay } from "@/components/page-day";
+import { AddressPage, placeCaption } from "@/components/place-page";
 import { unchecked } from "@/lib/hub";
-import { findSubpage, type Module } from "@/lib/modules";
+import { indexable } from "@/lib/indexing";
+import type { SubpageId } from "@/lib/module-ids";
+import { MODULES, type Module } from "@/lib/modules";
+import { pageData, SOURCE_TAGS } from "@/lib/page-cache";
+import { placePath, titleLabel } from "@/lib/places";
 import { getPlace, type PlaceView } from "@/lib/schedule";
+import { pageMetadata } from "@/lib/share";
 
-// A module's subpage, /adres/[id]/<module> (lib/modules.ts), with the same
-// ?nr= as the address page (components/place-page.tsx numberQuery), the
-// place's breadcrumbs in its head's band: one frame for every module
-// (Subpage), its body the module's Details. An unknown module is a 404.
-// Its metadata: components/subpage-route.tsx. Read per request, whole, behind one
-// <Suspense> with one skeleton, as the address page (components/hub.tsx).
-
-/**
- * Everything a subpage shows, read per request (after io(), so nothing
- * date-dependent is ever prerendered), the place and the
- * module's data at once, one read per request (React's cache(), as
- * components/hub.tsx hubData). Null for
- * an unknown module.
- */
-const subpageData = cache(
-  async (id: string, slug: string, nr: string | null) => {
-    await io();
-    const module = findSubpage(slug);
-    if (!module) return null;
-    const [place, data] = await Promise.all([
-      getPlace(id, nr),
-      module.load(id, nr),
-    ]);
-    return { module, place, data };
-  },
-);
+// A module's subpage, /adres/[id]/<module> (lib/modules.ts), the place's
+// breadcrumbs in its head's band: one frame for every module (Subpage),
+// its body the module's Details. Each subpage has its own route folder
+// (app/adres/[id]/smieci/, woda/, prad/), prerendered whole for every
+// place, as the address page (components/hub.tsx).
 
 /**
- * A subpage's content (subpageData), whole, behind the page's one
- * <Suspense> (components/place-suspense.tsx). `unknown` is what an
- * unknown place or module shows.
+ * Everything a subpage shows: the place and the module's data; null: no
+ * such place. One read per render (React's cache()), cached with the page
+ * (lib/page-cache.ts) under the module's tags and the dataset's.
  */
+const subpageData = cache((id: string, slug: SubpageId) => {
+  const module = MODULES[slug] as Module<unknown>;
+  return pageData(
+    `${placePath(id)}/${slug}`,
+    [...new Set([SOURCE_TAGS.dataset, ...module.tags])],
+    async () => {
+      const [place, data] = await Promise.all([getPlace(id), module.load(id)]);
+      return place ? { place, data } : null;
+    },
+  );
+});
+
+/**
+ * A subpage's metadata, the same for every module: its own canonical, the
+ * title "<h1> – <place>", the module's description of the place; never a
+ * search result unless the module says it may be (Module.indexed), its
+ * links followed.
+ */
+export async function subpageMetadata(
+  id: string,
+  slug: SubpageId,
+): Promise<Metadata> {
+  const read = await subpageData(id, slug);
+  if (!read) notFound();
+  const module = MODULES[slug] as Module<unknown>;
+  const { place } = read;
+  return {
+    ...pageMetadata({
+      path: `${placePath(id)}/${module.id}`,
+      title: `${module.pageTitle} – ${titleLabel(place.label)}`,
+      description: module.description(place),
+    }),
+    ...(!module.indexed?.(place) && {
+      robots: { index: false, follow: indexable() },
+    }),
+  };
+}
+
+/** A subpage's content (subpageData), or the 404. */
 export async function ModuleMain({
   id,
   slug,
-  searchParams,
-  unknown,
 }: {
   id: string;
-  slug: string;
-  /** The page's, for its ?nr= (numberQuery). */
-  searchParams: AddressSearch;
-  /** What an unknown place or module shows. */
-  unknown: ReactNode;
+  slug: SubpageId;
 }) {
-  // An unknown module or place: its 404 before anything is read per
-  // request (components/place-page.tsx knownPlace).
-  if (!findSubpage(slug) || !(await knownPlace(id))) return <>{unknown}</>;
-  const { nr, missing } = await numberQuery(searchParams);
-  const loaded = await subpageData(id, slug, nr);
-  if (!loaded?.place) return <>{unknown}</>;
-  const { module, place, data } = loaded;
-  // „Dziś” and „Jutro” for the read's Warsaw day (components/warsaw-today.tsx).
+  const read = await subpageData(id, slug);
+  if (!read) notFound();
   return (
-    <WarsawToday day={place.today}>
-      <Subpage module={module} place={place} data={data} missing={missing} />
-    </WarsawToday>
+    <PageDay day={read.place.today}>
+      <Subpage
+        module={MODULES[slug] as Module<unknown>}
+        place={read.place}
+        data={read.data}
+      />
+    </PageDay>
   );
 }
 
 /**
  * Every module's subpage, one frame (components/place-page.tsx
- * AddressPage): the place as the caption, the module's h1, its error; then
- * its body (Module.Details, its source and check time at the bottom), or, with no data now, the address page's line
- * that it could not be checked (lib/hub.ts unchecked).
+ * AddressPage): the place as the caption, the module's h1; then its body
+ * (Module.Details, its source and freshness at the bottom), or, with no
+ * data now, the address page's line that it could not be checked
+ * (lib/hub.ts unchecked).
  */
 export function Subpage({
   module,
   place,
   data,
-  missing = false,
 }: {
   module: Module<unknown>;
   place: PlaceView;
   data: unknown;
-  missing?: boolean;
 }) {
-  const error = module.error?.(place, missing) ?? null;
   return (
     <AddressPage
       place={place}
       caption={placeCaption(place)}
       heading={module.pageTitle}
-      error={error}
       icon={module.id}
     >
       {/* The module's colours for everything in its body (site.scss
@@ -104,7 +111,7 @@ export function Subpage({
         {data === null ? (
           <p className="app-empty govuk-body">{unchecked(module)}</p>
         ) : (
-          <module.Details data={data} error={error} />
+          <module.Details data={data} />
         )}
       </div>
     </AddressPage>

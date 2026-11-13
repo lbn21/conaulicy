@@ -138,9 +138,6 @@ export async function check({ origin }, failures) {
         })
       ).newPage();
       await page.goto(`${origin}/adres/${id}`, { waitUntil: "networkidle" });
-      await page.waitForFunction(
-        () => !document.querySelector(".app-skeleton"),
-      );
       const list = await rendered(page);
       const frames = new Set(
         list.filter((row) => !row.empty).map((row) => row.frame),

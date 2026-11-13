@@ -56,8 +56,8 @@ test("address pages: home, the place's list, the address on a subpage", () => {
   const town = item("/ulice#m-0972447", "Lubaczów");
   assert.equal(place(false), crumbs(home, town));
   assert.equal(
-    place(true, { nr: "12", givenNr: "12" }),
-    crumbs(home, town, item("/adres/0972447-26555?nr=12", "ul. Żuki 12")),
+    place(true),
+    crumbs(home, town, item("/adres/0972447-26555", "ul. Żuki")),
   );
   assert.equal(
     place(true, {

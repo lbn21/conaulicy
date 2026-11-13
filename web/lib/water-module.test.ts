@@ -2,11 +2,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Disruption } from "./disruptions.ts";
 import { DISTRICTS } from "./districts-seed.ts";
-import { type Checked, checkedLine } from "./hub.ts";
-
-/** The check, as a subpage's source block says it; none: null. */
-const checkedText = (at: Checked) =>
-  checkedLine(at)?.replaceAll("\u00a0", " ") ?? null;
 
 import {
   CUT_99,
@@ -40,19 +35,16 @@ import {
   MZGKIM_NEWS,
   matches,
   noticeLink,
-  outsideRange,
   scope,
   staleNote,
   type Water,
   water,
   waterAiNote,
   waterCalendarRefresh,
-  waterChecked,
   waterEmpty,
   waterNone,
   waterSources,
   waterStatus,
-  waterTrace,
   waterUpcoming,
 } from "./water-module.ts";
 import {
@@ -82,12 +74,10 @@ const whereOf = (data: Water) => waterUpcoming(data)[0]?.second;
 /** The section's lines, its groups flattened. */
 const lines = (data: Water) => waterStatus(data).flat();
 
-const waterLine = checkedText;
-
 const place = testPlace;
 /** A village or a part of one, by its SIMC id. */
-const village = (id: string, name: string, givenNr: string | null = null) =>
-  place({ id, kind: "wies", name, localityId: id, streetId: null, givenNr });
+const village = (id: string, name: string) =>
+  place({ id, kind: "wies", name, localityId: id, streetId: null });
 
 const ZUKI = place({});
 const ASNYKA = place({ id: "0972447-00470", streetId: "0972447-00470" });
@@ -216,8 +206,6 @@ test("matching: a village part takes its own cuts and its whole village's", () =
     "ulica Pilipy w Młodowie: od nr 1 do nr 9",
   );
   assert.equal(whereOf(waterAt(PILIPY_PART)), "Cała ulica Pilipy.");
-  // Never hidden for a number: not the part's own cut.
-  assert.equal(waterAt({ ...PILIPY_PART, givenNr: "999" }).outages.length, 1);
 });
 
 // A part gets
@@ -240,7 +228,7 @@ test("matching: a village part takes its village's partial cuts, never its other
     const partial = cut({ place: village, label: młodów, ...over });
     assert.equal(matches(PILIPY_PART, partial), expected, name);
     if (!expected) continue;
-    const data = waterAt({ ...PILIPY_PART, givenNr: "3" }, only(partial));
+    const data = waterAt(PILIPY_PART, only(partial));
     assert.equal(data.outages.length, 1, name);
     assert.equal(
       whereOf(data),
@@ -283,7 +271,7 @@ test("matching: 39885's whole villages reach their parts, one cut a day", () => 
   );
 });
 
-test("matching: house numbers in a village with streets, the village and every street, any nr", () => {
+test("matching: house numbers in a village with streets, the village and every street", () => {
   const krowica = cut(KROWICA_RANGE);
   assert.equal(
     matches({ localityId: "0606180", streetId: null }, krowica),
@@ -295,120 +283,21 @@ test("matching: house numbers in a village with streets, the village and every s
   );
   assert.equal(matches(ZALUZE, krowica), false);
   assert.equal(scope(krowica), "Krowica Sama: od nr 10 do nr 50");
-  // A village's range in a village with streets is never filtered by nr,
-  // on the village or on its streets.
-  const krowicaSama = village("0606180", "Krowica Sama", "99");
+  // A village's range in a village with streets: on the village and on
+  // its streets.
+  const krowicaSama = village("0606180", "Krowica Sama");
   const street = place({
     id: "0606180-51473",
     localityId: "0606180",
     streetId: "0606180-51473",
-    givenNr: "99",
   });
   for (const address of [krowicaSama, street])
     assert.deepEqual(waterAt(address, [post({ items: [krowica] })]).outages, [
       krowica,
     ]);
-  assert.equal(outsideRange(krowica, "99"), false);
 });
 
-const SOBIESKIEGO = cut(SOBIESKIEGO_RANGE);
-const ranged = (ranges: Array<{ from: string; to: string }>) =>
-  cut({ ...SOBIESKIEGO_RANGE, scope: { type: "ranges", ranges } });
 const only = (item: Disruption) => [post({ items: [item] })];
-// Opaka, a streetless village: 39885 cuts its nr 104–110 on 27 Oct.
-const opaka = (givenNr: string | null) => village("0606317", "Opaka", givenNr);
-
-test("house number: outside a street's range, the cut left out, said once", () => {
-  const at = (nr: string | null) => waterAt(sobieskiego(nr), only(SOBIESKIEGO));
-  const five = at("5");
-  assert.deepEqual(five.outages, []);
-  assert.deepEqual(waterUpcoming(five), []);
-  assert.equal(five.hiddenForNr, true);
-  // The section says the cut leaves nr 5 out; /woda's trace too.
-  assert.deepEqual(lines(five), [
-    ["Pod nr 5: brak zapowiedzianych przerw."],
-    [
-      "Gmina zapowiedziała przerwę na tej ulicy – poniedziałek, 26 października, 8:00–16:00 – ale według komunikatu nie obejmuje nr 5.",
-    ],
-  ]);
-  assert.equal(
-    waterTrace(five),
-    "Gmina zapowiedziała też przerwę na tej ulicy, ale według komunikatu nie obejmuje nr 5.",
-  );
-  // Whole numbers compared, letters ignored: 30a and 47a are inside 23–47,
-  // 22a is not; no number, or not a number: shown.
-  for (const nr of ["30", "30a", "47", "47a", "abc", null]) {
-    assert.deepEqual(at(nr).outages, [SOBIESKIEGO], String(nr));
-    assert.equal(at(nr).hiddenForNr, false, String(nr));
-    assert.equal(waterTrace(at(nr)), null, String(nr));
-  }
-  assert.deepEqual(at("22a").outages, []);
-  // Either part of "7/22" inside is enough; a range we cannot read, shown.
-  const twenties = ranged([{ from: "20", to: "30" }]);
-  assert.equal(outsideRange(twenties, "7/22"), false);
-  assert.equal(outsideRange(twenties, "7/2"), true);
-  assert.equal(outsideRange(ranged([{ from: "x", to: "30" }]), "5"), false);
-});
-
-test("house number: two ranges, listed numbers, unknown and whole", () => {
-  const two = ranged([
-    { from: "1", to: "15" },
-    { from: "16", to: "54" },
-  ]);
-  assert.equal(outsideRange(two, "16"), false);
-  assert.equal(outsideRange(two, "55"), true);
-  const twelve = cut({
-    ...SOBIESKIEGO_RANGE,
-    scope: { type: "numbers", numbers: ["12"] },
-    note: "nr 12",
-  });
-  assert.equal(outsideRange(twelve, "12"), false);
-  assert.equal(outsideRange(twelve, "12a"), false);
-  assert.equal(outsideRange(twelve, "13"), true);
-  const odd = cut({
-    ...SOBIESKIEGO_RANGE,
-    scope: { type: "unknown" },
-    note: "numery nieparzyste od 13 do 21",
-  });
-  const whole = cut({
-    ...SOBIESKIEGO_RANGE,
-    scope: { type: "whole" },
-    note: null,
-  });
-  for (const nr of ["2", "15", "999"]) {
-    assert.deepEqual(waterAt(sobieskiego(nr), only(odd)).outages, [odd], nr);
-    assert.deepEqual(waterAt(sobieskiego(nr), only(whole)).outages, [whole]);
-  }
-});
-
-test("house number: a streetless village and a village part, filtered", () => {
-  // 39885: Opaka „od numeru 104 do 110” on 27 Oct.
-  const opakaCuts = (nr: string | null) =>
-    waterAt(opaka(nr)).outages.filter((d) => d.place.localityId === "0606317");
-  assert.deepEqual(opakaCuts("5"), []);
-  assert.equal(opakaCuts("105").length, 1);
-  assert.equal(opakaCuts(null).length, 1);
-  // 39885's Podłęże, 44–92, made the cut of a TERYT part: Czarne (Załuże).
-  const part = cut({
-    place: { localityId: "0606470", streetId: null },
-    label: { locality: "Czarne", parent: "Załuże", street: null },
-    where: "Załuże – Podłęże od numeru 44 do numeru 92",
-    scope: { type: "ranges", ranges: [{ from: "44", to: "92" }] },
-    note: "od numeru 44 do numeru 92",
-  });
-  const czarne = village("0606470", "Czarne", "10");
-  assert.deepEqual(waterAt(czarne, only(part)).outages, []);
-  assert.equal(waterAt(czarne, only(part)).hiddenForNr, true);
-});
-
-test("house number: a village's trace line; none for a cut of unknown houses", () => {
-  assert.equal(
-    waterTrace(waterAt(opaka("5"))),
-    "Gmina zapowiedziała też przerwę w tej miejscowości, ale według komunikatu nie obejmuje nr 5.",
-  );
-  const odd = cut({ ...SOBIESKIEGO_RANGE, scope: { type: "unknown" } });
-  assert.equal(waterTrace(waterAt(sobieskiego("999"), only(odd))), null);
-});
 
 const ZUKI_CUT = { localityId: "0972447", streetId: "0972447-26555" };
 
@@ -477,14 +366,10 @@ test("block's where: from the scope and our names, never the note", () => {
   // 39885's Załuże „Podłęże od numeru 44 do numeru 92”: its ranges, our
   // name (Podłęże is no TERYT place); the note is never read.
   assert.equal(where(ZALUZE), "Załuże, numery 44–92.");
-  assert.equal(
-    where({ ...ZALUZE, givenNr: "50" }),
-    "Obejmuje Twój dom (nr 50).",
-  );
   // A whole scope with a note: not „Cała”, and the note not shown.
   const noted = cut({ ...SOBIESKIEGO_RANGE, scope: { type: "whole" } });
   assert.equal(
-    where(sobieskiego(null), only(noted)),
+    where(sobieskiego(), only(noted)),
     "Część ulicy – których domów dotyczy, sprawdź w szczegółach.",
   );
   // Numbers.
@@ -493,7 +378,7 @@ test("block's where: from the scope and our names, never the note", () => {
     scope: { type: "numbers", numbers: ["3", "5", "7"] },
   });
   assert.equal(
-    where(sobieskiego(null), only(numbers)),
+    where(sobieskiego(), only(numbers)),
     "Ulica Jana III Sobieskiego, numery 3, 5, 7.",
   );
 });
@@ -518,40 +403,6 @@ test("one whole-place word from TERYT's kind, the block and the section alike", 
       `Cała ${word} ${locality}.`,
     );
   }
-});
-
-test("block's where: a street's range, „Obejmuje Twój dom” only inside it", () => {
-  const odd = cut({
-    ...SOBIESKIEGO_RANGE,
-    uid: "zuk-39885-2026-10-28-sobieskiego",
-    date: "2026-10-28",
-    start: "2026-10-28 08:00:00",
-    end: "2026-10-28 16:00:00",
-    scope: { type: "unknown" },
-    note: "numery nieparzyste",
-  });
-  const items = (nr: string | null) =>
-    waterUpcoming(
-      waterAt(sobieskiego(nr), [post({ items: [SOBIESKIEGO, odd] })]),
-    ).map((item) => item.second);
-  assert.deepEqual(items(null), [
-    "Ulica Jana III Sobieskiego, numery 23–47.",
-    "Część ulicy – których domów dotyczy, sprawdź w szczegółach.",
-  ]);
-  assert.deepEqual(items("30"), [
-    "Obejmuje Twój dom (nr 30).",
-    "Część ulicy – których domów dotyczy, sprawdź w szczegółach.",
-  ]);
-  // 5 is outside 23–47: that cut is left out.
-  assert.deepEqual(items("5"), [
-    "Część ulicy – których domów dotyczy, sprawdź w szczegółach.",
-  ]);
-  const opakaCut = post().items.find((d) => d.place.localityId === "0606317");
-  assert.ok(opakaCut);
-  const opakaWhere = (nr: string | null) =>
-    whereOf(waterAt(opaka(nr), only(opakaCut as Disruption)));
-  assert.equal(opakaWhere(null), "Opaka, numery 104–110.");
-  assert.equal(opakaWhere("105"), "Obejmuje Twój dom (nr 105).");
 });
 
 test("section: never the cuts again, the post as its source", () => {
@@ -685,10 +536,7 @@ test("town, fresh, no cut: the villages' none, both sources' posts", () => {
       ".",
     ]);
     assert.deepEqual(waterSources(data), [[GMINA], [MZGKIM]]);
-    assert.equal(
-      waterLine(waterChecked(data)),
-      "Sprawdziliśmy 25 października 13:20.",
-    );
+    assert.equal(data.checkedAt, CHECKED);
   }
 });
 
@@ -871,7 +719,7 @@ test("town, both sources' cuts: both posts, both in the AI note", () => {
 function quietAndCut(views: Parameters<typeof water>[0]) {
   const quiet = water(views, ASNYKA);
   assert.deepEqual(waterSources(quiet), [[GMINA], [MZGKIM]]);
-  assert.equal(waterChecked(quiet)?.toISOString(), CHECKED);
+  assert.equal(quiet.checkedAt, CHECKED);
   return { quiet, cut: water(views, ZUKI) };
 }
 
@@ -950,27 +798,22 @@ test("town, no file at all: the gmina's and MZGKiM's posts to check", () => {
       ".",
     ]);
     assert.deepEqual(waterSources(data), [[GMINA], [MZGKIM]]);
-    assert.equal(waterChecked(data), null);
+    assert.equal(data.checkedAt, null);
+    assert.equal(data.changedAt, null);
   }
 });
 
-test("freshness: the checked line always, the stale note only after 1 h", () => {
+test("freshness: the last read always kept, the stale note only after 1 h", () => {
   const checked = Date.parse(CHECKED);
   const at = (ms: number) =>
     waterAt(ZUKI, [post()], new Date(checked + ms), CHECKED);
   const fresh = at(STALE_MS);
-  assert.equal(
-    waterLine(waterChecked(fresh)),
-    "Sprawdziliśmy 25 października 13:20.",
-  );
+  assert.equal(fresh.checkedAt, CHECKED);
   assert.equal(staleNote(fresh), null);
   assert.equal(lines(fresh).length, 0);
 
   const stale = at(STALE_MS + 1);
-  assert.equal(
-    waterLine(waterChecked(stale)),
-    "Sprawdziliśmy 25 października 13:20.",
-  );
+  assert.equal(stale.checkedAt, CHECKED);
   const note = staleNote(stale);
   assert.ok(note);
   assert.deepEqual(note[1], {
@@ -983,14 +826,15 @@ test("freshness: the checked line always, the stale note only after 1 h", () => 
   assert.match(waterNone(at(STALE_MS + 1)), /przy ostatnim sprawdzeniu/);
 });
 
-test("no file: the gmina's news only, no cut, no checked line", () => {
+test("no file: the gmina's news only, no cut, no change time", () => {
   const data = water({}, SMOLINCE);
   assert.deepEqual(data.outages, []);
   assert.deepEqual(waterStatus(data), [
     [["Nie udało się nam sprawdzić komunikatów."]],
   ]);
   assert.deepEqual(waterUpcoming(data), []);
-  assert.equal(waterChecked(data), null);
+  assert.equal(data.checkedAt, null);
+  assert.equal(data.changedAt, null);
   assert.equal(staleNote(data), null);
   assert.equal(waterNone(data), "nie udało się nam sprawdzić komunikatów");
   assert.deepEqual(waterSources(data), [[GMINA]]);
@@ -1164,15 +1008,6 @@ test("village: its streets' cuts of one post and hours as one, „w części”"
     "część wsi Lisie Jamy: ulice Długa, Wąska, Leśna i Zielona",
   );
   assert.equal(whereOf(data), "Ulice Długa, Wąska, Leśna i Zielona.");
-  // A number on a village page: we cannot tell its street, so shown.
-  const five = waterAt({ ...LISIE_JAMY, givenNr: "5" }, [
-    post({ items: FOUR }),
-  ]);
-  assert.deepEqual(
-    five.outages.map((d) => d.uid),
-    [group.uid],
-  );
-  assert.equal(whereOf(five), "Ulice Długa, Wąska, Leśna i Zielona.");
   // Street pages: their own cut, as before.
   const dluga = place({
     id: "0606234-03839",
@@ -1269,21 +1104,14 @@ test("village: 39885's Młodów shows its ul. Pilipy on 28.10", () => {
 });
 
 test("part: its village's partial cut, the village named, a hint to check", () => {
-  for (const [part, nr] of [
-    [CZARNE, null],
-    [CZARNE, "10"],
-    [CZARNE, "50"],
-    [MOCZAR_DUZY, null],
-    [MOCZAR_MALY, null],
-  ] as Array<[PlaceView, string | null]>) {
-    const data = waterAt({ ...part, givenNr: nr });
-    const label = `${part.name} ${nr}`;
+  for (const part of [CZARNE, MOCZAR_DUZY, MOCZAR_MALY]) {
+    const data = waterAt(part);
+    const label = part.name;
     assert.deepEqual(
       data.outages.map((d) => d.uid),
       ["zuk-39885-2026-10-28-0606464"],
       label,
     );
-    assert.deepEqual(data.hidden, [], label);
     assert.equal(
       whereOf(data),
       "Część wsi Załuże – może nie obejmować tej miejscowości. Sprawdź niżej.",
@@ -1309,19 +1137,17 @@ test("part: Opaka's 104–110 reaches Żuki, Kamienna and Tuczarnia", () => {
     ["0606323", "Kamienna"],
     ["0606330", "Tuczarnia"],
   ]) {
-    for (const nr of [null, "5", "105"]) {
-      const data = waterAt(village(id, name, nr));
-      assert.deepEqual(
-        data.outages.map((d) => d.uid),
-        ["zuk-39885-2026-10-27-0606317"],
-        `${name} ${nr}`,
-      );
-      assert.equal(
-        whereOf(data),
-        "Część wsi Opaka – może nie obejmować tej miejscowości. Sprawdź niżej.",
-      );
-      assert.match(String(lines(data)[0]?.[0]), / należy do miejscowości /);
-    }
+    const data = waterAt(village(id, name));
+    assert.deepEqual(
+      data.outages.map((d) => d.uid),
+      ["zuk-39885-2026-10-27-0606317"],
+      name,
+    );
+    assert.equal(
+      whereOf(data),
+      "Część wsi Opaka – może nie obejmować tej miejscowości. Sprawdź niżej.",
+    );
+    assert.match(String(lines(data)[0]?.[0]), / należy do miejscowości /);
   }
 });
 
@@ -1331,71 +1157,6 @@ test("part: a whole village's cut stays plain, no hint", () => {
   assert.ok(
     !lines(data).some((line) => String(line[0]).includes(" należy do ")),
   );
-});
-
-test("nr: a cut that covers it says so; one that leaves it out, in the section", () => {
-  // 39885's Załuże, Podłęże 44–92, by its houses.
-  const zaluze = (nr: string) => waterAt({ ...ZALUZE, givenNr: nr });
-  for (const nr of ["44", "50", "92"])
-    assert.deepEqual(
-      zaluze(nr).outages.map((d) => d.uid),
-      ["zuk-39885-2026-10-28-0606464"],
-      nr,
-    );
-  assert.deepEqual(zaluze("10").outages, []);
-  assert.deepEqual(lines(zaluze("44")), []);
-  const [only44] = zaluze("44").outages;
-  assert.equal(
-    cutWhere(only44 as Cut, zaluze("44").place),
-    "Załuże: Podłęże od numeru 44 do numeru 92 (obejmuje nr 44)",
-  );
-  const data = zaluze("43");
-  assert.deepEqual(waterStatus(data), [
-    [["Pod nr 43: brak zapowiedzianych przerw."]],
-    [
-      [
-        "Gmina zapowiedziała przerwę w tej miejscowości – środa, 28 października, 8:00–16:00 – ale według komunikatu nie obejmuje nr 43.",
-      ],
-    ],
-  ]);
-  // Stale: a full sentence too, and no second stale note.
-  const late = waterAt(
-    { ...ZALUZE, givenNr: "43" },
-    [post()],
-    new Date(Date.parse(CHECKED) + STALE_MS + 1),
-  );
-  assert.deepEqual(lines(late)[0], [
-    "Pod nr 43: brak zapowiedzianych przerw przy ostatnim sprawdzeniu, ale od ponad godziny nie udało się nam sprawdzić nowych.",
-  ]);
-  assert.equal(lines(late).length, 2);
-  // The hub: the section says it, so no trace; /woda keeps its trace line.
-  assert.ok(
-    !lines(data)
-      .flat()
-      .includes(waterTrace(data) ?? ""),
-  );
-  assert.equal(
-    waterTrace(data),
-    "Gmina zapowiedziała też przerwę w tej miejscowości, ale według komunikatu nie obejmuje nr 43.",
-  );
-  // A cut shown and another left out: the trace after the cut.
-  const sob = cut({ ...SOBIESKIEGO_RANGE });
-  const wholeLater = cut({
-    ...SOBIESKIEGO_RANGE,
-    uid: "zuk-39885-2026-10-28-sobieskiego",
-    date: "2026-10-28",
-    start: "2026-10-28 08:00:00",
-    end: "2026-10-28 16:00:00",
-    scope: { type: "whole" },
-    note: null,
-  });
-  const both = waterAt(sobieskiego("5"), [post({ items: [sob, wholeLater] })]);
-  assert.equal(both.outages.length, 1);
-  assert.deepEqual(waterStatus(both).at(-1), [
-    [
-      "Gmina zapowiedziała też przerwę na tej ulicy, ale według komunikatu nie obejmuje nr 5.",
-    ],
-  ]);
 });
 
 test("part streets: every key a TERYT part, every street its village's", () => {

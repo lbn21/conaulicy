@@ -31,19 +31,18 @@ const EXPRESSIONS: Record<string, Record<string, string>> = {
     IMPROVMX_PRIVACY: "another site",
   },
   "components/contact-link.tsx": { CONTACT_HREF: "mailto:" },
-  "components/hub.tsx": { IMGW_PAGE: "another site" },
+  "components/imgw-source.tsx": { IMGW_PAGE: "another site" },
   "components/now-panel.tsx": {
     "source.href":
       "another site: a tile's source, in the source line (NOW_TILES)",
   },
-  "app/page.tsx": { IMGW_PAGE: "another site" },
   "components/site-footer.tsx": { CONTACT_HREF: "mailto:" },
   "components/subpage-parts.tsx": {
     href: "an ICS file (CalendarBlock)",
     "file.href": "the page's file (CalendarBlock): /smieci's PDF",
   },
   "components/parts.tsx": {
-    "part.href": "another site: an href starting with / is a PlaceLink",
+    "part.href": "another site: an href starting with / is a <Link>",
   },
   "components/place-page.tsx": {
     "place.schedulePage": "another site",

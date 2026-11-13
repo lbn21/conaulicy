@@ -28,7 +28,7 @@ function commit(files: string[]): string {
 }
 
 function ignore(env: Record<string, string> = {}): number | null {
-  const { VERCEL_GIT_PREVIOUS_SHA: _, ...rest } = process.env;
+  const { VERCEL_GIT_PREVIOUS_SHA: _, VERCEL_ENV: __, ...rest } = process.env;
   return spawnSync("bash", [script], {
     cwd: join(repo, "web"),
     env: { ...rest, ...env },
@@ -83,4 +83,23 @@ test("an unknown previous commit falls back to HEAD^", () => {
 
 test("nothing changed: build", () => {
   assert.equal(ignore({ VERCEL_GIT_PREVIOUS_SHA: "HEAD" }), BUILD);
+});
+
+test("production: always a build, docs only or the same commit (a deploy hook)", () => {
+  const base = git("rev-parse", "HEAD");
+  commit(["docs/layout.md"]);
+  assert.equal(ignore({ VERCEL_GIT_PREVIOUS_SHA: base }), SKIP);
+  assert.equal(
+    ignore({ VERCEL_GIT_PREVIOUS_SHA: base, VERCEL_ENV: "production" }),
+    BUILD,
+  );
+  const head = git("rev-parse", "HEAD");
+  assert.equal(
+    ignore({ VERCEL_GIT_PREVIOUS_SHA: head, VERCEL_ENV: "production" }),
+    BUILD,
+  );
+  assert.equal(
+    ignore({ VERCEL_GIT_PREVIOUS_SHA: base, VERCEL_ENV: "preview" }),
+    SKIP,
+  );
 });

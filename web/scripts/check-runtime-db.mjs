@@ -1,7 +1,7 @@
 // The site never reads the database: Neon is the import's alone, and every
 // page, route, cron and build reads the dataset snapshot (lib/dataset.ts;
 // docs/database.md, "The dataset snapshot"). Fails if any file of the
-// site's runtime code (web/app, web/components, web/lib, web/proxy.ts,
+// site's runtime code (web/app, web/components, web/lib,
 // web/next.config.ts; tests there too) imports the database client or
 // schema (web/db), Drizzle, a Postgres driver (@neondatabase/*, pg,
 // postgres), or the import's database code (web/scripts), or names a
@@ -12,7 +12,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 const WEB = path.resolve(import.meta.dirname, "..");
-const ROOTS = ["app", "components", "lib", "proxy.ts", "next.config.ts"];
+const ROOTS = ["app", "components", "lib", "next.config.ts"];
 const CODE = /\.(ts|tsx|mts|js|mjs|cjs)$/;
 
 function* files(entry) {

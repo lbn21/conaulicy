@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Suspense } from "react";
 import { GovukFrontend } from "@/components/govuk-frontend";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -44,14 +43,10 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-// Every page's prefetch is static: a <Link> (Partial Prefetching, on in
-// next.config.ts) fetches only the route's App Shell, one per route and
-// shared by all its links, from the static output, never a server render;
-// the live blocks (<Suspense> holes) render when the navigation completes
-// the route (nextjs.org/docs/app/api-reference/file-conventions/route-segment-config/ensureStatic,
-// 'prefetch', set here for the whole app; 'navigation' would forbid the
-// holes).
-export const ensureStatic = "prefetch";
+// Every page is prerendered whole at build: the build fails on anything
+// that would read a request (cookies, headers, searchParams), here and in
+// every page below (nextjs.org/docs/app/api-reference/file-conventions/route-segment-config/dynamic).
+export const dynamic = "error";
 
 // GOV.UK's snippet, exactly as in its page template: marks browsers that run
 // GOV.UK Frontend's JS (it only initialises with govuk-frontend-supported).
@@ -96,9 +91,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
         </main>
         <SiteFooter />
-        <Suspense>
-          <GovukFrontend />
-        </Suspense>
+        <GovukFrontend />
         {/* Production deployments only, never previews or local builds. */}
         <WebAnalytics enabled={process.env.VERCEL_ENV === "production"} />
       </body>

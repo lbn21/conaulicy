@@ -10,18 +10,8 @@ export const ROUTES = [
   { path: "/adres/0606234-90008", name: "village-street" },
   { path: "/adres/0972447-23434", name: "street-without-schedule" },
   { path: "/adres/0972447-90009", name: "street-schedule-ended" },
-  { path: "/adres/0972447-90004", name: "split-street" },
-  { path: "/adres/0972447-90004?nr=7a", name: "split-street-number" },
-  { path: "/adres/0972447-90004?nr=42", name: "split-street-unknown-number" },
-  { path: "/adres/0972447-90004?nr=", name: "split-street-missing-number" },
-  { path: "/adres/0972447-00470?nr=12", name: "city-street-number" },
   { path: "/adres/0972447-00470/smieci", name: "city-street-waste" },
   { path: "/adres/0606010/smieci", name: "village-waste" },
-  { path: "/adres/0972447-90004/smieci", name: "split-street-waste" },
-  {
-    path: "/adres/0972447-90004/smieci?nr=7a",
-    name: "split-street-number-waste",
-  },
   // The water subpage: noindex; in CI MZGKiM's fixture cut on the town
   // street (MZGKIM_MOCK, .github/workflows/ci.yml), none in the village.
   { path: "/adres/0972447-00470/woda", name: "city-street-water" },
@@ -58,15 +48,7 @@ export const BOT_UA =
   "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)";
 
 export async function startServer(port = 3300, extraEnv = {}) {
-  // The pre-launch gate must be off, or every page is a 401. Empty, not
-  // unset: Next's .env loading never overrides a set variable, so a local
-  // .env.local cannot turn it back on.
-  const env = {
-    ...process.env,
-    PORT: String(port),
-    SITE_BASIC_AUTH: "",
-    ...extraEnv,
-  };
+  const env = { ...process.env, PORT: String(port), ...extraEnv };
   // Its own process group, so stop() also ends the server npx started.
   const child = spawn("npx", ["next", "start", "-p", String(port)], {
     env,
@@ -114,7 +96,7 @@ export function finish(failures, summary) {
 
 // A JSON response's body; anything but a 2xx fails the check with the URL
 // and status, not a JSON parse error on an error page (QA review of #216).
-export async function fetchJson(url) {
+async function fetchJson(url) {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(
@@ -124,23 +106,19 @@ export async function fetchJson(url) {
   return response.json();
 }
 
-// The search field's index that a home page's HTML links
-// (/api/search-index/<hash>): its URL, and its [id, label, type] rows, none
-// when the page links no index.
+// The search field's index (/search-index.json, one fixed static path):
+// its URL, and its [id, label, type] rows, none when the home page does
+// not link it.
 export async function searchIndexOf(origin, home) {
-  const url = /\/api\/search-index\/[\da-f]+/.exec(home)?.[0];
+  const url = home.includes("/search-index.json") ? "/search-index.json" : null;
   const places = url ? await fetchJson(`${origin}${url}`) : [];
   return { url, places };
 }
 
-// A page as the browser shows it once every live block is in: the page's
-// static shell streams each block (an address page's content) after it,
-// behind a skeleton (components/live-block.tsx), and „Dziś” renders in the
-// browser (components/day-word.tsx), so the server's
-// HTML alone has skeletons there. Chromium, JS on, reduced motion; the
-// skeletons gone (or 10 s); void elements written as React writes them
-// (<hr/>), React's own marks left out, so checks match either. Its status
-// is the document's.
+// A page as the browser shows it: Chromium, JS on, reduced motion; void
+// elements written as React writes them (<hr/>), React's own marks left
+// out, so checks match the served HTML either way. Its status is the
+// document's.
 let pages;
 export async function renderedPage(url, { width = 375, userAgent } = {}) {
   if (!pages) {
@@ -155,11 +133,6 @@ export async function renderedPage(url, { width = 375, userAgent } = {}) {
   try {
     const page = await context.newPage();
     const response = await page.goto(url, { waitUntil: "networkidle" });
-    await page
-      .waitForFunction(() => !document.querySelector(".app-skeleton"), null, {
-        timeout: 10_000,
-      })
-      .catch(() => {});
     const html = withoutReactMarks(await page.content()).replace(
       /<(hr|br|input|img|meta|link)(\s[^>]*?)?>/g,
       (_, tag, attrs = "") => `<${tag}${attrs}/>`,

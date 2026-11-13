@@ -8,7 +8,6 @@ import { warsawDay } from "./date-labels.ts";
 import { addDays } from "./dates.ts";
 import type { Disruption } from "./disruptions.ts";
 import { hasSource } from "./event-source.ts";
-import type { Checked } from "./hub.ts";
 import type { ShownWarning } from "./imgw-shown.ts";
 import { LOCALE } from "./locale.ts";
 import type { PgeFeed } from "./pge-feed.ts";
@@ -28,8 +27,8 @@ export type NowTileData = {
   featured?: boolean;
   /** A level tag above the value (IMGW's 1-3), in IMGW's level colour. */
   tag?: { text: string; level: 1 | 2 | 3 };
-  /** When the source was last checked (a day alone: a string); null: unknown. */
-  checkedAt: Checked;
+  /** When the source's data last changed (ms): the panel's freshness line; null: none. */
+  changedAt: number | null;
 };
 
 /** The current week: Monday, Sunday and the next Monday (ISO days). */

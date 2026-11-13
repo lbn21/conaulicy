@@ -57,15 +57,14 @@ export async function check(server, failures) {
         .catch(() => failures.push(`${way}: at ${page.url()}, want ${PLACE}`));
       await page.context().close();
     }
-    // Nothing highlighted: Enter searches for the text, number and all.
+    // Nothing highlighted: Enter searches for the text; a house number in
+    // it changes nothing (no page differs by one).
     const page = await typed(browser, server.origin, "asnyka 12");
     await page.waitForSelector(".autocomplete__option");
     await page.keyboard.press("Enter");
     await page
-      .waitForURL(`${server.origin}${PLACE}?nr=12`, { timeout: 10_000 })
-      .catch(() =>
-        failures.push(`Enter: at ${page.url()}, want ${PLACE}?nr=12`),
-      );
+      .waitForURL(`${server.origin}${PLACE}`, { timeout: 10_000 })
+      .catch(() => failures.push(`Enter: at ${page.url()}, want ${PLACE}`));
   } finally {
     await browser.close();
   }

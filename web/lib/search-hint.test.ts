@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { streetLabel, villageLabel } from "./places.ts";
-import { isValidHouseNumber } from "./prg.ts";
 import { matcher, type SearchIndex } from "./search.ts";
 import { HINT, HINT_EXAMPLES } from "./search-hint.ts";
 import { ZUK_PLACES } from "./zuk-places.generated.ts";
@@ -41,11 +40,10 @@ test("the hint quotes every example", () => {
   for (const { text } of HINT_EXAMPLES) assert.ok(HINT.includes(text), text);
 });
 
-for (const { text, id, nr } of HINT_EXAMPLES) {
-  test(`"${text}": one place${nr ? ", a number the register has" : ""}`, () => {
+for (const { text, id } of HINT_EXAMPLES) {
+  test(`"${text}": one place`, () => {
     const [hit] = match(text).hits;
     assert.equal(hit?.id, id);
-    assert.equal(hit?.nr ?? null, nr);
 
     const street = ZUK_PLACES.streets.find((s) => s.id === id);
     const locality = ZUK_PLACES.localities.find((l) => l.id === id);
@@ -55,11 +53,5 @@ for (const { text, id, nr } of HINT_EXAMPLES) {
       ? ZUK_PLACES.streets.filter((s) => s.name1 === street.name1)
       : ZUK_PLACES.localities.filter((l) => l.name === locality?.name);
     assert.equal(same.length, 1);
-
-    if (nr) {
-      assert.equal(isValidHouseNumber(id, nr), true);
-      // Control: a number PRG lacks there is not valid.
-      assert.equal(isValidHouseNumber(id, "12"), false);
-    }
   });
 }

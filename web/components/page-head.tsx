@@ -1,11 +1,11 @@
-import type { HTMLAttributes, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { type IconName, Tile } from "@/components/icon";
 import { SkipTarget } from "@/components/skip-target";
 
-// Every page's head, one skeleton for the site (docs/layout.md, Page
+// Every page's head, one frame for the site (docs/layout.md, Page
 // head): a band in the brand's surface tint, the full width of the window,
 // straight under the header, holding what comes before the content: an
-// address page's breadcrumbs (t400), an error summary, the caption, the h1 (on a
+// address page's breadcrumbs (t400), the caption, the h1 (on a
 // module's page with the module's icon on its tile), a lead paragraph and
 // the page's first action („Zmień adres”, the search). Then the content on
 // white, then the footer's band. site.scss .app-band.
@@ -16,23 +16,13 @@ const CLASSES = {
   xl: ["govuk-caption-xl", "govuk-heading-xl"],
 } as const;
 
-/** A skeleton's heading block: the element alone, no target. */
-function Plain({
-  as: Tag,
-  ...props
-}: { as: "p" | "span" | "h1" } & HTMLAttributes<HTMLElement>) {
-  return <Tag {...props} />;
-}
-
 export function PageHead({
   title,
   caption,
   icon,
   lead,
   size = "l",
-  tag: Heading = "h1",
   crumbs,
-  before,
   children,
 }: {
   title: ReactNode;
@@ -42,17 +32,11 @@ export function PageHead({
   lead?: ReactNode;
   /** GOV.UK's heading size: xl on the home page only. */
   size?: "l" | "xl";
-  /** "p" in a skeleton (components/place-suspense.tsx): the page's own
-   * h1 comes with the page. */
-  tag?: "h1" | "p";
   /** The band's first line: an address page's breadcrumbs. */
   crumbs?: ReactNode;
-  /** Above the caption: an error summary. */
-  before?: ReactNode;
   /** After the lead: the page's first action. */
   children?: ReactNode;
 }) {
-  const Target = Heading === "h1" ? SkipTarget : Plain;
   const heading = (
     <>
       {icon && <Tile name={icon} />}
@@ -62,22 +46,19 @@ export function PageHead({
   return (
     <div className="app-band">
       {crumbs}
-      {before}
       {/* The skip link's target: the heading block's start, the street
-        line, else the h1 (components/skip-target.tsx). Never a
-        skeleton's (tag "p"): its page streams in after it, in the same
-        HTML, with its own. */}
+        line, else the h1 (components/skip-target.tsx). */}
       {caption && (
-        <Target as="span" className={CLASSES[size][0]}>
+        <SkipTarget as="span" className={CLASSES[size][0]}>
           {caption}
-        </Target>
+        </SkipTarget>
       )}
       {caption ? (
-        <Heading className={CLASSES[size][1]}>{heading}</Heading>
+        <h1 className={CLASSES[size][1]}>{heading}</h1>
       ) : (
-        <Target as={Heading} className={CLASSES[size][1]}>
+        <SkipTarget as="h1" className={CLASSES[size][1]}>
           {heading}
-        </Target>
+        </SkipTarget>
       )}
       {lead && <p className="govuk-body-l">{lead}</p>}
       {children}

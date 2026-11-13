@@ -19,6 +19,8 @@ export type Weather = {
   shown: Shown | null;
   /** The last good check (ms); null: the store could not be read now. */
   checkedAt: number | null;
+  /** When IMGW's items last changed (ms); null: unknown. */
+  changedAt: number | null;
 };
 
 /**
@@ -31,6 +33,7 @@ export function weather(copy: ImgwRead, now: number): Weather | null {
   return {
     shown: shownWarnings(copy, now),
     checkedAt: copy === UNREADABLE ? null : copy.checkedAt,
+    changedAt: copy === UNREADABLE ? null : copy.changedAt,
   };
 }
 
@@ -64,9 +67,4 @@ export function weatherNotices(data: Weather): Group[] {
         ],
       ]
     : [];
-}
-
-/** The last good check of IMGW; none when unknown. */
-export function weatherChecked(data: Weather): Date | null {
-  return data.checkedAt === null ? null : new Date(data.checkedAt);
 }

@@ -12,7 +12,7 @@ import { allBins } from "./waste-module.ts";
  * the bins in running text, and when to put them out.
  */
 export function wasteUpcoming(place: PlaceView): Item[] {
-  if (place.askNumber || place.zoneId === null) return [];
+  if (place.zoneId === null) return [];
   return place.days
     .filter((day) => day.date >= place.today)
     .map((day) => {

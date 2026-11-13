@@ -20,16 +20,6 @@
 // found in them, the part's village included; a post read but for some
 // places (Notice `where`) is linked only where none of its cuts is shown.
 //
-// With a house number, a cut by house ranges or numbers that clearly leaves
-// it out is not shown (outsideRange), and the page says one was left out;
-// one that clearly includes it says so („pod nr 44”). Anything we cannot
-// compare (no number, parity, "w części", an odd bound, a village's range
-// where its streets number on their own) is always shown. Only a cut on
-// the address's own locality is compared at all: its own street, or its
-// own village with no streets. A cut that reaches it from elsewhere (its
-// village's, a linked street's, a village's grouped streets) is never
-// hidden for a number and never certain for one.
-//
 // Each source's file is fresh, stale (last read over an hour ago) or
 // unavailable (none): the texts say which, naming the sources only when
 // not all of an address's sources are in that state.
@@ -66,6 +56,8 @@ type SourceState = {
   source: WaterSource;
   /** The source's last read; null without a file. */
   checkedAt: string | null;
+  /** When the source's data last changed; null without a file. */
+  changedAt: string | null;
   /** Last read over an hour ago, or no file. */
   stale: boolean;
   /** No file, or an unreadable one. */
@@ -86,15 +78,17 @@ export type Water = {
   place: PlaceView;
   /** Cuts still to come here, the soonest first, one per day and hours. */
   outages: Cut[];
-  /** Cuts here left out for the house number as given (outsideRange). */
-  hidden: Cut[];
-  hiddenForNr: boolean;
   /** Water posts we could not read safely that may concern this locality. */
   notices: Notice[];
   /** The sources that announce cuts here, in order (sourcesAt). */
   sources: SourceState[];
   /** The oldest last read of the sources with a file; null if none has. */
   checkedAt: string | null;
+  /**
+   * When the data of any of the address's sources last changed (ms), the
+   * latest; null: no source has a file.
+   */
+  changedAt: number | null;
   /** Some source last read over an hour ago, or without a file. */
   stale: boolean;
   /** No source has a file. */
@@ -107,44 +101,9 @@ type Address = PlaceRef;
 export const matches = (address: Address, cut: Disruption) =>
   placeMatches(address, cut.place);
 
-/** A cut on the address's own locality: the only one a number can filter. */
+/** A cut on the address's own locality. */
 const own = (cut: Disruption, address: Address) =>
   cut.place.localityId === address.localityId;
-
-/** Localities with streets of their own (the town among them). */
-const STREETED = new Set(ZUK_PLACES.streets.map((s) => s.localityId));
-
-/**
- * Where the house number falls in the cut's houses: "inside", "outside", or
- * null when we cannot tell. Compared on whole numbers only ("30a" is inside
- * 23–47, "7/22" is 7 and 22, either inside is enough); a village's range
- * where the village has streets, any scope but ranges or numbers, or
- * anything that does not parse: null.
- */
-function houseFit(cut: Cut, nr: string | null): "inside" | "outside" | null {
-  if (nr === null || cut.streets) return null;
-  if (cut.place.streetId === null && STREETED.has(cut.place.localityId))
-    return null;
-  const parts = (nr.match(/\d+/g) ?? []).map(Number);
-  const { scope } = cut;
-  const spans =
-    scope.type === "ranges"
-      ? scope.ranges.map((r) => [r.from, r.to])
-      : scope.type === "numbers"
-        ? scope.numbers.map((n) => [n, n])
-        : [];
-  const bounds = spans.map((span) => span.map((b) => Number.parseInt(b, 10)));
-  if (parts.length === 0 || bounds.length === 0) return null;
-  if (bounds.flat().some(Number.isNaN)) return null;
-  return parts.some((p) => bounds.some(([from, to]) => from <= p && p <= to))
-    ? "inside"
-    : "outside";
-}
-
-/** Whether the house number is clearly outside the cut's houses (houseFit). */
-export function outsideRange(cut: Cut, nr: string | null): boolean {
-  return houseFit(cut, nr) === "outside";
-}
 
 const wholeLocality = (cut: Disruption) =>
   cut.place.streetId === null && cut.scope.type === "whole";
@@ -261,14 +220,12 @@ export function water(
     states.flatMap(({ view }) => view.disruptions),
   );
   const village = PARENT.get(place.localityId);
-  const left = (cut: Cut) =>
-    own(cut, place) && outsideRange(cut, place.givenNr);
-  const outages = here.filter((cut) => !left(cut));
-  const hidden = here.filter(left);
+  const outages = here;
   const shownPosts = new Set(outages.map((cut) => cut.source.url));
   const sources = states.map(({ source, view }) => ({
     source,
     checkedAt: view.checkedAt,
+    changedAt: view.changedAt,
     stale: view.stale,
     unavailable: view.unavailable,
   }));
@@ -279,8 +236,6 @@ export function water(
   return {
     place,
     outages,
-    hidden,
-    hiddenForNr: hidden.length > 0,
     notices: states
       .flatMap(({ view }) => view.notices)
       .flatMap((notice) => {
@@ -305,6 +260,7 @@ export function water(
       ),
     sources,
     checkedAt: checked[0] ?? null,
+    changedAt: latest(sources.map((s) => s.changedAt)),
     stale: sources.some((s) => s.stale),
     unavailable: sources.every((s) => s.unavailable),
   };
@@ -314,9 +270,9 @@ export function water(
 export const waterDescription = (place: PlaceView) =>
   `Zapowiedziane przerwy w dostawie wody: ${place.label}. Daty i godziny z komunikatów ${listed(sourcesAt(place.localityId).map((s) => s.of))}.`;
 
-/** The water subpage, with the house number as given. */
-export function waterPath(place: Pick<PlaceView, "id" | "givenNr">): string {
-  return `${placePath(place.id)}/woda${place.givenNr ? `?nr=${place.givenNr}` : ""}`;
+/** The water subpage. */
+export function waterPath(place: Pick<PlaceView, "id">): string {
+  return `${placePath(place.id)}/woda`;
 }
 
 /** "08:00:00" of a wall time as "8:00". */
@@ -336,12 +292,6 @@ export function hours(cut: Disruption): string | null {
   return endDay === cut.date
     ? `${clock(start)}–${until}`
     : `${clock(start)} – ${until}`;
-}
-
-/** The day and hours: "wtorek, 27 października, 8:00–16:00". */
-function when(cut: Cut): string {
-  const time = hours(cut);
-  return `${absoluteDay(cut.date)}${time ? `, ${time}` : ""}`;
 }
 
 /** "a", "a i b", "a, b i c". */
@@ -395,10 +345,6 @@ export function scope(cut: Cut): string {
 /** The whole place, nothing more: certain wherever it applies. */
 const certain = (cut: Cut) => cut.scope.type === "whole" && !cut.note;
 
-/** The address's own cut that clearly includes the number as given. */
-const inside = (cut: Cut, place: Water["place"]) =>
-  own(cut, place) && houseFit(cut, place.givenNr) === "inside";
-
 /**
  * A cut of the address's village that may leave its part out: the
  * village's name, else null.
@@ -423,23 +369,10 @@ const linked = (cut: Cut, place: Address) =>
   cut.place.streetId !== null && !own(cut, place);
 
 /**
- * „Gdzie”: scope, and the number as given when the cut clearly has it; on
- * a part, a street of its village with the village: "ulica Pilipy w
- * Młodowie". A number the register does not have (invalidNr), beside a cut
- * of only some houses: that we cannot tell whether it has the house.
+ * „Gdzie”: scope; on a part, a street of its village with the village:
+ * "ulica Pilipy w Młodowie".
  */
 export function cutWhere(cut: Cut, place: Water["place"]): string {
-  const where = placeWhere(cut, place);
-  if (place.invalidNr === null || certain(cut)) return where;
-  return `${where}. ${notInRegister(place.invalidNr, 1)}`;
-}
-
-/** A number the register does not have, beside `cuts` of only some houses. */
-const notInRegister = (nr: string, cuts: number) =>
-  `Nr „${nr}” nie ma w rejestrze adresów, więc nie wiemy, czy ${cuts === 1 ? "ta przerwa obejmuje" : "te przerwy obejmują"} Twój dom`;
-
-function placeWhere(cut: Cut, place: Water["place"]): string {
-  if (inside(cut, place)) return `${scope(cut)} (obejmuje nr ${place.givenNr})`;
   if (!linked(cut, place) || !cut.label) return scope(cut);
   const { locality, street } = cut.label;
   const named = `${street} ${VILLAGE_IN.get(cut.place.localityId) ?? `w miejscowości ${locality}`}`;
@@ -470,7 +403,6 @@ function upcomingWhere(cut: Cut, place: Water["place"]): string {
   const parent = parentPart(cut, place);
   if (parent)
     return `Część ${word.of} ${parent} – może nie obejmować tej miejscowości. Sprawdź niżej.`;
-  if (inside(cut, place)) return `Obejmuje Twój dom (nr ${place.givenNr}).`;
   if (certain(cut))
     return street ? `Cała ulica ${street}.` : `Cała ${word.is} ${locality}.`;
   const nrs = houses(cut);
@@ -574,23 +506,16 @@ export function staleNote(data: Water): Part[] | null {
   return parts.length > 0 ? merged(parts) : null;
 }
 
-/** "w tej miejscowości" or "na tej ulicy": the address's place. */
-const placeWords = (data: Water) =>
-  data.place.streetId === null ? "w tej miejscowości" : "na tej ulicy";
-
 /**
  * The water's lines that the timeline does not say, as it lists every
  * cut (waterUpcoming); the address page shows them as notices
  * (waterNotices). With a cut: the parent village's hint
- * (its item says „Sprawdź niżej”), a number the register does not have
- * beside a cut of only some houses, a cut here left out for the house
- * number, notices, the stale note; often nothing, the subpage's link and
- * the sources say the rest. With no cut: that none is announced
- * (waterNone), or why a cut here is not for this number. Labels with a
+ * (its item says „Sprawdź niżej”), notices, the stale note; often
+ * nothing, the subpage's link and the sources say the rest. With no cut:
+ * that none is announced (waterNone). Labels with a
  * colon end without a full stop: they may end in the source's own words.
  */
 export function waterStatus(data: Water): Group[] {
-  const [left] = data.hidden;
   const groups: Group[] = [];
   const parent = data.outages
     .map((cut) => ({ cut, name: parentPart(cut, data.place) }))
@@ -606,29 +531,11 @@ export function waterStatus(data: Water): Group[] {
         ".",
       ],
     ]);
-  if (data.outages.length > 0) {
-    const nr = data.place.invalidNr;
-    const unsure = data.outages.filter((cut) => !certain(cut)).length;
-    if (nr !== null && unsure > 0)
-      groups.push([[`${notInRegister(nr, unsure)}.`]]);
-    const trace = waterTrace(data);
-    if (trace) groups.push([[trace]]);
-  } else if (left) {
-    const { who, foretold } = sourceOf(left.uid);
-    const nr = data.place.givenNr;
-    groups.push(
-      [[`Pod nr ${nr}: ${waterNone(data)}.`]],
-      [
-        [
-          `${who} ${foretold} przerwę ${placeWords(data)} – ${when(left)} – ale według komunikatu nie obejmuje nr ${nr}.`,
-        ],
-      ],
-    );
-  } else if (data.notices.length === 0) {
+  if (data.outages.length === 0 && data.notices.length === 0) {
     groups.push([[`${capitalised(waterNone(data))}.`]]);
   }
   for (const notice of data.notices) groups.push([[noticeLink(notice)]]);
-  // With nothing but the number's lines, the first says it (waterNone).
+  // With nothing to show, the first line says it (waterNone).
   const note =
     data.outages.length > 0 || data.notices.length > 0 ? staleNote(data) : null;
   if (note) groups.push([note]);
@@ -720,14 +627,6 @@ export function waterNotices(data: Water): Group[] {
   );
 }
 
-/** After the cuts or the empty text: a cut here left out for the number. */
-export function waterTrace(data: Water): string | null {
-  const [cut] = data.hidden;
-  if (!cut) return null;
-  const { who, foretold } = sourceOf(cut.uid);
-  return `${who} ${foretold} też przerwę ${placeWords(data)}, ale według komunikatu nie obejmuje nr ${data.place.givenNr}.`;
-}
-
 /** Nothing to show: none announced, or we could not check (lowercase). */
 export function waterNone(data: Water): string {
   const none = down(data);
@@ -749,9 +648,8 @@ function postLink(item: Pick<Disruption, "uid" | "source" | "publishedAt">) {
 
 /**
  * „Źródło”: each post a cut or notice here comes from (only its own post,
- * never another source's page); without one, each source's posts. When it
- * was checked: after them, in the subpage's source block (lib/hub.ts
- * sourceLine).
+ * never another source's page); without one, each source's posts
+ * (lib/hub.ts sourceLine).
  */
 export function waterSources(data: Water): Part[][] {
   const posts = new Map<string, Part>();
@@ -761,7 +659,8 @@ export function waterSources(data: Water): Part[][] {
   return data.sources.map((s) => [s.source.news]);
 }
 
-/** The oldest last read of the sources with a file; null if none has. */
-export function waterChecked(data: Water): Date | null {
-  return data.checkedAt ? new Date(data.checkedAt) : null;
+/** The latest of some ISO times (ms); null: none. */
+function latest(times: Array<string | null>): number | null {
+  const ms = times.flatMap((t) => (t ? [Date.parse(t)] : []));
+  return ms.length > 0 ? Math.max(...ms) : null;
 }

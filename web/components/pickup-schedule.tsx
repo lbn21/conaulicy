@@ -2,7 +2,7 @@
 
 import { Fragment } from "react";
 import { DayWord } from "@/components/day-word";
-import { useWarsawToday } from "@/components/warsaw-today";
+import { usePageDay } from "@/components/page-day";
 import { Bins } from "@/components/waste-bins";
 import { absoluteDay, dayFace } from "@/lib/dates";
 import type { PickupDay } from "@/lib/schedule";
@@ -106,9 +106,8 @@ export function PickupSchedule({
   /** After the last date: when the next dates come (laterNote). */
   later?: string | null;
 }) {
-  // From today on: the server's day, then the device's, as a page can
-  // outlive its day (components/warsaw-today.tsx).
-  const today = useWarsawToday();
+  // From the page's day on (components/page-day.tsx).
+  const today = usePageDay();
   const visible = days.filter((day) => day.date >= today);
 
   if (visible.length === 0) {

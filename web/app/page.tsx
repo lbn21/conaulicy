@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { cacheLife, cacheTag } from "next/cache";
 import Link from "next/link";
 import {
   AddressSearch,
@@ -7,17 +6,19 @@ import {
   SearchErrorSummary,
 } from "@/components/address-search";
 import { Icon } from "@/components/icon";
-import { NowPanel } from "@/components/now-panel";
-import { PlaceLink } from "@/components/place-link";
+import { ImgwSource } from "@/components/imgw-source";
+import { type NowData, NowPanel, nowData } from "@/components/now-panel";
 import { SkipTarget } from "@/components/skip-target";
 import { SITE_URL } from "@/lib/config.generated";
+import { servedVersion } from "@/lib/dataset";
+import { todayInWarsaw } from "@/lib/dates";
 import { HOME_EXAMPLES } from "@/lib/examples";
-import { DATASET } from "@/lib/headers";
-import { IMGW_PAGE } from "@/lib/imgw-shown";
-import { IMGW_ATTRIBUTION, IMGW_NAME } from "@/lib/imgw-warnings";
+import { LIVE_ATTR, type LiveMarks, marksAttr } from "@/lib/live-refresh";
+import { liveRuns } from "@/lib/live-runs";
 import { LANG } from "@/lib/locale";
-import { examplePlaces, searchIndexUrl } from "@/lib/schedule";
-import { placeHref } from "@/lib/search";
+import { pageData, SOURCE_TAGS } from "@/lib/page-cache";
+import { examplePlaces } from "@/lib/schedule";
+import { placeHref, SEARCH_INDEX_PATH, type SearchHit } from "@/lib/search";
 import { HOME_TITLE, pageMetadata, SITE_NAME } from "@/lib/share";
 import { ALL_PLACES } from "@/lib/static-pages";
 
@@ -46,21 +47,33 @@ const TRUST = [
   "Dane z gminy, IMGW i PGE",
 ];
 
-/** The search field, static: its index URL changes with an import. */
-async function HomeSearch() {
-  "use cache";
-  cacheLife("max");
-  cacheTag(DATASET);
-  return <AddressSearch indexUrl={await searchIndexUrl()} />;
+/**
+ * Everything the home page reads, cached with it (lib/page-cache.ts)
+ * under every source's tag: the panel's tiles, the examples, and the marks
+ * the zuk cron compares with what is stored (lib/live-refresh.ts): the
+ * day, the dataset version and each live source's run id as read.
+ */
+function homeData() {
+  return pageData("/", Object.values(SOURCE_TAGS), async () => {
+    const now = Date.now();
+    const [panel, examples, dataset, runs] = await Promise.all([
+      nowData(now),
+      // A few examples only: the full address list never ships to the client.
+      examplePlaces(HOME_EXAMPLES),
+      servedVersion(),
+      liveRuns(),
+    ]);
+    const marks: LiveMarks = {
+      day: todayInWarsaw(new Date(now)),
+      dataset,
+      runs,
+    };
+    return { panel, examples, marks };
+  });
 }
 
-/** The sample addresses, static: cached until the next import or deploy. */
-async function HomeExamples() {
-  "use cache";
-  cacheLife("max");
-  cacheTag(DATASET);
-  // A few examples only: the full address list never ships to the client.
-  const places = await examplePlaces(HOME_EXAMPLES);
+/** The sample addresses. */
+function HomeExamples({ places }: { places: SearchHit[] }) {
   return (
     <section aria-labelledby="sample-heading">
       <h2 id="sample-heading" className="govuk-heading-m">
@@ -70,9 +83,9 @@ async function HomeExamples() {
         {places.map((place) => (
           <li key={place.id} className="app-chip">
             <Icon name="pin" />
-            <PlaceLink href={placeHref(place)} className="govuk-link">
+            <Link href={placeHref(place)} className="govuk-link">
               {place.label}
-            </PlaceLink>
+            </Link>
           </li>
         ))}
       </ul>
@@ -88,11 +101,11 @@ async function HomeExamples() {
 // The home page (t390, mockup D): a full-width hero in the brand's
 // gradient (HomeHero, site.scss .app-hero), the task in the heading, one
 // line, the search on a white card, three reassurances; beside it (under
-// it on a phone) „Teraz w gminie”, read per request behind its skeleton
-// (components/now-panel.tsx). Then the sample addresses and IMGW's
-// required wording. Everything but
-// the panel is static, cached until the next import or deploy.
-export default function Home() {
+// it on a phone) „Teraz w gminie” (components/now-panel.tsx). Then the
+// sample addresses and IMGW's required wording. Prerendered whole,
+// re-rendered when a source it reads changes (homeData).
+export default async function Home() {
+  const { panel, examples, marks } = await homeData();
   return (
     <SearchErrorProvider>
       <script
@@ -100,18 +113,17 @@ export default function Home() {
         // biome-ignore lint/security/noDangerouslySetInnerHtml: our own constant JSON, rendered on the server; React would escape it as text
         dangerouslySetInnerHTML={{ __html: WEBSITE }}
       />
-      <HomeHero />
-      <div className="govuk-width-container">
-        <HomeExamples />
+      <HomeHero panel={panel} />
+      <div
+        className="govuk-width-container"
+        {...{ [LIVE_ATTR]: marksAttr(marks) }}
+      >
+        <HomeExamples places={examples} />
         {/* IMGW-PIB's terms (§5), once, at the end of the page, above the
           footer: the panel shows its warnings. Small print, as the address
           page's source note. */}
         <p className="govuk-body-s app-quiet">
-          {IMGW_ATTRIBUTION.source[0]}
-          <a className="govuk-link" href={IMGW_PAGE}>
-            {IMGW_NAME}
-          </a>
-          {`${IMGW_ATTRIBUTION.source[1]} ${IMGW_ATTRIBUTION.processed}`}
+          <ImgwSource />
         </p>
       </div>
     </SearchErrorProvider>
@@ -119,7 +131,7 @@ export default function Home() {
 }
 
 /** The hero: its own width container inside the full-width band. */
-function HomeHero() {
+function HomeHero({ panel }: { panel: NowData }) {
   return (
     <div className="app-hero">
       <div className="govuk-width-container app-hero__grid">
@@ -136,7 +148,7 @@ function HomeHero() {
           </p>
           <div className="app-hero__search">
             <SearchErrorSummary />
-            <HomeSearch />
+            <AddressSearch indexUrl={SEARCH_INDEX_PATH} />
           </div>
           <ul className="govuk-body-s app-hero__trust">
             {TRUST.map((text) => (
@@ -147,7 +159,7 @@ function HomeHero() {
             ))}
           </ul>
         </div>
-        <NowPanel />
+        <NowPanel data={panel} />
       </div>
     </div>
   );

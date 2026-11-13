@@ -10,14 +10,13 @@
 // („aktualizacja dat”) anyway. SEQUENCE is the post's last edit in
 // minutes, so an edited post updates the event in calendars that honour it.
 // The file is a one-off download, so no event is ever sent as cancelled.
-// Each event and its alarm link instead to the address's /woda page (with
-// ?nr= as given), which always shows the current state. A link-only change
+// Each event and its alarm link instead to the address's /woda page,
+// which always shows the current state. A link-only change
 // does not bump SEQUENCE: it is the post's edit, not ours.
 
 import { SITE_URL } from "./config.generated.ts";
 import { addDays, WARSAW, warsawToIso } from "./dates.ts";
 import type { Disruption } from "./disruptions.ts";
-import { withHouseNumber } from "./house.ts";
 import { capitalised } from "./hub.ts";
 import {
   calendarBody,
@@ -54,13 +53,12 @@ export function calendarCuts(data: Water): CalendarCut[] {
 }
 
 /**
- * The file's link on /woda, with the house number as given; null when no
- * cut goes in it, so the page shows no button.
+ * The file's link on /woda; null when no cut goes in it, so the page shows
+ * no button.
  */
 export function waterCalendarHref(data: Water): string | null {
   if (calendarCuts(data).length === 0) return null;
-  const nr = data.place.givenNr;
-  return `${placePath(data.place.id)}/woda.ics${nr ? `?nr=${nr}` : ""}`;
+  return `${placePath(data.place.id)}/woda.ics`;
 }
 
 /** "2026-10-27 08:00:00" as "20261027T080000", Warsaw time. */
@@ -80,17 +78,15 @@ function postId(cut: Disruption): string {
 /**
  * Stable across downloads: the post, the place, the day; a village's
  * grouped streets (Cut.streets) "ulice" and the start, so two groups of
- * one post on one day stay apart. A file for a house number adds it
- * ("-nr-44"), so its events never replace the whole address's.
+ * one post on one day stay apart.
  */
-function cutUid(cut: CalendarCut, nr: string | null): string {
+function cutUid(cut: CalendarCut): string {
   const { localityId, streetId } = cut.place;
-  const scope = nr ? `-nr-${nr}` : "";
   if (cut.streets) {
     const start = cut.start.slice(11, 16).replace(":", "");
-    return `woda-${postId(cut)}-${localityId}-ulice${scope}-${cut.date}-${start}@conaulicy.pl`;
+    return `woda-${postId(cut)}-${localityId}-ulice-${cut.date}-${start}@conaulicy.pl`;
   }
-  return `woda-${postId(cut)}-${localityId}-${streetId ?? "all"}${scope}-${cut.date}@conaulicy.pl`;
+  return `woda-${postId(cut)}-${localityId}-${streetId ?? "all"}-${cut.date}@conaulicy.pl`;
 }
 
 /** The post's last edit in minutes since 1970: grows with every edit. */
@@ -127,9 +123,8 @@ const VTIMEZONE = [
   "END:VTIMEZONE",
 ];
 
-/** The address with the house number as given, split street or not. */
-const address = (data: Water) =>
-  withHouseNumber(data.place.label, data.place.givenNr);
+/** The address. */
+const address = (data: Water) => data.place.label;
 
 /** The file for the address: every cut in calendarCuts, none if none. */
 export function waterCalendar(data: Water, now: Date): string {
@@ -152,7 +147,7 @@ export function waterCalendar(data: Water, now: Date): string {
     ].join("\n");
     lines.push(
       "BEGIN:VEVENT",
-      `UID:${cutUid(cut, data.place.givenNr)}`,
+      `UID:${cutUid(cut)}`,
       `SEQUENCE:${cutSequence(cut)}`,
       `DTSTAMP:${stamp}`,
       `DTSTART;TZID=${WARSAW}:${local(cut.start)}`,

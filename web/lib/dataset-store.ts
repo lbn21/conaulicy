@@ -9,6 +9,13 @@
 
 export const DATASET_POINTER = "dataset/current.json";
 
+/**
+ * The made-up dataset's version name (lib/dataset-fixture.ts): no
+ * snapshot published here (CI, a Preview before the first one, `next
+ * dev`); never in production.
+ */
+export const MADE_UP = "made-up";
+
 /** "20261113T140221Z-1a2b3c4d5e6f": when it was built, then its content's hash. */
 export const datasetPath = (version: string) => `dataset/v/${version}.json`;
 

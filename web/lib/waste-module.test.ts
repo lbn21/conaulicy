@@ -1,27 +1,15 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { type Checked, checkedLine } from "./hub.ts";
-
-/** The check, as a subpage's source block says it; none: null. */
-const checkedText = (at: Checked) =>
-  checkedLine(at)?.replaceAll("\u00a0", " ") ?? null;
-
 import type { PlaceView } from "./schedule.ts";
 import { hasUpcoming } from "./schedule-notes.ts";
 import {
-  checkedDay,
-  sourcesChecked,
   sourcesOf,
-  wasteChecked,
   wastePath,
   wasteSchedule,
   wasteSources,
   wasteStatus,
 } from "./waste-module.ts";
 import { wasteUpcoming } from "./waste-upcoming.ts";
-
-const wasteLine = checkedText;
 
 const pickup = (label: string, putOutBy: string | null = null) => ({
   id: label,
@@ -42,12 +30,6 @@ const place = (overrides: Partial<PlaceView> = {}): PlaceView => ({
   localityId: "0972447",
   streetId: "0972447-00470",
   zoneId: "zone-1",
-  nr: null,
-  askNumber: false,
-  unknownNr: null,
-  givenNr: null,
-  invalidNr: null,
-  knownNr: false,
   today: "2026-10-26",
   schedulePage: null,
   days: [
@@ -135,7 +117,7 @@ test("the timeline: every pickup from today on, its bins, in running text", () =
     second: "Wystaw je do 6:00 rano.",
   });
   assert.equal(items[1].second, null);
-  assert.deepEqual(wasteUpcoming(place({ askNumber: true, zoneId: null })), []);
+  assert.deepEqual(wasteUpcoming(place({ zoneId: null })), []);
   assert.deepEqual(wasteUpcoming(place({ zoneId: null, days: [] })), []);
 });
 
@@ -149,17 +131,6 @@ test("no put-out line without a time, unverified too", () => {
       [{ day: "2026-10-27", text: "wtorek, 27 października" }],
       ["Tego dnia odbiorą:"],
       [{ bins: [pickup("Szkło")] }],
-    ],
-  ]);
-});
-
-test("a split street without a number links the waste subpage's question", () => {
-  assert.deepEqual(wasteStatus(place({ askNumber: true, zoneId: null })), [
-    [
-      [
-        "Na tej ulicy śmieciarka przyjeżdża w różne dni, zależnie od numeru. ",
-        { href: "/adres/0972447-00470/smieci", text: "Podaj numer domu" },
-      ],
     ],
   ]);
 });
@@ -207,109 +178,8 @@ test("one source row each: link, part, when checked", () => {
   );
 });
 
-test("the PDF's QR code and link: the waste subpage, with the number", () => {
+test("the PDF's QR code and link: the waste subpage", () => {
   assert.equal(wastePath(place()), "/adres/0972447-00470/smieci");
-  assert.equal(
-    wastePath(place({ id: "0972447-90004", nr: "7a" })),
-    "/adres/0972447-90004/smieci?nr=7a",
-  );
-});
-
-test("checked line: events.checkedAt, a day; source_files.lastSeenAt, Warsaw day and time", () => {
-  assert.equal(wasteChecked(place()), "2026-10-20");
-  assert.equal(
-    wasteLine(wasteChecked(place())),
-    "Sprawdziliśmy 20 października.",
-  );
-  // The source row says no more than its link and part: one checked line.
-  for (const row of wasteSources(place()))
-    for (const part of row)
-      assert.doesNotMatch(
-        typeof part === "string" ? part : JSON.stringify(part),
-        /sprawdz|Stan na/,
-      );
-
-  // The import's source_files.lastSeenAt: Warsaw day and time.
-  const sources = [
-    {
-      label: "Sektor 1",
-      url: null,
-      checkedAt: "2026-10-20",
-      seenAt: "2026-10-25T04:03:12.5+00:00",
-    },
-  ];
-  const at = wasteChecked(place({ sources }));
-  assert.ok(at instanceof Date);
-  assert.equal(wasteLine(at), "Sprawdziliśmy 25 października 5:03.");
-});
-
-test("checked line: the oldest of several sources, times and days alike; none without a date", () => {
-  const sources = [
-    { label: "Sektor 1", url: null, checkedAt: "2026-10-23", seenAt: null },
-    {
-      label: "Sektor 1, papier",
-      url: null,
-      checkedAt: "2026-09-30",
-      seenAt: null,
-    },
-    { label: "Sektor 1, szkło", url: null, checkedAt: null, seenAt: null },
-  ];
-  assert.equal(
-    wasteLine(wasteChecked(place({ sources }))),
-    "Sprawdziliśmy 30 września.",
-  );
-  assert.equal(wasteChecked(place({ sources: [sources[2]] })), null);
-  assert.equal(wasteChecked(place({ sources: [] })), null);
-
-  // The oldest wins, times and days alike.
-  const seen = (seenAt: string | null, checkedAt = "2026-10-01") => ({
-    label: "Sektor",
-    url: null,
-    checkedAt,
-    seenAt,
-  });
-  // Two times: the older one.
-  assert.equal(
-    wasteLine(
-      wasteChecked(
-        place({
-          sources: [seen("2026-10-25T04:03:00Z"), seen("2026-10-24T04:01:00Z")],
-        }),
-      ),
-    ),
-    "Sprawdziliśmy 24 października 6:01.",
-  );
-  // A file seen today, another source without a row checked days ago.
-  assert.equal(
-    wasteLine(
-      wasteChecked(
-        place({
-          sources: [seen("2026-10-25T04:03:00Z"), seen(null, "2026-10-20")],
-        }),
-      ),
-    ),
-    "Sprawdziliśmy 20 października.",
-  );
-  // A day counts as older than any time on that Warsaw day, and the day
-  // is Warsaw's: 23:30 UTC on the 24th is already the 25th there.
-  assert.equal(
-    wasteChecked(
-      place({
-        sources: [seen("2026-10-24T23:30:00Z"), seen(null, "2026-10-25")],
-      }),
-    ),
-    "2026-10-25",
-  );
-  assert.equal(
-    wasteLine(
-      wasteChecked(
-        place({
-          sources: [seen("2026-10-24T21:30:00Z"), seen(null, "2026-10-25")],
-        }),
-      ),
-    ),
-    "Sprawdziliśmy 24 października 23:30.",
-  );
 });
 
 test("sources: one per document, its files' oldest lastSeenAt", () => {
@@ -396,50 +266,4 @@ test("PDF: an event without a source prints no date and no footer source", () =>
   assert.deepEqual(none.days, []);
   assert.deepEqual(none.sources, []);
   assert.equal(hasUpcoming(none.days, "2026-11-01"), false);
-});
-
-test("one „Sprawdziliśmy” for waste: the home page's panel reads the street page's sources the same way", () => {
-  // The panel's rows (lib/schedule.ts wasteWeek): two sectors' files, one
-  // seen by the import this morning, one an older file without a row. The
-  // newest events.checkedAt („23 października”) is not the check.
-  const rows = [
-    {
-      sourceDoc: "s1",
-      sourceRef: "Sektor 1",
-      sourceUrl: "https://example.org/s1.pdf",
-      checkedAt: "2026-10-23",
-      seenAt: "2026-11-12T04:18:00Z",
-    },
-    {
-      sourceDoc: "s2",
-      sourceRef: "Sektor 2",
-      sourceUrl: "https://example.org/s2.pdf",
-      checkedAt: "2026-10-23",
-      seenAt: "2026-11-12T04:18:30Z",
-    },
-  ];
-  const sources = sourcesOf(rows);
-  const at = sourcesChecked(sources);
-  assert.ok(at instanceof Date);
-  assert.equal(at.toISOString(), "2026-11-12T04:18:00.000Z");
-  // A street page with the same sources says the same.
-  assert.deepEqual(wasteChecked(place({ sources })), at);
-  // The PDF prints its day.
-  assert.equal(checkedDay(at), "2026-11-12");
-  assert.equal(checkedDay("2026-10-20"), "2026-10-20");
-  assert.equal(checkedDay(null), null);
-});
-
-test("every waste check goes through sourcesChecked: home panel, street pages, PDF", () => {
-  const read = (path: string) =>
-    readFileSync(new URL(path, import.meta.url), "utf8");
-  // The panel: the sources' check, never its own pick of events.checkedAt.
-  const tiles = read("../components/now-tiles.ts");
-  assert.match(tiles, /checkedAt: sourcesChecked\(sources\)/);
-  assert.doesNotMatch(read("./schedule.ts"), /\.map\(\(r\) => r\.checkedAt\)/);
-  // The address page and /smieci: the waste module's checkedAt.
-  assert.match(read("./modules.ts"), /checkedAt: wasteChecked/);
-  // The PDF: the same check, its day.
-  const pdf = read("../app/adres/[id]/harmonogram.pdf/route.ts");
-  assert.match(pdf, /checkedDay\(wasteChecked\(place\)\)/);
 });

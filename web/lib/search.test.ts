@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { withHouseNumber } from "./house.ts";
 import { normalize } from "./normalize.ts";
 import {
   exactPlace,
@@ -172,24 +171,25 @@ test("ul. and ulica alone leave nothing to search for", () => {
   assert.deepEqual(searchTerms("ul. Słowackiego"), ["slowackiego"]);
 });
 
-test("a house number rides along, wherever it stands", () => {
-  const nr = (q: string) => match(q).hits[0]?.nr ?? null;
-  assert.equal(nr("Asnyka 12"), "12");
-  assert.equal(nr("12A asnyka"), "12a");
-  assert.equal(nr("ul. Słowackiego 7/22"), "7/22");
-  assert.equal(nr("ul. Rynek 5, Lubaczów"), "5");
-  assert.equal(nr("ul. Rynek, Lubaczów 5"), "5");
-  assert.equal(nr("37-600 Lubaczów, ul. Kolejowa 3"), "3");
-  // "3" is part of "3-go Maja".
-  assert.equal(nr("3 Maja"), null);
-  assert.equal(nr("3 maja 10"), "10");
-  assert.equal(nr("Asnyka"), null);
+test("a house number is left out, wherever it stands: the street", () => {
+  const top = (q: string) => match(q).hits[0]?.label ?? null;
+  for (const [q, street] of [
+    ["Asnyka 12", "Asnyka"],
+    ["12A asnyka", "Asnyka"],
+    ["ul. Słowackiego 7/22", "Słowackiego"],
+    ["ul. Rynek 5, Lubaczów", "Rynek"],
+    ["ul. Rynek, Lubaczów 5", "Rynek"],
+    ["37-600 Lubaczów, ul. Kolejowa 3", "Kolejowa"],
+    // "3" is part of "3-go Maja".
+    ["3 maja 10", "Maja"],
+  ])
+    assert.ok(top(q)?.includes(street), q);
   assert.deepEqual(labels("ul 12"), []);
-  assert.equal(
-    placeHref({ id: "s1", label: "", nr: "7/22" }),
-    "/adres/s1?nr=7/22",
-  );
   assert.equal(placeHref({ id: "s1", label: "" }), "/adres/s1");
+  assert.equal(
+    match("Asnyka 12").hits.every((hit) => Object.keys(hit).length === 2),
+    true,
+  );
 });
 
 test("clear only when the first place matches better than the rest", () => {
@@ -230,12 +230,9 @@ test("clear needs 3+ letters; an initial alone never wins", () => {
 test("every suggestion's text opens its own place", () => {
   for (const [id, label] of PLACES) {
     assert.deepEqual(exactPlace(PLACES, label), { id, label }, label);
-    for (const nr of ["12", "7a", "7/22"]) {
-      // Where the field puts it, or typed after a picked suggestion.
-      for (const text of [withHouseNumber(label, nr), `${label} ${nr}`]) {
-        assert.deepEqual(exactPlace(PLACES, text), { id, label, nr }, text);
-      }
-    }
+    // A number typed after a picked suggestion: the same place.
+    for (const nr of ["12", "7a", "7/22"])
+      assert.deepEqual(exactPlace(PLACES, `${label} ${nr}`), { id, label });
   }
 });
 
@@ -244,20 +241,9 @@ test("the text as search compares it: case, Polish letters, spaces", () => {
     exactPlace(PLACES, "  BASZNIA  (basznia dolna gm lubaczow"),
     { id: "p005", label: "Basznia (Basznia Dolna, gm. Lubaczów)" },
   );
-  for (const q of [
-    "ul. Adama Asnyka, Lubaczów 12",
-    "ul. Adama Asnyka 12, Lubaczów",
-  ]) {
-    assert.deepEqual(exactPlace(PLACES, q), {
-      id: "p062",
-      label: "ul. Adama Asnyka, Lubaczów",
-      nr: "12",
-    });
-  }
-  assert.deepEqual(exactPlace(PLACES, "ul. Adama Asnyka 12A, Lubaczów"), {
+  assert.deepEqual(exactPlace(PLACES, "ul. Adama Asnyka, Lubaczów 12"), {
     id: "p062",
     label: "ul. Adama Asnyka, Lubaczów",
-    nr: "12a",
   });
 });
 

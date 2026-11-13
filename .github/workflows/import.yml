@@ -37,8 +37,10 @@ permissions:
   issues: write
   pull-requests: write
 
+# One queue for every publisher of the dataset snapshot (the import and
+# the production database's runs): never two at once (web/lib/dataset-sync.ts).
 concurrency:
-  group: import
+  group: dataset
   cancel-in-progress: false
 
 jobs:

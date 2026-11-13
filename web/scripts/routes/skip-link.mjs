@@ -14,7 +14,6 @@ const PLACE = "/adres/0972447-00470";
 
 /** Enter on the skip link, then where the focus is. */
 async function skip(page) {
-  await page.waitForFunction(() => !document.querySelector(".app-skeleton"));
   await page.locator(".govuk-skip-link").focus();
   await page.keyboard.press("Enter");
   await page
@@ -67,7 +66,6 @@ const CASES = {
   },
   "a subpage after a client-side navigation": async (page, origin) => {
     await page.goto(`${origin}${PLACE}`, { waitUntil: "networkidle" });
-    await page.waitForFunction(() => !document.querySelector(".app-skeleton"));
     const link = page.locator(`main a[href^="${PLACE}/"]:visible`).first();
     const href = await link.getAttribute("href");
     await link.click();

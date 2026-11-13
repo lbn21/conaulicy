@@ -7,11 +7,7 @@ import { SITE_URL } from "@/lib/config.generated";
 import { readableInk } from "@/lib/contrast";
 import { longDate, monthTitle } from "@/lib/date-labels";
 import { absoluteDay } from "@/lib/dates";
-import { datasetHeaders } from "@/lib/gate";
 import { GOVUK_COLOUR, GOVUK_FUNCTIONAL } from "@/lib/govuk-colours";
-import { TEXT_PLAIN } from "@/lib/headers";
-import { withHouseNumber } from "@/lib/house";
-import { NOINDEX } from "@/lib/indexing";
 import { LOCALE } from "@/lib/locale";
 import {
   LOGO_HEIGHT,
@@ -23,6 +19,7 @@ import {
   WORDMARK,
 } from "@/lib/logo";
 import { fileSlug } from "@/lib/normalize";
+import { pageData, SOURCE_TAGS } from "@/lib/page-cache";
 import {
   beyondBounds,
   chooseGrid,
@@ -40,13 +37,13 @@ import {
   keyTokens,
   PDF_MONTHS,
 } from "@/lib/pdf-key";
-import { scheduleName } from "@/lib/places";
+import { placePath, scheduleName } from "@/lib/places";
 import {
   getPlace,
-  movedTarget,
   type Pickup,
   type PickupDay,
   type PlaceView,
+  placeParams,
 } from "@/lib/schedule";
 import { hasUpcoming, putOutNote, unverifiedNote } from "@/lib/schedule-notes";
 import { SITE_NAME } from "@/lib/share";
@@ -60,10 +57,10 @@ import {
   tones,
 } from "@/lib/waste-bin";
 import { WASTE_COLOURS as WASTE } from "@/lib/waste-colours";
-import { checkedDay, wasteChecked, wastePath } from "@/lib/waste-module";
+import { wastePath } from "@/lib/waste-module";
 
 // Printed QR codes and links point at the waste subpage
-// (/adres/<id>/smieci, with the house number) on the permanent address
+// (/adres/<id>/smieci) on the permanent address
 // (SITE_URL), never at a preview deployment.
 
 // Bundled through outputFileTracingIncludes in next.config.ts.
@@ -456,7 +453,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     .flatMap((day) => day.pickups)
     .find((p) => p.putOutBy)?.putOutBy;
   const putOut = putOutBy ? putOutNote(putOutBy) : null;
-  const title = withHouseNumber(place.name, place.nr);
+  const title = place.name;
   const dayLine = usual ? `Twój dzień odbioru: ${usual}` : null;
   // Page 2: what goes in each of the place's bins, from its gmina's own
   // rules (lib/sorting-guide.ts); none without them.
@@ -474,7 +471,7 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
     displayTitle: true,
     font: REGULAR as unknown as string,
     info: {
-      Title: `Harmonogram odbioru odpadów – ${withHouseNumber(place.label, place.nr)}`,
+      Title: `Harmonogram odbioru odpadów – ${place.label}`,
       Author: SITE_NAME,
       Subject: place.gmina,
     },
@@ -636,11 +633,6 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
       {
         text: [
           `Źródło: ${scheduleName(place.gmina)}`,
-          ...(() => {
-            // The site's „Sprawdziliśmy” (wasteChecked), its day.
-            const checked = checkedDay(wasteChecked(place));
-            return checked ? [`sprawdzono ${longDate(checked)}`] : [];
-          })(),
           "Nie jesteśmy urzędem.",
         ].join(" · "),
       },
@@ -1574,46 +1566,31 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
   return done;
 }
 
-// A redirect or a 404: an hour at the CDN, without stale-while-revalidate.
-const NO_STALE = "public, s-maxage=3600";
+// Prerendered for every place at build and re-rendered with the dataset
+// (its tag), as the waste subpage; a place with no dates to print, a 404;
+// any other id, the prerendered 404 (dynamicParams = false). Vercel's own
+// cache headers apply: only the type and disposition are ours.
+export const dynamic = "error";
+export const dynamicParams = false;
+export const generateStaticParams = placeParams;
 
 export async function GET(
-  request: Request,
-  ctx: { params: Promise<{ id: string }> },
+  _request: Request,
+  ctx: RouteContext<"/adres/[id]/harmonogram.pdf">,
 ) {
   const { id } = await ctx.params;
-  const url = new URL(request.url);
-  const place = await getPlace(id, url.searchParams.get("nr"));
-  // A renamed place's old PDF address: the same PDF on its new id.
-  const moved = place ? null : await movedTarget(id, url.pathname + url.search);
-  if (moved) {
-    return new Response(null, {
-      status: 308,
-      headers: {
-        Location: moved,
-        ...datasetHeaders(NO_STALE),
-      },
-    });
-  }
-  if (!place || !hasUpcoming(place.days, place.today)) {
-    return new Response("Nie mamy harmonogramu dla tego adresu.", {
-      status: 404,
-      headers: {
-        ...TEXT_PLAIN,
-        ...datasetHeaders(NO_STALE),
-        ...NOINDEX,
-      },
-    });
-  }
-
+  const place = await pageData(
+    `${placePath(id)}/harmonogram.pdf`,
+    [SOURCE_TAGS.dataset],
+    () => getPlace(id),
+  );
+  if (!place || !hasUpcoming(place.days, place.today))
+    return new Response(null, { status: 404 });
   const pdf = await render(place, `${SITE_URL}${wastePath(place)}`);
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
-      // With a house number: in the file name too.
-      "Content-Disposition": `inline; filename="harmonogram-${fileSlug(withHouseNumber(place.label, place.nr))}.pdf"`,
-      ...datasetHeaders(),
-      ...NOINDEX,
+      "Content-Disposition": `inline; filename="harmonogram-${fileSlug(place.label)}.pdf"`,
     },
   });
 }

@@ -1,110 +1,76 @@
-import { io } from "next/cache";
-import { cache, type ReactNode } from "react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { cache } from "react";
 import { Badge } from "@/components/badge";
 import { subpageHref } from "@/components/function-rows";
 import { Icon, Tile } from "@/components/icon";
+import { ImgwSource } from "@/components/imgw-source";
 import { NowBanner } from "@/components/now-banner";
+import { PageDay } from "@/components/page-day";
 import { Status } from "@/components/parts";
-import { PlaceLink } from "@/components/place-link";
-import {
-  AddressPage,
-  type AddressSearch,
-  knownPlace,
-  numberError,
-  numberQuery,
-  StreetPage,
-} from "@/components/place-page";
+import { AddressPage } from "@/components/place-page";
 import { SourceNote } from "@/components/subpage-parts";
 import { Timeline } from "@/components/timeline";
 import { WarningCards } from "@/components/warning-cards";
-import { WarsawToday } from "@/components/warsaw-today";
 import { MODULE_IDS, SUBPAGE_IDS } from "@/lib/address-routes";
 import { freshnessLine, type Group, unchecked } from "@/lib/hub";
-import { IMGW_PREVIEW, imgwPreview } from "@/lib/imgw-preview";
-import { IMGW_PAGE } from "@/lib/imgw-shown";
-import { IMGW_ATTRIBUTION, IMGW_NAME } from "@/lib/imgw-warnings";
 import { MODULES, type Module } from "@/lib/modules";
+import { pageData } from "@/lib/page-cache";
+import { placePath } from "@/lib/places";
 import type { PlaceView } from "@/lib/schedule";
 import { days, onDay } from "@/lib/timeline";
 import type { Item } from "@/lib/upcoming";
 import type { Weather } from "@/lib/weather-module";
 
-// The address page, /adres/[id] (and ?nr=): a date-first hub of modules
+// The address page, /adres/[id]: a date-first hub of modules
 // (lib/modules.ts), its breadcrumbs in its head's band. Under „Zmień
 // adres”: the lines that belong to no day (each module's notices, in an
 // inset); a card per IMGW warning (components/warning-cards.tsx);
 // „Najbliższe 7 dni”, a vertical timeline of every module's items
 // by day (components/timeline.tsx, lib/timeline.ts), then „Później”;
 // „Wszystko o Twoim adresie”, a link to each module's subpage (/smieci,
-// /woda) that has a source; then one small-print note: when each
-// module last checked its source, and IMGW's required wording when its
+// /woda) that has a source; then one small-print note: when the live
+// sources' data last changed, and IMGW's required wording when its
 // data was read (the sources and the AI caveat are on the subpages). No
-// calendar or PDF here: they are on the waste subpage. A split street's
-// number errors keep the street page (StreetPage), GOV.UK's validation
-// pattern.
+// calendar or PDF here: they are on the waste subpage.
 //
-// The page is read per request, whole, behind one <Suspense> with one
-// skeleton (components/place-suspense.tsx):
-// every block's data at once (hubData), so it all comes in together, each
-// module's check time from the same read. Its static shell
-// holds only the skeleton: no date and no waste type is ever prerendered.
-// Dates are absolute; „Dziś” and „Jutro” come with them, for the read's
-// Warsaw day (WarsawToday, place.today), then the device's
-// (components/warsaw-today.tsx).
+// Prerendered whole at build for every place (app/adres/[id]/page.tsx),
+// every module's data in one cache scope (hubData, lib/page-cache.ts):
+// re-rendered only when a source it reads changes, or the day does.
+// Dates are absolute; „Dziś” and „Jutro” come with them, for the
+// render's Warsaw day (components/page-day.tsx).
+
+const MODULE_LIST = MODULE_IDS.map((slug): Module<unknown> => MODULES[slug]);
 
 /**
- * Everything the address page shows, read per request (after io(), so
- * nothing date-dependent is ever prerendered), every module's
- * data at once (Promise.all), so the page waits for the slowest block, not
- * the sum, one read per request (React's cache(),
- * react.dev/reference/react/cache). In registry order; the first, waste's,
- * is the place itself.
+ * Everything the address page shows: every module's data at once, in
+ * registry order (the first, waste's, is the place itself), and the clock
+ * it was read at; null: no such place. One read per render (React's
+ * cache()), cached with the page (pageData) under every module's tags.
  */
-const hubData = cache(
-  async (id: string, nr: string | null, imgw: string | null = null) => {
-    await io();
-    return (await Promise.all(
-      MODULE_IDS.map((slug) => MODULES[slug].load(id, nr, imgw)),
-    )) as [PlaceView | null, ...unknown[]];
-  },
+export const hubData = cache((id: string) =>
+  pageData(
+    placePath(id),
+    [...new Set(MODULE_LIST.flatMap((module) => module.tags))],
+    async () => {
+      const now = Date.now();
+      const data = await Promise.all(
+        MODULE_LIST.map((module) => module.load(id)),
+      );
+      return data[0] === null ? null : { now, data };
+    },
+  ),
 );
 
-/** The page's ?imgw= as the mock's URL (lib/imgw-preview.ts), or null. */
-async function imgwQuery(searchParams: AddressSearch) {
-  return imgwPreview((await searchParams)[IMGW_PREVIEW]);
-}
-
-/**
- * The address page's content (hubData), whole, behind the page's one
- * <Suspense> (components/place-suspense.tsx): Hub, or the street page's
- * number errors. `unknown` (PlaceNotFound) is what an unknown place
- * shows.
- */
-export async function HubMain({
-  id,
-  searchParams,
-  unknown,
-}: {
-  id: string;
-  /** The page's, for its ?nr= (numberQuery). */
-  searchParams: AddressSearch;
-  /** What an unknown place shows. */
-  unknown: ReactNode;
-}) {
-  // An unknown place: its 404 before anything is read per request.
-  if (!(await knownPlace(id))) return <>{unknown}</>;
-  const { nr, missing } = await numberQuery(searchParams);
-  const data = await hubData(id, nr, await imgwQuery(searchParams));
-  const place = data[0];
-  if (!place) return <>{unknown}</>;
+/** The address page's content (hubData), or the 404. */
+export async function HubMain({ id }: { id: string }) {
+  const read = await hubData(id);
+  if (!read) notFound();
+  const place = read.data[0] as PlaceView;
   return (
-    <WarsawToday day={place.today}>
-      {numberError(place, missing) ? (
-        <StreetPage place={place} missing={missing} />
-      ) : (
-        <Hub data={data} place={place} />
-      )}
-    </WarsawToday>
+    <PageDay day={place.today}>
+      <Hub data={read.data} place={place} now={read.now} />
+    </PageDay>
   );
 }
 
@@ -143,9 +109,17 @@ function CountBadge({ count }: { count: number }) {
   );
 }
 
-/** The address page's blocks, as HubMain; `data` hubData's. */
-export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
-  const modules = MODULE_IDS.map((slug): Module<unknown> => MODULES[slug]);
+/** The address page's blocks, as HubMain; `data` and `now` hubData's. */
+export function Hub({
+  data,
+  place,
+  now,
+}: {
+  data: unknown[];
+  place: PlaceView;
+  now: number;
+}) {
+  const modules = MODULE_LIST;
   const items = modules.flatMap((module, i) =>
     data[i] === null ? [] : module.upcoming(data[i]),
   );
@@ -164,12 +138,11 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
   const weather = data[MODULE_IDS.indexOf("pogoda")] as Weather | null;
   // IMGW's data was read: its required wording in the small print.
   const imgw = weather?.checkedAt != null;
-  const now = Date.now();
   const counts = windowCounts(items, place.today, now);
   const fresh = freshnessLine(
     loaded.map(({ module, data }) => ({
       name: module.title,
-      at: module.checkedAt(data),
+      changedAt: module.changedAt(data),
     })),
   );
   return (
@@ -207,12 +180,12 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
                     <h3
                       className={`govuk-heading-s govuk-!-margin-bottom-0 ${empty ? "govuk-!-font-weight-regular" : ""}`.trim()}
                     >
-                      <PlaceLink
+                      <Link
                         className="govuk-link govuk-link--text-colour govuk-link--no-underline app-item__link"
                         href={subpageHref(module, place)}
                       >
                         {module.more}
-                      </PlaceLink>
+                      </Link>
                     </h3>
                     <CountBadge count={counts.get(module.id) ?? 0} />
                   </div>
@@ -224,24 +197,12 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
         </section>
       )}
       {/* The source note at the end (SourceNote, as every subpage's),
-        above the footer, only what a resident needs: when each module last checked its source, and, when IMGW's
+        above the footer, only what a resident needs: when each live
+        source's data last changed, and, when IMGW's
         data was read, its required wording, its name linked: the weather
         has no subpage, so its source link is here. The other sources and
         the AI caveat are on the subpages. */}
-      <SourceNote
-        source={
-          imgw && (
-            <>
-              {IMGW_ATTRIBUTION.source[0]}
-              <a className="govuk-link" href={IMGW_PAGE}>
-                {IMGW_NAME}
-              </a>
-              {`${IMGW_ATTRIBUTION.source[1]} ${IMGW_ATTRIBUTION.processed}`}
-            </>
-          )
-        }
-        checked={fresh}
-      />
+      <SourceNote source={imgw && <ImgwSource />} fresh={fresh} />
     </AddressPage>
   );
 }

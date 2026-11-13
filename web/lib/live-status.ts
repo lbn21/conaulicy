@@ -125,8 +125,13 @@ export function checkAge(
  */
 export const UNREADABLE = "unreadable";
 
-/** A feed's last good copy and when it was last checked well (ms). */
-export type LiveCopy<F> = { feed: F; checkedAt: number };
+/**
+ * A feed's last good copy, when it was last checked well (ms), and when
+ * its items last changed (ms): the file is written only when they do
+ * (lib/live-cron.ts), so its fetchedAt is that run's, and doubles as the
+ * run's id (lib/live-refresh.ts).
+ */
+export type LiveCopy<F> = { feed: F; checkedAt: number; changedAt: number };
 
 /**
  * The copy of a feed file (`feed`, parsed; null: no file yet) and the
@@ -142,7 +147,11 @@ export function liveCopyOf<F extends { fetchedAt: string }>(
   if (!feed) return null;
   const fetchedAt = Date.parse(feed.fetchedAt);
   const checked = oldestCheck(parseChecks(checksBody), [key]);
-  return { feed, checkedAt: Math.max(checked ?? fetchedAt, fetchedAt) };
+  return {
+    feed,
+    checkedAt: Math.max(checked ?? fetchedAt, fetchedAt),
+    changedAt: fetchedAt,
+  };
 }
 
 /** "9:52" today, else "piątku 30 października, 9:52": when the last data is from. */

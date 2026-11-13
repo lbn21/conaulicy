@@ -6,6 +6,7 @@ import {
   type Dataset,
   datasetFromRows,
   parseDataset,
+  rangedMember,
 } from "./dataset-schema.ts";
 import {
   datasetPath,
@@ -15,8 +16,8 @@ import {
 import {
   examplePlacesOf,
   placeIdsOf,
+  placeSetOf,
   placeView,
-  retiredPlaceOf,
   searchIndexOf,
   wasteWeekOf,
   zoneView,
@@ -79,16 +80,15 @@ test("only what the site shows: no payload but putOutBy, no hashes or raw cells"
     );
 });
 
-test("every place of the fixture has its view; the day and number filter per call", () => {
-  for (const id of placeIdsOf(ds))
-    assert.ok(placeView(ds, id, null, TODAY), id);
-  const view = placeView(ds, ASNYKA, null, TODAY);
+test("every place of the fixture has its view; the day filters per call", () => {
+  for (const id of placeIdsOf(ds)) assert.ok(placeView(ds, id, TODAY), id);
+  const view = placeView(ds, ASNYKA, TODAY);
   assert.ok(view?.days.every((d) => d.date >= TODAY));
-  const later = placeView(ds, ASNYKA, null, "2099-01-01");
+  const later = placeView(ds, ASNYKA, "2099-01-01");
   assert.deepEqual(later?.days, []);
   // Past pickups count for the zone's fractions all the same.
   assert.deepEqual(later?.fractions, view?.fractions);
-  assert.equal(placeView(ds, "0972447-00000", null, TODAY), null);
+  assert.equal(placeView(ds, "0972447-00000", TODAY), null);
 });
 
 test("the search index, /ulice and the sitemap cover every listed place", () => {
@@ -115,18 +115,50 @@ test("zones, the panel and the examples read the same snapshot", () => {
   );
 });
 
-test("a retired place: no view, its id kept; replaced, it redirects; else it is gone", () => {
+test("a retired place: no view and no page; replaced, it redirects; either way a new place set", () => {
   const replaced = retire(ASNYKA, "0972447-20291");
-  assert.equal(placeView(replaced, ASNYKA, null, TODAY), null);
+  assert.equal(placeView(replaced, ASNYKA, TODAY), null);
   assert.equal(replaced.redirects[ASNYKA], "0972447-20291");
-  assert.equal(retiredPlaceOf(replaced, ASNYKA), null);
-  assert.ok(placeIdsOf(replaced).includes(ASNYKA));
+  assert.ok(!placeIdsOf(replaced).includes(ASNYKA));
   assert.ok(!searchIndexOf(replaced).places.some(([id]) => id === ASNYKA));
+  assert.notEqual(placeSetOf(replaced), placeSetOf(ds));
 
   const gone = retire(ASNYKA, null);
   assert.equal(gone.redirects[ASNYKA], undefined);
-  assert.equal(retiredPlaceOf(gone, ASNYKA)?.kind, "ulica");
-  assert.equal(retiredPlaceOf(gone, "0972447-20291"), null);
+  assert.ok(!placeIdsOf(gone).includes(ASNYKA));
+  assert.notEqual(placeSetOf(gone), placeSetOf(replaced));
+});
+
+test("the place set: the same places, labels and renames, the same hash", () => {
+  assert.match(placeSetOf(ds), /^[0-9a-f]{16}$/);
+  // Another day's dates, the same places.
+  assert.equal(placeSetOf(fixtureDataset("2027-02-01")), placeSetOf(ds));
+  // A label changed: another set.
+  const renamed = structuredClone(ds);
+  renamed.streets[0].name = `${renamed.streets[0].name} Nowa`;
+  assert.notEqual(placeSetOf(renamed), placeSetOf(ds));
+  // A zone changed, places kept: the same set.
+  const rezoned = structuredClone(ds);
+  rezoned.zoneMembers = rezoned.zoneMembers.slice(1);
+  assert.equal(placeSetOf(rezoned), placeSetOf(ds));
+});
+
+test("a zone member with a house range is refused, on read and on build", () => {
+  const ranged = structuredClone(ds) as unknown as {
+    zoneMembers: Array<Record<string, unknown>>;
+  };
+  ranged.zoneMembers[0].parity = "odd";
+  assert.throws(
+    () => parseDataset(JSON.stringify(ranged)),
+    /house range \(parity\)/,
+  );
+  for (const key of ["houseFrom", "houseTo", "parity"])
+    assert.throws(
+      () => rangedMember({ zoneId: "z", localityId: "l", [key]: "2" }, "m"),
+      new RegExp(key),
+    );
+  // Null ranges, as the database's columns hold them: fine.
+  rangedMember({ houseFrom: null, houseTo: null, parity: null }, "m");
 });
 
 test("the pointer names one immutable version", () => {

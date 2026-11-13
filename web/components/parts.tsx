@@ -1,6 +1,6 @@
+import Link from "next/link";
 import { Fragment } from "react";
 import { DayWord } from "@/components/day-word";
-import { PlaceLink } from "@/components/place-link";
 import { Bins } from "@/components/waste-bins";
 import { capitalised } from "@/lib/dates";
 import type { Group, Part } from "@/lib/hub";
@@ -39,9 +39,9 @@ export function Parts({ parts, lead }: { parts: Part[]; lead: boolean }) {
       </>
     );
     return part.href.startsWith("/") ? (
-      <PlaceLink key={key} href={part.href} className="govuk-link">
+      <Link key={key} href={part.href} className="govuk-link">
         {text}
-      </PlaceLink>
+      </Link>
     ) : (
       <a key={key} href={part.href} className="govuk-link">
         {text}

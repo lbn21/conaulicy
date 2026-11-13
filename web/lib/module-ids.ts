@@ -1,6 +1,5 @@
-// The address modules' ids, with nothing imported, so a client component can
-// use them without the rest of lib/address-routes.ts (which re-exports them):
-// lib/address-prefetch.ts, in components/place-link.tsx's small chunk.
+// The address modules' ids, with nothing imported (lib/address-routes.ts
+// re-exports them).
 
 /**
  * Module ids in registry order. Waste comes first; water and power, at

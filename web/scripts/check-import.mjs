@@ -1,11 +1,14 @@
 // End-to-end check of the importer on a made-up dataset (never the real one):
 // an empty database, dry run, a first --apply (its places reviewed first),
-// then the pages read the imported data through the dataset snapshot it
-// publishes (DATASET_DIR, scripts/lib/dataset.ts; lib/dataset.ts). Also the
+// then the dataset snapshot it publishes (DATASET_DIR, scripts/lib/dataset.ts)
+// holds the imported data, as the site's views read it. Also the
 // guards: changed sources, too many deletes, --offline, production; the
 // TERYT reload's places (retired, never deleted; a rename; a new place
 // without a zone; too many retired: scripts/lib/place-review.ts); and a
-// rollback of the snapshot. Empties and writes DATABASE_URL, so it refuses any
+// rollback of the snapshot; every publish's decision on the built site
+// (POST /api/revalidate: the made-up build's place set is never the
+// import's, so the Deploy Hook, never a revalidation). Empties and writes
+// DATABASE_URL, so it refuses any
 // database but a local one (CI, a local container). Run after `next build`. The schedules are served from a local
 // HTTP server, so the source check runs without the internet.
 import { execFile } from "node:child_process";
@@ -22,11 +25,13 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import pg from "pg";
+import { parseDataset } from "../lib/dataset-schema.ts";
+import { placeIdsOf, placeView, searchIndexOf } from "../lib/dataset-views.ts";
 import { todayInWarsaw } from "../lib/dates.ts";
 import { eventId } from "./lib/import-data.ts";
 import { FIXTURE_IDS, fixture } from "./lib/import-fixture.ts";
 import { localDatabaseUrl } from "./lib/local-db.ts";
-import { finish, searchIndexOf, startServer } from "./lib/server.mjs";
+import { finish, startServer } from "./lib/server.mjs";
 
 const failures = [];
 const check = (ok, message) => {
@@ -35,7 +40,15 @@ const check = (ok, message) => {
 
 const dir = mkdtempSync(join(tmpdir(), "conaulicy-import-"));
 const served = {};
+// Also the site's Deploy Hook: the made-up build's place set is never the
+// import's, so every publish asks for a new deployment (lib/dataset-sync.ts).
+let hooks = 0;
 const files = createServer((request, response) => {
+  if (request.method === "POST" && request.url === "/hook") {
+    hooks++;
+    response.writeHead(201).end("{}");
+    return;
+  }
   const body = served[request.url.slice(1)];
   response.writeHead(body ? 200 : 404).end(body ?? "");
 });
@@ -92,8 +105,10 @@ write(etl);
 // ever revalidates etl/sources.yaml's site.url (production).
 const REVALIDATE_SECRET = "check-import";
 process.env.REVALIDATE_SECRET = REVALIDATE_SECRET;
+process.env.DEPLOY_HOOK_URL = `http://127.0.0.1:${files.address().port}/hook`;
 const server = await startServer(3304);
 delete process.env.REVALIDATE_SECRET;
+delete process.env.DEPLOY_HOOK_URL;
 
 // Async, so the event loop notices when the server closes an idle socket.
 const exec = (command, args, env = {}) =>
@@ -117,9 +132,14 @@ const expectRun = async (label, args, code, pattern, env) => {
     `${label}: exit ${got} (want ${code}), output does not match ${pattern}\n${out}`,
   );
 };
-const page = async (path) => {
-  const response = await fetch(`${server.origin}${path}`);
-  return { status: response.status, text: await response.text() };
+// The snapshot the import published last (DATASET_DIR), as the site would
+// read it: the pages are the build's, a new place set a new deployment.
+const published = () => {
+  const store = process.env.DATASET_DIR;
+  const pointer = JSON.parse(
+    readFileSync(join(store, "dataset/current.json"), "utf8"),
+  );
+  return parseDataset(readFileSync(join(store, pointer.path), "utf8"));
 };
 
 try {
@@ -137,11 +157,6 @@ try {
   ])
     await db.query(`delete from ${table}`);
   await db.end();
-  // Read Asnyka once, so the cache holds what the import must replace (its
-  // waste subpage: the smoke check reads it).
-  await page(`/adres/${FIXTURE_IDS.asnyka}`);
-  await page(`/adres/${FIXTURE_IDS.asnyka}/smieci`);
-
   write(zoned);
   await expectRun("production guard", ["--apply"], 1, /--yes-production/, {
     VERCEL_ENV: "production",
@@ -169,7 +184,7 @@ try {
     "first apply",
     ["--apply"],
     0,
-    /Imported: 12 events[\s\S]*Dataset snapshot published[\s\S]*Revalidate ok[\s\S]*Smoke check ok/,
+    /Imported: 12 events[\s\S]*Dataset snapshot published[\s\S]*Revalidate ok: \{[^}]*"deploy"[\s\S]*Smoke check skipped/,
     { SITE_URL: server.origin, REVALIDATE_SECRET },
   );
   await expectRun("re-run", [], 0, /events\s+\+0\s+−0\s+~0/);
@@ -183,70 +198,28 @@ try {
     { SITE_URL: server.origin, REVALIDATE_SECRET },
   );
 
-  // Pages read the import (after the revalidate above).
-  // The waste subpages: the calendar and the source line are there, by
-  // their markup, never their words.
-  const part = await page(`/adres/${FIXTURE_IDS.villagePart}/smieci`);
+  // Every publish asked for a new deployment (the place set is never the
+  // made-up build's): nothing revalidated, the hook called.
+  check(hooks >= 2, `deploy hook: ${hooks} calls, want one per publish`);
+  // The snapshot holds the import (the site's views over it,
+  // lib/dataset-views.ts), by structure.
+  const snapshot = published();
+  const part = placeView(snapshot, FIXTURE_IDS.villagePart, today);
   check(
-    part.status === 200 &&
-      part.text.includes("Dąbrowa (Basznia Górna, gm. Lubaczów)") &&
-      /<a href="\/ics\/[^"]+" role="button"/.test(part.text) &&
-      part.text.includes('<details class="govuk-details">'),
-    "village part: no label with its village, no zone from its village, or no calendar help",
+    part?.label === "Dąbrowa (Basznia Górna, gm. Lubaczów)" &&
+      part.zoneId !== null,
+    "village part: no label with its village, or no zone from its village",
   );
-  // Its source note (components/subpage-parts.tsx SourceNote, t373): the
-  // inset, the source line with a link per source (here the check
-  // server's own files, so http), then the check on its own line, its day
-  // unbroken (a no-break space before the month).
-  const village = await page(`/adres/${FIXTURE_IDS.village}/smieci`);
   check(
-    village.status === 200 &&
-      /<div class="govuk-inset-text"><p class="govuk-body-s app-quiet[^"]*">(?:[^<]+<a href="https?:\/\/[^"]+" class="govuk-link">[^<]+<\/a>)+[^<]*<\/p><p class="govuk-body-s app-quiet">[^<]*\d{1,2}\u00a0\p{L}+[^<]*<\/p><\/div>/u.test(
-        village.text,
-      ),
-    "village: no source line (its link out, then its check)",
+    placeView(snapshot, FIXTURE_IDS.rondo, today) !== null,
+    "rondo: no page of its own",
   );
-  const unzoned = await page(`/adres/${FIXTURE_IDS.unzonedStreet}`);
-  // Its notice in the inset, with a link out to the gmina's schedule.
-  check(
-    /<div class="govuk-inset-text">(?:(?!<\/div>)[\s\S])*<a [^>]*href="https:\/\//.test(
-      unzoned.text,
-    ),
-    "street without a zone: no link to the town's schedule",
-  );
-  const rondo = await page(`/adres/${FIXTURE_IDS.rondo}`);
-  check(rondo.status === 200, "rondo: direct link does not work");
-  const hits = async (q) =>
-    (await fetch(`${server.origin}/api/search?q=${q}`)).json();
-  check((await hits("rondo")).length === 0, "rondo: still offered in search");
-  const dabrowa = (await hits("dabrowa")).map((h) => h.label).sort();
-  check(
-    JSON.stringify(dabrowa) ===
-      JSON.stringify([
-        "Dąbrowa (Basznia Górna, gm. Lubaczów)",
-        "Dąbrowa (gm. Lubaczów)",
-      ]),
-    `search "dabrowa": ${JSON.stringify(dabrowa)}`,
-  );
-  // The search field's index holds the same places as /api/search.
-  const home = await page("/");
-  const { url: indexUrl, places: index } = await searchIndexOf(
-    server.origin,
-    home.text,
-  );
-  const labels = index.map(([, label]) => label);
+  const labels = searchIndexOf(snapshot).places.map(([, label]) => label);
   check(
     labels.includes("Dąbrowa (Basznia Górna, gm. Lubaczów)") &&
+      labels.includes("Dąbrowa (gm. Lubaczów)") &&
       !labels.some((label) => label.startsWith("rondo")),
-    `search index: ${indexUrl ?? "no URL on /"}, ${index.length} places`,
-  );
-  const pdf = await fetch(
-    `${server.origin}/adres/${FIXTURE_IDS.villagePart}/harmonogram.pdf`,
-  );
-  check(
-    pdf.status === 200 &&
-      pdf.headers.get("content-type")?.startsWith("application/pdf"),
-    `PDF for the village part: HTTP ${pdf.status}`,
+    `search index: ${labels.length} places`,
   );
 
   // A small change: one event gone, one relabelled. Upsert, no seed path.
@@ -339,16 +312,12 @@ try {
     retired?.retired_at && retired.replaced_by === null,
     `retire: ${gone} deleted or not retired: ${JSON.stringify(retired)}`,
   );
-  // Its address stays: a page of its own (its h1 not the 404's), with
-  // the way back to the search.
-  const h1 = (html) => /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html)?.[1] ?? null;
-  const gonePage = await page(`/adres/${gone}`);
-  const notFound = await page("/404");
+  // No page of its own any more (the next deployment's 404): not among
+  // the snapshot's places, and no redirect.
+  const afterRetire = published();
   check(
-    gonePage.status === 200 &&
-      h1(gonePage.text) !== null &&
-      h1(gonePage.text) !== h1(notFound.text),
-    `retire: /adres/${gone} is no page of its own (HTTP ${gonePage.status})`,
+    !placeIdsOf(afterRetire).includes(gone) && !afterRetire.redirects[gone],
+    `retire: ${gone} still a place, or redirected`,
   );
 
   const [from, to] = ["0972447-90208", "0972447-90299"];
@@ -364,10 +333,11 @@ try {
     renamed?.retired_at && renamed.replaced_by === to,
     `rename: ${from} not retired with replaced_by ${to}: ${JSON.stringify(renamed)}`,
   );
-  const map = await (await fetch(`${server.origin}/api/places`)).json();
+  const afterRename = published();
   check(
-    map.moved?.[from] === to && map.ids.includes(gone),
-    `rename: /api/places moved ${JSON.stringify(map.moved)}, retired id listed: ${map.ids?.includes(gone)}`,
+    afterRename.redirects[from] === to &&
+      !placeIdsOf(afterRename).includes(from),
+    `rename: redirects ${JSON.stringify(afterRename.redirects)}`,
   );
 
   const lost = structuredClone(rename);

@@ -7,12 +7,12 @@ import { parseOutagesFile, upstream as pgeUpstream } from "./pge-feed.ts";
 import type { PgeRead } from "./power-module.ts";
 
 // The private Blob store (BLOB_READ_WRITE_TOKEN): the crons' files, read
-// and written by the crons, and read by the pages' live blocks
-// (components/live-block.tsx), per request. The crons read the Blob's
-// origin, so a run compares against the last write; the pages read its
-// CDN copy, at most 60 s behind a write (vercel.com/docs/vercel-blob,
-// "Caching"; every file is written with the minimum cacheControlMaxAge,
-// 60 s), so no page needs a purge.
+// and written by the crons, and read by the pages when they are rendered.
+// The crons read the Blob's origin, so a run compares against the last
+// write; the pages read its CDN copy, at most 60 s behind a write
+// (vercel.com/docs/vercel-blob, "Caching"; every file is written with the
+// minimum cacheControlMaxAge, 60 s), so the cron revalidates a changed
+// source's pages after that (lib/live-refresh.ts).
 
 /** IMGW's last good feed, only our powiats' items (lib/imgw-cron.ts). */
 export const FEED_PATH = "imgw/feed.json";
@@ -23,20 +23,44 @@ export const PGE_PATH = "pge/outages.json";
 /** Every source's last check (lib/live-status.ts, lib/zuk-cron.ts). */
 export const CHECKS_PATH = "status/checks.json";
 
-/**
- * A file's body, or null if there is none yet. Throws on other errors.
- * From the Blob's origin (the crons); `cdn`: through its CDN (the pages).
- */
-export async function readBlobFile(
-  pathname: string,
-  { cdn = false }: { cdn?: boolean } = {},
-): Promise<string | null> {
+async function read(pathname: string, cdn: boolean): Promise<string | null> {
   const blob = await get(pathname, {
     access: "private",
     useCache: cdn,
   });
   if (blob?.statusCode !== 200) return null;
   return new Response(blob.stream).text();
+}
+
+/** A CDN read reused for this long per instance (a build, a re-render burst). */
+const CDN_REUSE_MS = 10_000;
+const cdnReads = new Map<
+  string,
+  { at: number; body: Promise<string | null> }
+>();
+
+/**
+ * A file's body, or null if there is none yet. Throws on other errors.
+ * From the Blob's origin (the crons, every time); `cdn`: through its CDN
+ * (the pages), one read per file per CDN_REUSE_MS in an instance, so the
+ * build's ~1,350 pages, or the pages re-rendered after one revalidation,
+ * read each file a few times, not once per page. The CDN copy is up to
+ * 60 s old anyway.
+ */
+export async function readBlobFile(
+  pathname: string,
+  { cdn = false }: { cdn?: boolean } = {},
+): Promise<string | null> {
+  if (!cdn) return read(pathname, false);
+  const now = Date.now();
+  const known = cdnReads.get(pathname);
+  if (known && now - known.at < CDN_REUSE_MS) return known.body;
+  const body = read(pathname, true);
+  cdnReads.set(pathname, { at: now, body });
+  body.catch(() => {
+    if (cdnReads.get(pathname)?.body === body) cdnReads.delete(pathname);
+  });
+  return body;
 }
 
 export async function writeBlobFile(
@@ -57,8 +81,9 @@ type MockFiles = (url: string, now: number) => Promise<LiveFiles>;
 type LiveFiles = { feed: string | null; checks: string | null };
 
 /**
- * A live feed's last good copy for the pages, read per request through the
- * Blob's CDN, never cached by Next; pages never ask the upstream. `url` is
+ * A live feed's last good copy for the pages, read through the Blob's CDN
+ * when a page is rendered (cached with it, lib/page-cache.ts); pages never
+ * ask the upstream. `url` is
  * the upstream's: a "mock:…" one (outside production only, its upstream()
  * refuses it there) reads the mock's files instead (no Blob needed). null:
  * the cron has written none yet. The store unreadable, or its file not
@@ -91,8 +116,8 @@ async function liveRead<C>(
 
 /**
  * IMGW's last good feed and its last good check: the weather module's
- * (lib/modules.ts). `preview`: ?imgw= (lib/imgw-preview.ts), the mock,
- * outside production only.
+ * (lib/modules.ts). `preview`: a scenario's mock upstream
+ * (lib/imgw-preview.ts, /podglad/imgw/…), outside production only.
  */
 export async function imgwCopy(
   preview: string | null = null,

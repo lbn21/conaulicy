@@ -1,25 +1,21 @@
-// Address search, the same everywhere: the search field and „Szukaj” (on
-// the device, over the index from /api/search-index) and /api/search (on the
-// server, over the same index), so one query gives the same ranked places in
-// both. uFuzzy (@leeoniya/ufuzzy) forgives a typo; around it, a Polish layer
-// reads the query (house number, postcode, "ul.", abbreviations, word
-// endings) and ranks the places.
+// Address search: the search field and „Szukaj”, on the device, over the
+// static index (/search-index.json). uFuzzy (@leeoniya/ufuzzy) forgives a
+// typo; around it, a Polish layer reads the query (postcode, "ul.",
+// abbreviations, word endings; a house number typed with the street is
+// left out, as no page differs by it) and ranks the places.
 
 import uFuzzy from "@leeoniya/ufuzzy";
-import { houseNumber, withHouseNumber } from "./house.ts";
 import { LANG } from "./locale.ts";
 import { normalize } from "./normalize.ts";
 import { CECHA_WORDS, placePath } from "./places.ts";
 
-export type SearchHit = {
-  id: string;
-  label: string;
-  /** House number read from the query ("Asnyka 12"), for ?nr=. */
-  nr?: string | null;
-};
+export type SearchHit = { id: string; label: string };
+
+/** The search index's one static path (app/search-index.json/route.ts). */
+export const SEARCH_INDEX_PATH = "/search-index.json";
 
 /**
- * What /api/search-index serves, per searchable place: [id, label, type].
+ * What the search index holds, per searchable place: [id, label, type].
  * The type is TERYT's: a street's CECHA ("ul.", "os.", "al.", lib/places.ts
  * CECHA_WORDS), or a locality's kind ("wies", "czesc_wsi", "miasto").
  */
@@ -31,7 +27,7 @@ export const SEARCH_ID = "szukaj";
 /** Id of its field („Ulica lub wieś”), a link's target (NOW_TILES). */
 export const SEARCH_INPUT_ID = "adres";
 
-/** A query is cut to this many characters („Szukaj” and /api/search). */
+/** A query is cut to this many characters („Szukaj”). */
 export const MAX_QUERY_LENGTH = 100;
 
 /** At most this many places in the list. */
@@ -223,25 +219,24 @@ function rank(places: Place[], terms: string[], street: boolean): Ranked[] {
   return [];
 }
 
-type Reading = { text: string; nr: string | null };
+// "12", "12a", "7/22": a word that is a house number, left out of a
+// reading (no page differs by one).
+const HOUSE_WORD = /^\d{1,4}[a-z]?(?:\/\d{1,4}[a-z]?)?$/i;
 
 /**
  * Ways to read a query: as typed (street names with digits: "3 Maja"), or
- * with one of its house numbers taken out, wherever it stands ("Asnyka 12",
+ * with one house-number word taken out, wherever it stands ("Asnyka 12",
  * "12 Asnyka", "ul. Rynek 5, Lubaczów"). Postcodes are dropped.
  */
-function readings(q: string): Reading[] {
+function readings(q: string): string[] {
   const words = q
     .replace(POSTCODE, " ")
     .split(/[\s,;]+/)
     .filter(Boolean);
-  const result: Reading[] = [{ text: words.join(" "), nr: null }];
+  const result = [words.join(" ")];
   for (let i = words.length - 1; i >= 0; i--) {
-    const nr = houseNumber(words[i]);
-    if (nr && words.length > 1) {
-      const text = words.filter((_, j) => j !== i).join(" ");
-      result.push({ text, nr });
-    }
+    if (HOUSE_WORD.test(words[i]) && words.length > 1)
+      result.push(words.filter((_, j) => j !== i).join(" "));
   }
   return result;
 }
@@ -303,9 +298,8 @@ export function matcher(index: SearchIndex): Matcher {
     };
   });
   return (q, limit = SEARCH_LIMIT) => {
-    let best: { ranked: Ranked[]; nr: string | null; terms: string[] } | null =
-      null;
-    for (const { text, nr } of readings(q)) {
+    let best: { ranked: Ranked[]; terms: string[] } | null = null;
+    for (const text of readings(q)) {
       const terms = searchTerms(text);
       if (terms.length === 0) continue;
       const street = normalize(text)
@@ -316,15 +310,13 @@ export function matcher(index: SearchIndex): Matcher {
         ranked.length > 0 &&
         (!best || compareKeys(ranked[0].key, best.ranked[0].key) < 0)
       ) {
-        best = { ranked, nr, terms };
+        best = { ranked, terms };
       }
     }
     if (!best) return { hits: [], clear: false };
-    const { ranked, nr, terms } = best;
+    const { ranked, terms } = best;
     return {
-      hits: ranked
-        .slice(0, limit)
-        .map(({ place }) => (nr ? { ...place.hit, nr } : place.hit)),
+      hits: ranked.slice(0, limit).map(({ place }) => place.hit),
       clear:
         terms.join("").length >= CLEAR_MIN &&
         (ranked.length === 1 || compareKeys(ranked[0].key, ranked[1].key) < 0),
@@ -338,36 +330,31 @@ export function byLabel(a: SearchHit, b: SearchHit): number {
 
 /**
  * The place whose suggestion text q is (the field holds it after a pick):
- * its label, or its label with a house number, where the field puts one
- * ("ul. Adama Asnyka 12, Lubaczów") or typed after it ("ul. Adama Asnyka,
- * Lubaczów 12"), compared as search compares (case, Polish letters,
- * punctuation, spaces). Null when no label, or more than one, reads so:
- * then the search proper decides.
+ * its label, or its label with a house-number word typed after it ("ul.
+ * Adama Asnyka, Lubaczów 12"), compared as search compares (case, Polish
+ * letters, punctuation, spaces). Null when no label, or more than one,
+ * reads so: then the search proper decides.
  */
 export function exactPlace(index: SearchIndex, q: string): SearchHit | null {
-  const wanted = normalize(q);
-  const numbers = new Set(
-    // Words as the label separates them: "Asnyka 12, Lubaczów".
-    q.split(/[\s,()]+/).flatMap((word) => houseNumber(word) ?? []),
-  );
-  for (const nr of [null, ...numbers]) {
-    const found = index.filter(
-      ([, label]) =>
-        normalize(withHouseNumber(label, nr)) === wanted ||
-        (nr !== null && normalize(`${label} ${nr}`) === wanted),
-    );
+  const words = q.trim().split(/\s+/);
+  const texts = [q];
+  if (words.length > 1 && HOUSE_WORD.test(words.at(-1) ?? ""))
+    texts.push(words.slice(0, -1).join(" "));
+  for (const text of texts) {
+    const wanted = normalize(text);
+    const found = index.filter(([, label]) => normalize(label) === wanted);
     if (found.length === 1) {
       const [[id, label]] = found;
-      return nr ? { id, label, nr } : { id, label };
+      return { id, label };
     }
     if (found.length > 1) return null;
   }
   return null;
 }
 
-/** Where a hit links to: the place, and its house number if given. */
+/** Where a hit links to: the place's page. */
 export function placeHref(hit: SearchHit): string {
-  return placePath(hit.id, hit.nr);
+  return placePath(hit.id);
 }
 
 /** "1 adres", "3 adresy", "5 adresów", "22 adresy". */

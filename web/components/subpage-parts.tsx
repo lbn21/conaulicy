@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Icon } from "@/components/icon";
 import { Parts } from "@/components/parts";
-import { type Checked, checkedLine, type Part, sourceLine } from "@/lib/hub";
+import { CHECK_CADENCE, freshnessLine, type Part, sourceLine } from "@/lib/hub";
 
 // The parts every address subpage shares (CLAUDE.md, "One layout for every
 // address subpage"), in its order: after the module's content the AI-read
@@ -135,49 +135,67 @@ export function AiReadNote({ text }: { text: string }) {
 
 /**
  * Every source note, the same everywhere (t373): at the page's bottom, in
- * GOV.UK's inset text, small, secondary text: the source, then „Sprawdziliśmy
- * …” always on its own line (a paragraph of its own, 10 px under the
- * source), its day and time unbroken (lib/hub.ts). The subpages'
- * (SourceInset) and the address page's (components/hub.tsx: IMGW's
- * required wording, then every module's check). Neither: nothing.
+ * GOV.UK's inset text, small, secondary text: the source, then the live
+ * sources' freshness line („Bez zmian od …”, lib/hub.ts freshnessLine) on
+ * its own line, 10 px under the source, and under it how often we look
+ * (CHECK_CADENCE). Static: written with the page, no script touches it.
+ * The subpages' (SourceInset), the address page's (components/hub.tsx) and
+ * the home panel's. Neither: nothing.
  */
 export function SourceNote({
   source,
-  checked,
+  fresh = null,
 }: {
   source?: ReactNode;
-  checked: string | null;
+  /** freshnessLine's; null: the line and the cadence are left out. */
+  fresh?: string | null;
 }) {
-  if (!source && !checked) return null;
+  if (!source && !fresh) return null;
   return (
     <div className="govuk-inset-text">
       {source && (
-        <p className="govuk-body-s app-quiet govuk-!-margin-bottom-2">
+        <p
+          className={
+            fresh
+              ? "govuk-body-s app-quiet govuk-!-margin-bottom-2"
+              : "govuk-body-s app-quiet"
+          }
+        >
           {source}
         </p>
       )}
-      {checked && <p className="govuk-body-s app-quiet">{checked}</p>}
+      {fresh && (
+        <>
+          <p className="govuk-body-s app-quiet govuk-!-margin-bottom-2">
+            {fresh}
+          </p>
+          <p className="govuk-body-s app-quiet">{CHECK_CADENCE}</p>
+        </>
+      )}
     </div>
   );
 }
 
 /**
  * The subpage's one source block, at the bottom (SourceNote): „Źródło: ‹its
- * sources›.”, then „Sprawdziliśmy ‹when›.” (lib/hub.ts sourceLine,
- * checkedLine).
+ * sources›.”, then, for a live source (`changedAt`), its freshness line.
+ * The waste schedule: its source line only.
  */
 export function SourceInset({
   sources,
-  at,
+  changedAt = null,
 }: {
   sources: Part[][];
-  at: Checked;
+  /** When the live source's data last changed (ms); null: none shown. */
+  changedAt?: number | null;
 }) {
   const line = sourceLine(sources);
   return (
     <SourceNote
       source={line.length > 0 && <Parts parts={line} lead={false} />}
-      checked={checkedLine(at)}
+      fresh={
+        changedAt === null ? null : freshnessLine([{ name: null, changedAt }])
+      }
     />
   );
 }

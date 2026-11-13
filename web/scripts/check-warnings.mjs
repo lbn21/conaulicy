@@ -5,32 +5,34 @@
 // - mock:none (the build's own setting in CI): nothing of IMGW's in <main>
 //   on any route (no banner, no line, no card); the breadcrumbs only on
 //   the address pages, the first line of the head's band in <main>;
-// - per state, on the address page: a card per warning, highest first,
-//   directly above „Najbliższe 7 dni”: its band („Stopień N z
-//   3”, the meter filled up to N), the event (h2), when („Trwa do …” or
-//   „Od … do …”) and IMGW's own description in GOV.UK's details; nothing
-//   of it in the timeline, no tag anywhere; the notice, if any, in the
-//   inset above (its link IMGW's page); /pogoda is a 404; nothing of it on
-//   /smieci;
+// - the address page as built: no card above „Najbliższe 7 dni”, nothing
+//   in the timeline, no tag anywhere; /pogoda is a 404; nothing on /smieci;
+// - per state, on its preview page (/podglad/imgw/<state>,
+//   lib/imgw-preview.ts, prerendered outside production): a card per
+//   warning, highest first, as the address page draws them: its band
+//   („Stopień N z 3”, the meter filled up to N), the event (h2), when
+//   („Trwa do …” or „Od … do …”) and IMGW's own description in GOV.UK's
+//   details; no tag; the notice, if any, in the inset above (its link
+//   IMGW's page);
 // - three warnings: axe at 375 and 1280 px, keyboard focus on a card's
 //   „Co przekazuje IMGW”, 320 px and 200% zoom with no horizontal scroll,
 //   the bands' fills (IMGW's level colours, lib/palette.ts) and contrast;
 // - stale (the last good check over an hour back: the notice, the warning
 //   still shown; with no warning, the notice alone), too old (3 hours: the
-//   notice alone) and a store that cannot be read (the notice alone; the
-//   404 page as ever).
-// Each state's pages are dropped from the ISR cache first, so they render
-// with that server's setting. With SCREENSHOT_DIR, saves
-// <width>-<state>.png of the address page (DPR 2). Run after `next build`.
+//   notice alone) and a store that cannot be read (the notice alone).
+// Every page is prerendered by the build, so one server reads them all.
+// With SCREENSHOT_DIR, saves <width>-<state>.png (DPR 2). Run after
+// `next build`.
 //
 // With --ci (CI): mock:none and the three warnings only; the
 // other states' copy and order are lib/imgw-shown.test.ts's and
 // lib/weather-module.test.ts's. Without it, every state: run it by hand
 // when the weather's display changes.
-import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "playwright";
+import { IMGW_SCENARIOS } from "../lib/imgw-preview.ts";
 import { WARNING_LEVELS } from "../lib/palette.ts";
 import {
   closeRenderedPages,
@@ -52,87 +54,49 @@ const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const SHOTS = process.env.SCREENSHOT_DIR;
 const CI = process.argv.includes("--ci");
 
-// levels: the warnings expected, highest first; notice: the notice first.
-const STATES = [
-  ...[1, 2, 3].flatMap((level) => [
-    {
-      name: `l${level}-active`,
-      url: `mock:1809?level=${level}`,
-      levels: [level],
-    },
-    {
-      name: `l${level}-upcoming`,
-      url: `mock:1809?level=${level}&start=upcoming`,
-      levels: [level],
-    },
-  ]),
-  { name: "two-l2-l3", url: "mock:1809?level=2&also=3", levels: [3, 2] },
-  {
-    name: "three-l1-l2-l3",
-    url: "mock:1809?level=1&also=2,3",
-    levels: [3, 2, 1],
-  },
-  {
-    name: "cross-day-upcoming",
-    url: "mock:1809?level=2&start=night",
-    levels: [2],
-  },
-  // The last good check over an hour back, and over three hours.
-  {
-    name: "stale",
-    url: "mock:1809?level=2&checkedAgo=70",
-    levels: [2],
-    notice: "stale",
-  },
-  {
-    name: "stale-none",
-    url: "mock:none?checkedAgo=70",
-    levels: [],
-    notice: "stale-none",
-  },
-  {
-    name: "too-old",
-    url: "mock:1809?level=2&checkedAgo=190",
-    levels: [],
-    notice: "too-old",
-  },
-  // The store cannot be read: an expected error, rendered as a notice.
-  {
-    name: "unreadable",
-    url: "mock:1809?fail=500",
-    levels: [],
-    notice: "unreadable",
-  },
-];
+// Each preview scenario (lib/imgw-preview.ts, /podglad/imgw/<name>):
+// levels, the warnings expected, highest first; notice: the notice first.
+const EXPECTED = {
+  "l1-active": { levels: [1] },
+  "l1-upcoming": { levels: [1] },
+  "l2-active": { levels: [2] },
+  "l2-upcoming": { levels: [2] },
+  "l3-active": { levels: [3] },
+  "l3-upcoming": { levels: [3] },
+  "two-l2-l3": { levels: [3, 2] },
+  "three-l1-l2-l3": { levels: [3, 2, 1] },
+  "cross-day-upcoming": { levels: [2] },
+  stale: { levels: [2], notice: true },
+  "stale-none": { levels: [], notice: true },
+  "too-old": { levels: [], notice: true },
+  unreadable: { levels: [], notice: true },
+};
+const STATES = Object.keys(IMGW_SCENARIOS).map((name) => ({
+  name,
+  ...EXPECTED[name],
+}));
 const THREE = "three-l1-l2-l3";
-// A 404, as ever while the store cannot be read (app/not-found.tsx).
-const NOT_FOUND = "/nie-ma-takiej-strony";
+const preview = (name) => `/podglad/imgw/${name}`;
 
 const failures = [];
-let port = 3320;
 
-// Drop a page from the ISR cache, so the next request renders it: the
-// build's prerendered copy and any copy rendered since (route-cache). Cached
-// by its path, never its query.
-function forget(page) {
-  const name = page.slice(1).split("?")[0];
-  const routeCache = ".next/server/route-cache/APP_PAGE";
-  const bases = [
-    path.join(".next/server/app", name),
-    ...(existsSync(routeCache) ? readdirSync(routeCache) : []).map((build) =>
-      path.join(routeCache, build, "$", name),
-    ),
-  ];
-  for (const base of bases)
-    for (const ext of [".html", ".rsc", ".meta", ".segments"])
-      rmSync(base + ext, { recursive: true, force: true });
-}
+// An icon (components/icon.tsx): decorative, aria-hidden, Lucide's shapes.
+const ICON =
+  '<svg aria-hidden="true" focusable="false" class="app-icon"[^>]*>(?:(?!</svg>).)*</svg>';
+// A card, by structure only, never its words: the level's band holds the
+// meter and the level's digit in text (never colour alone), then a
+// heading, when, and IMGW's words in a details, each with text.
+const CARD = new RegExp(
+  `<section class="app-warning app-warning--([1-3])" aria-labelledby="ostrzezenie-([^"]+)"><p class="app-warning__level[^"]*"><span class="app-warning__meter" aria-hidden="true">((?:<span(?: class="app-warning__on")?></span>){3})</span>${ICON}[^<]*\\1[^<]*</p><div class="app-warning__body[^"]*"><h2 id="ostrzezenie-\\2" class="govuk-heading-m[^"]*">(?:<span class="app-tile[^"]*">${ICON}</span>)?[^<]+</h2><p class="govuk-body">[^<]+</p><details class="govuk-details[^"]*"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">[^<]+</span></summary><div class="govuk-details__text">[^<]+</div></details></div></section>`,
+  "gu",
+);
+// The notice: a line in the inset linking IMGW's live page.
+const NOTICE =
+  /<div class="govuk-inset-text">(?:(?!<\/div>)[\s\S])*<a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">/;
 
 // GOV.UK's breadcrumbs only on an address page (none on a flat site, the
 // home page or a 404), one trail, the first line of the page head's band
-// in <main>, so the band runs unbroken from the header (t400). Read
-// without React's marks: an address page's content is a boundary of its
-// own. A 404's skeleton draws the trail's bar, a <div>, never a <nav>.
+// in <main>, so the band runs unbroken from the header (t400).
 function crumbsPlaced(route, html) {
   const address = route.path.startsWith("/adres/") && !route.status;
   const trails = html.match(/<nav class="govuk-breadcrumbs/g)?.length ?? 0;
@@ -163,46 +127,55 @@ async function hubChecks(origin, state) {
   const weatherGone = await notFoundAt(origin + WEATHER);
   const timelineAt = hub.indexOf('<section aria-labelledby="najblizsze-dni">');
   const timeline = hub.slice(timelineAt, hub.indexOf("</section>", timelineAt));
-  // An icon (components/icon.tsx): decorative, aria-hidden, Lucide's shapes.
-  const ICON =
-    '<svg aria-hidden="true" focusable="false" class="app-icon"[^>]*>(?:(?!</svg>).)*</svg>';
-  // Structure only, never its words: the level's band holds the meter and
-  // the level's digit in text (never colour alone), then a heading, when,
-  // and IMGW's words in a details, each with text.
-  const card = new RegExp(
-    `<section class="app-warning app-warning--([1-3])" aria-labelledby="ostrzezenie-([^"]+)"><p class="app-warning__level[^"]*"><span class="app-warning__meter" aria-hidden="true">((?:<span(?: class="app-warning__on")?></span>){3})</span>${ICON}[^<]*\\1[^<]*</p><div class="app-warning__body[^"]*"><h2 id="ostrzezenie-\\2" class="govuk-heading-m[^"]*">(?:<span class="app-tile[^"]*">${ICON}</span>)?[^<]+</h2><p class="govuk-body">[^<]+</p><details class="govuk-details[^"]*"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">[^<]+</span></summary><div class="govuk-details__text">[^<]+</div></details></div></section>`,
-    "gu",
-  );
-  const cards = [...hub.matchAll(card)];
-  const levels = cards.map(([, level]) => Number(level));
-  const meters = cards.map(([, , , steps]) => steps.split("__on").length - 1);
+  const { cards, problems: own } = cardProblems(hub, state);
   const lastCard = cards.at(-1);
   const cardsEnd = lastCard ? lastCard.index + lastCard[0].length : -1;
   const imgwLinks = hub.split('<a href="https://meteo.imgw.pl/"').length - 1;
-  // The notice: a line in the inset linking IMGW's live page.
-  const notice =
-    /<div class="govuk-inset-text">(?:(?!<\/div>)[\s\S])*<a href="https:\/\/meteo\.imgw\.pl\/" class="govuk-link">/;
   const problems = [
-    levels.join() !== state.levels.join() &&
-      `cards ${levels}, want ${state.levels}`,
-    (hub.match(/class="app-warning /g)?.length ?? 0) !== cards.length &&
-      "a card off its markup",
-    meters.join() !== levels.join() && `meters ${meters}, want ${levels}`,
+    ...own,
     // Directly above „Najbliższe 7 dni”.
     lastCard &&
       cardsEnd !== timelineAt &&
       "the cards not right above the timeline",
     /app-warning/.test(timeline) && "a warning in the timeline",
-    /govuk-tag/.test(hub) && "a tag on the address page",
     !/<h2 id="najblizsze-dni"[^>]*>[^<]/.test(hub) && "no timeline heading",
     imgwLinks !== (state.notice ? 1 : 0) &&
       `${imgwLinks} links to IMGW on the address page`,
     weatherGone && `${WEATHER}: ${weatherGone}`,
     hub.includes(`href="${WEATHER}`) && `a link to ${WEATHER}`,
-    // The notice: in the inset above the cards; none when fresh.
-    notice.test(hub) !== Boolean(state.notice) && "the notice",
     /app-warning/.test(waste) && "a warning on /smieci",
   ].filter(Boolean);
+  if (problems.length > 0) failures.push(`${label}: ${problems.join("; ")}`);
+  else console.log(`ok    ${label}: ${state.levels.length} cards`);
+}
+
+// The cards in `html` against the state: highest first, each with its
+// meter, every one in its markup; the notice in the inset (none when
+// fresh); no tag.
+function cardProblems(html, state) {
+  const cards = [...html.matchAll(CARD)];
+  const levels = cards.map(([, level]) => Number(level));
+  const meters = cards.map(([, , , steps]) => steps.split("__on").length - 1);
+  const problems = [
+    levels.join() !== state.levels.join() &&
+      `cards ${levels}, want ${state.levels}`,
+    (html.match(/class="app-warning /g)?.length ?? 0) !== cards.length &&
+      "a card off its markup",
+    meters.join() !== levels.join() && `meters ${meters}, want ${levels}`,
+    /govuk-tag/.test(html) && "a tag",
+    NOTICE.test(html) !== Boolean(state.notice) && "the notice",
+  ].filter(Boolean);
+  return { cards, problems };
+}
+
+// A scenario's preview page (/podglad/imgw/<name>): its cards, highest
+// first, each with its meter; the notice in the inset; no tag. The same
+// markup as the address page's (components/warning-cards.tsx).
+async function previewChecks(origin, state) {
+  const label = preview(state.name);
+  const { status, html: raw } = await renderedPage(origin + label);
+  if (status !== 200) failures.push(`${label}: HTTP ${status}`);
+  const { problems } = cardProblems(raw.replace(/<!--.*?-->/g, ""), state);
   if (problems.length > 0) failures.push(`${label}: ${problems.join("; ")}`);
   else console.log(`ok    ${label}: ${state.levels.length} cards`);
 }
@@ -215,19 +188,8 @@ async function open(browser, origin, width, scale = 2, page = HUB) {
   });
   const tab = await context.newPage();
   await tab.goto(origin + page, { waitUntil: "load" });
-  await tab
-    .waitForFunction(
-      () =>
-        !document.querySelector(".app-skeleton") &&
-        document.querySelector("main h1"),
-      null,
-      { timeout: 10_000 },
-    )
-    .catch(() => {});
   return { context, page: tab };
 }
-const openHub = (browser, origin, width, scale = 2) =>
-  open(browser, origin, width, scale, HUB);
 
 // Tab (keyboard only) to the first element matching `text` (a selector):
 // GOV.UK's focus style on it.
@@ -251,11 +213,11 @@ async function focusCheck(page, text, where) {
   else console.log(`ok    focus on „${text}” (${where})`);
 }
 
-// With SCREENSHOT_DIR, the address page per width for the reviewer.
-async function shoot(browser, origin, name) {
+// With SCREENSHOT_DIR, the page per width for the reviewer.
+async function shoot(browser, origin, name, at) {
   if (!SHOTS) return;
   for (const width of WIDTHS) {
-    const { context, page } = await openHub(browser, origin, width);
+    const { context, page } = await open(browser, origin, width, 2, at);
     await page.screenshot({
       path: path.join(SHOTS, `${width}-${name}.png`),
       fullPage: true,
@@ -280,23 +242,23 @@ function ratio(a, b) {
   return (x + 0.05) / (y + 0.05);
 }
 
-// Three warnings: axe, focus, the bands, reflow.
-async function deepChecks(browser, origin) {
+// Three warnings (their preview page, `at`): axe, focus, the bands, reflow.
+async function deepChecks(browser, origin, at) {
   for (const width of WIDTHS) {
-    const { context, page } = await openHub(browser, origin, width);
+    const { context, page } = await open(browser, origin, width, 2, at);
     const { violations } = await new AxeBuilder({ page })
       .withTags(TAGS)
       .include("main")
       .analyze();
     for (const v of violations)
-      failures.push(`${HUB} [${width}px]: axe ${v.id}: ${v.help}`);
-    if (violations.length === 0) console.log(`ok    axe ${HUB} [${width}px]`);
+      failures.push(`${at} [${width}px]: axe ${v.id}: ${v.help}`);
+    if (violations.length === 0) console.log(`ok    axe ${at} [${width}px]`);
     // A card's details, by keyboard.
-    await focusCheck(page, DETAILS, `${HUB} [${width}px]`);
+    await focusCheck(page, DETAILS, `${at} [${width}px]`);
     await context.close();
   }
 
-  const { context, page } = await openHub(browser, origin, 1280);
+  const { context, page } = await open(browser, origin, 1280, 2, at);
   // The bands: IMGW's level colours, their text readable.
   const bands = await page.evaluate(() =>
     [...document.querySelectorAll("main .app-warning")].map((card) => {
@@ -323,12 +285,12 @@ async function deepChecks(browser, origin) {
     [320, 1],
     [640, 2],
   ]) {
-    const narrow = await openHub(browser, origin, width, scale);
+    const narrow = await open(browser, origin, width, scale, at);
     const [scroll, client] = await narrow.page.evaluate(() => [
       document.documentElement.scrollWidth,
       document.documentElement.clientWidth,
     ]);
-    const label = `${HUB} ${scale === 2 ? "200% zoom (640 px)" : `${width} px`}`;
+    const label = `${at} ${scale === 2 ? "200% zoom (640 px)" : `${width} px`}`;
     if (scroll > client)
       failures.push(`${label}: horizontal scroll (${scroll} > ${client})`);
     else
@@ -340,66 +302,45 @@ async function deepChecks(browser, origin) {
 }
 
 const browser = await chromium.launch();
+const server = await startServer(3320);
 try {
   if (SHOTS) mkdirSync(SHOTS, { recursive: true });
 
   // The build as it is (CI: mock:none): nothing of IMGW's on any route.
-  const plain = await startServer(port++);
-  try {
-    for (const route of ROUTES) {
-      // The breadcrumbs as the browser shows them: an address page reads its
-      // place behind <Suspense> (components/place-suspense.tsx), so a house
-      // number not prerendered streams its content after <main>, in
-      // React's hidden <div>, to be moved in place.
-      if (route.status) {
-        const html = await (await fetch(plain.origin + route.path)).text();
-        crumbsPlaced(route, withoutReactMarks(html));
-        continue;
-      }
-      const shown = (await renderedPage(plain.origin + route.path)).html;
-      crumbsPlaced(route, shown);
-      const main = shown.slice(
-        shown.indexOf("<main"),
-        shown.indexOf("</main>"),
-      );
-      if (/govuk-notification-banner|app-warning/.test(main))
-        failures.push(`${route.path}: a banner, a line or a warning of IMGW's`);
+  for (const route of ROUTES) {
+    if (route.status) {
+      const html = await (await fetch(server.origin + route.path)).text();
+      crumbsPlaced(route, withoutReactMarks(html));
+      continue;
     }
-    await hubChecks(plain.origin, { name: "none", levels: [] });
-    await shoot(browser, plain.origin, "none");
-    console.log(
-      `ok    ${process.env.IMGW_WARNINGS_URL}: no IMGW banner on ${ROUTES.length} routes`,
-    );
-  } finally {
-    await plain.stop();
+    const shown = (await renderedPage(server.origin + route.path)).html;
+    crumbsPlaced(route, shown);
+    const main = shown.slice(shown.indexOf("<main"), shown.indexOf("</main>"));
+    if (/govuk-notification-banner|app-warning/.test(main))
+      failures.push(`${route.path}: a banner, a line or a warning of IMGW's`);
   }
+  await hubChecks(server.origin, { name: "none", levels: [] });
+  await shoot(browser, server.origin, "none", HUB);
+  console.log(
+    `ok    ${process.env.IMGW_WARNINGS_URL}: no IMGW banner on ${ROUTES.length} routes`,
+  );
 
+  // Every scenario, prerendered by this build (outside production).
   for (const state of CI
     ? STATES.filter((state) => state.name === THREE)
     : STATES) {
-    for (const page of [HUB, `${HUB}/smieci`]) forget(page);
-    const server = await startServer(port++, { IMGW_WARNINGS_URL: state.url });
-    try {
-      await hubChecks(server.origin, state);
-      if (state.name === THREE) await deepChecks(browser, server.origin);
-      await shoot(browser, server.origin, state.name);
-      if (state.name === "unreadable") {
-        const response = await fetch(server.origin + NOT_FOUND);
-        if (response.status !== 404)
-          failures.push(`unreadable ${NOT_FOUND}: HTTP ${response.status}`);
-        else console.log(`ok    unreadable ${NOT_FOUND}: HTTP 404`);
-      }
-    } finally {
-      await server.stop();
-    }
+    await previewChecks(server.origin, state);
+    if (state.name === THREE)
+      await deepChecks(browser, server.origin, preview(THREE));
+    await shoot(browser, server.origin, state.name, preview(state.name));
   }
-  for (const page of [HUB, `${HUB}/smieci`]) forget(page);
 } finally {
   await closeRenderedPages();
   await browser.close();
+  await server.stop();
 }
 
 finish(
   failures,
-  `IMGW warnings: ${CI ? "mock:none and three warnings (--ci)" : `${STATES.length + 1} states`}, each once, only on the address page.`,
+  `IMGW warnings: ${CI ? "mock:none and three warnings (--ci)" : `${STATES.length + 1} states`}, each once, only on the address page and its preview.`,
 );

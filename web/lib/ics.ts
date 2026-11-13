@@ -58,17 +58,15 @@ export function calendarBody(lines: string[]): string {
   return `${[...lines, "END:VCALENDAR"].map(fold).join("\r\n")}\r\n`;
 }
 
-/** The response: inline, as `filename`, with the route's own headers. */
-export function calendarResponse(
-  body: string,
-  filename: string,
-  headers: Record<string, string>,
-): Response {
+/**
+ * The response: inline, as `filename`; only its type and disposition, so
+ * Vercel's own cache headers apply to the prerendered file.
+ */
+export function calendarResponse(body: string, filename: string): Response {
   return new Response(body, {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
       "Content-Disposition": `inline; filename="${filename}"`,
-      ...headers,
     },
   });
 }

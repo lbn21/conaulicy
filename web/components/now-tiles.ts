@@ -15,7 +15,6 @@ import {
 import { PGE_PAGE } from "@/lib/power-module";
 import { wasteWeek } from "@/lib/schedule";
 import { SEARCH_INPUT_ID } from "@/lib/search";
-import { sourcesChecked } from "@/lib/waste-module";
 import { MZGKIM_NEWS } from "@/lib/water-sources";
 import { warningWhen, weather } from "@/lib/weather-module";
 import { getWaterData } from "@/lib/zuk-store";
@@ -23,7 +22,8 @@ import { getWaterData } from "@/lib/zuk-store";
 // The home page's „Teraz w gminie” tiles, in order: one entry each, its
 // module (icon and colour), its label, its source (named and linked in the
 // panel's source line only: a tile is a summary, no way off the site;
-// t398), an optional action on the page and its aggregate read. Every tile is drawn by
+// t398), an optional action on the page and its aggregate read, plain
+// JSON (cached with the home page, lib/page-cache.ts). Every tile is drawn by
 // one NowTile (components/now-panel.tsx), in one wrapping row; a new
 // module is one more entry here and its read, no layout or CSS change
 // (docs/layout.md, „Teraz w gminie”). A read gives null when its source
@@ -41,7 +41,7 @@ export type NowTileDef = {
    * (the waste schedules, one per gmina). */
   source: NowLink | null;
   /** A link at the tile's foot to a field on the page, which it focuses
-   * (FieldLink); shown read or not, so the skeleton draws it too. */
+   * (FieldLink); shown read or not. */
   action?: NowLink & { href: `#${string}` };
   read(week: Week, now: number): Promise<NowTileData | null>;
 };
@@ -54,7 +54,7 @@ const pogoda: NowTileDef = {
   async read(_week, now) {
     const data = weather(await imgwCopy(), now);
     if (!data || data.checkedAt === null) return null;
-    const checkedAt = new Date(data.checkedAt);
+    const { changedAt } = data;
     const top = topWarning(data.shown?.warnings ?? []);
     if (data.shown?.notice && !top) return null;
     if (!top)
@@ -62,7 +62,7 @@ const pogoda: NowTileDef = {
         value: "Brak ostrzeżeń",
         note: "dla powiatu, teraz",
         empty: true,
-        checkedAt,
+        changedAt,
       };
     return {
       value: top.event,
@@ -70,7 +70,7 @@ const pogoda: NowTileDef = {
       empty: false,
       featured: true,
       tag: { text: `Ostrzeżenie ${top.level}. stopnia`, level: top.level },
-      checkedAt,
+      changedAt,
     };
   },
 };
@@ -83,10 +83,9 @@ const woda: NowTileDef = {
   async read(week, now) {
     const views = Object.values(await getWaterData(new Date(now)));
     if (views.every((v) => v.unavailable)) return null;
-    const checked = views
-      .map((v) => v.checkedAt)
-      .filter((at): at is string => at !== null)
-      .sort();
+    const changed = views.flatMap((v) =>
+      v.changedAt ? [Date.parse(v.changedAt)] : [],
+    );
     const count = views.reduce(
       (n, v) => n + waterWeek(v.disruptions, week, () => v.checkedAt),
       0,
@@ -98,7 +97,7 @@ const woda: NowTileDef = {
           : "Brak przerw",
       note: WEEK,
       empty: count === 0,
-      checkedAt: checked[0] ? new Date(checked[0]) : null,
+      changedAt: changed.length > 0 ? Math.max(...changed) : null,
     };
   },
 };
@@ -120,7 +119,7 @@ const prad: NowTileDef = {
           : "Brak wyłączeń",
       note: WEEK,
       empty: count === 0,
-      checkedAt: new Date(copy.checkedAt),
+      changedAt: copy.changedAt,
     };
   },
 };
@@ -134,7 +133,7 @@ const smieci: NowTileDef = {
   source: null,
   action: { href: `#${SEARCH_INPUT_ID}`, text: "Sprawdź swój termin" },
   async read(week) {
-    const { count, sources } = await wasteWeek(week.from, week.until);
+    const { count } = await wasteWeek(week.from, week.until);
     return {
       value:
         count > 0
@@ -142,7 +141,7 @@ const smieci: NowTileDef = {
           : "Brak odbiorów",
       note: `${WEEK}, różne dni dla ulic`,
       empty: count === 0,
-      checkedAt: sourcesChecked(sources),
+      changedAt: null,
     };
   },
 };

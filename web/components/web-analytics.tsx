@@ -13,8 +13,7 @@ import { whenIdle } from "@/lib/idle";
 // so loads its script, once the page has loaded and the browser is idle (or
 // on the first tracked click), so it never competes with the first paint or
 // hydration. The React component, not @vercel/analytics/next: that one adds
-// a route to every page view. No query string or hash ever leaves the page
-// (?nr=, ?q=).
+// a route to every page view. No query string or hash ever leaves the page.
 //
 // Events come from links marked in server-rendered HTML:
 //   data-event="calendar_add" data-zone="…" data-source="street"

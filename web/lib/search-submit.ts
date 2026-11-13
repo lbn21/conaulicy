@@ -37,7 +37,7 @@ export function outcomeOf({ places, match }: Index, q: string): Outcome {
     : { kind: "many", q, hits: found.hits };
 }
 
-/** The one place's page for a query (with its house number), or null. */
+/** The one place's page for a query, or null. */
 export function placeTarget(index: Index, q: string): string | null {
   const outcome = outcomeOf(index, q);
   return outcome.kind === "one" ? placeHref(outcome.hit) : null;

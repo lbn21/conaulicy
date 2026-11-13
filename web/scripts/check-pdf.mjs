@@ -1,6 +1,6 @@
 // Checks the street PDFs (app/adres/[id]/harmonogram.pdf) of every address
-// the CI fixture has (lib/dataset-fixture.ts: each waste zone's members, a split street
-// with a number in its part), never a list of ours.
+// the CI fixture has (lib/dataset-fixture.ts: each waste zone's members),
+// never a list of ours.
 // Each must be a tagged PDF (MarkInfo, Lang, structure tree) with no PDF/UA
 // claim (it fails veraPDF), within the size budget, with only Atkinson
 // Hyperlegible Next embedded, and exactly two pages: the calendar, then the
@@ -19,13 +19,11 @@
 // and so are the guide's tiles; no word on pages 1–2 spills
 // out of its table, tile or box (scripts/lib/pdf-layout.mjs). Checks are
 // structural (pages, links, QR codes, boxes, sources from data), never the
-// wording (CLAUDE.md, Workflow). A split street without a number has
-// no PDF (404), as on the street page; nor has a street whose schedule has
-// ended, and its page offers neither the PDF nor the calendar file. The PDF,
-// ICS and search responses carry the dataset cache tag, and no other, so
-// an import's revalidate purges their CDN copies; so does every address
-// route's shell (hub, each subpage), cached until then
-// (cacheLife "max"). No cron purges anything. The QR codes, read back from the pages,
+// wording (CLAUDE.md, Workflow). A street whose schedule has ended has
+// no PDF (404), and its page offers neither the PDF nor the calendar file. Every
+// prerendered page and file carries its own tag and its sources' (the PDF
+// and the waste calendar the dataset's alone), so a revalidation reaches
+// exactly what shows that source. The QR codes, read back from the pages,
 // and every link open the waste subpage on SITE_URL. Run after
 // `next build`; needs poppler-utils (pdfinfo, pdffonts, pdftotext).
 import { execFileSync } from "node:child_process";
@@ -58,9 +56,8 @@ const PAGES = 2;
 
 // Every address the CI fixture has, from the dataset the built site shows
 // (lib/dataset-fixture.ts, the rows scripts/ci-fixture.ts writes; CI's
-// build has no snapshot), never a list of ours: each waste zone's members,
-// a split street's part with a number in it (and without one: a 404), and
-// each zone's window months with dates; a zone with none left (an ended
+// build has no snapshot), never a list of ours: each waste zone's members
+// and each zone's window months with dates; a zone with none left (an ended
 // schedule) is a 404 too.
 function fixtureCases() {
   const today = todayInWarsaw();
@@ -69,7 +66,7 @@ function fixtureCases() {
   const localities = new Map(ds.localities.map((l) => [l.id, l]));
   const streets = new Map(ds.streets.map((s) => [s.id, s]));
   const gminy = new Map(ds.gminy.map((g) => [g.id, g]));
-  // By zone, locality, street, first number; none last, as SQL's ORDER BY.
+  // By zone, locality, street; none last, as SQL's ORDER BY.
   const key = (v) => (v === null ? "\uffff" : v);
   const members = ds.zoneMembers
     .filter((m) => zones.get(m.zoneId)?.type === "waste")
@@ -77,8 +74,6 @@ function fixtureCases() {
       zone_id: m.zoneId,
       locality_id: m.localityId,
       street_id: m.streetId,
-      house_from: m.houseFrom,
-      parity: m.parity,
       zone_name: zones.get(m.zoneId).name,
       name:
         (m.streetId && streets.get(m.streetId)?.name) ??
@@ -86,7 +81,7 @@ function fixtureCases() {
       gmina: gminy.get(localities.get(m.localityId).gminaId).name,
     }))
     .sort((a, b) => {
-      for (const k of ["zone_id", "locality_id", "street_id", "house_from"]) {
+      for (const k of ["zone_id", "locality_id", "street_id"]) {
         const [x, y] = [key(a[k]), key(b[k])];
         if (x !== y) return x < y ? -1 : 1;
       }
@@ -115,11 +110,6 @@ function fixtureCases() {
   const seen = new Set();
   for (const m of members) {
     const id = m.street_id ?? m.locality_id;
-    const split = m.house_from !== null || m.parity !== null;
-    const nr = !split
-      ? null
-      : (m.house_from ?? (m.parity === "odd" ? "1" : "2"));
-    const query = nr ? `?nr=${nr}` : "";
     const zone = byZone.get(m.zone_id);
     const live = Boolean(zone && zone.last >= today);
     const add = (c) => {
@@ -128,9 +118,9 @@ function fixtureCases() {
       cases.push(c);
     };
     add({
-      name: `${id}${query}`,
-      path: `/adres/${id}/harmonogram.pdf${query}`,
-      page: `/adres/${id}/smieci${query}`,
+      name: id,
+      path: `/adres/${id}/harmonogram.pdf`,
+      page: `/adres/${id}/smieci`,
       id,
       zoneId: m.zone_id,
       zoneName: m.zone_name,
@@ -141,13 +131,6 @@ function fixtureCases() {
         : 0,
       status: live ? 200 : 404,
     });
-    if (split) {
-      add({
-        name: `${id} (no number)`,
-        path: `/adres/${id}/harmonogram.pdf`,
-        status: 404,
-      });
-    }
   }
   // The longest place name among the PDFs: on one line of page 1.
   const named = cases.filter((c) => c.status === 200);
@@ -162,29 +145,31 @@ const LIVE = CASES.filter((c) => c.status === 200);
 const ENDED = CASES.find((c) => c.status === 404 && c.page);
 check(LIVE.length > 0, "the fixture has no address with a PDF");
 check(Boolean(ENDED), "the fixture has no ended schedule");
-// Responses the CDN keeps (when the gate is off), tagged DATASET alone, the
-// import's purge, the only one (lib/headers.ts); the ended schedule's PDF
-// is a 404. A live address, its zone's calendar file, an ended one, a search.
+// Every prerendered file and address page carries its tags (lib/page-cache.ts:
+// its own, page:<path>, and every source it reads), so a source's
+// revalidation reaches exactly the pages that show it: the PDF and the
+// waste calendar the dataset alone, the water calendar the water too; the
+// address page every source, each subpage its own.
 const sample = LIVE[0];
-const TAGGED = [
-  sample.path,
-  `/ics/${encodeURIComponent(sample.zoneId)}`,
-  `/adres/${sample.id}/woda.ics`,
-  ...(ENDED ? [ENDED.path] : []),
-  `/api/search?q=${encodeURIComponent(sample.placeName.split(" ").at(-1).toLowerCase())}`,
-];
-// Every address route's shell (its ISR entry's tags, Next's
-// x-next-cache-tags, each page's own entry in .next/server): tagged
-// DATASET, so an import's purge reaches each one, the only way a shell
-// cached with cacheLife "max" changes before the next deploy.
-const PAGE_TAGS = ["", "/smieci", "/woda", "/prad"].map(
-  (sub) => `/adres/${sample.id}${sub}`,
-);
+const ics = `/ics/${encodeURIComponent(sample.zoneId)}`;
+const TAGS = {
+  [sample.path]: ["dataset"],
+  [ics]: ["dataset"],
+  [`/adres/${sample.id}/woda.ics`]: ["dataset", "water"],
+  [`/adres/${sample.id}`]: ["dataset", "imgw", "pge", "water"],
+  [`/adres/${sample.id}/smieci`]: ["dataset"],
+  [`/adres/${sample.id}/woda`]: ["dataset", "water"],
+  [`/adres/${sample.id}/prad`]: ["dataset", "pge"],
+};
+const SOURCES = ["dataset", "imgw", "pge", "water"];
 
 // The tags of the ISR entry `next start` wrote for a page, found by its
 // path's implicit tag; written just after the response, so polled.
 async function pageTags(pagePath) {
-  const own = `_N_T_${pagePath}`;
+  // Next.js may keep the path's implicit tag encoded or not (":" in a zone id).
+  const own = new Set(
+    [pagePath, decodeURIComponent(pagePath)].map((p) => `_N_T_${p}`),
+  );
   for (let i = 0; i < 50; i++) {
     for (const file of walk(
       path.join(ROOT, ".next/server"),
@@ -200,7 +185,7 @@ async function pageTags(pagePath) {
         continue;
       }
       const list = typeof tags === "string" ? tags.split(",") : [];
-      if (list.includes(own)) return list;
+      if (list.some((tag) => own.has(tag))) return list;
     }
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
@@ -835,28 +820,28 @@ try {
   );
   console.log("ok    schedule ended: page without PDF or calendar file");
 
-  for (const p of TAGGED) {
+  for (const [p, want] of Object.entries(TAGS)) {
     const response = await fetch(server.origin + p);
     await response.arrayBuffer();
+    // Ours only: Vercel's ISR headers apply (lib/static-routes.test.ts).
     check(
-      response.headers.get("vercel-cache-tag") === "dataset",
-      `${p}: Vercel-Cache-Tag ${response.headers.get("vercel-cache-tag")}, expected dataset`,
+      !response.headers.get("vercel-cache-tag"),
+      `${p}: Vercel-Cache-Tag ${response.headers.get("vercel-cache-tag")}, expected none`,
     );
-  }
-  for (const p of PAGE_TAGS) {
-    await (await fetch(server.origin + p)).text();
     const tags = await pageTags(p);
+    const sources = (tags ?? []).filter((tag) => SOURCES.includes(tag));
     check(
-      tags?.includes("dataset") &&
-        !tags.some((tag) => ["day", "water", "imgw"].includes(tag)),
-      `${p}: cache tags ${tags?.join(",") ?? "(no entry)"}, expected dataset alone`,
+      (tags?.includes(`page:${p}`) ||
+        tags?.includes(`page:${decodeURIComponent(p)}`)) &&
+        JSON.stringify(sources.sort()) === JSON.stringify(want),
+      `${p}: cache tags ${tags?.join(",") ?? "(no entry)"}, expected page:${p} and ${want.join(", ")}`,
     );
   }
   // The waste calendar's file is named after the calendar, not the zone id.
-  const icsPath = `/ics/${encodeURIComponent(sample.zoneId)}`;
-  const ics = await fetch(`${server.origin}${icsPath}`);
-  await ics.arrayBuffer();
-  const disposition = ics.headers.get("content-disposition");
+  const icsPath = ics;
+  const icsFile = await fetch(`${server.origin}${icsPath}`);
+  await icsFile.arrayBuffer();
+  const disposition = icsFile.headers.get("content-disposition");
   const zoneSlug = fileSlug(sample.zoneName);
   const idSlug = fileSlug(sample.zoneId.split(":").at(-1));
   check(
@@ -866,7 +851,7 @@ try {
     `${icsPath}: Content-Disposition ${disposition} (named after the zone, ${zoneSlug}, not its id)`,
   );
   console.log(
-    `ok    dataset tag alone on ${TAGGED.length} responses, ${PAGE_TAGS.length} address shells`,
+    `ok    each prerendered page and file tagged with its own path and its sources (${Object.keys(TAGS).length} checked)`,
   );
 } finally {
   server.stop();

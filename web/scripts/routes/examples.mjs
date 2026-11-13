@@ -4,23 +4,16 @@
 // with upcoming pickups, and the home page links to each, in order,
 // labelled with the place's own name (the page's h1). Fails otherwise.
 //
-// Runs against `next start` on the current build and database: in CI that is
-// the CI fixture, locally .env.local's data (build with `SITE_BASIC_AUTH= npm run
-// build`). With CHECK_URL it checks a deployed site instead, e.g.
-// CHECK_URL=https://conaulicy.pl (plus SITE_BASIC_AUTH while the gate is on).
+// Runs against `next start` on the current build: in CI the made-up
+// dataset. With CHECK_URL it checks a deployed site instead, e.g.
+// CHECK_URL=https://conaulicy.pl.
 import { HOME_EXAMPLES } from "../../lib/examples.ts";
 
-const headers =
-  process.env.CHECK_URL && process.env.SITE_BASIC_AUTH
-    ? {
-        Authorization: `Basic ${Buffer.from(process.env.SITE_BASIC_AUTH).toString("base64")}`,
-      }
-    : {};
 const names = new Map();
 
 export async function check(server, failures) {
   for (const id of HOME_EXAMPLES) {
-    const response = await fetch(`${server.origin}/adres/${id}`, { headers });
+    const response = await fetch(`${server.origin}/adres/${id}`);
     const html = await response.text();
     const name = html.match(
       /<h1 [^>]*class="govuk-heading-l">([^<]+)<\/h1>/,
@@ -37,16 +30,14 @@ export async function check(server, failures) {
     ) {
       failures.push(`/adres/${id} (${name}): no pickup in its timeline`);
     } else {
-      const waste = await fetch(`${server.origin}/adres/${id}/smieci`, {
-        headers,
-      });
+      const waste = await fetch(`${server.origin}/adres/${id}/smieci`);
       if (!(await waste.text()).includes('id="pickups-heading"')) {
         failures.push(`/adres/${id}/smieci (${name}): no upcoming pickups`);
       }
     }
   }
 
-  const home = await (await fetch(`${server.origin}/`, { headers })).text();
+  const home = await (await fetch(`${server.origin}/`)).text();
   const examples = home.slice(home.indexOf('id="sample-heading"'));
   const links = [
     ...examples.matchAll(

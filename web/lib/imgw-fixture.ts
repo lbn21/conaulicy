@@ -96,4 +96,5 @@ export const copyCheckedAt = (
 ) => ({
   feed: { fetchedAt: checkedAt, items } satisfies Feed,
   checkedAt: Date.parse(checkedAt),
+  changedAt: Date.parse(checkedAt),
 });

@@ -1,7 +1,7 @@
 // Validates the HTML of every key route with the Nu Html Checker (vnu.jar,
 // the engine behind validator.w3.org/nu). Fails on any error; lists warnings.
 // Every route answers its expected status (never a 5xx), has an h1 in its
-// static HTML (an address page's may come after its skeleton), exactly
+// static HTML before anything streamed, exactly
 // one <main> and one #main-content, the skip link's target, not the <main>.
 // Each route as an HTML-limited bot gets it (metadata in <head>), and as a
 // browser does, unless Next.js streamed it the metadata (into <body>, as
@@ -86,7 +86,7 @@ try {
       });
       const html = await res.text();
       const expected = route.status ?? 200;
-      // An unknown address too: a 404 on its first answer (proxy.ts).
+      // An unknown address too: the prerendered 404 (dynamicParams = false).
       if (res.status !== expected) {
         statuses.push(
           `${route.path}${suffix}: HTTP ${res.status}, expected ${expected}`,
@@ -95,22 +95,18 @@ try {
       // Every page, browser and bot: an h1 with text in the HTML before
       // anything streamed after it (React's hidden <div id="S:…">), and
       // before it one <main>, and one #main-content (the skip link's target,
-      // the heading block's start, never the <main>: docs/layout.md; an
-      // address page's comes with its content, streamed after its
-      // skeleton, which has none). An address page reads its place behind
-      // <Suspense> (components/place-suspense.tsx), so its h1 may
-      // come after the skeleton: anywhere in its HTML.
+      // the heading block's start, never the <main>: docs/layout.md). Every
+      // page is prerendered whole, the address pages too.
       const streamedAt = html.indexOf('<div hidden id="S:');
       const before = streamedAt === -1 ? html : html.slice(0, streamedAt);
-      const address = route.path.startsWith("/adres/");
       // Its text, tags stripped: a module's h1 starts with its icon's tile
       // (aria-hidden, components/page-head.tsx), then the words.
-      const h1 = /<h1\b[^>]*>(.*?)<\/h1>/s.exec(address ? html : before);
+      const h1 = /<h1\b[^>]*>(.*?)<\/h1>/s.exec(before);
       if (!h1?.[1].replace(/<[^>]*>/g, "").trim()) {
         statuses.push(`${route.path}${suffix}: no h1 in the static HTML`);
       }
       if (
-        (address ? html : before).match(/id="main-content"/g)?.length !== 1 ||
+        before.match(/id="main-content"/g)?.length !== 1 ||
         (before.match(/<main\b/g) ?? []).length !== 1 ||
         /<main\b[^>]*id="main-content"/.test(html)
       ) {
@@ -145,15 +141,8 @@ try {
   server.stop();
 }
 
-// React's own attributes, not the page's markup: <ViewTransition> writes
-// vt-update, vt-enter, vt-exit (and vt-name, vt-share) on the elements it
-// wraps in the server HTML, so the browser can animate the Suspense reveal
-// (components/live-block.tsx; nextjs.org/docs/app/guides/view-transitions).
-// Only those attributes are let through.
-const REACT_VT = /^Attribute “vt-(?:update|enter|exit|name|share)” not allowed/;
 const errors = messages.filter(
-  (m) =>
-    (m.type === "error" || m.subType === "fatal") && !REACT_VT.test(m.message),
+  (m) => m.type === "error" || m.subType === "fatal",
 );
 const warnings = messages.filter(
   (m) => m.type === "info" && m.subType === "warning",

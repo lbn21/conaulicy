@@ -85,7 +85,7 @@ These follow IMGW's rule (`liveNotice`, `web/lib/live-status.ts`). The notice go
 
 ## Attribution
 
-PGE Dystrybucja is credited on `/prad`'s source line: „Źródło: PGE Dystrybucja. Sprawdziliśmy …”. It links PGE's public page of current outages, https://pgedystrybucja.pl/wylaczenia/aktualne-przerwy-w-dostawie-energii (`PGE_PAGE`, `web/lib/power-module.ts`), the „Aktualne przerwy w dostawie energii” link in pgedystrybucja.pl's own menu. `/o-projekcie` links it too.
+PGE Dystrybucja is credited on `/prad`'s source line: „Źródło: PGE Dystrybucja.”, then the freshness line („Bez zmian od …”, when PGE's items last changed). It links PGE's public page of current outages, https://pgedystrybucja.pl/wylaczenia/aktualne-przerwy-w-dostawie-energii (`PGE_PAGE`, `web/lib/power-module.ts`), the „Aktualne przerwy w dostawie energii” link in pgedystrybucja.pl's own menu. `/o-projekcie` links it too.
 
 ## Configuration and the dev mock
 
@@ -109,4 +109,4 @@ The raw responses of 11 Nov 2026 are not in git. They are to go to the S3 source
 ## Not done (v1)
 
 - **No `prad.ics`:** failures would churn calendar feeds. `/adres/<id>/prad.ics` is a 404.
-- **No „Twój numer jest na liście PGE”:** with `?nr=`, an exact token match could add that sentence. It would only ever add, and never hide an outage.
+- **No „Twój numer jest na liście PGE”:** the site has no house numbers (t416).

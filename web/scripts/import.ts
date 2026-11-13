@@ -31,7 +31,7 @@
 // BLOB_READ_WRITE_TOKEN (the dataset snapshot; --apply fails without it,
 // the data then imported, the site on the old snapshot); optional
 // GH_TOKEN (the unzoned-place issue), REVALIDATE_SECRET (site: etl/sources.yaml site.url, or SITE_URL), SITE_URL
-// (also the smoke check), SITE_BASIC_AUTH, VERCEL_AUTOMATION_BYPASS_SECRET.
+// (also the smoke check), VERCEL_AUTOMATION_BYPASS_SECRET.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -253,21 +253,26 @@ async function smokeCheck(rows: Rows, today: string) {
       .map((e) => e.start)
       .sort()[0] ?? null;
   const headers: Record<string, string> = {};
-  if (process.env.SITE_BASIC_AUTH)
-    headers.Authorization = `Basic ${Buffer.from(process.env.SITE_BASIC_AUTH).toString("base64")}`;
   if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET)
     headers["x-vercel-protection-bypass"] =
       process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
   // The waste subpage: the address page's card shows the date as text.
+  // Revalidated with "max", the first answer may be the stale page, which
+  // starts the new one in the background: asked again, up to a minute.
   const url = new URL(`/adres/${SMOKE_PLACE}/smieci`, site);
-  const response = await fetch(url, { headers });
-  const html = await response.text();
-  const shown =
-    html.match(/<time dateTime="(\d{4}-\d{2}-\d{2})"/i)?.[1] ?? null;
+  let response = await fetch(url, { headers });
+  let shown: string | null = null;
+  for (let i = 0; i < 12; i++) {
+    const html = await response.text();
+    shown = html.match(/<time dateTime="(\d{4}-\d{2}-\d{2})"/i)?.[1] ?? null;
+    if (response.ok && shown === expected) break;
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+    response = await fetch(url, { headers });
+  }
   if (!response.ok || shown !== expected) {
     fail(
       `Smoke check FAILED for ${url.pathname}: HTTP ${response.status}, next pickup on the page ${shown ?? "none"}, in the data ${expected ?? "none"}. ` +
-        "The data is imported; a cached copy may still be served (CDN up to s-maxage).",
+        "The data is imported; the page may still be re-rendering (Vercel ISR).",
     );
   }
   console.log(
@@ -585,15 +590,20 @@ async function main() {
     `\nImported: ${rows.events.length} events, ${rows.zones.length} zones, ${rows.streets.length} streets, ${rows.localities.length} localities.`,
   );
 
+  let action: Awaited<ReturnType<typeof revalidate>> | null = null;
   try {
     const published = await publishDataset(url);
-    if (published?.changed) await revalidate();
+    if (published?.changed) action = await revalidate();
   } catch (error) {
     fail(
       `${(error as Error).message} The data is imported; the site shows the old snapshot until \`npm run dataset:publish\` succeeds.`,
     );
   }
-  await smokeCheck(rows, today);
+  if (action === "deploy" || action === "deploy-pending")
+    console.log(
+      "Smoke check skipped: the place set changed, a new deployment builds this snapshot.",
+    );
+  else await smokeCheck(rows, today);
 }
 
 await main();
