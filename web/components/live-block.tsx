@@ -1,23 +1,22 @@
-import { type ReactNode, Suspense, ViewTransition } from "react";
+import { type ReactNode, Suspense } from "react";
 import { LOADING } from "@/components/skeleton";
 
-// A block whose data changes between imports: an address page's whole
-// content and its breadcrumbs (components/place-suspense.tsx):
-// its own <Suspense> hole in the page's static shell
-// (nextjs.org/docs/app/getting-started/caching, "Prerendering"), so the
-// shell keeps its long lifetime and the block is read per request, its
-// „Sprawdziliśmy” in the same read as its data. Its skeleton ships in the
-// shell. When the block arrives, the skeleton leaves and the block comes in
-// with React's <ViewTransition>, as Next.js's "Animate loading states with
-// Suspense reveals" (nextjs.org/docs/app/guides/view-transitions); the
-// motion is in app/site.scss: a short fade, no slide and no page crossfade,
-// none under prefers-reduced-motion. Browsers
-// without view transitions swap at once. One rule for every block.
+// An address page's whole content and its breadcrumbs
+// (components/place-suspense.tsx): its own <Suspense> boundary, because a
+// route's App Shell, shared by every link to it, cannot hold one place's
+// content (nextjs.org/docs/app/guides/adopting-partial-prefetching). On a
+// load of the place alone the boundary is complete in the prerendered
+// HTML: no skeleton, no reveal. Its skeleton shows only where the content
+// waits on something: a client-side navigation the prefetch has not
+// filled, and ?nr= or ?imgw=, read per request (components/hub-route.tsx).
+// There the content replaces the skeleton at once: no fade and no view
+// transition, so nothing animates on any load and a reload keeps its
+// scroll.
 
 /**
  * A live block: `children` is an async Server Component that reads its own
- * data (after `await io()`, so it is never prerendered); `skeleton` its
- * typical shape (BlockSkeleton).
+ * data (cached as "live", next.config.ts); `skeleton` its typical shape
+ * (BlockSkeleton).
  */
 export function LiveBlock({
   skeleton,
@@ -26,19 +25,7 @@ export function LiveBlock({
   skeleton: ReactNode;
   children: ReactNode;
 }) {
-  return (
-    <Suspense
-      fallback={
-        <ViewTransition exit="app-leave" default="none">
-          {skeleton}
-        </ViewTransition>
-      }
-    >
-      <ViewTransition enter="app-arrive" default="none">
-        {children}
-      </ViewTransition>
-    </Suspense>
-  );
+  return <Suspense fallback={skeleton}>{children}</Suspense>;
 }
 
 /**

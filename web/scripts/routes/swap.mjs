@@ -2,8 +2,12 @@
 // subpage of the CI fixture's town street, at 390 and 1280 px, the page
 // head's band (.app-band) of the skeleton and of the page start and end at
 // the same y, within 1 px, so nothing under it moves at the reveal. The
-// skeleton is the page with JavaScript off: the streamed content then stays
-// in React's hidden <div>, the skeleton on screen. /woda's water cut
+// place alone is prerendered whole, no skeleton (scripts/check-reload.mjs),
+// so the page is asked for through the route that reads its query per
+// request (components/hub-route.tsx), with ?imgw=1, which a subpage does
+// not use: the same page, behind the skeleton. The skeleton is that page
+// with JavaScript off: the streamed content then stays in React's hidden
+// <div>, the skeleton on screen. /woda's water cut
 // (MZGKIM_MOCK, .github/workflows/ci.yml) gives it its actions, checked
 // to be there, so the page measured is the one with them.
 
@@ -50,7 +54,7 @@ export async function check(server, failures) {
   const seen = [];
   try {
     for (const slug of SUBPAGES) {
-      const url = `${server.origin}${PLACE}/${slug}`;
+      const url = `${server.origin}${PLACE}/${slug}?imgw=1`;
       for (const width of WIDTHS) {
         const skeleton = await band(browser, url, width, false);
         const page = await band(browser, url, width, true);

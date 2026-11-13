@@ -1,5 +1,5 @@
-import { io } from "next/cache";
-import { cache, type ReactNode } from "react";
+import { cacheLife, cacheTag } from "next/cache";
+import type { ReactNode } from "react";
 import { Badge } from "@/components/badge";
 import { subpageHref } from "@/components/function-rows";
 import { Icon, Tile } from "@/components/icon";
@@ -19,12 +19,13 @@ import { Timeline } from "@/components/timeline";
 import { WarningCards } from "@/components/warning-cards";
 import { WarsawToday } from "@/components/warsaw-today";
 import { MODULE_IDS, SUBPAGE_IDS } from "@/lib/address-routes";
+import { LIVE } from "@/lib/headers";
 import { freshnessLine, type Group, unchecked } from "@/lib/hub";
 import { IMGW_PREVIEW, imgwPreview } from "@/lib/imgw-preview";
 import { IMGW_PAGE } from "@/lib/imgw-shown";
 import { IMGW_ATTRIBUTION, IMGW_NAME } from "@/lib/imgw-warnings";
 import { MODULES, type Module } from "@/lib/modules";
-import type { PlaceView } from "@/lib/schedule";
+import { PLACE_TAGS, type PlaceView } from "@/lib/schedule";
 import { days, onDay } from "@/lib/timeline";
 import type { Item } from "@/lib/upcoming";
 import type { Weather } from "@/lib/weather-module";
@@ -43,31 +44,33 @@ import type { Weather } from "@/lib/weather-module";
 // number errors keep the street page (StreetPage), GOV.UK's validation
 // pattern.
 //
-// The page is read per request, whole, behind one <Suspense> with one
-// skeleton (components/place-suspense.tsx):
-// every block's data at once (hubData), so it all comes in together, each
-// module's check time from the same read. Its static shell
-// holds only the skeleton: no date and no waste type is ever prerendered.
-// Dates are absolute; „Dziś” and „Jutro” come with them, for the read's
-// Warsaw day (WarsawToday, place.today), then the device's
+// The page is prerendered whole, per place (its route's
+// generateStaticParams): every block's data at once (hubData), cached as
+// "live" (next.config.ts), so the HTML of a load holds the page itself, no
+// skeleton, and each module's check time comes from the same read. Its
+// <Suspense> (components/place-suspense.tsx) shows the skeleton only on a
+// client-side navigation the prefetch has not filled, and for ?nr= and
+// ?imgw=, the request's own input, read per request on their routes under
+// app/adres/[id]/nr/ (proxy.ts sends them there). Dates are absolute;
+// „Dziś” and „Jutro” come with them, for the read's Warsaw day
+// (WarsawToday, place.today), then the device's
 // (components/warsaw-today.tsx).
 
 /**
- * Everything the address page shows, read per request (after io(), so
- * nothing date-dependent is ever prerendered), every module's
- * data at once (Promise.all), so the page waits for the slowest block, not
- * the sum, one read per request (React's cache(),
- * react.dev/reference/react/cache). In registry order; the first, waste's,
- * is the place itself.
+ * Everything the address page shows, every module's data at once
+ * (Promise.all), cached as "live": its clock (`now`, the timeline's and
+ * the warnings') is the cache's fill. In registry order; the first,
+ * waste's, is the place itself.
  */
-const hubData = cache(
-  async (id: string, nr: string | null, imgw: string | null = null) => {
-    await io();
-    return (await Promise.all(
-      MODULE_IDS.map((slug) => MODULES[slug].load(id, nr, imgw)),
-    )) as [PlaceView | null, ...unknown[]];
-  },
-);
+async function hubData(id: string, nr: string | null, imgw: string | null) {
+  "use cache";
+  cacheLife("live");
+  cacheTag(LIVE, ...PLACE_TAGS);
+  const data = (await Promise.all(
+    MODULE_IDS.map((slug) => MODULES[slug].load(id, nr, imgw)),
+  )) as [PlaceView | null, ...unknown[]];
+  return { now: Date.now(), data };
+}
 
 /** The page's ?imgw= as the mock's URL (lib/imgw-preview.ts), or null. */
 async function imgwQuery(searchParams: AddressSearch) {
@@ -86,15 +89,18 @@ export async function HubMain({
   unknown,
 }: {
   id: string;
-  /** The page's, for its ?nr= (numberQuery). */
-  searchParams: AddressSearch;
+  /** The ?nr= and ?imgw= route's (numberQuery); none: the place alone. */
+  searchParams: AddressSearch | null;
   /** What an unknown place shows. */
   unknown: ReactNode;
 }) {
-  // An unknown place: its 404 before anything is read per request.
+  // An unknown place: its 404 before ?nr= is read.
   if (!(await knownPlace(id))) return <>{unknown}</>;
-  const { nr, missing } = await numberQuery(searchParams);
-  const data = await hubData(id, nr, await imgwQuery(searchParams));
+  const { nr, missing } = searchParams
+    ? await numberQuery(searchParams)
+    : { nr: null, missing: false };
+  const imgw = searchParams ? await imgwQuery(searchParams) : null;
+  const { now, data } = await hubData(id, nr, imgw);
   const place = data[0];
   if (!place) return <>{unknown}</>;
   return (
@@ -102,7 +108,7 @@ export async function HubMain({
       {numberError(place, missing) ? (
         <StreetPage place={place} missing={missing} />
       ) : (
-        <Hub data={data} place={place} />
+        <Hub data={data} place={place} now={now} />
       )}
     </WarsawToday>
   );
@@ -143,8 +149,16 @@ function CountBadge({ count }: { count: number }) {
   );
 }
 
-/** The address page's blocks, as HubMain; `data` hubData's. */
-export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
+/** The address page's blocks, as HubMain; `data` and `now` hubData's. */
+export function Hub({
+  data,
+  place,
+  now,
+}: {
+  data: unknown[];
+  place: PlaceView;
+  now: number;
+}) {
   const modules = MODULE_IDS.map((slug): Module<unknown> => MODULES[slug]);
   const items = modules.flatMap((module, i) =>
     data[i] === null ? [] : module.upcoming(data[i]),
@@ -164,7 +178,6 @@ export function Hub({ data, place }: { data: unknown[]; place: PlaceView }) {
   const weather = data[MODULE_IDS.indexOf("pogoda")] as Weather | null;
   // IMGW's data was read: its required wording in the small print.
   const imgw = weather?.checkedAt != null;
-  const now = Date.now();
   const counts = windowCounts(items, place.today, now);
   const fresh = freshnessLine(
     loaded.map(({ module, data }) => ({

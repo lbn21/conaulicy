@@ -13,14 +13,17 @@ const nextConfig: NextConfig = {
   // measures ink with, stays the one copy PDFKit itself loads.
   serverExternalPackages: ["pdfkit", "fontkit"],
   // Cache Components (nextjs.org/docs/app/getting-started/caching): every
-  // page is a static shell cached for the longest time, cacheLife "max"
-  // (nextjs.org/docs/app/api-reference/functions/cacheLife), so until the
-  // next deploy, or the import's purge of the dataset tag for those built
-  // from the database (app/api/revalidate). What changes between imports
-  // (IMGW, water, „Najbliższe dni”) is never in a shell: the IMGW row is
-  // its own <Suspense> hole, and the address pages are read per request,
-  // whole, behind one skeleton (components/live-block.tsx,
-  // components/place-suspense.tsx).
+  // page is prerendered whole, its data in the HTML, never a skeleton on a
+  // load. What comes from the dataset snapshot is cached for the longest
+  // time, cacheLife "max" (nextjs.org/docs/app/api-reference/functions/cacheLife),
+  // until the next deploy or the import's purge of the dataset tag
+  // (app/api/revalidate). What the crons write (IMGW, PGE, water, the
+  // checks) and what counts from today („Teraz w gminie”, „Najbliższe 7
+  // dni”) is cached as "live" below, tagged LIVE (lib/headers.ts), and
+  // each cron purges that tag after it writes (app/api/cron/zuk). Only a
+  // request's own input (?nr=, ?imgw=: proxy.ts sends those to their
+  // routes under app/adres/[id]/nr/) is read per request, behind a
+  // skeleton (components/place-suspense.tsx).
   // Partial Prefetching set explicitly, as the docs ask. Next.js's own list
   // of HTML-limited bots applies: they get metadata in <head>.
   cacheComponents: true,
@@ -29,6 +32,13 @@ const nextConfig: NextConfig = {
     // The search index's own files (the sitemap): hourly, and purged with
     // the dataset snapshot (lib/dataset.ts) by its tag.
     dataset: { stale: 300, revalidate: 3600, expire: 31_536_000 },
+    // The crons' data and what counts from today: refreshed in the
+    // background at most a minute after it is served, and at once when a
+    // cron purges LIVE. Prerendered, and in the route's App Shell: revalidate
+    // above 0, expire and stale at least 5 minutes (cacheLife, "Prerendering
+    // behavior": a revalidate of 0 or an expire under 5 minutes is a
+    // dynamic hole; a stale under 5 minutes leaves the App Shell).
+    live: { stale: 300, revalidate: 60, expire: 3600 },
   },
   // The PDF route reads the TTF fonts with fs at runtime.
   outputFileTracingIncludes: {

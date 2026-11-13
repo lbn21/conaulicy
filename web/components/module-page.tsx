@@ -1,5 +1,5 @@
-import { io } from "next/cache";
-import { cache, type ReactNode } from "react";
+import { cacheLife, cacheTag } from "next/cache";
+import type { ReactNode } from "react";
 import {
   AddressPage,
   type AddressSearch,
@@ -8,36 +8,35 @@ import {
   placeCaption,
 } from "@/components/place-page";
 import { WarsawToday } from "@/components/warsaw-today";
+import { LIVE } from "@/lib/headers";
 import { unchecked } from "@/lib/hub";
 import { findSubpage, type Module } from "@/lib/modules";
-import { getPlace, type PlaceView } from "@/lib/schedule";
+import { getPlace, PLACE_TAGS, type PlaceView } from "@/lib/schedule";
 
 // A module's subpage, /adres/[id]/<module> (lib/modules.ts), with the same
 // ?nr= as the address page (components/place-page.tsx numberQuery), the
 // place's breadcrumbs in its head's band: one frame for every module
 // (Subpage), its body the module's Details. An unknown module is a 404.
-// Its metadata: components/subpage-route.tsx. Read per request, whole, behind one
-// <Suspense> with one skeleton, as the address page (components/hub.tsx).
+// Its metadata: components/subpage-route.tsx. Prerendered whole, its data
+// cached as "live", as the address page (components/hub.tsx).
 
 /**
- * Everything a subpage shows, read per request (after io(), so nothing
- * date-dependent is ever prerendered), the place and the
- * module's data at once, one read per request (React's cache(), as
- * components/hub.tsx hubData). Null for
- * an unknown module.
+ * Everything a subpage shows, the place and the module's data at once,
+ * cached as "live", as components/hub.tsx hubData. Null for an unknown
+ * module.
  */
-const subpageData = cache(
-  async (id: string, slug: string, nr: string | null) => {
-    await io();
-    const module = findSubpage(slug);
-    if (!module) return null;
-    const [place, data] = await Promise.all([
-      getPlace(id, nr),
-      module.load(id, nr),
-    ]);
-    return { module, place, data };
-  },
-);
+async function subpageData(id: string, slug: string, nr: string | null) {
+  "use cache";
+  cacheLife("live");
+  cacheTag(LIVE, ...PLACE_TAGS);
+  const module = findSubpage(slug);
+  if (!module) return null;
+  const [place, data] = await Promise.all([
+    getPlace(id, nr),
+    module.load(id, nr),
+  ]);
+  return { place, data };
+}
 
 /**
  * A subpage's content (subpageData), whole, behind the page's one
@@ -52,18 +51,21 @@ export async function ModuleMain({
 }: {
   id: string;
   slug: string;
-  /** The page's, for its ?nr= (numberQuery). */
-  searchParams: AddressSearch;
+  /** The ?nr= route's (numberQuery); none: the place alone. */
+  searchParams: AddressSearch | null;
   /** What an unknown place or module shows. */
   unknown: ReactNode;
 }) {
-  // An unknown module or place: its 404 before anything is read per
-  // request (components/place-page.tsx knownPlace).
-  if (!findSubpage(slug) || !(await knownPlace(id))) return <>{unknown}</>;
-  const { nr, missing } = await numberQuery(searchParams);
+  // An unknown module or place: its 404 before ?nr= is read
+  // (components/place-page.tsx knownPlace).
+  const module = findSubpage(slug);
+  if (!module || !(await knownPlace(id))) return <>{unknown}</>;
+  const { nr, missing } = searchParams
+    ? await numberQuery(searchParams)
+    : { nr: null, missing: false };
   const loaded = await subpageData(id, slug, nr);
   if (!loaded?.place) return <>{unknown}</>;
-  const { module, place, data } = loaded;
+  const { place, data } = loaded;
   // „Dziś” and „Jutro” for the read's Warsaw day (components/warsaw-today.tsx).
   return (
     <WarsawToday day={place.today}>

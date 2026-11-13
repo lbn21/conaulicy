@@ -150,42 +150,18 @@ $app-logo-gap: (govuk-spacing(3) + $app-hair - $app-bar) * .5;
   animation: app-pulse 1.6s ease-in-out infinite;
 }
 
-
 @keyframes app-pulse { 50% { opacity: 0.55; } }
-
-// A live block's reveal (components/live-block.tsx: an address page's
-// whole content and its breadcrumbs), as Next.js's
-// "Suspense reveals" (nextjs.org/docs/app/guides/view-transitions), opacity
-// only: the skeleton fades out and the content fades in, 150 ms each, at
-// once, no slide. The page itself (root) does not crossfade, as the guide's
-// anchored header: on a reload while scrolled it made the whole page jump,
-// and a navigation swaps at once. Clicks during a reveal reach the page.
-// All of it off under prefers-reduced-motion
-// (developer.mozilla.org/docs/Web/CSS/@media/prefers-reduced-motion): the
-// block swaps at once and a skeleton has no pulse. Some rules on one line,
-// under the cap (scripts/check-own-css.mjs).
-::view-transition { pointer-events: none; }
-::view-transition-group(root), ::view-transition-new(root) { animation: none; }
-::view-transition-old(root) { display: none; }
-::view-transition-old(.app-leave) { animation: 150ms ease-out both app-fade reverse; }
-::view-transition-new(.app-arrive) { animation: 150ms ease-out both app-fade; }
-
-@keyframes app-fade { from { opacity: 0; } }
 
 // No scroll anchor inside the main content. On a reload Chromium
 // restores the scroll from a saved anchor, a selector found on the final
-// page; at first layout the main content still holds the skeleton, so
-// the selector matches the wrong box and the page lands too high. Without one it restores the plain offset; the height is final at
-// first layout (developer.mozilla.org/docs/Web/CSS/overflow-anchor).
+// page; where the main content still holds the skeleton at first layout
+// (?nr=, read per request), the selector matches the wrong box and the
+// page lands too high. Without one it restores the plain offset
+// (developer.mozilla.org/docs/Web/CSS/overflow-anchor).
 .govuk-main-wrapper { overflow-anchor: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-skeleton,
-  ::view-transition-old(*),
-  ::view-transition-new(*),
-  ::view-transition-group(*),
-  ::view-transition-old(.app-leave),
-  ::view-transition-new(.app-arrive) {
+  .app-skeleton {
     animation: none;
   }
 }

@@ -1,19 +1,11 @@
-import { HubMain } from "@/components/hub";
-import {
-  metadataQuery,
-  PlaceUnknown,
-  placeMetadata,
-  unknownMetadata,
-} from "@/components/place-page";
-import { PlaceSuspense } from "@/components/place-suspense";
+import { hubRoute } from "@/components/hub-route";
 import { allPlaces } from "@/lib/prerender";
 
-// The address page, the hub of modules (components/hub.tsx): its static
-// shell holds only the skeleton (components/place-suspense.tsx); the whole
-// page is read per request behind it, every block at once, and comes in
-// together. A house number is ?nr= (searchParams), read behind
-// the skeleton too (components/place-page.tsx numberQuery). Its prefetch
-// stays static (the root layout's ensureStatic).
+// The address page, the hub of modules (components/hub.tsx), the place
+// alone: prerendered whole, its data cached as "live" (next.config.ts), so
+// a load's HTML is the page, no skeleton. With ?nr= or ?imgw=, proxy.ts
+// sends the request to ./nr/ (components/hub-route.tsx). Its prefetch stays
+// static (the root layout's ensureStatic).
 
 // Every known place at build (lib/prerender.ts), so none gets the fallback
 // shell.
@@ -21,39 +13,6 @@ export async function generateStaticParams(): Promise<Array<{ id: string }>> {
   return allPlaces();
 }
 
-export async function generateMetadata({
-  params,
-  searchParams,
-}: PageProps<"/adres/[id]">) {
-  const { id } = await params;
-  const query = await metadataQuery(id, searchParams);
-  if (!query) return unknownMetadata(id);
-  return placeMetadata(id, query.nr, query.missing);
-}
-
-export default function PlacePage({
-  params,
-  searchParams,
-}: PageProps<"/adres/[id]">) {
-  return (
-    <PlaceSuspense>
-      <PlacePageContent params={params} searchParams={searchParams} />
-    </PlaceSuspense>
-  );
-}
-
-async function PlacePageContent({
-  params,
-  searchParams,
-}: Pick<PageProps<"/adres/[id]">, "params" | "searchParams">) {
-  // A renamed place's old address: proxy.ts answers its 308; a retired
-  // one nothing replaced says it is gone.
-  const { id } = await params;
-  return (
-    <HubMain
-      id={id}
-      searchParams={searchParams}
-      unknown={<PlaceUnknown id={id} />}
-    />
-  );
-}
+const route = hubRoute(false);
+export const generateMetadata = route.generateMetadata;
+export default route.Page;

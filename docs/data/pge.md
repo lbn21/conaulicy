@@ -72,7 +72,7 @@ A failure leaves the file as it was and records `pge: { ok: false, attemptAt }`,
 - `rate-limited`: 429.
 - `fetch-error`: anything else.
 
-The pages never ask PGE. They read the file and the status file per request, through the Blob's CDN (`pgeCopy`, `web/lib/live-store.ts`). A good run shows within about 60 s, and a new outage is on the site at most about 16 minutes after PGE publishes it. Vercel Cron runs only on production, so Previews never spend the quota.
+The pages never ask PGE. They read the file and the status file through `pgeCopy` (`web/lib/live-store.ts`), cached as "live" under the `live` tag, which the cron purges after each write, so a good run shows on the next request, and a new outage is on the site at most about 16 minutes after PGE publishes it. Vercel Cron runs only on production, so Previews never spend the quota.
 
 ## Honest states
 

@@ -78,7 +78,6 @@ test("proxy: the 404 page is fetched once per instance", async () => {
 
 for (const path of [
   `/adres/${KNOWN}`,
-  `/adres/${KNOWN}?nr=12`,
   `/adres/${KNOWN}/smieci`,
   `/adres/${KNOWN}/harmonogram.pdf`,
   "/",
@@ -89,6 +88,26 @@ for (const path of [
     assert.equal(res.headers.get("x-middleware-next"), "1");
     assert.equal(res.status, 200);
     assert.deepEqual(fetched, []);
+  });
+}
+
+for (const [path, route] of [
+  [`/adres/${KNOWN}?nr=12`, `/adres/${KNOWN}/nr?nr=12`],
+  [`/adres/${KNOWN}/smieci?nr=`, `/adres/${KNOWN}/nr/smieci?nr=`],
+]) {
+  test(`proxy: ${path} goes on to the route that reads its query`, async () => {
+    const res = await call(path);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("x-middleware-rewrite"), `${ORIGIN}${route}`);
+    assert.deepEqual(fetched, []);
+  });
+}
+
+for (const path of [`/adres/${KNOWN}/nr`, `/adres/${KNOWN}/nr/smieci?nr=1`]) {
+  test(`proxy: ${path}, the query's own route, is a 404 when asked for`, async () => {
+    const res = await call(path);
+    assert.equal(res.status, 404);
+    assert.equal(res.headers.get("x-middleware-rewrite"), null);
   });
 }
 

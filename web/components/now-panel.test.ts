@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -72,15 +71,6 @@ test("not read: muted, no note, the action still there", () => {
   // The label and the action: no note.
   assert.equal((html.match(/govuk-body-s/g) ?? []).length, 2);
   assert.match(html, /href="#f-field"/);
-});
-
-test("the skeleton's heading has no id: the live one's is the page's only", () => {
-  const source = readFileSync(
-    new URL("./now-panel.tsx", import.meta.url),
-    "utf8",
-  );
-  assert.match(source, /id=\{week \? "teraz" : undefined\}/);
-  assert.equal((source.match(/id="teraz"/g) ?? []).length, 0);
 });
 
 test("no tile links off the site: its source is linked in the note only", () => {

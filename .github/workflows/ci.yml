@@ -247,6 +247,25 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      # The home page and an address page prerendered whole: no hole in the
+      # served HTML, and on hard reloads (desktop and mobile emulation, from
+      # three scroll positions) no skeleton, no view transition, no layout
+      # shift, the scroll kept at every frame (t409).
+      - name: "Reload (the page whole in its HTML: no skeleton, no view transition, no layout shift, scroll kept)"
+        run: node scripts/check-reload.mjs
+        env:
+          SCREENSHOT_DIR: ${{ runner.temp }}/reload-screenshots
+
+      # For the reviewer: / and an address page at 1280 and 390 px.
+      - name: Screenshots of / and an address page
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: reload-screenshots
+          path: ${{ runner.temp }}/reload-screenshots
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: "Street PDFs (tagged, two pages, one layout, size, Atkinson only)"
         run: node scripts/check-pdf.mjs
 
@@ -284,3 +303,9 @@ jobs:
         run: node scripts/check-import-run.mjs
         env:
           DATABASE_URL: postgres://ci:ci@localhost:5432/conaulicy
+
+      # The real cron route, its store a directory, IMGW from loopback, every
+      # other host refused: the request after its write shows it (t409).
+      # Last: it leaves the home page's cached HTML with its warnings.
+      - name: "Live data freshness (the cron's write purges LIVE; the next request shows it)"
+        run: node --import ./scripts/lib/server-only.mjs scripts/check-freshness.mjs

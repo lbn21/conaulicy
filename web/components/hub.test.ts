@@ -61,6 +61,7 @@ const page = (
           createElement(Hub, {
             data: [place, cuts, outages, warnings],
             place,
+            now: NOW.getTime(),
           }),
         ),
       ),

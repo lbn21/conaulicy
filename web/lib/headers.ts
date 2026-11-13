@@ -2,14 +2,20 @@
 // proxy.ts and next.config.ts can read it too.
 
 /**
- * The one cache tag: Next's data cache, every page shell built from the
- * database (`use cache`, cacheTag) and, sent as Vercel-Cache-Tag
- * (lib/gate.ts datasetHeaders), the CDN copies. Every database read,
- * purged by an import (app/api/revalidate), the only purge: the crons'
- * files (water, IMGW) are read per request through the Blob's CDN, never
- * cached by Next (lib/live-store.ts).
+ * The dataset's cache tag: Next's data cache, every page and read built
+ * from the dataset snapshot (`use cache`, cacheTag) and, sent as
+ * Vercel-Cache-Tag (lib/gate.ts datasetHeaders), the CDN copies. Purged by
+ * an import (app/api/revalidate).
  */
 export const DATASET = "dataset";
+
+/**
+ * The live data's cache tag (cacheLife "live", next.config.ts): every read
+ * of the crons' files (lib/live-store.ts, lib/zuk-store.ts) and every
+ * page's data that counts from today. Purged by the cron after each write
+ * (app/api/cron/zuk).
+ */
+export const LIVE = "live";
 
 /** Kept by no cache: answers that must never be reused. */
 export const NO_STORE = { "Cache-Control": "no-store" };
