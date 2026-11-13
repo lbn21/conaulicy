@@ -23,8 +23,10 @@ import { pageMetadata } from "@/lib/share";
 // its static shell knows its module and its skeleton is its own page
 // head (components/place-suspense.tsx); a route's App Shell cannot read
 // params (nextjs.org/docs/app/guides/adopting-partial-prefetching). Each
-// with its ?nr= (searchParams). Any other name after the id is a 404 in
-// proxy.ts (lib/address-routes.ts unknownAddress).
+// twice, as the address page (components/hub-route.tsx): the place alone,
+// prerendered whole, and with ?nr= (app/adres/[id]/nr/<module>/, where
+// proxy.ts sends it), read per request. Any other name after the id is a
+// 404 in proxy.ts (lib/address-routes.ts unknownAddress).
 
 type SubpageParams = Promise<{ id: string }>;
 
@@ -42,7 +44,7 @@ async function subpageOf(params: SubpageParams, { module }: Variant) {
 /** A subpage route's generateMetadata. */
 async function subpageMetadata(
   params: SubpageParams,
-  searchParams: AddressSearch,
+  searchParams: AddressSearch | null,
   variant: Variant,
 ) {
   const { id, slug } = await subpageOf(params, variant);
@@ -93,7 +95,7 @@ function SubpageRoute({
   params,
   searchParams,
   ...variant
-}: Variant & { params: SubpageParams; searchParams: AddressSearch }) {
+}: Variant & { params: SubpageParams; searchParams: AddressSearch | null }) {
   return (
     <PlaceSuspense module={variant.module}>
       <SubpageContent
@@ -109,7 +111,7 @@ async function SubpageContent({
   params,
   searchParams,
   ...variant
-}: Variant & { params: SubpageParams; searchParams: AddressSearch }) {
+}: Variant & { params: SubpageParams; searchParams: AddressSearch | null }) {
   const { id, slug } = await subpageOf(params, variant);
   return (
     <ModuleMain
@@ -122,28 +124,23 @@ async function SubpageContent({
 }
 
 /**
- * A subpage's route folder, app/adres/[id]/<module>/page.tsx: its metadata
- * and page, so each folder is three lines.
+ * A subpage's route folder, app/adres/[id]/<module>/page.tsx (and, with
+ * `query`, app/adres/[id]/nr/<module>/page.tsx): its metadata and page, so
+ * each folder is three lines.
  */
-export function subpageRoute(module: SubpageId) {
+export function subpageRoute(
+  module: SubpageId,
+  { query = false }: { query?: boolean } = {},
+) {
+  type Props = { params: SubpageParams; searchParams: AddressSearch };
+  const search = (props: Props) => (query ? props.searchParams : null);
   return {
-    generateMetadata: ({
-      params,
-      searchParams,
-    }: {
-      params: SubpageParams;
-      searchParams: AddressSearch;
-    }) => subpageMetadata(params, searchParams, { module }),
-    Page: ({
-      params,
-      searchParams,
-    }: {
-      params: SubpageParams;
-      searchParams: AddressSearch;
-    }) => (
+    generateMetadata: (props: Props) =>
+      subpageMetadata(props.params, search(props), { module }),
+    Page: (props: Props) => (
       <SubpageRoute
-        params={params}
-        searchParams={searchParams}
+        params={props.params}
+        searchParams={search(props)}
         module={module}
       />
     ),

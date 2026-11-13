@@ -80,11 +80,17 @@ export async function numberQuery(searchParams: AddressSearch) {
  * An address route's ?nr= for its generateMetadata, or null for an unknown
  * place: decided from params first (knownPlace, cached), before
  * searchParams is read, as the page does (HubMain, ModuleMain), so a 404's
- * metadata never waits on the query.
+ * metadata never waits on the query. No searchParams (the routes without
+ * a query, prerendered): no number.
  */
-export async function metadataQuery(id: string, searchParams: AddressSearch) {
+export async function metadataQuery(
+  id: string,
+  searchParams: AddressSearch | null,
+) {
   if (!(await knownPlace(id))) return null;
-  return houseQuery((await searchParams).nr);
+  return searchParams
+    ? houseQuery((await searchParams).nr)
+    : { nr: null, missing: false };
 }
 
 /**

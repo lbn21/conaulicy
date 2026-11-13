@@ -7,6 +7,8 @@ import {
   FILE_NAMES,
   isModuleId,
   MODULE_IDS,
+  QUERY_FOLDER,
+  queryRoute,
   SUBPAGE_IDS,
   unknownAddress,
 } from "./address-routes.ts";
@@ -20,16 +22,43 @@ test("waste first, then water, power, then weather; all but the weather have a s
   for (const id of SUBPAGE_IDS) assert.ok(isModuleId(id), id);
   // Each subpage its own route folder (no [module]: a shared App Shell
   // cannot know its module, components/subpage-route.tsx).
-  const root = new URL("../app/adres/[id]/", import.meta.url);
-  const folders = readdirSync(root, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && !FILE_NAMES.includes(d.name))
-    .map((d) => d.name)
-    .sort();
-  assert.deepEqual(folders, [...SUBPAGE_IDS].sort());
+  // The query's routes (app/adres/[id]/nr/) hold the same subpages.
+  for (const dir of ["../app/adres/[id]/", "../app/adres/[id]/nr/"]) {
+    const root = new URL(dir, import.meta.url);
+    const folders = readdirSync(root, { withFileTypes: true })
+      .filter(
+        (d) =>
+          d.isDirectory() &&
+          !FILE_NAMES.includes(d.name) &&
+          d.name !== QUERY_FOLDER,
+      )
+      .map((d) => d.name)
+      .sort();
+    assert.deepEqual(folders, [...SUBPAGE_IDS].sort(), dir);
+  }
+});
+
+test("an address with a query goes to the route that reads it; alone, to its own", () => {
+  const q = (search: string) => new URLSearchParams(search);
+  const street = "/adres/0972447-00470";
+  assert.equal(queryRoute(street, q("nr=12")), `${street}/nr`);
+  assert.equal(queryRoute(`${street}/`, q("nr=")), `${street}/nr`);
+  assert.equal(
+    queryRoute(`${street}/smieci`, q("nr=7a")),
+    `${street}/nr/smieci`,
+  );
+  assert.equal(queryRoute(`${street}/woda/`, q("imgw=x")), `${street}/nr/woda`);
+  for (const path of [street, `${street}/smieci`])
+    assert.equal(queryRoute(path, q("")), null, path);
+  for (const path of [`${street}/harmonogram.pdf`, `${street}/pogoda`, "/"])
+    assert.equal(queryRoute(path, q("nr=1")), null, path);
 });
 
 test("no module is called like another folder", () => {
-  for (const id of MODULE_IDS) assert.ok(!FILE_NAMES.includes(id), id);
+  for (const id of MODULE_IDS) {
+    assert.ok(!FILE_NAMES.includes(id), id);
+    assert.notEqual(id, QUERY_FOLDER);
+  }
   assert.equal(isModuleId("harmonogram.pdf"), false);
   assert.equal(isModuleId("pogoda"), true);
   assert.equal(isModuleId("prad"), true);
@@ -108,6 +137,10 @@ test("an unknown address is the proxy's 404, before any render", () => {
     // No power calendar (only water's woda.ics).
     `${street}/prad.ics`,
     `${street}/numer`,
+    // The query's routes: only the proxy's rewrite reaches them.
+    `${street}/nr`,
+    `${street}/nr/smieci`,
+    `${street}/smieci/x`,
     "/adres/0606004/pogoda",
     "/adres/0972447-88888",
     "/adres/0972447-88888/smieci",
@@ -119,7 +152,7 @@ test("an unknown address is the proxy's 404, before any render", () => {
   // Places not loaded: only the path itself decides.
   assert.equal(unknownAddress(`${street}/pogoda`, null), true);
   assert.equal(unknownAddress("/adres/0972447-88888", null), false);
-  // Not an address (deeper paths match no route: Next.js's own 404).
-  for (const path of ["/", "/adres", "/ulice", `${street}/nr/12`])
+  // Not an address.
+  for (const path of ["/", "/adres", "/ulice"])
     assert.equal(unknownAddress(path, places), false, path);
 });

@@ -7,19 +7,22 @@ import { Skeleton } from "@/components/skeleton";
 import type { SubpageId } from "@/lib/module-ids";
 import { findSubpage, type Module } from "@/lib/modules";
 
-// The address pages and their subpages: one skeleton, one reveal.
-// The page's content (its params, then every block's
-// data at once: components/hub.tsx hubData, components/module-page.tsx
-// subpageData) sits behind one <Suspense> (react.dev/reference/react/Suspense),
-// so it all comes in together, after the slowest block. The skeleton is
-// the page's head (a subpage's own, from its module), then one generic
-// section card, so a new section needs no new one, about as tall as the
-// shortest page (/woda with no cuts). No
-// min-height: on a short page the footer stays put at the reveal, on a long
-// one it moves down, already below the first screen. The route's App
-// Shell, shared by every link to it, holds only this: no place, no date
+// The address pages and their subpages: one boundary, one skeleton.
+// The page's content (its params, then every block's data at once:
+// components/hub.tsx hubData, components/module-page.tsx subpageData) sits
+// behind one <Suspense> (react.dev/reference/react/Suspense). On a load of
+// the place alone it is prerendered, complete: the skeleton is not in the
+// HTML. The skeleton is the route's App Shell, shared by every link to it,
+// which holds no place and no date
 // (nextjs.org/docs/app/guides/adopting-partial-prefetching#move-url-data-behind-suspense):
-// a subpage's module is its route folder's, not a param.
+// a client-side navigation the prefetch has not filled, and ?nr= or
+// ?imgw=, read per request (components/hub-route.tsx), show it until the
+// content comes in, whole. It is the page's head (a subpage's own, from its
+// module), then one generic section card, so a new section needs no new
+// one, about as tall as the shortest page (/woda with no cuts). No
+// min-height: on a short page the footer stays put at the reveal, on a long
+// one it moves down, already below the first screen. A subpage's module is
+// its route folder's, not a param.
 
 /** The breadcrumbs' bar, the band's first line (components/breadcrumbs.tsx). */
 const CRUMBS_SKELETON = (

@@ -1,4 +1,5 @@
 import "server-only";
+import { cacheLife, cacheTag } from "next/cache";
 import { getDataset } from "@/lib/dataset";
 import {
   examplePlacesOf,
@@ -11,7 +12,7 @@ import {
   zoneView,
 } from "@/lib/dataset-views";
 import { todayInWarsaw } from "@/lib/dates";
-import { DATASET } from "@/lib/headers";
+import { DATASET, LIVE } from "@/lib/headers";
 import { houseNumber } from "@/lib/house";
 import { movedPath } from "@/lib/places";
 import { isValidHouseNumber } from "@/lib/prg";
@@ -63,8 +64,14 @@ export async function getZone(zoneId: string) {
   return zoneView(await getDataset(), zoneId, todayInWarsaw());
 }
 
-/** The home page's panel: lib/dataset-views.ts wasteWeekOf. */
+/**
+ * The home page's panel: lib/dataset-views.ts wasteWeekOf. Cached as
+ * "live", as the panel's other reads (next.config.ts).
+ */
 export async function wasteWeek(from: string, until: string) {
+  "use cache";
+  cacheLife("live");
+  cacheTag(LIVE);
   return wasteWeekOf(await getDataset(), from, until);
 }
 

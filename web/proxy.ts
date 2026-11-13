@@ -3,7 +3,12 @@ import {
   type NextRequest,
   NextResponse,
 } from "next/server";
-import { ADDRESS, type PlacesMap, unknownAddress } from "@/lib/address-routes";
+import {
+  ADDRESS,
+  type PlacesMap,
+  queryRoute,
+  unknownAddress,
+} from "@/lib/address-routes";
 import { cleanQuery } from "@/lib/clean-query";
 import { PRIVATE_NO_STORE, TEXT_PLAIN } from "@/lib/headers";
 import { NOINDEX_NOFOLLOW } from "@/lib/indexing";
@@ -167,6 +172,21 @@ async function notFoundPage(
   });
 }
 
+/**
+ * On to the page: an address with ?nr= or ?imgw= to the route that reads
+ * them (lib/address-routes.ts queryRoute), the URL unchanged, so the
+ * address alone keeps its prerendered route, whose HTML waits for no
+ * request (components/hub-route.tsx).
+ */
+function onward(request: NextRequest, headers?: Record<string, string>) {
+  const { pathname, searchParams } = request.nextUrl;
+  const route = queryRoute(pathname, searchParams);
+  if (!route) return NextResponse.next({ headers });
+  const url = request.nextUrl.clone();
+  url.pathname = route;
+  return NextResponse.rewrite(url, { headers });
+}
+
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
   // Unknown query parameters go to the clean, cached URL (lib/clean-query.ts).
   // Before the gate: a redirect reveals nothing, and both behave the same.
@@ -190,7 +210,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const unknown = await unknownPlace(request, known);
 
   const expected = process.env.SITE_BASIC_AUTH;
-  if (!expected) return unknown ? notFoundPage(request) : NextResponse.next();
+  if (!expected) return unknown ? notFoundPage(request) : onward(request);
 
   // Open to everyone, so crawlers read the Disallow instead of a 401.
   if (request.nextUrl.pathname === "/robots.txt") {
@@ -214,7 +234,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   }
 
   if (unknown) return notFoundPage(request, GATED_HEADERS);
-  return NextResponse.next({ headers: GATED_HEADERS });
+  return onward(request, GATED_HEADERS);
 }
 
 export const config = {

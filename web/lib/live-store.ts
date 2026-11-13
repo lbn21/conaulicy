@@ -1,5 +1,7 @@
 import "server-only";
 import { get, put } from "@vercel/blob";
+import { cacheLife, cacheTag } from "next/cache";
+import { LIVE } from "./headers.ts";
 import { type ImgwRead, imgwCopyOf } from "./imgw-shown.ts";
 import { upstream as imgwUpstream } from "./imgw-warnings.ts";
 import { liveCopyOf, PGE_KEY, UNREADABLE } from "./live-status.ts";
@@ -7,12 +9,12 @@ import { parseOutagesFile, upstream as pgeUpstream } from "./pge-feed.ts";
 import type { PgeRead } from "./power-module.ts";
 
 // The private Blob store (BLOB_READ_WRITE_TOKEN): the crons' files, read
-// and written by the crons, and read by the pages' live blocks
-// (components/live-block.tsx), per request. The crons read the Blob's
-// origin, so a run compares against the last write; the pages read its
-// CDN copy, at most 60 s behind a write (vercel.com/docs/vercel-blob,
-// "Caching"; every file is written with the minimum cacheControlMaxAge,
-// 60 s), so no page needs a purge.
+// and written by the crons, and read by the pages' live data, from the
+// Blob's origin, behind Next's cache: each read is cached as "live"
+// (next.config.ts, tagged LIVE), so a page has it in its prerendered HTML,
+// and the cron purges LIVE after it writes (app/api/cron/zuk), so the next
+// request reads the new file. LIVE_STORE_DIR (scripts/check-freshness.mjs)
+// keeps the files in a directory instead, never in production.
 
 /** IMGW's last good feed, only our powiats' items (lib/imgw-cron.ts). */
 export const FEED_PATH = "imgw/feed.json";
@@ -23,18 +25,28 @@ export const PGE_PATH = "pge/outages.json";
 /** Every source's last check (lib/live-status.ts, lib/zuk-cron.ts). */
 export const CHECKS_PATH = "status/checks.json";
 
+/** LIVE_STORE_DIR, outside production only: the store as a directory. */
+function storeDir(): string | null {
+  if (process.env.VERCEL_ENV === "production") return null;
+  return process.env.LIVE_STORE_DIR || null;
+}
+
 /**
  * A file's body, or null if there is none yet. Throws on other errors.
- * From the Blob's origin (the crons); `cdn`: through its CDN (the pages).
+ * From the Blob's origin; `cdn`: through its CDN (the dataset's immutable
+ * versions, lib/dataset.ts).
  */
 export async function readBlobFile(
   pathname: string,
   { cdn = false }: { cdn?: boolean } = {},
 ): Promise<string | null> {
-  const blob = await get(pathname, {
-    access: "private",
-    useCache: cdn,
-  });
+  const dir = storeDir();
+  if (dir) {
+    const { readFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    return readFile(join(dir, pathname), "utf8").catch(() => null);
+  }
+  const blob = await get(pathname, { access: "private", useCache: cdn });
   if (blob?.statusCode !== 200) return null;
   return new Response(blob.stream).text();
 }
@@ -43,6 +55,13 @@ export async function writeBlobFile(
   pathname: string,
   body: string,
 ): Promise<void> {
+  const dir = storeDir();
+  if (dir) {
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    const { dirname, join } = await import("node:path");
+    await mkdir(dirname(join(dir, pathname)), { recursive: true });
+    return writeFile(join(dir, pathname), body);
+  }
   await put(pathname, body, {
     access: "private",
     addRandomSuffix: false,
@@ -57,8 +76,8 @@ type MockFiles = (url: string, now: number) => Promise<LiveFiles>;
 type LiveFiles = { feed: string | null; checks: string | null };
 
 /**
- * A live feed's last good copy for the pages, read per request through the
- * Blob's CDN, never cached by Next; pages never ask the upstream. `url` is
+ * A live feed's last good copy for the pages, from the store (cached by
+ * its callers as "live"); pages never ask the upstream. `url` is
  * the upstream's: a "mock:…" one (outside production only, its upstream()
  * refuses it there) reads the mock's files instead (no Blob needed). null:
  * the cron has written none yet. The store unreadable, or its file not
@@ -79,8 +98,8 @@ async function liveRead<C>(
       return copyOf(feed, checks);
     }
     const [feed, checks] = await Promise.all([
-      readBlobFile(path, { cdn: true }),
-      readBlobFile(CHECKS_PATH, { cdn: true }),
+      readBlobFile(path),
+      readBlobFile(CHECKS_PATH),
     ]);
     return copyOf(feed, checks);
   } catch (error) {
@@ -97,6 +116,9 @@ async function liveRead<C>(
 export async function imgwCopy(
   preview: string | null = null,
 ): Promise<ImgwRead> {
+  "use cache";
+  cacheLife("live");
+  cacheTag(LIVE);
   return liveRead(
     "IMGW",
     preview ?? (await imgwUpstream()).url,
@@ -108,6 +130,9 @@ export async function imgwCopy(
 
 /** PGE's last good list and its last good check: the power module's. */
 export async function pgeCopy(): Promise<PgeRead> {
+  "use cache";
+  cacheLife("live");
+  cacheTag(LIVE);
   return liveRead(
     "PGE",
     (await pgeUpstream()).url,

@@ -80,8 +80,8 @@ const woda: NowTileDef = {
   icon: "woda",
   label: "Woda",
   source: { href: MZGKIM_NEWS, text: "wodociągi" },
-  async read(week, now) {
-    const views = Object.values(await getWaterData(new Date(now)));
+  async read(week) {
+    const views = Object.values(await getWaterData());
     if (views.every((v) => v.unavailable)) return null;
     const checked = views
       .map((v) => v.checkedAt)

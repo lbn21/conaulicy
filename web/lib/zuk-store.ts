@@ -1,4 +1,6 @@
 import "server-only";
+import { cacheLife, cacheTag } from "next/cache";
+import { LIVE } from "./headers.ts";
 import { readBlobFile, writeBlobFile } from "./live-store.ts";
 import {
   GMINA,
@@ -9,13 +11,10 @@ import {
 import { parseZukFile, type ZukData, zukView } from "./zuk-data.ts";
 
 // Each water source's file in the private Blob store (lib/live-store.ts,
-// lib/water-sources.ts pathname): the cron reads its origin, the pages'
-// live blocks its CDN copy, per request (at most 60 s behind a write).
+// lib/water-sources.ts pathname): written by the cron, read by the cron
+// and, cached as "live" (getWaterData, lib/live-store.ts), by the pages.
 
-/**
- * A file's body from the Blob's origin, or null if there is none yet.
- * Throws on other errors.
- */
+/** A file's body, or null if there is none yet. Throws on other errors. */
 export function readZukFile(pathname = GMINA.pathname): Promise<string | null> {
   return readBlobFile(pathname);
 }
@@ -59,17 +58,23 @@ async function sourceData(source: WaterSource, now: Date): Promise<ZukData> {
   if (mock) return mock;
   let body: string | null = null;
   try {
-    body = await readBlobFile(source.pathname, { cdn: true });
+    body = await readBlobFile(source.pathname);
   } catch (error) {
     console.error(`${source.pathname}: ${(error as Error).message}`);
   }
   return zukView(body ? parseZukFile(body) : null, now, source);
 }
 
-/** Every source's data, by its id: what lib/water-module.ts water() takes. */
-export async function getWaterData(
-  now = new Date(),
-): Promise<Record<WaterSourceId, ZukData>> {
+/**
+ * Every source's data, by its id: what lib/water-module.ts water() takes.
+ * Cached as "live" (lib/live-store.ts): its stale flags count from the
+ * cache's fill.
+ */
+export async function getWaterData(): Promise<Record<WaterSourceId, ZukData>> {
+  "use cache";
+  cacheLife("live");
+  cacheTag(LIVE);
+  const now = new Date();
   const views = await Promise.all(WATER_SOURCES.map((s) => sourceData(s, now)));
   return Object.fromEntries(
     WATER_SOURCES.map((s, i) => [s.id, views[i]]),
