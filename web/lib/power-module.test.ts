@@ -13,6 +13,7 @@ import {
   powerPage,
   powerUpcoming,
 } from "./power-module.ts";
+import { onDay } from "./timeline.ts";
 import { testPlace } from "./water-fixture.ts";
 import { ZUK_PLACES } from "./zuk-places.generated.ts";
 
@@ -138,7 +139,7 @@ test("the timeline: a row per range, revoked never; a failure's end an estimate"
   assert.equal(failure.span.to, "18:15");
 });
 
-test("a failure in the latest copy: shown whatever the copy's age, until its own end or a copy without it", () => {
+test("a failure in the latest copy: shown whatever the copy's age or its estimated end, until a copy without it", () => {
   const failure = (data: Power) => uuids(data).includes(FAILURE_ID.slice(0, 8));
   for (const ago of [0, 15, 60, 240]) {
     assert.ok(failure(at(ASNYKA, { storedAgo: ago })), `stored ${ago} min`);
@@ -153,10 +154,28 @@ test("a failure in the latest copy: shown whatever the copy's age, until its own
     items: FEED.items.filter((item) => item.uuid !== FAILURE_ID),
   };
   assert.ok(!failure(at(ASNYKA, { feed: without })));
-  // PGE's own end (18:15) passed: gone, still listed or not.
-  const end = Date.parse("2026-11-11T17:15:00Z");
-  assert.ok(failure(at(ASNYKA, { now: end - 1 })));
-  assert.ok(!failure(at(ASNYKA, { now: end })));
+  // PGE's estimated end (18:15) passed, still listed: still on, in the
+  // view, on the timeline's day and as the banner's failure on now.
+  const late = Date.parse("2026-11-11T19:30:00Z");
+  const overdue = at(ASNYKA, { now: late });
+  assert.ok(failure(overdue));
+  const [item] = powerUpcoming(overdue);
+  assert.equal(item.span.about, true);
+  assert.equal(item.span.to, "18:15");
+  assert.deepEqual(
+    onDay(powerUpcoming(overdue), "2026-11-11", late).map((e) => e.item),
+    [item],
+  );
+  // The next copy without it: gone.
+  assert.ok(!failure(at(ASNYKA, { now: late, feed: without })));
+});
+
+test("a planned outage past its scheduled end: gone, still listed or not", () => {
+  const planned = (now: number) =>
+    at(HUTA, { now }).cuts.map((cut) => cut.uuid.slice(0, 8));
+  // f76971d9: 17 Nov, 8:30-9:30 and 14:30-15:30 (Warsaw).
+  assert.ok(planned(Date.parse("2026-11-17T14:29:00Z")).includes("f76971d9"));
+  assert.ok(!planned(Date.parse("2026-11-17T14:30:00Z")).includes("f76971d9"));
 });
 
 test("a planned range over: gone; the day's later one stays", () => {

@@ -58,7 +58,7 @@ There is one rule for water and power (`matches`, `web/lib/place-match.ts`). An 
 
 ## Failures and revoked notices
 
-- **A failure:** shown, its end PGE's estimate („ok. HH:MM”), until that end passes or a later copy no longer lists it; never by the copy's age. The same rule as every outage.
+- **A failure:** shown as long as the latest copy lists it, whatever its end, which is only PGE's estimate („ok. HH:MM”): on the address page, `/prad`, the timeline and the „Teraz trwa awaria” banner (an estimated end never ends an item, `onDay`, `web/lib/timeline.ts`); gone once a later copy no longer lists it. A planned outage ends at its scheduled end. Never by the copy's age.
 - **Revoked:** never in the timeline. On `/prad` it stays, with a grey tag „Odwołane” and PGE's note, until its time is over. Someone who saw it earlier can then see it was called off.
 - **An item gone from the feed** is gone from the site. It is a live feed with no history, as IMGW's.
 

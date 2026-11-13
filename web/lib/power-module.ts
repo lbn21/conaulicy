@@ -8,10 +8,12 @@
 // Matching: the one rule (lib/place-match.ts), on each address's TERYT
 // locality and street; PGE's house numbers are shown as given, never
 // compared with the address's. Places are named from TERYT, never PGE's
-// words. Every outage PGE lists in the latest copy is shown until its own
-// end passes (a failure's end is PGE's estimate, „ok.”), or a later copy
-// no longer lists it; never by the copy's age. A revoked outage is never
-// in the timeline; the subpage keeps it, tagged, until its time is over.
+// words. A planned outage PGE lists in the latest copy is shown until its
+// scheduled end passes, or a later copy no longer lists it. A failure is
+// shown as long as the latest copy lists it, whatever its end, which is
+// only PGE's estimate („ok.”; its span `about`, lib/timeline.ts onDay);
+// never by the copy's age. A revoked outage is never in the timeline; the
+// subpage keeps it, tagged, until its time is over.
 // PGE's checks failing, a notice says since when, as IMGW's
 // (lib/live-status.ts liveNotice).
 
@@ -80,11 +82,17 @@ function nameOf(address: PlaceRef, place: PlaceRef): string {
   return street.localityId === place.localityId ? name : `${name}, ${locality}`;
 }
 
-/** The outage at the address, its ranges not over by `now`; or null. */
+/**
+ * The outage at the address; or null. A planned one: its ranges not over
+ * by `now`; a failure: every range, as long as PGE lists it.
+ */
 function cutAt(item: PgeOutage, place: PlaceRef, now: number): PowerCut | null {
   const here = item.addresses.filter((a) => matches(place, ref(a)));
   if (here.length === 0) return null;
-  const ranges = item.ranges.filter((r) => Date.parse(r.end) > now);
+  const ranges =
+    item.kind === "failure"
+      ? item.ranges
+      : item.ranges.filter((r) => Date.parse(r.end) > now);
   if (ranges.length === 0) return null;
   return {
     uuid: item.uuid,
