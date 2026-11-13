@@ -9,8 +9,8 @@
 // locality and street; PGE's house numbers are shown as given, never
 // compared with the address's. Places are named from TERYT, never PGE's
 // words. A failure's end is PGE's estimate („ok.”); while PGE still lists
-// it, it lasts at least until a quarter of an hour after the last good
-// check. A revoked outage is never in the timeline; the subpage keeps it,
+// it past that, it lasts at least CHECK_LAG_MS after the last good check
+// (lib/live-status.ts). A revoked outage is never in the timeline; the subpage keeps it,
 // tagged, until its time is over. The copy's age decides the rest, as
 // IMGW's (lib/live-status.ts liveNotice).
 
@@ -19,6 +19,7 @@ import { fromTo } from "../components/rows/when.ts";
 import { warsawDay } from "./date-labels.ts";
 import { capitalised, type Group, type Part, span } from "./hub.ts";
 import {
+  CHECK_LAG_MS,
   checkAge,
   type LiveCopy,
   liveNotice,
@@ -42,8 +43,13 @@ export const PGE_PAGE =
 /** What the pages read from the store (lib/live-reads.ts). */
 export type PgeRead = LiveCopy<PgeFeed> | null | typeof UNREADABLE;
 
-/** A failure still listed lasts at least this long past the last check. */
-const FAILURE_MARGIN_MS = 15 * 60_000;
+/**
+ * A failure still listed lasts at least this long past the last good
+ * check: the stored check's lag while the cron is healthy, so an ongoing
+ * failure never drops out between two writes of the status file. One PGE
+ * stops listing goes when the feed file changes.
+ */
+const FAILURE_MARGIN_MS = CHECK_LAG_MS;
 
 /** One of the outage's addresses here: our name, PGE's numbers as given. */
 type Where = { name: string; numbers: string | null };
@@ -97,9 +103,11 @@ function cutAt(
   const here = item.addresses.filter((a) => matches(place, ref(a)));
   if (here.length === 0) return null;
   const last = item.ranges.length - 1;
+  // A failure's end: PGE's estimate until it passes; then, still listed,
+  // FAILURE_MARGIN_MS past the last good check.
   const ranges = item.ranges
     .map((r, i) =>
-      item.kind === "failure" && i === last
+      item.kind === "failure" && i === last && Date.parse(r.end) <= now
         ? {
             ...r,
             end: new Date(

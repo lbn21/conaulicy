@@ -33,6 +33,13 @@ export const CHECK_EVERY_MS = 15 * 60_000;
  */
 const CHECK_REFRESH_MS = 40 * 60_000;
 
+/**
+ * How far a stored good check may lag the cron's last good run while the
+ * cron is healthy (checksWorth writes none in between): what a reader
+ * that adds a margin to a check time must allow for (lib/power-module.ts).
+ */
+export const CHECK_LAG_MS = CHECK_REFRESH_MS + CHECK_EVERY_MS;
+
 /** IMGW's warnings feed (lib/imgw-cron.ts). */
 export const IMGW_KEY = "imgw";
 
@@ -90,13 +97,13 @@ export function parseChecks(body: string | null): Checks | null {
  * stored entry. Failing before: its stored check. Good before: the runs
  * since the stored check went well (checksWorth wrote none of them, as it
  * writes every flip), the last of them one period ago; a gap a good run
- * would have written in (CHECK_REFRESH_MS and a period: runs missing, the
- * cron down) keeps the stored check, never a later guess.
+ * would have written in (CHECK_LAG_MS: runs missing, the cron down) keeps
+ * the stored check, never a later guess.
  */
 function lastGood(stored: SourceCheck | undefined, attemptAt: number) {
   if (!stored?.checkedAt) return null;
   const checked = Date.parse(stored.checkedAt);
-  if (!stored.ok || attemptAt - checked >= CHECK_REFRESH_MS + CHECK_EVERY_MS)
+  if (!stored.ok || attemptAt - checked >= CHECK_LAG_MS)
     return stored.checkedAt;
   return new Date(Math.max(checked, attemptAt - CHECK_EVERY_MS)).toISOString();
 }

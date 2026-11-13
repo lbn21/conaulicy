@@ -58,7 +58,7 @@ There is one rule for water and power (`matches`, `web/lib/place-match.ts`). An 
 
 ## Failures and revoked notices
 
-- **A failure past PGE's estimated end:** while PGE still lists it, it is on. Its end is shown as „ok. HH:MM” (an estimate), and it lasts at least until 15 minutes after the last good check (`FAILURE_MARGIN_MS`). This one rule applies to every failure.
+- **A failure past PGE's estimated end:** while PGE still lists it, it is on. Its end is shown as „ok. HH:MM” (an estimate), and, once PGE's own end has passed, it lasts at least `CHECK_LAG_MS` (55 minutes) after the last good check as stored (`FAILURE_MARGIN_MS`, `web/lib/power-module.ts`): the status file is written only every third good run (`checksWorth`, `web/lib/live-status.ts`), so the stored check may be that far behind, and the failure never drops out between two writes. One PGE stops listing goes when the feed file changes. This one rule applies to every failure.
 - **Revoked:** never in the timeline. On `/prad` it stays, with a grey tag „Odwołane” and PGE's note, until its time is over. Someone who saw it earlier can then see it was called off.
 - **An item gone from the feed** is gone from the site. It is a live feed with no history, as IMGW's.
 

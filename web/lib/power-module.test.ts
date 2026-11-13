@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { CHECK_LAG_MS } from "./live-status.ts";
 import { MODULES } from "./modules.ts";
 import { ours, type PgeFeed, parseOutages } from "./pge-feed.ts";
 import { derivedOurs, FAILURE_ID, NO_RANGES_ID } from "./pge-fixture.ts";
@@ -126,10 +127,12 @@ test("the timeline: a row per range, revoked never; a failure's end an estimate"
   assert.equal(failure.span.to, "18:15");
 });
 
-test("a failure past PGE's estimate, still listed: on until a quarter after the last check", () => {
+test("a failure past PGE's estimate, still listed: on until CHECK_LAG_MS after the last check", () => {
   const late = NOW + 60 * MIN;
   const [failure] = powerUpcoming(at(ASNYKA, { now: late }));
-  assert.equal(failure.span.to, "19:07");
+  // 17:52 + 60 min, checked then: on until 55 min later.
+  assert.equal(CHECK_LAG_MS, 55 * MIN);
+  assert.equal(failure.span.to, "19:47");
   assert.equal(failure.span.about, true);
   // A planned range over: gone; the day's later one stays.
   const after = Date.parse("2026-11-17T09:00:00Z");
@@ -137,6 +140,19 @@ test("a failure past PGE's estimate, still listed: on until a quarter after the 
     powerUpcoming(at(HUTA, { now: after })).map((i) => i.span.from),
     ["14:30", "8:00", "19:00"],
   );
+});
+
+test("a failure still listed, past its end: in the view at every stored check age a healthy cron leaves, gone after", () => {
+  // Its stated end, 18:15, an hour behind; the status file written every
+  // third run (lib/live-status.ts checksWorth).
+  const late = NOW + 60 * MIN;
+  const failure = (checkedAgo: number) =>
+    uuids(at(ASNYKA, { now: late, checkedAgo })).includes(
+      FAILURE_ID.slice(0, 8),
+    );
+  for (const ago of [0, 15, 30, 45]) assert.ok(failure(ago), `${ago} min`);
+  assert.ok(failure(CHECK_LAG_MS / MIN - 1));
+  assert.ok(!failure(CHECK_LAG_MS / MIN));
 });
 
 test("no dateRanges: the whole startAt-stopAt, one row", () => {
