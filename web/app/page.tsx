@@ -61,7 +61,7 @@ function homeData() {
       // A few examples only: the full address list never ships to the client.
       examplePlaces(HOME_EXAMPLES),
       servedVersion(),
-      liveRuns({ cdn: true }),
+      liveRuns(),
     ]);
     const marks: LiveMarks = {
       day: todayInWarsaw(new Date(now)),
