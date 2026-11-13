@@ -52,9 +52,8 @@ Vercel Blob. No database writes.
    `checkedAt` in it aside, and the `rejected` list). About 96 small Blob
    writes a day. A run with rejected items logs them in one line,
    `{zuk: "rejected", source, gazetteer, entries}`.
-6. Nothing is purged. The pages read the file per request,
-   through the Blob's CDN, so a written run's cuts and `checkedAt` show
-   within 60 s. A run that wrote nothing (the source down, a file it could
+6. After the write, the cron purges the `live` tag, so the next request
+   reads the file: a written run's cuts and `checkedAt` show at once. A run that wrote nothing (the source down, a file it could
    not read, the write failed) leaves the old file and its time.
 
 The gmina's site down: 502, the file and its `checkedAt` stay, and it turns
@@ -252,11 +251,11 @@ wording stays in `where` (its street, else its locality, as written) and
 checked more than 60 minutes ago is `stale`, so a page shows the source link
 instead.
 
-**Caching.** No Next.js cache in front of the file: the
-pages' live blocks (the hub's „Woda” and „Najbliższe dni”, `/woda`'s
-body, `web/components/live-block.tsx`) read it per request through the
-Blob's CDN (`useCache: true`, at most 60 s behind a write); the cron reads
-its origin. Nothing is tagged `water` or purged. The calendar file
+**Caching.** The pages (the hub's „Woda” and „Najbliższe dni”, `/woda`'s
+body, the home page's panel) read it through `getWaterData`
+(`web/lib/zuk-store.ts`), cached as "live" (`web/next.config.ts`) under
+the `live` tag, from the Blob's origin, as the cron does; the cron purges
+`live` after each write. The calendar file
 `/adres/[id]/woda.ics` is cached by the CDN for an hour (a day
 stale-while-revalidate), tagged `dataset` only.
 
