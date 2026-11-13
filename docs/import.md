@@ -2,7 +2,8 @@
 
 A GitHub Actions workflow checks the sources in `etl/sources.yaml`. Today that is one domain, waste: the town's and the gmina's published schedules. Every new schedule file is read once by Grok and goes to a person in a review pull request, with the original shown inline, even when every check passes; nothing from it applies until the PR is merged. A merged review's dates go live on their own once they pass the date rules. Anything else doubtful opens a GitHub issue instead, and nothing is applied. People only step in when an issue or a review PR opens.
 
-- Workflow: `.github/workflows/import.yml`. It runs on GitHub-hosted runners with no approval gates. It talks to Neon, S3 (through an OIDC role), the xAI API (Grok), the GitHub API (issues and review PRs), the site's `/api/revalidate`, and the source sites themselves.
+- Workflow: `.github/workflows/import.yml`. It runs on GitHub-hosted runners with no approval gates. It talks to Neon, S3 (through an OIDC role), the xAI API (Grok), the GitHub API (issues and review PRs), the private Vercel Blob store (the dataset snapshot), the site's `/api/revalidate`, and the source sites themselves.
+- **Neon is the import's alone.** The site reads no database: every page, route, cron and build reads the dataset snapshot the import publishes to Blob (docs/database.md, "The dataset snapshot"). A data change reaches the site only through a new snapshot.
 - Code: `web/scripts/import/`.
   - `core/` is shared by every domain: the run loop (`run.ts`), config, HTTP retries, watched pages, issues and review PRs, the events diff, batches and revert.
   - `waste/` is the waste domain: detectors and the one extractor (`adapters.ts`), the prompts (`prompts.ts`), the xAI call (`xai.ts`, through `web/lib/zuk-ai.ts`, shared with the water reader), the literal checks, validation and review content (`lib.ts`), its checks (`check.ts`) and its hooks into the core (`index.ts`: config rules, the `gminy.schedule_url` sync, database rows, issue wording).
@@ -30,7 +31,10 @@ For each source in `etl/sources.yaml`:
    - always, whatever `validate` enables: no month has more dates than the street PDF holds, and no date more fractions (`MONTH_DAYS`, `DAY_MARKS` in `web/lib/pdf-grid.ts`, the 2026 data's maxima); a bigger schedule blocks the file until the bounds grow (and `check-pdf` with them), never clipped on the PDF;
    - who the zone serves is never decided here: the places' lists above go into the review PR (`validate: members`).
    - no source, no display: an event without an http(s) source url or a `checkedAt` day (`web/lib/event-source.ts`, the rule the page, PDF and ICS apply too) is a finding in the review PR, or a problem that blocks the file; it is never imported. The one-off `db:import` refuses to write any such event.
-6. **Apply.** The diff for the file's scope (zone and year) is written in one transaction, logged row by row in `import_changes` under a batch id, and the site is revalidated (`revalidateTag("dataset")`: the data cache, every page shell built from the database and the CDN copies of the PDF, ICS and search responses, which send `Vercel-Cache-Tag: dataset`). This is the only purge, and the only way an address page's shell changes before the next deploy: the shells are cached with `cacheLife("max")` and every one of them (home, `/ulice`, and every address route: the hub, `/smieci` and `/woda`, a `?nr=` included) carries the `dataset` tag (`web/scripts/check-pdf.mjs` checks the address routes'). The crons (water, IMGW) purge nothing: the pages read their files per request through the Blob's CDN, at most 60 s behind a write.
+6. **Apply.** The diff for the file's scope (zone and year) is written in one transaction, logged row by row in `import_changes` under a batch id.
+7. **Publish.** At the end of every run that may write (`apply`; not `dry-run` or `extract-only`), whatever happened to each source, the dataset snapshot is built from the database (read-only) and published if its content changed (`web/scripts/lib/dataset.ts`): a batch, a file's `lastSeenAt` (the pages' „Sprawdziliśmy”), a district. An unchanged dataset writes nothing. Then the site is revalidated (`revalidateTag("dataset")`: the snapshot's pointer, every page shell built from it and the CDN copies of the PDF, ICS and search responses, which send `Vercel-Cache-Tag: dataset`). The revalidate is the only purge, and the only way an address page's shell changes before the next deploy: the shells are cached with `cacheLife("max")` and every one of them (home, `/ulice`, and every address route: the hub, `/smieci` and `/woda`, a `?nr=` included) carries the `dataset` tag (`web/scripts/check-pdf.mjs` checks the address routes'). The crons (water, IMGW) purge nothing: the pages read their files per request through the Blob's CDN, at most 60 s behind a write.
+
+If the snapshot cannot be published (no `BLOB_READ_WRITE_TOKEN`, the Blob store down, a read the import role may not make), the run fails with an issue (key `dataset`), the database keeps the run's changes and the site keeps the previous snapshot; the next good publish closes the issue. Fix the cause, then run the workflow with mode `snapshot`.
 
 Each run writes one `import_runs` row per source: status `no_change`, `applied`, `needs_review` or `failed`, plus counts, batch id, error and the Actions run URL. Then comes the **dead-man switch**, for each domain that opts in with `domains.<domain>.coverageMinDays` (waste: 21): while any of its zones' last date is closer than that, one issue stays open (key `coverage:<domain>`). Every waste run also syncs `gminy.schedule_url` from `sources[].page`. If the gmina publishes a newer yearly post, an issue asks for the one-line config change.
 
@@ -83,6 +87,7 @@ The PR is opened by `dry-run` and `apply` runs (it is not a database write), nev
 | `IMPORT_DATABASE_URL` | Actions secret | Neon role `conaulicy_import`: reads places and zones, writes `events`, `gminy.schedule_url` and the import tables, nothing else |
 | `XAI_API_KEY` | Actions secret | waste schedules only: Grok reads each new file, only inside Actions |
 | `REVALIDATE_SECRET` | Actions secret | `POST /api/revalidate` |
+| `BLOB_READ_WRITE_TOKEN` | Actions secret, passed to the Import step in modes `apply`, `snapshot` and `rollback` (and `web/.env.local` for `db:import`, `db:redirect`, `import:revert` and `dataset:*` by hand) | the site's private Blob store: the dataset snapshot (`dataset/v/*`, `dataset/current.json`) |
 | AWS | OIDC role `conaulicy-import-gha` (`archive.role`), no keys | `s3:PutObject`/`GetObject` on `sources/*`, `s3:ListBucket` on the bucket; only `lbn21/conaulicy` `main` |
 
 ## RUNBOOK
@@ -90,7 +95,9 @@ The PR is opened by `dry-run` and `apply` runs (it is not a database write), nev
 **Run it by hand.** Actions → import → Run workflow, from `main`. Pick a mode:
 - `extract-only`: no database and no review PR. It extracts every detected file through the same steps 1 to 4 as above (one xAI call per file it reads) and prints the literal checks' and date rules' findings; it exits 1 on any. A file it does not read because of its review PR (steps 2 and 3) is printed as `held, not read:` with the reason and the PR, never as `ok`, and the summary counts them.
 - `dry-run`: compares with the database, opens the review PRs, and writes only the `import_runs` row.
-- `apply`: the real import.
+- `apply`: the real import, then the dataset snapshot.
+- `snapshot`: builds the dataset snapshot from the database (read-only) and publishes it if it changed, then revalidates. After a change the import did not make (`db:districts`, a migration's data), or after a failed publish.
+- `rollback` with `version`: points the site back at an older snapshot (below).
 
 `force_extract` extracts files that are already known and settled again, through steps 1 to 4 above: each one read gets a review PR, so a person compares the reading with the database; one with a merged, open, or rejected review of the same prompt, model and effort is not read. After a prompt, model or effort change, this is the only way a settled file is read again. This is how a new year's import is rehearsed. Each read is a paid xAI call. Locally, without the key, use `--read-only` only on files that have merged reviews.
 
@@ -102,7 +109,17 @@ npm run import:revert -- <batch id> --dry-run   # what would be undone
 npm run import:revert -- <batch id>             # undo, one transaction; refuses twice, or if a later batch changed the same events
 ```
 
-A reverted file stays settled: it is not re-applied until its source publishes a new version.
+A reverted file stays settled: it is not re-applied until its source publishes a new version. The revert publishes the dataset snapshot as a run does; if that fails it exits 1 with the revert done, and `npm run dataset:publish` (or the workflow's `snapshot`) puts it live.
+
+**Roll the site back to an earlier snapshot.** Every published version stays in the Blob store (`dataset/v/<version>.json`, never overwritten); only the pointer moves. The database is not touched, so the next publish (the next import run) points the site at the database again: fix or revert the data first.
+
+```sh
+cd web
+npm run dataset:list                               # every version, * the current one
+npm run dataset:rollback -- --to <version>         # then revalidates; prints how to undo
+```
+
+Or Actions → import → Run workflow, mode `rollback`, `version` set.
 
 **Review PR: a new schedule.** Compare every date in the table with the image in the PR, column by column (a consistent misreading passes every literal check), and read the findings and the places' lists. If the dates are right, merge. If not, fix the days in the YAML under "Files changed", then merge (Jakub OKs). To keep the database as it is, close the PR. Either way the next run (or `apply`) acts on it. If a street or village really joined or left the zone, change the database; the import never does. A finding that keeps coming back is fixed in the prompt, with a dry run.
 
@@ -121,3 +138,19 @@ A reverted file stays settled: it is not re-applied until its source publishes a
   4. Add `domains.<domain>` and its `sources` entries (`domain: <domain>`, with a `<domain>` block if it has one) to `etl/sources.yaml`.
   5. Run `npm run config:sync`. CI fails if a registered domain or type is missing from the schema, or the other way round.
   The core does the rest: fetching, archiving, watched pages, diffing, batches, issues, `import_runs` and revert.
+
+## TERYT reload
+
+Places (streets, villages, village parts) change only through `npm run db:import -- --from <etl out> --teryt <dir>` (`web/scripts/import.ts`), run by hand after the TERYT check's issue, and only as reviewed (`web/scripts/lib/place-review.ts`):
+
+1. **Dry run (the default).** Besides the diff, it plans the places: **added** (each with the waste zone it gets from the ETL's zones: its own, its locality's or its village's, or `split`), **retired** (gone from the input) and **restored** (retired before, listed again). When there is any, it writes `etl/review/teryt/places.yaml` (`--review <file>` elsewhere): the plan with its sha256.
+2. **Review PR.** Commit that file on a branch and open a pull request. For each retired place, `replaced_by` is pre-filled only when exactly one new place in the same locality has exactly its name (a rename: TERYT gives a renamed street a new SYM_UL); anything less clear (a like name, two candidates) is `null` with its `candidates`, never guessed. Set `replaced_by` to the new id for a rename, leave `null` for a place that is gone. Merge = approve.
+3. **Apply.** `--apply` fetches `origin/main` and applies only the plan its merged `places.yaml` was made for (same sha256): a file only on a branch or in the working tree never counts, and a changed input needs a new review. Then the snapshot is published as after any import.
+
+What `--apply` never does, and what blocks it:
+- **No place is deleted.** A retired place keeps its row (`retired_at`, `replaced_by`), its address and its old zone memberships' history; zones and events may still go (`--allow-deletes` over 10%). A retired place's `/adres/<id>` answers 308 to `replaced_by` (and every path under it, query kept), or, with none, a page saying it is no longer in the register with the way back to the search (`web/components/place-gone.tsx`), never a 404: printed PDFs, QR codes and bookmarks keep working. A retired place is out of search, `/ulice` and the sitemap.
+- **A new place without a waste zone** blocks `--apply` and opens an issue (key `teryt-unzoned:*`): map it in the ETL's zones, dry run again, review again. No place goes live without its schedule.
+- **Retiring over 10% of the current places at once** blocks `--apply` (a broken TERYT file or ETL looks like this); after checking, `--allow-mass-retire`.
+- A merged review that names a `replaced_by` which is no current place blocks it.
+
+`npm run db:redirect` (`web/scripts/place-redirect.ts`) records a rename found after the reload: it sets a retired place's `replaced_by` (or, for an id deleted before places were kept, a `place_redirects` row), then publishes the snapshot. The TERYT check (`web/scripts/check-teryt.ts`) compares only current places with TERYT.
