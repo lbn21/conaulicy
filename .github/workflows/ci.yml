@@ -37,8 +37,13 @@ jobs:
           --health-interval 2s
           --health-timeout 5s
           --health-retries 20
+    # No DATABASE_URL for the job: the site reads only the dataset snapshot
+    # (web/lib/dataset.ts; here, with no Blob token, the made-up dataset,
+    # web/lib/dataset-fixture.ts, the same as the database's fixture), so the
+    # build and every check of the built site run without one. Only the
+    # steps that are the database's side (the import, the snapshot's
+    # builder) get it.
     env:
-      DATABASE_URL: postgres://ci:ci@localhost:5432/conaulicy
       # The built site never asks IMGW: the address page reads the fixtures
       # (web/lib/imgw-mock.ts, docs/data/imgw.md).
       IMGW_WARNINGS_URL: mock:none
@@ -126,6 +131,9 @@ jobs:
       - name: "Duplicate code (jscpd: no clone of 50+ tokens)"
         run: npm run check:dupes
 
+      - name: "No database in the site's code (the snapshot only, lib/dataset.ts)"
+        run: node scripts/check-runtime-db.mjs
+
       - name: "Palette (one source: no brand colour outside lib/palette.ts)"
         run: node scripts/check-palette.mjs
 
@@ -137,6 +145,15 @@ jobs:
 
       - name: Database (migrate + seed)
         run: npm run db:migrate && npm run db:ci-fixture && npm run db:districts -- --apply && npm run db:districts -- --expect-no-changes
+        env:
+          DATABASE_URL: postgres://ci:ci@localhost:5432/conaulicy
+
+      # The snapshot built from the database gives every page what the
+      # database's queries gave (scripts/check-dataset.ts), and its size.
+      - name: "Dataset snapshot = database (every place, zone, ICS, panel, search index)"
+        run: npm run check:dataset && npm run dataset:build
+        env:
+          DATABASE_URL: postgres://ci:ci@localhost:5432/conaulicy
 
       - name: Build
         run: npm run build
@@ -225,8 +242,12 @@ jobs:
 
       # Last: it empties the database and imports a made-up dataset. Its schedules come
       # from a local server, so the source check needs no internet.
-      - name: "Importer (synthetic dataset: dry run, apply, guards)"
+      - name: "Importer (synthetic dataset: dry run, apply, guards, TERYT places, snapshot)"
         run: node scripts/check-import.mjs
+        env:
+          DATABASE_URL: postgres://ci:ci@localhost:5432/conaulicy
 
       - name: "Unattended import (made-up waste sources: apply, revert, issues, fallback, dead-man switch)"
         run: node scripts/check-import-run.mjs
+        env:
+          DATABASE_URL: postgres://ci:ci@localhost:5432/conaulicy

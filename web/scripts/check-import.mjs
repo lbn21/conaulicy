@@ -1,11 +1,23 @@
 // End-to-end check of the importer on a made-up dataset (never the real one):
-// an empty database, dry run, a first --apply, then the pages read the
-// imported data. Also the guards: changed sources, too many deletes,
-// --offline, production. Empties and writes DATABASE_URL, so it refuses any
+// an empty database, dry run, a first --apply (its places reviewed first),
+// then the pages read the imported data through the dataset snapshot it
+// publishes (DATASET_DIR, scripts/lib/dataset.ts; lib/dataset.ts). Also the
+// guards: changed sources, too many deletes, --offline, production; the
+// TERYT reload's places (retired, never deleted; a rename; a new place
+// without a zone; too many retired: scripts/lib/place-review.ts); and a
+// rollback of the snapshot. Empties and writes DATABASE_URL, so it refuses any
 // database but a local one (CI, a local container). Run after `next build`. The schedules are served from a local
 // HTTP server, so the source check runs without the internet.
 import { execFile } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -34,6 +46,41 @@ const { etl, files: sources } = fixture(
   `http://127.0.0.1:${files.address().port}`,
 );
 Object.assign(served, sources);
+
+// Ten more zoned streets, so one place retired is under the 10% limit.
+const street = (sym, name, prefix = "ul.") => ({
+  id: `ulic-0972447-${sym}`,
+  localityId: "simc-0972447",
+  teryt: sym,
+  prefix,
+  name,
+});
+const member = (sym) => ({
+  localityId: "simc-0972447",
+  streetId: `ulic-0972447-${sym}`,
+});
+const EXTRA = Array.from(
+  { length: 10 },
+  (_, i) => `902${String(i).padStart(2, "0")}`,
+);
+etl.streets.push(...EXTRA.map((sym, i) => street(sym, `Testowa ${i + 1}`)));
+etl.zones[0].members.push(...EXTRA.map(member));
+// A first import never adds a place without a zone: the street without one
+// and the roundabout come in a sector, then leave it (a later schedule).
+const zoned = structuredClone(etl);
+zoned.zones[0].members.push(
+  member(FIXTURE_IDS.unzonedStreet.slice(8)),
+  member(FIXTURE_IDS.rondo.slice(8)),
+);
+
+// Where the import publishes the snapshot and the site reads it, and the
+// "merged" review files and the issues (instead of main and GitHub).
+process.env.DATASET_DIR = join(dir, "dataset");
+const reviewDir = join(dir, "review");
+mkdirSync(reviewDir);
+process.env.IMPORT_REVIEW_DIR = reviewDir;
+process.env.ISSUES_FILE = join(dir, "issues.json");
+const reviewFile = join(reviewDir, "teryt", "places.yaml");
 
 const write = (data) => {
   for (const [name, rows] of Object.entries(data))
@@ -95,6 +142,7 @@ try {
   await page(`/adres/${FIXTURE_IDS.asnyka}`);
   await page(`/adres/${FIXTURE_IDS.asnyka}/smieci`);
 
+  write(zoned);
   await expectRun("production guard", ["--apply"], 1, /--yes-production/, {
     VERCEL_ENV: "production",
   });
@@ -104,20 +152,36 @@ try {
     1,
     /dry runs only/,
   );
+  // New places wait for their merged review.
+  await expectRun(
+    "unreviewed places",
+    ["--apply"],
+    1,
+    /No merged etl\/review\/teryt\/places\.yaml/,
+  );
   await expectRun(
     "dry run",
-    [],
+    ["--review", reviewFile],
     0,
-    /Diff against the database:[\s\S]*Dry run: nothing written/,
+    /Diff against the database:[\s\S]*Places: \+17 new[\s\S]*Places' review written[\s\S]*Dry run: nothing written/,
   );
   await expectRun(
     "first apply",
     ["--apply"],
     0,
-    /Imported: 12 events[\s\S]*Revalidate ok[\s\S]*Smoke check ok/,
+    /Imported: 12 events[\s\S]*Dataset snapshot published[\s\S]*Revalidate ok[\s\S]*Smoke check ok/,
     { SITE_URL: server.origin, REVALIDATE_SECRET },
   );
   await expectRun("re-run", [], 0, /events\s+\+0\s+−0\s+~0/);
+  // The street and the roundabout leave their sector: places unchanged.
+  write(etl);
+  await expectRun(
+    "zones only",
+    ["--apply"],
+    0,
+    /Places: \+0 new, 0 retired[\s\S]*Imported: 12 events[\s\S]*Revalidate ok/,
+    { SITE_URL: server.origin, REVALIDATE_SECRET },
+  );
 
   // Pages read the import (after the revalidate above).
   // The waste subpages: the calendar and the source line are there, by
@@ -226,10 +290,150 @@ try {
   broken.events[0].id = eventId("waste:miasto-s1", "inne", today);
   write(broken);
   await expectRun("invalid dataset", ["--apply"], 1, /Invalid dataset/);
+
+  // The TERYT reload: places are retired, never deleted, as reviewed.
+  const rows = async (sql, params) => {
+    const client = new pg.Client({ connectionString: localDatabaseUrl() });
+    await client.connect();
+    try {
+      return (await client.query(sql, params)).rows;
+    } finally {
+      await client.end();
+    }
+  };
+  const placeRow = async (id) =>
+    (
+      await rows(
+        "select id, retired_at, replaced_by from streets where id = $1",
+        [id],
+      )
+    )[0];
+  const reviewed = async (label, data) => {
+    write(data);
+    await expectRun(
+      `${label}: dry run`,
+      ["--review", reviewFile],
+      0,
+      /Places' review written/,
+    );
+    await expectRun(
+      `${label}: apply`,
+      ["--apply"],
+      0,
+      /Imported:[\s\S]*Revalidate ok/,
+      {
+        SITE_URL: server.origin,
+        REVALIDATE_SECRET,
+      },
+    );
+  };
+  const gone = "0972447-90209";
+  const retire = structuredClone(etl);
+  retire.streets = retire.streets.filter((s) => s.id !== `ulic-${gone}`);
+  retire.zones[0].members = retire.zones[0].members.filter(
+    (m) => m.streetId !== `ulic-${gone}`,
+  );
+  await reviewed("retire", retire);
+  const retired = await placeRow(gone);
+  check(
+    retired?.retired_at && retired.replaced_by === null,
+    `retire: ${gone} deleted or not retired: ${JSON.stringify(retired)}`,
+  );
+  // Its address stays: a page of its own (its h1 not the 404's), with
+  // the way back to the search.
+  const h1 = (html) => /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html)?.[1] ?? null;
+  const gonePage = await page(`/adres/${gone}`);
+  const notFound = await page("/404");
+  check(
+    gonePage.status === 200 &&
+      h1(gonePage.text) !== null &&
+      h1(gonePage.text) !== h1(notFound.text),
+    `retire: /adres/${gone} is no page of its own (HTTP ${gonePage.status})`,
+  );
+
+  const [from, to] = ["0972447-90208", "0972447-90299"];
+  const rename = structuredClone(retire);
+  for (const s of rename.streets)
+    if (s.id === `ulic-${from}`)
+      Object.assign(s, { id: `ulic-${to}`, teryt: "90299" });
+  for (const m of rename.zones[0].members)
+    if (m.streetId === `ulic-${from}`) m.streetId = `ulic-${to}`;
+  await reviewed("rename", rename);
+  const renamed = await placeRow(from);
+  check(
+    renamed?.retired_at && renamed.replaced_by === to,
+    `rename: ${from} not retired with replaced_by ${to}: ${JSON.stringify(renamed)}`,
+  );
+  const map = await (await fetch(`${server.origin}/api/places`)).json();
+  check(
+    map.moved?.[from] === to && map.ids.includes(gone),
+    `rename: /api/places moved ${JSON.stringify(map.moved)}, retired id listed: ${map.ids?.includes(gone)}`,
+  );
+
+  const lost = structuredClone(rename);
+  lost.streets.push(street("90300", "Nowa"));
+  write(lost);
+  await expectRun(
+    "new place without a zone",
+    ["--apply"],
+    1,
+    /has no waste zone/,
+  );
+  check(
+    !(await placeRow("0972447-90300")) &&
+      readFileSync(process.env.ISSUES_FILE, "utf8").includes("teryt-unzoned"),
+    "new place without a zone: written, or no issue",
+  );
+
+  const mass = structuredClone(rename);
+  const dropped = ["90200", "90201", "90202"].map(
+    (sym) => `ulic-0972447-${sym}`,
+  );
+  mass.streets = mass.streets.filter((s) => !dropped.includes(s.id));
+  mass.zones[0].members = mass.zones[0].members.filter(
+    (m) => !dropped.includes(m.streetId),
+  );
+  write(mass);
+  await expectRun("mass retire", ["--apply"], 1, /--allow-mass-retire/);
+  check(
+    (
+      await rows(
+        "select count(*)::int as n from streets where retired_at is null and id = any($1)",
+        [dropped.map((id) => id.slice(5))],
+      )
+    )[0].n === 3,
+    "mass retire: places retired anyway",
+  );
+
+  // Every snapshot is kept; a rollback moves only the pointer.
+  const versions = readdirSync(join(process.env.DATASET_DIR, "dataset/v"));
+  const pointer = () =>
+    JSON.parse(
+      readFileSync(
+        join(process.env.DATASET_DIR, "dataset/current.json"),
+        "utf8",
+      ),
+    );
+  const before = pointer();
+  const back = await exec(
+    process.execPath,
+    ["scripts/dataset.ts", "rollback", "--to", before.previous],
+    { SITE_URL: server.origin, REVALIDATE_SECRET },
+  );
+  check(
+    versions.length >= 3 &&
+      back.code === 0 &&
+      pointer().version === before.previous &&
+      existsSync(join(process.env.DATASET_DIR, before.path)),
+    `rollback: ${versions.length} versions, exit ${back.code}\n${back.out}`,
+  );
 } finally {
   server.stop();
   files.close();
   rmSync(dir, { recursive: true, force: true });
 }
 
-finish(failures, "Importer: dry run, apply, update and guards ok.");
+finish(
+  failures,
+  "Importer: dry run, apply, update, guards, TERYT places and the snapshot ok.",
+);
