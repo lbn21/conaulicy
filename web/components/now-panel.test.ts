@@ -4,8 +4,8 @@ import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { NowTileData } from "../lib/now-panel.ts";
-import { NowTile } from "./now-panel.tsx";
-import { NOW_TILES } from "./now-tiles.ts";
+import { EXTERNAL, NowTile } from "./now-panel.tsx";
+import { NOW_TILES, type NowTileDef } from "./now-tiles.ts";
 
 // One „Teraz w gminie” tile (components/now-panel.tsx NowTile) in its
 // states: structure and data only, its words read from what it is given.
@@ -46,9 +46,10 @@ test("populated: the module's colour, featured spans, tag in its level, value st
     html,
     /<a class="govuk-link govuk-link--inverse" href="#szukaj">A-action<\/a>/,
   );
-  // The label links to its source.
+  // The source's link, at the foot; the label is no link.
   if (def.source)
     assert.ok(html.includes(`href="${def.source.href}"`), "source link");
+  assert.doesNotMatch(html, /app-now__label">(?:(?!<\/p>).)*<a /);
 });
 
 test("empty: muted value, no span, no tag, no action", () => {
@@ -65,7 +66,8 @@ test("empty: muted value, no span, no tag, no action", () => {
 test("not read: muted, no note", () => {
   const html = tile(null);
   assert.match(html, /app-now__value--empty/);
-  assert.equal((html.match(/govuk-body-s/g) ?? []).length, 1);
+  // The label, and the source's link where the tile has one: no note.
+  assert.equal((html.match(/govuk-body-s/g) ?? []).length, def.source ? 2 : 1);
 });
 
 test("the skeleton's heading has no id: the live one's is the page's only", () => {
@@ -75,4 +77,55 @@ test("the skeleton's heading has no id: the live one's is the page's only", () =
   );
   assert.match(source, /id=\{week \? "teraz" : undefined\}/);
   assert.equal((source.match(/id="teraz"/g) ?? []).length, 0);
+});
+
+const withSource = (source: NowTileDef["source"]) =>
+  renderToStaticMarkup(
+    createElement(
+      "ul",
+      null,
+      createElement(NowTile, { def: { ...def, source }, data: null }),
+    ),
+  );
+
+test("the registry: every source says whether it is another site", () => {
+  for (const d of NOW_TILES) {
+    if (!d.source) continue;
+    assert.equal(typeof d.source.external, "boolean", d.id);
+    assert.ok(d.source.site.trim(), d.id);
+    // An http(s) URL is another site: the flag must say so.
+    if (/^https?:/.test(d.source.href)) assert.equal(d.source.external, true);
+  }
+});
+
+test("an external source: its name on screen, „(strona zewnętrzna)” for screen readers", () => {
+  const source = {
+    href: "https://example.org/",
+    text: "S-name",
+    external: true,
+    site: "S-site",
+  };
+  const html = withSource(source);
+  const link = html.match(
+    /<a [^>]*href="https:\/\/example\.org\/"[^>]*>(.*?)<\/a>/,
+  );
+  assert.ok(link, "a plain <a> to the source");
+  // The visible cue names the site; the hidden text says it is another site.
+  assert.match(link[1], /S-site/);
+  assert.ok(
+    link[1].includes(`<span class="govuk-visually-hidden">${EXTERNAL}</span>`),
+  );
+  // Read or not, the link is there: the tile's last line.
+  assert.match(html, /<\/a><\/p><\/li><\/ul>$/);
+});
+
+test("a source on the site: no external hint", () => {
+  const html = withSource({
+    href: "/o-projekcie",
+    text: "S-name",
+    external: false,
+    site: "S-site",
+  });
+  assert.match(html, /href="\/o-projekcie"/);
+  assert.ok(!html.includes(EXTERNAL));
 });
