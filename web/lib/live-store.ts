@@ -7,12 +7,12 @@ import { parseOutagesFile, upstream as pgeUpstream } from "./pge-feed.ts";
 import type { PgeRead } from "./power-module.ts";
 
 // The private Blob store (BLOB_READ_WRITE_TOKEN): the crons' files, read
-// and written by the crons, and read by the pages' live blocks
-// (components/live-block.tsx), per request. The crons read the Blob's
-// origin, so a run compares against the last write; the pages read its
-// CDN copy, at most 60 s behind a write (vercel.com/docs/vercel-blob,
-// "Caching"; every file is written with the minimum cacheControlMaxAge,
-// 60 s), so no page needs a purge.
+// and written by the crons, and read by the pages when they are rendered.
+// The crons read the Blob's origin, so a run compares against the last
+// write; the pages read its CDN copy, at most 60 s behind a write
+// (vercel.com/docs/vercel-blob, "Caching"; every file is written with the
+// minimum cacheControlMaxAge, 60 s), so the cron revalidates a changed
+// source's pages after that (lib/live-refresh.ts).
 
 /** IMGW's last good feed, only our powiats' items (lib/imgw-cron.ts). */
 export const FEED_PATH = "imgw/feed.json";
@@ -57,8 +57,9 @@ type MockFiles = (url: string, now: number) => Promise<LiveFiles>;
 type LiveFiles = { feed: string | null; checks: string | null };
 
 /**
- * A live feed's last good copy for the pages, read per request through the
- * Blob's CDN, never cached by Next; pages never ask the upstream. `url` is
+ * A live feed's last good copy for the pages, read through the Blob's CDN
+ * when a page is rendered (cached with it, lib/page-cache.ts); pages never
+ * ask the upstream. `url` is
  * the upstream's: a "mock:…" one (outside production only, its upstream()
  * refuses it there) reads the mock's files instead (no Blob needed). null:
  * the cron has written none yet. The store unreadable, or its file not
@@ -91,8 +92,8 @@ async function liveRead<C>(
 
 /**
  * IMGW's last good feed and its last good check: the weather module's
- * (lib/modules.ts). `preview`: ?imgw= (lib/imgw-preview.ts), the mock,
- * outside production only.
+ * (lib/modules.ts). `preview`: a scenario's mock upstream
+ * (lib/imgw-preview.ts, /podglad/imgw/…), outside production only.
  */
 export async function imgwCopy(
   preview: string | null = null,

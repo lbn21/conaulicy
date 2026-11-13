@@ -18,7 +18,7 @@ export const metadata: Metadata = pageMetadata({
  * Every place search can find, as plain links: for people who would rather
  * browse, and for search engines. The town's streets by first
  * letter (Polish order), then the villages, each a link, with their streets
- * under it if they have any. Its only client JS is PlaceLink's prefetch on
+ * under it if they have any. Its only client JS is next/link's prefetch on
  * intent (components/place-link.tsx).
  *
  * Prerendered from the search index, as the sitemap, the same places,

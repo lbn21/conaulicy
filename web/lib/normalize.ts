@@ -1,6 +1,6 @@
 // Search text: lower case, no Polish diacritics, words split on anything else.
 // The search matcher (lib/search.ts) normalizes labels and queries with it,
-// on the device over the cached index and on the server for /api/search.
+// on the device over the cached index.
 // The importer and the CI fixture store normalize(label) per place
 // (the dataset snapshot lists places in its order, scripts/lib/dataset.ts); fileSlug turns it into
 // the PDF's and both calendars' file names.

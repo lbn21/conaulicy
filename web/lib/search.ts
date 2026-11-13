@@ -27,7 +27,7 @@ export const SEARCH_ID = "szukaj";
 /** Id of its field („Ulica lub wieś”), a link's target (NOW_TILES). */
 export const SEARCH_INPUT_ID = "adres";
 
-/** A query is cut to this many characters („Szukaj” and /api/search). */
+/** A query is cut to this many characters („Szukaj”). */
 export const MAX_QUERY_LENGTH = 100;
 
 /** At most this many places in the list. */

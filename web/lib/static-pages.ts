@@ -1,7 +1,6 @@
 // The site's own pages besides the home page, with their title (the h1 and
-// the footer link text). The sitemap, the footer, proxy.ts's clean-URL
-// redirect (lib/clean-query.ts) and the links between pages all read them
-// from here.
+// the footer link text). The sitemap, the footer and the links between
+// pages all read them from here.
 type StaticPage = { path: string; text: string };
 
 export const ALL_PLACES: StaticPage = {

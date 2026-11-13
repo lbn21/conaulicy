@@ -5,7 +5,7 @@ export type Crumb = { href: string; label: string };
 /** The first crumb: the home page. */
 export const HOME_CRUMB: Crumb = { href: "/", label: "Strona główna" };
 
-/** The trail's classes, its skeleton's too (components/place-suspense.tsx). */
+/** The trail's classes. */
 export const CRUMBS_CLASS =
   "govuk-breadcrumbs govuk-breadcrumbs--collapse-on-mobile";
 

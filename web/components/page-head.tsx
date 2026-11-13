@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { type IconName, Tile } from "@/components/icon";
 import { SkipTarget } from "@/components/skip-target";
 
-// Every page's head, one skeleton for the site (docs/layout.md, Page
+// Every page's head, one frame for the site (docs/layout.md, Page
 // head): a band in the brand's surface tint, the full width of the window,
 // straight under the header, holding what comes before the content: an
 // address page's breadcrumbs (t400), the caption, the h1 (on a
