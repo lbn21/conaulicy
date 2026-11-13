@@ -7,9 +7,10 @@ import { unchecked } from "@/lib/hub";
 import { indexable } from "@/lib/indexing";
 import type { SubpageId } from "@/lib/module-ids";
 import { MODULES, type Module } from "@/lib/modules";
-import { pageData, SOURCE_TAGS } from "@/lib/page-cache";
+import { pageData } from "@/lib/page-cache";
+import { subpage } from "@/lib/pages";
 import { placePath, titleLabel } from "@/lib/places";
-import { getPlace, type PlaceView } from "@/lib/schedule";
+import type { PlaceView } from "@/lib/schedule";
 import { pageMetadata } from "@/lib/share";
 
 // A module's subpage, /adres/[id]/<module> (lib/modules.ts), the place's
@@ -19,21 +20,14 @@ import { pageMetadata } from "@/lib/share";
 // place, as the address page (components/hub.tsx).
 
 /**
- * Everything a subpage shows: the place and the module's data; null: no
- * such place. One read per render (React's cache()), cached with the page
- * (lib/page-cache.ts) under the module's tags and the dataset's.
+ * Everything a subpage shows (lib/pages.ts subpage): the place and the
+ * module's data; null: no such place. One read per render (React's
+ * cache()), cached with the page (lib/page-cache.ts).
  */
-const subpageData = cache((id: string, slug: SubpageId) => {
-  const module = MODULES[slug] as Module<unknown>;
-  return pageData(
-    `${placePath(id)}/${slug}`,
-    [...new Set([SOURCE_TAGS.dataset, ...module.tags])],
-    async () => {
-      const [place, data] = await Promise.all([getPlace(id), module.load(id)]);
-      return place ? { place, data } : null;
-    },
-  );
-});
+const subpageData = cache(
+  async (id: string, slug: SubpageId) =>
+    (await pageData(subpage(id, slug))).view,
+);
 
 /**
  * A subpage's metadata, the same for every module: its own canonical, the

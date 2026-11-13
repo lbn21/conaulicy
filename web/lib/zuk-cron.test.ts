@@ -333,34 +333,34 @@ test("the pages' check time: the status file's when the file is unchanged", asyn
   assert.equal(old.checkedAt, file.checkedAt);
 });
 
-test("changed: each source's content changed or not, after the runs", async () => {
+test("done: once, after every run and the checks' write", async () => {
   const w = world();
-  const runs: Array<Record<string, boolean>> = [];
-  const run = () =>
-    handleZukCron(
-      new Request("https://conaulicy.pl/api/cron/zuk", {
-        headers: { authorization: `Bearer ${SECRET}` },
-      }),
-      SECRET,
-      deps(w),
-      [],
-      [{ key: IMGW_KEY, run: async () => ({ checked: true, changed: false }) }],
-      undefined,
-      (sources) => runs.push(sources),
-    );
-  // The first run writes the file; once every post is read (MAX_AI_CALLS
-  // a run), an unchanged run changes nothing.
-  for (let i = 0; i < 4; i++) {
-    w.now = new Date(NOW.getTime() + i * 15 * 60_000);
-    await run();
-  }
-  const water = waterKey(gminaLubaczow.id);
-  assert.equal(runs[0][water], true);
-  assert.deepEqual(
-    runs.slice(-2).map((r) => r[water]),
-    [false, false],
+  const order: string[] = [];
+  await handleZukCron(
+    new Request("https://conaulicy.pl/api/cron/zuk", {
+      headers: { authorization: `Bearer ${SECRET}` },
+    }),
+    SECRET,
+    deps(w),
+    [],
+    [
+      {
+        key: IMGW_KEY,
+        run: async () => {
+          order.push("imgw");
+          return { checked: true, changed: false };
+        },
+      },
+    ],
+    {
+      read: async () => null,
+      write: async () => {
+        order.push("checks");
+      },
+    },
+    () => order.push("done"),
   );
-  assert.ok(runs.every((r) => r[IMGW_KEY] === false));
+  assert.deepEqual(order, ["imgw", "checks", "done"]);
 });
 
 test("an edited post is read again; not read this run, its old reading kept", async () => {

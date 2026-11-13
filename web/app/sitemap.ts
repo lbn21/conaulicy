@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/config.generated";
 import { indexable } from "@/lib/indexing";
-import { pageData, SOURCE_TAGS } from "@/lib/page-cache";
-import { searchIndex } from "@/lib/schedule";
+import { pageData } from "@/lib/page-cache";
+import { sitemapPage } from "@/lib/pages";
 import { STATIC_PAGES } from "@/lib/static-pages";
 
 // Prerendered at build from the search index of the dataset snapshot
@@ -30,14 +30,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 }
 
 async function placeUrls(): Promise<MetadataRoute.Sitemap> {
-  const { places, noData } = await pageData(
-    "/sitemap.xml",
-    [SOURCE_TAGS.dataset],
-    async () => {
-      const { places, noData } = await searchIndex();
-      return { places, noData };
-    },
-  );
+  const {
+    view: { places, noData },
+  } = await pageData(sitemapPage);
   const skip = new Set(noData);
   return places
     .filter(([id]) => !skip.has(id))

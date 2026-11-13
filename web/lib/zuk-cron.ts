@@ -7,8 +7,8 @@
 // generatedAt the last run that changed what the pages read
 // (any checkedAt aside, the rejected list too), the source's changedAt and
 // run id. The file is written only when anything but checkedAt changed;
-// a run whose pages' content changed has its pages revalidated
-// (lib/live-refresh.ts). The
+// after every run, the pages whose view changed are revalidated
+// (lib/page-refresh.ts). The
 // model reads every post and says what it is: a water cut is read for its
 // cuts, a water-quality warning for its places (not shown yet), anything
 // else is "not-water", never read again. Only the water posts that still
@@ -549,10 +549,9 @@ export type LiveStep = { key: string; run: () => Promise<LiveRunSummary> };
  * (IMGW's warnings, PGE's outages) runs beside them, each on its own, its
  * result listed under its key, and never changes the water runs' result,
  * another step's or the response's status. Once every run is done, each
- * one's check goes to `checks` (status/checks.json) in one write, and
- * whether each source's content changed (by its key) to `changed`, which
- * revalidates their pages (lib/live-refresh.ts). `start` runs first,
- * once the secret is checked.
+ * one's check goes to `checks` (status/checks.json) in one write, then
+ * `done` runs, which refreshes the pages (lib/page-refresh.ts). `start`
+ * runs first, once the secret is checked.
  */
 export async function handleZukCron(
   request: Request,
@@ -561,7 +560,7 @@ export async function handleZukCron(
   more: ZukCronDeps[] = [],
   live: LiveStep[] = [],
   checks?: ChecksStore,
-  changed?: (sources: Record<string, boolean>) => void,
+  done?: () => void,
   start?: () => Promise<void>,
 ): Promise<Response> {
   const denied = cronDenied(request, cronSecret);
@@ -590,19 +589,7 @@ export async function handleZukCron(
     ok[step.key] = !("error" in steps[i]);
   }
   if (checks) await recordChecks(checks, ok, attemptAt, deps.log);
-  if (changed) {
-    const sources: Record<string, boolean> = {};
-    for (const [i, run] of runs.entries()) {
-      const outcome = outcomes[i];
-      sources[waterKey((run.source ?? gminaLubaczow).id)] =
-        !("error" in outcome) && outcome.changed;
-    }
-    for (const [i, step] of live.entries()) {
-      const result = steps[i];
-      sources[step.key] = "changed" in result && result.changed;
-    }
-    changed(sources);
-  }
+  done?.();
   const sources: Record<string, unknown> = {};
   for (const [i, run] of more.entries()) {
     const result = results[i];

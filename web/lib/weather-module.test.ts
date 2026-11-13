@@ -105,7 +105,7 @@ test("stale: the notice, linked to IMGW, and the warnings still shown", () => {
     ],
   ]);
   assert.equal(data.shown?.warnings.length, 1);
-  assert.equal(data.checkedAt, at("2026-10-25T12:59:59+01:00"));
+  assert.equal(data.read, true);
   // No warning: the notice alone, never „Brak ostrzeżeń”.
   const none = weather(copy("2026-10-25T12:59:59+01:00", []), now);
   assert.ok(none);
@@ -136,12 +136,11 @@ test("too old: the notice alone, no card", () => {
   ]);
 });
 
-test("checked line: the last good check, warning or not", () => {
+test("change time: when IMGW's items last changed, warning or not", () => {
   const now = at("2026-10-25T14:00:00+01:00");
   for (const items of [undefined, none]) {
     const data = weather(copy("2026-10-25T13:52:10+01:00", items), now);
     assert.ok(data);
-    assert.equal(data.checkedAt, at("2026-10-25T13:52:10+01:00"));
     assert.equal(data.changedAt, at("2026-10-25T13:52:10+01:00"));
   }
 });
@@ -153,6 +152,6 @@ test("the store unreadable now: the notice alone, no card, no check time", () =>
   assert.deepEqual(weatherNotices(data), [
     [[`Nie udało się teraz sprawdzić ostrzeżeń IMGW.${NOTICE_END}`, link, "."]],
   ]);
-  assert.equal(data.checkedAt, null);
+  assert.equal(data.read, false);
   assert.equal(data.changedAt, null);
 });

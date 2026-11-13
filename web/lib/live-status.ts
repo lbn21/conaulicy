@@ -129,7 +129,7 @@ export const UNREADABLE = "unreadable";
  * A feed's last good copy, when it was last checked well (ms), and when
  * its items last changed (ms): the file is written only when they do
  * (lib/live-cron.ts), so its fetchedAt is that run's, and doubles as the
- * run's id (lib/live-refresh.ts).
+ * run's id (lib/live-runs.ts).
  */
 export type LiveCopy<F> = { feed: F; checkedAt: number; changedAt: number };
 

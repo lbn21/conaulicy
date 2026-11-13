@@ -12,7 +12,7 @@ import { WasteRow } from "@/components/rows/smieci";
 import { WaterDetails } from "@/components/water-page";
 import { isModuleId, type ModuleId, SUBPAGE_IDS } from "@/lib/address-routes";
 import type { Group, Part } from "@/lib/hub";
-import { imgwCopy } from "@/lib/live-store";
+import type { LiveReads } from "@/lib/live-reads";
 import { SOURCE_TAGS, type SourceTag } from "@/lib/page-cache";
 import { loadPower } from "@/lib/power-load";
 import {
@@ -54,7 +54,7 @@ export type Module<D> = {
    * nothing we could read now: the address page and the subpage say it
    * could not be checked (lib/hub.ts unchecked).
    */
-  load(place: string): Promise<D | null>;
+  load(place: string, reads: LiveReads): Promise<D | null>;
   /**
    * Its items for the timeline (lib/upcoming.ts, lib/timeline.ts),
    * structured: its Row words them.
@@ -112,7 +112,7 @@ const waste: Module<PlaceView> = {
   tags: [SOURCE_TAGS.dataset],
   more: "Wszystkie odbiory śmieci",
   pageTitle: "Odbiór śmieci",
-  load: getPlace,
+  load: (id, reads) => getPlace(id, reads.now),
   upcoming: wasteUpcoming,
   notices: (place) =>
     place.zoneId === null || !place.days.some((day) => day.date >= place.today)
@@ -185,8 +185,8 @@ const pogoda: Module<Weather> = {
   tags: [SOURCE_TAGS.imgw],
   more: "Ostrzeżenia pogodowe IMGW",
   pageTitle: "Ostrzeżenia pogodowe IMGW",
-  async load() {
-    return weather(await imgwCopy(), Date.now());
+  async load(_place, reads) {
+    return weather(await reads.imgw(), reads.now);
   },
   upcoming: () => [],
   notices: weatherNotices,

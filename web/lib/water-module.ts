@@ -54,8 +54,6 @@ export { GMINA_NEWS, MZGKIM_NEWS } from "./water-sources.ts";
 /** One source of the address, as its file stands. */
 type SourceState = {
   source: WaterSource;
-  /** The source's last read; null without a file. */
-  checkedAt: string | null;
   /** When the source's data last changed; null without a file. */
   changedAt: string | null;
   /** Last read over an hour ago, or no file. */
@@ -82,8 +80,6 @@ export type Water = {
   notices: Notice[];
   /** The sources that announce cuts here, in order (sourcesAt). */
   sources: SourceState[];
-  /** The oldest last read of the sources with a file; null if none has. */
-  checkedAt: string | null;
   /**
    * When the data of any of the address's sources last changed (ms), the
    * latest; null: no source has a file.
@@ -224,15 +220,10 @@ export function water(
   const shownPosts = new Set(outages.map((cut) => cut.source.url));
   const sources = states.map(({ source, view }) => ({
     source,
-    checkedAt: view.checkedAt,
     changedAt: view.changedAt,
     stale: view.stale,
     unavailable: view.unavailable,
   }));
-  const checked = sources
-    .map((s) => s.checkedAt)
-    .filter((at): at is string => at !== null)
-    .sort();
   return {
     place,
     outages,
@@ -259,7 +250,6 @@ export function water(
           ),
       ),
     sources,
-    checkedAt: checked[0] ?? null,
     changedAt: latest(sources.map((s) => s.changedAt)),
     stale: sources.some((s) => s.stale),
     unavailable: sources.every((s) => s.unavailable),

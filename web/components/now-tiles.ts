@@ -1,8 +1,8 @@
 import "server-only";
 import type { IconName } from "@/components/icon";
 import { IMGW_PAGE } from "@/lib/imgw-shown";
+import type { LiveReads } from "@/lib/live-reads";
 import { MAX_AGE_MS } from "@/lib/live-status";
-import { imgwCopy, pgeCopy } from "@/lib/live-store";
 import {
   counted,
   type NowLink,
@@ -17,7 +17,6 @@ import { wasteWeek } from "@/lib/schedule";
 import { SEARCH_INPUT_ID } from "@/lib/search";
 import { MZGKIM_NEWS } from "@/lib/water-sources";
 import { warningWhen, weather } from "@/lib/weather-module";
-import { getWaterData } from "@/lib/zuk-store";
 
 // The home page's „Teraz w gminie” tiles, in order: one entry each, its
 // module (icon and colour), its label, its source (named and linked in the
@@ -43,7 +42,7 @@ export type NowTileDef = {
   /** A link at the tile's foot to a field on the page, which it focuses
    * (FieldLink); shown read or not. */
   action?: NowLink & { href: `#${string}` };
-  read(week: Week, now: number): Promise<NowTileData | null>;
+  read(week: Week, reads: LiveReads): Promise<NowTileData | null>;
 };
 
 const pogoda: NowTileDef = {
@@ -51,9 +50,9 @@ const pogoda: NowTileDef = {
   icon: "pogoda",
   label: "Pogoda",
   source: { href: IMGW_PAGE, text: "IMGW" },
-  async read(_week, now) {
-    const data = weather(await imgwCopy(), now);
-    if (!data || data.checkedAt === null) return null;
+  async read(_week, { imgw, now }) {
+    const data = weather(await imgw(), now);
+    if (!data?.read) return null;
     const { changedAt } = data;
     const top = topWarning(data.shown?.warnings ?? []);
     if (data.shown?.notice && !top) return null;
@@ -80,8 +79,8 @@ const woda: NowTileDef = {
   icon: "woda",
   label: "Woda",
   source: { href: MZGKIM_NEWS, text: "wodociągi" },
-  async read(week, now) {
-    const views = Object.values(await getWaterData(new Date(now)));
+  async read(week, { water }) {
+    const views = Object.values(await water());
     if (views.every((v) => v.unavailable)) return null;
     const changed = views.flatMap((v) =>
       v.changedAt ? [Date.parse(v.changedAt)] : [],
@@ -107,8 +106,8 @@ const prad: NowTileDef = {
   icon: "prad",
   label: "Prąd",
   source: { href: PGE_PAGE, text: "PGE Dystrybucja" },
-  async read(week, now) {
-    const copy = await pgeCopy();
+  async read(week, { pge, now }) {
+    const copy = await pge();
     if (!copy || typeof copy === "string") return null;
     if (now - copy.checkedAt > MAX_AGE_MS) return null;
     const count = powerWeek(copy.feed, week);

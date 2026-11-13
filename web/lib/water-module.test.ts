@@ -536,7 +536,6 @@ test("town, fresh, no cut: the villages' none, both sources' posts", () => {
       ".",
     ]);
     assert.deepEqual(waterSources(data), [[GMINA], [MZGKIM]]);
-    assert.equal(data.checkedAt, CHECKED);
   }
 });
 
@@ -714,12 +713,11 @@ test("town, both sources' cuts: both posts, both in the AI note", () => {
 
 /**
  * A town street without a cut and ul. Żuki with ZUK's, from `views`: no
- * cut, both sources' posts and the oldest read in the checked line.
+ * cut, both sources' posts.
  */
 function quietAndCut(views: Parameters<typeof water>[0]) {
   const quiet = water(views, ASNYKA);
   assert.deepEqual(waterSources(quiet), [[GMINA], [MZGKIM]]);
-  assert.equal(quiet.checkedAt, CHECKED);
   return { quiet, cut: water(views, ZUKI) };
 }
 
@@ -798,22 +796,19 @@ test("town, no file at all: the gmina's and MZGKiM's posts to check", () => {
       ".",
     ]);
     assert.deepEqual(waterSources(data), [[GMINA], [MZGKIM]]);
-    assert.equal(data.checkedAt, null);
     assert.equal(data.changedAt, null);
   }
 });
 
-test("freshness: the last read always kept, the stale note only after 1 h", () => {
+test("freshness: the stale note only after 1 h", () => {
   const checked = Date.parse(CHECKED);
   const at = (ms: number) =>
     waterAt(ZUKI, [post()], new Date(checked + ms), CHECKED);
   const fresh = at(STALE_MS);
-  assert.equal(fresh.checkedAt, CHECKED);
   assert.equal(staleNote(fresh), null);
   assert.equal(lines(fresh).length, 0);
 
   const stale = at(STALE_MS + 1);
-  assert.equal(stale.checkedAt, CHECKED);
   const note = staleNote(stale);
   assert.ok(note);
   assert.deepEqual(note[1], {
@@ -833,7 +828,6 @@ test("no file: the gmina's news only, no cut, no change time", () => {
     [["Nie udało się nam sprawdzić komunikatów."]],
   ]);
   assert.deepEqual(waterUpcoming(data), []);
-  assert.equal(data.checkedAt, null);
   assert.equal(data.changedAt, null);
   assert.equal(staleNote(data), null);
   assert.equal(waterNone(data), "nie udało się nam sprawdzić komunikatów");

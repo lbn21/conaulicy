@@ -1,12 +1,12 @@
 import "server-only";
 import { parseFeedFile } from "./imgw-warnings.ts";
 import { IMGW_KEY, PGE_KEY, waterKey } from "./live-status.ts";
-import { FEED_PATH, PGE_PATH, readBlobFile } from "./live-store.ts";
+import { FEED_PATH, PGE_PATH } from "./live-store.ts";
 import { parseOutagesFile } from "./pge-feed.ts";
 import { WATER_SOURCES } from "./water-sources.ts";
 import { parseZukFile } from "./zuk-data.ts";
 
-// Each live source's run id (lib/live-refresh.ts), by its key: the time
+// Each live source's run id (lib/page-refresh.ts), by its key: the time
 // its data last changed, as its file has it (IMGW's and PGE's fetchedAt, a
 // water file's generatedAt); null: no file, or not one.
 
@@ -55,14 +55,5 @@ export function runIdsOf(
   return runs;
 }
 
-/** Every live source's run id as a page renders it (the Blob's CDN). */
-export async function liveRuns(): Promise<Record<string, string | null>> {
-  const bodies = await Promise.all(
-    FILES.map(({ path }) =>
-      readBlobFile(path, { cdn: true }).catch(() => null),
-    ),
-  );
-  return runIdsOf(
-    Object.fromEntries(FILES.map(({ path }, i) => [path, bodies[i]])),
-  );
-}
+/** Every live source's file. */
+export const RUN_PATHS = FILES.map(({ path }) => path);

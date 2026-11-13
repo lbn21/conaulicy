@@ -39,7 +39,7 @@ const PGE_NAME = "PGE Dystrybucja";
 export const PGE_PAGE =
   "https://pgedystrybucja.pl/wylaczenia/aktualne-przerwy-w-dostawie-energii";
 
-/** What the pages read from the store (lib/live-store.ts pgeCopy). */
+/** What the pages read from the store (lib/live-reads.ts). */
 export type PgeRead = LiveCopy<PgeFeed> | null | typeof UNREADABLE;
 
 /** A failure still listed lasts at least this long past the last check. */
@@ -62,8 +62,6 @@ export type Power = {
   notice: string | null;
   /** The copy is shown (not too old, not unreadable). */
   shown: boolean;
-  /** The last good check (ms); null: the store could not be read now. */
-  checkedAt: number | null;
   /** When PGE's items last changed (ms); null: unknown. */
   changedAt: number | null;
 };
@@ -145,7 +143,6 @@ export function power(
       cuts: [],
       notice: `Nie udało się teraz sprawdzić ${POWER_SUBJECT}.`,
       shown: false,
-      checkedAt: null,
       changedAt: null,
     };
   const shown = checkAge(copy.checkedAt, now) !== "too-old";
@@ -160,7 +157,6 @@ export function power(
     cuts,
     notice: liveNotice("danych PGE", copy.checkedAt, now, live),
     shown,
-    checkedAt: copy.checkedAt,
     changedAt: copy.changedAt,
   };
 }

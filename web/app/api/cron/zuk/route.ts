@@ -3,17 +3,10 @@ import { after } from "next/server";
 import { SITE_URL } from "@/lib/config.generated";
 import { getDataset } from "@/lib/dataset";
 import { DEPLOY_MARKER_PATH, syncDataset } from "@/lib/dataset-sync";
-import { todayInWarsaw } from "@/lib/dates";
 import { unknownStreets } from "@/lib/districts";
 import { runImgw } from "@/lib/imgw-cron";
 import { upstream as imgwUpstream } from "@/lib/imgw-warnings";
-import {
-  changedTags,
-  laggingTags,
-  marksOf,
-  REFRESH_RESERVE_S,
-  WAIT_MS,
-} from "@/lib/live-refresh";
+import { cdnFile, liveReads } from "@/lib/live-reads";
 import { runIdsOf } from "@/lib/live-runs";
 import { IMGW_KEY, PGE_KEY } from "@/lib/live-status";
 import {
@@ -23,11 +16,19 @@ import {
   readBlobFile,
   writeBlobFile,
 } from "@/lib/live-store";
-import { SOURCE_TAGS, type SourceTag } from "@/lib/page-cache";
+import {
+  DIGESTS_PATH,
+  type LiveMarks,
+  marksOf,
+  pageDigests,
+  REFRESH_RESERVE_S,
+  refreshPages,
+  WAIT_MS,
+} from "@/lib/page-refresh";
+import { allPages } from "@/lib/pages";
 import { runPge } from "@/lib/pge-cron";
 import { upstream as pgeUpstream } from "@/lib/pge-feed";
 import { prewarm } from "@/lib/prewarm";
-import { placeParams } from "@/lib/schedule";
 import { gminaLubaczow } from "@/lib/sources/gmina-lubaczow";
 import { mzgkim } from "@/lib/sources/mzgkim";
 import type { PostSource } from "@/lib/sources/source";
@@ -41,10 +42,10 @@ import { readZukFile, writeZukFile } from "@/lib/zuk-store";
 // power outages, each into its own private Blob file (lib/imgw-cron.ts,
 // lib/pge-cron.ts: one PGE request a run, 4 an hour of PGE's 60); then every
 // source's check into the status file (lib/zuk-cron.ts handleZukCron). A
-// file is written only when it changed. The pages are prerendered: a
-// changed source's pages are revalidated after the run, and the run starts
-// by repairing what the home page shows (lib/live-refresh.ts) and syncing
-// the dataset snapshot (lib/dataset-sync.ts). Vercel Cron calls it every
+// file is written only when it changed. The pages are prerendered: after
+// the run, every page whose view changed is revalidated, by its digest
+// (lib/page-refresh.ts); the run starts by reading what the home page
+// shows and syncing the dataset snapshot (lib/dataset-sync.ts). Vercel Cron calls it every
 // 15 minutes (vercel.json) with `Authorization: Bearer $CRON_SECRET`; by
 // hand:
 //
@@ -64,16 +65,6 @@ function siteOrigin(request: Request): string {
     : new URL(request.url).origin;
 }
 
-/** Every page a tag's revalidation changes, the home page first. */
-async function pagesOf(tags: SourceTag[]): Promise<string[]> {
-  const hubs = (await placeParams()).map(({ id }) => `/adres/${id}`);
-  return [
-    "/",
-    ...(tags.includes(SOURCE_TAGS.dataset) ? ["/ulice"] : []),
-    ...hubs,
-  ];
-}
-
 export async function GET(request: Request) {
   const deadline = new Date(
     Date.now() + (maxDuration - REFRESH_RESERVE_S) * 1000,
@@ -81,16 +72,12 @@ export async function GET(request: Request) {
   const origin = siteOrigin(request);
   const log = (line: Record<string, unknown>) =>
     console.log(JSON.stringify(line));
-  const refresh = (tags: SourceTag[], wait: number) => {
-    if (tags.length === 0) return;
-    after(async () => {
-      if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-      for (const tag of tags) revalidateTag(tag, "max");
-      log({ refresh: tags, ...(await prewarm(origin, await pagesOf(tags))) });
-    });
-  };
-  // Every live file's body as this run read it, then wrote it: its run id
-  // for the check against the home page, with no Blob read of its own.
+  // The dataset's tag is to be revalidated (syncDataset): with the pages'.
+  let dataset = false;
+  // Every live file's body as this run read it, then wrote it: every
+  // page's view for its digest, and each run id for the check against the
+  // home page, with no Blob read of its own; a file the run did not reach,
+  // through the Blob's CDN, as the pages read it.
   const bodies: Record<string, string | null> = {};
   const seen =
     (path: string, read: () => Promise<string | null>) => async () => {
@@ -148,7 +135,7 @@ export async function GET(request: Request) {
       log,
     });
   // What the home page shows (its marks), read once the secret is checked.
-  let marks: ReturnType<typeof marksOf> = null;
+  let marks: LiveMarks | null = null;
   const start = async () => {
     const home = await fetch(new URL("/", origin))
       .then((r) => (r.ok ? r.text() : ""))
@@ -161,7 +148,9 @@ export async function GET(request: Request) {
           {
             fetch,
             hookUrl: process.env.DEPLOY_HOOK_URL,
-            revalidate: () => refresh([SOURCE_TAGS.dataset], 0),
+            revalidate: () => {
+              dataset = true;
+            },
             marker: {
               read: () => readBlobFile(DEPLOY_MARKER_PATH),
               write: (body) => writeBlobFile(DEPLOY_MARKER_PATH, body),
@@ -186,19 +175,30 @@ export async function GET(request: Request) {
       { key: PGE_KEY, run: pge },
     ],
     {
-      read: () => readBlobFile(CHECKS_PATH),
-      write: (body) => writeBlobFile(CHECKS_PATH, body),
+      read: seen(CHECKS_PATH, () => readBlobFile(CHECKS_PATH)),
+      write: kept(CHECKS_PATH, (body) => writeBlobFile(CHECKS_PATH, body)),
     },
-    (sources) => {
-      // Changed now: revalidated after the wait. Lagging (the home page
-      // rendered with another run id, or another day): at once.
-      const changed = changedTags(sources);
-      refresh(changed, WAIT_MS);
-      refresh(
-        laggingTags(marks, runIdsOf(bodies), todayInWarsaw()).filter(
-          (tag) => !changed.includes(tag),
-        ),
-        0,
+    () => {
+      // Every page's digest from what this run holds, at one clock; the
+      // revalidations after the wait (the run wrote the status file, which
+      // every live page reads: its age class).
+      const reads = liveReads(Date.now(), async (path) =>
+        Object.hasOwn(bodies, path) ? bodies[path] : cdnFile(path),
+      );
+      after(() =>
+        refreshPages({
+          pages: async () => pageDigests(await allPages(), reads),
+          marks,
+          runs: runIdsOf(bodies),
+          read: () => readBlobFile(DIGESTS_PATH),
+          write: (body) => writeBlobFile(DIGESTS_PATH, body),
+          wait: WAIT_MS,
+          sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+          dataset,
+          revalidateTag: (tag) => revalidateTag(tag, "max"),
+          prewarm: (paths) => prewarm(origin, paths),
+          log,
+        }),
       );
     },
     start,

@@ -12,9 +12,9 @@ export { placeParams as generateStaticParams } from "@/lib/schedule";
 export const dynamicParams = false;
 
 export async function generateMetadata({ params }: PageProps<"/adres/[id]">) {
-  const read = await hubData((await params).id);
-  if (!read) notFound();
-  return placeMetadata(read.data[0] as PlaceView);
+  const { view } = await hubData((await params).id);
+  if (!view) notFound();
+  return placeMetadata(view[0] as PlaceView);
 }
 
 export default async function PlacePage({ params }: PageProps<"/adres/[id]">) {

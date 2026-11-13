@@ -32,7 +32,7 @@ export const CURRENT = {
 export type ImgwCopy = LiveCopy<Feed>;
 
 /**
- * What the pages read from the store (lib/live-store.ts imgwCopy): the
+ * What the pages read from the store (lib/live-reads.ts imgwCopy): the
  * copy, null when the cron has written none yet, or UNREADABLE
  * (lib/live-status.ts).
  */

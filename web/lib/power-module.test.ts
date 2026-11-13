@@ -171,7 +171,6 @@ test("the copy's age: stale, the notice with PGE's page; too old, the notice alo
     unreadable?.notice,
     "Nie udało się teraz sprawdzić przerw w dostawie prądu.",
   );
-  assert.equal(unreadable?.checkedAt, null);
   assert.equal(power(null, HUTA, NOW), null);
   // Nothing here, fresh: the plain empty line.
   assert.deepEqual(powerPage(at(ZUKI)).empty, [

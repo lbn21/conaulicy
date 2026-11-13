@@ -7,17 +7,13 @@ import {
 } from "@/components/address-search";
 import { Icon } from "@/components/icon";
 import { ImgwSource } from "@/components/imgw-source";
-import { type NowData, NowPanel, nowData } from "@/components/now-panel";
+import { type NowData, NowPanel } from "@/components/now-panel";
 import { SkipTarget } from "@/components/skip-target";
 import { SITE_URL } from "@/lib/config.generated";
-import { servedVersion } from "@/lib/dataset";
-import { todayInWarsaw } from "@/lib/dates";
-import { HOME_EXAMPLES } from "@/lib/examples";
-import { LIVE_ATTR, type LiveMarks, marksAttr } from "@/lib/live-refresh";
-import { liveRuns } from "@/lib/live-runs";
 import { LANG } from "@/lib/locale";
-import { pageData, SOURCE_TAGS } from "@/lib/page-cache";
-import { examplePlaces } from "@/lib/schedule";
+import { pageData, pageDigest } from "@/lib/page-cache";
+import { LIVE_ATTR, marksAttr } from "@/lib/page-refresh";
+import { homePage } from "@/lib/pages";
 import { placeHref, SEARCH_INDEX_PATH, type SearchHit } from "@/lib/search";
 import { HOME_TITLE, pageMetadata, SITE_NAME } from "@/lib/share";
 import { ALL_PLACES } from "@/lib/static-pages";
@@ -46,31 +42,6 @@ const TRUST = [
   "Bez reklam",
   "Dane z gminy, IMGW i PGE",
 ];
-
-/**
- * Everything the home page reads, cached with it (lib/page-cache.ts)
- * under every source's tag: the panel's tiles, the examples, and the marks
- * the zuk cron compares with what is stored (lib/live-refresh.ts): the
- * day, the dataset version and each live source's run id as read.
- */
-function homeData() {
-  return pageData("/", Object.values(SOURCE_TAGS), async () => {
-    const now = Date.now();
-    const [panel, examples, dataset, runs] = await Promise.all([
-      nowData(now),
-      // A few examples only: the full address list never ships to the client.
-      examplePlaces(HOME_EXAMPLES),
-      servedVersion(),
-      liveRuns(),
-    ]);
-    const marks: LiveMarks = {
-      day: todayInWarsaw(new Date(now)),
-      dataset,
-      runs,
-    };
-    return { panel, examples, marks };
-  });
-}
 
 /** The sample addresses. */
 function HomeExamples({ places }: { places: SearchHit[] }) {
@@ -103,9 +74,17 @@ function HomeExamples({ places }: { places: SearchHit[] }) {
 // line, the search on a white card, three reassurances; beside it (under
 // it on a phone) „Teraz w gminie” (components/now-panel.tsx). Then the
 // sample addresses and IMGW's required wording. Prerendered whole,
-// re-rendered when a source it reads changes (homeData).
+// re-rendered when what it shows changes (lib/pages.ts homePage); its
+// marks (its own digest, the dataset version, the run ids) for the zuk
+// cron's check (lib/page-refresh.ts).
 export default async function Home() {
-  const { panel, examples, marks } = await homeData();
+  const { now, view } = await pageData(homePage);
+  const { panel, examples, dataset, runs } = view;
+  const marks = {
+    digest: pageDigest(homePage, view, now),
+    dataset,
+    runs,
+  };
   return (
     <SearchErrorProvider>
       <script

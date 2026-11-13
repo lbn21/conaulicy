@@ -291,7 +291,7 @@ export type ZukData = {
   checkedAt: string | null;
   /**
    * When what the pages read last changed (the file's generatedAt), which
-   * is also the changing run's id (lib/live-refresh.ts); null: no file.
+   * is also the changing run's id (lib/live-runs.ts); null: no file.
    */
   changedAt: string | null;
 };

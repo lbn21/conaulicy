@@ -6,7 +6,7 @@ import { Status } from "@/components/parts";
 import { SourceNote } from "@/components/subpage-parts";
 import { WarningCards } from "@/components/warning-cards";
 import { IMGW_SCENARIOS, imgwPreviewParams } from "@/lib/imgw-preview";
-import { imgwCopy } from "@/lib/live-store";
+import { cdnFile, imgwCopy } from "@/lib/live-reads";
 import { weather, weatherNotices } from "@/lib/weather-module";
 
 // IMGW's warnings for one mock scenario (lib/imgw-preview.ts), drawn as
@@ -29,7 +29,7 @@ export default async function ImgwPreview({
   const url = IMGW_SCENARIOS[scenario];
   if (!url) notFound();
   const now = Date.now();
-  const data = weather(await imgwCopy(url), now);
+  const data = weather(await imgwCopy({ now, file: cdnFile }, url), now);
   const notices = data ? weatherNotices(data) : [];
   return (
     <div className="govuk-width-container">
@@ -42,7 +42,7 @@ export default async function ImgwPreview({
             </div>
           )}
           <WarningCards warnings={data?.shown?.warnings ?? []} now={now} />
-          <SourceNote source={data?.checkedAt != null && <ImgwSource />} />
+          <SourceNote source={data?.read && <ImgwSource />} />
         </div>
       </div>
     </div>

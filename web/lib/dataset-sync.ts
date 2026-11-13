@@ -9,7 +9,7 @@ import { placeSetOf } from "./dataset-views.ts";
 
 // One decision for every publisher of the dataset snapshot: POST
 // /api/revalidate (the import, a rollback) and the start of every zuk
-// cron run (lib/live-refresh.ts), so a snapshot published while a
+// cron run (lib/page-refresh.ts), so a snapshot published while a
 // deployment was building is picked up by the first run after it.
 // - The same place set as this build's (lib/dataset-views.ts placeSetOf),
 //   another version: revalidate the dataset tag ("max": stale served at
