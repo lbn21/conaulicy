@@ -9,6 +9,7 @@ import {
 import { Icon } from "@/components/icon";
 import { NowPanel } from "@/components/now-panel";
 import { PlaceLink } from "@/components/place-link";
+import { SkipTarget } from "@/components/skip-target";
 import { SITE_URL } from "@/lib/config.generated";
 import { HOME_EXAMPLES } from "@/lib/examples";
 import { DATASET } from "@/lib/headers";
@@ -123,9 +124,12 @@ function HomeHero() {
     <div className="app-hero">
       <div className="govuk-width-container app-hero__grid">
         <div>
-          <h1 className="govuk-heading-xl govuk-!-font-size-80 app-hero__title">
+          <SkipTarget
+            as="h1"
+            className="govuk-heading-xl govuk-!-font-size-80 app-hero__title"
+          >
             Co na Twojej <span className="app-hero__accent">ulicy?</span>
-          </h1>
+          </SkipTarget>
           <p className="govuk-body-l">
             Śmieci, woda, prąd i ostrzeżenia pogodowe dla Lubaczowa i gminy –
             pod Twoim adresem.

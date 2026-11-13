@@ -134,8 +134,10 @@ const ACTIONS = '<section aria-labelledby="zapisz">';
 
 /** The subpages' skeleton (docs/layout.md), in order. */
 const SKELETON = [
-  '<span class="govuk-caption-l">',
-  '<h1 class="govuk-heading-l">',
+  // The heading block: the street line or the h1 is the skip link's
+  // target (components/skip-target.tsx), its id first.
+  'class="govuk-caption-l">',
+  'class="govuk-heading-l">',
   // „Zmień adres”, GOV.UK's Change link.
   'govuk-link--no-visited-state" href="/"',
 ];
@@ -427,7 +429,7 @@ test("the h1 shows a number only when the register has it (item 6)", () => {
       }),
       children: null,
     };
-    return /<h1 class="govuk-heading-l">([^<]*)<\/h1>/.exec(
+    return /<h1 [^>]*class="govuk-heading-l">([^<]*)<\/h1>/.exec(
       renderToStaticMarkup(createElement(AddressPage, props)),
     )?.[1];
   };

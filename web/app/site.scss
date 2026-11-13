@@ -177,7 +177,7 @@ $app-logo-gap: (govuk-spacing(3) + $app-hair - $app-bar) * .5;
 // page; at first layout the main content still holds the skeleton, so
 // the selector matches the wrong box and the page lands too high. Without one it restores the plain offset; the height is final at
 // first layout (developer.mozilla.org/docs/Web/CSS/overflow-anchor).
-#main-content { overflow-anchor: none; }
+.govuk-main-wrapper { overflow-anchor: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .app-skeleton,

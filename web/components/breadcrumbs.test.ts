@@ -6,6 +6,7 @@ import AccessibilityPage from "../app/dostepnosc/page.tsx";
 import NotFound from "../app/not-found.tsx";
 import AboutPage from "../app/o-projekcie/page.tsx";
 import PrivacyPage from "../app/prywatnosc/page.tsx";
+import { SKIP_TARGET_ID } from "../lib/skip-target.ts";
 import { SOURCES, source } from "../lib/test-sources.ts";
 import { testPlace } from "../lib/water-fixture.ts";
 import {
@@ -82,12 +83,12 @@ test("the layout: the header, then the one <main>", () => {
   const layout = source("app/layout.tsx");
   assert.match(
     layout,
-    /<SiteHeader \/>\s*(?:\{\/\*[\s\S]*?\*\/\}\s*)?<main\s+className="govuk-main-wrapper govuk-!-padding-top-0"\s+id="main-content"\s*>\s*\{children\}\s*<\/main>/,
+    /<SiteHeader \/>\s*(?:\{\/\*[\s\S]*?\*\/\}\s*)?<main className="govuk-main-wrapper govuk-!-padding-top-0">\s*\{children\}\s*<\/main>/,
   );
   assert.doesNotMatch(layout, /breadcrumbs\}/);
 });
 
-test("no page or component renders a <main> or a main-content id", () => {
+test("no page or component renders a <main> or a main-content id of its own", () => {
   const files = SOURCES.filter(
     (path) =>
       /^(app|components)\/.*\.tsx$/.test(path) && path !== "app/layout.tsx",
@@ -121,6 +122,26 @@ test("address pages: the breadcrumbs the band's first line", () => {
   assert.equal(head.exec(band())?.[1], place(false));
   assert.equal(head.exec(band("caption"))?.[1], place(true));
   assert.doesNotMatch(band(), /<main/);
+});
+
+// The skip link's target (components/skip-target.tsx): once, focusable
+// by script, the heading block's start after the trail: the street line
+// on a subpage, the h1 on the address page.
+test("address pages: the skip link's target right after the breadcrumbs", () => {
+  const target = (caption?: string) => {
+    const html = renderToStaticMarkup(
+      AddressPage({ place: testPlace(), caption, children: null }),
+    );
+    assert.equal(
+      html.match(new RegExp(`id="${SKIP_TARGET_ID}"`, "g"))?.length,
+      1,
+    );
+    return new RegExp(
+      `</nav><(span|h1) id="${SKIP_TARGET_ID}" tabindex="-1" class="govuk-(caption|heading)-l">`,
+    ).exec(html)?.[1];
+  };
+  assert.equal(target("caption"), "span");
+  assert.equal(target(), "h1");
 });
 
 // The flat pages (and the 404): no breadcrumbs (GOV.UK: none on a site with

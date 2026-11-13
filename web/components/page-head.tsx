@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { type IconName, Tile } from "@/components/icon";
+import { SkipTarget } from "@/components/skip-target";
 
 // Every page's head, one skeleton for the site (docs/layout.md, Page
 // head): a band in the brand's surface tint, the full width of the window,
@@ -43,15 +44,30 @@ export function PageHead({
   /** After the lead: the page's first action. */
   children?: ReactNode;
 }) {
+  const heading = (
+    <>
+      {icon && <Tile name={icon} />}
+      {title}
+    </>
+  );
   return (
     <div className="app-band">
       {crumbs}
       {before}
-      {caption && <span className={CLASSES[size][0]}>{caption}</span>}
-      <Heading className={CLASSES[size][1]}>
-        {icon && <Tile name={icon} />}
-        {title}
-      </Heading>
+      {/* The skip link's target: the heading block's start, the street
+        line, else the h1 (components/skip-target.tsx). */}
+      {caption && (
+        <SkipTarget as="span" className={CLASSES[size][0]}>
+          {caption}
+        </SkipTarget>
+      )}
+      {caption ? (
+        <Heading className={CLASSES[size][1]}>{heading}</Heading>
+      ) : (
+        <SkipTarget as={Heading} className={CLASSES[size][1]}>
+          {heading}
+        </SkipTarget>
+      )}
       {lead && <p className="govuk-body-l">{lead}</p>}
       {children}
     </div>

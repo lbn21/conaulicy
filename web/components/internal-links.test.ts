@@ -114,14 +114,17 @@ test("every plain <a> is another site, mailto: or a file", () => {
 });
 
 test("the in-page links are FragmentLinks, to ids", () => {
-  for (const file of ["app/layout.tsx", "components/error-summary.tsx"]) {
+  for (const file of [
+    "components/skip-link.tsx",
+    "components/error-summary.tsx",
+  ]) {
     const code = readFileSync(join(WEB, file), "utf8");
     assert.match(code, /<FragmentLink\b[^>]*\shref=/, file);
     assert.doesNotMatch(code, /<a\s/, file);
   }
-  // The skip link's target is the layout's one <main>.
-  assert.match(
-    readFileSync(join(WEB, "app/layout.tsx"), "utf8"),
-    /<main\s+className="govuk-main-wrapper govuk-!-padding-top-0"\s+id="main-content"\s*>/,
-  );
+  // The skip link, the body's first link, to the page's heading block
+  // (components/skip-target.tsx), not to <main>.
+  const layout = readFileSync(join(WEB, "app/layout.tsx"), "utf8");
+  assert.match(layout, /<SkipLink \/>\s*<SiteHeader \/>/);
+  assert.match(layout, /<main className="govuk-main-wrapper[^"]*">/);
 });
