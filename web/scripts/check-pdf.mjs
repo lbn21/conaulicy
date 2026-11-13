@@ -166,7 +166,10 @@ const SOURCES = ["dataset", "imgw", "pge", "water"];
 // The tags of the ISR entry `next start` wrote for a page, found by its
 // path's implicit tag; written just after the response, so polled.
 async function pageTags(pagePath) {
-  const own = `_N_T_${pagePath}`;
+  // Next.js may keep the path's implicit tag encoded or not (":" in a zone id).
+  const own = new Set(
+    [pagePath, decodeURIComponent(pagePath)].map((p) => `_N_T_${p}`),
+  );
   for (let i = 0; i < 50; i++) {
     for (const file of walk(
       path.join(ROOT, ".next/server"),
@@ -182,7 +185,7 @@ async function pageTags(pagePath) {
         continue;
       }
       const list = typeof tags === "string" ? tags.split(",") : [];
-      if (list.includes(own)) return list;
+      if (list.some((tag) => own.has(tag))) return list;
     }
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
@@ -825,10 +828,11 @@ try {
       !response.headers.get("vercel-cache-tag"),
       `${p}: Vercel-Cache-Tag ${response.headers.get("vercel-cache-tag")}, expected none`,
     );
-    const tags = await pageTags(decodeURIComponent(p));
+    const tags = await pageTags(p);
     const sources = (tags ?? []).filter((tag) => SOURCES.includes(tag));
     check(
-      tags?.includes(`page:${decodeURIComponent(p)}`) &&
+      (tags?.includes(`page:${p}`) ||
+        tags?.includes(`page:${decodeURIComponent(p)}`)) &&
         JSON.stringify(sources.sort()) === JSON.stringify(want),
       `${p}: cache tags ${tags?.join(",") ?? "(no entry)"}, expected page:${p} and ${want.join(", ")}`,
     );
