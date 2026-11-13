@@ -59,7 +59,7 @@ There is one rule for water and power (`matches`, `web/lib/place-match.ts`). An 
 ## Failures and revoked notices
 
 - **A failure:** shown as long as the latest copy lists it, whatever its end, which is only PGE's estimate („ok. HH:MM”): on the address page, `/prad`, the timeline and the „Teraz trwa awaria” banner (an estimated end never ends an item, `onDay`, `web/lib/timeline.ts`); gone once a later copy no longer lists it. A planned outage ends at its scheduled end. Never by the copy's age.
-- **Revoked:** never in the timeline. On `/prad` it stays, with a grey tag „Odwołane” and PGE's note, until its time is over. Someone who saw it earlier can then see it was called off.
+- **Revoked:** never in the timeline. On `/prad` it stays, with a grey tag „Odwołana” and PGE's note, until its time is over. Someone who saw it earlier can then see it was called off.
 - **An item gone from the feed** is gone from the site. It is a live feed with no history, as IMGW's.
 
 ## The cron and the store
@@ -76,7 +76,7 @@ The pages never ask PGE. They read the file and the status file per request, thr
 
 ## Honest states
 
-These follow IMGW's rule (`liveNotice`, `web/lib/live-status.ts`): the latest copy is shown as it is, whatever its age. The notice goes in the address page's inset and on `/prad`, followed by „Aktualne znajdziesz na stronie PGE Dystrybucja.”:
+These follow IMGW's rule (`liveNotice`, `web/lib/live-status.ts`): the latest copy is shown as it is, whatever its age. The notice goes in the address page's inset and on `/prad`, followed by „Aktualne znajdziesz na stronie PGE Dystrybucji.”:
 
 - **PGE's checks failing:** the outages still shown, with „Od 9:52 nie udało się nam pobrać danych PGE. Pokazujemy ostatnie, jakie mamy.” (since when they fail);
 - **store unreadable:** „Nie udało się teraz sprawdzić przerw w dostawie prądu.”, and no PGE time in the small print;
