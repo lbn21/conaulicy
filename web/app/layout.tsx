@@ -58,10 +58,7 @@ export const ensureStatic = "prefetch";
 const supportScript = `document.body.className += ' js-enabled' + ('noModule' in HTMLScriptElement.prototype ? ' govuk-frontend-supported' : '');`;
 
 // The GOV.UK page template (design-system.service.gov.uk/styles/page-template).
-export default function RootLayout({
-  children,
-  breadcrumbs,
-}: LayoutProps<"/">) {
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang={LANG} className={`govuk-template ${atkinson.variable}`}>
       {/* The snippet adds classes to <body> before React hydrates. */}
@@ -92,14 +89,13 @@ export default function RootLayout({
         {/* GOV.UK's <main>, the skip link's target, one for the whole site:
             a layout is never duplicated, while Next.js keeps a page left by
             a client-side navigation in the document, hidden (Activity), so
-            a <main> per page would repeat its id. The address pages'
-            breadcrumbs come before it, as GOV.UK places them, from the
-            @breadcrumbs slot (parallel routes; docs/layout.md). Each page
+            a <main> per page would repeat its id. Straight under the
+            header: every page starts with its head's band (an address
+            page's breadcrumbs inside it, t400; docs/layout.md). Each page
             holds its own width container (the home page's hero is the
             window's full width): a page may never reach out to change the
             layout's, since a page left hidden is still in the document
             (t398). */}
-        <div className="govuk-width-container">{breadcrumbs}</div>
         <main
           className="govuk-main-wrapper govuk-!-padding-top-0"
           id="main-content"

@@ -3,8 +3,8 @@ import { type IconName, Tile } from "@/components/icon";
 
 // Every page's head, one skeleton for the site (docs/layout.md, Page
 // head): a band in the brand's surface tint, the full width of the window,
-// straight under the header (or the breadcrumbs), holding what comes
-// before the content: an error summary, the caption, the h1 (on a
+// straight under the header, holding what comes before the content: an
+// address page's breadcrumbs (t400), an error summary, the caption, the h1 (on a
 // module's page with the module's icon on its tile), a lead paragraph and
 // the page's first action („Zmień adres”, the search). Then the content on
 // white, then the footer's band. site.scss .app-band.
@@ -22,6 +22,7 @@ export function PageHead({
   lead,
   size = "l",
   tag: Heading = "h1",
+  crumbs,
   before,
   children,
 }: {
@@ -35,6 +36,8 @@ export function PageHead({
   /** "p" in a skeleton (components/place-suspense.tsx): the page's own
    * h1 comes with the page. */
   tag?: "h1" | "p";
+  /** The band's first line: an address page's breadcrumbs. */
+  crumbs?: ReactNode;
   /** Above the caption: an error summary. */
   before?: ReactNode;
   /** After the lead: the page's first action. */
@@ -42,6 +45,7 @@ export function PageHead({
 }) {
   return (
     <div className="app-band">
+      {crumbs}
       {before}
       {caption && <span className={CLASSES[size][0]}>{caption}</span>}
       <Heading className={CLASSES[size][1]}>

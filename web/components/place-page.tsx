@@ -271,9 +271,9 @@ export function PlaceNotFound() {
  * the address page's locality is in its breadcrumbs), the h1 (the place's
  * name by default), a house number the address register does not have
  * (numberWarning) or the street does not need (sharedNumberNote), „Zmień
- * adres”, then `children`, in the
- * layout's <main>. Its breadcrumbs are the layout's @breadcrumbs slot
- * (components/place-crumbs.tsx).
+ * adres”, then `children`, in the layout's <main>. Its breadcrumbs are
+ * the band's first line (PlaceBreadcrumbs; a subpage's, with a caption,
+ * end at the address page).
  */
 export function AddressPage({
   place,
@@ -297,6 +297,7 @@ export function AddressPage({
     <div className="govuk-grid-row">
       <div className="govuk-grid-column-two-thirds">
         <PageHead
+          crumbs={<PlaceBreadcrumbs place={place} subpage={!!caption} />}
           title={heading ?? name}
           caption={caption}
           icon={icon}

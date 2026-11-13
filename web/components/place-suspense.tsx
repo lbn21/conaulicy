@@ -21,6 +21,17 @@ import { findSubpage, type Module } from "@/lib/modules";
 // (nextjs.org/docs/app/guides/adopting-partial-prefetching#move-url-data-behind-suspense):
 // a subpage's module is its route folder's, not a param.
 
+/** The breadcrumbs' bar, the band's first line (components/breadcrumbs.tsx). */
+const CRUMBS_SKELETON = (
+  <div className={CRUMBS_CLASS}>
+    <ol className="govuk-breadcrumbs__list">
+      <li className="govuk-breadcrumbs__list-item">
+        <Skeleton>Strona główna Lubaczów</Skeleton>
+      </li>
+    </ol>
+  </div>
+);
+
 /** „Zmień adres”, the band's last line. */
 const CHANGE = (
   <p className="govuk-body">
@@ -44,7 +55,8 @@ const CARD = (
 );
 
 /**
- * The skeleton. The address page's band: its h1's bar and „Zmień
+ * The skeleton. Every band's first line is the breadcrumbs' bar
+ * (CRUMBS_SKELETON). The address page's band: its h1's bar and „Zmień
  * adres”'s. A subpage's band is its own page head (components/page-head.tsx,
  * as components/place-page.tsx AddressPage draws it): the place's caption
  * and „Zmień adres” as bars, its module's own title and tile, known to the
@@ -60,6 +72,7 @@ const skeleton = (module: Module<unknown> | null) => (
         {module ? (
           <PageHead
             tag="p"
+            crumbs={CRUMBS_SKELETON}
             title={module.pageTitle}
             icon={module.id}
             caption={<Skeleton>Lubaczów, ul. Rynek</Skeleton>}
@@ -67,28 +80,17 @@ const skeleton = (module: Module<unknown> | null) => (
             {CHANGE}
           </PageHead>
         ) : (
-          <PageHead tag="p" title={<Skeleton>ul. Adama Mickiewicza</Skeleton>}>
+          <PageHead
+            tag="p"
+            crumbs={CRUMBS_SKELETON}
+            title={<Skeleton>ul. Adama Mickiewicza</Skeleton>}
+          >
             {CHANGE}
           </PageHead>
         )}
         {CARD}
       </BlockSkeleton>
     </div>
-  </div>
-);
-
-/**
- * The skeleton's first line, the breadcrumbs', in the layout's @breadcrumbs
- * slot before <main> (components/place-crumbs.tsx). Hidden from assistive
- * technology: the page's own skeleton says „Sprawdzamy…”.
- */
-export const CRUMBS_SKELETON = (
-  <div className={CRUMBS_CLASS} aria-hidden="true">
-    <ol className="govuk-breadcrumbs__list">
-      <li className="govuk-breadcrumbs__list-item">
-        <Skeleton>Strona główna Lubaczów</Skeleton>
-      </li>
-    </ol>
   </div>
 );
 

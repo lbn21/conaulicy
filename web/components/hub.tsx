@@ -30,7 +30,7 @@ import type { Item } from "@/lib/upcoming";
 import type { Weather } from "@/lib/weather-module";
 
 // The address page, /adres/[id] (and ?nr=): a date-first hub of modules
-// (lib/modules.ts), under breadcrumbs. Under „Zmień
+// (lib/modules.ts), its breadcrumbs in its head's band. Under „Zmień
 // adres”: the lines that belong to no day (each module's notices, in an
 // inset); a card per IMGW warning (components/warning-cards.tsx);
 // „Najbliższe 7 dni”, a vertical timeline of every module's items
@@ -56,12 +56,11 @@ import type { Weather } from "@/lib/weather-module";
  * Everything the address page shows, read per request (after io(), so
  * nothing date-dependent is ever prerendered), every module's
  * data at once (Promise.all), so the page waits for the slowest block, not
- * the sum. React's cache() makes it one read per request for the page and
- * its breadcrumbs (components/place-crumbs.tsx), so both come in together
- * (react.dev/reference/react/cache). In registry order; the first, waste's,
+ * the sum, one read per request (React's cache(),
+ * react.dev/reference/react/cache). In registry order; the first, waste's,
  * is the place itself.
  */
-export const hubData = cache(
+const hubData = cache(
   async (id: string, nr: string | null, imgw: string | null = null) => {
     await io();
     return (await Promise.all(
@@ -71,7 +70,7 @@ export const hubData = cache(
 );
 
 /** The page's ?imgw= as the mock's URL (lib/imgw-preview.ts), or null. */
-export async function imgwQuery(searchParams: AddressSearch) {
+async function imgwQuery(searchParams: AddressSearch) {
   return imgwPreview((await searchParams)[IMGW_PREVIEW]);
 }
 

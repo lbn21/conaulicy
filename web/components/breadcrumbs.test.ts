@@ -74,16 +74,17 @@ test("address pages: home, the place's list, the address on a subpage", () => {
   );
 });
 
-// GOV.UK places breadcrumbs before <main>, so the skip link
-// (#main-content) skips them. One <main>, the root layout's
-// (a page kept hidden by Next.js's Activity would repeat a page's
-// own), with the @breadcrumbs slot right before it.
+// One <main>, the root layout's (a page kept hidden by Next.js's Activity
+// would repeat a page's own), straight under the header: the address
+// pages' breadcrumbs are in their head's band (t400), no slot before it.
 
-test("the layout: the breadcrumbs slot, then the one <main>", () => {
+test("the layout: the header, then the one <main>", () => {
+  const layout = source("app/layout.tsx");
   assert.match(
-    source("app/layout.tsx"),
-    /<div className="govuk-width-container">\{breadcrumbs\}<\/div>\s*<main\s+className="govuk-main-wrapper govuk-!-padding-top-0"\s+id="main-content"\s*>\s*\{children\}\s*<\/main>/,
+    layout,
+    /<SiteHeader \/>\s*(?:\{\/\*[\s\S]*?\*\/\}\s*)?<main\s+className="govuk-main-wrapper govuk-!-padding-top-0"\s+id="main-content"\s*>\s*\{children\}\s*<\/main>/,
   );
+  assert.doesNotMatch(layout, /breadcrumbs\}/);
 });
 
 test("no page or component renders a <main> or a main-content id", () => {
@@ -103,12 +104,23 @@ test("no page or component renders a <main> or a main-content id", () => {
   }
 });
 
-test("address pages: the column in <main>, no breadcrumbs of their own", () => {
-  const html = renderToStaticMarkup(
-    AddressPage({ place: testPlace(), children: null }),
-  );
-  assert.match(html, /^<div class="govuk-grid-row">/);
-  assert.doesNotMatch(html, /govuk-breadcrumbs|<main/);
+// The address pages' breadcrumbs: the head band's first line, in <main>
+// (t400): the band runs unbroken from the header. A subpage's (with a
+// caption) end at its address page.
+test("address pages: the breadcrumbs the band's first line", () => {
+  const band = (caption?: string) =>
+    renderToStaticMarkup(
+      AddressPage({ place: testPlace(), caption, children: null }),
+    );
+  const head =
+    /^<div class="govuk-grid-row"><div class="govuk-grid-column-two-thirds"><div class="app-band">(<nav class="govuk-breadcrumbs[\s\S]*?<\/nav>)/;
+  const place = (subpage: boolean) =>
+    renderToStaticMarkup(
+      createElement(PlaceBreadcrumbs, { place: testPlace(), subpage }),
+    );
+  assert.equal(head.exec(band())?.[1], place(false));
+  assert.equal(head.exec(band("caption"))?.[1], place(true));
+  assert.doesNotMatch(band(), /<main/);
 });
 
 // The flat pages (and the 404): no breadcrumbs (GOV.UK: none on a site with
@@ -136,9 +148,23 @@ test("the flat pages and the 404: no breadcrumbs, no <main> of their own", () =>
   }
 });
 
-test("the trail: one spacing token above and below it", () => {
-  const top = /govuk-!-margin-top-(\d)/.exec(CRUMBS_CLASS)?.[1];
-  const bottom = /govuk-!-margin-bottom-(\d)/.exec(CRUMBS_CLASS)?.[1];
-  assert.ok(top);
-  assert.equal(bottom, top);
+// Centred between the header and the band's next line: no margin above
+// (the band's top padding), below it the band's top padding's token, on
+// mobile and from tablet (app/site.scss).
+test("the trail: the band's top padding above and below it", () => {
+  assert.doesNotMatch(CRUMBS_CLASS, /govuk-!-margin/);
+  const scss = source("app/site.scss");
+  const pads = [
+    ...scss.matchAll(/\.app-band \{[^}]*padding: govuk-spacing\((\d)\)/g),
+  ].map((m) => m[1]);
+  const below = [
+    /\.app-band > \.govuk-breadcrumbs \{ margin: 0 0 govuk-spacing\((\d)\); \}/.exec(
+      scss,
+    )?.[1],
+    /\.app-band > \.govuk-breadcrumbs \{ margin-bottom: govuk-spacing\((\d)\); \}/.exec(
+      scss,
+    )?.[1],
+  ];
+  assert.equal(pads.length, 2);
+  assert.deepEqual(below, pads);
 });

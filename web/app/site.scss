@@ -353,12 +353,15 @@ $app-caret: govuk-spacing(2);
 
 // Every page's head (components/page-head.tsx): a band in the brand's
 // surface tint across the whole window (a 100vmax shadow, clipped to the
-// band's height, so nothing overflows), straight under the header or the
-// breadcrumbs: every page starts with one, so <main> has no top padding
-// (app/layout.tsx). GOV.UK's spacing inside; the last line's margin is
-// the band's padding.
+// band's height, so nothing overflows), straight under the header: every
+// page starts with one, so <main> has no top padding (app/layout.tsx).
+// GOV.UK's spacing inside; the last line's margin is the band's padding.
+// An address page's breadcrumbs are its first line (t400): the band's top
+// padding above them, the same token below, so they sit centred between
+// the header and the next line.
 .app-band { margin: 0 0 govuk-spacing(6); padding: govuk-spacing(6) 0 govuk-spacing(4); background: govuk-functional-colour(surface-background); box-shadow: 0 0 0 100vmax govuk-functional-colour(surface-background); clip-path: inset(0 -100vmax); }
-@include govuk-media-query($from: tablet) { .app-band { padding: govuk-spacing(7) 0 govuk-spacing(6); } }
+.app-band > .govuk-breadcrumbs { margin: 0 0 govuk-spacing(6); }
+@include govuk-media-query($from: tablet) { .app-band { padding: govuk-spacing(7) 0 govuk-spacing(6); } .app-band > .govuk-breadcrumbs { margin-bottom: govuk-spacing(7); } }
 .app-band > :last-child, .app-band .govuk-button { margin-bottom: 0; }
 // The head's one spacing scale (t373), GOV.UK's tokens, on every page with
 // a band: its top padding (30/40), the street line, 10 (GOV.UK's
