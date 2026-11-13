@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/config.generated";
+import { sitemapPage } from "@/lib/data-pages";
 import { indexable } from "@/lib/indexing";
 import { pageData } from "@/lib/page-cache";
-import { sitemapPage } from "@/lib/pages";
 import { STATIC_PAGES } from "@/lib/static-pages";
 
 // Prerendered at build from the search index of the dataset snapshot

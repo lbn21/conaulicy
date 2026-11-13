@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHead } from "@/components/page-head";
+import { allPlacesPage } from "@/lib/data-pages";
 import { pageData } from "@/lib/page-cache";
-import { allPlacesPage } from "@/lib/pages";
 import { type ListedPlace, localityAnchor, placePath } from "@/lib/places";
 import { pageMetadata } from "@/lib/share";
 import { ALL_PLACES } from "@/lib/static-pages";

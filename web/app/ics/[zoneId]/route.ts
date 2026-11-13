@@ -1,6 +1,6 @@
+import { zoneIcsPage } from "@/lib/data-pages";
 import { calendarResponse } from "@/lib/ics";
 import { pageData } from "@/lib/page-cache";
-import { zoneIcsPage } from "@/lib/pages";
 import { zoneParams } from "@/lib/schedule";
 import { wasteCalendar, wasteFilename } from "@/lib/waste-ics";
 

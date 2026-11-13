@@ -5,6 +5,7 @@ import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 import { SITE_URL } from "@/lib/config.generated";
 import { readableInk } from "@/lib/contrast";
+import { pdfPage } from "@/lib/data-pages";
 import { longDate, monthTitle } from "@/lib/date-labels";
 import { absoluteDay } from "@/lib/dates";
 import { GOVUK_COLOUR, GOVUK_FUNCTIONAL } from "@/lib/govuk-colours";
@@ -20,7 +21,6 @@ import {
 } from "@/lib/logo";
 import { fileSlug } from "@/lib/normalize";
 import { pageData } from "@/lib/page-cache";
-import { pdfPage } from "@/lib/pages";
 import {
   beyondBounds,
   chooseGrid,

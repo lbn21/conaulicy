@@ -1,5 +1,5 @@
+import { searchIndexPage } from "@/lib/data-pages";
 import { pageData } from "@/lib/page-cache";
-import { searchIndexPage } from "@/lib/pages";
 
 // The search field's index (lib/schedule.ts searchIndex) at one fixed path,
 // prerendered at build and re-rendered with the dataset (its tag), as every

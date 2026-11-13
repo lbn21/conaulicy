@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { addDays, todayInWarsaw, warsawToIso } from "./dates.ts";
+import { homePage } from "./home-page.ts";
 import { feedFile } from "./imgw-warnings.ts";
 import { liveReads } from "./live-reads.ts";
 import { CHECKS_VERSION, IMGW_KEY, PGE_KEY, waterKey } from "./live-status.ts";
@@ -14,7 +15,7 @@ import {
   type RefreshDeps,
   refreshPages,
 } from "./page-refresh.ts";
-import { allPages, homePage } from "./pages.ts";
+import { allPages } from "./pages.ts";
 import { outagesFile, type PgeOutage } from "./pge-feed.ts";
 import { mockFile, zukFile } from "./water-fixture.ts";
 import { WATER_SOURCES } from "./water-sources.ts";

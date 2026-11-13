@@ -1,6 +1,6 @@
+import { waterIcsPage } from "@/lib/data-pages";
 import { calendarResponse } from "@/lib/ics";
 import { pageData } from "@/lib/page-cache";
-import { waterIcsPage } from "@/lib/pages";
 import { placeParams } from "@/lib/schedule";
 import { waterCalendar, waterFilename } from "@/lib/water-ics";
 
