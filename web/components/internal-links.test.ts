@@ -34,7 +34,7 @@ const EXPRESSIONS: Record<string, Record<string, string>> = {
   "components/hub.tsx": { IMGW_PAGE: "another site" },
   "components/now-panel.tsx": {
     "source.href":
-      "another site: a tile's source (NOW_TILES, external), or the source line",
+      "another site: a tile's source, in the source line (NOW_TILES)",
   },
   "app/page.tsx": { IMGW_PAGE: "another site" },
   "components/site-footer.tsx": { CONTACT_HREF: "mailto:" },

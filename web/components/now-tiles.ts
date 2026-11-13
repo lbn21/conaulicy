@@ -14,16 +14,16 @@ import {
 } from "@/lib/now-panel";
 import { PGE_PAGE } from "@/lib/power-module";
 import { wasteWeek } from "@/lib/schedule";
-import { SEARCH_ID } from "@/lib/search";
+import { SEARCH_INPUT_ID } from "@/lib/search";
 import { sourcesChecked } from "@/lib/waste-module";
 import { MZGKIM_NEWS } from "@/lib/water-sources";
 import { warningWhen, weather } from "@/lib/weather-module";
 import { getWaterData } from "@/lib/zuk-store";
 
 // The home page's „Teraz w gminie” tiles, in order: one entry each, its
-// module (icon and colour), its label, its source (the tile's foot link,
-// and the panel's source line; a flag when it is another site) and its
-// aggregate read. Every tile is drawn by
+// module (icon and colour), its label, its source (named and linked in the
+// panel's source line only: a tile is a summary, no way off the site;
+// t398), an optional action on the page and its aggregate read. Every tile is drawn by
 // one NowTile (components/now-panel.tsx), in one wrapping row; a new
 // module is one more entry here and its read, no layout or CSS change
 // (docs/layout.md, „Teraz w gminie”). A read gives null when its source
@@ -32,23 +32,17 @@ import { getWaterData } from "@/lib/zuk-store";
 /** Every count's window; the week's dates are in the panel's subtitle. */
 const WEEK = "w tym tygodniu";
 
-/** A tile's source: its link at the tile's foot and in the source line. */
-export type NowSource = NowLink & {
-  /** Another site: its link says so, „Na stronie …” on screen and
-   * „(strona zewnętrzna)” to a screen reader (NowTile). */
-  external: boolean;
-  /** The foot link's words after „Na stronie ”: whose page it is. */
-  site: string;
-};
-
 export type NowTileDef = {
   id: string;
   /** Its module's icon and colour (.app-mod--<icon>). */
   icon: IconName;
   label: string;
-  /** Its source: the tile's foot link, and its name in the source line;
-   * null: no single page (the waste schedules, one per gmina). */
-  source: NowSource | null;
+  /** Its source, linked in the panel's source line; null: no single page
+   * (the waste schedules, one per gmina). */
+  source: NowLink | null;
+  /** A link at the tile's foot to a field on the page, which it focuses
+   * (FieldLink); shown read or not, so the skeleton draws it too. */
+  action?: NowLink & { href: `#${string}` };
   read(week: Week, now: number): Promise<NowTileData | null>;
 };
 
@@ -56,7 +50,7 @@ const pogoda: NowTileDef = {
   id: "pogoda",
   icon: "pogoda",
   label: "Pogoda",
-  source: { href: IMGW_PAGE, text: "IMGW", external: true, site: "IMGW" },
+  source: { href: IMGW_PAGE, text: "IMGW" },
   async read(_week, now) {
     const data = weather(await imgwCopy(), now);
     if (!data || data.checkedAt === null) return null;
@@ -85,12 +79,7 @@ const woda: NowTileDef = {
   id: "woda",
   icon: "woda",
   label: "Woda",
-  source: {
-    href: MZGKIM_NEWS,
-    text: "wodociągi",
-    external: true,
-    site: "MZGKiM",
-  },
+  source: { href: MZGKIM_NEWS, text: "wodociągi" },
   async read(week, now) {
     const views = Object.values(await getWaterData(new Date(now)));
     if (views.every((v) => v.unavailable)) return null;
@@ -118,12 +107,7 @@ const prad: NowTileDef = {
   id: "prad",
   icon: "prad",
   label: "Prąd",
-  source: {
-    href: PGE_PAGE,
-    text: "PGE Dystrybucja",
-    external: true,
-    site: "PGE",
-  },
+  source: { href: PGE_PAGE, text: "PGE Dystrybucja" },
   async read(week, now) {
     const copy = await pgeCopy();
     if (!copy || typeof copy === "string") return null;
@@ -148,6 +132,7 @@ const smieci: NowTileDef = {
   icon: "smieci",
   label: "Śmieci",
   source: null,
+  action: { href: `#${SEARCH_INPUT_ID}`, text: "Sprawdź swój termin" },
   async read(week) {
     const { count, sources } = await wasteWeek(week.from, week.until);
     return {
@@ -157,7 +142,6 @@ const smieci: NowTileDef = {
           : "Brak odbiorów",
       note: `${WEEK}, różne dni dla ulic`,
       empty: count === 0,
-      action: { href: `#${SEARCH_ID}`, text: "Sprawdź swój termin" },
       checkedAt: sourcesChecked(sources),
     };
   },

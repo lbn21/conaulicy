@@ -28,6 +28,9 @@ export type SearchIndex = Array<[id: string, label: string, type: string]>;
 /** Id of the home page's search element. */
 export const SEARCH_ID = "szukaj";
 
+/** Id of its field („Ulica lub wieś”), a link's target (NOW_TILES). */
+export const SEARCH_INPUT_ID = "adres";
+
 /** A query is cut to this many characters („Szukaj” and /api/search). */
 export const MAX_QUERY_LENGTH = 100;
 

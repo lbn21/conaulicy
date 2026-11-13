@@ -23,6 +23,7 @@ import { withHouseNumber } from "@/lib/house";
 import { whenIdle } from "@/lib/idle";
 import {
   addresses,
+  SEARCH_INPUT_ID as INPUT_ID,
   type Matcher,
   placeHref,
   SEARCH_ID,
@@ -35,7 +36,6 @@ import { type Outcome, outcomeOf, searchQuery } from "@/lib/search-submit";
 import { ALL_PLACES } from "@/lib/static-pages";
 
 // One search, on the home page, so fixed ids.
-const INPUT_ID = "adres";
 const LABEL_ID = "adres-label";
 const HINT_ID = "adres-hint";
 const ERROR_ID = "adres-error";
