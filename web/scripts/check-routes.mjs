@@ -1,4 +1,4 @@
-// The routes smoke: twelve checks of the built site on one
+// The routes smoke: thirteen checks of the built site on one
 // `next start` and the CI fixture, each in scripts/routes/:
 //   examples    the home page's examples have upcoming pickups;
 //   all-places  /ulice lists every place once, in Polish order;
@@ -17,7 +17,10 @@
 //   soft-nav    after client-side navigations from and to the home page,
 //               the width containers centred, the hero on home only;
 //   field-link  „Teraz w gminie”'s action puts the caret in the search
-//               field; no tile links off the site.
+//               field; no tile links off the site;
+//   skip-link   the skip link focuses the heading block, after the
+//               breadcrumbs (address page, subpage, after a client-side
+//               navigation); on the home page, its h1.
 // Every check by default; name some to run only those
 // (`node scripts/check-routes.mjs examples`). With CHECK_URL, a deployed
 // site instead of a local server (examples only: the others need the
@@ -31,6 +34,7 @@ import { check as inPage } from "./routes/in-page.mjs";
 import { check as metadata } from "./routes/metadata.mjs";
 import { check as query } from "./routes/query.mjs";
 import { check as search } from "./routes/search.mjs";
+import { check as skipLink } from "./routes/skip-link.mjs";
 import { check as softNav } from "./routes/soft-nav.mjs";
 import { check as swap } from "./routes/swap.mjs";
 import { check as timeline } from "./routes/timeline.mjs";
@@ -49,6 +53,7 @@ const CHECKS = {
   timeline,
   "soft-nav": softNav,
   "field-link": fieldLink,
+  "skip-link": skipLink,
 };
 
 const asked = process.argv.slice(2);

@@ -1,6 +1,7 @@
 // In-page links and Back, in Chromium on the built site. On the
 // first home example's address page: the skip link (a FragmentLink,
-// components/fragment-link.tsx) lands on <main>;
+// components/skip-link.tsx) lands on the heading block (its focus:
+// routes/skip-link.mjs);
 // then the logo opens the home page, without the hash, and Back shows the
 // address page again, its URL and its content (a plain <a href="#…"> made a
 // history entry the App Router did not know, and Back showed the home page
