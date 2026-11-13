@@ -210,9 +210,9 @@ try {
     }
   }
 
-  // The address page and its waste subpage canonicalise to themselves, a
-  // house number left out (lib/modules.ts).
-  for (const name of ["city-street", "village", "split-street"]) {
+  // The address page and its waste subpage canonicalise to themselves, any
+  // query left out.
+  for (const name of ["city-street", "village", "village-street"]) {
     const place = ROUTES.find((route) => route.name === name).path;
     for (const [path, want] of [
       [place, place],
