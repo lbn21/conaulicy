@@ -2,7 +2,7 @@ import { revalidateTag } from "next/cache";
 import { after } from "next/server";
 import { SITE_URL } from "@/lib/config.generated";
 import { getDataset } from "@/lib/dataset";
-import { syncDataset } from "@/lib/dataset-sync";
+import { DEPLOY_MARKER_PATH, syncDataset } from "@/lib/dataset-sync";
 import { todayInWarsaw } from "@/lib/dates";
 import { unknownStreets } from "@/lib/districts";
 import { runImgw } from "@/lib/imgw-cron";
@@ -14,7 +14,7 @@ import {
   REFRESH_RESERVE_S,
   WAIT_MS,
 } from "@/lib/live-refresh";
-import { liveRuns } from "@/lib/live-runs";
+import { runIdsOf } from "@/lib/live-runs";
 import { IMGW_KEY, PGE_KEY } from "@/lib/live-status";
 import {
   CHECKS_PATH,
@@ -89,10 +89,29 @@ export async function GET(request: Request) {
       log({ refresh: tags, ...(await prewarm(origin, await pagesOf(tags))) });
     });
   };
+  // Every live file's body as this run read it, then wrote it: its run id
+  // for the check against the home page, with no Blob read of its own.
+  const bodies: Record<string, string | null> = {};
+  const seen =
+    (path: string, read: () => Promise<string | null>) => async () => {
+      const body = await read();
+      bodies[path] = body;
+      return body;
+    };
+  const kept =
+    (path: string, write: (body: string) => Promise<void>) =>
+    async (body: string) => {
+      await write(body);
+      bodies[path] = body;
+    };
   const run = (source: PostSource): ZukCronDeps => ({
     fetch,
-    readFile: () => readZukFile(source.water.pathname),
-    writeFile: (body) => writeZukFile(body, source.water.pathname),
+    readFile: seen(source.water.pathname, () =>
+      readZukFile(source.water.pathname),
+    ),
+    writeFile: kept(source.water.pathname, (body) =>
+      writeZukFile(body, source.water.pathname),
+    ),
     // The TERYT snapshot, not the database: the prompt and the gate need
     // each street's CECHA and NAZWA_1 (lib/zuk-resolve.ts). The town's
     // district names (the gazetteer, lib/districts.ts) from the dataset
@@ -116,27 +135,26 @@ export async function GET(request: Request) {
   const imgw = async () =>
     runImgw({
       ...(await imgwUpstream()),
-      readFeed: () => readBlobFile(FEED_PATH),
-      writeFeed: (body) => writeBlobFile(FEED_PATH, body),
+      readFeed: seen(FEED_PATH, () => readBlobFile(FEED_PATH)),
+      writeFeed: kept(FEED_PATH, (body) => writeBlobFile(FEED_PATH, body)),
       log,
     });
   const pge = async () =>
     runPge({
       ...(await pgeUpstream()),
       places: ZUK_PLACES,
-      readFile: () => readBlobFile(PGE_PATH),
-      writeFile: (body) => writeBlobFile(PGE_PATH, body),
+      readFile: seen(PGE_PATH, () => readBlobFile(PGE_PATH)),
+      writeFile: kept(PGE_PATH, (body) => writeBlobFile(PGE_PATH, body)),
       log,
     });
+  // What the home page shows (its marks), read once the secret is checked.
+  let marks: ReturnType<typeof marksOf> = null;
   const start = async () => {
-    // What the home page shows against what is stored; secret first, so
-    // only the cron (with CRON_SECRET) reads anything.
     const home = await fetch(new URL("/", origin))
       .then((r) => (r.ok ? r.text() : ""))
       .catch(() => "");
-    const marks = marksOf(home);
+    marks = marksOf(home);
     if (!marks) log({ refresh: "home-unreadable" });
-    refresh(laggingTags(marks, await liveRuns(), todayInWarsaw()), 0);
     try {
       log({
         dataset: await syncDataset(
@@ -144,6 +162,12 @@ export async function GET(request: Request) {
             fetch,
             hookUrl: process.env.DEPLOY_HOOK_URL,
             revalidate: () => refresh([SOURCE_TAGS.dataset], 0),
+            marker: {
+              read: () => readBlobFile(DEPLOY_MARKER_PATH),
+              write: (body) => writeBlobFile(DEPLOY_MARKER_PATH, body),
+            },
+            mode: "cron",
+            log,
           },
           marks?.dataset,
         ),
@@ -165,7 +189,18 @@ export async function GET(request: Request) {
       read: () => readBlobFile(CHECKS_PATH),
       write: (body) => writeBlobFile(CHECKS_PATH, body),
     },
-    (sources) => refresh(changedTags(sources), WAIT_MS),
+    (sources) => {
+      // Changed now: revalidated after the wait. Lagging (the home page
+      // rendered with another run id, or another day): at once.
+      const changed = changedTags(sources);
+      refresh(changed, WAIT_MS);
+      refresh(
+        laggingTags(marks, runIdsOf(bodies), todayInWarsaw()).filter(
+          (tag) => !changed.includes(tag),
+        ),
+        0,
+      );
+    },
     start,
   );
 }

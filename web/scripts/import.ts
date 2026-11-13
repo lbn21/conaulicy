@@ -599,7 +599,7 @@ async function main() {
       `${(error as Error).message} The data is imported; the site shows the old snapshot until \`npm run dataset:publish\` succeeds.`,
     );
   }
-  if (action === "deploy")
+  if (action === "deploy" || action === "deploy-pending")
     console.log(
       "Smoke check skipped: the place set changed, a new deployment builds this snapshot.",
     );

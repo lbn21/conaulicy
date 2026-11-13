@@ -1,7 +1,12 @@
 import { revalidateTag } from "next/cache";
 import { after } from "next/server";
-import { MissingDeployHook, syncDataset } from "@/lib/dataset-sync";
+import {
+  DEPLOY_MARKER_PATH,
+  MissingDeployHook,
+  syncDataset,
+} from "@/lib/dataset-sync";
 import { NO_STORE } from "@/lib/headers";
+import { readBlobFile, writeBlobFile } from "@/lib/live-store";
 import { SOURCE_TAGS } from "@/lib/page-cache";
 import { prewarm } from "@/lib/prewarm";
 import { placeParams } from "@/lib/schedule";
@@ -13,7 +18,8 @@ import { sameSecret } from "@/lib/secret";
 // deployment's: the dataset tag revalidated with the "max" profile (every
 // page built from the snapshot served stale at once, re-rendered in the
 // background), then the pages pre-warmed, the home page first. Another
-// place set: the Vercel Deploy Hook, no revalidation. Answers 500 when the
+// place set: the Vercel Deploy Hook, no revalidation, at most once per
+// place set and 6 hours (the deploy marker). Answers 500 when the
 // place set changed and DEPLOY_HOOK_URL is not set, or the hook failed, so
 // the import fails loudly.
 //
@@ -34,6 +40,12 @@ export async function POST(request: Request) {
     const result = await syncDataset({
       fetch,
       hookUrl: process.env.DEPLOY_HOOK_URL,
+      marker: {
+        read: () => readBlobFile(DEPLOY_MARKER_PATH),
+        write: (body) => writeBlobFile(DEPLOY_MARKER_PATH, body),
+      },
+      mode: "publish",
+      log: (line) => console.log(JSON.stringify(line)),
       revalidate: () => {
         revalidateTag(SOURCE_TAGS.dataset, "max");
         after(async () => {

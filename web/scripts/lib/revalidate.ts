@@ -15,7 +15,12 @@ import { loadConfig } from "../import/core/config.ts";
 const WAIT_MS = 65_000;
 
 /** What the site did: revalidated, deployed, nothing, or not asked. */
-export type RevalidateAction = "revalidate" | "deploy" | "none" | "skipped";
+export type RevalidateAction =
+  | "revalidate"
+  | "deploy"
+  | "deploy-pending"
+  | "none"
+  | "skipped";
 
 /** configured: the caller's site.url when it has loaded the config already. */
 export async function revalidate(
