@@ -23,6 +23,7 @@ import {
   laterNote,
   NO_MORE_DATES,
   noMoreDatesNext,
+  ownerOf,
   placeDescription,
   unverifiedNote,
 } from "@/lib/schedule-notes";
@@ -205,14 +206,14 @@ export function WasteBody({ data: place }: { data: PlaceView }) {
         <NoDates
           id="ended-heading"
           heading={NO_MORE_DATES}
-          text={`${noMoreDatesNext()} ${checkSchedule(place, "Do tego czasu sprawdź")}`}
+          text={`${noMoreDatesNext(null)} ${checkSchedule(place, "Do tego czasu sprawdź")}`}
           place={place}
         />
       ) : (
         <>
           <PickupSchedule
             days={place.days}
-            next={noMoreDatesNext(place.gmina)}
+            next={noMoreDatesNext(ownerOf(place.gmina))}
             later={laterNote(place.days, place.gmina)}
           />
 
