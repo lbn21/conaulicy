@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { SHARE_CARD_TEXT, SITE_AREA, SITE_NAME } from "./share-card.ts";
+
+export { SITE_NAME };
 
 // Drawn by scripts/brand-assets.ts (from lib/brand/og.svg). A static file,
 // not opengraph-image.png: the file convention splits a shared client chunk
@@ -7,13 +10,10 @@ const SHARE_IMAGE = {
   url: "/og.png",
   width: 1200,
   height: 630,
-  // Exactly what the card shows (its tagline, drawn as outlines in
-  // og.svg, its <title>): no power on it yet.
-  alt: "conaulicy.pl: sprawdź swoją ulicę – śmieci, woda i ostrzeżenia IMGW",
+  // Exactly what the card shows: its lines (lib/share-card.ts), also its
+  // <title> and aria-label.
+  alt: SHARE_CARD_TEXT,
 };
-
-/** The service's one name: in every title, the header and share tags. */
-export const SITE_NAME = "conaulicy.pl";
 
 /** GOV.UK's title: the page's H1, then the service. */
 function pageTitle(h1: string): string {
@@ -27,7 +27,7 @@ const HOME_H1 = "Co na Twojej ulicy?";
  * The locality after the home page's H1 in its title only (never the h1), as
  * a place's pages add theirs: local searches name the town (t396).
  */
-const HOME_LOCALITY = "Lubaczów i gmina";
+const HOME_LOCALITY = SITE_AREA;
 
 /** The home page's title: its H1 and locality, then the service. */
 export const HOME_TITLE = pageTitle(`${HOME_H1} ${HOME_LOCALITY}`);
