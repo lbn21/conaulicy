@@ -9,8 +9,9 @@ import {
   warsawToIso,
 } from "./dates.ts";
 import { span } from "./hub.ts";
-import { collapse, days, type Entry, later, onDay } from "./timeline.ts";
+import { collapse, type Entry, inWindow, later, onDay } from "./timeline.ts";
 import type { Item } from "./upcoming.ts";
+import { days, windowOf } from "./window.ts";
 
 // The address page's timeline (lib/timeline.ts) and its dates' words
 // (lib/dates.ts), at fixed Warsaw days and instants. Intl's spaces around
@@ -44,26 +45,6 @@ const shape = (list: string[], byDay: Entry[][]) =>
 
 const E: Entry[] = [];
 const ONE: Entry[] = [{ item: pickup("2026-11-10"), continued: false }];
-
-test("days: n calendar days from today, across months, years and DST", () => {
-  assert.deepEqual(days("2026-11-28", 4), [
-    "2026-11-28",
-    "2026-11-29",
-    "2026-11-30",
-    "2026-12-01",
-  ]);
-  assert.deepEqual(days("2026-12-30", 3), [
-    "2026-12-30",
-    "2026-12-31",
-    "2027-01-01",
-  ]);
-  // The 25-hour day of 25 Oct is one day.
-  assert.deepEqual(days("2026-10-24", 3), [
-    "2026-10-24",
-    "2026-10-25",
-    "2026-10-26",
-  ]);
-});
 
 test("collapse: 2+ empty days one card, today included; one empty day its own", () => {
   const list = days("2026-11-10", 7);
@@ -168,6 +149,56 @@ test("onDay: an item over at `now` is gone, from today too", () => {
   // A pickup without a time stays until the Warsaw midnight after its day.
   assert.deepEqual(list("2026-11-10T23:59:59+01:00"), ["smieci"]);
   assert.deepEqual(list("2026-11-11T00:00:00+01:00"), []);
+});
+
+test("onDay: an estimated end never ends an item; overdue, it is on today only", () => {
+  const failure: Item = {
+    module: "prad",
+    span: span(
+      "2026-11-13",
+      wall("2026-11-13 10:00:00"),
+      wall("2026-11-13 14:00:00"),
+      true,
+    ),
+    emergency: true,
+    second: null,
+  };
+  // Its estimated end was yesterday: still on today, as „trwa”.
+  const now = at(wall("2026-11-14 09:00:00"));
+  assert.deepEqual(onDay([failure], "2026-11-14", now), [
+    { item: failure, continued: true },
+  ]);
+  assert.deepEqual(onDay([failure], "2026-11-15", now), []);
+  assert.ok(inWindow(failure.span, windowOf("2026-11-14"), now));
+  // The same with a firm end: over, gone.
+  const firm = { ...failure, span: { ...failure.span, about: false } };
+  assert.deepEqual(onDay([firm], "2026-11-14", now), []);
+  assert.ok(!inWindow(firm.span, windowOf("2026-11-14"), now));
+});
+
+test("inWindow: an item is in the window exactly when onDay shows it on one of its days", () => {
+  const today = "2026-11-14";
+  const range = windowOf(today);
+  const now = at(wall("2026-11-14 11:00:00"));
+  const items: Item[] = [
+    cut("2026-11-14", "2026-11-14 06:00:00", "2026-11-14 08:00:00"), // over
+    cut("2026-11-14", "2026-11-14 10:00:00", "2026-11-14 12:00:00"), // on
+    cut("2026-11-13", "2026-11-13 22:00:00", "2026-11-14 12:00:00"), // from yesterday
+    cut("2026-11-13", "2026-11-13 08:00:00", "2026-11-13 12:00:00"), // yesterday
+    cut("2026-11-16", "2026-11-16 08:00:00", "2026-11-16 12:00:00"), // Monday
+    cut("2026-11-20", "2026-11-20 22:00:00", "2026-11-21 02:00:00"), // last night
+    cut("2026-11-21", "2026-11-21 08:00:00", "2026-11-21 12:00:00"), // after
+    pickup("2026-11-14"),
+    pickup("2026-11-21"),
+  ];
+  const timeline = new Set(
+    days(today).flatMap((day) => onDay(items, day, now).map((e) => e.item)),
+  );
+  assert.deepEqual(
+    items.map((item) => inWindow(item.span, range, now)),
+    items.map((item) => timeline.has(item)),
+  );
+  assert.equal(timeline.size, 5);
 });
 
 test("onDay: Warsaw days across the DST change (25 Oct 2026, 25 hours)", () => {

@@ -6,13 +6,15 @@ import { dayRange, todayInWarsaw } from "@/lib/dates";
 import { UNCHECKED } from "@/lib/hub";
 import type { LiveReads } from "@/lib/live-reads";
 import { LIST } from "@/lib/locale";
-import { type NowTileData, type Week, weekOf } from "@/lib/now-panel";
+import type { NowTileData } from "@/lib/now-panel";
+import { type Window, windowOf } from "@/lib/window";
 
 // „Teraz w gminie” on the home page's hero (docs/layout.md): a tile per
 // entry of NOW_TILES (components/now-tiles.ts), gmina-wide, for the
-// current week, prerendered with the page (app/page.tsx), re-rendered
-// when what it shows changes (lib/page-refresh.ts). Every tile is one NowTile: the module's icon on its
-// tile and its label, an optional level tag, the value, the window it
+// site's 7-day window (lib/window.ts, the address page's), prerendered
+// with the page (app/page.tsx), re-rendered when what it shows changes
+// (lib/page-refresh.ts; the window with each Warsaw day). Every tile is
+// one NowTile: the module's icon on its tile and its label, an optional level tag, the value, the window it
 // counts and an optional action on the page; no link off the site (the
 // sources are linked in the note under the tiles; t398). The tiles wrap in
 // one row by their content (site.scss .app-now__tiles: flex-wrap, a
@@ -74,14 +76,14 @@ export function NowTile({
   );
 }
 
-/** The panel's head: its heading and the week it counts. */
-function Head({ week }: { week: string }) {
+/** The panel's head: its heading and the days it counts. */
+function Head({ dates }: { dates: string }) {
   return (
     <div className="app-now__head">
       <h2 id="teraz" className="govuk-heading-m app-now__title">
         {HEADING}
       </h2>
-      <p className="govuk-body-s">{`Lubaczów i gmina, ${week}`}</p>
+      <p className="govuk-body-s">{`Lubaczów i gmina, ${dates}`}</p>
     </div>
   );
 }
@@ -101,37 +103,37 @@ function NowTiles({
   );
 }
 
-/** What the panel shows: the week and every tile's read (nowData). */
-export type NowData = { week: Week; reads: Array<NowTileData | null> };
+/** What the panel shows: the window and every tile's read (nowData). */
+export type NowData = { range: Window; reads: Array<NowTileData | null> };
 
 /**
  * Every tile's read at once, at the reads' clock (a read that fails:
  * null, its tile says so), plain JSON: the home page caches it with itself.
  */
 export async function nowData(live: LiveReads): Promise<NowData> {
-  const week = weekOf(todayInWarsaw(new Date(live.now)));
+  const range = windowOf(todayInWarsaw(new Date(live.now)));
   const reads = await Promise.all(
     NOW_TILES.map((def) =>
-      def.read(week, live).catch((error: Error) => {
+      def.read(range, live).catch((error: Error) => {
         console.error(`now panel, ${def.id}: ${error.message}`);
         return null;
       }),
     ),
   );
-  return { week, reads };
+  return { range, reads };
 }
 
 /**
  * The panel, prerendered with the home page: its head, the tiles, the
  * sources and, for the live ones, when their data last changed.
  */
-export function NowPanel({ data: { week, reads } }: { data: NowData }) {
+export function NowPanel({ data: { range, reads } }: { data: NowData }) {
   const tiles = NOW_TILES.map((def, i) => ({ def, data: reads[i] }));
   const read = tiles.filter((t) => t.data !== null);
   const sources = read.flatMap(({ def }) => def.sources);
   return (
     <section aria-labelledby="teraz" className="app-now">
-      <Head week={`tydzień ${dayRange(week.from, week.to)}`} />
+      <Head dates={dayRange(range.from, range.to)} />
       <NowTiles tiles={tiles} />
       <SourceNote
         source={

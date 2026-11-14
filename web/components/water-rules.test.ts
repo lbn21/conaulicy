@@ -4,7 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { todayInWarsaw } from "../lib/dates.ts";
 import type { Disruption } from "../lib/disruptions.ts";
-import { onDay, days as timelineDays } from "../lib/timeline.ts";
+import { onDay } from "../lib/timeline.ts";
 import type { Item } from "../lib/upcoming.ts";
 import { bothViews, testPlace, zukFile } from "../lib/water-fixture.ts";
 import { waterCalendar, waterCalendarHref } from "../lib/water-ics.ts";
@@ -14,6 +14,7 @@ import {
   waterStatus,
   waterUpcoming,
 } from "../lib/water-module.ts";
+import { days as timelineDays } from "../lib/window.ts";
 import { type StoredPost, zukView } from "../lib/zuk-data.ts";
 import { WaterDetails } from "./water-page.tsx";
 

@@ -44,7 +44,7 @@ import {
   searchIndexOf,
   streetPlace,
   villagePlace,
-  wasteWeekOf,
+  wasteWindowOf,
   zoneView,
 } from "../lib/dataset-views.ts";
 import { addDays, todayInWarsaw } from "../lib/dates.ts";
@@ -211,7 +211,7 @@ async function dbZone(zoneId: string, today: string) {
   };
 }
 
-async function dbWasteWeek(from: string, until: string) {
+async function dbWasteWindow(from: string, until: string) {
   const rows = await db
     .select({
       sourceDoc: events.sourceDoc,
@@ -252,14 +252,14 @@ function same(label: string, actual: unknown, expected: unknown) {
   }
 }
 /**
- * What the panel shows of a week (components/now-tiles.ts): the count, the
+ * What the panel shows of its window (components/now-tiles.ts): the count, the
  * schedule page, and each source's link and check. Not a source's label: for a document several zones cite
  * (the fixture's one), it is the first event's, an order SQL left open.
  */
-const panel = (week: Awaited<ReturnType<typeof dbWasteWeek>>) => ({
-  count: week.count,
-  schedulePage: week.schedulePage,
-  sources: week.sources
+const panel = (shown: Awaited<ReturnType<typeof dbWasteWindow>>) => ({
+  count: shown.count,
+  schedulePage: shown.schedulePage,
+  sources: shown.sources
     .map(({ url, checkedAt, seenAt }) =>
       JSON.stringify([url, checkedAt, seenAt]),
     )
@@ -318,9 +318,9 @@ try {
   ] as const) {
     const until = addDays(from, days);
     same(
-      `wasteWeek ${from}…${until}`,
-      panel(wasteWeekOf(ds, from, until)),
-      panel(await dbWasteWeek(from, until)),
+      `wasteInWindow ${from}…${until}`,
+      panel(wasteWindowOf(ds, from, until)),
+      panel(await dbWasteWindow(from, until)),
     );
   }
 
