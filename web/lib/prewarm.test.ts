@@ -158,7 +158,7 @@ test("the old page: a HIT rendered before the revalidation, by its age", () => {
   assert.equal(oldPage(cdn("HIT", 600), since, now), true);
   assert.equal(oldPage(cdn("HIT", 11), since, now), true);
   // Rendered since (a visitor's request): the new page.
-  assert.equal(oldPage(cdn("HIT", 10), since, now), false);
+  assert.equal(oldPage(cdn("HIT", 9), since, now), false);
   assert.equal(oldPage(cdn("HIT", 3), since, now), false);
   for (const state of ["STALE", "MISS", "PRERENDER", "REVALIDATED"])
     assert.equal(oldPage(cdn(state, 600), since, now), false);
@@ -173,4 +173,17 @@ test("the old page: a HIT rendered before the revalidation, by its age", () => {
     ),
     true,
   );
+});
+
+test("the old page: the age's truncation counts against the page", () => {
+  const since = 1_000_000;
+  // Age 10 at 10.5 s after the revalidation: rendered between 10 and 11 s
+  // ago, so possibly up to 0.5 s before it: old.
+  assert.equal(oldPage(cdn("HIT", 10), since, since + 10_500), true);
+  // Age 10 exactly 11 s after: rendered 10-11 s ago, at the revalidation at
+  // the earliest: the new page.
+  assert.equal(oldPage(cdn("HIT", 10), since, since + 11_000), false);
+  // Age 0 read at the revalidation itself: could be up to 1 s before it.
+  assert.equal(oldPage(cdn("HIT", 0), since, since), true);
+  assert.equal(oldPage(cdn("HIT", 0), since, since + 1_000), false);
 });

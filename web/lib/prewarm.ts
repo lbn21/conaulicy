@@ -40,14 +40,16 @@ export type Prewarmed = {
 
 /**
  * Whether `response`, read at `now`, is the page from before `since`: a
- * HIT rendered `age` whole seconds ago or more, so at the latest at
- * now - age, and that before `since`. A HIT without an age: old.
+ * HIT, its age in whole seconds (truncated: rendered up to 1 s earlier
+ * than it says), so taken as rendered at now - (age + 1) s, the earliest
+ * it can have been; old if that is before `since`. A HIT without an age:
+ * old.
  */
 export function oldPage(response: Response, since: number, now: number) {
   if (response.headers.get("x-vercel-cache") !== "HIT") return false;
   const age = response.headers.get("age");
   if (age === null || !Number.isFinite(Number(age))) return true;
-  return now - Number(age) * 1000 < since;
+  return now - (Number(age) + 1) * 1000 < since;
 }
 
 export async function prewarm(
