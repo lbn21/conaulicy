@@ -17,13 +17,21 @@ import type { Prewarmed } from "./prewarm.ts";
 // whose digest is not the one in DIGESTS_PATH (or that has none there) has
 // changed: its own tag is revalidated with the "max" profile WAIT_MS after
 // the run's last write (the Blob's CDN, up to 60 s behind; every file is
-// written with cacheControlMaxAge 60), inside after(), every changed page
-// in the run; the views are worked out during that wait. Then every one of
-// them is pre-warmed, the home page first, as long as the function's time
-// lasts (lib/prewarm.ts: no count limit); a page the time did not reach is
-// served stale once and re-rendered on its next visit. The new digests
-// are written once the revalidations went through, and only when one
-// changed: the cron is the file's only writer.
+// written with cacheControlMaxAge 60), every changed page in the run; the
+// views are worked out during that wait. Two steps, in this order:
+// - planAndRevalidate, awaited in the route handler: the wait, the
+//   revalidations and the new digests. Next.js sends a handler's
+//   revalidations to the cache when the handler returns, before its
+//   response is sent; a revalidation made inside after() is sent only once
+//   every after() callback has finished, so a pre-warm in the same after()
+//   would read the old pages.
+// - warmPages, inside after(): every changed page pre-warmed, the home
+//   page first, as long as the function's time lasts (lib/prewarm.ts: no
+//   count limit; a page whose purge has not arrived yet is tried again); a
+//   page the time did not reach is served stale once and re-rendered on
+//   its next visit. It logs the run's one line.
+// The new digests are written once the revalidations are queued, and only
+// when one changed: the cron is the file's only writer.
 //
 // One mechanism for every change: a source's content, a new Warsaw day
 // (the day words and the 7-day window are in the views), an instant
@@ -205,13 +213,28 @@ export type RefreshDeps = {
    */
   dataset: boolean;
   revalidateTag(tag: string): void;
-  /** Every path given, the home page first, within the function's time. */
-  prewarm(paths: string[]): Promise<Prewarmed>;
   log(line: Record<string, unknown>): void;
 };
 
-/** One run's refresh (see above); logs one line, never throws. */
-export async function refreshPages(deps: RefreshDeps): Promise<void> {
+/** What a run revalidated: its pre-warm's list and its log line's counts. */
+export type Revalidated = {
+  /** Every page revalidated, home first: the pre-warm's list. */
+  paths: string[];
+  pagesChanged: number;
+  viewsMs: number;
+  /** When the revalidations were made (the clock, ms). */
+  at: number;
+  dataset: boolean;
+};
+
+/**
+ * One run's plan, wait, revalidations and digests (see above), awaited in
+ * the route handler, never inside after(); null on an error, logged, and
+ * then nothing is pre-warmed. Never throws.
+ */
+export async function planAndRevalidate(
+  deps: RefreshDeps,
+): Promise<Revalidated | null> {
   try {
     const start = deps.clock();
     const [pages, body] = await Promise.all([deps.pages(), deps.read()]);
@@ -224,30 +247,64 @@ export async function refreshPages(deps: RefreshDeps): Promise<void> {
       const rest = deps.wait - (deps.clock() - start);
       if (rest > 0) await deps.sleep(rest);
     }
-    // Every changed page now, in one batch to the cache (Next.js flushes
-    // the tags of after() at its end); "max": a page the pre-warm's time
-    // did not reach is served stale once and re-rendered on its next visit.
+    // Every changed page now, in one batch: queued here, sent to the cache
+    // when the route handler returns, before after() starts.
     if (deps.dataset) deps.revalidateTag(SOURCE_TAGS.dataset);
     else for (const path of plan.changed) deps.revalidateTag(pageTag(path));
+    const at = deps.clock();
     if (JSON.stringify(plan.next) !== JSON.stringify(stored))
       await deps.write(JSON.stringify(plan.next));
-    const touched = deps.dataset ? pages.map(({ path }) => path) : plan.changed;
+    return {
+      paths: deps.dataset ? pages.map(({ path }) => path) : plan.changed,
+      pagesChanged: plan.changed.length,
+      viewsMs,
+      at,
+      dataset: deps.dataset,
+    };
+  } catch (error) {
+    deps.log({ refresh: "error", error: (error as Error).message });
+    return null;
+  }
+}
+
+export type WarmDeps = {
+  /**
+   * Every path given, the home page first, within the function's time;
+   * `since`: when they were revalidated (lib/prewarm.ts).
+   */
+  prewarm(paths: string[], since: number): Promise<Prewarmed>;
+  clock(): number;
+  log(line: Record<string, unknown>): void;
+};
+
+/**
+ * The pre-warm of what planAndRevalidate revalidated, inside after(), and
+ * the run's one line. Nothing revalidated (null): nothing. Never throws.
+ */
+export async function warmPages(
+  done: Revalidated | null,
+  deps: WarmDeps,
+): Promise<void> {
+  if (!done) return;
+  try {
     const warmStart = deps.clock();
-    const { warmed, failed, skipped } =
-      touched.length > 0
-        ? await deps.prewarm(touched)
-        : { warmed: 0, failed: 0, skipped: 0 };
+    const { warmed, failed, skipped, notPurged } =
+      done.paths.length > 0
+        ? await deps.prewarm(done.paths, done.at)
+        : { warmed: 0, failed: 0, skipped: 0, notPurged: 0 };
     const warmMs = deps.clock() - warmStart;
     deps.log({
-      pagesChanged: plan.changed.length,
-      pagesRevalidated: deps.dataset ? touched.length : plan.changed.length,
+      pagesChanged: done.pagesChanged,
+      pagesRevalidated: done.paths.length,
       prewarmed: warmed,
       // Not reached in the function's time (the only limit); failed GETs apart.
       notWarmed: skipped,
+      // Still the old page at the function's end: its purge never arrived.
+      notPurged,
       ...(failed > 0 && { warmFailed: failed }),
-      viewsMs,
+      viewsMs: done.viewsMs,
       warmMs,
-      ...(deps.dataset && { dataset: "revalidated" }),
+      ...(done.dataset && { dataset: "revalidated" }),
     });
   } catch (error) {
     deps.log({ refresh: "error", error: (error as Error).message });

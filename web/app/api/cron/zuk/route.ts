@@ -22,9 +22,10 @@ import {
   type LiveMarks,
   marksOf,
   pageDigests,
+  planAndRevalidate,
   REFRESH_RESERVE_S,
-  refreshPages,
   WAIT_MS,
+  warmPages,
 } from "@/lib/page-refresh";
 import { allPages } from "@/lib/pages";
 import { runPge } from "@/lib/pge-cron";
@@ -47,7 +48,8 @@ import { readZukFile, writeZukFile } from "@/lib/zuk-store";
 // checks into the status file when they changed (lib/zuk-cron.ts
 // handleZukCron). A file is written only when it changed. The pages are
 // prerendered: after the run, every page whose view changed is
-// revalidated, by its digest (lib/page-refresh.ts); the run starts by
+// revalidated, by its digest, before the response, and pre-warmed in
+// after() (lib/page-refresh.ts); the run starts by
 // reading what the home page shows and syncing the dataset snapshot
 // (lib/dataset-sync.ts). By hand:
 //
@@ -57,8 +59,10 @@ import { readZukFile, writeZukFile } from "@/lib/zuk-store";
 // Model calls of up to lib/zuk-ai.ts TIMEOUT_MS each, every
 // source's within the run's deadline: a call starts only with its timeout
 // and a margin left before it (lib/zuk-cron.ts AI_LEFT_MS). The deadline
-// leaves REFRESH_RESERVE_S for the wait before the revalidation, which
-// runs inside after() and counts against maxDuration.
+// leaves REFRESH_RESERVE_S for the wait before the revalidation, awaited
+// in the handler before its response; the pre-warm after it, inside
+// after(), has what is left until the function's end (warmUntil). Both
+// count against maxDuration.
 export const maxDuration = 300;
 
 /** Where this deployment's pages are read: the permanent address in production. */
@@ -192,26 +196,33 @@ export async function GET(request: Request) {
       read: seen(CHECKS_PATH, () => readBlobFile(CHECKS_PATH)),
       write: kept(CHECKS_PATH, (body) => writeBlobFile(CHECKS_PATH, body)),
     },
-    () => {
+    async () => {
       // Every page's digest from what this run holds, at one clock, worked
       // out during the wait after the run's last write (the Blob's CDN);
-      // no write, no wait.
+      // no write, no wait. Awaited here, in the handler: Next.js sends its
+      // revalidations to the cache when the handler returns, before the
+      // response; inside after() they would be sent only after the
+      // pre-warm, which would then read the old pages.
       const reads = liveReads(Date.now(), async (path) =>
         Object.hasOwn(bodies, path) ? bodies[path] : cdnFile(path),
       );
+      const revalidated = await planAndRevalidate({
+        pages: async () => pageDigests(await allPages(), reads),
+        marks,
+        runs: runIdsOf(before),
+        read: () => readBlobFile(DIGESTS_PATH),
+        write: (body) => writeBlobFile(DIGESTS_PATH, body),
+        wait: wrote ? WAIT_MS : 0,
+        clock: Date.now,
+        sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+        dataset,
+        revalidateTag: (tag) => revalidateTag(tag, "max"),
+        log,
+      });
       after(() =>
-        refreshPages({
-          pages: async () => pageDigests(await allPages(), reads),
-          marks,
-          runs: runIdsOf(before),
-          read: () => readBlobFile(DIGESTS_PATH),
-          write: (body) => writeBlobFile(DIGESTS_PATH, body),
-          wait: wrote ? WAIT_MS : 0,
+        warmPages(revalidated, {
+          prewarm: (paths, since) => prewarm(origin, paths, { until, since }),
           clock: Date.now,
-          sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-          dataset,
-          revalidateTag: (tag) => revalidateTag(tag, "max"),
-          prewarm: (paths) => prewarm(origin, paths, { until }),
           log,
         }),
       );

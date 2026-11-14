@@ -353,8 +353,12 @@ test("done: once, after every run and the checks' write", async () => {
         order.push("checks");
       },
     },
-    () => order.push("done"),
+    async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      order.push("done");
+    },
   );
+  // done is awaited: over before the handler answers.
   assert.deepEqual(order, ["imgw", "checks", "done"]);
 });
 
