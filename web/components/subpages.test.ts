@@ -4,8 +4,10 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { todayInWarsaw } from "../lib/dates.ts";
 import { unchecked } from "../lib/hub.ts";
+import { LIST } from "../lib/locale.ts";
 import { findSubpage, MODULES } from "../lib/modules.ts";
 import { CUT_100 } from "../lib/mzgkim-fixture.ts";
+import { PGE_GENITIVE } from "../lib/power-module.ts";
 import type { PlaceView } from "../lib/schedule.ts";
 import { laterNote } from "../lib/schedule-notes.ts";
 import { wasteCalendarRefresh, wasteSchedule } from "../lib/waste-module.ts";
@@ -27,9 +29,11 @@ import {
   waterStatus,
   waterUpcoming,
 } from "../lib/water-module.ts";
+import { sourcesAt } from "../lib/water-sources.ts";
 import { type StoredPost, zukView } from "../lib/zuk-data.ts";
 import { Subpage } from "./module-page.tsx";
 import { PageDay } from "./page-day.tsx";
+import { OutageRow } from "./rows/outage.tsx";
 import {
   ACTIONS_HEADING,
   CALENDAR_CHECK,
@@ -576,4 +580,35 @@ test("every subpage with no data now: its frame, then the hub's one line, nothin
     );
     assert.doesNotMatch(html, /govuk-inset-text|role="button"/);
   }
+});
+
+// Every outages subpage's description (lib/outage-view.ts
+// outageDescription): its own pageTitle and the place, then whose dates
+// they are; /woda's from the place's sources (sourcesAt), in Intl's list.
+test("outage subpages: one description pattern, from the module's own title", () => {
+  const places = [
+    ZUKI,
+    testPlace({ label: "ul. Cicha, Lisie Jamy", localityId: "0606234" }),
+  ];
+  const outages = Object.values(MODULES).filter((m) => m.Row === OutageRow);
+  assert.deepEqual(
+    outages.map((m) => m.id),
+    ["woda", "prad"],
+  );
+  for (const module of outages)
+    for (const place of places)
+      assert.ok(
+        module
+          .description(place)
+          .startsWith(`${module.pageTitle}: ${place.label}. `),
+        `${module.id} ${place.label}`,
+      );
+  for (const place of places) {
+    const listed = LIST.format(sourcesAt(place.localityId).map((s) => s.of));
+    assert.ok(
+      MODULES.woda.description(place).endsWith(` ${listed}.`),
+      place.label,
+    );
+  }
+  assert.ok(MODULES.prad.description(ZUKI).endsWith(` ${PGE_GENITIVE}.`));
 });

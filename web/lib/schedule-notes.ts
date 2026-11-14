@@ -38,8 +38,11 @@ export const DISCLAIMER = notAnOffice(
   "obowiązują",
 );
 
-/** Whose schedule, in the genitive: the town's office, else the gmina's. */
-const ownerOf = (gmina: string | null) =>
+/**
+ * Whose schedule, in the genitive: the town's office, else the gmina's
+ * (scheduleOwner); „urzędu” without a gmina.
+ */
+export const ownerOf = (gmina: string | null) =>
   gmina ? scheduleOwner(gmina) : "urzędu";
 
 /** The same for one gmina's schedule (the calendar, the PDF). */
@@ -53,32 +56,37 @@ export function aiReadNote(what: string, verb?: string): string {
 }
 
 /**
- * When the next dates come: after the gmina's next schedule, its owner
- * named; null: unnamed, where the next sentence names it.
+ * When the next dates come: with the next schedule of `owner` (whose, in
+ * the genitive: scheduleOwner, or „urzędu”); null leaves the owner out,
+ * where the next sentence names it.
  */
-const nextSchedule = (gmina: string | null | undefined) =>
-  gmina === undefined
+const nextSchedule = (owner: string | null) =>
+  owner === null
     ? "gdy tylko pojawi się nowy harmonogram"
-    : `gdy tylko pojawi się nowy harmonogram ${ownerOf(gmina)}`;
+    : `gdy tylko pojawi się nowy harmonogram ${owner}`;
 
 /**
- * After the last date, on the waste subpage and in its calendar:
- * the next year's dates come when published. Null without dates.
+ * After the last date, on the waste subpage and in its calendar: the next
+ * year's dates come with the next schedule of the gmina's owner (ownerOf:
+ * „urzędu” for a zone without its gmina). Null without dates.
  */
 export function laterNote(
   days: Pick<PickupDay, "date">[],
   gmina: string | null,
 ): string | null {
   return days.length > 0
-    ? `Terminy na kolejny rok dodamy, ${nextSchedule(gmina)}.`
+    ? `Terminy na kolejny rok dodamy, ${nextSchedule(ownerOf(gmina))}.`
     : null;
 }
 
 /** When a place's schedule has ended: the heading, then what comes next. */
 export const NO_MORE_DATES = "Nie mamy jeszcze kolejnych terminów";
-/** `gmina`: whose schedule; left out where the next sentence names it. */
-export const noMoreDatesNext = (gmina?: string) =>
-  `Dodamy je, ${nextSchedule(gmina)}.`;
+/**
+ * The next dates come with the next schedule of `owner` (in the genitive:
+ * ownerOf); null leaves it out, where the next sentence names it.
+ */
+export const noMoreDatesNext = (owner: string | null) =>
+  `Dodamy je, ${nextSchedule(owner)}.`;
 
 /** Shown on the page while a place is not verified. */
 export function unverifiedNote(gmina: string): string {

@@ -1,7 +1,9 @@
 // Checks the street PDFs (app/adres/[id]/harmonogram.pdf) of every address
 // the CI fixture has (lib/dataset-fixture.ts: each waste zone's members),
 // never a list of ours.
-// Each must be a tagged PDF (MarkInfo, Lang, structure tree) with no PDF/UA
+// Each is served inline, its file named after the place's label
+// (harmonogram-<fileSlug(label)>.pdf). Each must be a tagged PDF (MarkInfo,
+// Lang, structure tree) with no PDF/UA
 // claim (it fails veraPDF), within the size budget, with only Atkinson
 // Hyperlegible Next embedded, and exactly two pages: the calendar, then the
 // guide from the gmina's own rules. Every address's month
@@ -34,6 +36,7 @@ import { inflateSync } from "node:zlib";
 import QRCode from "qrcode";
 import { SITE_URL } from "../lib/config.generated.ts";
 import { fixtureDataset } from "../lib/dataset-fixture.ts";
+import { placeView } from "../lib/dataset-views.ts";
 import { todayInWarsaw } from "../lib/dates.ts";
 import { fileSlug } from "../lib/normalize.ts";
 import { MONTH_DAYS, TABLE_ROW } from "../lib/pdf-grid.ts";
@@ -125,6 +128,8 @@ function fixtureCases() {
       zoneId: m.zone_id,
       zoneName: m.zone_name,
       placeName: m.name,
+      // The place's label as its pages show it: the PDF's file name.
+      label: placeView(ds, id, today)?.label,
       gmina: m.gmina,
       months: live
         ? window.filter((key) => zone.months.includes(key)).length
@@ -358,6 +363,14 @@ try {
     check(
       response.headers.get("content-type") === "application/pdf",
       `${c.name}: not application/pdf`,
+    );
+    // Its file is named after the place's label (lib/normalize.ts fileSlug),
+    // as the calendar after its zone.
+    const pdfName = `harmonogram-${fileSlug(c.label ?? "")}.pdf`;
+    const pdfDisposition = response.headers.get("content-disposition");
+    check(
+      Boolean(c.label) && pdfDisposition === `inline; filename="${pdfName}"`,
+      `${c.name}: Content-Disposition ${pdfDisposition} (expected named after ${c.label}, ${pdfName})`,
     );
     const bytes = Buffer.from(await response.arrayBuffer());
     const file = path.join(dir, `${c.name.replace(/\W+/g, "-")}.pdf`);

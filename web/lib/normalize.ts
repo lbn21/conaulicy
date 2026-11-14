@@ -5,26 +5,18 @@
 // (the dataset snapshot lists places in its order, scripts/lib/dataset.ts); fileSlug turns it into
 // the PDF's and both calendars' file names.
 
-const DIACRITICS: Record<string, string> = {
-  ą: "a",
-  ć: "c",
-  ę: "e",
-  ł: "l",
-  ń: "n",
-  ó: "o",
-  ś: "s",
-  ź: "z",
-  ż: "z",
-};
-
 export function normalize(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[ąćęłńóśźż]/g, (ch) => DIACRITICS[ch])
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+  return (
+    text
+      .toLowerCase()
+      // Unicode gives ł no decomposition (NFD leaves it whole), unlike
+      // ą ć ę ń ó ś ź ż, so it alone is mapped by hand.
+      .replaceAll("ł", "l")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+  );
 }
 
 /** A file name's words: "odbior-smieci-gmina-lubaczow-sektor-1", ≤ 80 chars. */

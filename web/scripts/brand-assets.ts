@@ -3,7 +3,8 @@
 // (app/waste-colours.css, from lib/waste-colours.ts), the tab icons
 // (app/icon.svg, app/favicon.ico), the app icons (public/apple-touch-icon.png,
 // at the root with no query, where iOS looks for it; public/icon-*.png) and
-// the share card (public/og.png). None is in git.
+// the share card (public/og.png, its text outlined from the TTFs). None is in
+// git.
 //   node scripts/brand-assets.ts
 // npm runs it before every `npm run dev` and `npm run build` (predev and
 // prebuild in package.json; Vercel and CI build with `npm run build`), and
@@ -29,10 +30,21 @@ import {
 } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
+import * as fontkit from "fontkit";
 import { ImageResponse } from "next/og.js";
 import { createElement as h } from "react";
-import { PLATE, PLATE_COLOUR, RIM, UL, UL_TRANSFORM } from "../lib/logo.ts";
+import { GOVUK_FUNCTIONAL } from "../lib/govuk-colours.ts";
+import {
+  LOGO_HEIGHT,
+  PLATE,
+  PLATE_COLOUR,
+  PLATE_WIDTH,
+  RIM,
+  UL,
+  UL_TRANSFORM,
+} from "../lib/logo.ts";
 import { paletteScss } from "../lib/palette.ts";
+import { SHARE_CARD, SHARE_CARD_TEXT } from "../lib/share-card.ts";
 import { wasteColoursCss } from "../lib/waste-colours.ts";
 
 const ROOT = path.join(import.meta.dirname, "..");
@@ -44,6 +56,9 @@ export const INPUTS = [
   "lib/brand/favicon-16.svg",
   "lib/brand/favicon-32.svg",
   "lib/brand/og.svg",
+  "lib/share-card.ts",
+  "assets/fonts/AtkinsonHyperlegibleNext-Regular.ttf",
+  "assets/fonts/AtkinsonHyperlegibleNext-Bold.ttf",
   "scripts/brand-assets.ts",
 ];
 const CACHE = path.join(ROOT, ".next/cache/brand-assets");
@@ -75,13 +90,141 @@ const ulSvg = () =>
     `$1viewBox="${UL_INK}"`,
   );
 
-// The share card's text block, centred optically on the plate: the
-// plate's ink is y 145-485 (centre 315); the text is measured from the first
-// line's x-height minus half its ascenders to the last line's baseline plus
-// half its descenders, 201-495.3 (centre 348.1, with the name 6.5 % larger),
-// so it moves 33 px up (whole px).
-const OG_TEXT_SHIFT = -33;
-// Its plate and rim are copies of lib/logo.ts's paths, checked here.
+// The share card (lib/brand/og.svg: the plate, matrix(10 0 0 10 92 145),
+// on white) and its text, outlined here from the repo's TTFs (fontkit,
+// default features: kerning) from its words (lib/share-card.ts), which also
+// fill the template's SHARE_CARD_TEXT placeholders (<title>, aria-label):
+// the alt is what the card shows. Every line's ink starts 70 px right of
+// the plate (575.2); the name (bold) is sized so its ink ends on the right
+// margin (1108, the plate's 92 px mirrored); the tagline is 52 px regular
+// in the plate's colour, the area 34 px regular in GOV.UK's secondary text;
+// baselines 88 px under the name, 66 px apart, 76 px to the area. A line
+// past the margin fails the step: the tagline wraps in lib/share-card.ts,
+// never shrinks.
+const OG_PLATE = { x: 92, y: 145, scale: 10 };
+const OG_RIGHT = 1200 - OG_PLATE.x;
+const OG_LEFT = OG_PLATE.x + PLATE_WIDTH * OG_PLATE.scale + 70;
+const font = (weight: "Regular" | "Bold") =>
+  fontkit.create(
+    readFileSync(
+      path.join(ROOT, `assets/fonts/AtkinsonHyperlegibleNext-${weight}.ttf`),
+    ),
+  ) as fontkit.Font;
+
+/** A card line: its words, font, size (none: the name, fitted), its
+ * baseline's gap below the one above, and its fill. */
+type OgLine = {
+  text: string;
+  font: fontkit.Font;
+  size?: number;
+  gap: number;
+  fill: string;
+};
+
+/** A line's glyphs at 1 unit per em, their ink box and advance. */
+function shaped(line: OgLine) {
+  const run = line.font.layout(line.text);
+  const upm = line.font.unitsPerEm;
+  let x = 0;
+  const ink = { minX: Infinity, maxX: -Infinity, minY: 0, maxY: 0 };
+  const glyphs = run.glyphs.map((glyph, i) => {
+    const at = x;
+    const box = glyph.path.bbox;
+    if (Number.isFinite(box.minX)) {
+      ink.minX = Math.min(ink.minX, (at + box.minX) / upm);
+      ink.maxX = Math.max(ink.maxX, (at + box.maxX) / upm);
+      ink.minY = Math.min(ink.minY, box.minY / upm);
+      ink.maxY = Math.max(ink.maxY, box.maxY / upm);
+    }
+    x += run.positions[i].xAdvance;
+    return { glyph, at };
+  });
+  return { glyphs, ink, upm, xHeight: line.font.xHeight / upm };
+}
+
+/** A shaped line as one absolute path, its ink starting at OG_LEFT. */
+function outline(line: OgLine, size: number, baseline: number): string {
+  const { glyphs, ink, upm } = shaped(line);
+  const k = size / upm;
+  const origin = OG_LEFT - ink.minX * size;
+  const n = (v: number) => String(Math.round(v * 100) / 100);
+  const parts: string[] = [];
+  for (const { glyph, at } of glyphs)
+    for (const { command, args } of glyph.path.commands) {
+      const xy = [];
+      for (let i = 0; i < args.length; i += 2)
+        xy.push(n(origin + (at + args[i]) * k), n(baseline - args[i + 1] * k));
+      const op = {
+        moveTo: "M",
+        lineTo: "L",
+        quadraticCurveTo: "Q",
+        bezierCurveTo: "C",
+        closePath: "Z",
+      }[command];
+      parts.push(`${op}${xy.join(" ")}`);
+    }
+  return parts.join("");
+}
+
+/**
+ * The card's text, centred optically on the plate (its ink, y 145-485,
+ * centre 315): the block is measured from the name's x-height minus half
+ * its ascenders to the area's baseline plus half its descenders, and moved
+ * by whole px. For the current words: 201.2-561.3 before the move (centre
+ * 381.3), so 66 px up.
+ */
+function ogText(): string {
+  const [regular, bold] = [font("Regular"), font("Bold")];
+  const lines: OgLine[] = [
+    {
+      text: SHARE_CARD.name,
+      font: bold,
+      gap: 0,
+      fill: GOVUK_FUNCTIONAL.text,
+    },
+    ...SHARE_CARD.tagline.map((text, i) => ({
+      text,
+      font: regular,
+      size: 52,
+      gap: i === 0 ? 88 : 66,
+      fill: "currentColor",
+    })),
+    {
+      text: SHARE_CARD.area,
+      font: regular,
+      size: 34,
+      gap: 76,
+      fill: GOVUK_FUNCTIONAL["secondary-text"],
+    },
+  ];
+  const name = shaped(lines[0]);
+  const nameSize = (OG_RIGHT - OG_LEFT) / (name.ink.maxX - name.ink.minX);
+  let baseline = 262;
+  const placed = lines.map((line) => {
+    baseline += line.gap;
+    const size = line.size ?? nameSize;
+    const { ink } = shaped(line);
+    if (OG_LEFT + (ink.maxX - ink.minX) * size > OG_RIGHT + 0.01)
+      throw new Error(`lib/share-card.ts: "${line.text}" passes the margin`);
+    return { line, size, baseline, ink };
+  });
+  const [first, last] = [placed[0], placed[placed.length - 1]];
+  const top =
+    first.baseline -
+    first.size * (name.xHeight + (first.ink.maxY - name.xHeight) / 2);
+  const bottom = last.baseline - (last.size * last.ink.minY) / 2;
+  const plateMiddle = OG_PLATE.y + (LOGO_HEIGHT * OG_PLATE.scale) / 2;
+  const shift = Math.round(plateMiddle - (top + bottom) / 2);
+  return placed
+    .map(
+      ({ line, size, baseline }) =>
+        `<path fill="${line.fill}" d="${outline(line, size, baseline + shift)}"/>`,
+    )
+    .join("");
+}
+
+// Its plate and rim are copies of lib/logo.ts's paths, checked here, and
+// the plate is where OG_PLATE says.
 function ogTemplate(): string {
   const svg = svgText("og.svg");
   for (const d of [PLATE, RIM])
@@ -89,18 +232,32 @@ function ogTemplate(): string {
       throw new Error(
         "lib/brand/og.svg: plate or rim differs from lib/logo.ts",
       );
+  const { x, y, scale } = OG_PLATE;
+  if (!svg.includes(`transform="matrix(${scale} 0 0 ${scale} ${x} ${y})"`))
+    throw new Error("lib/brand/og.svg: the plate is not at OG_PLATE");
   return svg;
 }
-const ogSvg = () =>
+const escaped = (text: string) =>
+  text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll('"', "&quot;");
+export const ogSvg = () =>
   painted(
-    replaceOnce(
-      replaceOnce(
-        ogTemplate(),
-        `<path d="${UL}"/>`,
-        `<path d="${UL}" transform="${UL_TRANSFORM}"/>`,
-      ),
-      /(<path fill="#0b0c0c"[\s\S]*)<\/svg>\s*$/,
-      `<g transform="translate(0 ${OG_TEXT_SHIFT})">$1</g></svg>`,
+    [
+      [`<path d="${UL}"/>`, `<path d="${UL}" transform="${UL_TRANSFORM}"/>`],
+      [
+        'aria-label="SHARE_CARD_TEXT"',
+        `aria-label="${escaped(SHARE_CARD_TEXT)}"`,
+      ],
+      [
+        "<title>SHARE_CARD_TEXT</title>",
+        `<title>${escaped(SHARE_CARD_TEXT)}</title>`,
+      ],
+      [/<\/svg>\s*$/, `${ogText()}</svg>`],
+    ].reduce(
+      (svg, [from, to]) => replaceOnce(svg, from, to as string),
+      ogTemplate(),
     ),
   );
 

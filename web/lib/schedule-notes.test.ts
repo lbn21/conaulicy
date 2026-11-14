@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { scheduleOwner } from "./places.ts";
 import {
   DISCLAIMER,
   disclaimer,
   hasUpcoming,
   laterNote,
+  noMoreDatesNext,
+  ownerOf,
   placeDescription,
   putOutNote,
   unverifiedNote,
@@ -125,4 +128,32 @@ test("the waste subpage's description is its own", () => {
       placeDescription(variant),
     );
   }
+});
+
+// When the next dates come (noMoreDatesNext, laterNote): left unnamed, no
+// gmina's owner in it; named, it ends with that owner, „urzędu” for a zone
+// without its gmina.
+test("the next schedule: unnamed without an owner, named with exactly its owner", () => {
+  const gminas = ["Lubaczów (miasto)", "Lubaczów (gmina)"];
+  const unnamed = noMoreDatesNext(null);
+  for (const gmina of gminas) {
+    assert.equal(ownerOf(gmina), scheduleOwner(gmina));
+    assert.ok(!unnamed.includes(scheduleOwner(gmina)), gmina);
+    assert.ok(
+      noMoreDatesNext(scheduleOwner(gmina)).endsWith(
+        ` ${scheduleOwner(gmina)}.`,
+      ),
+      gmina,
+    );
+    assert.ok(
+      (laterNote([day("2026-12-31")], gmina) ?? "").endsWith(
+        ` ${scheduleOwner(gmina)}.`,
+      ),
+      gmina,
+    );
+  }
+  assert.ok(!unnamed.includes(ownerOf(null)));
+  assert.ok(
+    (laterNote([day("2026-12-31")], null) ?? "").endsWith(` ${ownerOf(null)}.`),
+  );
 });
