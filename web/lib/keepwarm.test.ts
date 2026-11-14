@@ -1,105 +1,19 @@
 import assert from "node:assert/strict";
-import { readdirSync } from "node:fs";
-import { join, relative, sep } from "node:path";
 import { test } from "node:test";
-import { OUTPUT_PATHS } from "../scripts/brand-assets.ts";
 import {
   dailySlice,
   handleKeepWarmCron,
   KEEPWARM_DAYS,
   type KeepWarmDeps,
-  keepWarmPaths,
   sliceOf,
 } from "./keepwarm.ts";
 import type { Prewarmed } from "./prewarm.ts";
 
-// The keep-warm: every route of app/ that the build prerenders has its
-// paths in the list, from the build's own sources; each path in one stable
-// slice; the 7 days read them all; the cron's gate and its one line.
+// The keep-warm: each path in one stable slice; the 7 days read them all;
+// the cron's gate and its one line. Its list covers every route of app/:
+// scripts/keepwarm-routes.test.ts.
 
-const APP = join(import.meta.dirname, "..", "app");
 const DAY = 86_400_000;
-
-function files(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(dir, entry.name);
-    return entry.isDirectory() ? files(path) : [path];
-  });
-}
-
-// Next.js's metadata routes, a file at app/'s root that is a route by
-// its name: the generated ones (robots.ts) at their file's path, the
-// static ones (icon.svg) at their own name, a generated image (icon.tsx)
-// at its name.
-const GENERATED: Record<string, string> = {
-  robots: "/robots.txt",
-  sitemap: "/sitemap.xml",
-  manifest: "/manifest.webmanifest",
-};
-const IMAGES = /^(favicon|icon|apple-icon|opengraph-image|twitter-image)\./;
-
-function metadataRoute(name: string): string | null {
-  const code = /^(.+)\.tsx?$/.exec(name);
-  if (code && GENERATED[code[1]]) return GENERATED[code[1]];
-  if (!IMAGES.test(name)) return null;
-  return code ? `/${code[1]}` : `/${name}`;
-}
-
-/**
- * Every file of app/, by its path in it: on disk, and those the build's
- * brand step draws there (scripts/brand-assets.ts: the icons, not in git).
- */
-function appFiles(): string[][] {
-  const drawn = OUTPUT_PATHS.filter((out) => out.startsWith("app/")).map(
-    (out) => out.split("/").slice(1),
-  );
-  const onDisk = files(APP).map((file) => relative(APP, file).split(sep));
-  const seen = new Set<string>();
-  return [...onDisk, ...drawn].filter((rel) => {
-    const key = rel.join("/");
-    return !seen.has(key) && seen.add(key);
-  });
-}
-
-/** Every prerendered route of app/: its URL pattern, the API's apart. */
-function routePatterns(): Map<string, RegExp> {
-  const patterns = new Map<string, RegExp>();
-  for (const rel of appFiles()) {
-    const name = rel.at(-1) ?? "";
-    let route: string | null = null;
-    if (/^(page|route)\.tsx?$/.test(name))
-      route = `/${rel.slice(0, -1).join("/")}`;
-    else if (rel.length === 1) route = metadataRoute(name);
-    if (route === null || route.startsWith("/api/")) continue;
-    const source = route
-      .split("/")
-      .map((part) =>
-        /^\[[^\]]+\]$/.test(part)
-          ? "[^/]+"
-          : part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-      )
-      .join("/");
-    patterns.set(route, new RegExp(`^${source || "/"}$`));
-  }
-  return patterns;
-}
-
-test("every prerendered route of app/ has its paths kept warm, and no path is none's", async () => {
-  const patterns = routePatterns();
-  assert.ok(patterns.size >= 10, String(patterns.size));
-  const paths = await keepWarmPaths();
-  for (const [route, pattern] of patterns)
-    assert.ok(
-      paths.some((path) => pattern.test(path)),
-      `${route}: no path kept warm`,
-    );
-  for (const path of paths)
-    assert.ok(
-      [...patterns.values()].some((pattern) => pattern.test(path)),
-      `${path}: no route`,
-    );
-  assert.deepEqual(paths, [...new Set(paths)].sort());
-});
 
 test("a path's slice is stable, in range, and the slices are about even", () => {
   const paths = Array.from({ length: 2100 }, (_, i) => `/adres/${i}/woda`);
