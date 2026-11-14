@@ -558,7 +558,8 @@ export type LiveStep = { key: string; run: () => Promise<LiveRunSummary> };
  * beside them, each on its own, its result listed under its key, and never
  * changes the water runs' result, another step's or the response's status.
  * Once every run is done, the checks go to `checks` (status/checks.json,
- * when they changed), then `done` runs, which refreshes the pages
+ * when they changed), then `done` runs, awaited before the response: it
+ * revalidates the changed pages there and pre-warms them in after()
  * (lib/page-refresh.ts). `start` runs first, once the secret is checked.
  * `base` gives the clock and the log.
  */
@@ -569,7 +570,7 @@ export async function handleZukCron(
   water: ZukCronDeps[] = [],
   live: LiveStep[] = [],
   checks?: ChecksStore,
-  done?: () => void,
+  done?: () => void | Promise<void>,
   start?: () => Promise<void>,
 ): Promise<Response> {
   const denied = cronDenied(request, cronSecret);
@@ -598,7 +599,7 @@ export async function handleZukCron(
     ok[step.key] = !("error" in steps[i]);
   }
   if (checks) await recordChecks(checks, ok, attemptAt, base.log);
-  done?.();
+  await done?.();
   const sources: Record<string, unknown> = {};
   for (const [i, run] of more.entries()) {
     const result = results[i];

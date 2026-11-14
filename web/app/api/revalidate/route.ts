@@ -51,13 +51,17 @@ export async function POST(request: Request) {
       mode: "publish",
       log: (line) => console.log(JSON.stringify(line)),
       revalidate: () => {
+        // Queued now, sent to the cache when the handler returns, before
+        // after() starts: the pre-warm reads the purged pages.
         revalidateTag(SOURCE_TAGS.dataset, "max");
+        const since = Date.now();
         after(async () => {
           const pages = (await placeParams()).map(({ id }) => `/adres/${id}`);
           console.log(
             JSON.stringify({
               prewarm: await prewarm(origin, ["/", "/ulice", ...pages], {
                 until,
+                since,
               }),
             }),
           );

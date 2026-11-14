@@ -11,9 +11,11 @@ import {
   laggingTags,
   type PageDigest,
   pageDigests,
+  planAndRevalidate,
   planRefresh,
   type RefreshDeps,
-  refreshPages,
+  type WarmDeps,
+  warmPages,
 } from "./page-refresh.ts";
 import { allPages } from "./pages.ts";
 import { outagesFile, type PgeOutage } from "./pge-feed.ts";
@@ -237,7 +239,7 @@ test("every changed page is queued for warming: no count limit, home first", asy
     ...Array.from({ length: 2099 }, (_, i) => page(`/p${i}`, "d")),
   ];
   const run = fakeRun({ pages });
-  await refreshPages(run.deps);
+  await refresh(run);
   assert.equal(run.tags.length, 2100);
   assert.equal(run.tags[0], "page:/");
   assert.deepEqual(
@@ -249,6 +251,7 @@ test("every changed page is queued for warming: no count limit, home first", asy
     pagesRevalidated: 2100,
     prewarmed: 2100,
     notWarmed: 0,
+    notPurged: 0,
     viewsMs: 0,
     warmMs: 0,
   });
@@ -260,14 +263,16 @@ test("pages the function's time did not reach are logged, with the warm time", a
   const run = fakeRun({ pages });
   let now = 0;
   run.deps.clock = () => now;
-  run.deps.prewarm = async (paths) => {
+  run.warm.clock = () => now;
+  run.warm.prewarm = async (paths) => {
     now += 90_000;
-    return { warmed: 6, failed: 1, skipped: paths.length - 7 };
+    return { warmed: 6, failed: 1, skipped: paths.length - 9, notPurged: 2 };
   };
-  await refreshPages(run.deps);
+  await refresh(run);
   const line = run.lines.at(-1);
   assert.equal(line?.prewarmed, 6);
-  assert.equal(line?.notWarmed, 3);
+  assert.equal(line?.notWarmed, 1);
+  assert.equal(line?.notPurged, 2);
   assert.equal(line?.warmFailed, 1);
   assert.equal(line?.warmMs, 90_000);
 });
@@ -280,7 +285,7 @@ test("the views are worked out during the wait: only the rest is slept", async (
     now += 20_000;
     return [page("/", "h")];
   };
-  await refreshPages(run.deps);
+  await refresh(run);
   assert.deepEqual(run.slept, [45_000]);
   assert.equal(run.lines.at(-1)?.viewsMs, 20_000);
 });
@@ -288,7 +293,7 @@ test("the views are worked out during the wait: only the rest is slept", async (
 test("a run that wrote nothing: no wait", async () => {
   const run = fakeRun({ pages: [page("/", "h")] });
   run.deps.wait = 0;
-  await refreshPages(run.deps);
+  await refresh(run);
   assert.deepEqual(run.slept, []);
   assert.deepEqual(run.tags, ["page:/"]);
 });
@@ -296,7 +301,7 @@ test("a run that wrote nothing: no wait", async () => {
 test("nothing changed: no wait, no revalidation, no write", async () => {
   const pages = [page("/", "h"), page("/a", "a")];
   const run = fakeRun({ pages, stored: { "/": "h", "/a": "a" } });
-  await refreshPages(run.deps);
+  await refresh(run);
   assert.deepEqual(run.slept, []);
   assert.deepEqual(run.tags, []);
   assert.equal(run.written, null);
@@ -307,21 +312,68 @@ test("a revalidation that throws: the digests are not written", async () => {
   run.deps.revalidateTag = () => {
     throw new Error("down");
   };
-  await refreshPages(run.deps);
+  await refresh(run);
   assert.equal(run.written, null);
   assert.deepEqual(run.lines.at(-1), { refresh: "error", error: "down" });
 });
 
 test("the wait comes before the revalidations", async () => {
   const run = fakeRun({ pages: [page("/", "h")] });
-  await refreshPages(run.deps);
-  assert.deepEqual(run.order, ["sleep", "page:/", "write"]);
+  await refresh(run);
+  assert.deepEqual(run.order, ["sleep", "page:/", "write", "warm"]);
+});
+
+test("every revalidation is made before the pre-warm, none during it", async () => {
+  for (const dataset of [false, true]) {
+    const run = fakeRun({ pages: [page("/", "h"), page("/a", "a")], dataset });
+    let warming = false;
+    const revalidate = run.deps.revalidateTag;
+    run.deps.revalidateTag = (tag) => {
+      assert.equal(warming, false, `${tag} revalidated while warming`);
+      revalidate(tag);
+    };
+    const done = await planAndRevalidate(run.deps);
+    // The handler's part is over: every tag is queued, nothing warmed yet.
+    assert.deepEqual(run.tags, dataset ? ["dataset"] : ["page:/", "page:/a"]);
+    assert.deepEqual(run.warmed, []);
+    warming = true;
+    await warmPages(done, run.warm);
+    assert.deepEqual(run.warmed, ["/", "/a"]);
+    assert.equal(run.tags.length, dataset ? 1 : 2);
+  }
+});
+
+test("the pre-warm is given the revalidations' time", async () => {
+  const run = fakeRun({ pages: [page("/", "h")] });
+  let now = 5_000;
+  run.deps.clock = () => now;
+  run.deps.sleep = async (ms) => {
+    now += ms;
+  };
+  let given: number | undefined;
+  run.warm.prewarm = async (paths, since) => {
+    given = since;
+    return { warmed: paths.length, failed: 0, skipped: 0, notPurged: 0 };
+  };
+  await refresh(run);
+  assert.equal(given, 5_000 + 65_000);
+});
+
+test("an error before the revalidations: nothing pre-warmed", async () => {
+  const run = fakeRun({ pages: [page("/", "h")] });
+  run.deps.read = async () => {
+    throw new Error("blob down");
+  };
+  await refresh(run);
+  assert.deepEqual(run.tags, []);
+  assert.deepEqual(run.warmed, []);
+  assert.deepEqual(run.lines, [{ refresh: "error", error: "blob down" }]);
 });
 
 test("the dataset revalidated: no page tag, every digest kept", async () => {
   const pages = [page("/", "h"), page("/a", "a")];
   const run = fakeRun({ pages, dataset: true });
-  await refreshPages(run.deps);
+  await refresh(run);
   assert.deepEqual(run.tags, ["dataset"]);
   assert.deepEqual(JSON.parse(run.written ?? ""), { "/": "h", "/a": "a" });
 });
@@ -411,11 +463,21 @@ function fakeRun({
       run.tags.push(tag);
       run.order.push(tag);
     },
-    prewarm: async (paths) => {
-      run.warmed.push(...paths);
-      return { warmed: paths.length, failed: 0, skipped: 0 };
-    },
     log: (line) => run.lines.push(line),
   };
-  return Object.assign(run, { deps });
+  const warm: WarmDeps = {
+    prewarm: async (paths) => {
+      run.warmed.push(...paths);
+      run.order.push("warm");
+      return { warmed: paths.length, failed: 0, skipped: 0, notPurged: 0 };
+    },
+    clock: () => 0,
+    log: (line) => run.lines.push(line),
+  };
+  return Object.assign(run, { deps, warm });
+}
+
+/** One run's refresh as the cron makes it: the handler's part, then after()'s. */
+async function refresh(run: ReturnType<typeof fakeRun>) {
+  await warmPages(await planAndRevalidate(run.deps), run.warm);
 }
