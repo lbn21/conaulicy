@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { test } from "node:test";
+import { OUTPUT_PATHS } from "../scripts/brand-assets.ts";
 import {
   dailySlice,
   handleKeepWarmCron,
@@ -44,11 +45,26 @@ function metadataRoute(name: string): string | null {
   return code ? `/${code[1]}` : `/${name}`;
 }
 
+/**
+ * Every file of app/, by its path in it: on disk, and those the build's
+ * brand step draws there (scripts/brand-assets.ts: the icons, not in git).
+ */
+function appFiles(): string[][] {
+  const drawn = OUTPUT_PATHS.filter((out) => out.startsWith("app/")).map(
+    (out) => out.split("/").slice(1),
+  );
+  const onDisk = files(APP).map((file) => relative(APP, file).split(sep));
+  const seen = new Set<string>();
+  return [...onDisk, ...drawn].filter((rel) => {
+    const key = rel.join("/");
+    return !seen.has(key) && seen.add(key);
+  });
+}
+
 /** Every prerendered route of app/: its URL pattern, the API's apart. */
 function routePatterns(): Map<string, RegExp> {
   const patterns = new Map<string, RegExp>();
-  for (const file of files(APP)) {
-    const rel = relative(APP, file).split(sep);
+  for (const rel of appFiles()) {
     const name = rel.at(-1) ?? "";
     let route: string | null = null;
     if (/^(page|route)\.tsx?$/.test(name))
