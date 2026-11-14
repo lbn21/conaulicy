@@ -266,7 +266,13 @@ test("pages the function's time did not reach are logged, with the warm time", a
   run.warm.clock = () => now;
   run.warm.prewarm = async (paths) => {
     now += 90_000;
-    return { warmed: 6, failed: 1, skipped: paths.length - 9, notPurged: 2 };
+    return {
+      warmed: 6,
+      failed: 1,
+      skipped: paths.length - 9,
+      notPurged: 2,
+      cache: {},
+    };
   };
   await refresh(run);
   const line = run.lines.at(-1);
@@ -353,7 +359,13 @@ test("the pre-warm is given the revalidations' time", async () => {
   let given: number | undefined;
   run.warm.prewarm = async (paths, since) => {
     given = since;
-    return { warmed: paths.length, failed: 0, skipped: 0, notPurged: 0 };
+    return {
+      warmed: paths.length,
+      failed: 0,
+      skipped: 0,
+      notPurged: 0,
+      cache: {},
+    };
   };
   await refresh(run);
   assert.equal(given, 5_000 + 65_000);
@@ -469,7 +481,13 @@ function fakeRun({
     prewarm: async (paths) => {
       run.warmed.push(...paths);
       run.order.push("warm");
-      return { warmed: paths.length, failed: 0, skipped: 0, notPurged: 0 };
+      return {
+        warmed: paths.length,
+        failed: 0,
+        skipped: 0,
+        notPurged: 0,
+        cache: {},
+      };
     },
     clock: () => 0,
     log: (line) => run.lines.push(line),
