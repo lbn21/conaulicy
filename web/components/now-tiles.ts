@@ -84,14 +84,14 @@ const woda: NowTileDef = {
   label: "Woda",
   // Every gmina's cuts: both sources (lib/water-sources.ts).
   sources: [gminaNews, mzgkimNews],
-  async read(range, { water }) {
+  async read(range, { water, now }) {
     const views = Object.values(await water());
     if (views.every((v) => v.unavailable)) return null;
     const changed = views.flatMap((v) =>
       v.changedAt ? [Date.parse(v.changedAt)] : [],
     );
     const count = views.reduce(
-      (n, v) => n + waterInWindow(v.disruptions, range, () => v.checkedAt),
+      (n, v) => n + waterInWindow(v.disruptions, range, now, () => v.checkedAt),
       0,
     );
     return {
@@ -112,10 +112,10 @@ const prad: NowTileDef = {
   icon: "prad",
   label: "Prąd",
   sources: [{ href: PGE_PAGE, text: PGE_NAME }],
-  async read(range, { pge }) {
+  async read(range, { pge, now }) {
     const copy = await pge();
     if (!copy || typeof copy === "string") return null;
-    const count = powerInWindow(copy.feed, range);
+    const count = powerInWindow(copy.feed, range, now);
     return {
       value:
         count > 0

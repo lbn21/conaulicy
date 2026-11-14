@@ -166,6 +166,15 @@ test("a failure in the latest copy: shown whatever the copy's age or its estimat
     onDay(powerUpcoming(overdue), "2026-11-11", late).map((e) => e.item),
     [item],
   );
+  // The next morning, its estimated end yesterday, still listed: still on
+  // today (t431: the day's end > from no longer drops it), not tomorrow.
+  const nextDay = Date.parse("2026-11-12T08:00:00Z");
+  const items = powerUpcoming(at(ASNYKA, { now: nextDay }));
+  assert.deepEqual(
+    onDay(items, "2026-11-12", nextDay).map((e) => [e.item, e.continued]),
+    [[items[0], true]],
+  );
+  assert.deepEqual(onDay(items, "2026-11-13", nextDay), []);
   // The next copy without it: gone.
   assert.ok(!failure(at(ASNYKA, { now: late, feed: without })));
 });

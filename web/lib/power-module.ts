@@ -149,8 +149,14 @@ export function power(
   };
 }
 
-/** A range's span (lib/hub.ts span); a failure's end is an estimate. */
-const rangeSpan = (cut: PowerCut, r: PowerCut["ranges"][number]) =>
+/**
+ * A range's span (lib/hub.ts span); a failure's end is an estimate. The
+ * timeline's and the home panel's (lib/now-panel.ts).
+ */
+export const rangeSpan = (
+  cut: Pick<PgeOutage, "kind">,
+  r: PgeOutage["ranges"][number],
+) =>
   span(warsawDay(Date.parse(r.start)), r.start, r.end, cut.kind === "failure");
 
 /** The places here, by our names: „ul. Rynek i ul. Jasna”. */

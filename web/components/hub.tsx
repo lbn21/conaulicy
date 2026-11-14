@@ -18,10 +18,10 @@ import { type Group, unchecked } from "@/lib/hub";
 import { MODULES, type Module } from "@/lib/modules";
 import { pageData } from "@/lib/page-cache";
 import type { PlaceView } from "@/lib/schedule";
-import { onDay } from "@/lib/timeline";
+import { inWindow } from "@/lib/timeline";
 import type { Item } from "@/lib/upcoming";
 import type { Weather } from "@/lib/weather-module";
-import { days, IN_WINDOW } from "@/lib/window";
+import { IN_WINDOW, windowOf } from "@/lib/window";
 
 // The address page, /adres/[id]: a date-first hub of modules
 // (lib/modules.ts), its breadcrumbs in its head's band. Under „Zmień
@@ -63,18 +63,15 @@ export async function HubMain({ id }: { id: string }) {
 }
 
 /**
- * Each module's count of items in the window (lib/window.ts), by module id: an
- * item over several days counted once.
+ * Each module's count of items in the window (lib/timeline.ts inWindow,
+ * the home panel's rule too), by module id: an item over several days
+ * counted once.
  */
 function windowCounts(items: Item[], today: string, now: number) {
-  const shown = new Set(
-    days(today).flatMap((day) =>
-      onDay(items, day, now).map(({ item }) => item),
-    ),
-  );
   const counts = new Map<string, number>();
-  for (const item of shown)
-    counts.set(item.module, (counts.get(item.module) ?? 0) + 1);
+  for (const item of items)
+    if (inWindow(item.span, windowOf(today), now))
+      counts.set(item.module, (counts.get(item.module) ?? 0) + 1);
   return counts;
 }
 

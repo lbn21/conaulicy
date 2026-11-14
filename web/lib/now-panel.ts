@@ -5,12 +5,14 @@
 // state. The
 // registry with the reads is components/now-tiles.ts.
 
-import { warsawDay } from "./date-labels.ts";
 import type { Disruption } from "./disruptions.ts";
 import { hasSource } from "./event-source.ts";
 import type { ShownWarning } from "./imgw-shown.ts";
 import { LOCALE } from "./locale.ts";
 import type { PgeFeed } from "./pge-feed.ts";
+import { rangeSpan } from "./power-module.ts";
+import { inWindow } from "./timeline.ts";
+import { cutSpan } from "./water-module.ts";
 import type { Window } from "./window.ts";
 
 /** A link: a source (another site, a plain <a>) or a field on the page. */
@@ -41,12 +43,15 @@ export function counted(n: number, [one, few, many]: [string, string, string]) {
 }
 
 /**
- * Planned water cuts starting in the window, gmina-wide, with a source: one
- * per post, day and hours (a post cutting many streets at once is one cut).
+ * Planned water cuts shown in the window at `now` (the timeline's rule,
+ * lib/timeline.ts inWindow, on the timeline's span), gmina-wide, with a
+ * source: one per post, day and hours (a post cutting many streets at once
+ * is one cut).
  */
 export function waterInWindow(
   cuts: Disruption[],
   range: Window,
+  now: number,
   checkedAt: (d: Disruption) => string | null,
 ) {
   const keys = new Set(
@@ -54,8 +59,7 @@ export function waterInWindow(
       .filter(
         (d) =>
           d.cause === "planned" &&
-          d.date >= range.from &&
-          d.date <= range.to &&
+          inWindow(cutSpan(d), range, now) &&
           hasSource({ sourceUrl: d.source.url, checkedAt: checkedAt(d) }),
       )
       .map((d) => `${d.source.url}|${d.date}|${d.start}|${d.end}`),
@@ -63,17 +67,16 @@ export function waterInWindow(
   return keys.size;
 }
 
-/** PGE's planned outages (not revoked) with a range in the window. */
-export function powerInWindow(feed: PgeFeed, range: Window) {
+/**
+ * PGE's planned outages (not revoked) with a range shown in the window at
+ * `now` (the timeline's rule and span, as waterInWindow).
+ */
+export function powerInWindow(feed: PgeFeed, range: Window, now: number) {
   return feed.items.filter(
     (item) =>
       item.kind === "planned" &&
       !item.revoked &&
-      item.ranges.some(
-        (r) =>
-          warsawDay(Date.parse(r.start)) <= range.to &&
-          warsawDay(Date.parse(r.end)) >= range.from,
-      ),
+      item.ranges.some((r) => inWindow(rangeSpan(item, r), range, now)),
   ).length;
 }
 

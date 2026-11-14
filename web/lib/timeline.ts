@@ -7,7 +7,8 @@
 // unit tests read it.
 import { MODULE_IDS, type ModuleId } from "./address-routes.ts";
 import { addDays, warsawToIso } from "./dates.ts";
-import type { Item } from "./upcoming.ts";
+import type { Item, Span } from "./upcoming.ts";
+import type { Window } from "./window.ts";
 
 /** An item on a day; `continued`: it started on an earlier day („trwa”). */
 export type Entry = { item: Item; continued: boolean };
@@ -24,22 +25,44 @@ const order = (a: Item, b: Item) =>
   Date.parse(a.span.end) - Date.parse(b.span.end);
 
 /**
- * What happens on `day`: every item overlapping it and not over at `now`,
- * in registry order, then by start. A multi-day item is on each day it
- * covers, `continued` on all but its first. An estimated end (`about`, a
- * PGE failure's) never ends an item: it is on as long as its source lists
- * it (lib/power-module.ts).
+ * The site's one rule for whether something is shown between `from` and
+ * `to` (ms) at `now`: it overlaps them and is not over. An estimated end
+ * (`about`, a PGE failure's) never ends it: it lasts at least until `now`,
+ * as long as its source lists it (lib/power-module.ts), so an overdue one
+ * is on today, not on the days after.
+ */
+function shownIn(
+  span: Pick<Span, "start" | "end" | "about">,
+  from: number,
+  to: number,
+  now: number,
+): boolean {
+  const end = Date.parse(span.end);
+  const lasts = span.about ? Math.max(end, now) : end;
+  return (
+    Date.parse(span.start) < to && lasts > from && (span.about || lasts > now)
+  );
+}
+
+/** Whether a span is shown in the window (lib/window.ts) at `now`. */
+export function inWindow(
+  span: Pick<Span, "start" | "end" | "about">,
+  range: Window,
+  now: number,
+): boolean {
+  return shownIn(span, midnight(range.from), midnight(range.until), now);
+}
+
+/**
+ * What happens on `day`: every item shown on it (shownIn), in registry
+ * order, then by start. A multi-day item is on each day it covers,
+ * `continued` on all but its first.
  */
 export function onDay(items: Item[], day: string, now: number): Entry[] {
   const from = midnight(day);
   const to = midnight(addDays(day, 1));
   return items
-    .filter(
-      (item) =>
-        Date.parse(item.span.start) < to &&
-        Date.parse(item.span.end) > from &&
-        (item.span.about || Date.parse(item.span.end) > now),
-    )
+    .filter((item) => shownIn(item.span, from, to, now))
     .toSorted(order)
     .map((item) => ({ item, continued: Date.parse(item.span.start) < from }));
 }

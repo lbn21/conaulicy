@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { warsawToIso } from "./dates.ts";
 import type { Disruption } from "./disruptions.ts";
 import type { ShownWarning } from "./imgw-shown.ts";
 import {
@@ -9,13 +10,18 @@ import {
   waterInWindow,
 } from "./now-panel.ts";
 import type { PgeOutage } from "./pge-feed.ts";
-import { windowOf } from "./window.ts";
+import { inWindow, onDay } from "./timeline.ts";
+import { cutSpan } from "./water-module.ts";
+import { days, windowOf } from "./window.ts";
 
 // The home page's „Teraz w gminie” aggregates (lib/now-panel.ts): Polish
 // counts, and each module's gmina-wide count for the site's 7-day window
-// (lib/window.ts), here from a Saturday: 14 to 20 November.
+// (lib/window.ts) by the timeline's rule (lib/timeline.ts inWindow), here
+// from a Saturday morning: 14 to 20 November.
 
 const RANGE = windowOf("2026-11-14");
+/** Saturday 14 November, 10:00 in Warsaw. */
+const NOW = Date.parse(warsawToIso("2026-11-14 10:00:00") as string);
 
 test("counted: Polish plural forms", () => {
   const forms: [string, string, string] = ["a", "b", "c"];
@@ -37,26 +43,37 @@ const cut = (over: Partial<Disruption>): Disruption =>
     ...over,
   }) as Disruption;
 
-test("water: planned cuts starting in the window, one per post, day and hours", () => {
+/** A cut on `date`, from `from` to `to` (Warsaw wall clock). */
+const at = (date: string, from = "08:00", to = "12:00") => ({
+  date,
+  start: `${date} ${from}:00`,
+  end: `${date} ${to}:00`,
+});
+
+test("water: planned cuts shown in the window, one per post, day and hours", () => {
   const checked = () => "2026-11-12T10:00:00Z";
-  assert.equal(waterInWindow([], RANGE, checked), 0);
+  assert.equal(waterInWindow([], RANGE, NOW, checked), 0);
   const cuts = [
     // The next Monday, over the weekend.
     cut({ uid: "a" }),
     // The same post, day and hours on another street: the same cut.
     cut({ uid: "b" }),
     // The next Thursday.
-    cut({ uid: "c", date: "2026-11-19", start: "2026-11-19 08:00:00" }),
-    // Not counted: an emergency, yesterday, a week on, no source.
+    cut({ uid: "c", ...at("2026-11-19") }),
+    // Today, still on at 10:00.
+    cut({ uid: "h", ...at("2026-11-14", "09:00") }),
+    // Not counted: over at 10:00 today, an emergency, yesterday, a week
+    // on, no source.
+    cut({ uid: "i", ...at("2026-11-14", "06:00", "08:00") }),
     cut({ uid: "d", cause: "emergency" }),
-    cut({ uid: "e", date: "2026-11-13" }),
-    cut({ uid: "f", date: "2026-11-21" }),
+    cut({ uid: "e", ...at("2026-11-13") }),
+    cut({ uid: "f", ...at("2026-11-21") }),
     cut({ uid: "g", source: { url: "" } as Disruption["source"] }),
   ];
-  assert.equal(waterInWindow(cuts, RANGE, checked), 2);
+  assert.equal(waterInWindow(cuts, RANGE, NOW, checked), 3);
   // No check time: no source, no display.
   assert.equal(
-    waterInWindow(cuts, RANGE, () => null),
+    waterInWindow(cuts, RANGE, NOW, () => null),
     0,
   );
 });
@@ -76,7 +93,7 @@ const outage = (over: Partial<PgeOutage>): PgeOutage => ({
 
 test("power: planned, not revoked, with a range in the window", () => {
   const feed = (items: PgeOutage[]) => ({ fetchedAt: "", items });
-  assert.equal(powerInWindow(feed([]), RANGE), 0);
+  assert.equal(powerInWindow(feed([]), RANGE, NOW), 0);
   assert.equal(
     powerInWindow(
       feed([
@@ -92,6 +109,16 @@ test("power: planned, not revoked, with a range in the window", () => {
           ],
         }),
         outage({ uuid: "c", kind: "failure" }),
+        // Over at 10:00 today.
+        outage({
+          uuid: "f",
+          ranges: [
+            {
+              start: "2026-11-14T06:00:00+01:00",
+              end: "2026-11-14T08:00:00+01:00",
+            },
+          ],
+        }),
         outage({ uuid: "d", revoked: true }),
         outage({
           uuid: "e",
@@ -104,8 +131,60 @@ test("power: planned, not revoked, with a range in the window", () => {
         }),
       ]),
       RANGE,
+      NOW,
     ),
     2,
+  );
+});
+
+// The address page's counts are its timeline's (components/hub.tsx,
+// lib/timeline.ts onDay): the panel's, on the same cuts, agree.
+test("the panel's counts agree with the timeline's for the same window", () => {
+  const checked = () => "2026-11-14T08:00:00Z";
+  const cuts = [
+    ["2026-11-14", "06:00", "08:00"],
+    ["2026-11-14", "09:00", "12:00"],
+    ["2026-11-16", "08:00", "12:00"],
+    ["2026-11-20", "22:00", "23:30"],
+    ["2026-11-21", "08:00", "12:00"],
+  ].map(([date, from, to], i) =>
+    cut({
+      uid: `w${i}`,
+      ...at(date, from, to),
+      source: { url: `https://example.org/post-${i}` } as Disruption["source"],
+    }),
+  );
+  const items = cuts.map((d) => ({
+    module: "woda" as const,
+    span: cutSpan(d),
+    emergency: false,
+    second: null,
+  }));
+  const timeline = new Set(
+    days(RANGE.from).flatMap((day) =>
+      onDay(items, day, NOW).map((e) => e.item),
+    ),
+  );
+  assert.equal(timeline.size, 3);
+  assert.equal(waterInWindow(cuts, RANGE, NOW, checked), timeline.size);
+  assert.equal(
+    items.filter((item) => inWindow(item.span, RANGE, NOW)).length,
+    timeline.size,
+  );
+  const outages = cuts.map((d, i) =>
+    outage({
+      uuid: `p${i}`,
+      ranges: [
+        {
+          start: warsawToIso(d.start as string) as string,
+          end: warsawToIso(d.end as string) as string,
+        },
+      ],
+    }),
+  );
+  assert.equal(
+    powerInWindow({ fetchedAt: "", items: outages }, RANGE, NOW),
+    timeline.size,
   );
 });
 
