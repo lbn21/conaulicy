@@ -1,5 +1,5 @@
 // The address page's timeline (components/timeline.tsx): the
-// next N Warsaw days from the read's day, each with what happens on it at
+// window's Warsaw days from the read's day (lib/window.ts), each with what happens on it at
 // this address, one entry per module's item (lib/upcoming.ts Item, from
 // each module's adapter, Module.events), in registry order; a run of 2+
 // empty days as one range, today included; and „Później”, the next item
@@ -17,11 +17,6 @@ export type DayGroup = { from: string; to: string; entries: Entry[] };
 
 const midnight = (day: string) =>
   Date.parse(warsawToIso(`${day} 00:00:00`) ?? `${day}T00:00:00Z`);
-
-/** today … today+n-1, Warsaw days (DST-safe: calendar days). */
-export function days(today: string, n: number): string[] {
-  return Array.from({ length: n }, (_, i) => addDays(today, i));
-}
 
 const order = (a: Item, b: Item) =>
   MODULE_IDS.indexOf(a.module) - MODULE_IDS.indexOf(b.module) ||

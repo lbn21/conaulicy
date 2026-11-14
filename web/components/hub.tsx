@@ -18,9 +18,10 @@ import { type Group, unchecked } from "@/lib/hub";
 import { MODULES, type Module } from "@/lib/modules";
 import { pageData } from "@/lib/page-cache";
 import type { PlaceView } from "@/lib/schedule";
-import { days, onDay } from "@/lib/timeline";
+import { onDay } from "@/lib/timeline";
 import type { Item } from "@/lib/upcoming";
 import type { Weather } from "@/lib/weather-module";
+import { days, IN_WINDOW } from "@/lib/window";
 
 // The address page, /adres/[id]: a date-first hub of modules
 // (lib/modules.ts), its breadcrumbs in its head's band. Under „Zmień
@@ -61,16 +62,13 @@ export async function HubMain({ id }: { id: string }) {
   );
 }
 
-/** The timeline's window, in days (components/timeline.tsx). */
-const WINDOW = 7;
-
 /**
- * Each module's count of items in the timeline's window, by module id: an
+ * Each module's count of items in the window (lib/window.ts), by module id: an
  * item over several days counted once.
  */
 function windowCounts(items: Item[], today: string, now: number) {
   const shown = new Set(
-    days(today, WINDOW).flatMap((day) =>
+    days(today).flatMap((day) =>
       onDay(items, day, now).map(({ item }) => item),
     ),
   );
@@ -87,11 +85,11 @@ function windowCounts(items: Item[], today: string, now: number) {
 function CountBadge({ count }: { count: number }) {
   return count > 0 ? (
     <Badge tone="mod">
-      {count} w ciągu {WINDOW} dni
+      {count} {IN_WINDOW}
     </Badge>
   ) : (
     <span className="govuk-body-s govuk-!-margin-bottom-0 app-quiet">
-      Nic w ciągu {WINDOW} dni
+      Nic {IN_WINDOW}
     </span>
   );
 }
@@ -146,7 +144,7 @@ export function Hub({
         </div>
       )}
       <WarningCards warnings={weather?.shown?.warnings ?? []} now={now} />
-      <Timeline items={items} place={place} now={now} n={WINDOW} />
+      <Timeline items={items} place={place} now={now} />
       {links.length > 0 && (
         <section aria-labelledby="wszystko">
           <h2 id="wszystko" className="govuk-heading-m">

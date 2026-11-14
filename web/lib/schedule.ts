@@ -6,7 +6,7 @@ import {
   placeIdsOf,
   placeView,
   searchIndexOf,
-  wasteWeekOf,
+  wasteWindowOf,
   zoneView,
 } from "@/lib/dataset-views";
 import { todayInWarsaw } from "@/lib/dates";
@@ -41,9 +41,9 @@ export async function getZone(zoneId: string, now: number) {
   return zoneView(await getDataset(), zoneId, todayInWarsaw(new Date(now)));
 }
 
-/** The home page's panel: lib/dataset-views.ts wasteWeekOf. */
-export async function wasteWeek(from: string, until: string) {
-  return wasteWeekOf(await getDataset(), from, until);
+/** The home page's panel: lib/dataset-views.ts wasteWindowOf. */
+export async function wasteInWindow(from: string, until: string) {
+  return wasteWindowOf(await getDataset(), from, until);
 }
 
 /**

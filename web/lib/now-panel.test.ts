@@ -4,29 +4,18 @@ import type { Disruption } from "./disruptions.ts";
 import type { ShownWarning } from "./imgw-shown.ts";
 import {
   counted,
-  powerWeek,
+  powerInWindow,
   topWarning,
-  waterWeek,
-  weekOf,
+  waterInWindow,
 } from "./now-panel.ts";
 import type { PgeOutage } from "./pge-feed.ts";
+import { windowOf } from "./window.ts";
 
-// The home page's „Teraz w gminie” aggregates (lib/now-panel.ts): the
-// week, Polish counts, and each module's gmina-wide count for the week.
+// The home page's „Teraz w gminie” aggregates (lib/now-panel.ts): Polish
+// counts, and each module's gmina-wide count for the site's 7-day window
+// (lib/window.ts), here from a Saturday: 14 to 20 November.
 
-const WEEK = weekOf("2026-11-12"); // a Thursday
-
-test("the week: Monday to Sunday of the day, and the next Monday", () => {
-  assert.deepEqual(WEEK, {
-    from: "2026-11-09",
-    to: "2026-11-15",
-    until: "2026-11-16",
-  });
-  assert.equal(weekOf("2026-11-09").from, "2026-11-09");
-  assert.equal(weekOf("2026-11-15").from, "2026-11-09");
-  // Across a month and a year.
-  assert.equal(weekOf("2027-01-01").from, "2026-12-28");
-});
+const RANGE = windowOf("2026-11-14");
 
 test("counted: Polish plural forms", () => {
   const forms: [string, string, string] = ["a", "b", "c"];
@@ -41,31 +30,33 @@ const cut = (over: Partial<Disruption>): Disruption =>
     uid: "x",
     kind: "water",
     cause: "planned",
-    date: "2026-11-10",
-    start: "2026-11-10 08:00:00",
-    end: "2026-11-10 12:00:00",
+    date: "2026-11-16",
+    start: "2026-11-16 08:00:00",
+    end: "2026-11-16 12:00:00",
     source: { url: "https://example.org/post-1" },
     ...over,
   }) as Disruption;
 
-test("water: planned cuts starting this week, one per post, day and hours", () => {
+test("water: planned cuts starting in the window, one per post, day and hours", () => {
   const checked = () => "2026-11-12T10:00:00Z";
-  assert.equal(waterWeek([], WEEK, checked), 0);
+  assert.equal(waterInWindow([], RANGE, checked), 0);
   const cuts = [
+    // The next Monday, over the weekend.
     cut({ uid: "a" }),
     // The same post, day and hours on another street: the same cut.
     cut({ uid: "b" }),
-    cut({ uid: "c", date: "2026-11-14", start: "2026-11-14 08:00:00" }),
-    // Not counted: an emergency, last week, next week, no source.
+    // The next Thursday.
+    cut({ uid: "c", date: "2026-11-19", start: "2026-11-19 08:00:00" }),
+    // Not counted: an emergency, yesterday, a week on, no source.
     cut({ uid: "d", cause: "emergency" }),
-    cut({ uid: "e", date: "2026-11-08" }),
-    cut({ uid: "f", date: "2026-11-16" }),
+    cut({ uid: "e", date: "2026-11-13" }),
+    cut({ uid: "f", date: "2026-11-21" }),
     cut({ uid: "g", source: { url: "" } as Disruption["source"] }),
   ];
-  assert.equal(waterWeek(cuts, WEEK, checked), 2);
+  assert.equal(waterInWindow(cuts, RANGE, checked), 2);
   // No check time: no source, no display.
   assert.equal(
-    waterWeek(cuts, WEEK, () => null),
+    waterInWindow(cuts, RANGE, () => null),
     0,
   );
 });
@@ -76,27 +67,27 @@ const outage = (over: Partial<PgeOutage>): PgeOutage => ({
   revoked: false,
   revokedNote: null,
   ranges: [
-    { start: "2026-11-13T08:00:00+01:00", end: "2026-11-13T14:00:00+01:00" },
+    { start: "2026-11-17T08:00:00+01:00", end: "2026-11-17T14:00:00+01:00" },
   ],
   addresses: [],
   updatedAt: null,
   ...over,
 });
 
-test("power: planned, not revoked, with a range in the week", () => {
+test("power: planned, not revoked, with a range in the window", () => {
   const feed = (items: PgeOutage[]) => ({ fetchedAt: "", items });
-  assert.equal(powerWeek(feed([]), WEEK), 0);
+  assert.equal(powerInWindow(feed([]), RANGE), 0);
   assert.equal(
-    powerWeek(
+    powerInWindow(
       feed([
         outage({ uuid: "a" }),
-        // Over the weekend into Monday: still this week.
+        // From the window's last evening into the day after: still in it.
         outage({
           uuid: "b",
           ranges: [
             {
-              start: "2026-11-15T22:00:00+01:00",
-              end: "2026-11-16T02:00:00+01:00",
+              start: "2026-11-20T22:00:00+01:00",
+              end: "2026-11-21T02:00:00+01:00",
             },
           ],
         }),
@@ -106,13 +97,13 @@ test("power: planned, not revoked, with a range in the week", () => {
           uuid: "e",
           ranges: [
             {
-              start: "2026-11-17T08:00:00+01:00",
-              end: "2026-11-17T12:00:00+01:00",
+              start: "2026-11-21T08:00:00+01:00",
+              end: "2026-11-21T12:00:00+01:00",
             },
           ],
         }),
       ]),
-      WEEK,
+      RANGE,
     ),
     2,
   );

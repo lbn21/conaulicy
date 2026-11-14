@@ -9,8 +9,9 @@ import {
   warsawToIso,
 } from "./dates.ts";
 import { span } from "./hub.ts";
-import { collapse, days, type Entry, later, onDay } from "./timeline.ts";
+import { collapse, type Entry, later, onDay } from "./timeline.ts";
 import type { Item } from "./upcoming.ts";
+import { days } from "./window.ts";
 
 // The address page's timeline (lib/timeline.ts) and its dates' words
 // (lib/dates.ts), at fixed Warsaw days and instants. Intl's spaces around
@@ -44,26 +45,6 @@ const shape = (list: string[], byDay: Entry[][]) =>
 
 const E: Entry[] = [];
 const ONE: Entry[] = [{ item: pickup("2026-11-10"), continued: false }];
-
-test("days: n calendar days from today, across months, years and DST", () => {
-  assert.deepEqual(days("2026-11-28", 4), [
-    "2026-11-28",
-    "2026-11-29",
-    "2026-11-30",
-    "2026-12-01",
-  ]);
-  assert.deepEqual(days("2026-12-30", 3), [
-    "2026-12-30",
-    "2026-12-31",
-    "2027-01-01",
-  ]);
-  // The 25-hour day of 25 Oct is one day.
-  assert.deepEqual(days("2026-10-24", 3), [
-    "2026-10-24",
-    "2026-10-25",
-    "2026-10-26",
-  ]);
-});
 
 test("collapse: 2+ empty days one card, today included; one empty day its own", () => {
   const list = days("2026-11-10", 7);

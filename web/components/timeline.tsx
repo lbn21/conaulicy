@@ -1,7 +1,8 @@
 import { Day, LaterCard } from "@/components/day";
 import type { PlaceView } from "@/lib/schedule";
-import { collapse, days, later, onDay } from "@/lib/timeline";
+import { collapse, later, onDay } from "@/lib/timeline";
 import type { Item } from "@/lib/upcoming";
+import { days, WINDOW } from "@/lib/window";
 
 /** What the timeline says with nothing in the window and nothing later. */
 const EMPTY = "Na razie nic się nie dzieje pod tym adresem.";
@@ -16,7 +17,7 @@ export function Timeline({
   items,
   place,
   now,
-  n = 7,
+  n = WINDOW,
 }: {
   items: Item[];
   place: PlaceView;

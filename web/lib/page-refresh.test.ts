@@ -32,15 +32,13 @@ for (const name of [
 
 // The cron's page refresh (lib/page-refresh.ts): every page's digest from
 // the files it holds (lib/pages.ts, the made-up dataset), and which pages
-// a change re-renders. The clock: this week's Monday, 10:00 in Warsaw, so
-// a cut or outage two days on is in the home panel's week.
+// a change re-renders. The clock: today, 10:00 in Warsaw, so a cut or
+// outage two days on is in the home panel's 7 days (lib/window.ts).
 
-const today = todayInWarsaw();
-const weekday = (new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7;
-const MONDAY = addDays(today, -weekday);
+const TODAY = todayInWarsaw();
 const wall = (day: string, time: string) =>
   Date.parse(warsawToIso(`${day} ${time}`) as string);
-const NOW = wall(MONDAY, "10:00:00");
+const NOW = wall(TODAY, "10:00:00");
 const iso = (ms: number) => new Date(ms).toISOString();
 
 /** ul. Adama Asnyka, the made-up town street with MZGKiM's moved cut. */
@@ -61,7 +59,7 @@ function checks(ago = 60_000, ok = true) {
   });
 }
 
-const DAY_2 = addDays(MONDAY, 2);
+const DAY_2 = addDays(TODAY, 2);
 const warning = {
   id: "W1",
   event: "Silny wiatr",
@@ -205,8 +203,8 @@ test("water at one place: its page, /woda, woda.ics and the home page", async ()
 });
 
 test("midnight: the pages with day words, not the lists", async () => {
-  const late = wall(MONDAY, "23:50:00");
-  const early = wall(addDays(MONDAY, 1), "00:10:00");
+  const late = wall(TODAY, "23:50:00");
+  const early = wall(addDays(TODAY, 1), "00:10:00");
   const paths = await changed(files(), files(), [late, early]);
   for (const path of [hub, `${hub}/smieci`, `${hub}/woda`, `${hub}/prad`])
     assert.ok(paths.includes(path), path);
@@ -364,7 +362,7 @@ test("a source this run changed is not lagging when home has the id it read", ()
 
 test("the home page's view hashes no run id", () => {
   const view = {
-    panel: { week: { from: "a", to: "b", until: "c" }, reads: [] },
+    panel: { range: { from: "a", to: "b", until: "c" }, reads: [] },
     examples: [],
     dataset: "v1",
     runs: { pge: "r1" },

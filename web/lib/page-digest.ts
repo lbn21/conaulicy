@@ -11,7 +11,7 @@ import { createHash } from "node:crypto";
 //   warning in force, a range over): each instant is hashed with whether
 //   it has passed, so the digest changes when one does, and only then.
 //   The Warsaw day is in the views that render day words (PlaceView.today,
-//   the home panel's week), so a new day changes those, and only those.
+//   the home panel's window), so a new day changes those, and only those.
 // - UNHASHED keys are left out: when a source's data last changed
 //   („Bez zmian od”) is one time for the whole source, so hashing it would
 //   change every place's pages when one place's data changes. A page whose

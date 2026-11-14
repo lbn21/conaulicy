@@ -19,7 +19,7 @@ import {
   placeSetOf,
   placeView,
   searchIndexOf,
-  wasteWeekOf,
+  wasteWindowOf,
   zoneView,
 } from "./dataset-views.ts";
 
@@ -107,8 +107,8 @@ test("zones, the panel and the examples read the same snapshot", () => {
   assert.ok(zone?.gmina);
   assert.ok(zone?.events.every((e) => e.start >= TODAY));
   assert.equal(zoneView(ds, "waste:none", TODAY), null);
-  const week = wasteWeekOf(ds, TODAY, "2026-11-20");
-  assert.ok(week.sources.length > 0 && week.schedulePage);
+  const shown = wasteWindowOf(ds, TODAY, "2026-11-20");
+  assert.ok(shown.sources.length > 0 && shown.schedulePage);
   assert.deepEqual(
     examplePlacesOf(ds, [ASNYKA, "0972447-00000"]).map((p) => p.id),
     [ASNYKA],

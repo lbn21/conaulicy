@@ -397,7 +397,7 @@ export function zoneView(ds: Dataset, zoneId: string, today: string) {
  * street page reads them (sourcesOf), so its „Sprawdziliśmy” is the street
  * page's; with the gminas' schedule page.
  */
-export function wasteWeekOf(ds: Dataset, from: string, until: string) {
+export function wasteWindowOf(ds: Dataset, from: string, until: string) {
   const shown = ds.events.filter(
     (e) =>
       e.type === "waste" && e.start >= from && e.start < until && hasSource(e),
