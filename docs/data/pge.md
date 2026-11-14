@@ -15,7 +15,8 @@ The row and the subpage are the water's, made generic: `web/components/rows/outa
 
 - **Region:** 49 is RE Tomaszów Lubelski, which covers both our gminas.
 - **Token and limit:** the token is personal, limited to 60 requests an hour, and set in Vercel by the Tech Lead. Nobody else holds it, and it is never logged or put in a message.
-- **Requests:** one per cron run, with a 10 s timeout and no retries. That is 4 an hour, leaving room for a manual `curl` of the cron.
+- **Requests:** one per cron run, with a 10 s timeout. A try that fails in a passing way (a 404, a 5xx, a timeout or a network error) is tried again within the same run, after 1 s and then 3 s, at most 3 tries in all (`RETRY_DELAYS_MS`, `fetchOutages`, `web/lib/pge-feed.ts`). A 401, 403 or 429 is never tried again. The worst case is 3 × 10 s + 4 s a run and 12 requests an hour, leaving room for a manual `curl` of the cron.
+- **The 404 node:** since 14 Nov 2026 about a fifth of PGE's answers to the right URL are Go's stock 404 (body `404 page not found`, `text/plain`, no `X-Nginx-Cache`), from one node behind PGE's load balancer. Good answers are JSON with `X-Nginx-Cache`. That is why a 404 counts as passing.
 - **Terms:** PGE's docs say using the API is free, and that it is meant for local portals and administration to publish outage notices.
 
 The answer is a JSON array. `[]` means there are no outages, and it is valid. Every other answer is an upstream failure:
@@ -71,6 +72,12 @@ A failure leaves the file as it was and records `pge: { ok: false, attemptAt }`,
 - `auth-error`: 401/403, or no token, in which case nothing is sent. This is the one to alert on.
 - `rate-limited`: 429.
 - `fetch-error`: anything else.
+
+The run fails only if every try did; the notice, the file and the checks are then as for any failure. Around it the log has:
+
+- `{ pge: "retry", attempt, status }` or `{ pge: "retry", attempt, error }`: a try that will be repeated.
+- `{ pge: "http-error", attempts, status, contentType, nginxCache, body }`: the final HTTP error, with PGE's `Content-Type`, whether `X-Nginx-Cache` was there, and at most 120 characters of the body. Never the token or the headers we send.
+- `attempts` on the good run's line (`{ pge: "run", changed, items, attempts }`), only when the list took more than one try.
 
 The pages never ask PGE. They read the file and the status file per request, through the Blob's CDN (`web/lib/live-reads.ts`), when a page is re-rendered: the cron re-renders the pages whose view changed (`web/lib/page-refresh.ts`): the address page and `/prad` of the places an outage concerns, and the home page if its count moved. A good run shows within about 2 minutes, and a new outage is on the site at most about 16 minutes after PGE publishes it. Vercel Cron runs only on production, so Previews never spend the quota.
 
