@@ -42,6 +42,8 @@ export type LiveFeedStep<F extends LiveFeed> = {
   parse: (body: string | null) => F | null;
   /** The file's body for a feed. */
   serialise: (feed: F) => string;
+  /** More of the good run's log line (PGE's tries); none by default. */
+  details?: () => Record<string, unknown>;
   log: (line: Record<string, unknown>) => void;
 };
 
@@ -77,6 +79,11 @@ export async function runLiveFeed<F extends LiveFeed>(
       return { error: "feed not written" };
     }
   }
-  log({ [name]: "run", changed, items: feed.items.length });
+  log({
+    [name]: "run",
+    changed,
+    items: feed.items.length,
+    ...step.details?.(),
+  });
   return { checked: true, changed };
 }

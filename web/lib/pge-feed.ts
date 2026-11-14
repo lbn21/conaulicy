@@ -13,12 +13,41 @@ export const PGE_URL = "https://power-outage.gkpge.pl";
 /** PGE's region for our gminas: RE Tomaszów Lubelski. */
 const PGE_REGION = "49";
 
-/** The list endpoint for our region: one request per cron run. */
+/** The list endpoint for our region: one request per try, at most 3 a run. */
 export const outagesUrl = (base: string) =>
   `${base.replace(/\/+$/, "")}/api/power-outage?regionIdentifier=${PGE_REGION}`;
 
-/** PGE's own API limit is 60 requests an hour; one request per run. */
+/** Each try's timeout. */
 const TIMEOUT_MS = 10_000;
+
+/**
+ * The waits before the second and the third try: at most 3 tries a run,
+ * worst case 3 × 10 s + 4 s; 4 runs an hour, at most 12 of PGE's 60
+ * requests an hour.
+ */
+export const RETRY_DELAYS_MS = [1_000, 3_000];
+
+/**
+ * A try worth repeating: a 404 (one of PGE's nodes answers Go's stock
+ * "404 page not found" now and then, docs/data/pge.md) or a 5xx. Never
+ * 401/403/429.
+ */
+const transient = (status: number) => status === 404 || status >= 500;
+
+/** What PGE answered, for the log: never the token or our headers. */
+const BODY_SNIPPET = 120;
+async function answered(response: Response, token: string) {
+  const body = await response.text().catch(() => "");
+  return {
+    status: response.status,
+    contentType: response.headers.get("content-type"),
+    nginxCache: response.headers.has("x-nginx-cache"),
+    body: body.replaceAll(token, "[token]").slice(0, BODY_SNIPPET),
+  };
+}
+
+const wait = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /** The file's shape: raise it when it changes (an older file is rewritten). */
 const FILE_VERSION = 1;
@@ -163,8 +192,11 @@ export function ours(
 /**
  * GET the list. Throws FetchFailure("auth-error") with no token (nothing
  * sent) or on 401/403, ("rate-limited") on 429; any other HTTP error, a
- * timeout or a body that is not the list throws too. The token goes only
- * in its header: never in a message.
+ * timeout or a body that is not the list throws too. A 404, a 5xx, a
+ * timeout or a network error is tried again, at most 3 tries in all
+ * (RETRY_DELAYS_MS); each repeated try is logged ("retry"), a final HTTP
+ * error with what PGE answered ("http-error"). `attempts`: the tries the
+ * list took. The token goes only in its header: never in a message.
  */
 export async function fetchOutages(
   url: string,
@@ -174,27 +206,58 @@ export async function fetchOutages(
     log,
     timeoutMs = TIMEOUT_MS,
     now = () => Date.now(),
+    sleep = wait,
   }: {
     fetch: typeof fetch;
     token: string | undefined;
     log: Log;
     timeoutMs?: number;
     now?: () => number;
+    /** The wait between tries: setTimeout by default. */
+    sleep?: (ms: number) => Promise<void>;
   },
-): Promise<PgeFeed> {
+): Promise<PgeFeed & { attempts: number }> {
   if (!token) throw new FetchFailure("auth-error", "PGE: no token");
-  const response = await get(url, {
-    signal: AbortSignal.timeout(timeoutMs),
-    headers: { Accept: "application/json", "X-Auth-Token": token },
-    cache: "no-store",
-  });
-  const status = `PGE: HTTP ${response.status}`;
-  if (response.status === 401 || response.status === 403)
-    throw new FetchFailure("auth-error", status);
-  if (response.status === 429) throw new FetchFailure("rate-limited", status);
-  if (!response.ok) throw new Error(status);
-  const items = parseOutages(JSON.parse(await response.text()), log);
-  return { fetchedAt: isoWithOffset(now()), items };
+  for (let attempt = 1; ; attempt++) {
+    const delay = RETRY_DELAYS_MS[attempt - 1];
+    const again = async (line: Record<string, unknown>) => {
+      log({ pge: "retry", attempt, ...line });
+      await sleep(delay);
+    };
+    let response: Response;
+    try {
+      response = await get(url, {
+        signal: AbortSignal.timeout(timeoutMs),
+        headers: { Accept: "application/json", "X-Auth-Token": token },
+        cache: "no-store",
+      });
+    } catch (error) {
+      if (delay === undefined) throw error;
+      await again({ error: (error as Error).message });
+      continue;
+    }
+    if (!response.ok && transient(response.status) && delay !== undefined) {
+      // The connection freed, never waited for.
+      response.body?.cancel().catch(() => {});
+      await again({ status: response.status });
+      continue;
+    }
+    if (!response.ok) {
+      log({
+        pge: "http-error",
+        attempts: attempt,
+        ...(await answered(response, token)),
+      });
+      const status = `PGE: HTTP ${response.status}`;
+      if (response.status === 401 || response.status === 403)
+        throw new FetchFailure("auth-error", status);
+      if (response.status === 429)
+        throw new FetchFailure("rate-limited", status);
+      throw new Error(status);
+    }
+    const items = parseOutages(JSON.parse(await response.text()), log);
+    return { fetchedAt: isoWithOffset(now()), items, attempts: attempt };
+  }
 }
 
 /**
