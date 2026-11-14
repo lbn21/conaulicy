@@ -1203,22 +1203,6 @@ function render(place: PlaceView, url: string): Promise<Buffer> {
             wordsFit("regular", size, whereText(item, true), whereW),
         );
       const stripTop = footer2.top - GUTTER - stripH;
-      console.error(
-        "DBG",
-        JSON.stringify({
-          size,
-          headH,
-          yesH,
-          noH,
-          binNeed,
-          sepH,
-          sepHeadH,
-          sepBodyH,
-          stripH,
-          f2: footer2.top,
-          guideTop,
-        }),
-      );
       const sepTop = stripTop - GUTTER - sepH;
       const binH =
         (sepTop - GUTTER - guideTop - GUTTER * (BIN_ROWS - 1)) / BIN_ROWS;
