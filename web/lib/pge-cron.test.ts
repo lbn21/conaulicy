@@ -40,6 +40,7 @@ function setup(first: Upstream = { status: 200, body: REAL_2026_11_11 }) {
       state.store.set(OUTAGES, body);
     },
     now: () => state.now,
+    sleep: async () => {},
     log: (line) => state.logs.push(line),
     ...over,
   });
@@ -73,6 +74,28 @@ test("a good run keeps our outages only, and writes only when they changed", asy
   assert.deepEqual(await runPge(deps()), { checked: true, changed: true });
   assert.deepEqual(uuids(state.store.get(OUTAGES)), []);
   assert.deepEqual(state.logs.at(-1), { pge: "run", changed: true, items: 0 });
+});
+
+test("a 404 then the list: one good run, its tries in the run's line", async () => {
+  const { state, deps } = setup({ status: 404, body: "404 page not found\n" });
+  const fetch = deps().fetch;
+  const run = runPge(
+    deps({
+      fetch: (async (...args: Parameters<typeof fetch>) => {
+        const response = await fetch(...args);
+        state.upstream = { status: 200, body: REAL_2026_11_11 };
+        return response;
+      }) as typeof fetch,
+    }),
+  );
+  assert.deepEqual(await run, { checked: true, changed: true });
+  assert.equal(state.requests, 2);
+  assert.deepEqual(state.logs.at(-1), {
+    pge: "run",
+    changed: true,
+    items: 5,
+    attempts: 2,
+  });
 });
 
 test("PGE failing: the file kept, the class logged, never thrown", async () => {

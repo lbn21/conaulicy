@@ -10,6 +10,7 @@ import {
   type PgeOutage,
   parseOutages,
   parseOutagesFile,
+  RETRY_DELAYS_MS,
   upstream,
 } from "./pge-feed.ts";
 import {
@@ -273,7 +274,12 @@ test("fetch: no token, nothing sent; each failure by its class, the token never 
   for (const [response, kind] of cases) {
     const { get: failing } = answering(response);
     await assert.rejects(
-      fetchOutages(URL_49, { fetch: failing, token: TOKEN, log: () => {} }),
+      fetchOutages(URL_49, {
+        fetch: failing,
+        token: TOKEN,
+        log: () => {},
+        sleep: async () => {},
+      }),
       (error: Error) => {
         assert.equal(
           error instanceof FetchFailure ? error.kind : "fetch-error",
@@ -297,8 +303,156 @@ test("fetch: no token, nothing sent; each failure by its class, the token never 
       token: TOKEN,
       log: () => {},
       timeoutMs: 10,
+      sleep: async () => {},
     }),
     /timed out|abort/i,
+  );
+});
+
+/** A fetch answering each call from `answers` in turn; the last repeats. */
+function inTurn(answers: Array<() => Response>) {
+  let calls = 0;
+  const get = (async () =>
+    answers[
+      Math.min(calls++, answers.length - 1)
+    ]()) as unknown as typeof fetch;
+  return { get, calls: () => calls };
+}
+
+/** PGE's bad node: Go's stock 404, plain text, no X-Nginx-Cache. */
+const stock404 = () =>
+  new Response("404 page not found\n", {
+    status: 404,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+
+const MAX_TRIES = RETRY_DELAYS_MS.length + 1;
+
+test("fetch: a 404, a 5xx or a network error is tried again; the list on a later try", async () => {
+  const offline = (): Response => {
+    throw new TypeError("fetch failed");
+  };
+  for (const first of [
+    stock404,
+    () => new Response("", { status: 502 }),
+    offline,
+  ]) {
+    const { get, calls } = inTurn([first, () => Response.json([raw()])]);
+    const { lines, log } = logger();
+    const slept: number[] = [];
+    const feed = await fetchOutages(URL_49, {
+      fetch: get,
+      token: TOKEN,
+      log,
+      sleep: async (ms) => {
+        slept.push(ms);
+      },
+    });
+    assert.equal(calls(), 2);
+    assert.equal(feed.attempts, 2);
+    assert.equal(feed.items.length, 1);
+    assert.deepEqual(slept, RETRY_DELAYS_MS.slice(0, 1));
+    assert.equal(lines.length, 1);
+    assert.equal(lines[0].pge, "retry");
+    assert.equal(lines[0].attempt, 1);
+  }
+});
+
+test("fetch: every try a 404, the run's error after the cap, with what PGE answered", async () => {
+  const { get, calls } = inTurn([stock404]);
+  const { lines, log } = logger();
+  const slept: number[] = [];
+  await assert.rejects(
+    fetchOutages(URL_49, {
+      fetch: get,
+      token: TOKEN,
+      log,
+      sleep: async (ms) => {
+        slept.push(ms);
+      },
+    }),
+    (error: Error) => !(error instanceof FetchFailure),
+  );
+  assert.equal(calls(), MAX_TRIES);
+  assert.deepEqual(slept, RETRY_DELAYS_MS);
+  assert.deepEqual(lines.at(-1), {
+    pge: "http-error",
+    attempts: MAX_TRIES,
+    status: 404,
+    contentType: "text/plain; charset=utf-8",
+    nginxCache: false,
+    body: "404 page not found\n",
+  });
+});
+
+test("fetch: the final answer's body logged short, the token never in it", async () => {
+  const echo = `${TOKEN} ${"x".repeat(500)}`;
+  const { get } = inTurn([
+    () =>
+      new Response(echo, { status: 500, headers: { "X-Nginx-Cache": "MISS" } }),
+  ]);
+  const { lines, log } = logger();
+  await assert.rejects(
+    fetchOutages(URL_49, {
+      fetch: get,
+      token: TOKEN,
+      log,
+      sleep: async () => {},
+    }),
+  );
+  const last = lines.at(-1) ?? {};
+  assert.equal(last.nginxCache, true);
+  assert.ok(String(last.body).length <= 120);
+  assert.ok(!JSON.stringify(lines).includes(TOKEN));
+});
+
+test("fetch: 401, 403 and 429 are never tried again", async () => {
+  for (const status of [401, 403, 429]) {
+    const { get, calls } = inTurn([
+      () => new Response("", { status }),
+      () => Response.json([]),
+    ]);
+    const { lines, log } = logger();
+    await assert.rejects(
+      fetchOutages(URL_49, {
+        fetch: get,
+        token: TOKEN,
+        log,
+        sleep: async () => assert.fail("no wait"),
+      }),
+      (error) => error instanceof FetchFailure,
+    );
+    assert.equal(calls(), 1);
+    assert.equal(lines.at(-1)?.attempts, 1);
+  }
+});
+
+test("fetch: a timeout is tried again, each try with its own timeout", async () => {
+  let calls = 0;
+  const signals: Array<AbortSignal | null | undefined> = [];
+  const get = (async (_url: string, init?: RequestInit) => {
+    calls++;
+    signals.push(init?.signal);
+    if (calls === MAX_TRIES) return Response.json([raw()]);
+    return new Promise<Response>((_, reject) =>
+      init?.signal?.addEventListener("abort", () =>
+        reject(init.signal?.reason),
+      ),
+    );
+  }) as unknown as typeof fetch;
+  const { lines, log } = logger();
+  const feed = await fetchOutages(URL_49, {
+    fetch: get,
+    token: TOKEN,
+    log,
+    timeoutMs: 10,
+    sleep: async () => {},
+  });
+  assert.equal(feed.attempts, MAX_TRIES);
+  assert.equal(new Set(signals).size, MAX_TRIES);
+  assert.deepEqual(
+    lines.map((line) => line.attempt),
+    [1, 2],
   );
 });
 
