@@ -7,8 +7,8 @@
 //
 // The paths: every page and file the build makes, from the sources the
 // build reads them from (lib/pages.ts, lib/static-pages.ts, the routes'
-// generateStaticParams sources); keepwarm.test.ts fails on a route of
-// app/ that has none. A path's slice is a stable hash of it, so a new path
+// generateStaticParams sources); scripts/keepwarm-routes.test.ts fails on
+// a route of app/ that has none. A path's slice is a stable hash of it, so a new path
 // moves no other; the day's slice is the UTC day since 1970, mod 7.
 //
 // Through lib/prewarm.ts, its fetch, concurrency and time, with no
