@@ -15,12 +15,13 @@ import type { Cadence } from "@/lib/cadence";
 import type { Group, Part } from "@/lib/hub";
 import { WEATHER_FRESH, WEATHER_SUBJECT } from "@/lib/imgw-shown";
 import type { LiveReads } from "@/lib/live-reads";
+import { outageDescription } from "@/lib/outage-view";
 import { SOURCE_TAGS, type SourceTag } from "@/lib/page-cache";
 import { loadPower } from "@/lib/power-load";
 import {
+  PGE_GENITIVE,
   POWER_SUBJECT,
   type Power,
-  powerDescription,
   powerNotices,
   powerPage,
   powerSources,
@@ -35,10 +36,10 @@ import { wasteUpcoming } from "@/lib/waste-upcoming";
 import { loadWater } from "@/lib/water-load";
 import {
   type Water,
-  waterDescription,
   waterNotices,
   waterSources,
   waterUpcoming,
+  waterWhose,
 } from "@/lib/water-module";
 import { type Weather, weather, weatherNotices } from "@/lib/weather-module";
 
@@ -153,7 +154,8 @@ const woda: Module<Water> = {
   sources: waterSources,
   changedAt: (data) => data.changedAt,
   cadence: "water",
-  description: waterDescription,
+  description: (place) =>
+    outageDescription(woda.pageTitle, place, waterWhose(place)),
   Details: WaterDetails,
 };
 
@@ -177,7 +179,8 @@ const prad: Module<Power> = {
   sources: powerSources,
   changedAt: (data) => data.changedAt,
   cadence: "live",
-  description: powerDescription,
+  description: (place) =>
+    outageDescription(prad.pageTitle, place, PGE_GENITIVE),
   Details: outageDetails(powerPage),
 };
 

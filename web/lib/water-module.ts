@@ -264,9 +264,13 @@ export function water(
   };
 }
 
-/** /woda's description: the place, and whose posts the dates come from. */
-export const waterDescription = (place: PlaceView) =>
-  `Zapowiedziane przerwy w dostawie wody: ${place.label}. Daty i godziny z komunikatów ${listed(sourcesAt(place.localityId).map((s) => s.of))}.`;
+/**
+ * Whose posts /woda's dates come from, in the genitive, for its description
+ * (lib/outage-view.ts outageDescription): „komunikatów” of the place's
+ * sources (sourcesAt).
+ */
+export const waterWhose = (place: Pick<PlaceView, "localityId">) =>
+  `komunikatów ${listed(sourcesAt(place.localityId).map((s) => s.of))}`;
 
 /** The water subpage. */
 export function waterPath(place: Pick<PlaceView, "id">): string {

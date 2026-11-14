@@ -284,7 +284,3 @@ export function powerPage(data: Power): OutagePage {
 export const powerSources = (): Part[][] => [
   [{ href: PGE_PAGE, text: PGE_NAME }],
 ];
-
-/** /prad's description: the place, and whose data it is. */
-export const powerDescription = (place: PlaceView) =>
-  `Przerwy w dostawie prądu: ${place.label}. Daty i godziny według ${PGE_GENITIVE}.`;

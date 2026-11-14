@@ -58,3 +58,15 @@ export type OutagePage = {
   /** How often the source is checked (lib/cadence.ts). */
   cadence: Cadence;
 };
+
+/**
+ * An outages subpage's description (Module.description): the module's own
+ * pageTitle, the place, and whose dates they are, in the genitive (power:
+ * PGE Dystrybucji; water: the posts of the place's sources). One sentence
+ * pattern for water and power, so neither drifts from the other.
+ */
+export const outageDescription = (
+  pageTitle: string,
+  place: { label: string },
+  whose: string,
+) => `${pageTitle}: ${place.label}. Daty i godziny według ${whose}.`;
