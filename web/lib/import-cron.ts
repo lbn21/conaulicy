@@ -6,7 +6,7 @@
 
 import "server-only";
 import { NO_STORE } from "./headers.ts";
-import { cronDenied } from "./secret.ts";
+import { productionCronDenied } from "./secret.ts";
 
 export const DISPATCH_URL =
   "https://api.github.com/repos/lbn21/conaulicy/actions/workflows/import.yml/dispatches";
@@ -25,10 +25,8 @@ export async function handleImportCron(
   cronSecret: string | undefined,
   deps: ImportCronDeps,
 ): Promise<Response> {
-  const denied = cronDenied(request, cronSecret);
+  const denied = productionCronDenied(request, cronSecret, deps.vercelEnv);
   if (denied) return denied;
-  if (deps.vercelEnv !== "production")
-    return Response.json({ skipped: "not production" }, { headers: NO_STORE });
   if (!deps.token) {
     deps.log({ import: "error", error: "IMPORT_DISPATCH_TOKEN is not set" });
     return Response.json(

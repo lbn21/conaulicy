@@ -26,3 +26,19 @@ export function cronDenied(
   if (cronSecret && sameSecret(given, `Bearer ${cronSecret}`)) return null;
   return new Response("Unauthorized", { status: 401, headers: NO_STORE });
 }
+
+/**
+ * A production-only cron's gate (the import, the keep-warm): the cron
+ * gate, then a skip outside production, so a preview never acts for it.
+ */
+export function productionCronDenied(
+  request: Request,
+  cronSecret: string | undefined,
+  vercelEnv: string | undefined,
+): Response | null {
+  const denied = cronDenied(request, cronSecret);
+  if (denied) return denied;
+  if (vercelEnv !== "production")
+    return Response.json({ skipped: "not production" }, { headers: NO_STORE });
+  return null;
+}
