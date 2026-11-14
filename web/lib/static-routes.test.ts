@@ -78,6 +78,7 @@ test("only the crons and /api/revalidate are functions", () => {
       .sort(),
     [
       "app/api/cron/import/route.ts",
+      "app/api/cron/keepwarm/route.ts",
       "app/api/cron/zuk/route.ts",
       "app/api/revalidate/route.ts",
     ],

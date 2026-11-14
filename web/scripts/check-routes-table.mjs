@@ -2,8 +2,8 @@
 // argument; CI tees it to a file): every page and route handler is
 // prerendered, ○ (static) or ● (SSG, generateStaticParams), so only what
 // the build made exists and nothing renders on request. Fails on any ƒ
-// (dynamic) or ◐ (partial prerender) row but the three API routes that
-// must run (the crons, /api/revalidate), and on a Proxy (middleware) row.
+// (dynamic) or ◐ (partial prerender) row but the API routes that must
+// run (the crons, /api/revalidate), and on a Proxy (middleware) row.
 // t416; docs/layout.md, „Static pages”.
 import { readFileSync } from "node:fs";
 import { finish } from "./lib/server.mjs";
@@ -11,6 +11,7 @@ import { finish } from "./lib/server.mjs";
 const ALLOWED = new Set([
   "/api/cron/zuk",
   "/api/cron/import",
+  "/api/cron/keepwarm",
   "/api/revalidate",
 ]);
 

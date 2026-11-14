@@ -1,7 +1,6 @@
 import { revalidateTag } from "next/cache";
 import { after } from "next/server";
 import { cadenceOf } from "@/lib/cadence";
-import { SITE_URL } from "@/lib/config.generated";
 import { getDataset } from "@/lib/dataset";
 import { DEPLOY_MARKER_PATH, syncDataset } from "@/lib/dataset-sync";
 import { unknownStreets } from "@/lib/districts";
@@ -30,7 +29,7 @@ import {
 import { allPages } from "@/lib/pages";
 import { runPge } from "@/lib/pge-cron";
 import { upstream as pgeUpstream } from "@/lib/pge-feed";
-import { prewarm, warmUntil } from "@/lib/prewarm";
+import { prewarm, siteOrigin, warmUntil } from "@/lib/prewarm";
 import { gminaLubaczow } from "@/lib/sources/gmina-lubaczow";
 import { mzgkim } from "@/lib/sources/mzgkim";
 import type { PostSource } from "@/lib/sources/source";
@@ -41,8 +40,8 @@ import { readZukFile, writeZukFile } from "@/lib/zuk-store";
 // Two Vercel Cron entries call it (vercel.json, lib/cadence.ts), each with
 // `Authorization: Bearer $CRON_SECRET`: every 15 minutes IMGW's warnings
 // and PGE's power outages, each into its own private Blob file
-// (lib/imgw-cron.ts, lib/pge-cron.ts: one PGE request a run, 4 an hour of
-// PGE's 60); every 4 hours (?sources=water) the water cuts of every source
+// (lib/imgw-cron.ts, lib/pge-cron.ts: up to 3 PGE tries a run, at most
+// 12 an hour of PGE's 60); every 4 hours (?sources=water) the water cuts of every source
 // into its private Blob file (lib/zuk-cron.ts): the gmina's posts (ZUK)
 // and MZGKiM's at the same time, each failing on its own. Then the run's
 // checks into the status file when they changed (lib/zuk-cron.ts
@@ -64,13 +63,6 @@ import { readZukFile, writeZukFile } from "@/lib/zuk-store";
 // after(), has what is left until the function's end (warmUntil). Both
 // count against maxDuration.
 export const maxDuration = 300;
-
-/** Where this deployment's pages are read: the permanent address in production. */
-function siteOrigin(request: Request): string {
-  return process.env.VERCEL_ENV === "production"
-    ? SITE_URL
-    : new URL(request.url).origin;
-}
 
 export async function GET(request: Request) {
   const started = Date.now();

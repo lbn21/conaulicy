@@ -15,6 +15,13 @@
 // HIT rendered since the revalidation (a visitor's request rendered it) is
 // warmed, as is every other answer that is not a HIT (STALE, MISS,
 // PRERENDER, REVALIDATED; none outside Vercel's CDN).
+//
+// With `since: null` (no revalidation: the keep-warm, lib/keepwarm.ts)
+// every answer that is ok counts, a HIT included: the point is the access.
+// Every ok answer's `x-vercel-cache` is counted by state (lower case;
+// "none" without the header), the retries' included.
+
+import { SITE_URL } from "./config.generated.ts";
 
 const CONCURRENCY = 8;
 const TIMEOUT_MS = 10_000;
@@ -29,6 +36,14 @@ export const END_MARGIN_MS = 5_000;
 export const warmUntil = (start: number, maxDuration: number) =>
   start + maxDuration * 1000 - END_MARGIN_MS;
 
+/** Where a deployment's pages are read: the permanent address in production. */
+export function siteOrigin(
+  request: Request,
+  vercelEnv = process.env.VERCEL_ENV,
+): string {
+  return vercelEnv === "production" ? SITE_URL : new URL(request.url).origin;
+}
+
 export type Prewarmed = {
   warmed: number;
   failed: number;
@@ -36,6 +51,8 @@ export type Prewarmed = {
   skipped: number;
   /** Fetched, but still the page from before the revalidation. */
   notPurged: number;
+  /** Ok answers by their `x-vercel-cache` state: `{ hit: 3, miss: 1 }`. */
+  cache: Record<string, number>;
 };
 
 /**
@@ -63,14 +80,14 @@ export async function prewarm(
     sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms)),
   }: {
     until?: number;
-    /** When the paths were revalidated; default: the call. */
-    since?: number;
+    /** When the paths were revalidated; default: the call; null: never. */
+    since?: number | null;
     fetcher?: typeof fetch;
     now?: () => number;
     sleep?: (ms: number) => Promise<void>;
   } = {},
 ): Promise<Prewarmed> {
-  const revalidated = since ?? now();
+  const revalidated = since === null ? null : (since ?? now());
   // Each path, and when it may be fetched (again); `old`: it was the old page.
   const queue = [...new Set(paths)].map((path) => ({
     path,
@@ -79,6 +96,7 @@ export async function prewarm(
   }));
   let warmed = 0;
   let failed = 0;
+  const cache: Record<string, number> = {};
   const worker = async () => {
     while (queue.length > 0) {
       const t = now();
@@ -96,8 +114,15 @@ export async function prewarm(
           signal: AbortSignal.timeout(TIMEOUT_MS),
         });
         await response.arrayBuffer();
-        if (!response.ok) failed++;
-        else if (oldPage(response, revalidated, now()))
+        if (!response.ok) {
+          failed++;
+          continue;
+        }
+        const state = (
+          response.headers.get("x-vercel-cache") ?? "none"
+        ).toLowerCase();
+        cache[state] = (cache[state] ?? 0) + 1;
+        if (revalidated !== null && oldPage(response, revalidated, now()))
           queue.push({ path: item.path, at: now() + RETRY_MS, old: true });
         else warmed++;
       } catch {
@@ -107,5 +132,11 @@ export async function prewarm(
   };
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
   const notPurged = queue.filter((item) => item.old).length;
-  return { warmed, failed, skipped: queue.length - notPurged, notPurged };
+  return {
+    warmed,
+    failed,
+    skipped: queue.length - notPurged,
+    notPurged,
+    cache,
+  };
 }

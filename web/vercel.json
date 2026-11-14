@@ -18,6 +18,10 @@
     {
       "path": "/api/cron/import",
       "schedule": "17 4 * * *"
+    },
+    {
+      "path": "/api/cron/keepwarm",
+      "schedule": "35 3 * * *"
     }
   ]
 }

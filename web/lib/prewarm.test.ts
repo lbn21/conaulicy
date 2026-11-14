@@ -28,6 +28,7 @@ test("every page given is fetched, once, whatever their number", async () => {
     failed: 0,
     skipped: 0,
     notPurged: 0,
+    cache: { none: 2100 },
   });
   assert.deepEqual([...seen].sort(), [...paths].sort());
   assert.equal(seen[0], "/p0");
@@ -62,7 +63,13 @@ test("failed GETs are counted, never thrown", async () => {
   const result = await prewarm("https://example.test", ["/", "/bad", "/gone"], {
     fetcher,
   });
-  assert.deepEqual(result, { warmed: 1, failed: 2, skipped: 0, notPurged: 0 });
+  assert.deepEqual(result, {
+    warmed: 1,
+    failed: 2,
+    skipped: 0,
+    notPurged: 0,
+    cache: { none: 1 },
+  });
 });
 
 test("warming ends the margin before the function does", () => {
@@ -96,10 +103,43 @@ test("the old page (a HIT from before the revalidation) is tried again, then war
       now += ms;
     },
   });
-  assert.deepEqual(result, { warmed: 2, failed: 0, skipped: 0, notPurged: 0 });
+  assert.deepEqual(result, {
+    warmed: 2,
+    failed: 0,
+    skipped: 0,
+    notPurged: 0,
+    cache: { hit: 2, stale: 2 },
+  });
   assert.equal(tries["/late"], 3);
   assert.equal(tries["/a"], 1);
   assert.ok(slept.length > 0 && slept.every((ms) => ms <= RETRY_MS));
+});
+
+test("no revalidation (since: null): every ok answer counts, a HIT of any age included", async () => {
+  const gets: string[] = [];
+  const fetcher = (async (url: URL | RequestInfo) => {
+    gets.push(new URL(String(url)).pathname);
+    if (String(url).endsWith("/bare"))
+      return new Response("ok", { headers: { "x-vercel-cache": "HIT" } });
+    return String(url).endsWith("/old") ? cdn("HIT", 3600) : cdn("MISS");
+  }) as typeof fetch;
+  const result = await prewarm(
+    "https://example.test",
+    ["/old", "/bare", "/b"],
+    {
+      fetcher,
+      since: null,
+      now: () => 10_000_000,
+    },
+  );
+  assert.deepEqual(result, {
+    warmed: 3,
+    failed: 0,
+    skipped: 0,
+    notPurged: 0,
+    cache: { hit: 2, miss: 1 },
+  });
+  assert.equal(gets.length, 3);
 });
 
 test("a purge that never arrives: tried until the time is up, counted as notPurged", async () => {
@@ -119,7 +159,10 @@ test("a purge that never arrives: tried until the time is up, counted as notPurg
       now += ms;
     },
   });
-  assert.deepEqual(result, { warmed: 2, failed: 0, skipped: 0, notPurged: 1 });
+  const { cache, ...counts } = result;
+  assert.deepEqual(counts, { warmed: 2, failed: 0, skipped: 0, notPurged: 1 });
+  assert.equal(cache.miss, 2);
+  assert.equal(cache.hit, gets - 2);
   // No GET started that could end after `until` (10 s timeout each).
   assert.ok(now <= 20_000);
   assert.ok(gets > 3 && gets < 20);
