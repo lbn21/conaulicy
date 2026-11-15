@@ -1,11 +1,14 @@
 // „Teraz w gminie”'s action (NOW_TILES, components/field-link.tsx), in
 // Chromium on the built site, at 1280 and 390 px: a click on it, and Enter
 // on it, put the caret in the home page's search field, its label in view.
-// No tile links off the site (t398): its links all lead to the page itself.
+// No tile links off the site (t398): its links lead to the page itself
+// or to a gmina-wide outage page of the site (/woda, /prad).
 import { SEARCH_INPUT_ID } from "../../lib/search.ts";
+import { GMINA_OUTAGE_PAGES } from "../../lib/static-pages.ts";
 import { eachPage } from "./each-page.mjs";
 
 const WIDTHS = [1280, 390];
+const GMINA = GMINA_OUTAGE_PAGES.map(({ path }) => path);
 const ACTION = `.app-now__tile a[href="#${SEARCH_INPUT_ID}"]`;
 
 const WAYS = {
@@ -24,7 +27,7 @@ export async function check(server, failures) {
       .evaluateAll((links) =>
         links
           .map((a) => a.getAttribute("href"))
-          .filter((h) => !h?.startsWith("#")),
+          .filter((h) => !h?.startsWith("#") && !GMINA.includes(h)),
       );
     if (off.length > 0)
       failures.push(`${at}: tile links off the page: ${off.join(", ")}`);

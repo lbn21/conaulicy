@@ -14,14 +14,24 @@ import {
 import { PGE_NAME, PGE_PAGE } from "@/lib/power-module";
 import { wasteInWindow } from "@/lib/schedule";
 import { SEARCH_INPUT_ID } from "@/lib/search";
+import { GMINA_OUTAGE_PAGES, type GminaOutageSlug } from "@/lib/static-pages";
 import { gminaNews, mzgkimNews } from "@/lib/water-sources";
 import { warningWhen, weather } from "@/lib/weather-module";
 import { IN_WINDOW, type Window } from "@/lib/window";
 
+/** Where a water or power tile's count is, place by place: its gmina-wide page. */
+const whereAction = (slug: GminaOutageSlug) => ({
+  href:
+    GMINA_OUTAGE_PAGES.find((page) => page.slug === slug)?.path ??
+    (`/${slug}` as const),
+  text: "Zobacz, gdzie",
+});
+
 // The home page's „Teraz w gminie” tiles, in order: one entry each, its
 // module (icon and colour), its label, its source (named and linked in the
 // panel's source line only: a tile is a summary, no way off the site;
-// t398), an optional action on the page and its aggregate read for the
+// t398), an optional action (a field on the page, or the module's
+// gmina-wide page) and its aggregate read for the
 // window (lib/window.ts), plain JSON (cached with the home page,
 // lib/page-cache.ts). Every tile is drawn by one NowTile (components/now-panel.tsx), in one wrapping row; a new
 // module is one more entry here and its read, no layout or CSS change
@@ -38,9 +48,10 @@ export type NowTileDef = {
   sources: NowLink[];
   /** Its name in the panel's freshness line; default: its label. */
   freshName?: string;
-  /** A link at the tile's foot to a field on the page, which it focuses
-   * (FieldLink); shown read or not. */
-  action?: NowLink & { href: `#${string}` };
+  /** A link at the tile's foot, shown read or not: to a field on the page,
+   * which it focuses (FieldLink), or to a page of the site (<Link>): never
+   * off the site (t398). */
+  action?: NowLink & { href: `#${string}` | `/${string}` };
   /** How often its source is checked (lib/cadence.ts); null: never. */
   cadence: Cadence | null;
   read(range: Window, reads: LiveReads): Promise<NowTileData | null>;
@@ -84,6 +95,7 @@ const woda: NowTileDef = {
   label: "Woda",
   // Every gmina's cuts: both sources (lib/water-sources.ts).
   sources: [gminaNews, mzgkimNews],
+  action: whereAction("woda"),
   async read(range, { water, now }) {
     const views = Object.values(await water());
     if (views.every((v) => v.unavailable)) return null;
@@ -112,6 +124,7 @@ const prad: NowTileDef = {
   icon: "prad",
   label: "Prąd",
   sources: [{ href: PGE_PAGE, text: PGE_NAME }],
+  action: whereAction("prad"),
   async read(range, { pge, now }) {
     const copy = await pge();
     if (!copy || typeof copy === "string") return null;

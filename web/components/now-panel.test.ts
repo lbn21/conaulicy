@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { NowTileData } from "../lib/now-panel.ts";
+import { GMINA_OUTAGE_PAGES } from "../lib/static-pages.ts";
 import { NowTile } from "./now-panel.tsx";
 import { NOW_TILES, type NowTileDef } from "./now-tiles.ts";
 
@@ -78,11 +79,28 @@ test("no tile links off the site: its source is linked in the note only", () => 
   for (const d of NOW_TILES) {
     const html = tile(read, d);
     for (const [, href] of html.matchAll(/<a [^>]*href="([^"]*)"/g))
-      assert.match(href, /^#/, `${d.id}: ${href}`);
+      assert.match(href, /^[#/]/, `${d.id}: ${href}`);
   }
 });
 
-test("an action is a link to a field on the page, by its id", () => {
+test("an action: a field on the page by its id, or a gmina-wide outage page", () => {
+  const pages: string[] = GMINA_OUTAGE_PAGES.map(({ path }) => path);
   for (const d of NOW_TILES)
-    if (d.action) assert.match(d.action.href, /^#[a-z][\w-]*$/, d.id);
+    if (d.action?.href.startsWith("#"))
+      assert.match(d.action.href, /^#[a-z][\w-]*$/, d.id);
+    else if (d.action) assert.ok(pages.includes(d.action.href), d.id);
+  // Water and power: their count's places, on their gmina-wide page.
+  for (const { slug, path } of GMINA_OUTAGE_PAGES)
+    assert.equal(NOW_TILES.find((d) => d.id === slug)?.action?.href, path);
+});
+
+test("a page action is a <Link> with the field link's classes", () => {
+  const html = tile(populated, {
+    ...def,
+    action: { href: "/woda", text: "A-page" },
+  });
+  assert.match(
+    html,
+    /<a class="govuk-link govuk-link--inverse" href="\/woda">A-page<\/a><\/p><\/li><\/ul>$/,
+  );
 });
