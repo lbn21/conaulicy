@@ -22,6 +22,19 @@ export const STATIC_PAGES: ReadonlyArray<StaticPage> = [
   ABOUT,
 ];
 
+/**
+ * The gmina-wide outage pages (app/woda, app/prad): every water cut and
+ * power outage of the whole gmina, at the slugs of the address's own
+ * subpages (/adres/<id>/woda, /prad). Not in STATIC_PAGES (the footer's
+ * helper links): the routes, the sitemap and the keep-warm read them here.
+ */
+export const GMINA_OUTAGE_PAGES = [
+  { slug: "woda", path: "/woda" },
+  { slug: "prad", path: "/prad" },
+] as const;
+
+export type GminaOutageSlug = (typeof GMINA_OUTAGE_PAGES)[number]["slug"];
+
 /** Who made the site: in the footer and on „O projekcie”. */
 export const AUTHOR_LINE =
   "Stronę zrobił Jakub Marciniszyn dla mieszkańców Lubaczowa i gminy.";

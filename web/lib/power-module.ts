@@ -52,7 +52,10 @@ export type PgeRead = LiveCopy<PgeFeed> | null | typeof UNREADABLE;
 /** One of the outage's addresses here: our name, PGE's numbers as given. */
 type Where = { name: string; numbers: string | null };
 
-type PowerCut = Pick<PgeOutage, "uuid" | "kind" | "revoked" | "revokedNote"> & {
+export type PowerCut = Pick<
+  PgeOutage,
+  "uuid" | "kind" | "revoked" | "revokedNote"
+> & {
   /** Its ranges not over yet, ISO, soonest first. */
   ranges: PgeOutage["ranges"];
   where: Where[];
@@ -74,7 +77,7 @@ const LOCALITY = new Map(ZUK_PLACES.localities.map((l) => [l.id, l.name]));
 const STREET = new Map(ZUK_PLACES.streets.map((s) => [s.id, s]));
 
 /** An address's TERYT place: its locality, and its street or null. */
-const ref = (a: PgeOutage["addresses"][number]): PlaceRef => ({
+export const ref = (a: PgeOutage["addresses"][number]): PlaceRef => ({
   localityId: a.simc,
   streetId: a.ulic === null ? null : `${a.simc}-${a.ulic}`,
 });
@@ -92,16 +95,20 @@ function nameOf(address: PlaceRef, place: PlaceRef): string {
 }
 
 /**
- * The outage at the address; or null. A planned one: its ranges not over
- * by `now`; a failure: every range, as long as PGE lists it.
+ * The outage's ranges still shown at `now`: a failure's every range, as
+ * long as PGE lists it; a planned (or revoked) one's not over yet. One
+ * rule for an address (cutAt) and the whole gmina (lib/gmina-outages.ts).
  */
+export const liveRanges = (item: PgeOutage, now: number) =>
+  item.kind === "failure"
+    ? item.ranges
+    : item.ranges.filter((r) => Date.parse(r.end) > now);
+
+/** The outage at the address, its ranges still shown (liveRanges); or null. */
 function cutAt(item: PgeOutage, place: PlaceRef, now: number): PowerCut | null {
   const here = item.addresses.filter((a) => matches(place, ref(a)));
   if (here.length === 0) return null;
-  const ranges =
-    item.kind === "failure"
-      ? item.ranges
-      : item.ranges.filter((r) => Date.parse(r.end) > now);
+  const ranges = liveRanges(item, now);
   if (ranges.length === 0) return null;
   return {
     uuid: item.uuid,
@@ -186,7 +193,7 @@ export function powerUpcoming(data: Power): Item[] {
 }
 
 /** The notice, then where the current outages are: PGE's page. */
-function noticeParts(notice: string): Part[] {
+export function noticeParts(notice: string): Part[] {
   return [
     `${notice} Aktualne znajdziesz na `,
     { href: PGE_PAGE, text: `stronie ${PGE_GENITIVE}` },
@@ -199,27 +206,33 @@ export function powerNotices(data: Power): Group[] {
   return data.notice ? [[noticeParts(data.notice)]] : [];
 }
 
-/** No outage here, from a copy we show. */
-const NONE = `PGE nie podaje teraz żadnych ${POWER_SUBJECT} pod tym adresem.`;
+/** No outage `where` („pod tym adresem”), from a copy we show. */
+export const powerNone = (where: string) =>
+  `PGE nie podaje teraz żadnych ${POWER_SUBJECT} ${where}.`;
+
+const NONE = powerNone("pod tym adresem");
 
 const NO_NUMBERS = "PGE nie podaje numerów";
 
 /** A cut without hours (PGE gives them, so a guard only). */
 export const POWER_NO_HOURS = "PGE nie podaje godzin.";
 
+/** „Numery domów według PGE”: its row's key. */
+export const NUMBERS_KEY = "Numery domów według PGE";
+
 /** „Numery domów według PGE”: as given; each place named when several. */
-function numbers(cut: PowerCut): string {
-  if (cut.where.length === 1) return cut.where[0].numbers ?? `${NO_NUMBERS}.`;
-  return cut.where
-    .map((w) => `${w.name}: ${w.numbers ?? NO_NUMBERS}`)
-    .join("; ");
+export function numbers(where: Where[]): string {
+  if (where.length === 1) return where[0].numbers ?? `${NO_NUMBERS}.`;
+  return where.map((w) => `${w.name}: ${w.numbers ?? NO_NUMBERS}`).join("; ");
 }
 
 /**
  * The kind, a summary list row: its badge, a failure red; revoked, a
  * muted „Odwołana” and the kind in words, with PGE's note.
  */
-function kindRow(cut: PowerCut) {
+export function kindRow(
+  cut: Pick<PowerCut, "kind" | "revoked" | "revokedNote">,
+) {
   const failure = cut.kind === "failure";
   const kind = failure ? "Awaria" : "Planowana przerwa";
   return cut.revoked
@@ -266,7 +279,7 @@ export function powerPage(data: Power): OutagePage {
               ),
               kindRow(cut),
               { key: "Gdzie", value: [names(cut)] },
-              { key: "Numery domów według PGE", value: [numbers(cut)] },
+              { key: NUMBERS_KEY, value: [numbers(cut.where)] },
             ],
           },
         ];

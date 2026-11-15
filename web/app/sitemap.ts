@@ -3,7 +3,7 @@ import { SITE_URL } from "@/lib/config.generated";
 import { sitemapPage } from "@/lib/data-pages";
 import { indexable } from "@/lib/indexing";
 import { pageData } from "@/lib/page-cache";
-import { STATIC_PAGES } from "@/lib/static-pages";
+import { GMINA_OUTAGE_PAGES, STATIC_PAGES } from "@/lib/static-pages";
 
 // Prerendered at build from the search index of the dataset snapshot
 // (lib/dataset.ts), re-rendered with the dataset (its tag,
@@ -12,7 +12,12 @@ import { STATIC_PAGES } from "@/lib/static-pages";
 
 export const dynamic = "error";
 
-const PAGES = ["/", ...STATIC_PAGES.map(({ path }) => path)];
+// The home page, the site's own pages and the gmina-wide outage pages.
+const PAGES = [
+  "/",
+  ...STATIC_PAGES.map(({ path }) => path),
+  ...GMINA_OUTAGE_PAGES.map(({ path }) => path),
+];
 
 // Two URLs per place, as their canonical links (components/place-page.tsx):
 // its address page and its waste subpage (/adres/<id>/smieci); never a

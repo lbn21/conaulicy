@@ -65,8 +65,8 @@ Vercel Blob. No database writes.
    answered from before its revalidation is tried again; the pages it did
    not reach logged as `notWarmed`, those whose purge never arrived as
    `notPurged`): a water change re-renders the address page, `/woda` and
-   `woda.ics` of the places it concerns, and the home page if its counts
-   moved. A run that changed nothing a page shows re-renders nothing.
+   `woda.ics` of the places it concerns, the gmina-wide `/woda` and the
+   home page if its counts moved. A run that changed nothing a page shows re-renders nothing.
 
 The gmina's site down: 502, the file and its `checkedAt` stay, and the
 source is stale (its checks failing) until a check goes well again. xAI down: a new
@@ -264,7 +264,8 @@ whatever its age; a source whose checks fail (the status file) is `stale`,
 so a page shows the source link too.
 
 **Caching.** The pages that show water (the hub, `/woda`, its calendar
-file `/adres/[id]/woda.ics` and the home page) are prerendered, their data
+file `/adres/[id]/woda.ics`, the gmina-wide `/woda` with every source's
+cuts, one card per post, day and hours, and the home page) are prerendered, their data
 in one cache scope each, tagged `water` (`web/lib/page-cache.ts`); they
 read the file through the Blob's CDN (`useCache: true`, at most 60 s
 behind a write) when they are rendered; the cron reads its origin and

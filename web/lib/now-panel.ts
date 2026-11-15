@@ -12,7 +12,7 @@ import { LOCALE } from "./locale.ts";
 import type { PgeFeed } from "./pge-feed.ts";
 import { rangeSpan } from "./power-module.ts";
 import { inWindow } from "./timeline.ts";
-import { cutSpan } from "./water-module.ts";
+import { cutSpan, postSlot } from "./water-module.ts";
 import type { Window } from "./window.ts";
 
 /** A link: a source (another site, a plain <a>) or a field on the page. */
@@ -62,7 +62,7 @@ export function waterInWindow(
           inWindow(cutSpan(d), range, now) &&
           hasSource({ sourceUrl: d.source.url, checkedAt: checkedAt(d) }),
       )
-      .map((d) => `${d.source.url}|${d.date}|${d.start}|${d.end}`),
+      .map(postSlot),
   );
   return keys.size;
 }
