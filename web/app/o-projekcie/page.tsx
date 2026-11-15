@@ -2,10 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactLink } from "@/components/contact-link";
 import { PageHead } from "@/components/page-head";
+import { MODULES } from "@/lib/modules";
 import { PGE_GENITIVE, PGE_PAGE } from "@/lib/power-module";
 import { notAnOffice } from "@/lib/schedule-notes";
 import { pageMetadata } from "@/lib/share";
-import { ABOUT, ACCESSIBILITY, AUTHOR_LINE, PRIVACY } from "@/lib/static-pages";
+import {
+  ABOUT,
+  ACCESSIBILITY,
+  AUTHOR_LINE,
+  GMINA_OUTAGE_PAGES,
+  PRIVACY,
+} from "@/lib/static-pages";
 import { SITE_TOPICS } from "@/lib/topics";
 import { GMINA_NEWS, MZGKIM_NEWS } from "@/lib/water-module";
 
@@ -54,6 +61,18 @@ export default function AboutPage() {
             </a>
             . Pokazujemy je tak, jak podaje je PGE, razem z numerami domów.
           </p>
+          <p className="govuk-body">
+            Przerwy w całej gminie, bez wpisywania adresu:
+          </p>
+          <ul className="govuk-list">
+            {GMINA_OUTAGE_PAGES.map(({ slug, path }) => (
+              <li key={path}>
+                <Link href={path} className="govuk-link">
+                  {MODULES[slug].pageTitle}
+                </Link>
+              </li>
+            ))}
+          </ul>
           <p className="govuk-body">
             Ostrzeżenia pogodowe IMGW dla powiatu lubaczowskiego pokazujemy na
             stronie adresu, nad listą najbliższych dni, każde z opisem, czego

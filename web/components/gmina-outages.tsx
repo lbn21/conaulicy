@@ -11,7 +11,7 @@ import { pageData } from "@/lib/page-cache";
 import { PGE_GENITIVE } from "@/lib/power-module";
 import { pageMetadata } from "@/lib/share";
 import { SITE_AREA } from "@/lib/share-card";
-import { GMINA_OUTAGE_PAGES, type GminaOutageSlug } from "@/lib/static-pages";
+import { GMINA_OUTAGE_PATH, type GminaOutageSlug } from "@/lib/static-pages";
 import { sourcesWhose } from "@/lib/water-module";
 import { WATER_SOURCES } from "@/lib/water-sources";
 
@@ -35,9 +35,6 @@ const LEAD: Record<GminaOutageSlug, string> = {
   prad: `Wszystkie planowane przerwy i awarie w Lubaczowie i we wsiach gminy, według ${PGE_GENITIVE}.`,
 };
 
-const pathOf = (slug: GminaOutageSlug) =>
-  GMINA_OUTAGE_PAGES.find((page) => page.slug === slug)?.path ?? `/${slug}`;
-
 /**
  * A gmina-wide page's metadata: its own canonical, the title
  * "<h1> – <area>" (the area in the title only, as the home page's), the
@@ -46,7 +43,7 @@ const pathOf = (slug: GminaOutageSlug) =>
 export function gminaMetadata(slug: GminaOutageSlug): Metadata {
   const { pageTitle } = MODULES[slug];
   return pageMetadata({
-    path: pathOf(slug),
+    path: GMINA_OUTAGE_PATH[slug],
     title: `${pageTitle} – ${SITE_AREA}`,
     description: outageDescription(
       pageTitle,

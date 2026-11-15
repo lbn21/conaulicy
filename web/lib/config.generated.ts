@@ -7,11 +7,15 @@ export const SITE_URL = "https://conaulicy.pl";
 /** Footer navigation: live features only; shown once there are 2+ links. */
 export const FEATURES: Array<{ section: string; links: Array<{ href: string; text: string }> }> = [
   {
-    "section": "Sprawdź przy swojej ulicy",
+    "section": "W całej gminie",
     "links": [
       {
-        "href": "/",
-        "text": "Odbiór śmieci"
+        "href": "/woda",
+        "text": "Przerwy w dostawie wody"
+      },
+      {
+        "href": "/prad",
+        "text": "Przerwy w dostawie prądu"
       }
     ]
   }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { FieldLink } from "@/components/field-link";
 import { Tile } from "@/components/icon";
 import { NOW_TILES, type NowTileDef } from "@/components/now-tiles";
@@ -15,13 +16,17 @@ import { type Window, windowOf } from "@/lib/window";
 // with the page (app/page.tsx), re-rendered when what it shows changes
 // (lib/page-refresh.ts; the window with each Warsaw day). Every tile is
 // one NowTile: the module's icon on its tile and its label, an optional level tag, the value, the window it
-// counts and an optional action on the page; no link off the site (the
+// counts and an optional action (a field on the page, or the module's
+// gmina-wide page, /woda and /prad); no link off the site (the
 // sources are linked in the note under the tiles; t398). The tiles wrap in
 // one row by their content (site.scss .app-now__tiles: flex-wrap, a
 // minimum width from GOV.UK's spacing, the last row's tiles share it);
 // only a tile with an active alert (featured) takes a whole row.
 
 const HEADING = "Teraz w gminie";
+
+/** An action to a field on the page (FieldLink), not to a page (<Link>). */
+const isField = (href: string): href is `#${string}` => href.startsWith("#");
 
 /** One tile, from its definition and its read (null: not read now). */
 export function NowTile({
@@ -64,12 +69,21 @@ export function NowTile({
       {data && <p className="govuk-body-s">{data.note}</p>}
       {def.action && (
         <p className="govuk-body-s">
-          <FieldLink
-            className="govuk-link govuk-link--inverse"
-            href={def.action.href}
-          >
-            {def.action.text}
-          </FieldLink>
+          {isField(def.action.href) ? (
+            <FieldLink
+              className="govuk-link govuk-link--inverse"
+              href={def.action.href}
+            >
+              {def.action.text}
+            </FieldLink>
+          ) : (
+            <Link
+              className="govuk-link govuk-link--inverse"
+              href={def.action.href}
+            >
+              {def.action.text}
+            </Link>
+          )}
         </p>
       )}
     </li>

@@ -10,10 +10,15 @@
 site:
   url: https://conaulicy.pl
   # Footer navigation: live features only; shown once there are 2+ links.
+  # Each link is a page that works with no address (never the home page:
+  # the logo links it, and a waste or water topic there needs an address).
   features:
-    - section: Sprawdź przy swojej ulicy
+    # The gmina-wide outage pages (web/lib/static-pages.ts GMINA_OUTAGE_PAGES),
+    # their text each page's h1 (lib/modules.ts pageTitle).
+    - section: W całej gminie
       links:
-        - { href: /, text: Odbiór śmieci }
+        - { href: /woda, text: Przerwy w dostawie wody }
+        - { href: /prad, text: Przerwy w dostawie prądu }
 
 import:
   # Network calls: attempts, first backoff (doubles each time).

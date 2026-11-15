@@ -28,12 +28,21 @@ export const STATIC_PAGES: ReadonlyArray<StaticPage> = [
  * subpages (/adres/<id>/woda, /prad). Not in STATIC_PAGES (the footer's
  * helper links): the routes, the sitemap and the keep-warm read them here.
  */
-export const GMINA_OUTAGE_PAGES = [
-  { slug: "woda", path: "/woda" },
-  { slug: "prad", path: "/prad" },
-] as const;
+const GMINA_OUTAGE_SLUGS = ["woda", "prad"] as const;
 
-export type GminaOutageSlug = (typeof GMINA_OUTAGE_PAGES)[number]["slug"];
+export type GminaOutageSlug = (typeof GMINA_OUTAGE_SLUGS)[number];
+
+/** Each page's path by its slug: the one source; a slug without one is a type error. */
+export const GMINA_OUTAGE_PATH = {
+  woda: "/woda",
+  prad: "/prad",
+} as const satisfies Record<GminaOutageSlug, `/${string}`>;
+
+/** The same, in order, for the lists (the sitemap, the checks). */
+export const GMINA_OUTAGE_PAGES = GMINA_OUTAGE_SLUGS.map((slug) => ({
+  slug,
+  path: GMINA_OUTAGE_PATH[slug],
+}));
 
 /** Who made the site: in the footer and on „O projekcie”. */
 export const AUTHOR_LINE =
