@@ -9,6 +9,7 @@ import {
   waterIcsPage,
   zoneIcsPage,
 } from "@/lib/data-pages";
+import { gminaPowerDef, gminaWaterDef } from "@/lib/gmina-pages";
 import { homePage } from "@/lib/home-page";
 import type { SubpageId } from "@/lib/module-ids";
 import type { PageDef } from "@/lib/page-cache";
@@ -20,19 +21,22 @@ import { placeParams, zoneParams } from "@/lib/schedule";
 // (lib/page-refresh.ts), so a page is re-rendered when what it renders
 // changes, and only then. The defs live beside what they read, so no page
 // imports another's components: the home page's (lib/home-page.ts), the
-// address pages' (lib/address-pages.ts), the lists' and files'
-// (lib/data-pages.ts). Only the cron imports this registry.
+// gmina-wide outage pages' (lib/gmina-pages.ts), the address pages'
+// (lib/address-pages.ts), the lists' and files' (lib/data-pages.ts). Only
+// the cron imports this registry.
 
 /**
  * Every page and file of the dataset this deployment serves, in the order
- * the cron refreshes them: the home page first, then the address pages,
- * their subpages, the lists and the files.
+ * the cron refreshes them: the home page first, then the gmina-wide
+ * outage pages, the address pages, their subpages, the lists and the files.
  */
 export async function allPages(): Promise<PageDef<unknown>[]> {
   const ids = (await placeParams()).map(({ id }) => id);
   const zones = (await zoneParams()).map(({ zoneId }) => zoneId);
   return [
     homePage,
+    gminaWaterDef,
+    gminaPowerDef,
     ...ids.map(hubPage),
     ...SUBPAGE_IDS.flatMap((slug) =>
       ids.map((id) => subpage(id, slug as SubpageId)),

@@ -19,6 +19,7 @@ import {
 } from "./page-refresh.ts";
 import { allPages } from "./pages.ts";
 import { outagesFile, type PgeOutage } from "./pge-feed.ts";
+import { GMINA_OUTAGE_PAGES } from "./static-pages.ts";
 import { mockFile, zukFile } from "./water-fixture.ts";
 import { WATER_SOURCES } from "./water-sources.ts";
 
@@ -46,6 +47,8 @@ const iso = (ms: number) => new Date(ms).toISOString();
 /** ul. Adama Asnyka, the made-up town street with MZGKiM's moved cut. */
 const STREET = "0972447-00470";
 const hub = `/adres/${STREET}`;
+
+const [GMINA_WATER, GMINA_POWER] = GMINA_OUTAGE_PAGES.map((p) => p.path);
 
 const water = (id: string) =>
   WATER_SOURCES.find((s) => s.id === id)?.pathname as string;
@@ -132,6 +135,11 @@ async function changed(
 test("the pages: the home page first, every page once", async () => {
   const pages = await digests(files());
   assert.equal(pages[0].path, "/");
+  // The gmina-wide outage pages warmed right after it (lib/prewarm.ts).
+  assert.deepEqual(
+    pages.slice(1, 3).map((p) => p.path),
+    GMINA_OUTAGE_PAGES.map((p) => p.path),
+  );
   assert.equal(new Set(pages.map((p) => p.path)).size, pages.length);
   for (const path of [hub, `${hub}/woda`, `${hub}/woda.ics`, "/ulice"])
     assert.ok(
@@ -181,34 +189,62 @@ test("IMGW's notice: every address page and the home page", async () => {
   );
 });
 
-test("PGE at one place: its address page, /prad and the home page", async () => {
+test("PGE at one place: its address page, its /prad, the gmina's and home", async () => {
   const cut = files({
     [PGE_PATH]: outagesFile({ fetchedAt: iso(NOW), items: [outage] }),
   });
-  assert.deepEqual((await changed(files(), cut)).sort(), [
-    "/",
-    hub,
-    `${hub}/prad`,
-  ]);
+  assert.deepEqual(
+    (await changed(files(), cut)).sort(),
+    ["/", hub, `${hub}/prad`, GMINA_POWER].sort(),
+  );
 });
 
-test("water at one place: its page, /woda, woda.ics and the home page", async () => {
+test("the gmina's /prad: a re-fetch of the same outages changes nothing, its end does", async () => {
+  const at = (fetchedAt: string) =>
+    files({ [PGE_PATH]: outagesFile({ fetchedAt, items: [outage] }) });
+  assert.ok(
+    !(await changed(at(iso(NOW - 60_000)), at(iso(NOW)))).includes(GMINA_POWER),
+  );
+  const over = Date.parse(outage.ranges[0].end) + 60_000;
+  assert.ok(
+    (await changed(at(iso(NOW)), at(iso(NOW)), [NOW, over])).includes(
+      GMINA_POWER,
+    ),
+  );
+});
+
+test("water at one place: its page, /woda, woda.ics, the gmina's and home", async () => {
   const cut = files({
     [water("mzgkim")]: JSON.stringify(mockFile("5237", NOW)),
   });
-  assert.deepEqual((await changed(files(), cut)).sort(), [
-    "/",
-    hub,
-    `${hub}/woda`,
-    `${hub}/woda.ics`,
-  ]);
+  assert.deepEqual(
+    (await changed(files(), cut)).sort(),
+    ["/", hub, `${hub}/woda`, `${hub}/woda.ics`, GMINA_WATER].sort(),
+  );
+});
+
+test("the gmina's /woda hashes no check time", async () => {
+  const file = mockFile("5237", NOW);
+  const at = (checkedAt: string) =>
+    files({ [water("mzgkim")]: JSON.stringify({ ...file, checkedAt }) });
+  const paths = await changed(at(iso(NOW - 60_000)), at(iso(NOW)));
+  // The address's own /woda keeps each cut's check time (its source).
+  assert.ok(paths.includes(`${hub}/woda`));
+  assert.ok(!paths.includes(GMINA_WATER));
 });
 
 test("midnight: the pages with day words, not the lists", async () => {
   const late = wall(TODAY, "23:50:00");
   const early = wall(addDays(TODAY, 1), "00:10:00");
   const paths = await changed(files(), files(), [late, early]);
-  for (const path of [hub, `${hub}/smieci`, `${hub}/woda`, `${hub}/prad`])
+  for (const path of [
+    hub,
+    `${hub}/smieci`,
+    `${hub}/woda`,
+    `${hub}/prad`,
+    GMINA_WATER,
+    GMINA_POWER,
+  ])
     assert.ok(paths.includes(path), path);
   for (const path of ["/ulice", "/sitemap.xml", "/search-index.json"])
     assert.ok(!paths.includes(path), path);
