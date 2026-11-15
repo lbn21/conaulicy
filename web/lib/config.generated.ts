@@ -14,6 +14,19 @@ export const FEATURES: Array<{ section: string; links: Array<{ href: string; tex
         "text": "Odbiór śmieci"
       }
     ]
+  },
+  {
+    "section": "W całej gminie",
+    "links": [
+      {
+        "href": "/woda",
+        "text": "Przerwy w dostawie wody"
+      },
+      {
+        "href": "/prad",
+        "text": "Przerwy w dostawie prądu"
+      }
+    ]
   }
 ];
 

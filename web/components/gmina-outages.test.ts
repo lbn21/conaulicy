@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { gzipSync } from "node:zlib";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { FEATURES } from "../lib/config.generated.ts";
 import {
   type GminaPower,
   gminaPower,
@@ -217,4 +218,13 @@ test("a big storm: the page's body well within the street HTML budget", () => {
   assert.ok(size <= 10_000, `${size} B gzip`);
   // And parsed in reasonable time on a slow phone.
   assert.ok(html.length <= 400_000, `${html.length} B`);
+});
+
+test("the footer links both pages, each by its h1 (etl/sources.yaml)", () => {
+  const links = FEATURES.flatMap((section) => section.links);
+  for (const { slug, path } of GMINA_OUTAGE_PAGES)
+    assert.deepEqual(
+      links.filter((link) => link.href === path).map((link) => link.text),
+      [MODULES[slug].pageTitle],
+    );
 });
