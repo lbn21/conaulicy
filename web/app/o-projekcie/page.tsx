@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Fragment } from "react";
 import { ContactLink } from "@/components/contact-link";
 import { PageHead } from "@/components/page-head";
+import { Parts } from "@/components/parts";
+import type { Part } from "@/lib/hub";
+import { LIST } from "@/lib/locale";
 import { MODULES } from "@/lib/modules";
 import { PGE_GENITIVE, PGE_PAGE } from "@/lib/power-module";
 import { notAnOffice } from "@/lib/schedule-notes";
@@ -32,6 +34,16 @@ const OFFICES = notAnOffice(
   "harmonogramy i komunikaty Urzędu Gminy Lubaczów i Urzędu Miejskiego w Lubaczowie",
   "obowiązują",
 );
+
+// The gmina-wide outage pages, by their h1, as a list („a i b”, Intl).
+const GMINA_LINKS: Part[] = LIST.formatToParts(
+  GMINA_OUTAGE_PAGES.map(({ path }) => path),
+).map((part) => {
+  const page = GMINA_OUTAGE_PAGES.find(({ path }) => path === part.value);
+  return part.type === "element" && page
+    ? { href: page.path, text: MODULES[page.slug].pageTitle.toLowerCase() }
+    : part.value;
+});
 
 export default function AboutPage() {
   return (
@@ -63,17 +75,8 @@ export default function AboutPage() {
             . Pokazujemy je tak, jak podaje je PGE, razem z numerami domów.
           </p>
           <p className="govuk-body">
-            Wszystkie przerwy w całej gminie, nie tylko przy jednym adresie,
-            zebraliśmy też na dwóch stronach:{" "}
-            {GMINA_OUTAGE_PAGES.map(({ slug, path }, i) => (
-              <Fragment key={path}>
-                {i > 0 && " i "}
-                <Link href={path} className="govuk-link">
-                  {MODULES[slug].pageTitle.toLowerCase()}
-                </Link>
-              </Fragment>
-            ))}
-            .
+            Przerwy w całej gminie, bez wpisywania adresu, znajdziesz na
+            stronach: <Parts parts={GMINA_LINKS} lead={false} />.
           </p>
           <p className="govuk-body">
             Ostrzeżenia pogodowe IMGW dla powiatu lubaczowskiego pokazujemy na
