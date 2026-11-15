@@ -51,7 +51,7 @@ function Value({ parts }: { parts: Part[] }) {
   );
 }
 
-function OutageDetails({ page }: { page: OutagePage }) {
+export function OutageDetails({ page }: { page: OutagePage }) {
   return (
     <>
       {page.note && (

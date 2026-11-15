@@ -60,7 +60,7 @@ import { ZUK_PLACES } from "./zuk-places.generated.ts";
 export { GMINA_NEWS, MZGKIM_NEWS } from "./water-sources.ts";
 
 /** One source of the address, as its file stands. */
-type SourceState = {
+export type SourceState = {
   source: WaterSource;
   /** When the source's data last changed; null without a file. */
   changedAt: string | null;
@@ -100,6 +100,32 @@ export type Water = {
 };
 
 type Address = PlaceRef;
+
+/** A post's link: what the texts read of a cut or notice's source. */
+type Posted = { uid: string; publishedAt: string; source: { url: string } };
+
+/**
+ * What the source texts read of a page's water (staleNote, waterEmpty,
+ * waterAiNote, waterSources): its cuts' and notices' posts and its
+ * sources' states. An address's Water, or the whole gmina's
+ * (lib/gmina-outages.ts).
+ */
+export type WaterShown = {
+  outages: Posted[];
+  notices: Posted[];
+  sources: SourceState[];
+};
+
+/**
+ * A cut's post, day and hours: one cut gmina-wide, however many places it
+ * names. The home panel counts by it (lib/now-panel.ts waterInWindow) and
+ * /woda gives each its card (lib/gmina-outages.ts), so the two agree.
+ */
+export const postSlot = (
+  cut: Pick<Disruption, "date" | "start" | "end"> & {
+    source: { url: string };
+  },
+) => `${cut.source.url}|${cut.date}|${cut.start}|${cut.end}`;
 
 /** Whether a cut applies to the address (lib/place-match.ts). */
 export const matches = (address: Address, cut: Disruption) =>
@@ -270,7 +296,11 @@ export function water(
  * sources (sourcesAt).
  */
 export const waterWhose = (place: Pick<PlaceView, "localityId">) =>
-  `komunikatów ${listed(sourcesAt(place.localityId).map((s) => s.of))}`;
+  sourcesWhose(sourcesAt(place.localityId));
+
+/** „komunikatów gminy i MZGKiM”: whose posts, of these sources. */
+export const sourcesWhose = (sources: readonly WaterSource[]) =>
+  `komunikatów ${listed(sources.map((s) => s.of))}`;
 
 /** The water subpage. */
 export function waterPath(place: Pick<PlaceView, "id">): string {
@@ -307,7 +337,7 @@ const KIND = new Map(ZUK_PLACES.localities.map((l) => [l.id, l.kind]));
  * „wsi”) for a village, „miejscowość” („miejscowości”) for anything else.
  * One rule for /woda (scope) and the timeline.
  */
-function placeWord(localityId: string): { is: string; of: string } {
+export function placeWord(localityId: string): { is: string; of: string } {
   return KIND.get(localityId) === "wies"
     ? { is: "wieś", of: "wsi" }
     : { is: "miejscowość", of: "miejscowości" };
@@ -413,7 +443,9 @@ function upcomingWhere(cut: Cut, place: Water["place"]): string {
 }
 
 /** A cut's span (lib/hub.ts span): its day, its hours if given. */
-export const cutSpan = (cut: Cut) =>
+export const cutSpan = (
+  cut: Pick<Disruption, "date" | "start" | "end" | "endEstimated">,
+) =>
   span(
     cut.date,
     cut.start && warsawToIso(cut.start),
@@ -438,7 +470,11 @@ export function waterUpcoming(data: Water): Item[] {
  * "Gmina ogłosiła przerwę …": a link to each post we could not read; for
  * a post read but for some places, those places as written.
  */
-export function noticeLink(notice: Notice): Part {
+export function noticeLink(
+  notice: Pick<Notice, "uid" | "title" | "where" | "doubt"> & {
+    source: { url: string };
+  },
+): Part {
   const { who, announced } = sourceOf(notice.uid);
   const doubt = notice.doubt ?? [];
   if (doubt.length > 0) {
@@ -472,20 +508,20 @@ const joined = (links: Part[]): Part[] =>
   );
 
 /** Some, not all, of the address's sources: then the texts name them. */
-const named = (data: Water, some: SourceState[]) =>
+const named = (data: WaterShown, some: SourceState[]) =>
   some.length < data.sources.length
     ? ` ${listed(some.map((s) => s.source.of))}`
     : "";
 
-const down = (data: Water) => data.sources.filter((s) => s.unavailable);
-const late = (data: Water) =>
+const down = (data: WaterShown) => data.sources.filter((s) => s.unavailable);
+const late = (data: WaterShown) =>
   data.sources.filter((s) => s.stale && !s.unavailable);
 
 /**
  * A source whose last check failed: its posts, to be sure; and,
  * beside a cut or a notice, a source we could not read at all.
  */
-export function staleNote(data: Water): Part[] | null {
+export function staleNote(data: WaterShown): Part[] | null {
   const parts: Part[] = [];
   const old = late(data);
   if (old.length > 0)
@@ -545,7 +581,7 @@ export function waterStatus(data: Water): Group[] {
 }
 
 /** The sources of the cuts shown, in the address's order. */
-const cutSources = (data: Water) => {
+const cutSources = (data: WaterShown) => {
   const used = new Set(data.outages.map((cut) => sourceOf(cut.uid).id));
   return data.sources
     .map((s) => s.source)
@@ -562,7 +598,7 @@ export function aiNote(of: string): string {
  * the waste schedule's (lib/schedule-notes.ts UNVERIFIED_NOTE): the posts
  * of the cuts shown.
  */
-export function waterAiNote(data: Water): string {
+export function waterAiNote(data: WaterShown): string {
   const used = cutSources(data);
   if (used.length > 1)
     return aiReadNote(
@@ -597,7 +633,7 @@ const announced = (sources: SourceState[]): Part[] =>
  * The subpage with no cut here: why, then where each source announces
  * cuts; a source we could not read named, with its posts; else null.
  */
-export function waterEmpty(data: Water): Part[] | null {
+export function waterEmpty(data: WaterShown): Part[] | null {
   if (data.outages.length > 0) return null;
   const none = down(data);
   if (none.length === data.sources.length)
@@ -644,7 +680,7 @@ export function waterNone(data: Water): string {
 }
 
 /** The post itself, after „Źródło: ”: "komunikat gminy z 23 października 2026". */
-function postLink(item: Pick<Disruption, "uid" | "source" | "publishedAt">) {
+function postLink(item: Posted) {
   return {
     href: item.source.url,
     text: `komunikat ${sourceOf(item.uid).of} z ${longDate(item.publishedAt.slice(0, 10))}`,
@@ -656,7 +692,7 @@ function postLink(item: Pick<Disruption, "uid" | "source" | "publishedAt">) {
  * never another source's page); without one, each source's posts
  * (lib/hub.ts sourceLine).
  */
-export function waterSources(data: Water): Part[][] {
+export function waterSources(data: WaterShown): Part[][] {
   const posts = new Map<string, Part>();
   for (const item of [...data.outages, ...data.notices])
     if (!posts.has(item.source.url)) posts.set(item.source.url, postLink(item));
@@ -665,7 +701,7 @@ export function waterSources(data: Water): Part[][] {
 }
 
 /** The latest of some ISO times (ms); null: none. */
-function latest(times: Array<string | null>): number | null {
+export function latest(times: Array<string | null>): number | null {
   const ms = times.flatMap((t) => (t ? [Date.parse(t)] : []));
   return ms.length > 0 ? Math.max(...ms) : null;
 }
