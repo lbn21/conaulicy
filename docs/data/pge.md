@@ -1,6 +1,6 @@
 # PGE power outages
 
-What the site reads from PGE Dystrybucja's PowerOutage API and how, and where it shows it: on the address page (a row per outage in „Najbliższe 7 dni”) and on its subpage `/adres/<id>/prad`. Code:
+What the site reads from PGE Dystrybucja's PowerOutage API and how, and where it shows it: on the address page (a row per outage in „Najbliższe 7 dni”), on its subpage `/adres/<id>/prad`, and every outage of the gmina on `/prad` (`web/lib/gmina-outages.ts`, the same file and rules, docs/layout.md). Code:
 
 - `web/lib/pge-feed.ts`: fetch, parse, area, file;
 - `web/lib/pge-cron.ts`: the cron step;
@@ -79,7 +79,7 @@ The run fails only if every try did; the notice, the file and the checks are the
 - `{ pge: "http-error", attempts, status, contentType, nginxCache, body }`: the final HTTP error, with PGE's `Content-Type`, whether `X-Nginx-Cache` was there, and at most 120 characters of the body. Never the token or the headers we send.
 - `attempts` on the good run's line (`{ pge: "run", changed, items, attempts }`), only when the list took more than one try.
 
-The pages never ask PGE. They read the file and the status file per request, through the Blob's CDN (`web/lib/live-reads.ts`), when a page is re-rendered: the cron re-renders the pages whose view changed (`web/lib/page-refresh.ts`): the address page and `/prad` of the places an outage concerns, and the home page if its count moved. A good run shows within about 2 minutes, and a new outage is on the site at most about 16 minutes after PGE publishes it. Vercel Cron runs only on production, so Previews never spend the quota.
+The pages never ask PGE. They read the file and the status file per request, through the Blob's CDN (`web/lib/live-reads.ts`), when a page is re-rendered: the cron re-renders the pages whose view changed (`web/lib/page-refresh.ts`): the address page and `/prad` of the places an outage concerns, the gmina-wide `/prad`, and the home page if its count moved. A good run shows within about 2 minutes, and a new outage is on the site at most about 16 minutes after PGE publishes it. Vercel Cron runs only on production, so Previews never spend the quota.
 
 ## Honest states
 
