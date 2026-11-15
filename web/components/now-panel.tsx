@@ -25,6 +25,9 @@ import { type Window, windowOf } from "@/lib/window";
 
 const HEADING = "Teraz w gminie";
 
+/** An action to a field on the page (FieldLink), not to a page (<Link>). */
+const isField = (href: string): href is `#${string}` => href.startsWith("#");
+
 /** One tile, from its definition and its read (null: not read now). */
 export function NowTile({
   def,
@@ -66,10 +69,10 @@ export function NowTile({
       {data && <p className="govuk-body-s">{data.note}</p>}
       {def.action && (
         <p className="govuk-body-s">
-          {def.action.href.startsWith("#") ? (
+          {isField(def.action.href) ? (
             <FieldLink
               className="govuk-link govuk-link--inverse"
-              href={def.action.href as `#${string}`}
+              href={def.action.href}
             >
               {def.action.text}
             </FieldLink>
