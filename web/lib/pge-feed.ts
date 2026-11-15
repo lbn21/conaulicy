@@ -3,6 +3,7 @@
 // written by lib/pge-cron.ts, read by the pages through lib/live-store.ts).
 // Format, area, times, limits and terms: docs/data/pge.md. No Next.js
 // imports, so the unit tests run it as is.
+import { Agent } from "undici";
 import { isoWithOffset, warsawToIso } from "./dates.ts";
 import { FetchFailure } from "./live-cron.ts";
 import type { ZukPlaces } from "./zuk-resolve.ts";
@@ -197,6 +198,11 @@ export function ours(
  * (RETRY_DELAYS_MS); each repeated try is logged ("retry"), a final HTTP
  * error with what PGE answered ("http-error"). `attempts`: the tries the
  * list took. The token goes only in its header: never in a message.
+ *
+ * Each try opens its own connection (its own undici Agent, no keep-alive,
+ * destroyed when the try ends): PGE's load balancer picks a node per
+ * connection, so a retry over a pooled one would reach the same bad node
+ * (docs/data/pge.md).
  */
 export async function fetchOutages(
   url: string,
@@ -218,29 +224,27 @@ export async function fetchOutages(
   },
 ): Promise<PgeFeed & { attempts: number }> {
   if (!token) throw new FetchFailure("auth-error", "PGE: no token");
-  for (let attempt = 1; ; attempt++) {
-    const delay = RETRY_DELAYS_MS[attempt - 1];
-    const again = async (line: Record<string, unknown>) => {
-      log({ pge: "retry", attempt, ...line });
-      await sleep(delay);
-    };
+  /** One try over `dispatcher`: the feed, or what to log before the next. */
+  const once = async (
+    dispatcher: Agent,
+    attempt: number,
+    last: boolean,
+  ): Promise<PgeFeed | { retry: Record<string, unknown> }> => {
     let response: Response;
     try {
       response = await get(url, {
         signal: AbortSignal.timeout(timeoutMs),
         headers: { Accept: "application/json", "X-Auth-Token": token },
         cache: "no-store",
-      });
+        dispatcher,
+      } as RequestInit);
     } catch (error) {
-      if (delay === undefined) throw error;
-      await again({ error: (error as Error).message });
-      continue;
+      if (last) throw error;
+      return { retry: { error: (error as Error).message } };
     }
-    if (!response.ok && transient(response.status) && delay !== undefined) {
-      // The connection freed, never waited for.
-      response.body?.cancel().catch(() => {});
-      await again({ status: response.status });
-      continue;
+    if (!response.ok && transient(response.status) && !last) {
+      await response.body?.cancel().catch(() => {});
+      return { retry: { status: response.status } };
     }
     if (!response.ok) {
       log({
@@ -256,7 +260,21 @@ export async function fetchOutages(
       throw new Error(status);
     }
     const items = parseOutages(JSON.parse(await response.text()), log);
-    return { fetchedAt: isoWithOffset(now()), items, attempts: attempt };
+    return { fetchedAt: isoWithOffset(now()), items };
+  };
+  for (let attempt = 1; ; attempt++) {
+    const delay = RETRY_DELAYS_MS[attempt - 1];
+    // Its own connection, never kept alive, gone before the wait.
+    const dispatcher = new Agent({ pipelining: 0 });
+    let result: Awaited<ReturnType<typeof once>>;
+    try {
+      result = await once(dispatcher, attempt, delay === undefined);
+    } finally {
+      await dispatcher.destroy().catch(() => {});
+    }
+    if (!("retry" in result)) return { ...result, attempts: attempt };
+    log({ pge: "retry", attempt, ...result.retry });
+    await sleep(delay);
   }
 }
 

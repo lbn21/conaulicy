@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo, Socket } from "node:net";
 import { test } from "node:test";
 import { FetchFailure } from "./live-cron.ts";
 import {
@@ -454,6 +456,116 @@ test("fetch: a timeout is tried again, each try with its own timeout", async () 
     lines.map((line) => line.attempt),
     [1, 2],
   );
+});
+
+/**
+ * PGE behind its load balancer: a node per connection, so a bad
+ * connection is Go's stock 404 on every request it carries. The first
+ * `bad` connections are bad, any later one answers the list. Kept alive
+ * (Node's default), so a reused connection would stay bad.
+ */
+async function perConnection(bad: number) {
+  const sockets = new Map<Socket, number>();
+  const open = new Set<Socket>();
+  const server: Server = createServer((request, response) => {
+    const index = sockets.get(request.socket) ?? 0;
+    if (index < bad) {
+      response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end("404 page not found\n");
+    } else {
+      response.writeHead(200, {
+        "Content-Type": "application/json",
+        "X-Nginx-Cache": "MISS",
+      });
+      response.end(JSON.stringify([raw()]));
+    }
+  });
+  const requests: number[] = [];
+  server.on("connection", (socket) => {
+    sockets.set(socket, sockets.size);
+    open.add(socket);
+    socket.on("close", () => open.delete(socket));
+  });
+  server.on("request", (request) =>
+    requests.push(sockets.get(request.socket) ?? -1),
+  );
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address() as AddressInfo;
+  return {
+    url: outagesUrl(`http://127.0.0.1:${port}`),
+    /** The connection of each request, in order. */
+    requests,
+    /** Resolves once every connection is closed. */
+    drained: async () => {
+      while (open.size > 0) await new Promise((r) => setTimeout(r, 5));
+    },
+    close: () => new Promise((resolve) => server.close(resolve)),
+  };
+}
+
+/** The real fetch, recording each try's dispatcher. */
+function recordingFetch() {
+  const dispatchers: Array<{ destroyed: boolean }> = [];
+  const get = ((input: string | URL, init?: RequestInit) => {
+    dispatchers.push(
+      (init as { dispatcher: { destroyed: boolean } }).dispatcher,
+    );
+    return fetch(input, init);
+  }) as typeof fetch;
+  return { get, dispatchers };
+}
+
+test("fetch: each try over its own connection, so a bad one is left behind", async () => {
+  for (const bad of [1, 2]) {
+    const pge = await perConnection(bad);
+    const { get, dispatchers } = recordingFetch();
+    try {
+      const feed = await fetchOutages(pge.url, {
+        fetch: get,
+        token: TOKEN,
+        log: () => {},
+        sleep: async () => {},
+      });
+      assert.equal(feed.attempts, bad + 1);
+      assert.equal(feed.items.length, 1);
+      // One request per connection: try n on connection n.
+      assert.deepEqual(
+        pge.requests,
+        Array.from({ length: bad + 1 }, (_, i) => i),
+      );
+      assert.equal(new Set(dispatchers).size, bad + 1);
+      assert.ok(dispatchers.every((d) => d.destroyed));
+      await pge.drained();
+    } finally {
+      await pge.close();
+    }
+  }
+});
+
+test("fetch: every connection bad, the cap; each try's agent destroyed, none left open", async () => {
+  const pge = await perConnection(Number.POSITIVE_INFINITY);
+  const { get, dispatchers } = recordingFetch();
+  const { lines, log } = logger();
+  try {
+    await assert.rejects(
+      fetchOutages(pge.url, {
+        fetch: get,
+        token: TOKEN,
+        log,
+        sleep: async () => {},
+      }),
+    );
+    assert.deepEqual(
+      pge.requests,
+      Array.from({ length: MAX_TRIES }, (_, i) => i),
+    );
+    assert.equal(lines.at(-1)?.pge, "http-error");
+    assert.equal(lines.at(-1)?.attempts, MAX_TRIES);
+    assert.ok(dispatchers.every((d) => d.destroyed));
+    await pge.drained();
+  } finally {
+    await pge.close();
+  }
 });
 
 test("upstream: the official URL and the token by default; the mock is refused in production", async () => {
