@@ -11,7 +11,7 @@ import {
 } from "@/lib/gmina-outages";
 import { type PageDef, SOURCE_TAGS } from "@/lib/page-cache";
 import { placeParams } from "@/lib/schedule";
-import { GMINA_OUTAGE_PAGES } from "@/lib/static-pages";
+import { GMINA_OUTAGE_PATH } from "@/lib/static-pages";
 
 // The gmina-wide outage pages' PageDefs (lib/page-cache.ts), /woda and
 // /prad (lib/gmina-outages.ts), with no component imported, as
@@ -30,13 +30,11 @@ export type GminaView<D> = {
   data: D;
 };
 
-const [WATER, POWER] = GMINA_OUTAGE_PAGES;
-
 /** The ids of the build's place set. */
 const builtIds = async () => new Set((await placeParams()).map(({ id }) => id));
 
 export const gminaWaterDef: PageDef<GminaView<GminaWater>> = {
-  path: WATER.path,
+  path: GMINA_OUTAGE_PATH.woda,
   sources: [SOURCE_TAGS.dataset, SOURCE_TAGS.water],
   async load(reads) {
     const [ids, views] = await Promise.all([builtIds(), reads.water()]);
@@ -50,7 +48,7 @@ export const gminaWaterDef: PageDef<GminaView<GminaWater>> = {
 };
 
 export const gminaPowerDef: PageDef<GminaView<GminaPower | null>> = {
-  path: POWER.path,
+  path: GMINA_OUTAGE_PATH.prad,
   sources: [SOURCE_TAGS.dataset, SOURCE_TAGS.pge],
   async load(reads) {
     const [ids, copy] = await Promise.all([builtIds(), reads.pge()]);

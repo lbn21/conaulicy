@@ -14,16 +14,14 @@ import {
 import { PGE_NAME, PGE_PAGE } from "@/lib/power-module";
 import { wasteInWindow } from "@/lib/schedule";
 import { SEARCH_INPUT_ID } from "@/lib/search";
-import { GMINA_OUTAGE_PAGES, type GminaOutageSlug } from "@/lib/static-pages";
+import { GMINA_OUTAGE_PATH, type GminaOutageSlug } from "@/lib/static-pages";
 import { gminaNews, mzgkimNews } from "@/lib/water-sources";
 import { warningWhen, weather } from "@/lib/weather-module";
 import { IN_WINDOW, type Window } from "@/lib/window";
 
 /** Where a water or power tile's count is, place by place: its gmina-wide page. */
 const whereAction = (slug: GminaOutageSlug) => ({
-  href:
-    GMINA_OUTAGE_PAGES.find((page) => page.slug === slug)?.path ??
-    (`/${slug}` as const),
+  href: GMINA_OUTAGE_PATH[slug],
   text: "Zobacz, gdzie",
 });
 
