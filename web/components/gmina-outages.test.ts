@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { gzipSync } from "node:zlib";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import AboutPage from "../app/o-projekcie/page.tsx";
 import { FEATURES } from "../lib/config.generated.ts";
 import {
   type GminaPower,
@@ -18,6 +19,7 @@ import { derivedOurs } from "../lib/pge-fixture.ts";
 import { pageMetadata } from "../lib/share.ts";
 import {
   GMINA_OUTAGE_PAGES,
+  GMINA_OUTAGE_PATH,
   type GminaOutageSlug,
 } from "../lib/static-pages.ts";
 import {
@@ -226,5 +228,16 @@ test("the footer links both pages, each by its h1 (etl/sources.yaml)", () => {
     assert.deepEqual(
       links.filter((link) => link.href === path).map((link) => link.text),
       [MODULES[slug].pageTitle],
+    );
+});
+
+test("/o-projekcie links both pages, each by its h1 as is", () => {
+  const html = renderToStaticMarkup(createElement(AboutPage));
+  for (const { slug } of GMINA_OUTAGE_PAGES)
+    assert.ok(
+      html.includes(
+        `<a class="govuk-link" href="${GMINA_OUTAGE_PATH[slug]}">${MODULES[slug].pageTitle}</a>`,
+      ),
+      slug,
     );
 });

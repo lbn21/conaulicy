@@ -42,7 +42,7 @@ Each needs Jakub's OK; listed here so nothing drifts silently.
 - `/woda`: when a source's last check failed (or, beside a cut or notice, one of the address's sources could not be read), an inset with the stale note (`staleNote`, `web/lib/water-module.ts`) between „Zmień adres” and the cuts.
 - „Teraz w gminie”: the water and power tiles end in „Zobacz, gdzie”, a `<Link>` to their gmina-wide page (`/woda`, `/prad`; `NowTileDef.action`, `web/components/now-tiles.ts`), the place of the field link (t438).
 - The footer's navigation: one section, „W całej gminie”, with both gmina-wide pages, each by its h1 (`etl/sources.yaml` `site.features`, `npm run config:sync`); two links, so its navigation shows (`NAVIGATION_SHOWN`, two or more) on every page (t438). Every feature link is a page that works with no address, never the home page (the logo links it): the old „Sprawdź przy swojej ulicy → Odbiór śmieci” (`/`) is gone; `web/components/site-footer.test.ts` holds the rule.
-- `/o-projekcie`: one line linking both gmina-wide pages, after the power sources (t438).
+- `/o-projekcie`: after the power sources, a short lead and a `govuk-list` linking both gmina-wide pages, each by its h1 as is (`Module.pageTitle`), their paths from `GMINA_OUTAGE_PATH` (t438).
 - `/woda` with no cut here: no AI-read note and no source inset; the empty text links each source's news itself (`waterEmpty`: the gmina's; in the town MZGKiM's too).
 
 ## The gmina-wide outage pages, `/woda` and `/prad` (t438)
