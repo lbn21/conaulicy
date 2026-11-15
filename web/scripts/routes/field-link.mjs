@@ -22,13 +22,12 @@ const WAYS = {
 export async function check(server, failures) {
   const seen = await eachPage(failures, WIDTHS, WAYS, async (page, use, at) => {
     await page.goto(`${server.origin}/`, { waitUntil: "networkidle" });
-    const off = await page
-      .locator(".app-now__tile a")
-      .evaluateAll((links) =>
-        links
-          .map((a) => a.getAttribute("href"))
-          .filter((h) => !h?.startsWith("#") && !GMINA.includes(h)),
-      );
+    // The hrefs from the page, judged here (GMINA is not in the browser).
+    const off = (
+      await page
+        .locator(".app-now__tile a")
+        .evaluateAll((links) => links.map((a) => a.getAttribute("href")))
+    ).filter((h) => !h?.startsWith("#") && !GMINA.includes(h));
     if (off.length > 0)
       failures.push(`${at}: tile links off the page: ${off.join(", ")}`);
     await use(page.locator(ACTION));
