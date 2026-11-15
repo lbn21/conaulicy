@@ -9,8 +9,9 @@
 //                     before launch (docs/launch.md); CI unit-tests the
 //                     production headers, redirects and robots.txt
 //                     (lib/next-config.test.ts) instead of a second build.
-// Both: /sitemap.xml is well-formed; empty unless indexable, else the five
-// static pages (/ulice included) and every place in the search index but
+// Both: /sitemap.xml is well-formed; empty unless indexable, else the
+// static pages (STATIC: /ulice and the gmina-wide /woda, /prad included)
+// and every place in the search index but
 // the fixture's one without a waste schedule (street-without-schedule, the
 // only one: scripts/routes/all-places.mjs), each with its waste subpage
 // (/adres/<id>/smieci, canonical itself), nothing else. The address page and
@@ -35,6 +36,7 @@ import { readFileSync } from "node:fs";
 import { request } from "node:http";
 import { fixtureDataset } from "../lib/dataset-fixture.ts";
 import { todayInWarsaw } from "../lib/dates.ts";
+import { GMINA_OUTAGE_PAGES, STATIC_PAGES } from "../lib/static-pages.ts";
 import {
   finish,
   notFoundAt,
@@ -84,7 +86,13 @@ const SECURITY = {
   "Content-Security-Policy": "frame-ancestors 'none'",
 };
 const SITE = "https://conaulicy.pl";
-const STATIC = ["/", "/ulice", "/dostepnosc", "/prywatnosc", "/o-projekcie"];
+// The home page, the site's own pages and the gmina-wide outage pages, as
+// app/sitemap.ts lists them.
+const STATIC = [
+  "/",
+  ...STATIC_PAGES.map(({ path }) => path),
+  ...GMINA_OUTAGE_PAGES.map(({ path }) => path),
+];
 const SITEMAP_NS = "http://www.sitemaps.org/schemas/sitemap/0.9";
 const CANONICAL = /<link rel="canonical" href="([^"]*)"\/?>/g;
 // Tags or text, nothing else: whatever is left over is malformed.

@@ -8,7 +8,8 @@
 // "<H1> – conaulicy.pl", but a place's pages name its locality too:
 // the home page "<H1> <locality> – conaulicy.pl" (its locality a fixed
 // suffix in the title only, t396; any other route keeps the plain rule),
-// the address page "<H1>, <locality> – conaulicy.pl",
+// the address page "<H1>, <locality> – conaulicy.pl", a gmina-wide outage
+// page (/woda, /prad) "<H1> – <area> – conaulicy.pl",
 // every module's subpage "<H1> – <place>, <locality> – conaulicy.pl"
 // ("Błąd: " first with an error summary). The share title is the same, and
 // the share name conaulicy.pl. The home page's Apple web-app tags (a
@@ -17,10 +18,12 @@
 // pinned here (its H1 and description need only exist).
 //
 // Runs against `next start` on the current build.
+import { GMINA_OUTAGE_PAGES, STATIC_PAGES } from "../../lib/static-pages.ts";
 import { notFoundAt, ROUTES } from "../lib/server.mjs";
 
 const SITE = "https://conaulicy.pl";
-const STATIC = ["/", "/ulice", "/dostepnosc", "/prywatnosc", "/o-projekcie"];
+const GMINA = GMINA_OUTAGE_PAGES.map(({ path }) => path);
+const STATIC = ["/", ...STATIC_PAGES.map(({ path }) => path), ...GMINA];
 
 const all = (html, pattern) => [...html.matchAll(pattern)].map(([, v]) => v);
 const decode = (text) =>
@@ -69,13 +72,17 @@ export async function check(server, failures) {
       : null;
     const hub = /^\/adres\/[^/?]+(?:\?|$)/.test(path) && status === 200;
     const home = path === "/";
+    // A gmina-wide outage page: its h1, then the area (lib/share-card.ts).
+    const gmina = GMINA.includes(path);
     const prefix = subpage
       ? `${error}${h1[0]} – ${place}, `
       : home
         ? `${error}${h1[0]} `
-        : `${error}${h1[0]}, `;
+        : gmina
+          ? `${error}${h1[0]} – `
+          : `${error}${h1[0]}, `;
     const ok =
-      subpage || hub || home
+      subpage || hub || home || gmina
         ? title[0]?.startsWith(prefix) &&
           title[0].endsWith(" – conaulicy.pl") &&
           title[0].length > prefix.length + " – conaulicy.pl".length

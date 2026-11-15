@@ -21,6 +21,10 @@ export const ROUTES = [
   { path: "/adres/0972447-00470/prad", name: "city-street-power" },
   { path: "/adres/0606010/prad", name: "village-power" },
   { path: "/ulice", name: "all-places" },
+  // The gmina-wide outage pages (app/woda, app/prad): the same mocks, every
+  // cut and outage of the gmina.
+  { path: "/woda", name: "gmina-water" },
+  { path: "/prad", name: "gmina-power" },
   { path: "/prywatnosc", name: "privacy" },
   { path: "/dostepnosc", name: "accessibility" },
   { path: "/o-projekcie", name: "about" },

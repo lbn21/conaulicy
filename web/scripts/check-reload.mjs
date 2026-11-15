@@ -33,6 +33,13 @@ const PAGES = [
     far: 900,
     content: /class="[^"]*\bapp-band\b/,
   },
+  // The gmina-wide water page: every cut of the fixture's posts.
+  {
+    name: "gmina-water",
+    path: "/woda",
+    far: 900,
+    content: /class="[^"]*\bapp-band\b/,
+  },
 ];
 const DESKTOP = [
   { width: 1280, height: 900 },
